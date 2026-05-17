@@ -3,20 +3,40 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Braintam EdTech API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: subjects
+    description: Subjects
+  - name: courses
+    description: Courses
+  - name: live-classes
+    description: Live Classes
+  - name: recordings
+    description: Recorded Classes
+  - name: animated-videos
+    description: Animated Videos
+  - name: homework
+    description: Homework
+  - name: assignments
+    description: Assignments
+  - name: tests
+    description: Tests & Quizzes
+  - name: student
+    description: Student Profile & Dashboard
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +44,1183 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email/phone + password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/send-otp:
+    post:
+      operationId: sendOtp
+      tags: [auth]
+      summary: Send OTP to phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOtpInput"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpResponse"
+
+  /auth/verify-otp:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify OTP and login/register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpInput"
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  # SUBJECTS
+  /subjects:
+    get:
+      operationId: listSubjects
+      tags: [subjects]
+      summary: List all subjects
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subject"
+
+  # COURSES
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List all courses
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get course details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDetail"
+
+  # LIVE CLASSES
+  /live-classes:
+    get:
+      operationId: listLiveClasses
+      tags: [live-classes]
+      summary: List upcoming live classes
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LiveClass"
+
+  /live-classes/{id}:
+    get:
+      operationId: getLiveClass
+      tags: [live-classes]
+      summary: Get live class detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveClass"
+
+  /live-classes/{id}/join:
+    post:
+      operationId: joinLiveClass
+      tags: [live-classes]
+      summary: Join a live class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Join link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinLinkResponse"
+
+  # RECORDINGS
+  /recordings:
+    get:
+      operationId: listRecordings
+      tags: [recordings]
+      summary: List recorded classes
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recording"
+
+  /recordings/{id}:
+    get:
+      operationId: getRecording
+      tags: [recordings]
+      summary: Get recording detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recording"
+
+  # ANIMATED VIDEOS
+  /animated-videos:
+    get:
+      operationId: listAnimatedVideos
+      tags: [animated-videos]
+      summary: List animated educational videos
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnimatedVideo"
+
+  /animated-videos/{id}:
+    get:
+      operationId: getAnimatedVideo
+      tags: [animated-videos]
+      summary: Get animated video detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimatedVideo"
+
+  # HOMEWORK
+  /homework:
+    get:
+      operationId: listHomework
+      tags: [homework]
+      summary: List homework assignments
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, submitted, graded]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Homework"
+
+  /homework/{id}:
+    get:
+      operationId: getHomework
+      tags: [homework]
+      summary: Get homework detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Homework"
+
+  /homework/{id}/submit:
+    post:
+      operationId: submitHomework
+      tags: [homework]
+      summary: Submit homework
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HomeworkSubmission"
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+
+  # ASSIGNMENTS
+  /assignments:
+    get:
+      operationId: listAssignments
+      tags: [assignments]
+      summary: List assignments
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, submitted, graded]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assignment"
+
+  /assignments/{id}:
+    get:
+      operationId: getAssignment
+      tags: [assignments]
+      summary: Get assignment detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+
+  /assignments/{id}/submit:
+    post:
+      operationId: submitAssignment
+      tags: [assignments]
+      summary: Submit assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignmentSubmission"
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+
+  # TESTS
+  /tests:
+    get:
+      operationId: listTests
+      tags: [tests]
+      summary: List tests and quizzes
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+        - name: subjectId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, ongoing, completed]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Test"
+
+  /tests/{id}:
+    get:
+      operationId: getTest
+      tags: [tests]
+      summary: Get test detail with questions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestDetail"
+
+  /tests/{id}/submit:
+    post:
+      operationId: submitTest
+      tags: [tests]
+      summary: Submit test answers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestSubmission"
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestResult"
+
+  # STUDENT DASHBOARD & PROFILE
+  /student/dashboard:
+    get:
+      operationId: getStudentDashboard
+      tags: [student]
+      summary: Get student dashboard summary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /student/profile:
+    get:
+      operationId: getStudentProfile
+      tags: [student]
+      summary: Get student profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+    patch:
+      operationId: updateStudentProfile
+      tags: [student]
+      summary: Update student profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+
+  /student/progress:
+    get:
+      operationId: getStudentProgress
+      tags: [student]
+      summary: Get student overall progress and scores
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+
+  /student/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [student]
+      summary: Get recent activity feed
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /student/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [student]
+      summary: Get grade leaderboard
+      parameters:
+        - name: grade
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # AUTH SCHEMAS
+    RegisterInput:
+      type: object
+      required: [name, grade, password]
+      properties:
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        grade:
+          type: integer
+        password:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [password]
+      properties:
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        password:
+          type: string
+
+    SendOtpInput:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+
+    VerifyOtpInput:
+      type: object
+      required: [phone, otp]
+      properties:
+        phone:
+          type: string
+        otp:
+          type: string
+        name:
+          type: ["string", "null"]
+        grade:
+          type: ["integer", "null"]
+
+    AuthResponse:
+      type: object
+      required: [token, student]
+      properties:
+        token:
+          type: string
+        student:
+          $ref: "#/components/schemas/StudentProfile"
+
+    OtpResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    # SUBJECT
+    Subject:
+      type: object
+      required: [id, name, icon, color]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        description:
+          type: ["string", "null"]
+
+    # COURSE
+    Course:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, totalLessons, thumbnailUrl]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        totalLessons:
+          type: integer
+        completedLessons:
+          type: ["integer", "null"]
+        thumbnailUrl:
+          type: string
+        description:
+          type: ["string", "null"]
+        teacher:
+          type: ["string", "null"]
+        rating:
+          type: ["number", "null"]
+
+    CourseDetail:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, lessons, thumbnailUrl]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        thumbnailUrl:
+          type: string
+        description:
+          type: ["string", "null"]
+        teacher:
+          type: ["string", "null"]
+        rating:
+          type: ["number", "null"]
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+
+    Lesson:
+      type: object
+      required: [id, title, duration, order]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        duration:
+          type: integer
+        order:
+          type: integer
+        videoUrl:
+          type: ["string", "null"]
+        completed:
+          type: ["boolean", "null"]
+
+    # LIVE CLASS
+    LiveClass:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, scheduledAt, teacher, status]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        scheduledAt:
+          type: string
+        duration:
+          type: integer
+        teacher:
+          type: string
+        teacherAvatar:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [upcoming, live, ended]
+        thumbnailUrl:
+          type: ["string", "null"]
+        studentsJoined:
+          type: ["integer", "null"]
+
+    JoinLinkResponse:
+      type: object
+      required: [joinUrl]
+      properties:
+        joinUrl:
+          type: string
+
+    # RECORDING
+    Recording:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, recordedAt, teacher, videoUrl, duration]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        recordedAt:
+          type: string
+        teacher:
+          type: string
+        videoUrl:
+          type: string
+        duration:
+          type: integer
+        thumbnailUrl:
+          type: ["string", "null"]
+        views:
+          type: ["integer", "null"]
+
+    # ANIMATED VIDEO
+    AnimatedVideo:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, videoUrl, duration, thumbnailUrl]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        videoUrl:
+          type: string
+        duration:
+          type: integer
+        thumbnailUrl:
+          type: string
+        description:
+          type: ["string", "null"]
+        views:
+          type: ["integer", "null"]
+
+    # HOMEWORK
+    Homework:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, dueDate, status]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        dueDate:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, submitted, graded]
+        marks:
+          type: ["number", "null"]
+        maxMarks:
+          type: ["number", "null"]
+
+    HomeworkSubmission:
+      type: object
+      required: [answer]
+      properties:
+        answer:
+          type: string
+        attachmentUrl:
+          type: ["string", "null"]
+
+    SubmissionResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    # ASSIGNMENT
+    Assignment:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, dueDate, status, maxMarks]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        dueDate:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, submitted, graded]
+        marks:
+          type: ["number", "null"]
+        maxMarks:
+          type: number
+        attachmentUrl:
+          type: ["string", "null"]
+
+    AssignmentSubmission:
+      type: object
+      required: [answer]
+      properties:
+        answer:
+          type: string
+        attachmentUrl:
+          type: ["string", "null"]
+
+    # TEST
+    Test:
+      type: object
+      required: [id, title, subjectId, subjectName, grade, scheduledAt, duration, totalQuestions, status]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        grade:
+          type: integer
+        scheduledAt:
+          type: string
+        duration:
+          type: integer
+        totalQuestions:
+          type: integer
+        status:
+          type: string
+          enum: [upcoming, ongoing, completed]
+        score:
+          type: ["number", "null"]
+        maxScore:
+          type: ["number", "null"]
+
+    TestDetail:
+      type: object
+      required: [id, title, subjectId, grade, duration, questions]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        grade:
+          type: integer
+        duration:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+
+    Question:
+      type: object
+      required: [id, text, options, order]
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        order:
+          type: integer
+        imageUrl:
+          type: ["string", "null"]
+
+    TestSubmission:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestAnswer"
+
+    TestAnswer:
+      type: object
+      required: [questionId, selectedOption]
+      properties:
+        questionId:
+          type: integer
+        selectedOption:
+          type: integer
+
+    TestResult:
+      type: object
+      required: [score, maxScore, percentage, passed]
+      properties:
+        score:
+          type: number
+        maxScore:
+          type: number
+        percentage:
+          type: number
+        passed:
+          type: boolean
+        correctAnswers:
+          type: integer
+        wrongAnswers:
+          type: integer
+
+    # STUDENT
+    StudentProfile:
+      type: object
+      required: [id, name, grade, points]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        grade:
+          type: integer
+        avatarUrl:
+          type: ["string", "null"]
+        points:
+          type: integer
+        rank:
+          type: ["integer", "null"]
+        school:
+          type: ["string", "null"]
+
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        school:
+          type: string
+        avatarUrl:
+          type: string
+
+    DashboardSummary:
+      type: object
+      required: [studentName, grade, points, rank, upcomingLiveClasses, pendingHomework, pendingAssignments, upcomingTests, recentActivity, subjectProgress]
+      properties:
+        studentName:
+          type: string
+        grade:
+          type: integer
+        points:
+          type: integer
+        rank:
+          type: integer
+        upcomingLiveClasses:
+          type: integer
+        pendingHomework:
+          type: integer
+        pendingAssignments:
+          type: integer
+        upcomingTests:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+        subjectProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectProgress"
+        streakDays:
+          type: integer
+
+    SubjectProgress:
+      type: object
+      required: [subjectId, subjectName, progress, color]
+      properties:
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        progress:
+          type: number
+        color:
+          type: string
+
+    StudentProgress:
+      type: object
+      required: [totalPoints, rank, coursesCompleted, testsAttempted, averageScore, subjectWise]
+      properties:
+        totalPoints:
+          type: integer
+        rank:
+          type: integer
+        coursesCompleted:
+          type: integer
+        testsAttempted:
+          type: integer
+        averageScore:
+          type: number
+        subjectWise:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectProgress"
+
+    ActivityItem:
+      type: object
+      required: [id, type, title, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [live_class, recording, homework, assignment, test, video, course]
+        title:
+          type: string
+        subjectName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        score:
+          type: ["number", "null"]
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, studentName, points, grade]
+      properties:
+        rank:
+          type: integer
+        studentName:
+          type: string
+        points:
+          type: integer
+        grade:
+          type: integer
+        avatarUrl:
+          type: ["string", "null"]
+        school:
+          type: ["string", "null"]

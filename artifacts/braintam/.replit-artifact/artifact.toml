@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Braintam"
+version = "1.0.0"
+id = "artifacts/braintam"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18817
+
+[services.development]
+run = "pnpm --filter @workspace/braintam run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/braintam", "run", "build" ]
+publicDir = "artifacts/braintam/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18817"
+BASE_PATH = "/"
