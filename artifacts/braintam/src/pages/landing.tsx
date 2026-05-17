@@ -8,7 +8,7 @@ import {
   Brain, CheckCircle2, Smartphone, Apple, Play, Quote,
   ChevronLeft, ChevronRight, Mail, Phone, MapPin,
   Facebook, Twitter, Instagram, Youtube, GraduationCap,
-  Zap, Shield, Trophy, Clock
+  Zap, Shield, Trophy, Linkedin
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -26,6 +26,75 @@ const courses = [
   { title: "The Human Body", subject: "Science", grade: 7, lessons: 15, rating: 4.7, teacher: "Dr. Suresh Kumar", color: "from-orange-500 to-amber-400", img: "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=400&q=80" },
   { title: "Indian History - Medieval", subject: "Social Science", grade: 7, lessons: 10, rating: 4.7, teacher: "Dr. Ravi Prakash", color: "from-yellow-500 to-amber-400", img: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&q=80" },
   { title: "Intro to Computers", subject: "Computer Science", grade: 5, lessons: 10, rating: 4.3, teacher: "Deepak Singh", color: "from-sky-500 to-blue-400", img: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&q=80" },
+];
+
+const team = [
+  {
+    name: "Vikram Nair",
+    role: "Co-Founder & CEO",
+    bio: "Former IIT Delhi alumnus with 12 years in EdTech. Previously led product at BYJU'S. Passionate about making quality education accessible to every Indian student.",
+    avatar: "VN",
+    gradient: "from-primary to-blue-700",
+    subjects: ["Strategy", "Product", "Vision"],
+    twitter: "#",
+    linkedin: "#",
+    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
+  },
+  {
+    name: "Dr. Priya Sharma",
+    role: "Co-Founder & Head of Academics",
+    bio: "PhD in Education from IIM Ahmedabad. 15+ years of teaching experience across CBSE and ICSE boards. Architect of Braintam's entire curriculum and pedagogical framework.",
+    avatar: "PS",
+    gradient: "from-purple-500 to-pink-500",
+    subjects: ["Curriculum", "Pedagogy", "CBSE"],
+    twitter: "#",
+    linkedin: "#",
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&q=80",
+  },
+  {
+    name: "Rohit Agarwal",
+    role: "CTO & Co-Founder",
+    bio: "Ex-Google engineer with expertise in AI and edtech platforms. Built scalable learning infrastructure used by 5 lakh+ students. Loves solving hard engineering problems.",
+    avatar: "RA",
+    gradient: "from-green-500 to-teal-500",
+    subjects: ["AI/ML", "Platform", "Engineering"],
+    twitter: "#",
+    linkedin: "#",
+    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
+  },
+  {
+    name: "Anita Menon",
+    role: "Head of Teacher Relations",
+    bio: "Former principal at Kendriya Vidyalaya with 20 years in education leadership. Recruits and mentors Braintam's star teacher network across India.",
+    avatar: "AM",
+    gradient: "from-orange-400 to-amber-500",
+    subjects: ["Teachers", "Quality", "Mentorship"],
+    twitter: "#",
+    linkedin: "#",
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&q=80",
+  },
+  {
+    name: "Deepak Singh",
+    role: "Head of Content & Animated Videos",
+    bio: "Award-winning animator and instructional designer. Led content production at Toppr. Has created 1,000+ animated explainer videos loved by students nationwide.",
+    avatar: "DS",
+    gradient: "from-sky-500 to-indigo-500",
+    subjects: ["Animation", "Content", "Design"],
+    twitter: "#",
+    linkedin: "#",
+    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
+  },
+  {
+    name: "Sneha Kapoor",
+    role: "VP – Student Success",
+    bio: "Child psychologist and learning coach. Designs Braintam's gamification, reward systems, and student engagement programs that keep kids motivated every day.",
+    avatar: "SK",
+    gradient: "from-rose-400 to-pink-600",
+    subjects: ["Gamification", "Psychology", "Engagement"],
+    twitter: "#",
+    linkedin: "#",
+    photo: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=300&q=80",
+  },
 ];
 
 const subjectColors: Record<string, string> = {
@@ -607,6 +676,99 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ─── TEAM SECTION ─── */}
+        <section className="py-24 px-4 bg-background">
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-16 space-y-4">
+              <Badge className="bg-secondary/10 text-secondary border-0 text-sm px-4 py-1">Meet the Team</Badge>
+              <h2 className="text-3xl md:text-5xl font-bold">
+                Built by educators &{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">innovators</span>
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Our founding team brings together decades of experience in education, technology, and design — united by one mission: to make every Indian student unstoppable.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {team.map((member, i) => (
+                <motion.div
+                  key={member.name}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="group bg-card rounded-3xl border-2 border-transparent hover:border-primary/20 shadow-sm hover:shadow-xl transition-all overflow-hidden hover:-translate-y-1"
+                >
+                  {/* Photo / Avatar area */}
+                  <div className="relative h-52 overflow-hidden">
+                    <img
+                      src={member.photo}
+                      alt={member.name}
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent`} />
+                    {/* Social icons on hover */}
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a href={member.twitter} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-primary transition-colors">
+                        <Twitter className="w-3.5 h-3.5 text-white" />
+                      </a>
+                      <a href={member.linkedin} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-primary transition-colors">
+                        <Linkedin className="w-3.5 h-3.5 text-white" />
+                      </a>
+                    </div>
+                    {/* Name overlay on image */}
+                    <div className="absolute bottom-4 left-5 right-5">
+                      <div className="text-white font-bold text-lg leading-tight">{member.name}</div>
+                      <div className={`text-xs font-semibold mt-0.5 bg-gradient-to-r ${member.gradient} bg-clip-text text-transparent`} style={{ WebkitBackgroundClip: "text", color: "transparent" }}>
+                        <span className="text-white/80">{member.role}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`w-1 h-8 rounded-full bg-gradient-to-b ${member.gradient}`} />
+                      <div>
+                        <div className="font-bold text-sm">{member.name}</div>
+                        <div className="text-xs text-muted-foreground">{member.role}</div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{member.bio}</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {member.subjects.map(tag => (
+                        <span key={tag} className={`text-xs font-semibold px-2.5 py-1 rounded-full bg-gradient-to-r ${member.gradient} text-white`}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Join the team CTA */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mt-16 bg-gradient-to-r from-secondary/5 to-primary/5 border-2 border-dashed border-primary/20 rounded-3xl p-10 text-center space-y-4"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Users className="w-7 h-7 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold">Want to join our mission?</h3>
+              <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
+                We're always looking for passionate educators, engineers, and designers who believe in the power of quality education for every Indian child.
+              </p>
+              <Button asChild className="rounded-full bg-secondary text-white hover:bg-secondary/90 px-8 h-11">
+                <a href="#">View Open Roles <ArrowRight className="ml-2 w-4 h-4" /></a>
+              </Button>
+            </motion.div>
           </div>
         </section>
 
