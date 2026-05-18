@@ -1,0 +1,28 @@
+Act as a world-class Principal UI/UX Designer specializing in premium, multi-million-dollar B2C Web Applications. I want to completely redesign my current EdTech landing page into a highly polished, expensive-looking, and sophisticated platform. 
+
+Apply the following strict design guidelines to optimize for speed, minimalism, and a premium feel:
+
+1. ARCHITECTURE & LENGTH:
+- Drastically shorten the page length. Eliminate repetitive content sections. Focus on a compact, high-impact vertical layout.
+- Replace dense walls of text with generous white space (negative space) to make the layout breathe and look premium.
+
+2. HERO SECTION & 3D ELEMENTS:
+- Create a clean, majestic Hero Section with a split layout. 
+- Left side: A bold, elegant headline with crisp typography and a short subtitle. 
+- Right side: Embed a lightweight, smooth, interactive 3D abstract element or a high-end 3D geometric glassmorphism illustration representing growth, connectivity, or intellect (use CSS/Three.js or clean Spline embeds). It must look sleek and dynamic, not heavy or cartoonish.
+
+3. CLEAN UP THE AUTHENTICATION / SIGN-UP CTA:
+- Remove any massive, space-consuming "Create Free Account" forms or giant banners from the main flow.
+- Instead, place a single, elegant, premium "Get Started" or "Join Live Class" Call-to-Action button in the top navigation bar and a matching one in the Hero section.
+- If a user clicks it, it should trigger a sleek, minimalist modal popup instead of taking up layout space on the actual page.
+
+4. COLOR PALETTE & VISUALS:
+- Move away from oversaturated neon gradients or harsh solid black blocks.
+- Use a highly sophisticated color palette: Deep navy/slate background (#090D1A), accented with muted translucent glass cards, ultra-fine 1px borders, and a smart, singular accent color (like a premium electric blue or soft royal purple) used exclusively for drawing attention to buttons.
+
+5. PREMIUM MICRO-ANIMATIONS:
+- Remove loud, aggressive animations.
+- Implement ultra-smooth, subtle entry animations (e.g., cubic-bezier fade-in-up) as the user scrolls.
+- Buttons should have organic, premium micro-interactions (e.g., soft glow shifts or elegant background transitions on hover), matching the sleek app download strip currently on the site.
+
+Optimize the entire frontend build for fluid responsiveness across desktop, tablet, and mobile devices while keeping code clean, componentized, and lightning-fast.

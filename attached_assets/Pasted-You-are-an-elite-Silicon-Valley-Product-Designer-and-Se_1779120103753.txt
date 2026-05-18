@@ -1,0 +1,244 @@
+You are an elite Silicon Valley Product Designer and Senior Frontend Architect specializing in luxury SaaS and premium EdTech platforms.
+
+Redesign my existing EdTech website into a visually stunning, ultra-premium, minimal, modern platform that feels like a multi-million-dollar company funded by top-tier investors.
+
+The current website is too long, too crowded, and visually overwhelming.
+I want the redesign to feel:
+
+* expensive
+* intelligent
+* futuristic
+* calm
+* premium
+* highly polished
+* conversion focused
+
+The final design should look inspired by:
+
+* Stripe
+* Apple
+* Linear
+* Notion
+* Arc Browser
+* Framer
+* modern AI startups
+
+STRICT DESIGN RULES:
+
+====================================
+
+1. WEBSITE STRUCTURE (VERY IMPORTANT)
+   ====================================
+
+Reduce the total page length by nearly 60%.
+
+The website should feel compact and powerful instead of endlessly scrolling.
+
+Keep only these sections:
+
+1. Premium Navbar
+2. Hero Section
+3. Trust / Stats Strip
+4. Core Features
+5. Live Class Experience Preview
+6. Testimonials
+7. Final CTA
+8. Minimal Footer
+
+Delete unnecessary filler sections, repeated cards, oversized feature grids, and excessive text blocks.
+
+Every section must have strong spacing and breathing room.
+
+Use premium vertical rhythm and clean alignment.
+
+====================================
+2. HERO SECTION (MOST IMPORTANT)
+================================
+
+Create a world-class hero section.
+
+Layout:
+LEFT SIDE:
+
+* Powerful headline
+* One-line premium subheading
+* Elegant CTA buttons
+* Tiny trust indicators below CTA
+
+RIGHT SIDE:
+
+* A sophisticated lightweight 3D visual
+* Use glassmorphism
+* Floating geometric layers
+* Soft glowing particles
+* Abstract intelligence/network visual
+* Smooth floating motion
+* DO NOT use childish illustrations
+* DO NOT use cartoon education graphics
+
+The 3D element must feel like:
+“future of learning meets luxury technology.”
+
+Use subtle depth and lighting.
+
+Keep animations GPU optimized and smooth.
+
+====================================
+3. REMOVE LARGE SIGNUP ELEMENTS
+===============================
+
+The “Create Free Account” area currently takes too much space.
+
+Remove all giant signup forms from the layout.
+
+Instead:
+
+* Add a single premium “Join Live Class” button
+* Clicking opens a sleek centered modal popup
+* Minimal design
+* Frosted glass effect
+* Smooth fade animation
+
+The page itself must stay visually clean.
+
+====================================
+4. PREMIUM VISUAL LANGUAGE
+==========================
+
+Use a luxury dark theme.
+
+Primary Background:
+#090D1A
+
+Secondary surfaces:
+rgba(255,255,255,0.04)
+
+Borders:
+rgba(255,255,255,0.08)
+
+Accent Color:
+Electric Blue or Royal Purple ONLY
+
+Avoid:
+
+* rainbow gradients
+* loud neon effects
+* bright green/bright orange
+* excessive shadows
+* thick borders
+* cluttered cards
+
+Use:
+
+* thin glass borders
+* soft blur
+* layered transparency
+* subtle glows
+* elegant depth
+
+The UI should feel cinematic and premium.
+
+====================================
+5. TYPOGRAPHY
+=============
+
+Use extremely clean typography hierarchy.
+
+Style:
+
+* Bold luxury headlines
+* Tight spacing
+* Minimal wording
+* Large clean fonts
+* Apple-level typography polish
+
+Avoid:
+
+* long paragraphs
+* too much marketing text
+* generic startup wording
+
+Everything should feel intentional and refined.
+
+====================================
+6. MICRO INTERACTIONS
+=====================
+
+All animations must be subtle and premium.
+
+Add:
+
+* smooth fade-in-up on scroll
+* elegant hover glow on buttons
+* magnetic hover effect
+* floating 3D movement
+* smooth card transitions
+* premium navbar blur on scroll
+
+Animation timing:
+Use cubic-bezier easing for luxury feel.
+
+DO NOT use:
+
+* bouncing animations
+* flashy motion
+* aggressive parallax
+* spinning objects
+* heavy effects
+
+====================================
+7. MOBILE EXPERIENCE
+====================
+
+The mobile version must feel like a premium iOS app landing page.
+
+Requirements:
+
+* compact layout
+* large touch targets
+* clean spacing
+* beautiful stacked sections
+* responsive 3D scaling
+* fast loading
+
+No clutter.
+
+====================================
+8. PERFORMANCE
+==============
+
+Optimize heavily for performance.
+
+Use:
+
+* lazy loading
+* optimized assets
+* minimal DOM complexity
+* reusable components
+* smooth rendering
+* lightweight animation libraries
+
+The site must feel lightning fast.
+
+====================================
+9. FINAL FEELING
+================
+
+The website should emotionally communicate:
+
+“This is the future of premium education.”
+
+It should look like:
+
+* a funded AI company
+* premium SaaS product
+* modern luxury tech brand
+
+NOT like:
+
+* a traditional coaching institute
+* a template website
+* a kids learning platform
+* a cheap EdTech startup
+
+The final output should feel world-class, refined, futuristic, and highly trustworthy.

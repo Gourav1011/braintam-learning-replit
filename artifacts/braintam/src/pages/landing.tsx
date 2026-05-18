@@ -1,876 +1,810 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { useState, useEffect, useRef } from "react";
 import {
-  PlayCircle, BookOpen, Video, Target, ArrowRight, Star, Users,
-  Brain, CheckCircle2, Smartphone, Apple, Play, Quote,
-  ChevronLeft, ChevronRight, Mail, Phone, MapPin,
-  Facebook, Twitter, Instagram, Youtube, GraduationCap,
-  Zap, Shield, Trophy, Linkedin
+  ArrowRight, Star, Users, Video, BookOpen, Target, Brain,
+  PlayCircle, Zap, X, ChevronRight, Shield, Award, Clock,
+  Sparkles, GraduationCap, BarChart3, CheckCircle
 } from "lucide-react";
-import { useState, useEffect } from "react";
+
+const easing = [0.25, 0.1, 0.25, 1] as const;
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, delay: i * 0.1, ease: easing },
+  }),
+};
 
 const features = [
-  { icon: Video, title: "Live Classes", desc: "Real-time sessions with top educators. Ask doubts instantly.", color: "text-red-500 bg-red-50" },
-  { icon: PlayCircle, title: "Animated Videos", desc: "Complex concepts made fun with rich animations.", color: "text-purple-500 bg-purple-50" },
-  { icon: Target, title: "Adaptive Tests", desc: "Smart quizzes that adjust to your level and track growth.", color: "text-green-500 bg-green-50" },
-  { icon: BookOpen, title: "Full Syllabus", desc: "All subjects, grades 1–10, aligned to CBSE & state boards.", color: "text-blue-500 bg-blue-50" },
-];
-
-const courses = [
-  { title: "Algebra Foundations", subject: "Mathematics", grade: 6, lessons: 12, rating: 4.8, teacher: "Dr. Priya Sharma", color: "from-blue-500 to-cyan-400", img: "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?w=400&q=80" },
-  { title: "Photosynthesis & Plant Life", subject: "Science", grade: 6, lessons: 8, rating: 4.9, teacher: "Dr. Anita Patel", color: "from-green-500 to-emerald-400", img: "https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=400&q=80" },
-  { title: "English Grammar Mastery", subject: "English", grade: 6, lessons: 14, rating: 4.5, teacher: "Meena Iyer", color: "from-purple-500 to-violet-400", img: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&q=80" },
-  { title: "The Human Body", subject: "Science", grade: 7, lessons: 15, rating: 4.7, teacher: "Dr. Suresh Kumar", color: "from-orange-500 to-amber-400", img: "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=400&q=80" },
-  { title: "Indian History - Medieval", subject: "Social Science", grade: 7, lessons: 10, rating: 4.7, teacher: "Dr. Ravi Prakash", color: "from-yellow-500 to-amber-400", img: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&q=80" },
-  { title: "Intro to Computers", subject: "Computer Science", grade: 5, lessons: 10, rating: 4.3, teacher: "Deepak Singh", color: "from-sky-500 to-blue-400", img: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&q=80" },
-];
-
-const team = [
   {
-    name: "Vikram Nair",
-    role: "Co-Founder & CEO",
-    bio: "Former IIT Delhi alumnus with 12 years in EdTech. Previously led product at BYJU'S. Passionate about making quality education accessible to every Indian student.",
-    avatar: "VN",
-    gradient: "from-primary to-blue-700",
-    subjects: ["Strategy", "Product", "Vision"],
-    twitter: "#",
-    linkedin: "#",
-    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
+    icon: Video,
+    title: "Live Intelligence",
+    desc: "Real-time sessions with verified educators. Zero latency, full engagement.",
+    accent: "#6366f1",
   },
   {
-    name: "Dr. Priya Sharma",
-    role: "Co-Founder & Head of Academics",
-    bio: "PhD in Education from IIM Ahmedabad. 15+ years of teaching experience across CBSE and ICSE boards. Architect of Braintam's entire curriculum and pedagogical framework.",
-    avatar: "PS",
-    gradient: "from-purple-500 to-pink-500",
-    subjects: ["Curriculum", "Pedagogy", "CBSE"],
-    twitter: "#",
-    linkedin: "#",
-    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&q=80",
+    icon: Zap,
+    title: "Adaptive Engine",
+    desc: "AI-powered content that learns your pace and targets your weak spots.",
+    accent: "#8b5cf6",
   },
   {
-    name: "Rohit Agarwal",
-    role: "CTO & Co-Founder",
-    bio: "Ex-Google engineer with expertise in AI and edtech platforms. Built scalable learning infrastructure used by 5 lakh+ students. Loves solving hard engineering problems.",
-    avatar: "RA",
-    gradient: "from-green-500 to-teal-500",
-    subjects: ["AI/ML", "Platform", "Engineering"],
-    twitter: "#",
-    linkedin: "#",
-    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
+    icon: BarChart3,
+    title: "Deep Analytics",
+    desc: "Granular progress tracking across every subject, chapter, and concept.",
+    accent: "#6366f1",
   },
   {
-    name: "Anita Menon",
-    role: "Head of Teacher Relations",
-    bio: "Former principal at Kendriya Vidyalaya with 20 years in education leadership. Recruits and mentors Braintam's star teacher network across India.",
-    avatar: "AM",
-    gradient: "from-orange-400 to-amber-500",
-    subjects: ["Teachers", "Quality", "Mentorship"],
-    twitter: "#",
-    linkedin: "#",
-    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&q=80",
-  },
-  {
-    name: "Deepak Singh",
-    role: "Head of Content & Animated Videos",
-    bio: "Award-winning animator and instructional designer. Led content production at Toppr. Has created 1,000+ animated explainer videos loved by students nationwide.",
-    avatar: "DS",
-    gradient: "from-sky-500 to-indigo-500",
-    subjects: ["Animation", "Content", "Design"],
-    twitter: "#",
-    linkedin: "#",
-    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
-  },
-  {
-    name: "Sneha Kapoor",
-    role: "VP – Student Success",
-    bio: "Child psychologist and learning coach. Designs Braintam's gamification, reward systems, and student engagement programs that keep kids motivated every day.",
-    avatar: "SK",
-    gradient: "from-rose-400 to-pink-600",
-    subjects: ["Gamification", "Psychology", "Engagement"],
-    twitter: "#",
-    linkedin: "#",
-    photo: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=300&q=80",
+    icon: Shield,
+    title: "Curated Content",
+    desc: "Every lesson vetted by academic experts. CBSE, ICSE, and state board aligned.",
+    accent: "#8b5cf6",
   },
 ];
-
-const subjectColors: Record<string, string> = {
-  Mathematics: "bg-blue-100 text-blue-700",
-  Science: "bg-green-100 text-green-700",
-  English: "bg-purple-100 text-purple-700",
-  Hindi: "bg-red-100 text-red-700",
-  "Social Science": "bg-yellow-100 text-yellow-700",
-  "Computer Science": "bg-sky-100 text-sky-700",
-};
 
 const testimonials = [
   {
     name: "Priya Verma",
-    role: "Grade 8 Student",
-    school: "Kendriya Vidyalaya, Mumbai",
-    avatar: "P",
+    role: "Grade 8 · Mumbai",
+    text: "My science score went from 65 to 89 in one term. Braintam's approach is unlike anything I've tried.",
     rating: 5,
-    text: "Braintam's animated videos helped me understand concepts I struggled with for years. My science marks jumped from 65% to 89% in just one term!",
-    color: "from-pink-400 to-rose-500",
+    avatar: "PV",
   },
   {
     name: "Rakesh Sharma",
-    role: "Parent",
-    school: "Father of Grade 6 student",
-    avatar: "R",
+    role: "Parent · Delhi",
+    text: "My son actually looks forward to studying now. The live class quality is exceptional.",
     rating: 5,
-    text: "My son used to dread math. After 3 months on Braintam, he actually looks forward to studying. The live classes with real teachers made all the difference.",
-    color: "from-blue-400 to-indigo-500",
+    avatar: "RS",
   },
   {
     name: "Ananya Singh",
-    role: "Grade 10 Student",
-    school: "DPS Vasant Kunj, Delhi",
-    avatar: "A",
+    role: "Grade 10 · Bengaluru",
+    text: "Scored 94% in boards. Braintam's test series was indistinguishable from the real exam.",
     rating: 5,
-    text: "The test series on Braintam is incredible — exactly like the real board exam format. I scored 94% in my boards. Braintam was my secret weapon!",
-    color: "from-green-400 to-emerald-500",
+    avatar: "AS",
   },
-  {
-    name: "Kavitha Menon",
-    role: "Mother",
-    school: "Parent of twin daughters, Grade 5",
-    avatar: "K",
-    rating: 5,
-    text: "Both my daughters use Braintam and they compete with each other on the leaderboard! It's made learning into a fun game. Best investment for their future.",
-    color: "from-amber-400 to-orange-500",
-  },
-  {
-    name: "Arjun Kapoor",
-    role: "Grade 9 Student",
-    school: "Ryan International, Bengaluru",
-    avatar: "A",
-    rating: 5,
-    text: "I was always afraid of exams, but after practicing with Braintam's adaptive tests every day, I feel confident and prepared. Highly recommend!",
-    color: "from-purple-400 to-violet-500",
-  },
-  {
-    name: "Sunita Joshi",
-    role: "Teacher & Parent",
-    school: "Navodaya Vidyalaya",
-    avatar: "S",
-    rating: 5,
-    text: "As a teacher, I'm impressed by the quality and accuracy of Braintam's content. As a parent, I'm thrilled to see my child so engaged in learning.",
-    color: "from-teal-400 to-cyan-500",
-  },
-];
-
-const reviews = [
-  { platform: "Google Play", rating: 4.8, count: "12,400+", label: "★★★★★ on Play Store" },
-  { platform: "App Store", rating: 4.9, count: "8,200+", label: "★★★★★ on App Store" },
-  { platform: "Trustpilot", rating: 4.7, count: "5,100+", label: "★★★★★ on Trustpilot" },
 ];
 
 const stats = [
-  { label: "Students", value: "5,00,000+", icon: Users },
-  { label: "Live Classes", value: "50,000+", icon: Video },
-  { label: "Courses", value: "200+", icon: BookOpen },
-  { label: "Avg Score Boost", value: "40%", icon: Zap },
+  { value: "5L+", label: "Students" },
+  { value: "4.9", label: "App Rating" },
+  { value: "200+", label: "Courses" },
+  { value: "94%", label: "Score Improvement" },
 ];
 
-const footerLinks = {
-  "Learn": ["Live Classes", "Courses", "Animated Videos", "Recorded Classes", "Test Series", "Homework Help"],
-  "Subjects": ["Mathematics", "Science", "English", "Hindi", "Social Science", "Computer Science"],
-  "Company": ["About Us", "Careers", "Press Kit", "Blog", "Partnerships", "Contact"],
-  "Support": ["Help Center", "Terms of Service", "Privacy Policy", "Refund Policy", "Report an Issue", "Community"],
-};
-
-function StarRating({ rating }: { rating: number }) {
+function ParticleField() {
+  const count = 28;
   return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} className={`w-4 h-4 ${i <= Math.round(rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
-      ))}
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {Array.from({ length: count }).map((_, i) => {
+        const size = Math.random() * 3 + 1;
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const dur = Math.random() * 8 + 6;
+        const delay = Math.random() * 5;
+        const opacity = Math.random() * 0.4 + 0.1;
+        return (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: size,
+              height: size,
+              left: `${x}%`,
+              top: `${y}%`,
+              background: i % 2 === 0 ? "#6366f1" : "#8b5cf6",
+              opacity,
+            }}
+            animate={{
+              y: [0, -30, 0],
+              opacity: [opacity, opacity * 0.3, opacity],
+            }}
+            transition={{
+              duration: dur,
+              delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
+function HeroVisual() {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      <ParticleField />
+
+      {/* Central orb */}
+      <motion.div
+        animate={{ scale: [1, 1.04, 1], rotate: [0, 2, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="relative z-10"
+      >
+        <div
+          className="w-64 h-64 rounded-full flex items-center justify-center"
+          style={{
+            background: "radial-gradient(circle at 35% 35%, rgba(99,102,241,0.25), rgba(139,92,246,0.05))",
+            border: "1px solid rgba(99,102,241,0.3)",
+            boxShadow: "0 0 80px rgba(99,102,241,0.15), inset 0 0 40px rgba(99,102,241,0.05)",
+            backdropFilter: "blur(20px)",
+          }}
+        >
+          <div
+            className="w-36 h-36 rounded-full flex items-center justify-center"
+            style={{
+              background: "radial-gradient(circle at 30% 30%, rgba(99,102,241,0.4), rgba(139,92,246,0.2))",
+              border: "1px solid rgba(99,102,241,0.5)",
+              boxShadow: "0 0 40px rgba(99,102,241,0.3)",
+            }}
+          >
+            <Brain className="w-14 h-14 text-indigo-400" />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Orbiting ring 1 */}
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute w-96 h-96 rounded-full"
+        style={{ border: "1px solid rgba(99,102,241,0.15)" }}
+      />
+
+      {/* Orbiting ring 2 */}
+      <motion.div
+        animate={{ rotate: -360 }}
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+        className="absolute w-[28rem] h-[28rem] rounded-full"
+        style={{ border: "1px dashed rgba(139,92,246,0.1)" }}
+      />
+
+      {/* Floating card — Live Class */}
+      <motion.div
+        animate={{ y: [0, -12, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-6 right-4 z-20"
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "16px",
+          padding: "12px 16px",
+          minWidth: "160px",
+        }}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+          <span className="text-red-400 text-xs font-semibold tracking-wide">LIVE NOW</span>
+        </div>
+        <div className="text-white text-sm font-semibold">Algebra — Chapter 5</div>
+        <div className="text-white/40 text-xs mt-0.5">234 students joined</div>
+      </motion.div>
+
+      {/* Floating card — Score */}
+      <motion.div
+        animate={{ y: [0, 12, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        className="absolute bottom-10 left-2 z-20"
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "16px",
+          padding: "12px 16px",
+        }}
+      >
+        <div className="text-white/50 text-xs mb-1">Latest Score</div>
+        <div className="text-indigo-400 text-2xl font-black">95%</div>
+        <div className="text-white/40 text-xs">Mathematics Quiz</div>
+      </motion.div>
+
+      {/* Floating card — Rank */}
+      <motion.div
+        animate={{ y: [0, -8, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        className="absolute bottom-16 right-2 z-20"
+        style={{
+          background: "rgba(99,102,241,0.1)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(99,102,241,0.25)",
+          borderRadius: "16px",
+          padding: "10px 14px",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <Award className="w-4 h-4 text-indigo-400" />
+          <div>
+            <div className="text-white text-xs font-bold">Rank #7</div>
+            <div className="text-white/40 text-xs">Leaderboard</div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Glow blobs */}
+      <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full opacity-20 blur-3xl" style={{ background: "#6366f1" }} />
+      <div className="absolute bottom-1/4 right-1/4 w-24 h-24 rounded-full opacity-15 blur-2xl" style={{ background: "#8b5cf6" }} />
+    </div>
+  );
+}
+
+function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          style={{ background: "rgba(9,13,26,0.85)", backdropFilter: "blur(12px)" }}
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            transition={{ duration: 0.35, ease: easing }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "rgba(15,18,35,0.95)",
+              border: "1px solid rgba(99,102,241,0.2)",
+              borderRadius: "24px",
+              backdropFilter: "blur(40px)",
+              boxShadow: "0 0 80px rgba(99,102,241,0.12)",
+              padding: "40px",
+              width: "100%",
+              maxWidth: "440px",
+            }}
+          >
+            <button onClick={onClose} className="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors" style={{ background: "rgba(255,255,255,0.05)" }}>
+              <X className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <img src={braintamLogo} alt="Braintam" className="w-9 h-9 object-contain" />
+              <span className="text-white font-bold text-lg">Braintam</span>
+            </div>
+            <h2 className="text-white text-2xl font-bold mb-1">Start learning today</h2>
+            <p className="text-white/40 text-sm mb-8">Join 5 lakh+ students. Free forever.</p>
+
+            <div className="space-y-3 mb-6">
+              <input
+                type="text"
+                placeholder="Your name"
+                className="w-full px-4 py-3 rounded-xl text-white placeholder-white/25 text-sm outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              />
+              <input
+                type="email"
+                placeholder="Email address"
+                className="w-full px-4 py-3 rounded-xl text-white placeholder-white/25 text-sm outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              />
+              <select
+                className="w-full px-4 py-3 rounded-xl text-white/60 text-sm outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <option value="">Select your grade</option>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <option key={i + 1} value={i + 1} className="bg-gray-900">Grade {i + 1}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 30px rgba(99,102,241,0.3)" }}
+            >
+              Create Free Account
+            </button>
+
+            <p className="text-white/25 text-xs text-center mt-4">
+              Already have an account?{" "}
+              <Link href="/login" onClick={onClose} className="text-indigo-400 hover:text-indigo-300 transition-colors">Sign in</Link>
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function LandingPage() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
-  const visibleCount = 3;
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setTestimonialIdx(i => (i + 1) % testimonials.length);
-    }, 4000);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setTestimonialIdx(i => (i + 1) % testimonials.length), 4500);
     return () => clearInterval(t);
   }, []);
 
-  const visible = [
-    testimonials[testimonialIdx % testimonials.length],
-    testimonials[(testimonialIdx + 1) % testimonials.length],
-    testimonials[(testimonialIdx + 2) % testimonials.length],
-  ];
+  const bg = "#090D1A";
+  const surface = "rgba(255,255,255,0.04)";
+  const border = "rgba(255,255,255,0.08)";
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden flex flex-col">
-      {/* ─── NAV ─── */}
-      <nav className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
-            <span className="font-bold text-2xl text-primary">Braintam</span>
+    <div style={{ background: bg, color: "#fff", fontFamily: "'Poppins', sans-serif" }} className="min-h-screen overflow-hidden">
+      <JoinModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      {/* ─── NAVBAR ─── */}
+      <motion.nav
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: easing }}
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+        style={{
+          background: scrolled ? "rgba(9,13,26,0.9)" : "transparent",
+          backdropFilter: scrolled ? "blur(24px)" : "none",
+          borderBottom: scrolled ? `1px solid ${border}` : "1px solid transparent",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src={braintamLogo} alt="Braintam" className="w-8 h-8 object-contain" />
+            <span className="font-bold text-lg text-white">Braintam</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            {["Courses", "Live Classes", "Tests", "Leaderboard"].map(l => (
-              <a key={l} href="#" className="hover:text-foreground transition-colors">{l}</a>
+
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+            {["Courses", "Live Classes", "Leaderboard"].map(l => (
+              <a key={l} href="#" className="hover:text-white transition-colors duration-200">{l}</a>
             ))}
           </div>
-          <div className="flex gap-3">
-            <Button variant="ghost" size="sm" asChild><Link href="/login">Login</Link></Button>
-            <Button size="sm" asChild className="bg-primary hover:bg-primary/90 text-white rounded-full px-5">
-              <Link href="/register">Join Free</Link>
-            </Button>
+
+          <div className="flex items-center gap-3">
+            <Link href="/login">
+              <span className="text-sm font-medium cursor-pointer transition-colors duration-200 hidden md:block" style={{ color: "rgba(255,255,255,0.5)" }}>
+                Sign in
+              </span>
+            </Link>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-5 py-2 rounded-full text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 20px rgba(99,102,241,0.3)" }}
+            >
+              Join Free
+            </button>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
-      <main className="flex-1">
-        {/* ─── HERO ─── */}
-        <section className="relative pt-20 pb-32 px-4">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
-          <div className="container mx-auto max-w-6xl">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-8">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-sm font-medium">
-                  <Star className="w-4 h-4 fill-current" /> India's #1 Learning App for Grades 1–10
-                </div>
-                <h1 className="text-5xl lg:text-7xl font-bold leading-tight text-foreground">
-                  Rewire your <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">brain</span> for success.
-                </h1>
-                <p className="text-xl text-muted-foreground leading-relaxed max-w-lg">
-                  Curious minds from Grade 1–10 come here to learn, play, and conquer exams. Experience learning that feels like magic.
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <Button size="lg" asChild className="rounded-full text-lg h-14 px-8 bg-primary hover:bg-primary/90 hover:scale-105 transition-all">
-                    <Link href="/register">Start Learning Now <ArrowRight className="ml-2" /></Link>
-                  </Button>
-                  <Button size="lg" variant="outline" className="rounded-full text-lg h-14 px-8 border-2 hover:bg-secondary/5">
-                    Explore Courses
-                  </Button>
-                </div>
-                <div className="flex items-center gap-8 pt-6 border-t border-border/50">
-                  <div className="flex -space-x-3">
-                    {["#FF6B1A","#0B2B6B","#16A34A","#7C3AED"].map((c, i) => (
-                      <div key={i} className="w-10 h-10 rounded-full border-2 border-background flex items-center justify-center text-white text-xs font-bold" style={{ background: c }}>
-                        {["P","R","A","S"][i]}
-                      </div>
-                    ))}
+      {/* ─── HERO ─── */}
+      <section className="relative min-h-screen flex items-center pt-16 pb-10 px-6 overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full opacity-10 blur-[120px] pointer-events-none"
+          style={{ background: "radial-gradient(ellipse, #6366f1, #8b5cf6, transparent)" }} />
+
+        <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-12 lg:gap-6 items-center">
+          {/* Left */}
+          <div className="space-y-8 relative z-10">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={0}
+              className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc" }}
+            >
+              <Sparkles className="w-3 h-3" />
+              India's most advanced learning platform
+            </motion.div>
+
+            <motion.h1
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={1}
+              className="text-5xl lg:text-[4.5rem] font-black leading-[1.05] tracking-tight"
+            >
+              The future of{" "}
+              <span
+                className="block"
+                style={{
+                  background: "linear-gradient(135deg, #6366f1 0%, #a78bfa 50%, #8b5cf6 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                learning is here.
+              </span>
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={2}
+              className="text-lg leading-relaxed max-w-md"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              AI-powered live classes, adaptive testing, and curated content for Grades 1–10. Built for results.
+            </motion.p>
+
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3} className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setModalOpen(true)}
+                className="group flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-white text-sm transition-all duration-300 hover:scale-105"
+                style={{
+                  background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                  boxShadow: "0 0 40px rgba(99,102,241,0.3)",
+                }}
+              >
+                Start for free
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <Link href="/login">
+                <button
+                  className="flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm transition-all duration-300 hover:bg-white/10"
+                  style={{
+                    background: surface,
+                    border: `1px solid ${border}`,
+                    color: "rgba(255,255,255,0.7)",
+                  }}
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  Watch demo
+                </button>
+              </Link>
+            </motion.div>
+
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4} className="flex items-center gap-4 flex-wrap">
+              <div className="flex -space-x-2.5">
+                {["#6366f1","#8b5cf6","#4f46e5","#7c3aed"].map((c, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white" style={{ background: c, borderColor: bg }}>
+                    {["P","R","A","S"][i]}
+                  </div>
+                ))}
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.4)" }} className="text-xs">
+                <span className="text-white font-semibold">5,00,000+</span> students learning
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />)}
+                <span className="text-xs text-white/40 ml-1">4.9</span>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Right — 3D visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.3, ease: easing }}
+            className="relative h-[480px] hidden lg:block"
+          >
+            <HeroVisual />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ─── TRUST STRIP ─── */}
+      <section className="py-8 px-6" style={{ borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
+        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {stats.map((s, i) => (
+            <motion.div
+              key={s.label}
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              custom={i}
+            >
+              <div className="text-3xl font-black" style={{ background: "linear-gradient(135deg, #6366f1, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                {s.value}
+              </div>
+              <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>{s.label}</div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── CORE FEATURES ─── */}
+      <section className="py-28 px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-16 space-y-3">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: "rgba(99,102,241,0.8)" }}>
+              Platform
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
+              Everything you need.<br />
+              <span style={{ color: "rgba(255,255,255,0.3)" }}>Nothing you don't.</span>
+            </h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i}
+                className="group relative overflow-hidden rounded-2xl p-7 transition-all duration-300 cursor-default"
+                style={{
+                  background: surface,
+                  border: `1px solid ${border}`,
+                }}
+                whileHover={{ borderColor: "rgba(99,102,241,0.3)", background: "rgba(99,102,241,0.06)" }}
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)" }}
+                  >
+                    <f.icon className="w-5 h-5" style={{ color: f.accent }} />
                   </div>
                   <div>
-                    <div className="font-bold text-lg">5,00,000+</div>
-                    <div className="text-sm text-muted-foreground">Students learning daily</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <StarRating rating={5} />
-                    <span className="text-sm font-semibold ml-1">4.9/5</span>
+                    <h3 className="font-bold text-base mb-1.5 text-white">{f.title}</h3>
+                    <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>{f.desc}</p>
                   </div>
                 </div>
+                {/* subtle glow on hover */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-2xl" style={{ background: f.accent }} />
               </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="relative h-[600px] hidden lg:block">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-[3rem] blur-3xl -z-10" />
-                <div className="relative h-full w-full bg-card rounded-[2rem] border shadow-2xl p-6 overflow-hidden">
-                  <div className="flex items-center gap-2 mb-8">
-                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
-                  </div>
-                  <div className="space-y-4">
-                    <div className="h-40 bg-secondary/5 rounded-xl border-2 border-dashed border-secondary/20 flex items-center justify-center">
-                      <PlayCircle className="w-12 h-12 text-primary opacity-50" />
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="h-24 flex-1 bg-blue-500/10 rounded-xl" />
-                      <div className="h-24 flex-1 bg-green-500/10 rounded-xl" />
-                      <div className="h-24 flex-1 bg-orange-500/10 rounded-xl" />
-                    </div>
-                    <div className="h-32 bg-purple-500/10 rounded-xl" />
-                  </div>
-                  <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute -right-6 top-20 bg-white p-4 rounded-xl shadow-xl border flex items-center gap-3">
-                    <div className="bg-green-100 p-2 rounded-lg"><Target className="w-6 h-6 text-green-600" /></div>
-                    <div><div className="text-sm font-bold">Math Quiz</div><div className="text-xs text-muted-foreground">Score: 95%</div></div>
-                  </motion.div>
-                  <motion.div animate={{ y: [0, 15, 0] }} transition={{ repeat: Infinity, duration: 4 }} className="absolute -left-8 bottom-32 bg-white p-4 rounded-xl shadow-xl border flex items-center gap-3">
-                    <div className="bg-red-100 p-2 rounded-lg"><Video className="w-6 h-6 text-red-600" /></div>
-                    <div><div className="text-xs font-bold text-red-500 mb-1">LIVE NOW</div><div className="text-sm font-bold">Science 101</div></div>
-                  </motion.div>
-                  <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 3.5, delay: 1 }} className="absolute -right-6 bottom-24 bg-white p-3 rounded-xl shadow-xl border">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-5 h-5 text-yellow-500" />
-                      <div><div className="text-xs font-bold">Rank #7</div><div className="text-xs text-muted-foreground">Leaderboard</div></div>
-                    </div>
-                  </motion.div>
+      {/* ─── LIVE CLASS EXPERIENCE PREVIEW ─── */}
+      <section className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14 space-y-3">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: "rgba(99,102,241,0.8)" }}>Live Experience</div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight">A classroom reinvented.</h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Every live session is engineered for focus, participation, and measurable outcomes.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={1}
+            className="relative rounded-3xl overflow-hidden"
+            style={{
+              background: "rgba(12,15,30,0.9)",
+              border: "1px solid rgba(99,102,241,0.2)",
+              boxShadow: "0 0 80px rgba(99,102,241,0.08)",
+            }}
+          >
+            {/* Top bar */}
+            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
                 </div>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── STATS STRIP ─── */}
-        <section className="py-10 bg-secondary">
-          <div className="container mx-auto max-w-5xl px-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-white text-center">
-              {stats.map((s, i) => (
-                <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                  <div className="text-3xl md:text-4xl font-bold text-primary">{s.value}</div>
-                  <div className="text-white/70 text-sm mt-1">{s.label}</div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── FEATURES ─── */}
-        <section className="py-24 bg-card px-4 border-y">
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-16 space-y-4">
-              <Badge variant="secondary" className="text-sm px-4 py-1">Why Braintam?</Badge>
-              <h2 className="text-3xl md:text-5xl font-bold">Everything you need to excel</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                A complete learning ecosystem built for Indian school students.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {features.map((f, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                  className="bg-background p-7 rounded-2xl border shadow-sm hover:shadow-lg transition-all group cursor-default hover:-translate-y-1">
-                  <div className={`w-13 h-13 w-14 h-14 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform ${f.color}`}>
-                    <f.icon className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">{f.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── COURSES SECTION ─── */}
-        <section className="py-24 px-4 bg-background">
-          <div className="container mx-auto max-w-6xl">
-            <div className="flex items-end justify-between mb-12 flex-wrap gap-4">
-              <div className="space-y-3">
-                <Badge className="bg-primary/10 text-primary border-0 text-sm px-4 py-1">Popular Courses</Badge>
-                <h2 className="text-3xl md:text-5xl font-bold">
-                  Learn from the{" "}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">best teachers</span>
-                </h2>
-                <p className="text-muted-foreground text-lg max-w-xl">
-                  Hand-picked courses covering every subject across all grades — structured, engaging, and exam-ready.
-                </p>
+                <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.3)" }}>braintam.live</span>
               </div>
-              <Button asChild variant="outline" className="rounded-full border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all">
-                <Link href="/register">View All Courses <ArrowRight className="ml-2 w-4 h-4" /></Link>
-              </Button>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((c, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
-                  <Link href="/register">
-                    <div className="group cursor-pointer bg-card rounded-2xl border-2 border-transparent hover:border-primary/20 shadow-sm hover:shadow-xl transition-all overflow-hidden hover:-translate-y-1">
-                      <div className="relative">
-                        <img src={c.img} alt={c.title} className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                        <div className="absolute top-3 left-3">
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${subjectColors[c.subject] ?? "bg-gray-100 text-gray-700"}`}>
-                            {c.subject}
-                          </span>
-                        </div>
-                        <div className="absolute top-3 right-3 bg-secondary text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                          Grade {c.grade}
-                        </div>
-                        <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="bg-primary text-white text-center text-sm font-semibold py-2 rounded-xl">
-                            Start Free Trial
-                          </div>
-                        </div>
-                      </div>
-                      <div className="p-5 space-y-3">
-                        <h3 className="font-bold text-base leading-snug group-hover:text-primary transition-colors">{c.title}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center text-xs font-bold text-secondary flex-shrink-0">
-                            {c.teacher.charAt(0)}
-                          </div>
-                          <span className="truncate">{c.teacher}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <BookOpen className="w-3.5 h-3.5" />{c.lessons} lessons
-                          </span>
-                          <span className="flex items-center gap-1 font-semibold">
-                            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />{c.rating}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Subject Chips */}
-            <div className="flex flex-wrap justify-center gap-3 mt-12">
-              {["Mathematics", "Science", "English", "Hindi", "Social Science", "Computer Science"].map((subj, i) => (
-                <motion.div key={subj} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}>
-                  <Link href="/register">
-                    <div className={`px-5 py-2.5 rounded-full text-sm font-semibold cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 border-2 border-transparent hover:border-primary/20 ${subjectColors[subj] ?? "bg-gray-100 text-gray-700"}`}>
-                      {subj}
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── HOW IT WORKS ─── */}
-        <section className="py-24 px-4 bg-card border-y">
-          <div className="container mx-auto max-w-5xl">
-            <div className="text-center mb-16 space-y-3">
-              <Badge variant="secondary" className="text-sm px-4 py-1">How It Works</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold">Start learning in 3 easy steps</h2>
-            </div>
-            <div className="grid md:grid-cols-3 gap-8 relative">
-              <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-primary/30 to-primary/30" />
-              {[
-                { step: "01", icon: GraduationCap, title: "Create Free Account", desc: "Sign up with email or phone in under 60 seconds. Pick your grade and subjects." },
-                { step: "02", icon: Play, title: "Join Live or Watch", desc: "Attend live classes or watch recorded sessions and animated videos anytime." },
-                { step: "03", icon: Trophy, title: "Test & Earn Points", desc: "Take tests, complete homework, climb the leaderboard and celebrate your wins." },
-              ].map((s, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }} className="text-center space-y-4 relative">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-orange-400 text-white text-3xl font-black flex items-center justify-center mx-auto shadow-lg shadow-primary/30">
-                    {s.step}
-                  </div>
-                  <div className="w-12 h-12 bg-background rounded-xl border-2 border-primary/20 flex items-center justify-center mx-auto -mt-2">
-                    <s.icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold">{s.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{s.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── REVIEWS / RATINGS ─── */}
-        <section className="py-24 px-4 bg-background">
-          <div className="container mx-auto max-w-5xl">
-            <div className="text-center mb-16 space-y-3">
-              <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-sm px-4 py-1">Reviews</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold">Loved by students & parents</h2>
-              <p className="text-muted-foreground">Rated highly across every platform</p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 mb-16">
-              {reviews.map((r, i) => (
-                <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                  className="bg-card rounded-2xl border-2 border-yellow-100 p-8 text-center space-y-4 hover:shadow-xl transition-all">
-                  <div className="text-5xl font-black text-foreground">{r.rating}</div>
-                  <StarRating rating={r.rating} />
-                  <div className="text-sm text-muted-foreground font-medium">{r.label}</div>
-                  <div className="text-2xl font-bold text-primary">{r.count}</div>
-                  <div className="text-xs text-muted-foreground">ratings on {r.platform}</div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Overall trust bar */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-gradient-to-r from-secondary to-secondary/80 rounded-2xl p-8 text-white flex flex-wrap items-center justify-between gap-6">
-              <div>
-                <div className="text-4xl font-black">4.8 / 5.0</div>
-                <div className="flex items-center gap-2 mt-2">
-                  <StarRating rating={5} />
-                  <span className="text-white/80 text-sm">Overall rating</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-red-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                LIVE — Algebra Ch.5
               </div>
-              <div className="space-y-2 flex-1 max-w-xs">
-                {[["5 stars", 78], ["4 stars", 16], ["3 stars", 4], ["2 stars", 1], ["1 star", 1]].map(([label, pct]) => (
-                  <div key={String(label)} className="flex items-center gap-3 text-sm">
-                    <span className="text-white/70 w-14 flex-shrink-0">{label}</span>
-                    <div className="flex-1 bg-white/20 rounded-full h-2">
-                      <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-white/70 w-8 text-right">{pct}%</span>
-                  </div>
-                ))}
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold">25,700+</div>
-                <div className="text-white/70 text-sm">Total reviews</div>
-                <div className="flex gap-2 mt-3">
-                  {[Shield, CheckCircle2, Trophy].map((Icon, i) => (
-                    <div key={i} className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── TESTIMONIALS ─── */}
-        <section className="py-24 px-4 bg-card border-y overflow-hidden">
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-16 space-y-3">
-              <Badge variant="secondary" className="text-sm px-4 py-1">Testimonials</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold">What our learners say</h2>
-              <p className="text-muted-foreground">Real stories from students and parents across India</p>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>234 attending</div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-              {visible.map((t, i) => (
-                <motion.div key={`${testimonialIdx}-${i}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                  className="bg-background rounded-2xl border-2 hover:border-primary/20 p-7 shadow-sm hover:shadow-lg transition-all relative flex flex-col gap-4">
-                  <Quote className="w-8 h-8 text-primary/20 absolute top-5 right-5" />
-                  <StarRating rating={t.rating} />
-                  <p className="text-muted-foreground text-sm leading-relaxed flex-1">"{t.text}"</p>
-                  <div className="flex items-center gap-3 pt-4 border-t border-border/50">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.color} text-white font-bold flex items-center justify-center flex-shrink-0`}>
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">{t.role}</div>
-                      <div className="text-xs text-muted-foreground">{t.school}</div>
-                    </div>
+            {/* Main content */}
+            <div className="grid md:grid-cols-3 gap-0">
+              {/* Video area */}
+              <div className="md:col-span-2 p-6 space-y-4">
+                <div
+                  className="aspect-video rounded-2xl flex items-center justify-center relative overflow-hidden"
+                  style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.1)" }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />
+                  <div className="text-center space-y-3 z-10 relative">
+                    <motion.div
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                      className="w-14 h-14 rounded-full mx-auto flex items-center justify-center"
+                      style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)" }}
+                    >
+                      <PlayCircle className="w-7 h-7 text-indigo-400" />
+                    </motion.div>
+                    <div className="text-sm font-semibold text-white/60">Dr. Priya Sharma · Mathematics</div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Carousel controls */}
-            <div className="flex items-center justify-center gap-4">
-              <button onClick={() => setTestimonialIdx(i => (i - 1 + testimonials.length) % testimonials.length)}
-                className="w-10 h-10 rounded-full border-2 border-border hover:border-primary flex items-center justify-center transition-colors">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="flex gap-2">
-                {testimonials.map((_, i) => (
-                  <button key={i} onClick={() => setTestimonialIdx(i)}
-                    className={`rounded-full transition-all ${i === testimonialIdx % testimonials.length ? "w-6 h-2.5 bg-primary" : "w-2.5 h-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"}`} />
-                ))}
-              </div>
-              <button onClick={() => setTestimonialIdx(i => (i + 1) % testimonials.length)}
-                className="w-10 h-10 rounded-full border-2 border-border hover:border-primary flex items-center justify-center transition-colors">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── DOWNLOAD APP ─── */}
-        <section className="py-24 px-4 bg-background">
-          <div className="container mx-auto max-w-6xl">
-            <div className="bg-gradient-to-br from-secondary via-secondary/95 to-primary/80 rounded-3xl overflow-hidden relative">
-              <div className="absolute inset-0 opacity-10">
-                {[...Array(6)].map((_, i) => (
-                  <motion.div key={i} className="absolute rounded-full border-2 border-white"
-                    style={{ width: (i + 1) * 100, height: (i + 1) * 100, right: `-${i * 30}px`, bottom: `-${i * 20}px` }}
-                    animate={{ rotate: 360 }} transition={{ duration: 15 + i * 5, repeat: Infinity, ease: "linear" }} />
-                ))}
-              </div>
-              <div className="relative z-10 grid lg:grid-cols-2 gap-10 p-10 md:p-16 items-center">
-                <div className="text-white space-y-7">
-                  <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur px-3 py-1.5 rounded-full text-sm font-medium">
-                    <Smartphone className="w-4 h-4" /> Now available on Android & iOS
-                  </div>
-                  <h2 className="text-4xl md:text-5xl font-black leading-tight">
-                    Learn anytime,<br />anywhere with the<br />
-                    <span className="text-primary">Braintam App</span>
-                  </h2>
-                  <p className="text-white/80 text-lg leading-relaxed">
-                    Offline access to videos, live class notifications, instant doubt-solving, and a personalized feed — all in your pocket.
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    <a href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3.5 rounded-2xl hover:bg-black/80 transition-colors group">
-                      <Play className="w-6 h-6 fill-white group-hover:scale-110 transition-transform" />
-                      <div>
-                        <div className="text-xs text-white/60">Get it on</div>
-                        <div className="text-base font-bold leading-tight">Google Play</div>
-                      </div>
-                    </a>
-                    <a href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3.5 rounded-2xl hover:bg-black/80 transition-colors group">
-                      <Apple className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                      <div>
-                        <div className="text-xs text-white/60">Download on the</div>
-                        <div className="text-base font-bold leading-tight">App Store</div>
-                      </div>
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-8 pt-2">
-                    {[["4.9★", "Play Store"], ["4.8★", "App Store"], ["1M+", "Downloads"]].map(([val, lbl]) => (
-                      <div key={lbl}>
-                        <div className="text-xl font-black text-primary">{val}</div>
-                        <div className="text-white/60 text-xs">{lbl}</div>
-                      </div>
+                  {/* Whiteboard indicators */}
+                  <div className="absolute bottom-4 left-4 right-4 flex gap-2">
+                    {[60, 80, 45, 90, 70].map((h, i) => (
+                      <div key={i} className="flex-1 rounded-sm" style={{ height: h * 0.4 + "px", background: `rgba(99,102,241,${0.1 + i * 0.05})` }} />
                     ))}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-6 relative">
-                  <motion.div animate={{ y: [0, -12, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                    className="relative w-52 bg-white rounded-[2rem] shadow-2xl overflow-hidden border-4 border-white/20">
-                    <div className="h-6 bg-gray-100 flex items-center justify-center">
-                      <div className="w-12 h-1 bg-gray-300 rounded-full" />
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Questions answered", value: "12" },
+                    { label: "Your accuracy", value: "91%" },
+                    { label: "Time in session", value: "23m" },
+                  ].map(s => (
+                    <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="text-xl font-black text-indigo-400">{s.value}</div>
+                      <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</div>
                     </div>
-                    <div className="bg-gradient-to-b from-secondary to-primary p-4 text-white space-y-3">
-                      <div className="flex items-center gap-2">
-                        <img src={braintamLogo} alt="Braintam" className="w-8 h-8 object-contain" />
-                        <span className="font-bold text-sm">Braintam</span>
-                      </div>
-                      <div className="bg-white/10 rounded-xl p-3">
-                        <div className="text-xs font-semibold opacity-80">🔴 LIVE NOW</div>
-                        <div className="text-sm font-bold mt-1">Algebra – Chapter 5</div>
-                        <div className="text-xs opacity-70 mt-0.5">Dr. Priya Sharma • 234 joined</div>
-                        <div className="mt-2 bg-primary text-white text-xs text-center py-1.5 rounded-lg font-bold">Join Now</div>
-                      </div>
-                      <div className="space-y-2">
-                        {["Science Animated Video", "Hindi Homework Due Tomorrow"].map(item => (
-                          <div key={item} className="bg-white/10 rounded-lg p-2 text-xs font-medium">{item}</div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="bg-background p-3 space-y-2">
-                      {[72, 89, 58].map((v, j) => (
-                        <div key={j} className="space-y-1">
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>{["Maths", "Science", "English"][j]}</span>
-                            <span>{v}%</span>
-                          </div>
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-primary rounded-full" style={{ width: `${v}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-
-                  <motion.div animate={{ y: [0, 12, 0] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 0.5 }}
-                    className="relative w-44 bg-white rounded-[1.5rem] shadow-xl overflow-hidden border-4 border-white/20 mt-12">
-                    <div className="h-5 bg-gray-100 flex items-center justify-center">
-                      <div className="w-10 h-1 bg-gray-300 rounded-full" />
-                    </div>
-                    <div className="p-3 space-y-3">
-                      <div className="text-xs font-bold">Leaderboard 🏆</div>
-                      {[["Priya V.", 2850, "🥇"], ["Rohan G.", 2720, "🥈"], ["You", 1240, "#7"]].map(([n, p, r]) => (
-                        <div key={String(n)} className={`flex items-center gap-2 text-xs p-2 rounded-lg ${n === "You" ? "bg-primary/10 border border-primary/20" : "bg-muted/40"}`}>
-                          <span className="text-base">{r}</span>
-                          <span className="font-semibold flex-1 truncate">{n}</span>
-                          <span className="font-bold text-primary">{Number(p).toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
+                  ))}
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* ─── TEAM SECTION ─── */}
-        <section className="py-24 px-4 bg-background">
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-16 space-y-4">
-              <Badge className="bg-secondary/10 text-secondary border-0 text-sm px-4 py-1">Meet the Team</Badge>
-              <h2 className="text-3xl md:text-5xl font-bold">
-                Built by educators &{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">innovators</span>
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Our founding team brings together decades of experience in education, technology, and design — united by one mission: to make every Indian student unstoppable.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {team.map((member, i) => (
-                <motion.div
-                  key={member.name}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="group bg-card rounded-3xl border-2 border-transparent hover:border-primary/20 shadow-sm hover:shadow-xl transition-all overflow-hidden hover:-translate-y-1"
-                >
-                  {/* Photo / Avatar area */}
-                  <div className="relative h-52 overflow-hidden">
-                    <img
-                      src={member.photo}
-                      alt={member.name}
-                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent`} />
-                    {/* Social icons on hover */}
-                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <a href={member.twitter} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-primary transition-colors">
-                        <Twitter className="w-3.5 h-3.5 text-white" />
-                      </a>
-                      <a href={member.linkedin} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-primary transition-colors">
-                        <Linkedin className="w-3.5 h-3.5 text-white" />
-                      </a>
+              {/* Side panel */}
+              <div className="p-4 space-y-3" style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="text-xs font-semibold mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>LIVE CHAT</div>
+                {[
+                  { name: "Riya", msg: "Can you explain step 3 again?", time: "2m" },
+                  { name: "Arjun", msg: "The formula makes sense now!", time: "1m" },
+                  { name: "Priya", msg: "Is this in the exam?", time: "30s" },
+                  { name: "Teacher", msg: "Yes! Watch carefully 👆", time: "now", highlight: true },
+                ].map((c, i) => (
+                  <div key={i} className="rounded-xl p-3" style={{ background: c.highlight ? "rgba(99,102,241,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${c.highlight ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.05)"}` }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold" style={{ color: c.highlight ? "#a5b4fc" : "rgba(255,255,255,0.6)" }}>{c.name}</span>
+                      <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.2)" }}>{c.time}</span>
                     </div>
-                    {/* Name overlay on image */}
-                    <div className="absolute bottom-4 left-5 right-5">
-                      <div className="text-white font-bold text-lg leading-tight">{member.name}</div>
-                      <div className={`text-xs font-semibold mt-0.5 bg-gradient-to-r ${member.gradient} bg-clip-text text-transparent`} style={{ WebkitBackgroundClip: "text", color: "transparent" }}>
-                        <span className="text-white/80">{member.role}</span>
-                      </div>
-                    </div>
+                    <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{c.msg}</div>
                   </div>
-
-                  {/* Content */}
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-1 h-8 rounded-full bg-gradient-to-b ${member.gradient}`} />
-                      <div>
-                        <div className="font-bold text-sm">{member.name}</div>
-                        <div className="text-xs text-muted-foreground">{member.role}</div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{member.bio}</p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {member.subjects.map(tag => (
-                        <span key={tag} className={`text-xs font-semibold px-2.5 py-1 rounded-full bg-gradient-to-r ${member.gradient} text-white`}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Join the team CTA */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mt-16 bg-gradient-to-r from-secondary/5 to-primary/5 border-2 border-dashed border-primary/20 rounded-3xl p-10 text-center space-y-4"
-            >
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Users className="w-7 h-7 text-primary" />
-              </div>
-              <h3 className="text-2xl font-bold">Want to join our mission?</h3>
-              <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
-                We're always looking for passionate educators, engineers, and designers who believe in the power of quality education for every Indian child.
-              </p>
-              <Button asChild className="rounded-full bg-secondary text-white hover:bg-secondary/90 px-8 h-11">
-                <a href="#">View Open Roles <ArrowRight className="ml-2 w-4 h-4" /></a>
-              </Button>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── CTA SECTION ─── */}
-        <section className="py-32 px-4 relative overflow-hidden">
-          <div className="absolute inset-0 bg-secondary -z-20" />
-          <div className="absolute inset-0 opacity-5 -z-10" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
-          <div className="container mx-auto max-w-4xl text-center text-white space-y-8">
-            <Brain className="w-20 h-20 mx-auto text-primary opacity-90" />
-            <h2 className="text-4xl md:text-6xl font-bold">Ready to unlock your potential?</h2>
-            <p className="text-xl text-white/70 max-w-2xl mx-auto">
-              Join 5 lakh+ students who are achieving their academic dreams with Braintam.
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-white rounded-full h-16 px-10 text-xl font-bold shadow-[0_0_40px_-10px_rgba(255,107,26,0.5)] transition-all hover:scale-105">
-                <Link href="/register">Create Free Account</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild className="rounded-full h-16 px-10 text-xl font-bold border-white/30 text-white hover:bg-white/10 transition-all">
-                <Link href="/login">Sign In</Link>
-              </Button>
-            </div>
-            <div className="flex flex-wrap justify-center gap-6 pt-4 text-white/60 text-sm">
-              {["No credit card required", "Cancel anytime", "CBSE & State Board aligned", "Available in Hindi & English"].map(f => (
-                <span key={f} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary" />{f}</span>
-              ))}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* ─── FOOTER ─── */}
-      <footer className="bg-secondary text-white">
-        {/* Top footer */}
-        <div className="container mx-auto max-w-6xl px-4 py-16">
-          <div className="grid lg:grid-cols-5 gap-10">
-            {/* Brand column */}
-            <div className="lg:col-span-2 space-y-5">
-              <div className="flex items-center gap-3">
-                <img src={braintamLogo} alt="Braintam" className="w-12 h-12 object-contain" />
-                <span className="font-black text-2xl text-primary">Braintam</span>
-              </div>
-              <p className="text-white/60 text-sm leading-relaxed max-w-sm">
-                India's premium EdTech platform for school students in grades 1–10. Empowering every student with quality education, live classes, and adaptive learning.
-              </p>
-              <div className="space-y-2 text-sm text-white/60">
-                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-primary" />support@braintam.in</div>
-                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-primary" />+91 800-BRAIN-TAM</div>
-                <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" />New Delhi, India 110001</div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-                  <a key={i} href="#" className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-primary transition-colors">
-                    <Icon className="w-4 h-4" />
-                  </a>
                 ))}
               </div>
             </div>
+          </motion.div>
+        </div>
+      </section>
 
-            {/* Links */}
-            {Object.entries(footerLinks).map(([section, links]) => (
-              <div key={section} className="space-y-4">
-                <h4 className="font-bold text-white text-sm tracking-wide">{section}</h4>
-                <ul className="space-y-2">
-                  {links.map(l => (
-                    <li key={l}>
-                      <a href="#" className="text-white/50 text-sm hover:text-primary transition-colors">{l}</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+      {/* ─── TESTIMONIALS ─── */}
+      <section className="py-24 px-6" style={{ borderTop: `1px solid ${border}` }}>
+        <div className="max-w-4xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14 space-y-3">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: "rgba(99,102,241,0.8)" }}>Social Proof</div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight">Results that speak.</h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={t.name}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i}
+                className="rounded-2xl p-6 space-y-4 transition-all duration-300"
+                style={{
+                  background: surface,
+                  border: i === testimonialIdx ? "1px solid rgba(99,102,241,0.4)" : `1px solid ${border}`,
+                  boxShadow: i === testimonialIdx ? "0 0 30px rgba(99,102,241,0.1)" : "none",
+                }}
+              >
+                <div className="flex gap-0.5">
+                  {[...Array(t.rating)].map((_, j) => <Star key={j} className="w-3 h-3 fill-yellow-400 text-yellow-400" />)}
+                </div>
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>"{t.text}"</p>
+                <div className="flex items-center gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white">{t.name}</div>
+                    <div className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{t.role}</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Dots */}
+          <div className="flex justify-center gap-2 mt-8">
+            {testimonials.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setTestimonialIdx(i)}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width: i === testimonialIdx ? 24 : 8,
+                  height: 8,
+                  background: i === testimonialIdx ? "#6366f1" : "rgba(255,255,255,0.15)",
+                }}
+              />
             ))}
           </div>
         </div>
+      </section>
 
-        {/* App store strip */}
-        <div className="border-t border-white/10">
-          <div className="container mx-auto max-w-6xl px-4 py-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="text-white/50 text-sm flex items-center gap-3">
-              <Smartphone className="w-4 h-4" />
-              Download the Braintam app for the best experience
+      {/* ─── FINAL CTA ─── */}
+      <section className="py-32 px-6">
+        <div className="max-w-3xl mx-auto text-center space-y-8">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
+            {/* Orb */}
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-8 flex items-center justify-center"
+              style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", boxShadow: "0 0 40px rgba(99,102,241,0.15)" }}>
+              <GraduationCap className="w-8 h-8 text-indigo-400" />
             </div>
-            <div className="flex gap-3">
-              <a href="#" className="flex items-center gap-2 bg-white/10 hover:bg-primary/80 transition-colors px-4 py-2 rounded-xl text-xs font-semibold">
-                <Play className="w-4 h-4" /> Google Play
-              </a>
-              <a href="#" className="flex items-center gap-2 bg-white/10 hover:bg-primary/80 transition-colors px-4 py-2 rounded-xl text-xs font-semibold">
-                <Apple className="w-4 h-4" /> App Store
-              </a>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              Your academic<br />
+              <span style={{ background: "linear-gradient(135deg, #6366f1, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                breakthrough starts now.
+              </span>
+            </h2>
+            <p className="text-base mt-5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Join the platform trusted by half a million Indian students.
+            </p>
+          </motion.div>
+
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={1} className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="group flex items-center justify-center gap-2 px-8 py-4 rounded-full font-semibold text-white text-sm transition-all duration-300 hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 50px rgba(99,102,241,0.35)" }}
+            >
+              Create free account
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <Link href="/login">
+              <button
+                className="flex items-center justify-center gap-2 px-8 py-4 rounded-full font-semibold text-sm transition-all duration-300 hover:bg-white/10"
+                style={{ background: surface, border: `1px solid ${border}`, color: "rgba(255,255,255,0.6)" }}
+              >
+                Sign in
+              </button>
+            </Link>
+          </motion.div>
+
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={2}
+            className="flex flex-wrap justify-center gap-6 text-xs"
+            style={{ color: "rgba(255,255,255,0.3)" }}
+          >
+            {["No credit card needed", "Free forever plan", "CBSE & State Board aligned"].map(f => (
+              <span key={f} className="flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-indigo-500" />{f}
+              </span>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ─── FOOTER ─── */}
+      <footer className="pb-10 px-6" style={{ borderTop: `1px solid ${border}` }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="py-10 flex flex-wrap items-center justify-between gap-6">
+            <div className="flex items-center gap-2.5">
+              <img src={braintamLogo} alt="Braintam" className="w-7 h-7 object-contain opacity-70" />
+              <span className="font-bold text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Braintam</span>
+            </div>
+
+            <div className="flex flex-wrap gap-8 text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+              {["Courses", "Live Classes", "Tests", "Leaderboard", "About"].map(l => (
+                <a key={l} href="#" className="hover:text-white transition-colors">{l}</a>
+              ))}
+            </div>
+
+            <div className="flex gap-6 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+              <Link href="/terms" className="hover:text-white/50 transition-colors">Terms</Link>
+              <Link href="/privacy" className="hover:text-white/50 transition-colors">Privacy</Link>
             </div>
           </div>
-        </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-white/10">
-          <div className="container mx-auto max-w-6xl px-4 py-5 flex flex-wrap items-center justify-between gap-3 text-white/40 text-xs">
+          <div className="pt-6 flex flex-wrap items-center justify-between gap-3 text-xs" style={{ borderTop: `1px solid ${border}`, color: "rgba(255,255,255,0.2)" }}>
             <span>© {new Date().getFullYear()} Braintam EdTech Pvt. Ltd. All rights reserved.</span>
-            <div className="flex gap-6">
-              <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
-              <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
-              <a href="#" className="hover:text-primary transition-colors">Cookies</a>
-              <a href="#" className="hover:text-primary transition-colors">Sitemap</a>
-            </div>
+            <span>Made with care in India 🇮🇳</span>
           </div>
         </div>
       </footer>
