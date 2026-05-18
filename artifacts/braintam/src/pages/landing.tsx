@@ -154,7 +154,7 @@ function HeroVisual() {
           <span className="text-red-400 text-xs font-semibold tracking-wide">LIVE NOW</span>
         </div>
         <div className="text-white text-sm font-semibold">Algebra — Ch. 5</div>
-        <div className="text-white/40 text-xs mt-0.5">234 students joined</div>
+        <div className="text-white/40 text-xs mt-0.5">Premium · Expert-led session</div>
       </motion.div>
 
       <motion.div animate={{ y: [0, 13, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
@@ -199,38 +199,46 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3 mb-7">
-              <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
-              <span className="font-bold text-xl text-white">Braintam</span>
+            <div className="flex items-center justify-center mb-7">
+              <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
             </div>
-            <h2 className="text-white text-2xl font-bold mb-1">Start learning today</h2>
-            <p className="text-sm mb-8" style={{ color: "rgba(255,255,255,0.35)" }}>Join 5 lakh+ students. Free forever.</p>
+            <h2 className="text-white text-2xl font-bold mb-1 text-center">Start learning today</h2>
+            <p className="text-sm mb-8 text-center" style={{ color: "rgba(255,255,255,0.35)" }}>Join 5 lakh+ students across India.</p>
 
             <div className="space-y-3 mb-5">
               {[
-                { placeholder: "Your name", type: "text" },
-                { placeholder: "Email address", type: "email" },
+                { placeholder: "Your full name", type: "text",     key: "name" },
+                { placeholder: "Email address",  type: "email",    key: "email" },
+                { placeholder: "Password",        type: "password", key: "password" },
               ].map(f => (
-                <input key={f.placeholder} type={f.type} placeholder={f.placeholder}
-                  className="w-full px-4 py-3 rounded-xl text-white placeholder-white/25 text-sm outline-none focus:ring-1 transition-all"
+                <input key={f.key} type={f.type} placeholder={f.placeholder}
+                  className="w-full px-4 py-3 rounded-xl text-white placeholder-white/25 text-sm outline-none transition-all"
                   style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${BORDER2}` }}
                   onFocus={e => (e.target.style.borderColor = "rgba(255,107,26,0.5)")}
                   onBlur={e  => (e.target.style.borderColor = BORDER2)} />
               ))}
-              <select className="w-full px-4 py-3 rounded-xl text-sm outline-none focus:ring-1 transition-all"
+              <select className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
                 style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${BORDER2}`, color: "rgba(255,255,255,0.5)" }}>
                 <option value="">Select your grade</option>
                 {Array.from({ length: 10 }, (_, i) => (
                   <option key={i+1} value={i+1} className="bg-gray-900">Grade {i+1}</option>
                 ))}
               </select>
+              <select className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${BORDER2}`, color: "rgba(255,255,255,0.5)" }}>
+                <option value="">Select your board</option>
+                {["CBSE","ICSE","IB (International Baccalaureate)","State Board – Maharashtra","State Board – Tamil Nadu","State Board – Karnataka","State Board – UP","State Board – Rajasthan","State Board – Gujarat","Other State Board"].map(b => (
+                  <option key={b} value={b} className="bg-gray-900">{b}</option>
+                ))}
+              </select>
             </div>
 
-            <button onClick={onClose}
-              className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${ORANGE}, #e05500)`, boxShadow: `0 0 30px rgba(255,107,26,0.3)` }}>
-              Create Free Account
-            </button>
+            <Link href="/register" onClick={onClose}>
+              <button className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{ background: `linear-gradient(135deg, ${ORANGE}, #e05500)`, boxShadow: `0 0 30px rgba(255,107,26,0.3)` }}>
+                Create Account — Join Free
+              </button>
+            </Link>
             <p className="text-xs text-center mt-4" style={{ color: "rgba(255,255,255,0.25)" }}>
               Already have an account?{" "}
               <Link href="/login" onClick={onClose} className="hover:opacity-80 transition-opacity" style={{ color: ORANGE }}>Sign in</Link>
@@ -272,10 +280,9 @@ export default function LandingPage() {
                  borderBottom: scrolled ? `1px solid ${BORDER}` : "1px solid transparent" }}>
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
 
-          {/* Logo — 3× bigger, name shown */}
-          <div className="flex items-center gap-3">
-            <img src={braintamLogo} alt="Braintam" className="w-16 h-16 object-contain" />
-            <span className="font-black text-2xl tracking-tight text-white">Braintam</span>
+          {/* Logo only — 4× bigger, no text */}
+          <div className="flex items-center">
+            <img src={braintamLogo} alt="Braintam" className="w-24 h-24 object-contain" />
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
@@ -661,7 +668,7 @@ export default function LandingPage() {
 
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={2}
             className="flex flex-wrap justify-center gap-6 text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-            {["No credit card needed", "Free forever plan", "CBSE & State Board aligned"].map(f => (
+            {["CBSE", "ICSE", "IB", "All State Boards"].map(f => (
               <span key={f} className="flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5" style={{ color: ORANGE }} />{f}
               </span>
@@ -676,9 +683,8 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 py-14 grid md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
-              <span className="font-black text-lg text-white">Braintam</span>
+            <div className="flex items-center">
+              <img src={braintamLogo} alt="Braintam" className="w-16 h-16 object-contain" />
             </div>
             <p className="text-xs leading-relaxed max-w-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
               India's premium EdTech platform for school students in grades 1–10.
