@@ -82,8 +82,8 @@ const programs = [
 ];
 
 const team = [
-  { name: "Vikram Nair",      role: "Co-Founder & CEO",            bio: "IIT Delhi · 12 yrs EdTech · ex-BYJU'S. Drives the vision to make quality education accessible for every Indian student.", photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80", tags: ["Strategy","Vision"] },
-  { name: "Dr. Priya Sharma", role: "Co-Founder & Academics Head", bio: "PhD IIM Ahmedabad · 15+ yrs teaching. Architect of Braintam's CBSE/ICSE/IB curriculum framework.", photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80", tags: ["Curriculum","Pedagogy"] },
+  { name: "Gourav Manhas",      role: "Co-Founder & CEO",            bio: "IIT Kanpur · 5 yrs EdTech . Drives the vision to make quality education accessible for every Indian student.", photo: "https://images.unsplash.com/photo-1779267102994-5fd194d300fc?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwcm9maWxlLXBhZ2V8MXx8fGVufDB8fHx8fA%3D%3D", tags: ["Strategy","Vision"] },
+  { name: "Poonam", role: "Co-Founder & COO", bio: "MBA from ICFAI · 20+ yrs teaching. Architect of Braintam's CBSE/ICSE/IB curriculum framework.", photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80", tags: ["Curriculum","Pedagogy"] },
   { name: "Rohit Agarwal",    role: "CTO & Co-Founder",            bio: "Ex-Google engineer · AI specialist. Built the platform infrastructure used by 5 lakh+ students daily.", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80", tags: ["AI/ML","Engineering"] },
   { name: "Anita Menon",      role: "Head of Teacher Relations",   bio: "Former KV principal · 20 yrs leadership. Recruits and mentors Braintam's nationwide star-teacher network.", photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80", tags: ["Teachers","Quality"] },
   { name: "Deepak Singh",     role: "Head of Animated Content",    bio: "Award-winning animator · ex-Toppr. Created 1,000+ animated explainer videos loved across India.", photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80", tags: ["Animation","Design"] },
