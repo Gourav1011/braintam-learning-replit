@@ -563,11 +563,7 @@ export default function LandingPage() {
               </span>
             </motion.h1>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-<<<<<<< HEAD
               className="text-base md:text-lg leading-relaxed max-w-md" style={{ color: MUTED }}>
-=======
-              className="text-base md:text-lg leading-relaxed max-w-md" style={{ color: "rgba(255,255,255,0.45)" }}>
->>>>>>> 0746a26 (Saved your changes before starting work)
               AI-powered live classes, adaptive testing, and curated content for Grades 1–10. Built for results.
             </motion.p>
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3} className="flex flex-wrap gap-3">
@@ -578,12 +574,8 @@ export default function LandingPage() {
               </button>
               <Link href="/login">
                 <button className="flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-sm transition-all hover:bg-white/10"
-<<<<<<< HEAD
                   style={{ background: "#fff", border: `1px solid ${BORDER2}`, color: TEXT,
                            boxShadow: "0 2px 12px rgba(11,43,107,0.08)" }}>
-=======
-                  style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: "rgba(255,255,255,0.7)" }}>
->>>>>>> 0746a26 (Saved your changes before starting work)
                   <PlayCircle className="w-4 h-4" /> Watch demo
                 </button>
               </Link>
@@ -784,13 +776,8 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 py-12 grid md:grid-cols-4 gap-10">
           <div className="space-y-4">
             <img src={braintamLogo} alt="Braintam" className="w-16 h-16 object-contain" />
-<<<<<<< HEAD
             <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
               India's premium EdTech platform for school students in grades 1–12.
-=======
-            <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
-              India's premium EdTech platform for school students in grades 1–10.
->>>>>>> 0746a26 (Saved your changes before starting work)
             </p>
             <div className="space-y-1.5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
               <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5" style={{ color: ORANGE }} />support@braintam.in</div>
@@ -817,19 +804,11 @@ export default function LandingPage() {
           ))}
         </div>
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3"
-<<<<<<< HEAD
           style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam EdTech Pvt. Ltd.</span>
           <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
             <Link href="/terms"   className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-=======
-          style={{ borderTop: `1px solid ${BORDER2}` }}>
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>© {new Date().getFullYear()} Braintam Learning.</span>
-          <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
-            <Link href="/terms"   className="hover:text-white/50 transition-colors">Terms</Link>
-            <Link href="/privacy" className="hover:text-white/50 transition-colors">Privacy</Link>
->>>>>>> 0746a26 (Saved your changes before starting work)
           </div>
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Made with ❤️ in India 🇮🇳</span>
         </div>
