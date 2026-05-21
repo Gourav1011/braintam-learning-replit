@@ -4,6 +4,7 @@ import { usersTable, otpTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
 import { RegisterBody, LoginBody, SendOtpBody, VerifyOtpBody } from "@workspace/api-zod";
 import crypto from "crypto";
+import { sendOtp } from "../sms.js";
 
 const router = Router();
 
