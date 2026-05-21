@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { SignUpPageContent } from "@/pages/sign-up";
+import { ClerkProvider, SignIn, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
@@ -196,16 +197,7 @@ function SignInPage() {
 }
 
 function SignUpPage() {
-  return (
-    <AuthPageShell form={
-      <SignUp
-        routing="path"
-        path={`${basePath}/sign-up`}
-        signInUrl={`${basePath}/sign-in`}
-        forceRedirectUrl={`${basePath}/onboarding`}
-      />
-    } />
-  );
+  return <AuthPageShell form={<SignUpPageContent />} />;
 }
 
 // ── Route guards ──────────────────────────────────────────────

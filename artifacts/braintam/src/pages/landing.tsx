@@ -379,6 +379,32 @@ function HeroVisual() {
 
 // ── Join Modal ────────────────────────────────────────────────
 function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [grade, setGrade] = useState("");
+  const [board, setBoard] = useState("");
+
+  const inputStyle = {
+    background: "#F8FAFC",
+    border: `1.5px solid rgba(11,43,107,0.12)`,
+    color: TEXT,
+    borderRadius: "12px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    width: "100%",
+    outline: "none",
+    transition: "border-color 0.15s",
+  };
+  const selectStyle = { ...inputStyle, color: grade ? TEXT : MUTED };
+
+  const handleJoin = (e: React.MouseEvent) => {
+    if (name.trim() || grade || board) {
+      try {
+        sessionStorage.setItem("braintam_signup_profile", JSON.stringify({ name, grade, board }));
+      } catch {}
+    }
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -400,25 +426,35 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             <h2 className="text-2xl font-bold mb-1 text-center" style={{ color: TEXT }}>Start learning today</h2>
             <p className="text-sm mb-7 text-center" style={{ color: MUTED }}>Join 5 lakh+ students across India.</p>
             <div className="space-y-3 mb-5">
-              {[{ p: "Your full name", t: "text" }, { p: "Email address", t: "email" }, { p: "Password", t: "password" }].map(f => (
+              <input
+                type="text" placeholder="Your full name" value={name}
+                onChange={e => setName(e.target.value)}
+                style={inputStyle}
+                onFocus={e => (e.target.style.borderColor = ORANGE)}
+                onBlur={e => (e.target.style.borderColor = "rgba(11,43,107,0.12)")}
+              />
+              {[{ p: "Email address", t: "email" }, { p: "Password", t: "password" }].map(f => (
                 <input key={f.p} type={f.t} placeholder={f.p}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{ background: "#F8FAFC", border: `1.5px solid rgba(11,43,107,0.12)`, color: TEXT }}
+                  style={inputStyle}
                   onFocus={e => (e.target.style.borderColor = ORANGE)}
                   onBlur={e => (e.target.style.borderColor = "rgba(11,43,107,0.12)")} />
               ))}
-              {[
-                { ph: "Select your grade", opts: Array.from({ length: 10 }, (_, i) => `Grade ${i + 1}`) },
-                { ph: "Select your board", opts: ["CBSE","ICSE","IB (International Baccalaureate)","State Board – Maharashtra","State Board – Tamil Nadu","State Board – Karnataka","State Board – UP","State Board – Gujarat","Other State Board"] },
-              ].map(s => (
-                <select key={s.ph} className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{ background: "#F8FAFC", border: `1.5px solid rgba(11,43,107,0.12)`, color: MUTED }}>
-                  <option value="">{s.ph}</option>
-                  {s.opts.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              ))}
+              <select value={grade} onChange={e => setGrade(e.target.value)}
+                style={{ ...selectStyle, color: grade ? TEXT : MUTED }}>
+                <option value="">Select your grade</option>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1)}>Grade {i + 1}</option>
+                ))}
+              </select>
+              <select value={board} onChange={e => setBoard(e.target.value)}
+                style={{ ...selectStyle, color: board ? TEXT : MUTED }}>
+                <option value="">Select your board</option>
+                {["CBSE", "ICSE", "IGCSE", "IB (International Baccalaureate)", "NIOS", "State Board"].map(o => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
             </div>
-            <Link href="/sign-up" onClick={onClose}>
+            <Link href="/sign-up" onClick={handleJoin}>
               <button className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #e05500)`, boxShadow: `0 0 30px rgba(255,107,26,0.25)` }}>
                 Create Account — Join Free
