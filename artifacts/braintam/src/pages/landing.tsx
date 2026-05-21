@@ -41,7 +41,7 @@ const features = [
   {
     icon: Brain, accent: "#0EA5E9", title: "Animated Videos", stat: "500+ videos",
     desc: "Curriculum-mapped animated explainers for every concept, Grades 1–10.",
-    bullets: ["2–10 min bite-sized lessons","Download & watch offline","Hindi + English medium"],
+    bullets: ["2–10 min bite-sized lessons","Watch recordings anytime","Hindi + English medium"],
   },
   {
     icon: BookOpen, accent: "#10B981", title: "Homework & Practice", stat: "Daily sets",
@@ -59,7 +59,7 @@ const features = [
     bullets: ["Concept mastery heatmap","Study time tracking","SMS + email to parents"],
   },
   {
-    icon: MessageCircle, accent: "#EC4899", title: "24×7 Doubt Solver", stat: "< 10 min reply",
+    icon: MessageCircle, accent: "#EC4899", title: "24×7 Doubt Solver", stat: "Expert verified",
     desc: "Post doubts by text or photo — answered by verified subject experts.",
     bullets: ["Voice & video doubt support","Searchable doubt archive","Peer answer community"],
   },
