@@ -20,6 +20,11 @@ import {
   isHomeworkNotificationScheduled,
   getNotificationPermissionStatus,
 } from "@/services/notifications";
+import {
+  addHomeworkOptOut,
+  removeHomeworkOptOut,
+  isHomeworkOptedOut,
+} from "@/services/notifOptOut";
 import { Colors } from "@/constants/colors";
 
 type HWItem = {
@@ -89,8 +94,7 @@ export default function HomeworkScreen() {
     getNotificationPermissionStatus().then((s) => setPermGranted(s === "granted"));
   }, []);
 
-  // Reflect current notification state from AsyncStorage when data loads
-  // (actual scheduling is done by the app-level orchestrator in _layout.tsx)
+  // Reflect actual scheduled + opt-out state from AsyncStorage when data loads
   useEffect(() => {
     if (!rawHW) return;
     const build = async () => {
@@ -98,9 +102,14 @@ export default function HomeworkScreen() {
         rawHW.map(async (h) => {
           const hours = hoursUntilDue(h.dueDate);
           const notifPossible = hours > 24;
-          const notifEnabled = notifPossible
-            ? await isHomeworkNotificationScheduled(h.id)
-            : false;
+          let notifEnabled = false;
+          if (notifPossible) {
+            const [scheduled, optedOut] = await Promise.all([
+              isHomeworkNotificationScheduled(h.id),
+              isHomeworkOptedOut(h.id),
+            ]);
+            notifEnabled = scheduled && !optedOut;
+          }
           return {
             id: h.id,
             title: h.title,
@@ -118,14 +127,14 @@ export default function HomeworkScreen() {
     build();
   }, [rawHW]);
 
-  // Non-optimistic toggle: update UI only after confirmed schedule/cancel success
+  // Non-optimistic toggle — also persists opt-out preference
   const toggleNotification = useCallback(async (item: HWItem) => {
     if (Platform.OS !== "web") {
       await Haptics.selectionAsync();
     }
     if (item.notifEnabled) {
       await cancelHomeworkNotification(item.id);
-      // Cancel always succeeds; update state
+      await addHomeworkOptOut(item.id); // persist: user explicitly disabled
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: false } : i))
       );
@@ -136,6 +145,7 @@ export default function HomeworkScreen() {
         new Date(item.dueDate)
       );
       if (scheduled) {
+        await removeHomeworkOptOut(item.id); // clear opt-out: user re-enabled
         setItems((prev) =>
           prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: true } : i))
         );

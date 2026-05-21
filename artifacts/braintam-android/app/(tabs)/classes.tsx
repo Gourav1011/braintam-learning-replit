@@ -20,6 +20,11 @@ import {
   isClassNotificationScheduled,
   getNotificationPermissionStatus,
 } from "@/services/notifications";
+import {
+  addClassOptOut,
+  removeClassOptOut,
+  isClassOptedOut,
+} from "@/services/notifOptOut";
 import { Colors } from "@/constants/colors";
 
 type ClassItem = {
@@ -89,8 +94,7 @@ export default function ClassesScreen() {
     getNotificationPermissionStatus().then((s) => setPermGranted(s === "granted"));
   }, []);
 
-  // Reflect current notification state from AsyncStorage when data loads
-  // (actual scheduling is done by the app-level orchestrator in _layout.tsx)
+  // Reflect actual scheduled + opt-out state from AsyncStorage when data loads
   useEffect(() => {
     if (!rawClasses) return;
     const build = async () => {
@@ -98,9 +102,14 @@ export default function ClassesScreen() {
         rawClasses.map(async (c) => {
           const minsLeft = minutesUntil(c.scheduledAt);
           const notifPossible = minsLeft > 15 && c.status === "upcoming";
-          const notifEnabled = notifPossible
-            ? await isClassNotificationScheduled(c.id)
-            : false;
+          let notifEnabled = false;
+          if (notifPossible) {
+            const [scheduled, optedOut] = await Promise.all([
+              isClassNotificationScheduled(c.id),
+              isClassOptedOut(c.id),
+            ]);
+            notifEnabled = scheduled && !optedOut;
+          }
           return {
             id: c.id,
             title: c.title,
@@ -118,14 +127,14 @@ export default function ClassesScreen() {
     build();
   }, [rawClasses]);
 
-  // Non-optimistic toggle: update UI only after confirmed schedule/cancel success
+  // Non-optimistic toggle — also persists opt-out preference
   const toggleNotification = useCallback(async (item: ClassItem) => {
     if (Platform.OS !== "web") {
       await Haptics.selectionAsync();
     }
     if (item.notifEnabled) {
       await cancelClassNotification(item.id);
-      // Cancel always succeeds (fire-and-forget); update state
+      await addClassOptOut(item.id); // persist: user explicitly disabled
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: false } : i))
       );
@@ -136,6 +145,7 @@ export default function ClassesScreen() {
         new Date(item.scheduledAt)
       );
       if (scheduled) {
+        await removeClassOptOut(item.id); // clear opt-out: user re-enabled
         setItems((prev) =>
           prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: true } : i))
         );
