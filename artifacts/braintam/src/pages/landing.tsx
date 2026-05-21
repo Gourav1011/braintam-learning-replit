@@ -28,10 +28,46 @@ const fadeUp = {
 
 // ── Data ──────────────────────────────────────────────────────
 const features = [
-  { icon: Video,     title: "Live Classes",      desc: "Real-time sessions with verified educators. Zero lag.",       accent: ORANGE },
-  { icon: Zap,       title: "Adaptive Engine",   desc: "AI-powered content that targets every weak spot.",           accent: "#FFA040" },
-  { icon: BarChart3, title: "Deep Analytics",    desc: "Granular tracking across every subject and concept.",        accent: ORANGE },
-  { icon: Shield,    title: "Curated Content",   desc: "Every lesson vetted by experts. All boards covered.",        accent: "#FFA040" },
+  {
+    icon: Video, accent: ORANGE, title: "Live Classes", stat: "5 days/week",
+    desc: "Real-time sessions with India's top educators — zero lag, full interaction.",
+    bullets: ["Doubt clearing every session","Class recordings included","CBSE, ICSE & State boards"],
+  },
+  {
+    icon: Zap, accent: "#7C3AED", title: "Adaptive Tests", stat: "1,000+ questions",
+    desc: "AI picks the right questions based on your child's level and gaps.",
+    bullets: ["Chapter-wise mock exams","Instant detailed results","Rank among all students"],
+  },
+  {
+    icon: Brain, accent: "#0EA5E9", title: "Animated Videos", stat: "500+ videos",
+    desc: "Curriculum-mapped animated explainers for every concept, Grades 1–10.",
+    bullets: ["2–10 min bite-sized lessons","Download & watch offline","Hindi + English medium"],
+  },
+  {
+    icon: BookOpen, accent: "#10B981", title: "Homework & Practice", stat: "Daily sets",
+    desc: "Auto-graded daily homework with step-by-step solutions.",
+    bullets: ["Parent reports after every set","Photo submission support","Graded within 24 hrs"],
+  },
+  {
+    icon: Award, accent: "#F59E0B", title: "Leaderboard & Badges", stat: "50+ badges",
+    desc: "Gamified learning that keeps students motivated and competitive.",
+    bullets: ["School & national rankings","Monthly topper certificates","Streak rewards & coins"],
+  },
+  {
+    icon: BarChart3, accent: ORANGE, title: "Deep Analytics", stat: "Weekly reports",
+    desc: "Granular subject-wise tracking with weak-topic alerts for parents.",
+    bullets: ["Concept mastery heatmap","Study time tracking","SMS + email to parents"],
+  },
+  {
+    icon: MessageCircle, accent: "#EC4899", title: "24×7 Doubt Solver", stat: "< 10 min reply",
+    desc: "Post doubts by text or photo — answered by verified subject experts.",
+    bullets: ["Voice & video doubt support","Searchable doubt archive","Peer answer community"],
+  },
+  {
+    icon: Users, accent: "#6366F1", title: "Parent Dashboard", stat: "Live updates",
+    desc: "Complete visibility into your child's learning journey, anytime.",
+    bullets: ["Live class attendance","Grade & assignment tracker","Monthly progress PDF"],
+  },
 ];
 
 const tickerStats = [
@@ -701,27 +737,49 @@ export default function LandingPage() {
       {/* ── STATS TICKER ── */}
       <StatsTicker />
 
-      {/* ── FEATURES (compact 4-col) ── */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-12 space-y-2">
+      {/* ── FEATURES (rich 2→4 col) ── */}
+      <section className="py-16 px-4 md:px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-10 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Platform</div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
-              Everything you need. <span style={{ color: "rgba(11,43,107,0.3)" }}>Nothing you don't.</span>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
+              Everything your child needs to excel.
             </h2>
+            <p className="text-sm max-w-xl mx-auto" style={{ color: MUTED }}>
+              Live classes · Adaptive tests · Animated videos · Doubt solving · Parent updates — all in one place.
+            </p>
           </motion.div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {features.map((f, i) => (
-              <motion.div key={f.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}
-                className="group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 cursor-default"
+              <motion.div key={f.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i % 4}
+                className="relative overflow-hidden rounded-2xl p-4 md:p-5 flex flex-col gap-3 transition-all duration-300"
                 style={{ background: SURFACE, border: `1px solid ${BORDER2}` }}
-                whileHover={{ borderColor: "rgba(255,107,26,0.35)", background: "rgba(255,107,26,0.06)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                  style={{ background: "rgba(255,107,26,0.1)", border: `1px solid rgba(255,107,26,0.2)` }}>
-                  <f.icon className="w-4.5 h-4.5 w-5 h-5" style={{ color: f.accent }} />
+                whileHover={{ y: -3, boxShadow: `0 8px 32px rgba(11,43,107,0.1)`, borderColor: `${f.accent}44` }}>
+                {/* Icon + stat row */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${f.accent}15`, border: `1px solid ${f.accent}30` }}>
+                    <f.icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: f.accent }} />
+                  </div>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: `${f.accent}12`, color: f.accent, border: `1px solid ${f.accent}25` }}>
+                    {f.stat}
+                  </span>
                 </div>
-                <h3 className="font-bold text-sm mb-1.5" style={{ color: TEXT }}>{f.title}</h3>
-                <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{f.desc}</p>
+                {/* Title + desc */}
+                <div>
+                  <h3 className="font-bold text-xs md:text-sm leading-tight mb-1" style={{ color: TEXT }}>{f.title}</h3>
+                  <p className="leading-relaxed hidden md:block" style={{ color: MUTED, fontSize: 12 }}>{f.desc}</p>
+                </div>
+                {/* Bullets */}
+                <ul className="space-y-1">
+                  {f.bullets.map(b => (
+                    <li key={b} className="flex items-start gap-1.5 leading-snug" style={{ fontSize: 11, color: MUTED }}>
+                      <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: f.accent }} />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
               </motion.div>
             ))}
           </div>
