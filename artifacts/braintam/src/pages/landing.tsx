@@ -194,7 +194,7 @@ function Particles() {
 // ── Hero Visual — Student Toppers ─────────────────────────────
 const toppers = [
   {
-    name: "Kaniyha Sharma",
+    name: "Kaniahya Sharma",
     grade: "JK Board",
     initial: "K",
     score: "485/500",
@@ -285,7 +285,6 @@ function HeroVisual() {
             </div>
             <div className="text-center">
               <div className="text-lg font-black" style={{ color: s.tagColor }}>{s.score}</div>
-              <div className="text-xs" style={{ color: MUTED }}>avg score</div>
             </div>
             <div className="flex justify-center gap-0.5 mt-2">
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 10 }}>★</span>)}
@@ -319,7 +318,6 @@ function HeroVisual() {
             </div>
             <div className="text-center mb-2">
               <div className="text-2xl font-black" style={{ color: s.tagColor }}>{s.score}</div>
-              <div className="text-xs" style={{ color: MUTED }}>avg score</div>
             </div>
             <div className="text-xs text-center italic px-1" style={{ color: MUTED }}>"{s.quote}"</div>
             <div className="flex justify-center gap-0.5 mt-2">
@@ -352,7 +350,6 @@ function HeroVisual() {
             </div>
             <div className="text-center">
               <div className="text-lg font-black" style={{ color: s.tagColor }}>{s.score}</div>
-              <div className="text-xs" style={{ color: MUTED }}>avg score</div>
             </div>
             <div className="flex justify-center gap-0.5 mt-2">
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 10 }}>★</span>)}
