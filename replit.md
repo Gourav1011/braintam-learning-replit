@@ -38,7 +38,7 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 - Auth via localStorage tokens (`braintam_token`, `braintam_student`). OTP is generated server-side and logged; in production, integrate an SMS provider (Twilio/Fast2SMS).
 - Mock student ID=1 (Arjun Sharma, Grade 6) seeded for demo. All protected routes redirect to `/login` when unauthenticated.
 - All routes are prefix-mounted at `/api` via the shared proxy.
-- Leaderboard data is currently hardcoded on the backend; in production, compute dynamically from points.
+- Leaderboard data is computed dynamically from real student submissions (tests, homework, assignments). Points are recalculated after every submission and persisted to the users table.
 
 ## Product
 

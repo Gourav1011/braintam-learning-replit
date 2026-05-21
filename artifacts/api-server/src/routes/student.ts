@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { usersTable, subjectsTable, homeworkTable, assignmentsTable, testsTable, liveClassesTable } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
-import { eq, desc, gte } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -122,18 +122,41 @@ router.get("/student/leaderboard", async (req, res) => {
   const parsed = GetLeaderboardQueryParams.safeParse(req.query);
   const grade = parsed.success ? parsed.data.grade : undefined;
 
-  res.json([
-    { rank: 1, studentName: "Priya Verma", points: 2850, grade: grade ?? 6, avatarUrl: null, school: "Kendriya Vidyalaya, Mumbai" },
-    { rank: 2, studentName: "Rohan Gupta", points: 2720, grade: grade ?? 6, avatarUrl: null, school: "DPS Vasant Kunj" },
-    { rank: 3, studentName: "Ananya Singh", points: 2610, grade: grade ?? 6, avatarUrl: null, school: "St. Xavier's, Kolkata" },
-    { rank: 4, studentName: "Kabir Malhotra", points: 2480, grade: grade ?? 6, avatarUrl: null, school: "DAV Public School" },
-    { rank: 5, studentName: "Ishaan Kapoor", points: 2390, grade: grade ?? 6, avatarUrl: null, school: "Amity International" },
-    { rank: 6, studentName: "Sneha Patel", points: 2280, grade: grade ?? 6, avatarUrl: null, school: "Navodaya Vidyalaya" },
-    { rank: 7, studentName: "Arjun Sharma", points: 1240, grade: grade ?? 6, avatarUrl: null, school: "DPS New Delhi" },
-    { rank: 8, studentName: "Divya Nair", points: 1180, grade: grade ?? 6, avatarUrl: null, school: "BGS Public School" },
-    { rank: 9, studentName: "Mihir Joshi", points: 1090, grade: grade ?? 6, avatarUrl: null, school: "Ryan International" },
-    { rank: 10, studentName: "Tara Mehta", points: 980, grade: grade ?? 6, avatarUrl: null, school: "Bal Bharati School" },
-  ]);
+  const students = await db
+    .select({
+      id: usersTable.id,
+      studentName: usersTable.name,
+      points: usersTable.points,
+      grade: usersTable.grade,
+      avatarUrl: usersTable.avatarUrl,
+      school: usersTable.school,
+    })
+    .from(usersTable)
+    .where(
+      grade !== undefined ? eq(usersTable.grade, grade) : sql`true`
+    )
+    .orderBy(desc(usersTable.points))
+    .limit(50);
+
+  const ranked = students.map((s, i) => ({
+    rank: i + 1,
+    studentName: s.studentName,
+    points: s.points,
+    grade: s.grade,
+    avatarUrl: s.avatarUrl ?? null,
+    school: s.school ?? null,
+  }));
+
+  await Promise.all(
+    students.map((s, i) =>
+      db
+        .update(usersTable)
+        .set({ rank: i + 1 })
+        .where(eq(usersTable.id, s.id))
+    )
+  );
+
+  res.json(ranked);
 });
 
 export default router;

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { testsTable, questionsTable, testSubmissionsTable, subjectsTable } from "@workspace/db";
 import { ListTestsQueryParams, GetTestParams, SubmitTestParams, SubmitTestBody } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
+import { recomputeAndSavePoints } from "../points";
 
 const router = Router();
 
@@ -83,6 +84,8 @@ router.post("/tests/:id/submit", async (req, res) => {
     score,
     maxScore,
   });
+
+  await recomputeAndSavePoints(1);
 
   res.json({
     score,

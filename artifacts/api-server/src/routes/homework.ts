@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { homeworkTable, homeworkSubmissionsTable, subjectsTable } from "@workspace/db";
 import { ListHomeworkQueryParams, GetHomeworkParams, SubmitHomeworkParams, SubmitHomeworkBody } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
+import { recomputeAndSavePoints } from "../points";
 
 const router = Router();
 
@@ -73,6 +74,8 @@ router.post("/homework/:id/submit", async (req, res) => {
     attachmentUrl: bodyParsed.data.attachmentUrl ?? null,
     status: "submitted",
   });
+
+  await recomputeAndSavePoints(1);
 
   res.json({ success: true, message: "Homework submitted successfully!" });
 });

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { assignmentsTable, assignmentSubmissionsTable, subjectsTable } from "@workspace/db";
 import { ListAssignmentsQueryParams, GetAssignmentParams, SubmitAssignmentParams, SubmitAssignmentBody } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
+import { recomputeAndSavePoints } from "../points";
 
 const router = Router();
 
@@ -75,6 +76,8 @@ router.post("/assignments/:id/submit", async (req, res) => {
     attachmentUrl: bodyParsed.data.attachmentUrl ?? null,
     status: "submitted",
   });
+
+  await recomputeAndSavePoints(1);
 
   res.json({ success: true, message: "Assignment submitted successfully!" });
 });
