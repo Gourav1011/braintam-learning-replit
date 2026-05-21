@@ -402,32 +402,93 @@ function StatsTicker() {
   );
 }
 
-// ── Team Horizontal Accordion ─────────────────────────────────
+// ── Team Section ──────────────────────────────────────────────
 function TeamAccordion() {
   const [active, setActive] = useState<number | null>(null);
-  return (
-    <div className="flex gap-2 h-80 w-full overflow-hidden">
+
+  const toggle = (i: number) => setActive(prev => prev === i ? null : i);
+
+  // ── Mobile grid (< sm) — all 8 members, tap to expand ──────
+  const MobileGrid = () => (
+    <div className="grid grid-cols-2 gap-3 sm:hidden">
+      {team.map((m, i) => (
+        <div key={m.name}
+          className="relative rounded-2xl overflow-hidden cursor-pointer select-none"
+          style={{ height: 200, border: `1px solid ${active === i ? "rgba(255,107,26,0.5)" : BORDER2}` }}
+          onClick={() => toggle(i)}>
+          {m.photo ? (
+            <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
+              <span className="text-4xl font-black text-white opacity-20">{m.name.charAt(0)}</span>
+            </div>
+          )}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.55) 55%, rgba(6,16,31,0.05) 100%)" }} />
+          {/* Tap hint when collapsed */}
+          {active !== i && (
+            <div className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,107,26,0.25)", border: "1px solid rgba(255,107,26,0.4)" }}>
+              <span className="text-white font-bold" style={{ fontSize: 10 }}>+</span>
+            </div>
+          )}
+          <div className="absolute bottom-0 left-0 right-0 p-3">
+            <AnimatePresence>
+              {active === i ? (
+                <motion.div key="open" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }} className="space-y-1.5">
+                  <div className="text-white font-bold text-xs leading-tight">{m.name}</div>
+                  <div className="font-semibold" style={{ color: ORANGE, fontSize: 10 }}>{m.role}</div>
+                  <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.65)", fontSize: 10 }}>{m.bio}</p>
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {m.tags.map(t => (
+                      <span key={t} className="px-1.5 py-0.5 rounded-full font-semibold"
+                        style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870", fontSize: 9 }}>{t}</span>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-white font-bold truncate" style={{ fontSize: 11 }}>{m.name}</div>
+                  <div style={{ color: ORANGE, fontSize: 10 }}>{m.role}</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          {active === i && (
+            <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,107,26,0.5)" }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── Desktop horizontal accordion (≥ sm) — click to expand ──
+  const DesktopAccordion = () => (
+    <div className="hidden sm:flex gap-2 h-80 w-full">
       {team.map((m, i) => (
         <motion.div key={m.name}
           animate={{ flex: active === i ? 5 : 1 }}
           transition={{ duration: 0.45, ease }}
           className="relative overflow-hidden rounded-2xl cursor-pointer flex-shrink-0"
-          style={{ minWidth: 60, border: `1px solid ${active === i ? "rgba(255,107,26,0.4)" : BORDER2}` }}
-          onMouseEnter={() => setActive(i)}
-          onMouseLeave={() => setActive(null)}>
-          {/* Photo */}
-          <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
-          {/* Gradient overlay */}
-          <div className="absolute inset-0" style={{ background: `linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.6) 45%, rgba(6,16,31,0.15) 100%)` }} />
-          {/* Orange side indicator when collapsed */}
+          style={{ minWidth: 56, border: `1px solid ${active === i ? "rgba(255,107,26,0.4)" : BORDER2}` }}
+          onClick={() => toggle(i)}>
+          {m.photo ? (
+            <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
+              <span className="text-5xl font-black text-white opacity-20">{m.name.charAt(0)}</span>
+            </div>
+          )}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.6) 45%, rgba(6,16,31,0.15) 100%)" }} />
           {active !== i && (
             <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: ORANGE }} />
           )}
-          {/* Content — always visible at bottom */}
           <div className="absolute bottom-0 left-0 right-0 p-4">
             <AnimatePresence>
               {active === i ? (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                <motion.div key="open" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }} className="space-y-2">
                   <div className="text-white font-bold text-sm leading-tight">{m.name}</div>
                   <div className="text-xs font-semibold" style={{ color: ORANGE }}>{m.role}</div>
@@ -435,7 +496,7 @@ function TeamAccordion() {
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {m.tags.map(t => (
                       <span key={t} className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: "rgba(255,107,26,0.15)", border: `1px solid rgba(255,107,26,0.3)`, color: "#FFA870" }}>{t}</span>
+                        style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870" }}>{t}</span>
                     ))}
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -450,21 +511,28 @@ function TeamAccordion() {
                   </div>
                 </motion.div>
               ) : (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="text-white text-xs font-bold truncate" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", maxHeight: 120 }}>
+                <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-white text-xs font-bold truncate"
+                    style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", maxHeight: 120 }}>
                     {m.name}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-          {/* Orange glow on active */}
           {active === i && (
-            <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 40px rgba(255,107,26,0.08)` }} />
+            <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 40px rgba(255,107,26,0.08)" }} />
           )}
         </motion.div>
       ))}
     </div>
+  );
+
+  return (
+    <>
+      <MobileGrid />
+      <DesktopAccordion />
+    </>
   );
 }
 
@@ -544,7 +612,7 @@ export default function LandingPage() {
         </div>
       </motion.nav>
       {/* ── HERO ── */}
-      <section className="relative min-h-fit md:min-h-screen flex items-center pt-24 pb-8 md:py-20 px-6 overflow-hidden">
+      <section className="relative flex items-center pt-24 pb-12 md:pt-32 md:pb-24 px-6 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] rounded-full opacity-10 blur-[120px] pointer-events-none"
           style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
@@ -714,7 +782,7 @@ export default function LandingPage() {
               <span style={{ background: `linear-gradient(135deg, ${ORANGE}, #FFA040)`,
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>innovators.</span>
             </h2>
-            <p className="text-sm" style={{ color: MUTED }}>Hover over a card to learn more</p>
+            <p className="text-sm" style={{ color: MUTED }}>Tap a card to learn more about each team member</p>
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
             <TeamAccordion />
