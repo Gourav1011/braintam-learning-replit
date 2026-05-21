@@ -131,94 +131,47 @@ function Particles() {
 }
 
 // ── Hero Visual ───────────────────────────────────────────────
-const heroSubjects = [
-  { name: "Mathematics", emoji: "📐", pct: 82, color: ORANGE },
-  { name: "Science",     emoji: "🔬", pct: 74, color: NAVY   },
-  { name: "English",     emoji: "📖", pct: 91, color: "#10B981" },
-  { name: "History",     emoji: "🏛️", pct: 67, color: "#8B5CF6" },
-] as const;
-
-// circumference of r=28: 2π×28 ≈ 175.9
-const CIRC = 175.9;
-
 function HeroVisual() {
   return (
     <div className="relative w-full h-full flex items-center justify-center">
+      <Particles />
 
-      {/* Soft background blobs */}
-      <div className="absolute top-8 right-12 w-48 h-48 rounded-full pointer-events-none"
-        style={{ background: ORANGE, opacity: 0.08, filter: "blur(60px)" }} />
-      <div className="absolute bottom-12 left-8 w-36 h-36 rounded-full pointer-events-none"
-        style={{ background: NAVY, opacity: 0.07, filter: "blur(50px)" }} />
+      {/* Soft background glow */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(circle, rgba(255,107,26,0.18), rgba(11,43,107,0.08), transparent)`, filter: "blur(40px)" }} />
 
-      {/* ── Main dashboard card ── */}
-      <motion.div
-        animate={{ y: [0, -7, 0] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-        className="relative z-10 rounded-3xl p-5 w-64"
-        style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.09)`,
-                 boxShadow: "0 24px 60px rgba(11,43,107,0.13)" }}>
+      {/* Pulsing rings — no rotation */}
+      <motion.div className="absolute rounded-full pointer-events-none"
+        style={{ width: 300, height: 300, border: `1.5px solid rgba(255,107,26,0.18)` }}
+        animate={{ scale: [1, 1.04, 1], opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
+      <motion.div className="absolute rounded-full pointer-events-none"
+        style={{ width: 390, height: 390, border: `1px dashed rgba(11,43,107,0.12)` }}
+        animate={{ scale: [1, 1.03, 1], opacity: [0.4, 0.8, 0.4] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }} />
 
-        {/* Student header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
-            style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>A</div>
-          <div className="min-w-0">
-            <div className="text-sm font-bold truncate" style={{ color: TEXT }}>Arjun Sharma</div>
-            <div className="text-xs" style={{ color: MUTED }}>Grade 6 · CBSE</div>
+      {/* Brain orb */}
+      <motion.div animate={{ scale: [1, 1.04, 1] }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        className="relative z-10">
+        <div className="w-52 h-52 rounded-full flex items-center justify-center"
+          style={{ background: `radial-gradient(circle at 35% 35%, rgba(255,107,26,0.15), rgba(11,43,107,0.06))`,
+                   border: `1.5px solid rgba(255,107,26,0.25)`,
+                   boxShadow: `0 0 60px rgba(255,107,26,0.14), 0 20px 50px rgba(11,43,107,0.1)` }}>
+          <div className="w-24 h-24 rounded-full flex items-center justify-center"
+            style={{ background: `radial-gradient(circle at 35% 35%, rgba(255,107,26,0.3), rgba(11,43,107,0.15))`,
+                     border: `1.5px solid rgba(255,107,26,0.4)`,
+                     boxShadow: `0 0 30px rgba(255,107,26,0.2)` }}>
+            <Brain className="w-10 h-10" style={{ color: ORANGE }} />
           </div>
-          <div className="ml-auto text-right flex-shrink-0">
-            <div className="text-sm font-black" style={{ color: ORANGE }}>🔥 14</div>
-            <div className="text-xs" style={{ color: MUTED }}>streak</div>
-          </div>
-        </div>
-
-        {/* Progress ring row */}
-        <div className="flex items-center gap-4 mb-4 px-3 py-2.5 rounded-2xl"
-          style={{ background: "#F5F7FF" }}>
-          <div className="relative w-14 h-14 flex-shrink-0">
-            <svg width="56" height="56" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(11,43,107,0.08)" strokeWidth="5" />
-              <motion.circle cx="28" cy="28" r="22" fill="none"
-                stroke={ORANGE} strokeWidth="5" strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 22}`}
-                initial={{ strokeDashoffset: 2 * Math.PI * 22 }}
-                animate={{ strokeDashoffset: 2 * Math.PI * 22 * (1 - 0.78) }}
-                transition={{ duration: 1.6, delay: 0.4, ease: "easeOut" }} />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-black" style={{ color: TEXT }}>78%</span>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs" style={{ color: MUTED }}>Weekly goal</div>
-            <div className="text-sm font-bold" style={{ color: TEXT }}>78 / 100 pts</div>
-            <div className="text-xs font-semibold mt-0.5" style={{ color: "#10B981" }}>↑ 12% this week</div>
-          </div>
-        </div>
-
-        {/* Subject progress bars */}
-        <div className="space-y-2.5">
-          {heroSubjects.map((s, i) => (
-            <div key={s.name} className="flex items-center gap-2">
-              <span className="text-sm w-5 flex-shrink-0">{s.emoji}</span>
-              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(11,43,107,0.07)" }}>
-                <motion.div className="h-full rounded-full" style={{ background: s.color }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${s.pct}%` }}
-                  transition={{ duration: 1.2, delay: 0.6 + i * 0.1, ease: "easeOut" }} />
-              </div>
-              <span className="text-xs font-bold w-8 text-right flex-shrink-0" style={{ color: TEXT }}>{s.pct}%</span>
-            </div>
-          ))}
         </div>
       </motion.div>
 
       {/* ── Floating: LIVE NOW (top-right) ── */}
-      <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        className="absolute top-2 right-0 z-20 rounded-2xl px-4 py-3"
+      <motion.div animate={{ y: [0, -11, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-4 right-2 z-20 rounded-2xl px-4 py-3"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
-                 boxShadow: "0 8px 28px rgba(11,43,107,0.13)", minWidth: 148 }}>
+                 boxShadow: "0 8px 28px rgba(11,43,107,0.13)", minWidth: 152 }}>
         <div className="flex items-center gap-2 mb-1">
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           <span className="text-xs font-bold text-red-500">LIVE NOW</span>
@@ -228,8 +181,8 @@ function HeroVisual() {
       </motion.div>
 
       {/* ── Floating: Score (bottom-left) ── */}
-      <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute bottom-6 left-0 z-20 rounded-2xl px-4 py-3"
+      <motion.div animate={{ y: [0, 12, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        className="absolute bottom-10 left-2 z-20 rounded-2xl px-4 py-3"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
                  boxShadow: "0 8px 28px rgba(11,43,107,0.13)" }}>
         <div className="text-xs font-medium mb-1" style={{ color: MUTED }}>Latest Score</div>
@@ -238,8 +191,8 @@ function HeroVisual() {
       </motion.div>
 
       {/* ── Floating: Rank (bottom-right) ── */}
-      <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-        className="absolute bottom-8 right-0 z-20 rounded-2xl px-3 py-2.5 flex items-center gap-2"
+      <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+        className="absolute bottom-12 right-2 z-20 rounded-2xl px-3 py-2.5 flex items-center gap-2"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
                  boxShadow: "0 8px 28px rgba(11,43,107,0.13)" }}>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
