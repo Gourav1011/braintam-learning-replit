@@ -47,7 +47,7 @@ function StatCard({
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { student } = useAuth();
-  const { data: dashboard, isLoading, refetch } = useGetStudentDashboard();
+  const { data: dashboard, isLoading, isError, refetch } = useGetStudentDashboard();
   const { data: leaderboard } = useGetLeaderboard();
 
   const firstName = (dashboard?.studentName ?? student?.name ?? "Student").split(" ")[0];
@@ -95,6 +95,14 @@ export default function HomeScreen() {
         {isLoading ? (
           <View style={styles.centered}>
             <ActivityIndicator color={Colors.primary} />
+          </View>
+        ) : isError ? (
+          <View style={styles.centered}>
+            <Feather name="wifi-off" size={36} color={Colors.border} />
+            <Text style={styles.errorText}>Couldn't load your dashboard</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.statGrid}>
@@ -345,5 +353,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   scoreText: { fontSize: 12, fontFamily: "Poppins_600SemiBold", color: Colors.navy },
-  centered: { height: 80, alignItems: "center", justifyContent: "center" },
+  centered: { minHeight: 80, alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 },
+  errorText: { fontSize: 15, fontFamily: "Poppins_600SemiBold", color: Colors.navy },
+  retryBtn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
+  retryText: { color: "#fff", fontFamily: "Poppins_600SemiBold", fontSize: 14 },
 });

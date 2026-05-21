@@ -15,6 +15,7 @@ import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { AuthProvider, useAuth } from "@/contexts/auth";
 import {
   requestNotificationPermissions,
@@ -165,6 +166,7 @@ function RootLayoutInner() {
         <Stack.Screen name="course/[id]" options={{ animation: "slide_from_right" }} />
         <Stack.Screen name="test/[id]" options={{ animation: "slide_from_right" }} />
       </Stack>
+      <OfflineBanner />
     </>
   );
 }
