@@ -55,6 +55,10 @@ export interface StudentProfile {
   rank?: number | null;
   /** @nullable */
   school?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  board?: string | null;
 }
 
 export interface AuthResponse {
@@ -314,7 +318,10 @@ export interface TestResult {
 
 export interface ProfileUpdate {
   name?: string;
+  grade?: number;
   school?: string;
+  state?: string;
+  board?: string;
   avatarUrl?: string;
 }
 

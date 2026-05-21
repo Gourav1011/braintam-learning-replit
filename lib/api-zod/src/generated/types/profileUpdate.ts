@@ -8,6 +8,9 @@
 
 export interface ProfileUpdate {
   name?: string;
+  grade?: number;
   school?: string;
+  state?: string;
+  board?: string;
   avatarUrl?: string;
 }

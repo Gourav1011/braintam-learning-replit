@@ -21,4 +21,8 @@ export interface StudentProfile {
   rank?: number | null;
   /** @nullable */
   school?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  board?: string | null;
 }

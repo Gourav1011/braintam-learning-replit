@@ -26,6 +26,7 @@ import LeaderboardPage from "@/pages/leaderboard";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
+import OnboardingPage from "@/pages/onboarding";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -201,7 +202,7 @@ function SignUpPage() {
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
-        forceRedirectUrl={`${basePath}/dashboard`}
+        forceRedirectUrl={`${basePath}/onboarding`}
       />
     } />
   );
@@ -270,6 +271,9 @@ function Router() {
       {/* Old routes → redirect to Clerk pages */}
       <Route path="/login"><Redirect to="/sign-in" /></Route>
       <Route path="/register"><Redirect to="/sign-up" /></Route>
+
+      {/* Post-signup onboarding */}
+      <Route path="/onboarding" component={OnboardingPage} />
 
       {/* Protected */}
       <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>

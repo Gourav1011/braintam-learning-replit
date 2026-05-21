@@ -8,6 +8,8 @@ export interface StudentProfile {
   phone: string | null;
   grade: number;
   school: string | null;
+  state: string | null;
+  board: string | null;
   points: number;
   rank: number;
   streak: number;

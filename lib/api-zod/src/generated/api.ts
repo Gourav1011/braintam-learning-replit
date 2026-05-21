@@ -48,7 +48,9 @@ export const LoginResponse = zod.object({
   "avatarUrl": zod.string().nullish(),
   "points": zod.number(),
   "rank": zod.number().nullish(),
-  "school": zod.string().nullish()
+  "school": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "board": zod.string().nullish()
 })
 })
 
@@ -87,7 +89,9 @@ export const VerifyOtpResponse = zod.object({
   "avatarUrl": zod.string().nullish(),
   "points": zod.number(),
   "rank": zod.number().nullish(),
-  "school": zod.string().nullish()
+  "school": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "board": zod.string().nullish()
 })
 })
 
@@ -554,7 +558,9 @@ export const GetStudentProfileResponse = zod.object({
   "avatarUrl": zod.string().nullish(),
   "points": zod.number(),
   "rank": zod.number().nullish(),
-  "school": zod.string().nullish()
+  "school": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "board": zod.string().nullish()
 })
 
 
@@ -563,7 +569,10 @@ export const GetStudentProfileResponse = zod.object({
  */
 export const UpdateStudentProfileBody = zod.object({
   "name": zod.string().optional(),
+  "grade": zod.number().optional(),
   "school": zod.string().optional(),
+  "state": zod.string().optional(),
+  "board": zod.string().optional(),
   "avatarUrl": zod.string().optional()
 })
 
@@ -576,7 +585,9 @@ export const UpdateStudentProfileResponse = zod.object({
   "avatarUrl": zod.string().nullish(),
   "points": zod.number(),
   "rank": zod.number().nullish(),
-  "school": zod.string().nullish()
+  "school": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "board": zod.string().nullish()
 })
 
 

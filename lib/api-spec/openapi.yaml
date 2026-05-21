@@ -1116,13 +1116,23 @@ components:
           type: ["integer", "null"]
         school:
           type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        board:
+          type: ["string", "null"]
 
     ProfileUpdate:
       type: object
       properties:
         name:
           type: string
+        grade:
+          type: integer
         school:
+          type: string
+        state:
+          type: string
+        board:
           type: string
         avatarUrl:
           type: string
