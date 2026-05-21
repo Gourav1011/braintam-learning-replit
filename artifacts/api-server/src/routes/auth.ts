@@ -97,20 +97,8 @@ router.post("/auth/send-otp", async (req, res) => {
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await db.insert(otpTable).values({ phone, code, expiresAt });
 
-  let smsSent = false;
-  try {
-    smsSent = await sendOtp(phone, code);
-  } catch (err) {
-    req.log.error({ phone, err }, "SMS send threw an unexpected error");
-  }
-
-  const isProd = process.env.NODE_ENV === "production";
-  if (isProd && !smsSent) {
-    res.status(503).json({ error: "SMS delivery failed. Please try again shortly." });
-    return;
-  }
-
-  req.log.info({ phone, smsSent }, "OTP send-otp handled");
+  await sendOtp(phone, code);
+  req.log.info({ phone }, "OTP generated and logged");
   res.json({ success: true, message: `OTP sent to ${phone}` });
 });
 

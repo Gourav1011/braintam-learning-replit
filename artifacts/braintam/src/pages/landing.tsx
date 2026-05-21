@@ -56,7 +56,7 @@ const features = [
   {
     icon: BarChart3, accent: ORANGE, title: "Deep Analytics", stat: "Weekly reports",
     desc: "Granular subject-wise tracking with weak-topic alerts for parents.",
-    bullets: ["Concept mastery heatmap","Study time tracking","SMS + email to parents"],
+    bullets: ["Concept mastery heatmap","Study time tracking","Email reports to parents"],
   },
   {
     icon: MessageCircle, accent: "#EC4899", title: "24×7 Doubt Solver", stat: "Expert verified",

@@ -35,7 +35,7 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 ## Architecture decisions
 
 - Contract-first API: OpenAPI spec → Orval codegen → typed React Query hooks + Zod validation schemas.
-- Auth via localStorage tokens (`braintam_token`, `braintam_student`). OTP is generated server-side and logged; in production, integrate an SMS provider (Twilio/Fast2SMS).
+- Auth via localStorage tokens (`braintam_token`, `braintam_student`). OTP is generated server-side and logged to the console for dev/testing.
 - Mock student ID=1 (Arjun Sharma, Grade 6) seeded for demo. All protected routes redirect to `/login` when unauthenticated.
 - All routes are prefix-mounted at `/api` via the shared proxy.
 - Leaderboard data is computed dynamically from real student submissions (tests, homework, assignments). Points are recalculated after every submission and persisted to the users table.
@@ -63,7 +63,7 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## Gotchas
 
-- OTP is logged to server console (not sent via SMS). In production, integrate an SMS provider.
+- OTP is logged to the server console. To send real SMS in production, add a provider inside `artifacts/api-server/src/sms.ts`.
 - `pnpm --filter @workspace/db run push` must be run after any schema changes in `lib/db/src/schema/`.
 - Run codegen after OpenAPI spec changes: `pnpm --filter @workspace/api-spec run codegen`.
 - Vite needs `server.allowedHosts: true` for the Replit proxy (already configured).
