@@ -35,15 +35,15 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 ## Architecture decisions
 
 - Contract-first API: OpenAPI spec → Orval codegen → typed React Query hooks + Zod validation schemas.
-- Auth via localStorage tokens (`braintam_token`, `braintam_student`). OTP is generated server-side and logged to the console for dev/testing.
-- Mock student ID=1 (Arjun Sharma, Grade 6) seeded for demo. All protected routes redirect to `/login` when unauthenticated.
+- Auth via Replit-managed Clerk (appId: app_3E3QPesUUDpfDHM6d2k5mjRQA5S). Google OAuth + email/password. Clerk proxy at `/api/__clerk`. Keys in CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, VITE_CLERK_PUBLISHABLE_KEY.
+- Mock student ID=1 (Arjun Sharma, Grade 6) seeded for demo. All protected routes redirect to `/sign-in` when unauthenticated. Old `/login` and `/register` redirect to Clerk routes.
 - All routes are prefix-mounted at `/api` via the shared proxy.
 - Leaderboard data is computed dynamically from real student submissions (tests, homework, assignments). Points are recalculated after every submission and persisted to the users table.
 
 ## Product
 
 - **Landing page** — hero, features, stats, CTA
-- **Auth** — email+password login, phone OTP login, registration with grade selector
+- **Auth** — Clerk-powered sign-in/sign-up with Google OAuth + email/password. Branded two-panel layout (navy branding panel + Clerk form). `/sign-in` and `/sign-up` routes.
 - **Dashboard** — stat cards (upcoming classes, pending homework, assignments, tests), subject progress bars, leaderboard preview, recent activity feed
 - **Live Classes** — filterable grid with countdown timers, join button
 - **Courses** — searchable, filterable course grid with thumbnails and ratings; course detail with lesson list
@@ -57,13 +57,13 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## User preferences
 
-- Demo login: email `arjun@example.com`, password `Braintam@123`
+- Auth: sign in via Google or email/password at `/sign-in`. Demo: create an account then the mock student (Arjun Sharma, Grade 6) data loads.
 - Brand: navy blue (#0B2B6B) + orange (#FF6B1A), Poppins font
 - Target: Indian school students, grades 1–10
 
 ## Gotchas
 
-- OTP is logged to the server console. To send real SMS in production, add a provider inside `artifacts/api-server/src/sms.ts`.
+- Tailwind v4 requires `@layer theme, base, clerk, components, utilities;` before `@import "tailwindcss"` in index.css and `tailwindcss({ optimize: false })` in vite.config.ts — both already set.
 - `pnpm --filter @workspace/db run push` must be run after any schema changes in `lib/db/src/schema/`.
 - Run codegen after OpenAPI spec changes: `pnpm --filter @workspace/api-spec run codegen`.
 - Vite needs `server.allowedHosts: true` for the Replit proxy (already configured).

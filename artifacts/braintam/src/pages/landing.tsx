@@ -418,7 +418,7 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </select>
               ))}
             </div>
-            <Link href="/register" onClick={onClose}>
+            <Link href="/sign-up" onClick={onClose}>
               <button className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #e05500)`, boxShadow: `0 0 30px rgba(255,107,26,0.25)` }}>
                 Create Account — Join Free
@@ -426,7 +426,7 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             </Link>
             <p className="text-xs text-center mt-4" style={{ color: MUTED }}>
               Already have an account?{" "}
-              <Link href="/login" onClick={onClose} className="hover:opacity-80 transition-opacity" style={{ color: ORANGE }}>Sign in</Link>
+              <Link href="/sign-in" onClick={onClose} className="hover:opacity-80 transition-opacity" style={{ color: ORANGE }}>Sign in</Link>
             </p>
           </motion.div>
         </motion.div>
@@ -625,7 +625,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login">
+            <Link href="/sign-in">
               <span className="hidden md:block text-sm font-medium cursor-pointer transition-colors" style={{ color: MUTED }}
                 onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
                 onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>Sign in</span>
@@ -668,7 +668,7 @@ export default function LandingPage() {
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 40px rgba(255,107,26,0.35)` }}>
                 Start for free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
-              <Link href="/login">
+              <Link href="/sign-in">
                 <button className="flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-sm transition-all hover:bg-white/10"
                   style={{ background: "#fff", border: `1px solid ${BORDER2}`, color: TEXT,
                            boxShadow: "0 2px 12px rgba(11,43,107,0.08)" }}>
@@ -873,7 +873,7 @@ export default function LandingPage() {
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 50px rgba(255,107,26,0.35)` }}>
               Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
-            <Link href="/login">
+            <Link href="/sign-in">
               <button className="flex items-center justify-center gap-2 px-8 py-4 rounded-full font-semibold text-sm transition-all hover:bg-white/10"
                 style={{ background: "#fff", border: `1px solid ${BORDER2}`, color: TEXT,
                        boxShadow: "0 2px 12px rgba(11,43,107,0.08)" }}>
