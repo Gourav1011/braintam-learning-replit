@@ -23,7 +23,7 @@ export default function CourseDetailScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Feather name="arrow-left" size={22} color={Colors.navy} />
+            <Feather name="arrow-left" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>
@@ -36,7 +36,7 @@ export default function CourseDetailScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Feather name="arrow-left" size={22} color={Colors.navy} />
+            <Feather name="arrow-left" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.centered}>
