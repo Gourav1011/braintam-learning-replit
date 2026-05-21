@@ -687,7 +687,8 @@ export default function LandingPage() {
               className="text-4xl sm:text-5xl lg:text-[4.25rem] font-black leading-[1.05] tracking-tight">
               The future of{" "}
               <span className="block" style={{ background: `linear-gradient(135deg, ${ORANGE} 0%, #FFA040 60%, #FF6B1A 100%)`,
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                paddingLeft: "2px", marginLeft: "-2px" }}>
                 learning is here.
               </span>
             </motion.h1>
