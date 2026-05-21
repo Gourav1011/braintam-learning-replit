@@ -11,6 +11,26 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/braintam-android: Braintam Android"
+
+[[workflows.workflow]]
+name = "artifacts/braintam-android: Braintam Android"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN REPLIT_EXPO_DEV_DOMAIN=$REPLIT_EXPO_DEV_DOMAIN PORT=8082 pnpm --filter @workspace/braintam-android run start"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -26,6 +46,10 @@ externalPort = 8080
 [[ports]]
 localPort = 8081
 externalPort = 80
+
+[[ports]]
+localPort = 8082
+externalPort = 3001
 
 [[ports]]
 localPort = 18817
