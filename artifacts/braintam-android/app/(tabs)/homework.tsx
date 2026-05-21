@@ -8,6 +8,7 @@ import {
   Switch,
   ActivityIndicator,
   Platform,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -60,18 +61,14 @@ function UrgencyBadge({ hours }: { hours: number }) {
     return (
       <View style={[styles.badge, { backgroundColor: "#FFF4EE" }]}>
         <Feather name="alert-triangle" size={10} color={Colors.primary} />
-        <Text style={[styles.badgeText, { color: Colors.primary }]}>
-          Due in {Math.round(hours)}h
-        </Text>
+        <Text style={[styles.badgeText, { color: Colors.primary }]}>Due in {Math.round(hours)}h</Text>
       </View>
     );
   }
   if (hours <= 72) {
     return (
       <View style={[styles.badge, { backgroundColor: "#FFFBEB" }]}>
-        <Text style={[styles.badgeText, { color: Colors.warning }]}>
-          {Math.round(hours / 24)}d left
-        </Text>
+        <Text style={[styles.badgeText, { color: Colors.warning }]}>{Math.round(hours / 24)}d left</Text>
       </View>
     );
   }
@@ -92,29 +89,18 @@ export default function HomeworkScreen() {
     getNotificationPermissionStatus().then((s) => setPermGranted(s === "granted"));
   }, []);
 
-  // Auto-schedule a 24h reminder for every eligible homework item when data loads
+  // Reflect current notification state from AsyncStorage when data loads
+  // (actual scheduling is done by the app-level orchestrator in _layout.tsx)
   useEffect(() => {
-    if (!rawHW || Platform.OS === "web") return;
+    if (!rawHW) return;
     const build = async () => {
-      const granted = (await getNotificationPermissionStatus()) === "granted";
       const result: HWItem[] = await Promise.all(
         rawHW.map(async (h) => {
           const hours = hoursUntilDue(h.dueDate);
           const notifPossible = hours > 24;
-          let notifEnabled = false;
-          if (notifPossible) {
-            const alreadyScheduled = await isHomeworkNotificationScheduled(h.id);
-            if (granted && !alreadyScheduled) {
-              // Auto-schedule for new eligible items
-              notifEnabled = await scheduleHomeworkNotification(
-                h.id,
-                h.title,
-                new Date(h.dueDate)
-              );
-            } else {
-              notifEnabled = alreadyScheduled;
-            }
-          }
+          const notifEnabled = notifPossible
+            ? await isHomeworkNotificationScheduled(h.id)
+            : false;
           return {
             id: h.id,
             title: h.title,
@@ -132,18 +118,35 @@ export default function HomeworkScreen() {
     build();
   }, [rawHW]);
 
+  // Non-optimistic toggle: update UI only after confirmed schedule/cancel success
   const toggleNotification = useCallback(async (item: HWItem) => {
     if (Platform.OS !== "web") {
       await Haptics.selectionAsync();
     }
     if (item.notifEnabled) {
       await cancelHomeworkNotification(item.id);
+      // Cancel always succeeds; update state
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: false } : i))
+      );
     } else {
-      await scheduleHomeworkNotification(item.id, item.title, new Date(item.dueDate));
+      const scheduled = await scheduleHomeworkNotification(
+        item.id,
+        item.title,
+        new Date(item.dueDate)
+      );
+      if (scheduled) {
+        setItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: true } : i))
+        );
+      } else {
+        Alert.alert(
+          "Couldn't set reminder",
+          "Please enable notifications for Braintam in your device settings.",
+          [{ text: "OK" }]
+        );
+      }
     }
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: !i.notifEnabled } : i))
-    );
   }, []);
 
   const renderItem = ({ item }: { item: HWItem }) => {
@@ -153,9 +156,7 @@ export default function HomeworkScreen() {
         <View style={styles.cardTop}>
           <View style={styles.cardInfo}>
             <Text style={styles.subject}>{item.subjectName}</Text>
-            <Text style={styles.hwTitle} numberOfLines={2}>
-              {item.title}
-            </Text>
+            <Text style={styles.hwTitle} numberOfLines={2}>{item.title}</Text>
             <Text style={styles.marks}>
               <Feather name="award" size={12} color={Colors.muted} /> {item.maxMarks ?? "—"} marks
             </Text>
@@ -191,9 +192,7 @@ export default function HomeworkScreen() {
             <View style={styles.notifRow}>
               <Feather name="bell-off" size={14} color={Colors.border} />
               <Text style={styles.notifUnavailable}>
-                {hours < 0
-                  ? "Deadline passed"
-                  : "Less than 24h remaining — can't schedule reminder"}
+                {hours < 0 ? "Deadline passed" : "Less than 24h remaining"}
               </Text>
             </View>
           )}
@@ -209,9 +208,7 @@ export default function HomeworkScreen() {
         {!permGranted && Platform.OS !== "web" && (
           <View style={styles.permBanner}>
             <Feather name="alert-circle" size={14} color={Colors.warning} />
-            <Text style={styles.permText}>
-              Enable notifications in settings to get reminders
-            </Text>
+            <Text style={styles.permText}>Enable notifications in device settings to get reminders</Text>
           </View>
         )}
       </View>
@@ -282,24 +279,10 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   cardInfo: { flex: 1, paddingRight: 10 },
-  subject: {
-    fontSize: 11,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.navy,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
+  subject: { fontSize: 11, fontFamily: "Poppins_600SemiBold", color: Colors.navy, letterSpacing: 0.5, textTransform: "uppercase" },
   hwTitle: { fontSize: 16, fontFamily: "Poppins_600SemiBold", color: Colors.navy, marginTop: 2, lineHeight: 22 },
   marks: { fontSize: 13, fontFamily: "Poppins_400Regular", color: Colors.muted, marginTop: 4 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4 },
   badgeText: { fontSize: 11, fontFamily: "Poppins_600SemiBold" },
   cardBottom: { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 12, gap: 8 },
   dueRow: { flexDirection: "row", alignItems: "center", gap: 6 },

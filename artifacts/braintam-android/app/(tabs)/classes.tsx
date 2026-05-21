@@ -8,6 +8,7 @@ import {
   Switch,
   ActivityIndicator,
   Platform,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -60,9 +61,7 @@ function StatusBadge({ minsUntil, status }: { minsUntil: number; status: string 
   if (minsUntil > 0 && minsUntil <= 60) {
     return (
       <View style={[styles.badge, { backgroundColor: "#FFF4EE" }]}>
-        <Text style={[styles.badgeText, { color: Colors.primary }]}>
-          In {minsUntil} min
-        </Text>
+        <Text style={[styles.badgeText, { color: Colors.primary }]}>In {minsUntil} min</Text>
       </View>
     );
   }
@@ -90,29 +89,18 @@ export default function ClassesScreen() {
     getNotificationPermissionStatus().then((s) => setPermGranted(s === "granted"));
   }, []);
 
-  // Auto-schedule a 15-min reminder for every eligible upcoming class when data loads
+  // Reflect current notification state from AsyncStorage when data loads
+  // (actual scheduling is done by the app-level orchestrator in _layout.tsx)
   useEffect(() => {
-    if (!rawClasses || Platform.OS === "web") return;
+    if (!rawClasses) return;
     const build = async () => {
-      const granted = (await getNotificationPermissionStatus()) === "granted";
       const result: ClassItem[] = await Promise.all(
         rawClasses.map(async (c) => {
           const minsLeft = minutesUntil(c.scheduledAt);
           const notifPossible = minsLeft > 15 && c.status === "upcoming";
-          let notifEnabled = false;
-          if (notifPossible) {
-            const alreadyScheduled = await isClassNotificationScheduled(c.id);
-            if (granted && !alreadyScheduled) {
-              // Auto-schedule for new eligible classes
-              notifEnabled = await scheduleClassNotification(
-                c.id,
-                c.title,
-                new Date(c.scheduledAt)
-              );
-            } else {
-              notifEnabled = alreadyScheduled;
-            }
-          }
+          const notifEnabled = notifPossible
+            ? await isClassNotificationScheduled(c.id)
+            : false;
           return {
             id: c.id,
             title: c.title,
@@ -130,22 +118,36 @@ export default function ClassesScreen() {
     build();
   }, [rawClasses]);
 
-  const toggleNotification = useCallback(
-    async (item: ClassItem) => {
-      if (Platform.OS !== "web") {
-        await Haptics.selectionAsync();
-      }
-      if (item.notifEnabled) {
-        await cancelClassNotification(item.id);
-      } else {
-        await scheduleClassNotification(item.id, item.title, new Date(item.scheduledAt));
-      }
+  // Non-optimistic toggle: update UI only after confirmed schedule/cancel success
+  const toggleNotification = useCallback(async (item: ClassItem) => {
+    if (Platform.OS !== "web") {
+      await Haptics.selectionAsync();
+    }
+    if (item.notifEnabled) {
+      await cancelClassNotification(item.id);
+      // Cancel always succeeds (fire-and-forget); update state
       setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: !i.notifEnabled } : i))
+        prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: false } : i))
       );
-    },
-    []
-  );
+    } else {
+      const scheduled = await scheduleClassNotification(
+        item.id,
+        item.title,
+        new Date(item.scheduledAt)
+      );
+      if (scheduled) {
+        setItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, notifEnabled: true } : i))
+        );
+      } else {
+        Alert.alert(
+          "Couldn't set reminder",
+          "Please enable notifications for Braintam in your device settings.",
+          [{ text: "OK" }]
+        );
+      }
+    }
+  }, []);
 
   const renderItem = ({ item }: { item: ClassItem }) => {
     const minsUntil = minutesUntil(item.scheduledAt);
@@ -206,7 +208,7 @@ export default function ClassesScreen() {
         {!permGranted && Platform.OS !== "web" && (
           <View style={styles.permBanner}>
             <Feather name="alert-circle" size={14} color={Colors.warning} />
-            <Text style={styles.permText}>Enable notifications in settings to get reminders</Text>
+            <Text style={styles.permText}>Enable notifications in device settings to get reminders</Text>
           </View>
         )}
       </View>
@@ -249,11 +251,7 @@ export default function ClassesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 8 },
-  headerTitle: {
-    fontSize: 26,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.navy,
-  },
+  headerTitle: { fontSize: 26, fontFamily: "Poppins_700Bold", color: Colors.navy },
   permBanner: {
     flexDirection: "row",
     alignItems: "center",
