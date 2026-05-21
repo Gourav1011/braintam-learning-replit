@@ -96,7 +96,12 @@ router.post("/auth/send-otp", async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await db.insert(otpTable).values({ phone, code, expiresAt });
-  req.log.info({ phone, code }, "OTP generated");
+  try {
+    await sendOtp(phone, code);
+  } catch (err) {
+    req.log.error({ phone, err }, "SMS send failed");
+  }
+  req.log.info({ phone }, "OTP send-otp handled");
   res.json({ success: true, message: `OTP sent to ${phone}` });
 });
 
