@@ -462,134 +462,89 @@ function StatsTicker() {
 
 // ── Team Section ──────────────────────────────────────────────
 function TeamAccordion() {
-  const [active, setActive] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
 
-  const toggle = (i: number) => setActive(prev => prev === i ? null : i);
-
-  // ── Mobile grid (< sm) — all 8 members, tap to expand ──────
-  const MobileGrid = () => (
-    <div className="grid grid-cols-2 gap-3 sm:hidden">
-      {team.map((m, i) => (
-        <div key={m.name}
-          className="relative rounded-2xl overflow-hidden cursor-pointer select-none"
-          style={{ height: 200, border: `1px solid ${active === i ? "rgba(255,107,26,0.5)" : BORDER2}` }}
-          onClick={() => toggle(i)}>
-          {m.photo ? (
-            <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
-              <span className="text-4xl font-black text-white opacity-20">{m.name.charAt(0)}</span>
-            </div>
-          )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.55) 55%, rgba(6,16,31,0.05) 100%)" }} />
-          {/* Tap hint when collapsed */}
-          {active !== i && (
-            <div className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255,107,26,0.25)", border: "1px solid rgba(255,107,26,0.4)" }}>
-              <span className="text-white font-bold" style={{ fontSize: 10 }}>+</span>
-            </div>
-          )}
-          <div className="absolute bottom-0 left-0 right-0 p-3">
-            <AnimatePresence>
-              {active === i ? (
-                <motion.div key="open" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }} className="space-y-1.5">
-                  <div className="text-white font-bold text-xs leading-tight">{m.name}</div>
-                  <div className="font-semibold" style={{ color: ORANGE, fontSize: 10 }}>{m.role}</div>
-                  <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.65)", fontSize: 10 }}>{m.bio}</p>
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {m.tags.map(t => (
-                      <span key={t} className="px-1.5 py-0.5 rounded-full font-semibold"
-                        style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870", fontSize: 9 }}>{t}</span>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="text-white font-bold truncate" style={{ fontSize: 11 }}>{m.name}</div>
-                  <div style={{ color: ORANGE, fontSize: 10 }}>{m.role}</div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {active === i && (
-            <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 0 1.5px rgba(255,107,26,0.5)" }} />
-          )}
+  // Shared card — hover on desktop, tap on mobile
+  const Card = ({ m, i, height, small }: { m: typeof team[0]; i: number; height: number; small?: boolean }) => (
+    <motion.div key={m.name}
+      animate={{ flex: hovered === i ? 5 : 1 }}
+      transition={{ duration: 0.4, ease }}
+      className="relative overflow-hidden rounded-2xl flex-shrink-0 cursor-default"
+      style={{ minWidth: small ? 48 : 56, height, border: `1px solid ${hovered === i ? "rgba(255,107,26,0.45)" : BORDER2}` }}
+      onMouseEnter={() => setHovered(i)}
+      onMouseLeave={() => setHovered(null)}
+      onClick={() => setHovered(prev => prev === i ? null : i)}>
+      {/* Photo or placeholder */}
+      {m.photo ? (
+        <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center"
+          style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
+          <span className="font-black text-white opacity-20" style={{ fontSize: small ? 32 : 40 }}>{m.name.charAt(0)}</span>
         </div>
-      ))}
-    </div>
-  );
-
-  // ── Desktop horizontal accordion (≥ sm) — click to expand ──
-  const DesktopAccordion = () => (
-    <div className="hidden sm:flex gap-2 h-80 w-full">
-      {team.map((m, i) => (
-        <motion.div key={m.name}
-          animate={{ flex: active === i ? 5 : 1 }}
-          transition={{ duration: 0.45, ease }}
-          className="relative overflow-hidden rounded-2xl cursor-pointer flex-shrink-0"
-          style={{ minWidth: 56, border: `1px solid ${active === i ? "rgba(255,107,26,0.4)" : BORDER2}` }}
-          onClick={() => toggle(i)}>
-          {m.photo ? (
-            <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
-              <span className="text-5xl font-black text-white opacity-20">{m.name.charAt(0)}</span>
-            </div>
-          )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.6) 45%, rgba(6,16,31,0.15) 100%)" }} />
-          {active !== i && (
-            <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: ORANGE }} />
-          )}
-          <div className="absolute bottom-0 left-0 right-0 p-4">
-            <AnimatePresence>
-              {active === i ? (
-                <motion.div key="open" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }} className="space-y-2">
-                  <div className="text-white font-bold text-sm leading-tight">{m.name}</div>
-                  <div className="text-xs font-semibold" style={{ color: ORANGE }}>{m.role}</div>
-                  <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>{m.bio}</p>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {m.tags.map(t => (
-                      <span key={t} className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870" }}>{t}</span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    {[Twitter, Linkedin].map((Icon, j) => (
-                      <a key={j} href="#" className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                        style={{ background: "rgba(255,255,255,0.08)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
-                        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
-                        <Icon className="w-3 h-3 text-white" />
-                      </a>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="text-white text-xs font-bold truncate"
-                    style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", maxHeight: 120 }}>
-                    {m.name}
-                  </div>
-                </motion.div>
+      )}
+      {/* Gradient overlay */}
+      <div className="absolute inset-0"
+        style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.55) 50%, rgba(6,16,31,0.05) 100%)" }} />
+      {/* Orange side stripe when collapsed */}
+      {hovered !== i && (
+        <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: ORANGE }} />
+      )}
+      {/* Content */}
+      <div className="absolute bottom-0 left-0 right-0 p-3">
+        <AnimatePresence mode="wait">
+          {hovered === i ? (
+            <motion.div key="open" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }} className="space-y-1.5">
+              <div className="text-white font-bold leading-tight" style={{ fontSize: small ? 11 : 13 }}>{m.name}</div>
+              <div className="font-semibold" style={{ color: ORANGE, fontSize: small ? 9 : 11 }}>{m.role}</div>
+              <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", fontSize: small ? 9 : 11 }}>{m.bio}</p>
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {m.tags.map(t => (
+                  <span key={t} className="px-1.5 py-0.5 rounded-full font-semibold"
+                    style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870", fontSize: 9 }}>{t}</span>
+                ))}
+              </div>
+              {!small && (
+                <div className="flex gap-2 pt-0.5">
+                  {[Twitter, Linkedin].map((Icon, j) => (
+                    <a key={j} href="#" className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ background: "rgba(255,255,255,0.08)" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+                      <Icon className="w-3 h-3 text-white" />
+                    </a>
+                  ))}
+                </div>
               )}
-            </AnimatePresence>
-          </div>
-          {active === i && (
-            <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 40px rgba(255,107,26,0.08)" }} />
+            </motion.div>
+          ) : (
+            <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div className="text-white font-bold"
+                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", maxHeight: 100, fontSize: small ? 9 : 11 }}>
+                {m.name}
+              </div>
+            </motion.div>
           )}
-        </motion.div>
-      ))}
-    </div>
+        </AnimatePresence>
+      </div>
+      {/* Inner glow on hover */}
+      {hovered === i && (
+        <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 40px rgba(255,107,26,0.07)" }} />
+      )}
+    </motion.div>
   );
 
   return (
     <>
-      <MobileGrid />
-      <DesktopAccordion />
+      {/* Mobile: 2-col grid, tap to reveal */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
+        {team.map((m, i) => <Card key={m.name} m={m} i={i} height={190} small />)}
+      </div>
+      {/* Desktop: horizontal hover accordion */}
+      <div className="hidden sm:flex gap-2 w-full" style={{ height: 300 }}>
+        {team.map((m, i) => <Card key={m.name} m={m} i={i} height={300} />)}
+      </div>
     </>
   );
 }
@@ -858,7 +813,7 @@ export default function LandingPage() {
               <span style={{ background: `linear-gradient(135deg, ${ORANGE}, #FFA040)`,
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>innovators.</span>
             </h2>
-            <p className="text-sm" style={{ color: MUTED }}>Tap a card to learn more about each team member</p>
+            <p className="text-sm" style={{ color: MUTED }}>Hover over a card to learn more about each team member</p>
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
             <TeamAccordion />
