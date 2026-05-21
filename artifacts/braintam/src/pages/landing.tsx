@@ -738,9 +738,9 @@ export default function LandingPage() {
       <StatsTicker />
 
       {/* ── FEATURES (rich 2→4 col) ── */}
-      <section className="py-16 px-4 md:px-6">
+      <section className="py-8 md:py-16 px-4 md:px-6">
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-10 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 md:mb-10 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Platform</div>
             <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
               Everything your child needs to excel.
@@ -787,9 +787,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── PROGRAMS / PRICING ── */}
-      <section className="py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <section className="py-10 md:py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-5xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-12 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-7 md:mb-12 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Programs</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>Premium live learning programs</h2>
             <p className="text-sm" style={{ color: MUTED }}>EMI available · Demo class at ₹49 · Enroll directly</p>
@@ -856,9 +856,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── TEAM HORIZONTAL ACCORDION ── */}
-      <section className="py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <section className="py-10 md:py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-10 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 md:mb-10 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Meet the Team</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
               Built by educators &{" "}
@@ -874,9 +874,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── TESTIMONIALS LOOP ── */}
-      <section className="py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <section className="py-10 md:py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-10 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 md:mb-10 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Reviews</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>What families say about Braintam</h2>
             <p className="text-sm" style={{ color: MUTED }}>Real experiences from our learning community</p>
@@ -924,7 +924,7 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{ background: NAVY }}>
-        <div className="max-w-6xl mx-auto px-6 pt-14 pb-10">
+        <div className="max-w-6xl mx-auto px-6 pt-8 pb-6 md:pt-14 md:pb-10">
           {/* Top row: logo block + 3 link columns */}
           <div className="flex flex-col gap-10 md:flex-row md:gap-12">
 
