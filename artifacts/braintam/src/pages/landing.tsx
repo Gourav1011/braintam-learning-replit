@@ -194,13 +194,13 @@ function Particles() {
 // ── Hero Visual — Student Toppers ─────────────────────────────
 const toppers = [
   {
-    name: "Priya Sharma",
-    grade: "Grade 8 · Delhi",
-    initial: "P",
-    score: "98%",
+    name: "Kaniyha Sharma",
+    grade: "JK Board",
+    initial: "K",
+    score: "485/500",
     rank: "#1",
     medal: "🥇",
-    tag: "Maths Topper",
+    tag: "Board Topper",
     stars: 5,
     quote: "Braintam made me love studying!",
     avatarFrom: "#FF6B1A",
