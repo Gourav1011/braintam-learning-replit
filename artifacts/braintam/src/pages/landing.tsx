@@ -130,140 +130,189 @@ function Particles() {
   );
 }
 
-// ── Hero Visual — 3D Device Mockup ────────────────────────────
-const deviceSubjects = [
-  { emoji: "📐", name: "Maths",   pct: 82, color: ORANGE   },
-  { emoji: "🔬", name: "Science", pct: 74, color: "#3B82F6" },
-  { emoji: "📖", name: "English", pct: 91, color: "#10B981" },
-  { emoji: "🏛️", name: "History", pct: 67, color: "#8B5CF6" },
+// ── Hero Visual — Student Toppers ─────────────────────────────
+const toppers = [
+  {
+    name: "Priya Sharma",
+    grade: "Grade 8 · Delhi",
+    initial: "P",
+    score: "98%",
+    rank: "#1",
+    medal: "🥇",
+    tag: "Maths Topper",
+    stars: 5,
+    quote: "Braintam made me love studying!",
+    avatarFrom: "#FF6B1A",
+    avatarTo: "#c94e00",
+    tagColor: "#FF6B1A",
+    tagBg: "rgba(255,107,26,0.1)",
+  },
+  {
+    name: "Rohan Verma",
+    grade: "Grade 10 · Mumbai",
+    initial: "R",
+    score: "97%",
+    rank: "#2",
+    medal: "🥈",
+    tag: "Science Star",
+    stars: 5,
+    quote: "Live classes changed everything!",
+    avatarFrom: "#3B82F6",
+    avatarTo: "#1d4ed8",
+    tagColor: "#3B82F6",
+    tagBg: "rgba(59,130,246,0.1)",
+  },
+  {
+    name: "Ananya Singh",
+    grade: "Grade 6 · Bangalore",
+    initial: "A",
+    score: "95%",
+    rank: "#3",
+    medal: "🥉",
+    tag: "All-Rounder",
+    stars: 5,
+    quote: "Best platform for school kids!",
+    avatarFrom: "#10B981",
+    avatarTo: "#059669",
+    tagColor: "#10B981",
+    tagBg: "rgba(16,185,129,0.1)",
+  },
 ] as const;
 
 function HeroVisual() {
   return (
-    <div className="relative w-full h-full flex items-center justify-center select-none"
-      style={{ perspective: "1100px" }}>
+    <div className="relative w-full h-full flex items-center justify-center select-none">
 
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 70% 30%, rgba(255,107,26,0.11) 0%, transparent 55%)" }} />
+        style={{ background: "radial-gradient(ellipse at 65% 30%, rgba(255,107,26,0.10) 0%, transparent 55%)" }} />
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 25% 75%, rgba(11,43,107,0.09) 0%, transparent 55%)" }} />
+        style={{ background: "radial-gradient(ellipse at 30% 75%, rgba(11,43,107,0.08) 0%, transparent 55%)" }} />
 
-      {/* ── 3D floating phone/tablet ── */}
-      <motion.div
-        animate={{ y: [0, -14, 0] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-        className="relative z-10"
-        style={{ transform: "rotateX(10deg) rotateY(-13deg)", transformStyle: "preserve-3d" }}>
+      {/* ── Floating toppers badge ── */}
+      <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full"
+        style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
+        <span style={{ fontSize: 14 }}>🏆</span>
+        <span className="text-xs font-bold text-white">10,000+ Toppers across India</span>
+      </motion.div>
 
-        {/* Chassis */}
-        <div style={{
-          width: 252,
-          background: `linear-gradient(155deg, #2050a8 0%, ${NAVY} 40%, #061548 100%)`,
-          borderRadius: 30,
-          padding: "10px 10px 15px",
-          boxShadow: [
-            "0 60px 90px rgba(11,43,107,0.45)",
-            "0 20px 40px rgba(11,43,107,0.3)",
-            "0 0 0 1px rgba(255,255,255,0.08)",
-            "inset 0 1px 0 rgba(255,255,255,0.14)",
-            "0 0 100px rgba(255,107,26,0.06)",
-          ].join(", "),
-        }}>
-          {/* Camera */}
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.22)", margin: "0 auto 7px" }} />
+      {/* ── Three student cards ── */}
+      <div className="relative z-10 flex items-end gap-4 mt-6">
 
-          {/* Screen */}
-          <div style={{ background: "#F5F7FF", borderRadius: 22, padding: 13, overflow: "hidden" }}>
-
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#fff", fontSize: 12, fontWeight: 900 }}>B</div>
-              <div>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>Braintam</div>
-                <div style={{ fontSize: 8.5, color: MUTED }}>Grade 6 · Dashboard</div>
+        {/* Card: Ananya — left, slightly lower */}
+        {(() => { const s = toppers[2]; return (
+          <motion.div key={s.name}
+            animate={{ y: [4, -8, 4] }}
+            transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+            className="rounded-3xl p-4 w-40 flex-shrink-0"
+            style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
+                     boxShadow: "0 16px 48px rgba(11,43,107,0.12)" }}>
+            {/* Avatar */}
+            <div className="relative mb-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto text-white text-xl font-black"
+                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
+                         boxShadow: `0 8px 20px ${s.avatarFrom}40` }}>
+                {s.initial}
               </div>
-              <div style={{ marginLeft: "auto", fontSize: 10, color: ORANGE, fontWeight: 800 }}>🔥 14</div>
+              <div className="absolute -bottom-1 -right-1 text-lg leading-none">{s.medal}</div>
             </div>
+            <div className="text-xs font-bold text-center mb-0.5" style={{ color: TEXT }}>{s.name}</div>
+            <div className="text-xs text-center mb-2" style={{ color: MUTED }}>{s.grade}</div>
+            <div className="flex justify-center mb-2">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-black" style={{ color: s.tagColor }}>{s.score}</div>
+              <div className="text-xs" style={{ color: MUTED }}>avg score</div>
+            </div>
+            <div className="flex justify-center gap-0.5 mt-2">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 10 }}>★</span>)}
+            </div>
+          </motion.div>
+        ); })()}
 
-            {/* Progress banner — dark navy card */}
-            <div style={{ background: `linear-gradient(130deg, ${NAVY} 0%, #1a3a8a 100%)`,
-              borderRadius: 14, padding: "10px 13px", marginBottom: 10 }}>
-              <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>Weekly Progress</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: ORANGE, lineHeight: 1 }}>78%</div>
-              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>↑ 12% from last week</div>
-              <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.12)", overflow: "hidden" }}>
-                <motion.div style={{ height: "100%", borderRadius: 2, background: ORANGE }}
-                  initial={{ width: 0 }} animate={{ width: "78%" }}
-                  transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }} />
+        {/* Card: Priya — center, tallest (gold, featured) */}
+        {(() => { const s = toppers[0]; return (
+          <motion.div key={s.name}
+            animate={{ y: [0, -14, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            className="rounded-3xl p-5 w-44 flex-shrink-0 relative"
+            style={{ background: "#fff", border: `2px solid rgba(255,107,26,0.2)`,
+                     boxShadow: "0 24px 60px rgba(11,43,107,0.18), 0 0 0 4px rgba(255,107,26,0.06)" }}>
+            {/* Crown */}
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-2xl">👑</div>
+            {/* Avatar */}
+            <div className="relative mb-3 mt-1">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto text-white text-2xl font-black"
+                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
+                         boxShadow: `0 10px 24px ${s.avatarFrom}50` }}>
+                {s.initial}
               </div>
+              <div className="absolute -bottom-1 -right-1 text-xl leading-none">{s.medal}</div>
             </div>
-
-            {/* 2×2 subject grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-              {deviceSubjects.map((s, i) => (
-                <div key={s.name} style={{ background: "#fff", borderRadius: 11, padding: "7px 9px",
-                  border: "1px solid rgba(11,43,107,0.07)" }}>
-                  <div style={{ fontSize: 15, marginBottom: 2 }}>{s.emoji}</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: TEXT }}>{s.name}</div>
-                  <div style={{ marginTop: 4, height: 3, borderRadius: 2, background: "rgba(11,43,107,0.08)", overflow: "hidden" }}>
-                    <motion.div style={{ height: "100%", borderRadius: 2, background: s.color }}
-                      initial={{ width: 0 }} animate={{ width: `${s.pct}%` }}
-                      transition={{ duration: 1.1, delay: 0.8 + i * 0.1, ease: "easeOut" }} />
-                  </div>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: s.color, marginTop: 2 }}>{s.pct}%</div>
-                </div>
-              ))}
+            <div className="text-sm font-bold text-center mb-0.5" style={{ color: TEXT }}>{s.name}</div>
+            <div className="text-xs text-center mb-2" style={{ color: MUTED }}>{s.grade}</div>
+            <div className="flex justify-center mb-3">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
             </div>
-          </div>
+            <div className="text-center mb-2">
+              <div className="text-2xl font-black" style={{ color: s.tagColor }}>{s.score}</div>
+              <div className="text-xs" style={{ color: MUTED }}>avg score</div>
+            </div>
+            <div className="text-xs text-center italic px-1" style={{ color: MUTED }}>"{s.quote}"</div>
+            <div className="flex justify-center gap-0.5 mt-2">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 11 }}>★</span>)}
+            </div>
+          </motion.div>
+        ); })()}
 
-          {/* Home bar */}
-          <div style={{ width: 40, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.2)", margin: "9px auto 0" }} />
-        </div>
+        {/* Card: Rohan — right, slightly lower */}
+        {(() => { const s = toppers[1]; return (
+          <motion.div key={s.name}
+            animate={{ y: [4, -10, 4] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.4 }}
+            className="rounded-3xl p-4 w-40 flex-shrink-0"
+            style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
+                     boxShadow: "0 16px 48px rgba(11,43,107,0.12)" }}>
+            {/* Avatar */}
+            <div className="relative mb-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto text-white text-xl font-black"
+                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
+                         boxShadow: `0 8px 20px ${s.avatarFrom}40` }}>
+                {s.initial}
+              </div>
+              <div className="absolute -bottom-1 -right-1 text-lg leading-none">{s.medal}</div>
+            </div>
+            <div className="text-xs font-bold text-center mb-0.5" style={{ color: TEXT }}>{s.name}</div>
+            <div className="text-xs text-center mb-2" style={{ color: MUTED }}>{s.grade}</div>
+            <div className="flex justify-center mb-2">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-black" style={{ color: s.tagColor }}>{s.score}</div>
+              <div className="text-xs" style={{ color: MUTED }}>avg score</div>
+            </div>
+            <div className="flex justify-center gap-0.5 mt-2">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 10 }}>★</span>)}
+            </div>
+          </motion.div>
+        ); })()}
+      </div>
 
-        {/* Cast shadow */}
-        <div style={{ position: "absolute", bottom: -26, left: "8%", right: "8%",
-          height: 26, borderRadius: "50%", background: "rgba(11,43,107,0.22)", filter: "blur(18px)" }} />
-      </motion.div>
-
-      {/* ── Floating: LIVE NOW ── */}
-      <motion.div animate={{ y: [0, -11, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-3 right-0 z-20 rounded-2xl px-4 py-3"
+      {/* ── Bottom floating: "Join them" CTA badge ── */}
+      <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5 px-5 py-2.5 rounded-2xl"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
-                 boxShadow: "0 10px 32px rgba(11,43,107,0.14)", minWidth: 152 }}>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-xs font-bold text-red-500">LIVE NOW</span>
+                 boxShadow: "0 8px 28px rgba(11,43,107,0.13)" }}>
+        <div className="flex -space-x-2">
+          {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
+            <div key={i} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
+              style={{ background: c }}>{"PRA"[i]}</div>
+          ))}
         </div>
-        <div className="text-sm font-bold" style={{ color: TEXT }}>Algebra — Ch. 5</div>
-        <div className="text-xs mt-0.5" style={{ color: MUTED }}>Expert-led · 42 students</div>
-      </motion.div>
-
-      {/* ── Floating: Score ── */}
-      <motion.div animate={{ y: [0, 12, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute bottom-8 left-0 z-20 rounded-2xl px-4 py-3"
-        style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
-                 boxShadow: "0 10px 32px rgba(11,43,107,0.14)" }}>
-        <div className="text-xs font-medium mb-1" style={{ color: MUTED }}>Latest Score</div>
-        <div className="text-2xl font-black" style={{ color: ORANGE }}>95%</div>
-        <div className="text-xs font-medium" style={{ color: MUTED }}>Mathematics Quiz</div>
-      </motion.div>
-
-      {/* ── Floating: Rank ── */}
-      <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-        className="absolute bottom-10 right-0 z-20 rounded-2xl px-3 py-2.5 flex items-center gap-2.5"
-        style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
-                 boxShadow: "0 10px 32px rgba(11,43,107,0.14)" }}>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(255,107,26,0.1)" }}>
-          <Award className="w-4 h-4" style={{ color: ORANGE }} />
-        </div>
-        <div>
-          <div className="text-sm font-black" style={{ color: TEXT }}>Rank #7</div>
-          <div className="text-xs font-medium" style={{ color: MUTED }}>Leaderboard</div>
+        <div className="text-xs font-semibold" style={{ color: TEXT }}>
+          <span className="font-black" style={{ color: ORANGE }}>5,00,000+</span> students already learning
         </div>
       </motion.div>
     </div>
