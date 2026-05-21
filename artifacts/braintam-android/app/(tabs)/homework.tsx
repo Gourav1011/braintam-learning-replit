@@ -12,7 +12,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { Stack } from "expo-router";
 import { useListHomework } from "@workspace/api-client-react";
 import {
   scheduleHomeworkNotification,
@@ -93,16 +92,29 @@ export default function HomeworkScreen() {
     getNotificationPermissionStatus().then((s) => setPermGranted(s === "granted"));
   }, []);
 
+  // Auto-schedule a 24h reminder for every eligible homework item when data loads
   useEffect(() => {
-    if (!rawHW) return;
+    if (!rawHW || Platform.OS === "web") return;
     const build = async () => {
+      const granted = (await getNotificationPermissionStatus()) === "granted";
       const result: HWItem[] = await Promise.all(
         rawHW.map(async (h) => {
           const hours = hoursUntilDue(h.dueDate);
           const notifPossible = hours > 24;
-          const notifEnabled = notifPossible
-            ? await isHomeworkNotificationScheduled(h.id)
-            : false;
+          let notifEnabled = false;
+          if (notifPossible) {
+            const alreadyScheduled = await isHomeworkNotificationScheduled(h.id);
+            if (granted && !alreadyScheduled) {
+              // Auto-schedule for new eligible items
+              notifEnabled = await scheduleHomeworkNotification(
+                h.id,
+                h.title,
+                new Date(h.dueDate)
+              );
+            } else {
+              notifEnabled = alreadyScheduled;
+            }
+          }
           return {
             id: h.id,
             title: h.title,
@@ -145,7 +157,7 @@ export default function HomeworkScreen() {
               {item.title}
             </Text>
             <Text style={styles.marks}>
-              <Feather name="award" size={12} color={Colors.muted} /> {item.maxMarks} marks
+              <Feather name="award" size={12} color={Colors.muted} /> {item.maxMarks ?? "—"} marks
             </Text>
           </View>
           <UrgencyBadge hours={hours} />
@@ -191,54 +203,51 @@ export default function HomeworkScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Homework</Text>
-          {!permGranted && Platform.OS !== "web" && (
-            <View style={styles.permBanner}>
-              <Feather name="alert-circle" size={14} color={Colors.warning} />
-              <Text style={styles.permText}>
-                Enable notifications in settings to get reminders
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={Colors.navy} size="large" />
-            <Text style={styles.loadingText}>Loading homework…</Text>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Homework</Text>
+        {!permGranted && Platform.OS !== "web" && (
+          <View style={styles.permBanner}>
+            <Feather name="alert-circle" size={14} color={Colors.warning} />
+            <Text style={styles.permText}>
+              Enable notifications in settings to get reminders
+            </Text>
           </View>
-        ) : isError ? (
-          <View style={styles.centered}>
-            <Feather name="wifi-off" size={40} color={Colors.border} />
-            <Text style={styles.emptyTitle}>Couldn't load homework</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
-              <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : items.length === 0 ? (
-          <View style={styles.centered}>
-            <Feather name="check-circle" size={40} color={Colors.success} />
-            <Text style={styles.emptyTitle}>All caught up!</Text>
-            <Text style={styles.emptyDesc}>No pending homework right now</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={items}
-            keyExtractor={(i) => String(i.id)}
-            renderItem={renderItem}
-            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={!!items.length}
-            onRefresh={refetch}
-            refreshing={isLoading}
-          />
         )}
       </View>
-    </>
+
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={Colors.navy} size="large" />
+          <Text style={styles.loadingText}>Loading homework…</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.centered}>
+          <Feather name="wifi-off" size={40} color={Colors.border} />
+          <Text style={styles.emptyTitle}>Couldn't load homework</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : items.length === 0 ? (
+        <View style={styles.centered}>
+          <Feather name="check-circle" size={40} color={Colors.success} />
+          <Text style={styles.emptyTitle}>All caught up!</Text>
+          <Text style={styles.emptyDesc}>No pending homework right now</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(i) => String(i.id)}
+          renderItem={renderItem}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={!!items.length}
+          onRefresh={refetch}
+          refreshing={isLoading}
+        />
+      )}
+    </View>
   );
 }
 

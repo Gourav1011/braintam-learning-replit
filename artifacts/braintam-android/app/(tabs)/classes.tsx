@@ -90,16 +90,29 @@ export default function ClassesScreen() {
     getNotificationPermissionStatus().then((s) => setPermGranted(s === "granted"));
   }, []);
 
+  // Auto-schedule a 15-min reminder for every eligible upcoming class when data loads
   useEffect(() => {
-    if (!rawClasses) return;
+    if (!rawClasses || Platform.OS === "web") return;
     const build = async () => {
+      const granted = (await getNotificationPermissionStatus()) === "granted";
       const result: ClassItem[] = await Promise.all(
         rawClasses.map(async (c) => {
           const minsLeft = minutesUntil(c.scheduledAt);
           const notifPossible = minsLeft > 15 && c.status === "upcoming";
-          const notifEnabled = notifPossible
-            ? await isClassNotificationScheduled(c.id)
-            : false;
+          let notifEnabled = false;
+          if (notifPossible) {
+            const alreadyScheduled = await isClassNotificationScheduled(c.id);
+            if (granted && !alreadyScheduled) {
+              // Auto-schedule for new eligible classes
+              notifEnabled = await scheduleClassNotification(
+                c.id,
+                c.title,
+                new Date(c.scheduledAt)
+              );
+            } else {
+              notifEnabled = alreadyScheduled;
+            }
+          }
           return {
             id: c.id,
             title: c.title,
@@ -163,7 +176,7 @@ export default function ClassesScreen() {
                 color={item.notifEnabled ? Colors.primary : Colors.mutedForeground}
               />
               <Text style={[styles.notifLabel, item.notifEnabled && styles.notifLabelActive]}>
-                {item.notifEnabled ? "Reminder set" : "Remind me"}
+                {item.notifEnabled ? "Reminder set (15 min before)" : "Remind me"}
               </Text>
               <Switch
                 value={item.notifEnabled}
@@ -177,7 +190,7 @@ export default function ClassesScreen() {
             <View style={styles.notifRow}>
               <Feather name="bell-off" size={14} color={Colors.border} />
               <Text style={styles.notifUnavailable}>
-                {minsUntil <= 0 ? "Class ended" : "Too soon to schedule"}
+                {minsUntil <= 0 ? "Class ended" : "Too close to schedule a reminder"}
               </Text>
             </View>
           )}

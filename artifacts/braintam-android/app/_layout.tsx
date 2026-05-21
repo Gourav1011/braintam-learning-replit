@@ -12,6 +12,7 @@ import {
   Poppins_700Bold,
 } from "@expo-google-fonts/poppins";
 import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
@@ -21,17 +22,15 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 
+const TOKEN_KEY = "braintam_token";
+const NOTIF_PROMPTED_KEY = "braintam_notif_prompted";
+
 if (process.env.EXPO_PUBLIC_DOMAIN) {
   setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 }
 
-const TOKEN_KEY = "braintam_token";
-
 setAuthTokenGetter(async () => {
   try {
-    const { default: AsyncStorage } = await import(
-      "@react-native-async-storage/async-storage"
-    );
     return await AsyncStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
@@ -62,13 +61,41 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === "web") return;
 
+    // Set up Android notification channels regardless of login state
     setupNotificationChannels();
 
+    // Request notification permissions only when the student is logged in (has a token).
+    // This mirrors "permissions requested at first login" — we check once per install.
     const initPermissions = async () => {
-      await requestNotificationPermissions();
+      const token = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
+      const alreadyPrompted = await AsyncStorage.getItem(NOTIF_PROMPTED_KEY).catch(() => null);
+
+      if (token && !alreadyPrompted) {
+        // First time the app is opened after login — request permission
+        await requestNotificationPermissions();
+        await AsyncStorage.setItem(NOTIF_PROMPTED_KEY, "1").catch(() => {});
+      } else if (!token) {
+        // Not logged in yet — watch for the token to appear (polling once per 3s for up to 30s)
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          const t = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
+          const prompted = await AsyncStorage.getItem(NOTIF_PROMPTED_KEY).catch(() => null);
+          if ((t && !prompted) || attempts >= 10) {
+            clearInterval(poll);
+            if (t && !prompted) {
+              await requestNotificationPermissions();
+              await AsyncStorage.setItem(NOTIF_PROMPTED_KEY, "1").catch(() => {});
+            }
+          }
+        }, 3000);
+        return () => clearInterval(poll);
+      }
+
       setPermissionRequested(true);
     };
-    initPermissions();
+
+    const cleanup = initPermissions();
 
     notificationListener.current = Notifications.addNotificationReceivedListener(
       (notification) => {
@@ -85,6 +112,7 @@ export default function RootLayout() {
     return () => {
       notificationListener.current?.remove();
       responseListener.current?.remove();
+      cleanup?.then?.((fn) => fn?.());
     };
   }, []);
 
