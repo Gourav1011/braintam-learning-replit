@@ -18,7 +18,7 @@ const SURFACE = "rgba(255,255,255,0.95)";
 const BORDER  = "rgba(255,107,26,0.2)";
 const BORDER2 = "rgba(11,43,107,0.1)";
 const TEXT    = "#0B2B6B";
-const MUTED   = "#64748B";
+const MUTED   = "#374151";
 const ease    = [0.25, 0.1, 0.25, 1] as const;
 
 const fadeUp = {
@@ -156,26 +156,32 @@ function HeroVisual() {
 
       <motion.div animate={{ y: [0, -12, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         className="absolute top-6 right-4 z-20 rounded-2xl px-4 py-3"
-        style={{ background: "rgba(255,107,26,0.1)", backdropFilter: "blur(20px)", border: `1px solid rgba(255,107,26,0.25)`, minWidth: 155 }}>
-        <div className="flex items-center gap-2 mb-1"><div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" /><span className="text-red-400 text-xs font-semibold">LIVE NOW</span></div>
-        <div className="text-Grey/40 text-xs mt-0.5">AI-Driven</div>
-        <div className="text-white text-sm font-semibold">Algebra — Ch. 5</div>
-        <div className="text-white/40 text-xs mt-0.5">Premium · Expert-led session</div>
+        style={{ background: "#ffffff", border: `1px solid rgba(11,43,107,0.1)`,
+                 boxShadow: "0 8px 28px rgba(11,43,107,0.14)", minWidth: 155 }}>
+        <div className="flex items-center gap-2 mb-1.5"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /><span className="text-red-500 text-xs font-bold">LIVE NOW</span></div>
+        <div className="text-xs font-medium mb-0.5" style={{ color: MUTED }}>AI-Driven Class</div>
+        <div className="text-sm font-bold" style={{ color: TEXT }}>Algebra — Ch. 5</div>
+        <div className="text-xs mt-0.5" style={{ color: MUTED }}>Expert-led · Premium</div>
       </motion.div>
 
       <motion.div animate={{ y: [0, 13, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         className="absolute bottom-10 left-2 z-20 rounded-2xl px-4 py-3"
-        style={{ background: "rgba(11,43,107,0.35)", backdropFilter: "blur(20px)", border: `1px solid rgba(255,107,26,0.2)` }}>
-        <div className="text-white/50 text-xs mb-1">Latest Score</div>
+        style={{ background: "#ffffff", border: `1px solid rgba(11,43,107,0.1)`,
+                 boxShadow: "0 8px 28px rgba(11,43,107,0.14)" }}>
+        <div className="text-xs font-medium mb-1" style={{ color: MUTED }}>Latest Score</div>
         <div className="text-2xl font-black" style={{ color: ORANGE }}>95%</div>
-        <div className="text-white/40 text-xs">Mathematics Quiz</div>
+        <div className="text-xs font-medium" style={{ color: MUTED }}>Mathematics Quiz</div>
       </motion.div>
 
       <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         className="absolute bottom-14 right-2 z-20 rounded-2xl px-3 py-2.5 flex items-center gap-2"
-        style={{ background: "rgba(255,107,26,0.08)", backdropFilter: "blur(20px)", border: `1px solid rgba(255,107,26,0.2)` }}>
+        style={{ background: "#ffffff", border: `1px solid rgba(11,43,107,0.1)`,
+                 boxShadow: "0 8px 28px rgba(11,43,107,0.14)" }}>
         <Award className="w-4 h-4" style={{ color: ORANGE }} />
-        <div><div className="text-white text-xs font-bold">Rank #7</div><div className="text-white/40 text-xs">Leaderboard</div></div>
+        <div>
+          <div className="text-xs font-bold" style={{ color: TEXT }}>Rank #7</div>
+          <div className="text-xs font-medium" style={{ color: MUTED }}>Leaderboard</div>
+        </div>
       </motion.div>
     </div>
   );
