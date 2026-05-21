@@ -673,7 +673,7 @@ export default function LandingPage() {
         </div>
       </motion.nav>
       {/* ── HERO ── */}
-      <section className="relative flex items-center pt-24 pb-12 md:pt-32 md:pb-24 px-6 overflow-hidden">
+      <section className="relative flex items-center pt-20 pb-6 md:pt-24 md:pb-10 px-6 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] rounded-full opacity-10 blur-[120px] pointer-events-none"
           style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
@@ -739,9 +739,9 @@ export default function LandingPage() {
       <StatsTicker />
 
       {/* ── FEATURES (rich 2→4 col) ── */}
-      <section className="py-8 md:py-16 px-4 md:px-6">
+      <section className="py-5 md:py-10 px-4 md:px-6">
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 md:mb-10 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-4 md:mb-6 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Platform</div>
             <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
               Everything your child needs to excel.
@@ -788,9 +788,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── PROGRAMS / PRICING ── */}
-      <section className="py-10 md:py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <section className="py-6 md:py-12 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-5xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-7 md:mb-12 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-5 md:mb-8 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Programs</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>Premium live learning programs</h2>
             <p className="text-sm" style={{ color: MUTED }}>EMI available · Demo class at ₹49 · Enroll directly</p>
@@ -857,9 +857,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── TEAM HORIZONTAL ACCORDION ── */}
-      <section className="py-10 md:py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <section className="py-6 md:py-12 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 md:mb-10 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-4 md:mb-7 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Meet the Team</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
               Built by educators &{" "}
@@ -875,9 +875,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── TESTIMONIALS LOOP ── */}
-      <section className="py-10 md:py-20 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+      <section className="py-6 md:py-12 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 md:mb-10 space-y-2">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-4 md:mb-7 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Reviews</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>What families say about Braintam</h2>
             <p className="text-sm" style={{ color: MUTED }}>Real experiences from our learning community</p>
@@ -887,7 +887,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section className="py-8 px-2">
+      <section className="py-5 px-2">
         <div className="max-w-3xl mx-auto text-center space-y-7">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
             <div className="w-14 h-14 rounded-2xl mx-auto mb-7 flex items-center justify-center"
