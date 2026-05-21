@@ -460,90 +460,104 @@ function StatsTicker() {
   );
 }
 
+// ── Team Card (module-level so React never unmounts on re-render) ──
+interface TeamCardProps {
+  m: typeof team[0];
+  i: number;
+  height: number;
+  small?: boolean;
+  hovered: number | null;
+  onEnter: (i: number) => void;
+  onLeave: () => void;
+  onTap: (i: number) => void;
+}
+function TeamCard({ m, i, height, small, hovered, onEnter, onLeave, onTap }: TeamCardProps) {
+  const active = hovered === i;
+  return (
+    <motion.div
+      animate={{ flex: active ? 5 : 1 }}
+      transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+      className="relative overflow-hidden rounded-2xl flex-shrink-0"
+      style={{
+        minWidth: small ? 48 : 56,
+        height,
+        border: `1px solid ${active ? "rgba(255,107,26,0.45)" : BORDER2}`,
+        transition: "border-color 0.3s",
+      }}
+      onMouseEnter={() => onEnter(i)}
+      onMouseLeave={onLeave}
+      onClick={() => onTap(i)}>
+      {/* Photo */}
+      {m.photo
+        ? <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
+        : <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
+            <span className="font-black text-white opacity-20" style={{ fontSize: small ? 32 : 40 }}>{m.name.charAt(0)}</span>
+          </div>
+      }
+      {/* Gradient */}
+      <div className="absolute inset-0"
+        style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.55) 50%, rgba(6,16,31,0.05) 100%)" }} />
+      {/* Orange stripe when collapsed */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5"
+        style={{ background: ORANGE, opacity: active ? 0 : 1, transition: "opacity 0.3s" }} />
+      {/* Collapsed label */}
+      <div className="absolute bottom-0 left-0 right-0 p-3"
+        style={{ opacity: active ? 0 : 1, transition: "opacity 0.2s", pointerEvents: active ? "none" : "auto" }}>
+        <div className="text-white font-bold"
+          style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", maxHeight: 110, fontSize: small ? 9 : 11 }}>
+          {m.name}
+        </div>
+      </div>
+      {/* Expanded detail */}
+      <div className="absolute bottom-0 left-0 right-0 p-3 space-y-1.5"
+        style={{ opacity: active ? 1 : 0, transform: active ? "translateY(0)" : "translateY(8px)", transition: "opacity 0.3s, transform 0.3s", pointerEvents: active ? "auto" : "none" }}>
+        <div className="text-white font-bold leading-tight" style={{ fontSize: small ? 11 : 13 }}>{m.name}</div>
+        <div className="font-semibold" style={{ color: ORANGE, fontSize: small ? 9 : 11 }}>{m.role}</div>
+        <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", fontSize: small ? 9 : 11 }}>{m.bio}</p>
+        <div className="flex flex-wrap gap-1 pt-0.5">
+          {m.tags.map(t => (
+            <span key={t} className="px-1.5 py-0.5 rounded-full font-semibold"
+              style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870", fontSize: 9 }}>{t}</span>
+          ))}
+        </div>
+        {!small && (
+          <div className="flex gap-2 pt-0.5">
+            {[Twitter, Linkedin].map((Icon, j) => (
+              <a key={j} href="#" className="w-6 h-6 rounded-lg flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.08)", transition: "background 0.2s" }}
+                onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+                <Icon className="w-3 h-3 text-white" />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Team Section ──────────────────────────────────────────────
 function TeamAccordion() {
   const [hovered, setHovered] = useState<number | null>(null);
-
-  // Shared card — hover on desktop, tap on mobile
-  const Card = ({ m, i, height, small }: { m: typeof team[0]; i: number; height: number; small?: boolean }) => (
-    <motion.div key={m.name}
-      animate={{ flex: hovered === i ? 5 : 1 }}
-      transition={{ duration: 0.4, ease }}
-      className="relative overflow-hidden rounded-2xl flex-shrink-0 cursor-default"
-      style={{ minWidth: small ? 48 : 56, height, border: `1px solid ${hovered === i ? "rgba(255,107,26,0.45)" : BORDER2}` }}
-      onMouseEnter={() => setHovered(i)}
-      onMouseLeave={() => setHovered(null)}
-      onClick={() => setHovered(prev => prev === i ? null : i)}>
-      {/* Photo or placeholder */}
-      {m.photo ? (
-        <img src={m.photo} alt={m.name} className="absolute inset-0 w-full h-full object-cover object-top" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center"
-          style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
-          <span className="font-black text-white opacity-20" style={{ fontSize: small ? 32 : 40 }}>{m.name.charAt(0)}</span>
-        </div>
-      )}
-      {/* Gradient overlay */}
-      <div className="absolute inset-0"
-        style={{ background: "linear-gradient(to top, rgba(6,16,31,0.97) 0%, rgba(6,16,31,0.55) 50%, rgba(6,16,31,0.05) 100%)" }} />
-      {/* Orange side stripe when collapsed */}
-      {hovered !== i && (
-        <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: ORANGE }} />
-      )}
-      {/* Content */}
-      <div className="absolute bottom-0 left-0 right-0 p-3">
-        <AnimatePresence mode="wait">
-          {hovered === i ? (
-            <motion.div key="open" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }} className="space-y-1.5">
-              <div className="text-white font-bold leading-tight" style={{ fontSize: small ? 11 : 13 }}>{m.name}</div>
-              <div className="font-semibold" style={{ color: ORANGE, fontSize: small ? 9 : 11 }}>{m.role}</div>
-              <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", fontSize: small ? 9 : 11 }}>{m.bio}</p>
-              <div className="flex flex-wrap gap-1 pt-0.5">
-                {m.tags.map(t => (
-                  <span key={t} className="px-1.5 py-0.5 rounded-full font-semibold"
-                    style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.3)", color: "#FFA870", fontSize: 9 }}>{t}</span>
-                ))}
-              </div>
-              {!small && (
-                <div className="flex gap-2 pt-0.5">
-                  {[Twitter, Linkedin].map((Icon, j) => (
-                    <a key={j} href="#" className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
-                      style={{ background: "rgba(255,255,255,0.08)" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
-                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
-                      <Icon className="w-3 h-3 text-white" />
-                    </a>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="text-white font-bold"
-                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", maxHeight: 100, fontSize: small ? 9 : 11 }}>
-                {m.name}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      {/* Inner glow on hover */}
-      {hovered === i && (
-        <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 40px rgba(255,107,26,0.07)" }} />
-      )}
-    </motion.div>
-  );
+  const onEnter = (i: number) => setHovered(i);
+  const onLeave = () => setHovered(null);
+  const onTap   = (i: number) => setHovered(prev => prev === i ? null : i);
 
   return (
     <>
-      {/* Mobile: 2-col grid, tap to reveal */}
+      {/* Mobile: 2-col grid */}
       <div className="grid grid-cols-2 gap-3 sm:hidden">
-        {team.map((m, i) => <Card key={m.name} m={m} i={i} height={190} small />)}
+        {team.map((m, i) => (
+          <TeamCard key={m.name} m={m} i={i} height={190} small hovered={hovered} onEnter={onEnter} onLeave={onLeave} onTap={onTap} />
+        ))}
       </div>
       {/* Desktop: horizontal hover accordion */}
       <div className="hidden sm:flex gap-2 w-full" style={{ height: 300 }}>
-        {team.map((m, i) => <Card key={m.name} m={m} i={i} height={300} />)}
+        {team.map((m, i) => (
+          <TeamCard key={m.name} m={m} i={i} height={300} hovered={hovered} onEnter={onEnter} onLeave={onLeave} onTap={onTap} />
+        ))}
       </div>
     </>
   );
