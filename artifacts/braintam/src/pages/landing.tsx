@@ -750,39 +750,34 @@ export default function LandingPage() {
               Live classes · Adaptive tests · Animated videos · Doubt solving · Parent updates — all in one place.
             </p>
           </motion.div>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {features.map((f, i) => (
-              <motion.div key={f.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i % 4}
-                className="relative overflow-hidden rounded-2xl p-4 md:p-5 flex flex-col gap-3 transition-all duration-300"
-                style={{ background: SURFACE, border: `1px solid ${BORDER2}` }}
-                whileHover={{ y: -3, boxShadow: `0 8px 32px rgba(11,43,107,0.1)`, borderColor: `${f.accent}44` }}>
-                {/* Icon + stat row */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${f.accent}15`, border: `1px solid ${f.accent}30` }}>
-                    <f.icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: f.accent }} />
+          {/* Horizontal scroll row */}
+          <div className="overflow-x-auto -mx-4 md:-mx-6 px-4 md:px-6 pb-2"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+            <div className="flex gap-3 w-max">
+              {features.map((f, i) => (
+                <motion.div key={f.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}
+                  className="flex-shrink-0 rounded-2xl p-4 flex flex-col gap-2.5 transition-all duration-300 cursor-default"
+                  style={{ width: 168, background: SURFACE, border: `1px solid ${BORDER2}` }}
+                  whileHover={{ y: -3, boxShadow: `0 8px 28px rgba(11,43,107,0.1)`, borderColor: `${f.accent}44` }}>
+                  {/* Icon + stat */}
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${f.accent}15`, border: `1px solid ${f.accent}30` }}>
+                      <f.icon className="w-4 h-4" style={{ color: f.accent }} />
+                    </div>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full leading-none"
+                      style={{ background: `${f.accent}12`, color: f.accent, border: `1px solid ${f.accent}25`, fontSize: 10 }}>
+                      {f.stat}
+                    </span>
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                    style={{ background: `${f.accent}12`, color: f.accent, border: `1px solid ${f.accent}25` }}>
-                    {f.stat}
-                  </span>
-                </div>
-                {/* Title + desc */}
-                <div>
-                  <h3 className="font-bold text-xs md:text-sm leading-tight mb-1" style={{ color: TEXT }}>{f.title}</h3>
-                  <p className="leading-relaxed hidden md:block" style={{ color: MUTED, fontSize: 12 }}>{f.desc}</p>
-                </div>
-                {/* Bullets */}
-                <ul className="space-y-1">
-                  {f.bullets.map(b => (
-                    <li key={b} className="flex items-start gap-1.5 leading-snug" style={{ fontSize: 11, color: MUTED }}>
-                      <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: f.accent }} />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
+                  {/* Title + desc */}
+                  <div>
+                    <h3 className="font-bold text-sm leading-snug mb-1" style={{ color: TEXT }}>{f.title}</h3>
+                    <p className="leading-relaxed" style={{ color: MUTED, fontSize: 11 }}>{f.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
