@@ -118,9 +118,8 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
           style={{ background: "#3b5fc0" }} />
 
         {/* Logo */}
-        <div className="flex items-center gap-3 relative z-10">
-          <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
-          <span className="text-white font-black text-2xl tracking-tight">Braintam</span>
+        <div className="relative z-10">
+          <img src={braintamLogo} alt="Braintam" className="w-72 h-auto object-contain" />
         </div>
 
         {/* Headline */}
