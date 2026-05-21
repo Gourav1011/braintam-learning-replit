@@ -2,7 +2,8 @@ import { ReactNode } from "react";
 import { useAuth } from "./auth-provider";
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
-import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, User } from "lucide-react";
+import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, User, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -86,8 +87,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </Sidebar>
         
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <header className="h-14 border-b flex items-center px-4 md:hidden">
+          <header className="h-14 border-b flex items-center gap-2 px-4 bg-card">
             <SidebarTrigger />
+            <div className="w-px h-5 bg-border mx-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={() => window.history.back()}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Back</span>
+            </Button>
+            <div className="flex-1" />
+            <Link href="/dashboard" className="flex items-center gap-2 text-sm font-semibold text-primary hover:opacity-80 transition-opacity">
+              <img src={braintamLogo} alt="Braintam" className="w-6 h-6 object-contain" />
+              <span className="hidden sm:inline">Braintam</span>
+            </Link>
           </header>
           <div className="flex-1 overflow-y-auto">
             {children}

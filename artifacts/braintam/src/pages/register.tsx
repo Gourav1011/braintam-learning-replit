@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useRegister, useSendOtp, useVerifyOtp } from "@workspace/api-client-react";
 import { useAuth } from "@/components/auth-provider";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, GraduationCap } from "lucide-react";
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, GraduationCap, ArrowLeft } from "lucide-react";
 
 const grades = [1,2,3,4,5,6,7,8,9,10];
 
@@ -111,7 +111,18 @@ export default function RegisterPage() {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-background overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center p-6 bg-background overflow-y-auto relative">
+        {/* Back button */}
+        <div className="absolute top-5 left-5">
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back
+          </button>
+        </div>
+
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-md space-y-6">
           <div className="text-center">
             <img src={braintamLogo} alt="Braintam" className="w-14 h-auto mx-auto mb-3 lg:hidden" />
