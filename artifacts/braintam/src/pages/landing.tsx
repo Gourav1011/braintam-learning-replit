@@ -103,10 +103,35 @@ const testimonials = [
   { title: "Exam ready",            text: "The mock tests are spot-on. My son scored 91% in his boards — thank you Braintam!", name: "Ramesh", date: "May 2025", rating: 5 },
 ];
 
-const footerLinks = {
-  Learn:   ["Live Classes","Courses","Animated Videos","Test Series","Homework Help"],
-  Company: ["About Us","Careers","Press Kit","Blog","Contact"],
-  Support: ["Help Center","Terms of Service","Privacy Policy","Refund Policy"],
+const footerLinks: Record<string, { label: string; href: string }[]> = {
+  Learn: [
+    { label: "Live Classes",      href: "/live-classes" },
+    { label: "Courses",           href: "/courses" },
+    { label: "Animated Videos",   href: "/animated-videos" },
+    { label: "Test Series",       href: "/tests" },
+    { label: "Homework Help",     href: "/homework" },
+    { label: "Leaderboard",       href: "/leaderboard" },
+    { label: "Assignments",       href: "/assignments" },
+    { label: "Recordings",        href: "/recordings" },
+  ],
+  Company: [
+    { label: "About Braintam",    href: "#about" },
+    { label: "Our Educators",     href: "#educators" },
+    { label: "Careers",           href: "#careers" },
+    { label: "Blog & Insights",   href: "#blog" },
+    { label: "Press & Media",     href: "#press" },
+    { label: "Partnerships",      href: "#partners" },
+    { label: "Contact Us",        href: "#contact" },
+  ],
+  Support: [
+    { label: "Help Center",       href: "#help" },
+    { label: "Terms of Service",  href: "/terms" },
+    { label: "Privacy Policy",    href: "/privacy" },
+    { label: "Refund Policy",     href: "#refund" },
+    { label: "Student Safety",    href: "#safety" },
+    { label: "Parent Dashboard",  href: "/dashboard" },
+    { label: "Report an Issue",   href: "#report" },
+  ],
 };
 
 // ── Particles ─────────────────────────────────────────────────
@@ -841,42 +866,96 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{ background: NAVY }}>
-        <div className="max-w-6xl mx-auto px-6 py-12 grid md:grid-cols-4 gap-10">
-          <div className="space-y-4">
-            <img src={braintamLogo} alt="Braintam" className="w-16 h-16 object-contain" />
-            <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-              India's premium EdTech platform for school students in grades 1–12.
-            </p>
-            <div className="space-y-1.5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-              <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5" style={{ color: ORANGE }} />support@braintam.in</div>
-              <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" style={{ color: ORANGE }} />84929 44473</div>
+        <div className="max-w-6xl mx-auto px-6 pt-14 pb-10">
+          {/* Top row: logo block + 3 link columns */}
+          <div className="flex flex-col gap-10 md:flex-row md:gap-12">
+
+            {/* Brand / contact */}
+            <div className="space-y-4 md:w-56 flex-shrink-0">
+              <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
+              <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                India's premium EdTech platform for school students in grades 1–12. Live classes, adaptive tests, animated videos, and more.
+              </p>
+              <div className="space-y-1.5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.in</div>
+                <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
+                <div className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
+                  <span>Koramangala, Bengaluru, Karnataka 560034</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {[
+                  { Icon: Facebook,  href: "https://facebook.com/braintam" },
+                  { Icon: Twitter,   href: "https://twitter.com/braintam" },
+                  { Icon: Instagram, href: "https://instagram.com/braintam" },
+                  { Icon: Youtube,   href: "https://youtube.com/@braintam" },
+                ].map(({ Icon, href }, i) => (
+                  <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+                    style={{ background: "rgba(255,255,255,0.08)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+                    <Icon className="w-3.5 h-3.5 text-white" />
+                  </a>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-2">
-              {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-                <a key={i} href="#" className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
-                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
-                  <Icon className="w-3.5 h-3.5 text-white" />
-                </a>
+
+            {/* Link columns — always 3-across */}
+            <div className="grid grid-cols-3 gap-6 flex-1">
+              {Object.entries(footerLinks).map(([section, links]) => (
+                <div key={section} className="space-y-3">
+                  <div className="text-xs font-bold uppercase tracking-widest text-white">{section}</div>
+                  {links.map(({ label, href }) => (
+                    href.startsWith("/") ? (
+                      <Link key={label} href={href}
+                        className="block text-xs transition-colors hover:text-white"
+                        style={{ color: "rgba(255,255,255,0.5)" }}>
+                        {label}
+                      </Link>
+                    ) : (
+                      <a key={label} href={href}
+                        className="block text-xs transition-colors hover:text-white cursor-pointer"
+                        style={{ color: "rgba(255,255,255,0.5)" }}>
+                        {label}
+                      </a>
+                    )
+                  ))}
+                </div>
               ))}
             </div>
           </div>
-          {Object.entries(footerLinks).map(([section, links]) => (
-            <div key={section} className="space-y-3">
-              <div className="text-xs font-bold uppercase tracking-widest text-white">{section}</div>
-              {links.map(l => (
-                <a key={l} href="#" className="block text-xs transition-colors hover:text-white" style={{ color: "rgba(255,255,255,0.45)" }}>{l}</a>
-              ))}
-            </div>
-          ))}
+
+          {/* App store badges row */}
+          <div className="mt-10 flex flex-wrap items-center gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "1.5rem" }}>
+            <span className="text-xs font-semibold text-white mr-1">Get the app:</span>
+            {[
+              { label: "Google Play",  sub: "Android",   icon: "▶" },
+              { label: "App Store",    sub: "iOS",        icon: "" },
+            ].map(b => (
+              <a key={b.label} href="#"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,107,26,0.18)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+                <span className="text-base">{b.icon}</span>
+                <div>
+                  <div className="text-white font-semibold leading-none" style={{ fontSize: 11 }}>{b.label}</div>
+                  <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 9 }}>{b.sub}</div>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
+
+        {/* Bottom bar */}
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3"
           style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam EdTech Pvt. Ltd.</span>
-          <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam EdTech Pvt. Ltd. · CIN: U85300KA2024PTC000000</span>
+          <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
             <Link href="/terms"   className="hover:text-white transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <a href="#refund"     className="hover:text-white transition-colors cursor-pointer">Refund</a>
           </div>
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Made with ❤️ in India 🇮🇳</span>
         </div>
