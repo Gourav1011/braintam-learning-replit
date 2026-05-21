@@ -923,7 +923,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── APP DOWNLOAD ── */}
-      <section className="relative overflow-hidden py-14 md:py-20 px-6"
+      <section className="relative overflow-hidden py-8 md:py-12 px-6"
         style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0e3580 50%, #1a1a5e 100%)` }}>
         {/* Animated background blobs */}
         <motion.div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
@@ -936,54 +936,54 @@ export default function LandingPage() {
           transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1.5 }} />
 
         <div className="max-w-6xl mx-auto relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+          <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-12">
 
             {/* Left — text + buttons */}
             <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
-              className="flex-1 text-center lg:text-left space-y-6">
+              className="flex-1 text-center lg:text-left space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
                 style={{ background: "rgba(255,107,26,0.2)", border: "1px solid rgba(255,107,26,0.4)", color: "#FFA870" }}>
                 <Sparkles className="w-3 h-3" /> Available on Android &amp; iOS
               </div>
-              <h2 className="text-3xl md:text-5xl font-black leading-tight text-white">
-                Learn anywhere,<br />
+              <h2 className="text-2xl md:text-3xl font-black leading-tight text-white">
+                Learn anywhere,{" "}
                 <span style={{ background: "linear-gradient(135deg, #FF6B1A, #FFA040)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   anytime.
                 </span>
               </h2>
-              <p className="text-sm md:text-base leading-relaxed max-w-md mx-auto lg:mx-0"
+              <p className="text-sm leading-relaxed max-w-md mx-auto lg:mx-0"
                 style={{ color: "rgba(255,255,255,0.6)" }}>
-                Attend live classes, solve doubts, watch animated videos, and track your progress — all from your phone.
+                Live classes, doubt solving, animated videos, and progress tracking — all from your phone.
               </p>
 
               {/* Store badges */}
               <div className="flex flex-col sm:flex-row gap-4 items-center lg:items-start justify-center lg:justify-start">
                 {/* Google Play */}
                 <motion.a href="#" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-4 px-6 py-4 rounded-2xl cursor-pointer"
-                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                  <svg viewBox="0 0 24 24" className="w-8 h-8 flex-shrink-0" fill="none">
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer"
+                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 160, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
+                  <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="none">
                     <path d="M3.18 23.76c.3.17.65.19.97.07L15.88 12 12 8.12 3.18 23.76Z" fill="#EA4335"/>
                     <path d="M20.7 10.67 17.6 8.9 13.4 12l4.2 4.1 3.1-1.78a1.74 1.74 0 0 0 0-3.06Z" fill="#FBBC04"/>
                     <path d="M3.18.24A1.74 1.74 0 0 0 2.5 1.6V22.4c0 .54.26 1.01.68 1.36L15.88 12 3.18.24Z" fill="#4285F4"/>
                     <path d="M3.18 23.76 12 12 3.18.24c-.3.17-.65.19-.97.07A1.74 1.74 0 0 0 2.5 1.6V22.4c0 .54.26 1.01.68 1.36Z" fill="#34A853"/>
                   </svg>
                   <div className="text-left">
-                    <div className="text-white/60 text-xs leading-none mb-0.5">GET IT ON</div>
-                    <div className="text-white font-bold text-lg leading-tight">Google Play</div>
+                    <div className="text-white/60 leading-none mb-0.5" style={{ fontSize: 9 }}>GET IT ON</div>
+                    <div className="text-white font-bold text-sm leading-tight">Google Play</div>
                   </div>
                 </motion.a>
 
                 {/* App Store */}
                 <motion.a href="#" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-4 px-6 py-4 rounded-2xl cursor-pointer"
-                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                  <svg viewBox="0 0 24 24" className="w-8 h-8 flex-shrink-0" fill="white">
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer"
+                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 160, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
+                  <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="white">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                   </svg>
                   <div className="text-left">
-                    <div className="text-white/60 text-xs leading-none mb-0.5">DOWNLOAD ON THE</div>
-                    <div className="text-white font-bold text-lg leading-tight">App Store</div>
+                    <div className="text-white/60 leading-none mb-0.5" style={{ fontSize: 9 }}>DOWNLOAD ON THE</div>
+                    <div className="text-white font-bold text-sm leading-tight">App Store</div>
                   </div>
                 </motion.a>
               </div>
@@ -1005,7 +1005,7 @@ export default function LandingPage() {
             {/* Right — animated phone mockup */}
             <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, ease }} viewport={{ once: true }}
-              className="flex-shrink-0 relative hidden md:block" style={{ width: 280, height: 340 }}>
+              className="flex-shrink-0 relative hidden md:block" style={{ width: 220, height: 270 }}>
               {/* Outer glow */}
               <div className="absolute inset-0 rounded-[40px] blur-2xl opacity-30"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #FFA040)` }} />
