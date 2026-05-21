@@ -27,7 +27,7 @@ type HWItem = {
   title: string;
   subjectName: string;
   dueDate: string;
-  maxMarks: number;
+  maxMarks: number | null | undefined;
   status: string;
   notifEnabled: boolean;
   notifPossible: boolean;

@@ -96,7 +96,7 @@ export default function ClassesScreen() {
       const result: ClassItem[] = await Promise.all(
         rawClasses.map(async (c) => {
           const minsLeft = minutesUntil(c.scheduledAt);
-          const notifPossible = minsLeft > 15 && c.status === "scheduled";
+          const notifPossible = minsLeft > 15 && c.status === "upcoming";
           const notifEnabled = notifPossible
             ? await isClassNotificationScheduled(c.id)
             : false;
