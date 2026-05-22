@@ -750,10 +750,9 @@ export default function LandingPage() {
                 Start for free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <Link href="/sign-in">
-                <button className="flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-sm transition-all hover:bg-white/10"
-                  style={{ background: "#fff", border: `1px solid ${BORDER2}`, color: TEXT,
-                           boxShadow: "0 2px 12px rgba(11,43,107,0.08)" }}>
-                  <PlayCircle className="w-4 h-4" /> Watch demo
+                <button className="group flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-sm transition-all hover:scale-105"
+                  style={{ background: NAVY, color: "#fff", boxShadow: "0 4px 18px rgba(11,43,107,0.28)" }}>
+                  <GraduationCap className="w-4 h-4" /> Student Login
                 </button>
               </Link>
             </motion.div>
