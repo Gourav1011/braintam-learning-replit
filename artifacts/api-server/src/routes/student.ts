@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import {
   usersTable, subjectsTable, homeworkTable, assignmentsTable,
-  testsTable, liveClassesTable, enrollmentsTable,
+  testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
+  homeworkSubmissionsTable, assignmentSubmissionsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray } from "drizzle-orm";
@@ -10,56 +11,64 @@ import { attachUser, requireAuth } from "../middlewares/auth.js";
 
 const router = Router();
 
-function resolveStudentId(req: import("express").Request): number {
-  return req.authUser?.id ?? 1;
-}
-
-router.get("/student/dashboard", attachUser, async (req, res) => {
-  const studentId = resolveStudentId(req);
+router.get("/student/dashboard", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   const subjects = await db.select().from(subjectsTable).limit(6);
 
-  const enrolledCourseIds = await db
+  const enrolledRows = await db
     .select({ courseId: enrollmentsTable.courseId })
     .from(enrollmentsTable)
     .where(eq(enrollmentsTable.studentId, studentId));
-  const courseIds = enrolledCourseIds.map(e => e.courseId);
+  const courseIds = enrolledRows.map(e => e.courseId);
 
-  const upcoming = courseIds.length
-    ? await db.select().from(liveClassesTable)
-        .where(eq(liveClassesTable.status, "upcoming")).limit(5)
-    : await db.select().from(liveClassesTable)
-        .where(eq(liveClassesTable.status, "upcoming")).limit(5);
+  const upcoming = await db.select().from(liveClassesTable)
+    .where(eq(liveClassesTable.status, "upcoming")).limit(5);
 
   const hw = courseIds.length
-    ? await db.select().from(homeworkTable)
-        .where(inArray(homeworkTable.courseId, courseIds)).limit(10)
-    : await db.select().from(homeworkTable).limit(10);
+    ? await db.select().from(homeworkTable).where(inArray(homeworkTable.courseId, courseIds)).limit(10)
+    : await db.select().from(homeworkTable).where(eq(homeworkTable.grade, student?.grade ?? 6)).limit(10);
 
   const asgn = courseIds.length
-    ? await db.select().from(assignmentsTable)
-        .where(inArray(assignmentsTable.courseId, courseIds)).limit(10)
-    : await db.select().from(assignmentsTable).limit(10);
+    ? await db.select().from(assignmentsTable).where(inArray(assignmentsTable.courseId, courseIds)).limit(10)
+    : await db.select().from(assignmentsTable).where(eq(assignmentsTable.grade, student?.grade ?? 6)).limit(10);
 
   const tests = await db.select().from(testsTable)
     .where(eq(testsTable.status, "upcoming")).limit(5);
+
+  const recentHw = await db
+    .select({ id: homeworkSubmissionsTable.id, title: homeworkTable.title, submittedAt: homeworkSubmissionsTable.submittedAt })
+    .from(homeworkSubmissionsTable)
+    .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+    .where(eq(homeworkSubmissionsTable.studentId, studentId))
+    .orderBy(desc(homeworkSubmissionsTable.submittedAt))
+    .limit(3);
+
+  const recentTests = await db
+    .select({ id: testSubmissionsTable.id, title: testsTable.title, score: testSubmissionsTable.score, maxScore: testSubmissionsTable.maxScore, submittedAt: testSubmissionsTable.submittedAt })
+    .from(testSubmissionsTable)
+    .innerJoin(testsTable, eq(testSubmissionsTable.testId, testsTable.id))
+    .where(eq(testSubmissionsTable.studentId, studentId))
+    .orderBy(desc(testSubmissionsTable.submittedAt))
+    .limit(3);
+
+  const recentActivity = [
+    ...recentHw.map(h => ({ id: h.id, type: "homework", title: h.title, subjectName: "", createdAt: h.submittedAt.toISOString(), score: null })),
+    ...recentTests.map(t => ({ id: t.id, type: "test", title: t.title, subjectName: "", createdAt: t.submittedAt.toISOString(), score: t.maxScore && t.maxScore > 0 ? Math.round((t.score! / t.maxScore) * 100) : null })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 7);
 
   res.json({
     studentName: student?.name ?? "Student",
     grade: student?.grade ?? 6,
     points: student?.points ?? 0,
-    rank: student?.rank ?? 42,
+    rank: student?.rank ?? null,
     role: student?.role ?? "student",
     upcomingLiveClasses: upcoming.length,
     pendingHomework: hw.length,
     pendingAssignments: asgn.length,
     upcomingTests: tests.length,
     streakDays: student?.streakDays ?? 0,
-    recentActivity: [
-      { id: 1, type: "live_class", title: "Algebra Basics - Live Session", subjectName: "Mathematics", createdAt: new Date(Date.now() - 86400000).toISOString(), score: null },
-      { id: 2, type: "test", title: "Chapter 3 Quiz - Photosynthesis", subjectName: "Science", createdAt: new Date(Date.now() - 172800000).toISOString(), score: 85 },
-      { id: 3, type: "homework", title: "Grammar Exercise - Tenses", subjectName: "English", createdAt: new Date(Date.now() - 259200000).toISOString(), score: null },
-    ],
+    recentActivity,
     subjectProgress: subjects.map((s, i) => ({
       subjectId: s.id,
       subjectName: s.name,
@@ -69,11 +78,11 @@ router.get("/student/dashboard", attachUser, async (req, res) => {
   });
 });
 
-router.get("/student/profile", attachUser, async (req, res) => {
-  const studentId = resolveStudentId(req);
+router.get("/student/profile", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   if (!student) {
-    res.json({ id: studentId, name: "Student", email: null, phone: null, grade: 6, avatarUrl: null, points: 0, rank: null, school: null, role: "student" });
+    res.status(404).json({ error: "User not found" });
     return;
   }
   res.json({
@@ -122,17 +131,25 @@ router.patch("/student/profile", requireAuth, async (req, res) => {
   });
 });
 
-router.get("/student/progress", attachUser, async (req, res) => {
-  const studentId = resolveStudentId(req);
+router.get("/student/progress", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   const subjects = await db.select().from(subjectsTable).limit(6);
+
+  const [hwCount] = await db.select({ count: sql<number>`count(*)` }).from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.studentId, studentId));
+  const [testCount] = await db.select({ count: sql<number>`count(*)` }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId));
+  const testResults = await db.select({ score: testSubmissionsTable.score, maxScore: testSubmissionsTable.maxScore }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId));
+  const avgScore = testResults.length > 0
+    ? Math.round(testResults.reduce((sum, t) => sum + (t.maxScore && t.maxScore > 0 ? (t.score! / t.maxScore) * 100 : 0), 0) / testResults.length)
+    : 0;
 
   res.json({
     totalPoints: student?.points ?? 0,
     rank: student?.rank ?? null,
-    coursesCompleted: 8,
-    testsAttempted: 15,
-    averageScore: 78.5,
+    coursesCompleted: 0,
+    testsAttempted: Number(testCount.count),
+    homeworkSubmitted: Number(hwCount.count),
+    averageScore: avgScore,
     subjectWise: subjects.map((s, i) => ({
       subjectId: s.id,
       subjectName: s.name,
@@ -142,16 +159,40 @@ router.get("/student/progress", attachUser, async (req, res) => {
   });
 });
 
-router.get("/student/recent-activity", async (_req, res) => {
-  res.json([
-    { id: 1, type: "live_class", title: "Algebra Basics - Live Session", subjectName: "Mathematics", createdAt: new Date(Date.now() - 86400000).toISOString(), score: null },
-    { id: 2, type: "test", title: "Chapter 3 Quiz - Photosynthesis", subjectName: "Science", createdAt: new Date(Date.now() - 172800000).toISOString(), score: 85 },
-    { id: 3, type: "homework", title: "Grammar Exercise - Tenses", subjectName: "English", createdAt: new Date(Date.now() - 259200000).toISOString(), score: null },
-    { id: 4, type: "video", title: "How Plants Make Food", subjectName: "Science", createdAt: new Date(Date.now() - 345600000).toISOString(), score: null },
-    { id: 5, type: "course", title: "Fractions & Decimals", subjectName: "Mathematics", createdAt: new Date(Date.now() - 432000000).toISOString(), score: null },
-    { id: 6, type: "assignment", title: "Map Drawing - India Rivers", subjectName: "Social Science", createdAt: new Date(Date.now() - 518400000).toISOString(), score: null },
-    { id: 7, type: "recording", title: "Chemical Reactions Explained", subjectName: "Science", createdAt: new Date(Date.now() - 604800000).toISOString(), score: null },
-  ]);
+router.get("/student/recent-activity", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+
+  const recentHw = await db
+    .select({ id: homeworkSubmissionsTable.id, title: homeworkTable.title, submittedAt: homeworkSubmissionsTable.submittedAt })
+    .from(homeworkSubmissionsTable)
+    .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+    .where(eq(homeworkSubmissionsTable.studentId, studentId))
+    .orderBy(desc(homeworkSubmissionsTable.submittedAt))
+    .limit(5);
+
+  const recentAsgn = await db
+    .select({ id: assignmentSubmissionsTable.id, title: assignmentsTable.title, submittedAt: assignmentSubmissionsTable.submittedAt })
+    .from(assignmentSubmissionsTable)
+    .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+    .where(eq(assignmentSubmissionsTable.studentId, studentId))
+    .orderBy(desc(assignmentSubmissionsTable.submittedAt))
+    .limit(5);
+
+  const recentTests = await db
+    .select({ id: testSubmissionsTable.id, title: testsTable.title, score: testSubmissionsTable.score, maxScore: testSubmissionsTable.maxScore, submittedAt: testSubmissionsTable.submittedAt })
+    .from(testSubmissionsTable)
+    .innerJoin(testsTable, eq(testSubmissionsTable.testId, testsTable.id))
+    .where(eq(testSubmissionsTable.studentId, studentId))
+    .orderBy(desc(testSubmissionsTable.submittedAt))
+    .limit(5);
+
+  const activity = [
+    ...recentHw.map(h => ({ id: h.id, type: "homework" as const, title: h.title, subjectName: "", createdAt: h.submittedAt.toISOString(), score: null })),
+    ...recentAsgn.map(a => ({ id: a.id, type: "assignment" as const, title: a.title, subjectName: "", createdAt: a.submittedAt.toISOString(), score: null })),
+    ...recentTests.map(t => ({ id: t.id, type: "test" as const, title: t.title, subjectName: "", createdAt: t.submittedAt.toISOString(), score: t.maxScore && t.maxScore > 0 ? Math.round((t.score! / t.maxScore) * 100) : null })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+
+  res.json(activity);
 });
 
 router.get("/student/leaderboard", async (req, res) => {
