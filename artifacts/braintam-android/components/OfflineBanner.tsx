@@ -7,44 +7,77 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 const BANNER_HEIGHT = 44;
 
 export function OfflineBanner() {
-  const { isOnline } = useNetworkStatus();
+  const { isOnline, justCameOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(-BANNER_HEIGHT - insets.top)).current;
+
+  const offlineTranslateY = useRef(new Animated.Value(-BANNER_HEIGHT - insets.top)).current;
+  const onlineOpacity = useRef(new Animated.Value(0)).current;
   const wasOffline = useRef(false);
 
   useEffect(() => {
     if (!isOnline) {
       wasOffline.current = true;
-      Animated.spring(translateY, {
+      Animated.spring(offlineTranslateY, {
         toValue: 0,
         useNativeDriver: true,
         bounciness: 4,
       }).start();
     } else if (wasOffline.current) {
-      Animated.timing(translateY, {
+      Animated.timing(offlineTranslateY, {
         toValue: -BANNER_HEIGHT - insets.top - 8,
         duration: 300,
         useNativeDriver: true,
       }).start();
     }
-  }, [isOnline, insets.top, translateY]);
+  }, [isOnline, insets.top, offlineTranslateY]);
+
+  useEffect(() => {
+    if (justCameOnline) {
+      Animated.sequence([
+        Animated.timing(onlineOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1400),
+        Animated.timing(onlineOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [justCameOnline, onlineOpacity]);
 
   return (
-    <Animated.View
-      style={[
-        styles.banner,
-        { paddingTop: insets.top + 8, transform: [{ translateY }] },
-      ]}
-      pointerEvents="none"
-    >
-      <Feather name="wifi-off" size={15} color="#fff" />
-      <Text style={styles.text}>No internet connection</Text>
-    </Animated.View>
+    <>
+      <Animated.View
+        style={[
+          styles.offlineBanner,
+          { paddingTop: insets.top + 8, transform: [{ translateY: offlineTranslateY }] },
+        ]}
+        pointerEvents="none"
+      >
+        <Feather name="wifi-off" size={15} color="#fff" />
+        <Text style={styles.offlineText}>No internet connection</Text>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.onlineBanner,
+          { top: insets.top + 12, opacity: onlineOpacity },
+        ]}
+        pointerEvents="none"
+      >
+        <Feather name="wifi" size={15} color="#fff" />
+        <Text style={styles.onlineText}>Back online</Text>
+      </Animated.View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: {
+  offlineBanner: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -60,7 +93,27 @@ const styles = StyleSheet.create({
       android: { elevation: 20 },
     }),
   },
-  text: {
+  offlineText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+  },
+  onlineBanner: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 9999,
+    backgroundColor: "#16A34A",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    gap: 6,
+    ...Platform.select({
+      android: { elevation: 20 },
+    }),
+  },
+  onlineText: {
     color: "#fff",
     fontSize: 13,
     fontFamily: "Poppins_600SemiBold",

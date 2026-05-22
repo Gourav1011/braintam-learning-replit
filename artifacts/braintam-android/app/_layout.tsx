@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus, Platform } from "react-native";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Stack, router, useSegments } from "expo-router";
 import { SplashScreen } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -141,6 +142,18 @@ function NotificationManager() {
   return null;
 }
 
+function ReconnectManager() {
+  const { justCameOnline } = useNetworkStatus();
+
+  useEffect(() => {
+    if (justCameOnline) {
+      queryClient.invalidateQueries();
+    }
+  }, [justCameOnline]);
+
+  return null;
+}
+
 function RootLayoutInner() {
   const [fontsLoaded, fontError] = useFonts({
     Poppins_400Regular,
@@ -159,6 +172,7 @@ function RootLayoutInner() {
     <>
       <AuthGate />
       <NotificationManager />
+      <ReconnectManager />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" options={{ animation: "fade" }} />
         <Stack.Screen name="register" options={{ animation: "slide_from_right" }} />
