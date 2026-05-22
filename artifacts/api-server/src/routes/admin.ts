@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
-  usersTable, coursesTable, subjectsTable, lessonsTable,
+  usersTable, coursesTable, subjectsTable,
   teacherCoursesTable, enrollmentsTable,
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import crypto from "crypto";
 
@@ -21,6 +21,64 @@ function hashPassword(pw: string): string {
 function generateToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
 }
+
+// ── Analytics ────────────────────────────────────────────────────
+router.get("/admin/analytics", adminOnly, async (req, res) => {
+  const [totalUsers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable);
+  const [totalStudents] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "student"));
+  const [totalTeachers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher"));
+  const [totalCourses] = await db.select({ count: sql<number>`count(*)` }).from(coursesTable);
+  const [totalEnrollments] = await db.select({ count: sql<number>`count(*)` }).from(enrollmentsTable);
+  const [totalHwSubs] = await db.select({ count: sql<number>`count(*)` }).from(homeworkSubmissionsTable);
+  const [totalAsgnSubs] = await db.select({ count: sql<number>`count(*)` }).from(assignmentSubmissionsTable);
+  const [totalTestSubs] = await db.select({ count: sql<number>`count(*)` }).from(testSubmissionsTable);
+  const [gradedHw] = await db.select({ count: sql<number>`count(*)` }).from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.status, "graded"));
+  const [upcomingClasses] = await db.select({ count: sql<number>`count(*)` }).from(liveClassesTable).where(eq(liveClassesTable.status, "upcoming"));
+  const [liveClasses] = await db.select({ count: sql<number>`count(*)` }).from(liveClassesTable).where(eq(liveClassesTable.status, "live"));
+
+  const topStudents = await db.select({
+    id: usersTable.id,
+    name: usersTable.name,
+    points: usersTable.points,
+    grade: usersTable.grade,
+    school: usersTable.school,
+  }).from(usersTable)
+    .where(eq(usersTable.role, "student"))
+    .orderBy(desc(usersTable.points))
+    .limit(5);
+
+  const recentEnrollments = await db.select({
+    studentName: usersTable.name,
+    courseTitle: coursesTable.title,
+    enrolledAt: enrollmentsTable.enrolledAt,
+  }).from(enrollmentsTable)
+    .innerJoin(usersTable, eq(enrollmentsTable.studentId, usersTable.id))
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .orderBy(desc(enrollmentsTable.enrolledAt))
+    .limit(10);
+
+  res.json({
+    totals: {
+      users: Number(totalUsers.count),
+      students: Number(totalStudents.count),
+      teachers: Number(totalTeachers.count),
+      courses: Number(totalCourses.count),
+      enrollments: Number(totalEnrollments.count),
+    },
+    submissions: {
+      homework: Number(totalHwSubs.count),
+      assignments: Number(totalAsgnSubs.count),
+      tests: Number(totalTestSubs.count),
+      gradedHomework: Number(gradedHw.count),
+    },
+    liveClasses: {
+      upcoming: Number(upcomingClasses.count),
+      live: Number(liveClasses.count),
+    },
+    topStudents,
+    recentEnrollments,
+  });
+});
 
 // ── Stats ────────────────────────────────────────────────────────
 router.get("/admin/stats", adminOnly, async (req, res) => {

@@ -353,13 +353,13 @@ router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) 
 
 router.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async (req, res) => {
   const subId = parseInt(String(req.params.id), 10);
-  const { marks } = req.body;
+  const { marks, feedback } = req.body;
   if (isNaN(subId) || marks === undefined) {
     res.status(400).json({ error: "marks required" });
     return;
   }
   const [updated] = await db.update(homeworkSubmissionsTable)
-    .set({ marks: Number(marks), status: "graded" })
+    .set({ marks: Number(marks), status: "graded", feedback: feedback ?? null })
     .where(eq(homeworkSubmissionsTable.id, subId))
     .returning();
   if (!updated) { res.status(404).json({ error: "Submission not found" }); return; }
@@ -368,13 +368,13 @@ router.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async (r
 
 router.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, async (req, res) => {
   const subId = parseInt(String(req.params.id), 10);
-  const { marks } = req.body;
+  const { marks, feedback } = req.body;
   if (isNaN(subId) || marks === undefined) {
     res.status(400).json({ error: "marks required" });
     return;
   }
   const [updated] = await db.update(assignmentSubmissionsTable)
-    .set({ marks: Number(marks), status: "graded" })
+    .set({ marks: Number(marks), status: "graded", feedback: feedback ?? null })
     .where(eq(assignmentSubmissionsTable.id, subId))
     .returning();
   if (!updated) { res.status(404).json({ error: "Submission not found" }); return; }

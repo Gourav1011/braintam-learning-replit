@@ -9,3 +9,6 @@ export * from "./assignments";
 export * from "./tests";
 export * from "./teacherCourses";
 export * from "./enrollments";
+export * from "./announcements";
+export * from "./banners";
+export * from "./attendance";

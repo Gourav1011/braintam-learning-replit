@@ -1,0 +1,199 @@
+Using my existing PostgreSQL + Drizzle ORM setup, build a complete scalable EdTech LMS backend and dashboard system for Braintam.
+
+SYSTEM REQUIREMENTS:
+
+AUTHENTICATION:
+
+* Implement secure authentication
+* Support Google login and email/password login
+* Create protected sessions
+* Store user sessions securely
+* Add logout functionality
+
+USER ROLES:
+
+* Admin
+* Teacher
+* Student
+
+ROLE RULES:
+
+* Admin has full control
+* Teachers can ONLY access assigned classes
+* Students can ONLY access enrolled classes
+* Teachers cannot create courses
+* Teachers cannot assign students
+* Students cannot access unauthorized content
+
+DATABASE REQUIREMENTS:
+
+USERS TABLE:
+
+* id
+* name
+* email
+* password
+* role
+* profile image
+* created_at
+
+COURSES TABLE:
+
+* id
+* title
+* subject
+* grade
+* description
+* thumbnail
+* created_by_admin
+* created_at
+
+TEACHER_COURSES TABLE:
+
+* id
+* teacher_id
+* course_id
+* assigned_at
+
+ENROLLMENTS TABLE:
+
+* id
+* student_id
+* course_id
+* enrolled_at
+
+LIVE_CLASSES TABLE:
+
+* id
+* course_id
+* teacher_id
+* meeting_link
+* start_time
+* status
+* created_at
+
+HOMEWORK TABLE:
+
+* id
+* course_id
+* teacher_id
+* title
+* description
+* due_date
+* attachment_url
+* created_at
+
+SUBMISSIONS TABLE:
+
+* id
+* homework_id
+* student_id
+* submission_url
+* marks
+* feedback
+* submitted_at
+
+TESTS TABLE:
+
+* id
+* course_id
+* title
+* duration
+* total_marks
+* created_by
+
+QUESTIONS TABLE:
+
+* id
+* test_id
+* question
+* option_a
+* option_b
+* option_c
+* option_d
+* correct_answer
+
+TEST_SUBMISSIONS TABLE:
+
+* id
+* test_id
+* student_id
+* score
+* submitted_at
+
+ADMIN DASHBOARD:
+
+* Create/manage courses
+* Assign teachers to courses
+* Assign students to courses
+* View analytics
+* Manage banners
+* Manage announcements
+* Manage live classes
+* Manage tests and homework
+
+TEACHER DASHBOARD:
+
+* View only assigned courses
+* Start live classes
+* Upload recordings
+* Upload homework
+* Create tests
+* View student submissions
+* Grade homework
+* Mark attendance
+
+STUDENT DASHBOARD:
+
+* View only enrolled courses
+* Join live classes
+* Watch recordings
+* Submit homework
+* Attempt tests
+* View marks and feedback
+
+ACCESS CONTROL:
+
+* Add proper backend authorization
+* Protect all APIs and routes
+* Prevent unauthorized access
+* Teachers can only manage their own assigned classes
+* Students can only access their own enrolled data
+
+LIVE CLASS FLOW:
+
+* Teachers can create/start live classes
+* Students enrolled in the course can join
+* Add status handling (upcoming/live/completed)
+
+UI REQUIREMENTS:
+
+* Fully responsive mobile-first design
+* Modern premium dark UI
+* Clean dashboard layouts
+* Sidebar navigation
+* Loading states
+* Error handling
+* Toast notifications
+
+TECHNICAL REQUIREMENTS:
+
+* Use Drizzle ORM properly
+* Use PostgreSQL relationships
+* Use scalable folder structure
+* Create reusable APIs
+* Use TypeScript best practices
+* Add validation and error handling
+
+OUTPUT:
+
+* Create all required tables/migrations
+* Generate backend APIs
+* Generate protected routes
+* Generate dashboard pages
+* Generate assignment logic
+* Generate role-based middleware
+* Generate enrollment logic
+* Generate teacher assignment system
+* Generate student enrollment system
+* Make the LMS production-ready and scalable

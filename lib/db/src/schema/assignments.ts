@@ -24,6 +24,7 @@ export const assignmentSubmissionsTable = pgTable("assignment_submissions", {
   attachmentUrl: text("attachment_url"),
   status: text("status").notNull().default("submitted"),
   marks: real("marks"),
+  feedback: text("feedback"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });
 

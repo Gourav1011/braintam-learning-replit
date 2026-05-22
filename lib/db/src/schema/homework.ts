@@ -23,6 +23,7 @@ export const homeworkSubmissionsTable = pgTable("homework_submissions", {
   attachmentUrl: text("attachment_url"),
   status: text("status").notNull().default("submitted"),
   marks: real("marks"),
+  feedback: text("feedback"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });
 

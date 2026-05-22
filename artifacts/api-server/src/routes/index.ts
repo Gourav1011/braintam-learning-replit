@@ -12,6 +12,9 @@ import testsRouter from "./tests";
 import studentRouter from "./student";
 import adminRouter from "./admin";
 import teacherRouter from "./teacher";
+import announcementsRouter from "./announcements";
+import attendanceRouter from "./attendance";
+import teacherTestsRouter from "./teacherTests";
 
 const router: IRouter = Router();
 
@@ -19,6 +22,9 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(adminRouter);
 router.use(teacherRouter);
+router.use(announcementsRouter);
+router.use(attendanceRouter);
+router.use(teacherTestsRouter);
 router.use(subjectsRouter);
 router.use(coursesRouter);
 router.use(liveClassesRouter);
