@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { ArrowLeft } from "lucide-react";
 import { SignUpPageContent } from "@/pages/sign-up";
 import { ClerkProvider, SignIn, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
@@ -121,7 +122,7 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
 
         {/* Logo */}
         <div className="relative z-10">
-          <img src={braintamLogo} alt="Braintam" className="w-72 h-auto object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-44 h-auto object-contain" />
         </div>
 
         {/* Headline */}
@@ -171,7 +172,16 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
       </div>
 
       {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 bg-gray-50 min-h-screen lg:min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 bg-gray-50 min-h-screen lg:min-h-0 relative">
+        {/* Back button */}
+        <a
+          href="/"
+          className="absolute top-5 left-5 flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity"
+          style={{ color: NAVY }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </a>
         {/* Mobile logo */}
         <div className="flex items-center gap-2 mb-8 lg:hidden">
           <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
