@@ -31,6 +31,8 @@ import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
 import AdminPage from "@/pages/admin";
 import TeacherPage from "@/pages/teacher";
+import TeacherLoginPage from "@/pages/teacher-login";
+import AdminLoginPage from "@/pages/admin-login";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -296,6 +298,10 @@ function Router() {
 
       {/* Post-signup onboarding */}
       <Route path="/onboarding" component={OnboardingPage} />
+
+      {/* Staff login pages */}
+      <Route path="/teacher/login/*?" component={TeacherLoginPage} />
+      <Route path="/admin/login/*?" component={AdminLoginPage} />
 
       {/* Role-specific portals */}
       <Route path="/admin"><AdminRoute component={AdminPage} /></Route>
