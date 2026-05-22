@@ -26,7 +26,16 @@ interface TeacherTest { id: number; title: string; subjectName: string; grade: n
 interface AttendanceRecord { studentId: number; studentName: string; present: boolean; }
 
 function apiFetch(path: string, opts?: RequestInit) {
-  return fetch(`${BASE}/api${path}`, { ...opts, headers: { "Content-Type": "application/json", ...opts?.headers }, credentials: "include" });
+  const token = localStorage.getItem("braintam_staff_token");
+  return fetch(`${BASE}/api${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts?.headers,
+    },
+    credentials: "include",
+  });
 }
 
 export default function TeacherPage() {

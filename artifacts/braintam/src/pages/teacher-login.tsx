@@ -1,22 +1,56 @@
-import { SignIn } from "@clerk/react";
-import { shadcn } from "@clerk/themes";
-import { Link } from "wouter";
-import { ArrowLeft, BookOpen, Users, Video, ClipboardList } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { ArrowLeft, BookOpen, Users, Video, ClipboardList, Eye, EyeOff, Loader2 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const TEAL = "#0891B2";
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const perks = [
-  { icon: Video,        title: "Manage Live Classes",   desc: "Schedule, start and monitor your live sessions" },
-  { icon: BookOpen,     title: "Course Management",     desc: "Create and update lessons across your courses" },
-  { icon: ClipboardList,title: "Grade Submissions",      desc: "Review and grade homework and assignments" },
-  { icon: Users,        title: "Track Attendance",      desc: "Mark and view attendance for every class" },
+  { icon: Video,         title: "Manage Live Classes",  desc: "Schedule, start and monitor your live sessions" },
+  { icon: BookOpen,      title: "Course Management",    desc: "Create and update lessons across your courses" },
+  { icon: ClipboardList, title: "Grade Submissions",    desc: "Review and grade homework and assignments" },
+  { icon: Users,         title: "Track Attendance",     desc: "Mark and view attendance for every class" },
 ];
 
 export default function TeacherLoginPage() {
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Invalid credentials");
+        return;
+      }
+      if (data.student?.role !== "teacher" && data.student?.role !== "admin") {
+        setError("This account does not have teacher access.");
+        return;
+      }
+      localStorage.setItem("braintam_staff_token", data.token);
+      setLocation("/teacher");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* ── Left branding panel ── */}
@@ -117,32 +151,67 @@ export default function TeacherLoginPage() {
           Teacher Portal — sign in to manage your classes
         </div>
 
-        <SignIn
-          routing="path"
-          path={`${basePath}/teacher/login`}
-          signUpUrl={`${basePath}/sign-up`}
-          forceRedirectUrl={`${basePath}/teacher`}
-          appearance={{
-            theme: shadcn,
-            cssLayerName: "clerk",
-            variables: {
-              colorPrimary: TEAL,
-              colorForeground: NAVY,
-              colorBackground: "#FFFFFF",
-              colorInput: "#F8FAFC",
-              fontFamily: "Poppins, sans-serif",
-              borderRadius: "12px",
-            },
-            elements: {
-              rootBox: "w-full flex justify-center",
-              cardBox: "bg-white rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl",
-              card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-              footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-              formButtonPrimary: `bg-[${TEAL}] hover:opacity-90 text-white font-bold`,
-              footerActionLink: `text-[${TEAL}] font-semibold`,
-            },
-          }}
-        />
+        <div className="w-full max-w-[440px] bg-white rounded-2xl shadow-xl p-8">
+          <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>Teacher Sign In</h2>
+          <p className="text-sm text-gray-500 mb-6">Enter your credentials provided by your admin.</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Email address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@school.com"
+                className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                style={{ border: `1.5px solid #E5E7EB`, color: NAVY, background: "#F8FAFC" }}
+                onFocus={e => (e.currentTarget.style.border = `1.5px solid ${TEAL}`)}
+                onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all pr-11"
+                  style={{ border: `1.5px solid #E5E7EB`, color: NAVY, background: "#F8FAFC" }}
+                  onFocus={e => (e.currentTarget.style.border = `1.5px solid ${TEAL}`)}
+                  onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="px-4 py-3 rounded-xl text-sm font-medium text-red-700 bg-red-50 border border-red-200">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: `linear-gradient(135deg, ${TEAL}, #0669a1)` }}
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? "Signing in…" : "Sign In to Teacher Portal"}
+            </button>
+          </form>
+        </div>
 
         <p className="text-xs text-center mt-5 text-gray-400">
           Admin?{" "}

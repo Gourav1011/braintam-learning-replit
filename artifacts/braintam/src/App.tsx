@@ -242,7 +242,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { student, role, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
-  if (!student) return <Redirect to="/sign-in" />;
+  if (!student) return <Redirect to="/admin/login" />;
   if (role !== "admin") return <Redirect to="/dashboard" />;
   return <Component />;
 }
@@ -250,7 +250,7 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 function TeacherRoute({ component: Component }: { component: React.ComponentType }) {
   const { student, role, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
-  if (!student) return <Redirect to="/sign-in" />;
+  if (!student) return <Redirect to="/teacher/login" />;
   if (role !== "teacher" && role !== "admin") return <Redirect to="/dashboard" />;
   return <Component />;
 }

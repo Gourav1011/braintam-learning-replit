@@ -28,7 +28,16 @@ interface Announcement { id: number; title: string; body: string; grade: number 
 interface Banner { id: number; title: string; imageUrl: string; link: string | null; isActive: boolean; displayOrder: number; }
 
 function apiFetch(path: string, opts?: RequestInit) {
-  return fetch(`${BASE}/api${path}`, { ...opts, headers: { "Content-Type": "application/json", ...opts?.headers }, credentials: "include" });
+  const token = localStorage.getItem("braintam_staff_token");
+  return fetch(`${BASE}/api${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts?.headers,
+    },
+    credentials: "include",
+  });
 }
 
 const ROLE_COLORS: Record<string, string> = { admin: "bg-red-100 text-red-700 border-red-200", teacher: "bg-blue-100 text-blue-700 border-blue-200", student: "bg-green-100 text-green-700 border-green-200" };

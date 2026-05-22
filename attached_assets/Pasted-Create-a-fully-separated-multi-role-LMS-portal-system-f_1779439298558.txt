@@ -1,0 +1,130 @@
+Create a fully separated multi-role LMS portal system for Braintam using my existing PostgreSQL + Drizzle ORM backend.
+
+MAIN GOAL:
+The student-facing website should remain clean and public-facing, while teacher and admin portals should be hidden and protected.
+
+REQUIREMENTS:
+
+PORTAL STRUCTURE:
+
+* Public Student Website:
+  /
+
+  * Landing page
+  * Courses page
+  * Student login/signup only
+  * Students should NEVER see admin or teacher UI/buttons
+
+* Teacher Portal:
+  /teacher
+
+  * Separate teacher dashboard
+  * Only accessible to authenticated users with role = teacher
+  * Hidden from public website
+  * No teacher signup button on homepage
+  * Teachers are created only by admin
+
+* Admin Portal:
+  /admin
+
+  * Separate admin dashboard
+  * Only accessible to admin role
+  * Hidden from public website
+  * No admin login button on homepage
+  * Admin manages everything
+
+AUTHENTICATION RULES:
+
+* Remove teacher/admin sign-in buttons from public homepage/navbar
+* Only show:
+
+  * Student Login
+  * Student Signup
+* Teacher and admin login pages should only work through direct URLs:
+  /teacher/login
+  /admin/login
+
+ROLE-BASED ACCESS:
+
+* Students cannot access teacher/admin routes
+* Teachers cannot access admin routes
+* Teachers can only access assigned classes
+* Admin has full control
+
+DATABASE REQUIREMENTS:
+Update users table with:
+
+* role column:
+  student
+  teacher
+  admin
+
+TEACHER CREATION FLOW:
+
+* Teachers are created ONLY by admin
+* Admin can:
+
+  * Add teacher
+  * Assign password
+  * Assign courses/classes
+* No public teacher registration
+
+LOGIN FIX:
+Fix teacher login issue for existing teacher user "Poonam".
+Likely causes:
+
+* Missing password hash
+* Missing role value
+* Auth not checking DB correctly
+
+Implement proper login flow:
+
+* Email/password authentication
+* Session management
+* Role-based redirects
+
+ROUTE STRUCTURE:
+Public:
+/
+/courses
+/student/login
+/student/signup
+
+Teacher:
+/teacher/login
+/teacher/dashboard
+/teacher/classes
+/teacher/homework
+/teacher/live-classes
+
+Admin:
+/admin/login
+/admin/dashboard
+/admin/courses
+/admin/teachers
+/admin/students
+/admin/analytics
+
+UI REQUIREMENTS:
+
+* Public website should look like a premium EdTech landing page
+* Teacher portal should feel professional and focused
+* Admin panel should be powerful and data-oriented
+* Separate layouts/navigation for each portal
+
+SECURITY:
+
+* Add protected route middleware
+* Prevent unauthorized access
+* Redirect invalid users automatically
+* Hide protected routes from navbar and public UI
+
+OUTPUT:
+
+* Create/update all backend auth logic
+* Fix teacher login system
+* Create separate layouts for student/teacher/admin
+* Create admin teacher-management page
+* Create teacher dashboard connected to assigned courses
+* Create proper role middleware and session handling
+* Ensure portals are isolated while still inside the same website/app

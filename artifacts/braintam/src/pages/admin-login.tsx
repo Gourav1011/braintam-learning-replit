@@ -1,22 +1,56 @@
-import { SignIn } from "@clerk/react";
-import { shadcn } from "@clerk/themes";
-import { Link } from "wouter";
-import { ArrowLeft, Shield, Users, BarChart3, Bell, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { ArrowLeft, Shield, Users, BarChart3, Bell, BookOpen, Eye, EyeOff, Loader2 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const RED = "#DC2626";
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const perks = [
-  { icon: BarChart3, title: "Platform Analytics",   desc: "Real-time stats on users, enrollments and submissions" },
-  { icon: Users,     title: "User Management",      desc: "Create, promote and manage teachers and students" },
-  { icon: BookOpen,  title: "Assign & Enroll",      desc: "Assign teachers to courses and enroll students" },
-  { icon: Bell,      title: "Announcements",        desc: "Push notices and banners to the entire platform" },
+  { icon: BarChart3, title: "Platform Analytics",  desc: "Real-time stats on users, enrollments and submissions" },
+  { icon: Users,     title: "User Management",     desc: "Create, promote and manage teachers and students" },
+  { icon: BookOpen,  title: "Assign & Enroll",     desc: "Assign teachers to courses and enroll students" },
+  { icon: Bell,      title: "Announcements",       desc: "Push notices and banners to the entire platform" },
 ];
 
 export default function AdminLoginPage() {
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Invalid credentials");
+        return;
+      }
+      if (data.student?.role !== "admin") {
+        setError("This account does not have admin access.");
+        return;
+      }
+      localStorage.setItem("braintam_staff_token", data.token);
+      setLocation("/admin");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* ── Left branding panel ── */}
@@ -110,32 +144,67 @@ export default function AdminLoginPage() {
           Admin Portal — authorised personnel only
         </div>
 
-        <SignIn
-          routing="path"
-          path={`${basePath}/admin/login`}
-          signUpUrl={`${basePath}/sign-up`}
-          forceRedirectUrl={`${basePath}/admin`}
-          appearance={{
-            theme: shadcn,
-            cssLayerName: "clerk",
-            variables: {
-              colorPrimary: RED,
-              colorForeground: NAVY,
-              colorBackground: "#FFFFFF",
-              colorInput: "#F8FAFC",
-              fontFamily: "Poppins, sans-serif",
-              borderRadius: "12px",
-            },
-            elements: {
-              rootBox: "w-full flex justify-center",
-              cardBox: "bg-white rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl",
-              card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-              footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-              formButtonPrimary: "bg-red-600 hover:bg-red-700 text-white font-bold",
-              footerActionLink: "text-red-600 font-semibold",
-            },
-          }}
-        />
+        <div className="w-full max-w-[440px] bg-white rounded-2xl shadow-xl p-8">
+          <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>Admin Sign In</h2>
+          <p className="text-sm text-gray-500 mb-6">Restricted access. Authorised administrators only.</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Email address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@braintam.com"
+                className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                style={{ border: "1.5px solid #E5E7EB", color: NAVY, background: "#F8FAFC" }}
+                onFocus={e => (e.currentTarget.style.border = `1.5px solid ${RED}`)}
+                onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all pr-11"
+                  style={{ border: "1.5px solid #E5E7EB", color: NAVY, background: "#F8FAFC" }}
+                  onFocus={e => (e.currentTarget.style.border = `1.5px solid ${RED}`)}
+                  onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="px-4 py-3 rounded-xl text-sm font-medium text-red-700 bg-red-50 border border-red-200">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: `linear-gradient(135deg, ${RED}, #b91c1c)` }}
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? "Signing in…" : "Sign In to Admin Panel"}
+            </button>
+          </form>
+        </div>
 
         <p className="text-xs text-center mt-5 text-gray-400">
           Teacher?{" "}

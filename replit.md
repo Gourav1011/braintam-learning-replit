@@ -35,10 +35,21 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 ## Architecture decisions
 
 - Contract-first API: OpenAPI spec → Orval codegen → typed React Query hooks + Zod validation schemas.
-- Auth via Replit-managed Clerk (appId: app_3E3QPesUUDpfDHM6d2k5mjRQA5S). Google OAuth + email/password. Clerk proxy at `/api/__clerk`. Keys in CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, VITE_CLERK_PUBLISHABLE_KEY.
-- Mock student ID=1 (Arjun Sharma, Grade 6) seeded for demo. All protected routes redirect to `/sign-in` when unauthenticated. Old `/login` and `/register` redirect to Clerk routes.
-- All routes are prefix-mounted at `/api` via the shared proxy.
-- Leaderboard data is computed dynamically from real student submissions (tests, homework, assignments). Points are recalculated after every submission and persisted to the users table.
+- **Dual auth system:**
+  - **Students** — Clerk (appId: app_3E3QPesUUDpfDHM6d2k5mjRQA5S), Google OAuth + email/password, `/sign-in` / `/sign-up`. Keys: CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, VITE_CLERK_PUBLISHABLE_KEY.
+  - **Teachers / Admins** — custom email/password via `POST /api/auth/login`. Token stored in `localStorage` under key `braintam_staff_token`. Token format: `base64(userId:timestamp:braintam)`. Auth middleware reads `Authorization: Bearer <token>`.
+- `auth-provider.tsx` checks `braintam_staff_token` in localStorage first (staff flow), falls back to Clerk user (student flow). All protected API calls in teacher/admin portals include the Bearer token via `apiFetch`.
+- Role-based routing: `/admin` → requires `role=admin`, `/teacher` → requires `role=teacher|admin`. Unauthenticated admins redirect to `/admin/login`, teachers to `/teacher/login`. Students to `/sign-in`.
+- Teacher/admin login pages are custom email/password forms at `/teacher/login` and `/admin/login` — NOT Clerk. They call `/api/auth/login`, check role, store token, redirect to portal.
+- All routes prefix-mounted at `/api` via the shared proxy.
+- Leaderboard data computed dynamically from real student submissions. Points recalculated after every submission.
+- Password hashing: SHA-256 of `password + "braintam_salt"` (see `artifacts/api-server/src/routes/auth.ts`).
+
+## Staff accounts
+
+| Name   | Email                  | Role    | Password   |
+|--------|------------------------|---------|------------|
+| poonam | braintam20@gmail.com   | teacher | poonam2026 |
 
 ## Product
 

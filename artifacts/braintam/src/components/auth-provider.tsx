@@ -29,6 +29,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+export const STAFF_TOKEN_KEY = "braintam_staff_token";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -38,19 +39,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded) return;
+
+    const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
+
+    if (staffToken) {
+      setStudentLoading(true);
+      fetch(`${BASE}/api/student/profile`, {
+        headers: { Authorization: `Bearer ${staffToken}` },
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: StudentProfile | null) => {
+          if (data) {
+            setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+          } else {
+            localStorage.removeItem(STAFF_TOKEN_KEY);
+            setStudent(null);
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem(STAFF_TOKEN_KEY);
+          setStudent(null);
+        })
+        .finally(() => setStudentLoading(false));
+      return;
+    }
+
     if (!user) {
       setStudent(null);
       return;
     }
+
     setStudentLoading(true);
     fetch(`${BASE}/api/student/profile`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
+      .then(r => (r.ok ? r.json() : null))
       .then((data: StudentProfile | null) => {
         if (data) {
           setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
         } else {
           setStudent({
-            id: 1,
+            id: 0,
             name: user.fullName ?? user.firstName ?? "Student",
             email: user.emailAddresses[0]?.emailAddress ?? null,
             phone: null,
@@ -70,7 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setStudentLoading(false));
   }, [isLoaded, user]);
 
-  const logout = () => { signOut(); };
+  const logout = () => {
+    localStorage.removeItem(STAFF_TOKEN_KEY);
+    setStudent(null);
+    signOut();
+  };
 
   return (
     <AuthContext.Provider value={{

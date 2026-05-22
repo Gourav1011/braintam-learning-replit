@@ -711,22 +711,6 @@ export default function LandingPage() {
                 onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
                 onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>Sign in</span>
             </Link>
-            <Link href="/teacher/login">
-              <span
-                className="hidden md:block text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-all hover:scale-105"
-                style={{ background: "rgba(8,145,178,0.10)", border: "1px solid rgba(8,145,178,0.30)", color: "#0891B2" }}
-              >
-                Teacher
-              </span>
-            </Link>
-            <Link href="/admin/login">
-              <span
-                className="hidden md:block text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-all hover:scale-105"
-                style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "#DC2626" }}
-              >
-                Admin
-              </span>
-            </Link>
             <button onClick={() => setModalOpen(true)}
               className="px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105"
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 20px rgba(255,107,26,0.35)` }}>
