@@ -841,10 +841,12 @@ export default function LandingPage() {
                       style={{ background: "#F1F5F9", border: `1px solid ${BORDER2}`, color: TEXT }}>
                       Demo ₹49
                     </button>
-                    <button className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
-                      style={{ background: "#22c55e", color: "#fff" }}>
-                      <MessageCircle className="w-3.5 h-3.5" /> Chat
-                    </button>
+                    <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I'm%20interested%20in%20this%20plan!"
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
+                      style={{ background: "#25D366", color: "#fff" }}>
+                      <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                    </a>
                   </div>
                 </div>
               </motion.div>
@@ -1159,6 +1161,20 @@ export default function LandingPage() {
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Made with ❤️ in India 🇮🇳</span>
         </div>
       </footer>
+
+      {/* WhatsApp floating button */}
+      <a
+        href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I%20need%20help!"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-xl hover:scale-110 transition-transform"
+        style={{ background: "#25D366" }}
+        aria-label="Chat on WhatsApp"
+      >
+        <svg viewBox="0 0 32 32" width="28" height="28" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16.003 2C8.28 2 2 8.28 2 16.003c0 2.478.651 4.9 1.885 7.02L2 30l7.174-1.858A13.95 13.95 0 0 0 16.003 30C23.72 30 30 23.72 30 16.003 30 8.28 23.72 2 16.003 2zm0 25.538a11.564 11.564 0 0 1-5.89-1.614l-.422-.251-4.258 1.103 1.13-4.134-.277-.44a11.537 11.537 0 0 1-1.746-6.2c0-6.373 5.19-11.563 11.563-11.563 6.374 0 11.563 5.19 11.563 11.563 0 6.374-5.19 11.536-11.663 11.536zm6.34-8.645c-.347-.174-2.058-1.015-2.376-1.13-.32-.115-.551-.174-.783.173-.231.347-.898 1.13-1.101 1.362-.202.231-.405.26-.752.086-.347-.173-1.464-.54-2.789-1.72-1.03-.918-1.725-2.052-1.928-2.399-.202-.347-.022-.534.152-.707.156-.155.347-.405.52-.607.174-.203.231-.347.347-.578.115-.231.058-.434-.029-.607-.087-.174-.783-1.883-1.072-2.58-.283-.678-.57-.585-.783-.596l-.665-.012c-.231 0-.607.087-.924.434-.318.347-1.215 1.188-1.215 2.897s1.244 3.36 1.418 3.592c.173.231 2.447 3.737 5.93 5.239.829.358 1.476.572 1.98.732.832.264 1.59.227 2.188.138.668-.1 2.058-.842 2.348-1.655.29-.812.29-1.508.202-1.655-.086-.145-.318-.231-.665-.405z"/>
+        </svg>
+      </a>
     </div>
   );
 }
