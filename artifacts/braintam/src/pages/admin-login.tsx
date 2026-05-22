@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { ArrowLeft, Shield, Users, BarChart3, Bell, BookOpen, Eye, EyeOff, Loader2 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
@@ -16,7 +16,6 @@ const perks = [
 ];
 
 export default function AdminLoginPage() {
-  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -43,7 +42,7 @@ export default function AdminLoginPage() {
         return;
       }
       localStorage.setItem("braintam_staff_token", data.token);
-      setLocation("/admin");
+      window.location.href = "/admin";
     } catch {
       setError("Network error. Please try again.");
     } finally {
