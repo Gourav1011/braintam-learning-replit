@@ -35,7 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [student, setStudent] = useState<StudentProfile | null>(null);
-  const [studentLoading, setStudentLoading] = useState(false);
+  // Start as true — stay in loading state until the first effect run completes.
+  // This prevents a brief flash where isLoaded=true but the fetch hasn't started yet,
+  // which would cause route guards to redirect prematurely.
+  const [studentLoading, setStudentLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -43,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
 
     if (staffToken) {
-      setStudentLoading(true);
+      // Already in loading state (studentLoading=true); fetch the profile.
       fetch(`${BASE}/api/student/profile`, {
         headers: { Authorization: `Bearer ${staffToken}` },
       })
@@ -65,11 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!user) {
+      // No staff token, no Clerk user — nothing to load.
       setStudent(null);
+      setStudentLoading(false);
       return;
     }
 
-    setStudentLoading(true);
+    // Clerk user — fetch their profile.
     fetch(`${BASE}/api/student/profile`, { credentials: "include" })
       .then(r => (r.ok ? r.json() : null))
       .then((data: StudentProfile | null) => {
@@ -100,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem(STAFF_TOKEN_KEY);
     setStudent(null);
+    setStudentLoading(false);
     signOut();
   };
 
