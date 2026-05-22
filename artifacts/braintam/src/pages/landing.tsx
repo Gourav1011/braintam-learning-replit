@@ -57,6 +57,11 @@ const TEXT    = "#0B2B6B";
 const MUTED   = "#374151";
 const ease    = [0.25, 0.1, 0.25, 1] as const;
 
+// ── Razorpay payment links (update these when ready) ──────────
+const RAZORPAY_ENROLL_URL = "https://rzp.io/l/braintam-enroll";
+const RAZORPAY_DEMO_URL   = "https://rzp.io/l/braintam-demo";
+const RAZORPAY_TRIAL_URL  = "https://rzp.io/l/braintam-trial";
+
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   show:   (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, delay: i * 0.1, ease } }),
@@ -748,6 +753,28 @@ export default function LandingPage() {
                 </button>
               </Link>
             </motion.div>
+
+            {/* ── 5-Day Trial CTA ── */}
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}>
+              <a href={RAZORPAY_TRIAL_URL} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all hover:scale-[1.02] group"
+                style={{ background: `linear-gradient(135deg, #fff8f3, #fff3ea)`,
+                         border: `2px solid rgba(255,107,26,0.35)`,
+                         boxShadow: "0 4px 24px rgba(255,107,26,0.15)" }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>
+                  <GraduationCap className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold" style={{ color: ORANGE }}>LIMITED OFFER</div>
+                  <div className="font-black text-sm leading-tight" style={{ color: TEXT }}>
+                    5-Day Live Class Trial —{" "}
+                    <span style={{ color: ORANGE }}>₹99 only</span>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
+              </a>
+            </motion.div>
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4} className="flex items-center gap-4 md:gap-5 flex-wrap">
               <div className="flex -space-x-2.5">
                 {[ORANGE, NAVY, "#c94e00", "#1a4a99"].map((c, i) => (
@@ -867,16 +894,18 @@ export default function LandingPage() {
                 </ul>
                 {/* Actions */}
                 <div className="space-y-2 pt-2">
-                  <button onClick={() => {}} className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
+                  <a href={RAZORPAY_ENROLL_URL} target="_blank" rel="noopener noreferrer"
+                    className="block w-full py-3 rounded-xl font-bold text-sm text-white text-center transition-all hover:opacity-90"
                     style={{ background: p.popular ? `linear-gradient(135deg, ${ORANGE}, #c94e00)` : NAVY,
                              boxShadow: p.popular ? `0 0 24px rgba(255,107,26,0.3)` : "none" }}>
                     Enroll Now {p.price}
-                  </button>
+                  </a>
                   <div className="flex gap-2">
-                    <button className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-gray-100"
+                    <a href={RAZORPAY_DEMO_URL} target="_blank" rel="noopener noreferrer"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:bg-gray-100"
                       style={{ background: "#F1F5F9", border: `1px solid ${BORDER2}`, color: TEXT }}>
                       Demo ₹49
-                    </button>
+                    </a>
                     <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I'm%20interested%20in%20this%20plan!"
                       target="_blank" rel="noopener noreferrer"
                       className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
