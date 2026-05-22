@@ -62,6 +62,10 @@ const RAZORPAY_ENROLL_URL = "https://rzp.io/l/braintam-enroll";
 const RAZORPAY_DEMO_URL   = "https://rzp.io/l/braintam-demo";
 const RAZORPAY_TRIAL_URL  = "https://rzp.io/l/braintam-trial";
 
+// ── App store links (update these when ready) ─────────────────
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.braintam";
+const APP_STORE_URL   = "https://apps.apple.com/app/braintam";
+
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   show:   (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, delay: i * 0.1, ease } }),
@@ -411,7 +415,7 @@ function HeroVisual() {
           ))}
         </div>
         <div className="text-xs font-semibold" style={{ color: TEXT }}>
-          <span className="font-black" style={{ color: ORANGE }}>5,00,000+</span> students already learning
+          <span className="font-black" style={{ color: ORANGE }}>5,00,000+</span> Happy Students
         </div>
       </motion.div>
     </div>
@@ -768,7 +772,7 @@ export default function LandingPage() {
                 <div>
                   <div className="text-xs font-semibold" style={{ color: ORANGE }}>LIMITED OFFER</div>
                   <div className="font-black text-sm leading-tight" style={{ color: TEXT }}>
-                    5-Day Live Class Trial —{" "}
+                    5-Day Live Class —{" "}
                     <span style={{ color: ORANGE }}>₹99 only</span>
                   </div>
                 </div>
@@ -785,7 +789,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <span className="text-xs" style={{ color: MUTED }}>
-                <span className="font-semibold" style={{ color: TEXT }}>5,00,000+</span> students learning
+                <span className="font-semibold" style={{ color: TEXT }}>5,00,0+</span> Happy students
               </span>
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />)}
@@ -1024,7 +1028,7 @@ export default function LandingPage() {
               {/* Store badges */}
               <div className="flex flex-col sm:flex-row gap-4 items-center lg:items-start justify-center lg:justify-start">
                 {/* Google Play */}
-                <motion.a href="#" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
+                <motion.a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer"
                   style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 160, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
                   <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="none">
@@ -1040,7 +1044,7 @@ export default function LandingPage() {
                 </motion.a>
 
                 {/* App Store */}
-                <motion.a href="#" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
+                <motion.a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer"
                   style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 160, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
                   <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="white">
