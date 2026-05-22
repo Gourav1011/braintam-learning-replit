@@ -7,6 +7,8 @@ export const testsTable = pgTable("tests", {
   title: text("title").notNull(),
   subjectId: integer("subject_id").notNull(),
   grade: integer("grade").notNull(),
+  courseId: integer("course_id"),
+  teacherId: integer("teacher_id"),
   scheduledAt: timestamp("scheduled_at").notNull(),
   duration: integer("duration").notNull().default(30),
   totalQuestions: integer("total_questions").notNull().default(10),

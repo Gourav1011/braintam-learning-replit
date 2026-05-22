@@ -7,3 +7,5 @@ export * from "./animatedVideos";
 export * from "./homework";
 export * from "./assignments";
 export * from "./tests";
+export * from "./teacherCourses";
+export * from "./enrollments";

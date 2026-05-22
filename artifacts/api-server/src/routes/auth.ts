@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { usersTable, otpTable } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { RegisterBody, LoginBody, SendOtpBody, VerifyOtpBody } from "@workspace/api-zod";
 import crypto from "crypto";
 import { sendOtp } from "../sms.js";
@@ -23,6 +23,7 @@ function userToProfile(u: typeof usersTable.$inferSelect) {
     email: u.email ?? null,
     phone: u.phone ?? null,
     grade: u.grade,
+    role: u.role ?? "student",
     avatarUrl: u.avatarUrl ?? null,
     points: u.points,
     rank: u.rank ?? null,
@@ -52,7 +53,8 @@ router.post("/auth/register", async (req, res) => {
     name,
     email: email ?? null,
     phone: phone ?? null,
-    grade,
+    grade: grade ?? 0,
+    role: "student",
     passwordHash: password ? hashPassword(password) : null,
     points: 0,
     streakDays: 1,
@@ -96,7 +98,6 @@ router.post("/auth/send-otp", async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await db.insert(otpTable).values({ phone, code, expiresAt });
-
   await sendOtp(phone, code);
   req.log.info({ phone }, "OTP generated and logged");
   res.json({ success: true, message: `OTP sent to ${phone}` });
@@ -129,6 +130,7 @@ router.post("/auth/verify-otp", async (req, res) => {
       name,
       phone,
       grade,
+      role: "student",
       points: 0,
       streakDays: 1,
     }).returning();

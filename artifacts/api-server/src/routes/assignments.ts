@@ -4,10 +4,11 @@ import { assignmentsTable, assignmentSubmissionsTable, subjectsTable } from "@wo
 import { ListAssignmentsQueryParams, GetAssignmentParams, SubmitAssignmentParams, SubmitAssignmentBody } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
 import { recomputeAndSavePoints } from "../points";
+import { attachUser, requireAuth } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/assignments", async (req, res) => {
+router.get("/assignments", attachUser, async (req, res) => {
   const parsed = ListAssignmentsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
 
@@ -17,6 +18,7 @@ router.get("/assignments", async (req, res) => {
     subjectId: assignmentsTable.subjectId,
     subjectName: subjectsTable.name,
     grade: assignmentsTable.grade,
+    courseId: assignmentsTable.courseId,
     dueDate: assignmentsTable.dueDate,
     description: assignmentsTable.description,
     maxMarks: assignmentsTable.maxMarks,
@@ -36,6 +38,7 @@ router.get("/assignments", async (req, res) => {
     dueDate: a.dueDate.toISOString(),
     description: a.description ?? null,
     attachmentUrl: a.attachmentUrl ?? null,
+    courseId: a.courseId ?? null,
     status: "pending" as const,
     marks: null,
   })));
@@ -51,6 +54,7 @@ router.get("/assignments/:id", async (req, res) => {
     subjectId: assignmentsTable.subjectId,
     subjectName: subjectsTable.name,
     grade: assignmentsTable.grade,
+    courseId: assignmentsTable.courseId,
     dueDate: assignmentsTable.dueDate,
     description: assignmentsTable.description,
     maxMarks: assignmentsTable.maxMarks,
@@ -61,23 +65,25 @@ router.get("/assignments/:id", async (req, res) => {
     .where(eq(assignmentsTable.id, parsed.data.id));
 
   if (!asgn) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ...asgn, dueDate: asgn.dueDate.toISOString(), description: asgn.description ?? null, attachmentUrl: asgn.attachmentUrl ?? null, status: "pending", marks: null });
+  res.json({ ...asgn, dueDate: asgn.dueDate.toISOString(), description: asgn.description ?? null, attachmentUrl: asgn.attachmentUrl ?? null, courseId: asgn.courseId ?? null, status: "pending", marks: null });
 });
 
-router.post("/assignments/:id/submit", async (req, res) => {
+router.post("/assignments/:id/submit", requireAuth, async (req, res) => {
   const idParsed = SubmitAssignmentParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = SubmitAssignmentBody.safeParse(req.body);
   if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
+  const studentId = req.authUser!.id;
+
   await db.insert(assignmentSubmissionsTable).values({
     assignmentId: idParsed.data.id,
-    studentId: 1,
+    studentId,
     answer: bodyParsed.data.answer,
     attachmentUrl: bodyParsed.data.attachmentUrl ?? null,
     status: "submitted",
   });
 
-  await recomputeAndSavePoints(1);
+  await recomputeAndSavePoints(studentId);
 
   res.json({ success: true, message: "Assignment submitted successfully!" });
 });

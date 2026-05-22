@@ -10,11 +10,15 @@ import homeworkRouter from "./homework";
 import assignmentsRouter from "./assignments";
 import testsRouter from "./tests";
 import studentRouter from "./student";
+import adminRouter from "./admin";
+import teacherRouter from "./teacher";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(adminRouter);
+router.use(teacherRouter);
 router.use(subjectsRouter);
 router.use(coursesRouter);
 router.use(liveClassesRouter);

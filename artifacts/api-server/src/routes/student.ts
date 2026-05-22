@@ -1,21 +1,46 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, subjectsTable, homeworkTable, assignmentsTable, testsTable, liveClassesTable } from "@workspace/db";
+import {
+  usersTable, subjectsTable, homeworkTable, assignmentsTable,
+  testsTable, liveClassesTable, enrollmentsTable,
+} from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, inArray } from "drizzle-orm";
+import { attachUser, requireAuth } from "../middlewares/auth.js";
 
 const router = Router();
 
-const MOCK_STUDENT_ID = 1;
+function resolveStudentId(req: import("express").Request): number {
+  return req.authUser?.id ?? 1;
+}
 
-router.get("/student/dashboard", async (req, res) => {
-  const [student] = await db.select().from(usersTable).where(eq(usersTable.id, MOCK_STUDENT_ID));
+router.get("/student/dashboard", attachUser, async (req, res) => {
+  const studentId = resolveStudentId(req);
+  const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   const subjects = await db.select().from(subjectsTable).limit(6);
 
-  const upcoming = await db.select().from(liveClassesTable)
-    .where(eq(liveClassesTable.status, "upcoming")).limit(5);
-  const hw = await db.select().from(homeworkTable).limit(10);
-  const asgn = await db.select().from(assignmentsTable).limit(10);
+  const enrolledCourseIds = await db
+    .select({ courseId: enrollmentsTable.courseId })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.studentId, studentId));
+  const courseIds = enrolledCourseIds.map(e => e.courseId);
+
+  const upcoming = courseIds.length
+    ? await db.select().from(liveClassesTable)
+        .where(eq(liveClassesTable.status, "upcoming")).limit(5)
+    : await db.select().from(liveClassesTable)
+        .where(eq(liveClassesTable.status, "upcoming")).limit(5);
+
+  const hw = courseIds.length
+    ? await db.select().from(homeworkTable)
+        .where(inArray(homeworkTable.courseId, courseIds)).limit(10)
+    : await db.select().from(homeworkTable).limit(10);
+
+  const asgn = courseIds.length
+    ? await db.select().from(assignmentsTable)
+        .where(inArray(assignmentsTable.courseId, courseIds)).limit(10)
+    : await db.select().from(assignmentsTable).limit(10);
+
   const tests = await db.select().from(testsTable)
     .where(eq(testsTable.status, "upcoming")).limit(5);
 
@@ -24,6 +49,7 @@ router.get("/student/dashboard", async (req, res) => {
     grade: student?.grade ?? 6,
     points: student?.points ?? 0,
     rank: student?.rank ?? 42,
+    role: student?.role ?? "student",
     upcomingLiveClasses: upcoming.length,
     pendingHomework: hw.length,
     pendingAssignments: asgn.length,
@@ -33,8 +59,6 @@ router.get("/student/dashboard", async (req, res) => {
       { id: 1, type: "live_class", title: "Algebra Basics - Live Session", subjectName: "Mathematics", createdAt: new Date(Date.now() - 86400000).toISOString(), score: null },
       { id: 2, type: "test", title: "Chapter 3 Quiz - Photosynthesis", subjectName: "Science", createdAt: new Date(Date.now() - 172800000).toISOString(), score: 85 },
       { id: 3, type: "homework", title: "Grammar Exercise - Tenses", subjectName: "English", createdAt: new Date(Date.now() - 259200000).toISOString(), score: null },
-      { id: 4, type: "video", title: "How Plants Make Food", subjectName: "Science", createdAt: new Date(Date.now() - 345600000).toISOString(), score: null },
-      { id: 5, type: "course", title: "Fractions & Decimals", subjectName: "Mathematics", createdAt: new Date(Date.now() - 432000000).toISOString(), score: null },
     ],
     subjectProgress: subjects.map((s, i) => ({
       subjectId: s.id,
@@ -45,10 +69,11 @@ router.get("/student/dashboard", async (req, res) => {
   });
 });
 
-router.get("/student/profile", async (req, res) => {
-  const [student] = await db.select().from(usersTable).where(eq(usersTable.id, MOCK_STUDENT_ID));
+router.get("/student/profile", attachUser, async (req, res) => {
+  const studentId = resolveStudentId(req);
+  const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   if (!student) {
-    res.json({ id: 1, name: "Arjun Sharma", email: null, phone: "+91 98765 43210", grade: 6, avatarUrl: null, points: 1240, rank: 42, school: "DPS New Delhi" });
+    res.json({ id: studentId, name: "Student", email: null, phone: null, grade: 6, avatarUrl: null, points: 0, rank: null, school: null, role: "student" });
     return;
   }
   res.json({
@@ -57,6 +82,7 @@ router.get("/student/profile", async (req, res) => {
     email: student.email ?? null,
     phone: student.phone ?? null,
     grade: student.grade,
+    role: student.role ?? "student",
     avatarUrl: student.avatarUrl ?? null,
     points: student.points,
     rank: student.rank ?? null,
@@ -66,7 +92,8 @@ router.get("/student/profile", async (req, res) => {
   });
 });
 
-router.patch("/student/profile", async (req, res) => {
+router.patch("/student/profile", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
   const parsed = UpdateStudentProfileBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
@@ -78,13 +105,14 @@ router.patch("/student/profile", async (req, res) => {
   if (parsed.data.grade !== undefined) updates.grade = parsed.data.grade;
   if (parsed.data.avatarUrl) updates.avatarUrl = parsed.data.avatarUrl;
 
-  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, MOCK_STUDENT_ID)).returning();
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning();
   res.json({
     id: updated.id,
     name: updated.name,
     email: updated.email ?? null,
     phone: updated.phone ?? null,
     grade: updated.grade,
+    role: updated.role ?? "student",
     avatarUrl: updated.avatarUrl ?? null,
     points: updated.points,
     rank: updated.rank ?? null,
@@ -94,13 +122,14 @@ router.patch("/student/profile", async (req, res) => {
   });
 });
 
-router.get("/student/progress", async (req, res) => {
-  const [student] = await db.select().from(usersTable).where(eq(usersTable.id, MOCK_STUDENT_ID));
+router.get("/student/progress", attachUser, async (req, res) => {
+  const studentId = resolveStudentId(req);
+  const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   const subjects = await db.select().from(subjectsTable).limit(6);
 
   res.json({
-    totalPoints: student?.points ?? 1240,
-    rank: student?.rank ?? 42,
+    totalPoints: student?.points ?? 0,
+    rank: student?.rank ?? null,
     coursesCompleted: 8,
     testsAttempted: 15,
     averageScore: 78.5,
@@ -113,7 +142,7 @@ router.get("/student/progress", async (req, res) => {
   });
 });
 
-router.get("/student/recent-activity", async (req, res) => {
+router.get("/student/recent-activity", async (_req, res) => {
   res.json([
     { id: 1, type: "live_class", title: "Algebra Basics - Live Session", subjectName: "Mathematics", createdAt: new Date(Date.now() - 86400000).toISOString(), score: null },
     { id: 2, type: "test", title: "Chapter 3 Quiz - Photosynthesis", subjectName: "Science", createdAt: new Date(Date.now() - 172800000).toISOString(), score: 85 },
@@ -140,7 +169,9 @@ router.get("/student/leaderboard", async (req, res) => {
     })
     .from(usersTable)
     .where(
-      grade !== undefined ? eq(usersTable.grade, grade) : sql`true`
+      grade !== undefined
+        ? eq(usersTable.grade, grade)
+        : eq(usersTable.role, "student")
     )
     .orderBy(desc(usersTable.points))
     .limit(50);
@@ -156,10 +187,7 @@ router.get("/student/leaderboard", async (req, res) => {
 
   await Promise.all(
     students.map((s, i) =>
-      db
-        .update(usersTable)
-        .set({ rank: i + 1 })
-        .where(eq(usersTable.id, s.id))
+      db.update(usersTable).set({ rank: i + 1 }).where(eq(usersTable.id, s.id))
     )
   );
 

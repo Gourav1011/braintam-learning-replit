@@ -2,13 +2,17 @@ import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export const userRoles = ["admin", "teacher", "student"] as const;
+export type UserRole = (typeof userRoles)[number];
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").unique(),
   phone: text("phone").unique(),
   passwordHash: text("password_hash"),
-  grade: integer("grade").notNull(),
+  role: text("role").notNull().default("student"),
+  grade: integer("grade").notNull().default(0),
   avatarUrl: text("avatar_url"),
   school: text("school"),
   state: text("state"),

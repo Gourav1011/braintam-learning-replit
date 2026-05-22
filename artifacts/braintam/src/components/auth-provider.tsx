@@ -1,12 +1,15 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useUser, useClerk } from "@clerk/react";
 
+export type UserRole = "admin" | "teacher" | "student";
+
 export interface StudentProfile {
   id: number;
   name: string;
   email: string | null;
   phone: string | null;
   grade: number;
+  role: UserRole;
   school: string | null;
   state: string | null;
   board: string | null;
@@ -19,6 +22,7 @@ export interface StudentProfile {
 interface AuthContextType {
   student: StudentProfile | null;
   isLoading: boolean;
+  role: UserRole | null;
   logout: () => void;
 }
 
@@ -43,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((r) => (r.ok ? r.json() : null))
       .then((data: StudentProfile | null) => {
         if (data) {
-          setStudent(data);
+          setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
         } else {
           setStudent({
             id: 1,
@@ -51,7 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: user.emailAddresses[0]?.emailAddress ?? null,
             phone: null,
             grade: 6,
+            role: "student",
             school: null,
+            state: null,
+            board: null,
             points: 0,
             rank: 1,
             streak: 0,
@@ -63,12 +70,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setStudentLoading(false));
   }, [isLoaded, user]);
 
-  const logout = () => {
-    signOut();
-  };
+  const logout = () => { signOut(); };
 
   return (
-    <AuthContext.Provider value={{ student, isLoading: !isLoaded || studentLoading, logout }}>
+    <AuthContext.Provider value={{
+      student,
+      isLoading: !isLoaded || studentLoading,
+      role: student?.role ?? null,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

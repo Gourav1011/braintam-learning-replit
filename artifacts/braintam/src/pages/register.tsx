@@ -14,7 +14,6 @@ const grades = [1,2,3,4,5,6,7,8,9,10];
 
 export default function RegisterPage() {
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
 
   const [step, setStep] = useState<"details" | "otp">("details");
   const [name, setName] = useState("");
@@ -31,8 +30,7 @@ export default function RegisterPage() {
 
   const registerMutation = useRegister({
     mutation: {
-      onSuccess: (data) => {
-        login(data.token, data.student);
+      onSuccess: () => {
         setLocation("/dashboard");
       },
       onError: () => setError("Registration failed. Please try again."),
@@ -48,8 +46,7 @@ export default function RegisterPage() {
 
   const verifyOtpMutation = useVerifyOtp({
     mutation: {
-      onSuccess: (data) => {
-        login(data.token, data.student);
+      onSuccess: () => {
         setLocation("/dashboard");
       },
       onError: () => setError("Invalid OTP"),

@@ -29,6 +29,8 @@ import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
+import AdminPage from "@/pages/admin";
+import TeacherPage from "@/pages/teacher";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -215,21 +217,39 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 2 } },
 });
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="space-y-3 w-64">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-8 w-1/2" />
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { student, isLoading } = useAuth();
   const [location] = useLocation();
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="space-y-3 w-64">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-8 w-1/2" />
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
   if (!student) return <Redirect to={`/sign-in?redirect_url=${encodeURIComponent(location)}`} />;
+  return <Component />;
+}
+
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { student, role, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!student) return <Redirect to="/sign-in" />;
+  if (role !== "admin") return <Redirect to="/dashboard" />;
+  return <Component />;
+}
+
+function TeacherRoute({ component: Component }: { component: React.ComponentType }) {
+  const { student, role, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!student) return <Redirect to="/sign-in" />;
+  if (role !== "teacher" && role !== "admin") return <Redirect to="/dashboard" />;
   return <Component />;
 }
 
@@ -276,6 +296,10 @@ function Router() {
 
       {/* Post-signup onboarding */}
       <Route path="/onboarding" component={OnboardingPage} />
+
+      {/* Role-specific portals */}
+      <Route path="/admin"><AdminRoute component={AdminPage} /></Route>
+      <Route path="/teacher"><TeacherRoute component={TeacherPage} /></Route>
 
       {/* Protected */}
       <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>

@@ -12,8 +12,6 @@ import { Mail, Phone, Lock, ArrowRight, Eye, EyeOff, ArrowLeft, ChevronUp } from
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,8 +31,7 @@ export default function LoginPage() {
 
   const loginMutation = useLogin({
     mutation: {
-      onSuccess: (data) => {
-        login(data.token, data.student);
+      onSuccess: () => {
         setLocation("/dashboard");
       },
       onError: () => setError("Invalid email/phone or password"),
@@ -50,8 +47,7 @@ export default function LoginPage() {
 
   const verifyOtpMutation = useVerifyOtp({
     mutation: {
-      onSuccess: (data) => {
-        login(data.token, data.student);
+      onSuccess: () => {
         setLocation("/dashboard");
       },
       onError: () => setError("Invalid OTP"),

@@ -28,7 +28,14 @@ export default function TestTakingPage() {
   const submitMutation = useSubmitTest({
     mutation: {
       onSuccess: (data) => {
-        setResult(data);
+        setResult({
+          score: data.score ?? 0,
+          maxScore: data.maxScore ?? 0,
+          percentage: data.percentage ?? 0,
+          passed: data.passed ?? false,
+          correctAnswers: data.correctAnswers ?? 0,
+          wrongAnswers: data.wrongAnswers ?? 0,
+        });
         setShowConfirm(false);
       }
     }

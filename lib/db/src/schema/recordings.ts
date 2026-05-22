@@ -7,6 +7,8 @@ export const recordingsTable = pgTable("recordings", {
   title: text("title").notNull(),
   subjectId: integer("subject_id").notNull(),
   grade: integer("grade").notNull(),
+  courseId: integer("course_id"),
+  teacherId: integer("teacher_id"),
   recordedAt: timestamp("recorded_at").notNull(),
   teacher: text("teacher").notNull(),
   videoUrl: text("video_url").notNull(),

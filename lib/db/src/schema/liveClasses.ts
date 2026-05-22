@@ -7,6 +7,8 @@ export const liveClassesTable = pgTable("live_classes", {
   title: text("title").notNull(),
   subjectId: integer("subject_id").notNull(),
   grade: integer("grade").notNull(),
+  courseId: integer("course_id"),
+  teacherId: integer("teacher_id"),
   scheduledAt: timestamp("scheduled_at").notNull(),
   duration: integer("duration").notNull().default(60),
   teacher: text("teacher").notNull(),

@@ -1,0 +1,367 @@
+import { Router } from "express";
+import { db } from "@workspace/db";
+import {
+  usersTable, coursesTable, subjectsTable, lessonsTable,
+  teacherCoursesTable, enrollmentsTable,
+  liveClassesTable, homeworkTable, assignmentsTable,
+  recordingsTable, testsTable,
+  homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
+} from "@workspace/db";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { requireRole } from "../middlewares/auth.js";
+import crypto from "crypto";
+
+const router = Router();
+const adminOnly = requireRole("admin");
+
+function hashPassword(pw: string): string {
+  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+}
+
+function generateToken(userId: number): string {
+  return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
+}
+
+// ── Stats ────────────────────────────────────────────────────────
+router.get("/admin/stats", adminOnly, async (req, res) => {
+  const [totalUsers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable);
+  const [totalStudents] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "student"));
+  const [totalTeachers] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher"));
+  const [totalCourses] = await db.select({ count: sql<number>`count(*)` }).from(coursesTable);
+  const [totalEnrollments] = await db.select({ count: sql<number>`count(*)` }).from(enrollmentsTable);
+  const [totalAssignments] = await db.select({ count: sql<number>`count(*)` }).from(teacherCoursesTable);
+  res.json({
+    totalUsers: Number(totalUsers.count),
+    totalStudents: Number(totalStudents.count),
+    totalTeachers: Number(totalTeachers.count),
+    totalCourses: Number(totalCourses.count),
+    totalEnrollments: Number(totalEnrollments.count),
+    totalTeacherAssignments: Number(totalAssignments.count),
+  });
+});
+
+// ── User Management ──────────────────────────────────────────────
+router.get("/admin/users", adminOnly, async (req, res) => {
+  const { role } = req.query;
+  const users = await db.select({
+    id: usersTable.id,
+    name: usersTable.name,
+    email: usersTable.email,
+    phone: usersTable.phone,
+    role: usersTable.role,
+    grade: usersTable.grade,
+    school: usersTable.school,
+    isActive: usersTable.isActive,
+    createdAt: usersTable.createdAt,
+    points: usersTable.points,
+  })
+    .from(usersTable)
+    .where(role ? eq(usersTable.role, String(role)) : undefined)
+    .orderBy(desc(usersTable.createdAt));
+  res.json(users);
+});
+
+router.post("/admin/users", adminOnly, async (req, res) => {
+  const { name, email, phone, password, role, grade, school } = req.body;
+  if (!name || !role) {
+    res.status(400).json({ error: "name and role are required" });
+    return;
+  }
+  if (!["admin", "teacher", "student"].includes(role)) {
+    res.status(400).json({ error: "role must be admin, teacher, or student" });
+    return;
+  }
+  if (!email && !phone) {
+    res.status(400).json({ error: "email or phone required" });
+    return;
+  }
+  const [user] = await db.insert(usersTable).values({
+    name,
+    email: email ?? null,
+    phone: phone ?? null,
+    passwordHash: password ? hashPassword(password) : null,
+    role,
+    grade: grade ?? 0,
+    school: school ?? null,
+    points: 0,
+    streakDays: 0,
+  }).returning();
+  res.status(201).json({ ...user, token: generateToken(user.id) });
+});
+
+router.patch("/admin/users/:id", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const { name, role, grade, school, isActive, password } = req.body;
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const updates: Partial<typeof usersTable.$inferInsert> = {};
+  if (name !== undefined) updates.name = name;
+  if (role !== undefined) updates.role = role;
+  if (grade !== undefined) updates.grade = grade;
+  if (school !== undefined) updates.school = school;
+  if (isActive !== undefined) updates.isActive = isActive;
+  if (password !== undefined) updates.passwordHash = hashPassword(password);
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+  res.json(updated);
+});
+
+router.delete("/admin/users/:id", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, id));
+  res.json({ success: true });
+});
+
+// ── Teacher–Course Assignments ───────────────────────────────────
+router.get("/admin/teacher-courses", adminOnly, async (req, res) => {
+  const rows = await db.select({
+    id: teacherCoursesTable.id,
+    teacherId: teacherCoursesTable.teacherId,
+    teacherName: usersTable.name,
+    courseId: teacherCoursesTable.courseId,
+    courseTitle: coursesTable.title,
+    assignedAt: teacherCoursesTable.assignedAt,
+  })
+    .from(teacherCoursesTable)
+    .innerJoin(usersTable, eq(teacherCoursesTable.teacherId, usersTable.id))
+    .innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id))
+    .orderBy(desc(teacherCoursesTable.assignedAt));
+  res.json(rows);
+});
+
+router.post("/admin/teacher-courses", adminOnly, async (req, res) => {
+  const { teacherId, courseId } = req.body;
+  if (!teacherId || !courseId) {
+    res.status(400).json({ error: "teacherId and courseId are required" });
+    return;
+  }
+  const teacher = await db.select().from(usersTable)
+    .where(and(eq(usersTable.id, teacherId), eq(usersTable.role, "teacher"))).limit(1);
+  if (!teacher.length) {
+    res.status(400).json({ error: "Teacher not found" });
+    return;
+  }
+  const [row] = await db.insert(teacherCoursesTable).values({ teacherId, courseId })
+    .onConflictDoNothing().returning();
+  res.status(201).json(row ?? { message: "Already assigned" });
+});
+
+router.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(teacherCoursesTable).where(eq(teacherCoursesTable.id, id));
+  res.json({ success: true });
+});
+
+// ── Enrollments ──────────────────────────────────────────────────
+router.get("/admin/enrollments", adminOnly, async (req, res) => {
+  const { courseId } = req.query;
+
+  const studentAlias = usersTable;
+  const rows = await db.select({
+    id: enrollmentsTable.id,
+    studentId: enrollmentsTable.studentId,
+    studentName: usersTable.name,
+    courseId: enrollmentsTable.courseId,
+    courseTitle: coursesTable.title,
+    enrolledAt: enrollmentsTable.enrolledAt,
+  })
+    .from(enrollmentsTable)
+    .innerJoin(usersTable, eq(enrollmentsTable.studentId, usersTable.id))
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .where(courseId ? eq(enrollmentsTable.courseId, Number(courseId)) : undefined)
+    .orderBy(desc(enrollmentsTable.enrolledAt));
+  res.json(rows);
+});
+
+router.post("/admin/enrollments", adminOnly, async (req, res) => {
+  const { studentId, courseId } = req.body;
+  if (!studentId || !courseId) {
+    res.status(400).json({ error: "studentId and courseId are required" });
+    return;
+  }
+  const [row] = await db.insert(enrollmentsTable)
+    .values({ studentId, courseId, enrolledBy: req.authUser!.id })
+    .onConflictDoNothing().returning();
+  res.status(201).json(row ?? { message: "Already enrolled" });
+});
+
+router.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(enrollmentsTable).where(eq(enrollmentsTable.id, id));
+  res.json({ success: true });
+});
+
+// ── Course Management ────────────────────────────────────────────
+router.get("/admin/courses", adminOnly, async (req, res) => {
+  const courses = await db.select({
+    id: coursesTable.id,
+    title: coursesTable.title,
+    subjectId: coursesTable.subjectId,
+    subjectName: subjectsTable.name,
+    grade: coursesTable.grade,
+    totalLessons: coursesTable.totalLessons,
+    thumbnailUrl: coursesTable.thumbnailUrl,
+    description: coursesTable.description,
+    teacher: coursesTable.teacher,
+    rating: coursesTable.rating,
+  })
+    .from(coursesTable)
+    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
+    .orderBy(desc(coursesTable.createdAt));
+  res.json(courses);
+});
+
+router.post("/admin/courses", adminOnly, async (req, res) => {
+  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating } = req.body;
+  if (!title || !subjectId || !grade || !thumbnailUrl) {
+    res.status(400).json({ error: "title, subjectId, grade, thumbnailUrl are required" });
+    return;
+  }
+  const [course] = await db.insert(coursesTable).values({
+    title, subjectId, grade,
+    totalLessons: totalLessons ?? 0,
+    thumbnailUrl,
+    description: description ?? null,
+    teacher: teacher ?? null,
+    rating: rating ?? null,
+  }).returning();
+  res.status(201).json(course);
+});
+
+// ── Content Creation ─────────────────────────────────────────────
+router.post("/admin/live-classes", adminOnly, async (req, res) => {
+  const { title, subjectId, grade, courseId, teacherId, scheduledAt, duration, teacher, joinUrl } = req.body;
+  if (!title || !subjectId || !grade || !scheduledAt || !teacher) {
+    res.status(400).json({ error: "title, subjectId, grade, scheduledAt, teacher are required" });
+    return;
+  }
+  const [lc] = await db.insert(liveClassesTable).values({
+    title, subjectId, grade,
+    courseId: courseId ?? null,
+    teacherId: teacherId ?? null,
+    scheduledAt: new Date(scheduledAt),
+    duration: duration ?? 60,
+    teacher,
+    joinUrl: joinUrl ?? null,
+    status: "upcoming",
+  }).returning();
+  res.status(201).json(lc);
+});
+
+router.post("/admin/homework", adminOnly, async (req, res) => {
+  const { title, subjectId, grade, courseId, teacherId, dueDate, description, maxMarks } = req.body;
+  if (!title || !subjectId || !grade || !dueDate) {
+    res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
+    return;
+  }
+  const [hw] = await db.insert(homeworkTable).values({
+    title, subjectId, grade,
+    courseId: courseId ?? null,
+    teacherId: teacherId ?? null,
+    dueDate: new Date(dueDate),
+    description: description ?? null,
+    maxMarks: maxMarks ?? 10,
+  }).returning();
+  res.status(201).json(hw);
+});
+
+router.post("/admin/assignments", adminOnly, async (req, res) => {
+  const { title, subjectId, grade, courseId, teacherId, dueDate, description, maxMarks, attachmentUrl } = req.body;
+  if (!title || !subjectId || !grade || !dueDate) {
+    res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
+    return;
+  }
+  const [asgn] = await db.insert(assignmentsTable).values({
+    title, subjectId, grade,
+    courseId: courseId ?? null,
+    teacherId: teacherId ?? null,
+    dueDate: new Date(dueDate),
+    description: description ?? null,
+    maxMarks: maxMarks ?? 20,
+    attachmentUrl: attachmentUrl ?? null,
+  }).returning();
+  res.status(201).json(asgn);
+});
+
+router.post("/admin/recordings", adminOnly, async (req, res) => {
+  const { title, subjectId, grade, courseId, teacherId, recordedAt, teacher, videoUrl, duration, thumbnailUrl } = req.body;
+  if (!title || !subjectId || !grade || !videoUrl || !teacher || !duration || !recordedAt) {
+    res.status(400).json({ error: "title, subjectId, grade, videoUrl, teacher, duration, recordedAt are required" });
+    return;
+  }
+  const [rec] = await db.insert(recordingsTable).values({
+    title, subjectId, grade,
+    courseId: courseId ?? null,
+    teacherId: teacherId ?? null,
+    recordedAt: new Date(recordedAt),
+    teacher, videoUrl,
+    duration,
+    thumbnailUrl: thumbnailUrl ?? null,
+  }).returning();
+  res.status(201).json(rec);
+});
+
+router.post("/admin/tests", adminOnly, async (req, res) => {
+  const { title, subjectId, grade, courseId, teacherId, scheduledAt, duration, totalQuestions } = req.body;
+  if (!title || !subjectId || !grade || !scheduledAt) {
+    res.status(400).json({ error: "title, subjectId, grade, scheduledAt are required" });
+    return;
+  }
+  const [test] = await db.insert(testsTable).values({
+    title, subjectId, grade,
+    courseId: courseId ?? null,
+    teacherId: teacherId ?? null,
+    scheduledAt: new Date(scheduledAt),
+    duration: duration ?? 30,
+    totalQuestions: totalQuestions ?? 10,
+    status: "upcoming",
+  }).returning();
+  res.status(201).json(test);
+});
+
+// ── Submission Overview ──────────────────────────────────────────
+router.get("/admin/submissions/homework", adminOnly, async (req, res) => {
+  const rows = await db.select({
+    id: homeworkSubmissionsTable.id,
+    homeworkId: homeworkSubmissionsTable.homeworkId,
+    homeworkTitle: homeworkTable.title,
+    studentId: homeworkSubmissionsTable.studentId,
+    studentName: usersTable.name,
+    answer: homeworkSubmissionsTable.answer,
+    status: homeworkSubmissionsTable.status,
+    marks: homeworkSubmissionsTable.marks,
+    submittedAt: homeworkSubmissionsTable.submittedAt,
+  })
+    .from(homeworkSubmissionsTable)
+    .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+    .innerJoin(usersTable, eq(homeworkSubmissionsTable.studentId, usersTable.id))
+    .orderBy(desc(homeworkSubmissionsTable.submittedAt))
+    .limit(100);
+  res.json(rows);
+});
+
+router.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
+  const rows = await db.select({
+    id: assignmentSubmissionsTable.id,
+    assignmentId: assignmentSubmissionsTable.assignmentId,
+    assignmentTitle: assignmentsTable.title,
+    studentId: assignmentSubmissionsTable.studentId,
+    studentName: usersTable.name,
+    answer: assignmentSubmissionsTable.answer,
+    status: assignmentSubmissionsTable.status,
+    marks: assignmentSubmissionsTable.marks,
+    submittedAt: assignmentSubmissionsTable.submittedAt,
+  })
+    .from(assignmentSubmissionsTable)
+    .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+    .innerJoin(usersTable, eq(assignmentSubmissionsTable.studentId, usersTable.id))
+    .orderBy(desc(assignmentSubmissionsTable.submittedAt))
+    .limit(100);
+  res.json(rows);
+});
+
+export default router;

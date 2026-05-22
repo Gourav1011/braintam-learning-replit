@@ -7,6 +7,8 @@ export const assignmentsTable = pgTable("assignments", {
   title: text("title").notNull(),
   subjectId: integer("subject_id").notNull(),
   grade: integer("grade").notNull(),
+  courseId: integer("course_id"),
+  teacherId: integer("teacher_id"),
   dueDate: timestamp("due_date").notNull(),
   description: text("description"),
   maxMarks: real("max_marks").notNull().default(20),

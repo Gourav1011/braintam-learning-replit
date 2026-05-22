@@ -4,10 +4,11 @@ import { testsTable, questionsTable, testSubmissionsTable, subjectsTable } from 
 import { ListTestsQueryParams, GetTestParams, SubmitTestParams, SubmitTestBody } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
 import { recomputeAndSavePoints } from "../points";
+import { attachUser, requireAuth } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/tests", async (req, res) => {
+router.get("/tests", attachUser, async (req, res) => {
   const parsed = ListTestsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
 
@@ -17,6 +18,7 @@ router.get("/tests", async (req, res) => {
     subjectId: testsTable.subjectId,
     subjectName: subjectsTable.name,
     grade: testsTable.grade,
+    courseId: testsTable.courseId,
     scheduledAt: testsTable.scheduledAt,
     duration: testsTable.duration,
     totalQuestions: testsTable.totalQuestions,
@@ -32,7 +34,7 @@ router.get("/tests", async (req, res) => {
       )
     );
 
-  res.json(tests.map(t => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), score: null, maxScore: null })));
+  res.json(tests.map(t => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), courseId: t.courseId ?? null, score: null, maxScore: null })));
 });
 
 router.get("/tests/:id", async (req, res) => {
@@ -62,10 +64,12 @@ router.get("/tests/:id", async (req, res) => {
   });
 });
 
-router.post("/tests/:id/submit", async (req, res) => {
+router.post("/tests/:id/submit", requireAuth, async (req, res) => {
   const idParsed = SubmitTestParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = SubmitTestBody.safeParse(req.body);
   if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+
+  const studentId = req.authUser!.id;
 
   const questions = await db.select().from(questionsTable).where(eq(questionsTable.testId, idParsed.data.id));
   const maxScore = questions.length;
@@ -79,13 +83,13 @@ router.post("/tests/:id/submit", async (req, res) => {
 
   await db.insert(testSubmissionsTable).values({
     testId: idParsed.data.id,
-    studentId: 1,
+    studentId,
     answers: JSON.stringify(bodyParsed.data.answers),
     score,
     maxScore,
   });
 
-  await recomputeAndSavePoints(1);
+  await recomputeAndSavePoints(studentId);
 
   res.json({
     score,
