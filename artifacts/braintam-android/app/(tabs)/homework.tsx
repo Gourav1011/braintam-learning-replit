@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useListHomework } from "@workspace/api-client-react";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { CachedDataBanner } from "@/components/CachedDataBanner";
 import {
   scheduleHomeworkNotification,
   cancelHomeworkNotification,
@@ -87,6 +89,7 @@ function UrgencyBadge({ hours }: { hours: number }) {
 export default function HomeworkScreen() {
   const insets = useSafeAreaInsets();
   const { data: rawHW, isLoading, isError, refetch } = useListHomework();
+  const { isOnline } = useNetworkStatus();
   const [items, setItems] = useState<HWItem[]>([]);
   const [permGranted, setPermGranted] = useState(true);
 
@@ -223,12 +226,12 @@ export default function HomeworkScreen() {
         )}
       </View>
 
-      {isLoading ? (
+      {isLoading && !items.length ? (
         <View style={styles.centered}>
           <ActivityIndicator color={Colors.navy} size="large" />
           <Text style={styles.loadingText}>Loading homework…</Text>
         </View>
-      ) : isError ? (
+      ) : isError && !items.length ? (
         <View style={styles.centered}>
           <Feather name="wifi-off" size={40} color={Colors.border} />
           <Text style={styles.emptyTitle}>Couldn't load homework</Text>
@@ -247,6 +250,9 @@ export default function HomeworkScreen() {
           data={items}
           keyExtractor={(i) => String(i.id)}
           renderItem={renderItem}
+          ListHeaderComponent={
+            !isOnline ? <CachedDataBanner onRetry={refetch} /> : null
+          }
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!!items.length}

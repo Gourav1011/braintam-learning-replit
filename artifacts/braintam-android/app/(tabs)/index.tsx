@@ -13,6 +13,8 @@ import { router } from "expo-router";
 import { useGetStudentDashboard, useGetLeaderboard } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/auth";
 import { Colors } from "@/constants/colors";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { CachedDataBanner } from "@/components/CachedDataBanner";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 const MEDAL_BG = ["#FEF9C3", "#F3F4F6", "#FEF3C7"];
@@ -49,6 +51,7 @@ export default function HomeScreen() {
   const { student } = useAuth();
   const { data: dashboard, isLoading, isError, refetch } = useGetStudentDashboard();
   const { data: leaderboard } = useGetLeaderboard();
+  const { isOnline } = useNetworkStatus();
 
   const firstName = (dashboard?.studentName ?? student?.name ?? "Student").split(" ")[0];
   const grade = dashboard?.grade ?? student?.grade ?? "—";
@@ -92,11 +95,11 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your Dashboard</Text>
-        {isLoading ? (
+        {isLoading && !dashboard ? (
           <View style={styles.centered}>
             <ActivityIndicator color={Colors.primary} />
           </View>
-        ) : isError ? (
+        ) : isError && !dashboard ? (
           <View style={styles.centered}>
             <Feather name="wifi-off" size={36} color={Colors.border} />
             <Text style={styles.errorText}>Couldn't load your dashboard</Text>
@@ -105,40 +108,45 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.statGrid}>
-            <StatCard
-              icon="video"
-              label="Live Classes"
-              value={dashboard?.upcomingLiveClasses ?? 0}
-              color="#EF4444"
-              bg="#FEF2F2"
-              onPress={() => router.push("/(tabs)/learn")}
-            />
-            <StatCard
-              icon="file-text"
-              label="Homework"
-              value={dashboard?.pendingHomework ?? 0}
-              color="#F59E0B"
-              bg="#FFFBEB"
-              onPress={() => router.push("/(tabs)/learn")}
-            />
-            <StatCard
-              icon="clipboard"
-              label="Assignments"
-              value={dashboard?.pendingAssignments ?? 0}
-              color={Colors.primary}
-              bg="#FFF4EE"
-              onPress={() => router.push("/(tabs)/learn")}
-            />
-            <StatCard
-              icon="check-square"
-              label="Tests"
-              value={dashboard?.upcomingTests ?? 0}
-              color="#8B5CF6"
-              bg="#F5F3FF"
-              onPress={() => router.push("/(tabs)/learn")}
-            />
-          </View>
+          <>
+            {!isOnline && dashboard && (
+              <CachedDataBanner onRetry={refetch} />
+            )}
+            <View style={styles.statGrid}>
+              <StatCard
+                icon="video"
+                label="Live Classes"
+                value={dashboard?.upcomingLiveClasses ?? 0}
+                color="#EF4444"
+                bg="#FEF2F2"
+                onPress={() => router.push("/(tabs)/learn")}
+              />
+              <StatCard
+                icon="file-text"
+                label="Homework"
+                value={dashboard?.pendingHomework ?? 0}
+                color="#F59E0B"
+                bg="#FFFBEB"
+                onPress={() => router.push("/(tabs)/learn")}
+              />
+              <StatCard
+                icon="clipboard"
+                label="Assignments"
+                value={dashboard?.pendingAssignments ?? 0}
+                color={Colors.primary}
+                bg="#FFF4EE"
+                onPress={() => router.push("/(tabs)/learn")}
+              />
+              <StatCard
+                icon="check-square"
+                label="Tests"
+                value={dashboard?.upcomingTests ?? 0}
+                color="#8B5CF6"
+                bg="#F5F3FF"
+                onPress={() => router.push("/(tabs)/learn")}
+              />
+            </View>
+          </>
         )}
       </View>
 

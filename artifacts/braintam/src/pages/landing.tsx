@@ -1091,7 +1091,7 @@ export default function LandingPage() {
 
             {/* Brand / contact */}
             <div className="space-y-4 md:w-56 flex-shrink-0">
-              <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
+              <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
               <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
                 India's premium learning platform for school students in grades 1–12. Live classes, adaptive tests, animated videos, and more.
               </p>

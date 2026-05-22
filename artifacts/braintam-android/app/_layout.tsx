@@ -3,7 +3,9 @@ import { AppState, AppStateStatus, Platform } from "react-native";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Stack, router, useSegments } from "expo-router";
 import { SplashScreen } from "expo-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -44,8 +46,18 @@ setAuthTokenGetter(async () => {
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 60_000, retry: 1 },
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+      gcTime: 1000 * 60 * 60 * 24,
+    },
   },
+});
+
+const persister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: "braintam_query_cache",
+  throttleTime: 1000,
 });
 
 async function onLoginDetected(): Promise<void> {
@@ -190,11 +202,14 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ErrorBoundary>
-          <QueryClientProvider client={queryClient}>
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}
+          >
             <AuthProvider>
               <RootLayoutInner />
             </AuthProvider>
-          </QueryClientProvider>
+          </PersistQueryClientProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>

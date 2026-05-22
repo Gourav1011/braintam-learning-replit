@@ -21,6 +21,8 @@ import {
 } from "@workspace/api-client-react";
 import type { Course, Subject } from "@workspace/api-client-react";
 import { Colors } from "@/constants/colors";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { CachedDataBanner } from "@/components/CachedDataBanner";
 
 const SUBJECT_COLORS: Record<string, string> = {
   Mathematics: "#6366F1",
@@ -108,6 +110,7 @@ export default function CoursesScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [subjectId, setSubjectId] = useState<number | undefined>();
+  const { isOnline } = useNetworkStatus();
 
   const params = {
     subjectId,
@@ -166,11 +169,11 @@ export default function CoursesScreen() {
         ))}
       </ScrollView>
 
-      {isLoading ? (
+      {isLoading && !(courses ?? []).length ? (
         <View style={styles.centered}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
-      ) : isError ? (
+      ) : isError && !(courses ?? []).length ? (
         <View style={styles.centered}>
           <Feather name="wifi-off" size={40} color={Colors.border} />
           <Text style={styles.emptyTitle}>Couldn't load courses</Text>
@@ -194,6 +197,9 @@ export default function CoursesScreen() {
               onPress={() => router.push(`/course/${item.id}` as any)}
             />
           )}
+          ListHeaderComponent={
+            !isOnline ? <CachedDataBanner onRetry={refetch} /> : null
+          }
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
           onRefresh={refetch}
