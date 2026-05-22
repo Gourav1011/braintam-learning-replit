@@ -853,7 +853,7 @@ export default function LandingPage() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-5 md:mb-8 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Programs</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>Premium live learning programs</h2>
-            <p className="text-sm" style={{ color: MUTED }}>EMI available · Demo class at ₹49 · Enroll directly</p>
+            <p className="text-sm" style={{ color: MUTED }}>EMI available · Demo class at ₹99 · Enroll directly</p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-5">
@@ -904,7 +904,7 @@ export default function LandingPage() {
                     <a href={RAZORPAY_DEMO_URL} target="_blank" rel="noopener noreferrer"
                       className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:bg-gray-100"
                       style={{ background: "#F1F5F9", border: `1px solid ${BORDER2}`, color: TEXT }}>
-                      Demo ₹49
+                      Demo ₹99
                     </a>
                     <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I'm%20interested%20in%20this%20plan!"
                       target="_blank" rel="noopener noreferrer"
