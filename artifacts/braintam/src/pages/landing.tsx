@@ -1135,9 +1135,9 @@ export default function LandingPage() {
               </p>
               <div className="space-y-1.5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
                 <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com / braintam20@gmail.com</div>
-                <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
+                <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 flex-shrink-0" sty  le={{ color: ORANGE }} />+91 84929 44473</div>
                 <div className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
-                  <span>Koramangala, Bengaluru, Karnataka 560034</span>
+                  <span>009 Yashwantviva township, Vasai (E) Mumbai 401209</span>
                 </div>
               </div>
               <div className="flex gap-2">

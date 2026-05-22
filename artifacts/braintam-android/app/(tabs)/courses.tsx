@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  RefreshControl,
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -202,8 +203,15 @@ export default function CoursesScreen() {
           }
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
-          onRefresh={refetch}
-          refreshing={isLoading}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading && !!(courses ?? []).length}
+              onRefresh={refetch}
+              tintColor="#FF6B1A"
+              colors={["#FF6B1A", "#0B2B6B"]}
+              progressBackgroundColor="#fff"
+            />
+          }
         />
       )}
     </View>

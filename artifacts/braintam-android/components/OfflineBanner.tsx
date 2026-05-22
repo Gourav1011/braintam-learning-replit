@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View, Platform } from "react-native";
+import { Animated, StyleSheet, Text, TouchableOpacity, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 const BANNER_HEIGHT = 44;
@@ -9,6 +10,7 @@ const BANNER_HEIGHT = 44;
 export function OfflineBanner() {
   const { isOnline, justCameOnline } = useNetworkStatus();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   const offlineTranslateY = useRef(new Animated.Value(-BANNER_HEIGHT - insets.top)).current;
   const onlineOpacity = useRef(new Animated.Value(0)).current;
@@ -56,10 +58,19 @@ export function OfflineBanner() {
           styles.offlineBanner,
           { paddingTop: insets.top + 8, transform: [{ translateY: offlineTranslateY }] },
         ]}
-        pointerEvents="none"
+        accessibilityLiveRegion="polite"
+        accessibilityLabel="No internet connection"
       >
         <Feather name="wifi-off" size={15} color="#fff" />
         <Text style={styles.offlineText}>No internet connection</Text>
+        <TouchableOpacity
+          onPress={() => queryClient.invalidateQueries()}
+          style={styles.retryBtn}
+          accessibilityLabel="Retry"
+          accessibilityRole="button"
+        >
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </Animated.View>
 
       <Animated.View
@@ -68,6 +79,9 @@ export function OfflineBanner() {
           { top: insets.top + 12, opacity: onlineOpacity },
         ]}
         pointerEvents="none"
+        accessibilityLiveRegion="polite"
+        accessibilityLabel="Back online"
+        accessible
       >
         <Feather name="wifi" size={15} color="#fff" />
         <Text style={styles.onlineText}>Back online</Text>
@@ -96,6 +110,19 @@ const styles = StyleSheet.create({
   offlineText: {
     color: "#fff",
     fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    flex: 1,
+  },
+  retryBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  retryText: {
+    color: "#fff",
+    fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
   },
   onlineBanner: {
