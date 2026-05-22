@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { Redirect } from "wouter";
 import { motion } from "framer-motion";
 import { useGetStudentDashboard, useGetLeaderboard } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
@@ -37,7 +37,11 @@ const activityColors: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { student } = useAuth();
+  const { student, role, isLoading: authLoading } = useAuth();
+
+  if (!authLoading && role === "admin") return <Redirect to="/admin" />;
+  if (!authLoading && role === "teacher") return <Redirect to="/teacher" />;
+
   const { data: dashboard, isLoading } = useGetStudentDashboard();
   const { data: leaderboard } = useGetLeaderboard();
 

@@ -1,11 +1,12 @@
 import { ReactNode } from "react";
-import { useAuth } from "./auth-provider";
+import { useAuth, UserRole } from "./auth-provider";
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
-import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 const WA_NUMBER = "918492944473";
 const WA_LINK = `https://wa.me/${WA_NUMBER}?text=Hi%20Braintam%2C%20I%20need%20help!`;
@@ -27,7 +28,7 @@ function WhatsAppFab() {
   );
 }
 
-const navItems = [
+const studentNavItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/live-classes", icon: Video, label: "Live Classes" },
   { href: "/courses", icon: BookOpen, label: "Courses" },
@@ -39,14 +40,48 @@ const navItems = [
   { href: "/leaderboard", icon: Award, label: "Leaderboard" },
 ];
 
+const teacherNavItems = [
+  { href: "/teacher", icon: LayoutDashboard, label: "Teacher Portal" },
+  { href: "/teacher?tab=courses", icon: BookOpen, label: "My Courses" },
+  { href: "/teacher?tab=live", icon: Video, label: "Live Classes" },
+  { href: "/teacher?tab=homework", icon: FileText, label: "Homework" },
+  { href: "/teacher?tab=submissions", icon: ClipboardList, label: "Submissions" },
+  { href: "/teacher?tab=students", icon: Users, label: "Students" },
+  { href: "/teacher?tab=attendance", icon: CheckSquare, label: "Attendance" },
+];
+
+const adminNavItems = [
+  { href: "/admin", icon: BarChart3, label: "Analytics" },
+  { href: "/admin?tab=users", icon: Users, label: "Manage Users" },
+  { href: "/admin?tab=assignments", icon: GraduationCap, label: "Assign Teachers" },
+  { href: "/admin?tab=enrollments", icon: BookOpen, label: "Enrollments" },
+  { href: "/admin?tab=announcements", icon: FileText, label: "Announcements" },
+  { href: "/admin?tab=banners", icon: Shield, label: "Banners" },
+];
+
+function getNavItems(role: UserRole | null) {
+  if (role === "admin") return adminNavItems;
+  if (role === "teacher") return teacherNavItems;
+  return studentNavItems;
+}
+
+const ROLE_BADGE: Record<string, { label: string; color: string }> = {
+  admin: { label: "Admin", color: "bg-red-100 text-red-700" },
+  teacher: { label: "Teacher", color: "bg-blue-100 text-blue-700" },
+  student: { label: "Student", color: "bg-green-100 text-green-700" },
+};
+
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { student, logout } = useAuth();
+  const { student, role, logout } = useAuth();
   const [location, setLocation] = useLocation();
 
   const handleLogout = () => {
     logout();
     setLocation("/");
   };
+
+  const navItems = getNavItems(role);
+  const roleBadge = ROLE_BADGE[role ?? "student"];
 
   return (
     <SidebarProvider>
@@ -64,9 +99,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <SidebarMenu>
                   {navItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton 
-                        asChild 
-                        isActive={location.startsWith(item.href)}
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.href || location.startsWith(item.href.split("?")[0]) && item.href === item.href.split("?")[0]}
                         className="font-medium h-10"
                       >
                         <Link href={item.href} className="flex items-center gap-3 w-full cursor-pointer">
@@ -90,8 +125,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       <AvatarFallback>{student?.name?.charAt(0) || "U"}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col items-start text-sm">
-                      <span className="font-semibold truncate w-32">{student?.name}</span>
-                      <span className="text-xs text-muted-foreground">Grade {student?.grade}</span>
+                      <span className="font-semibold truncate w-28">{student?.name}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-0.5 ${roleBadge?.color}`}>
+                        {roleBadge?.label ?? role}
+                        {role === "student" && student?.grade ? ` · Grade ${student.grade}` : ""}
+                      </span>
                     </div>
                   </Link>
                 </SidebarMenuButton>
