@@ -90,6 +90,13 @@ function ProfileStep({ onContinue }: { onContinue: () => void }) {
       className="bg-white rounded-2xl shadow-xl w-[440px] max-w-full overflow-hidden"
     >
       <div className="p-8">
+        <div className="mb-5">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: NAVY }}>
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Link>
+        </div>
+
         <div className="text-center mb-6">
           <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain mx-auto mb-3" />
           <h2 className="font-black text-xl" style={{ color: NAVY }}>Join Braintam today</h2>

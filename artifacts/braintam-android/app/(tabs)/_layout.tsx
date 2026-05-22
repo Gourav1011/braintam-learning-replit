@@ -1,5 +1,5 @@
 import { Platform, View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Tabs, router } from "expo-router";
+import { Tabs, router, useNavigation } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
@@ -15,16 +15,31 @@ function TabIcon({ name, color, focused }: { name: any; color: string; focused: 
 
 function AppHeader() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
+
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.headerBrand}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoMarkText}>B</Text>
+      <View style={styles.headerLeft}>
+        {canGoBack ? (
+          <TouchableOpacity
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+          >
+            <Feather name="arrow-left" size={20} color={Colors.navy} />
+          </TouchableOpacity>
+        ) : null}
+        <View style={styles.headerBrand}>
+          <View style={styles.logoMark}>
+            <Text style={styles.logoMarkText}>B</Text>
+          </View>
+          <Text style={styles.logoText}>
+            <Text style={styles.logoNavy}>Brain</Text>
+            <Text style={styles.logoOrange}>tam</Text>
+          </Text>
         </View>
-        <Text style={styles.logoText}>
-          <Text style={styles.logoNavy}>Brain</Text>
-          <Text style={styles.logoOrange}>tam</Text>
-        </Text>
       </View>
       <TouchableOpacity
         style={styles.bellBtn}
@@ -129,6 +144,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerBrand: { flexDirection: "row", alignItems: "center", gap: 8 },
   logoMark: {
