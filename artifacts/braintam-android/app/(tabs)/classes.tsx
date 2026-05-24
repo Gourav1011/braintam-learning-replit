@@ -13,7 +13,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useListLiveClasses } from "@workspace/api-client-react";
 import {
   scheduleClassNotification,
   cancelClassNotification,
@@ -86,7 +85,29 @@ function StatusBadge({ minsUntil, status }: { minsUntil: number; status: string 
 
 export default function ClassesScreen() {
   const insets = useSafeAreaInsets();
-  const { data: rawClasses, isLoading, isError, refetch } = useListLiveClasses();
+  const rawClasses = [
+    {
+      id: 1,
+      title: "Mathematics Live Class",
+      subjectName: "Mathematics",
+      teacher: "Braintam Teacher",
+      scheduledAt: new Date(Date.now() + 3600000).toISOString(),
+      status: "upcoming",
+    },
+    {
+      id: 2,
+      title: "Science Revision Session",
+      subjectName: "Science",
+      teacher: "Braintam Faculty",
+      scheduledAt: new Date(Date.now() + 7200000).toISOString(),
+      status: "upcoming",
+    },
+  ];
+
+  const isLoading = false;
+  const isError = false;
+
+  const refetch = async () => {};
   const [items, setItems] = useState<ClassItem[]>([]);
   const [permGranted, setPermGranted] = useState(true);
 
