@@ -1169,7 +1169,7 @@ export default function LandingPage() {
                 <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com / braintam20@gmail.com</div>
                 <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
                 <div className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
-                  <span>009 Yashwantviva township, Vasai (E) Mumbai 401209</span>
+                  <span>C/23, Durvas Complex, near captial mall gate No. 5, Nallasopara (E), Palghar, 401209</span>
                 </div>
               </div>
               <div className="flex gap-2">
