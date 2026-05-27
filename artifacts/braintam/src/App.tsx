@@ -11,7 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { AuthProvider, useAuth } from "@/components/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
-import braintamLogo from "@assets/imresizer-Gemini_Generated_Image_40tk9140tk9140tk-removebg-pre_1779898987915.png";
+import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 import LandingPage from "@/pages/landing";
 import DashboardPage from "@/pages/dashboard";

@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import braintamLogo from "@assets/imresizer-Gemini_Generated_Image_40tk9140tk9140tk-removebg-pre_1779898987915.png";
+import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRegister, useSendOtp, useVerifyOtp } from "@workspace/api-client-react";
 import { useAuth } from "@/components/auth-provider";
-import braintamLogo from "@assets/imresizer-Gemini_Generated_Image_40tk9140tk9140tk-removebg-pre_1779898987915.png";
+import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, GraduationCap, ArrowLeft } from "lucide-react";
 
 const grades = [1,2,3,4,5,6,7,8,9,10];
