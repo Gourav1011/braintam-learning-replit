@@ -217,7 +217,7 @@ function SignInPage() {
           </a>
           {" · "}
           <a href={`${basePath}/login`} className="text-primary hover:underline font-medium">
-            Sign in with email/OTP
+            Sign in with email
           </a>
         </p>
       </div>
@@ -309,7 +309,7 @@ function Router() {
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
 
-      {/* Custom login page with email/password + OTP + forgot password */}
+      {/* Custom login page with email/password + forgot password */}
       <Route path="/login" component={LoginPage} />
       <Route path="/register"><Redirect to="/sign-up" /></Route>
 

@@ -4,24 +4,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  useLogin,
-  useSendOtp,
-  useVerifyOtp,
-} from "@workspace/api-client-react";
+import { useLogin } from "@workspace/api-client-react";
 import { useAuth, STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 import {
   Mail,
-  Phone,
   Lock,
   ArrowRight,
   Eye,
   EyeOff,
   ArrowLeft,
   ChevronUp,
-  KeyRound,
   CheckCircle,
 } from "lucide-react";
 
@@ -29,25 +22,18 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { refreshAuth } = useAuth();
 
-  // --- Login state ---
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState("");
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // --- Forgot password state ---
   const [mode, setMode] = useState<"login" | "forgot">("login");
-  const [forgotPhone, setForgotPhone] = useState("");
-  const [forgotOtp, setForgotOtp] = useState("");
-  const [forgotOtpSent, setForgotOtpSent] = useState(false);
-  const [forgotOtpVerified, setForgotOtpVerified] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 200);
@@ -57,7 +43,6 @@ export default function LoginPage() {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // --- Helper to persist token ---
   const persistToken = (data: { token: string }) => {
     localStorage.setItem(STUDENT_TOKEN_KEY, data.token);
     refreshAuth();
@@ -69,24 +54,7 @@ export default function LoginPage() {
         persistToken(data);
         setLocation("/dashboard");
       },
-      onError: () => setError("Invalid email/phone or password"),
-    },
-  });
-
-  const sendOtpMutation = useSendOtp({
-    mutation: {
-      onSuccess: () => setOtpSent(true),
-      onError: () => setError("Failed to send OTP"),
-    },
-  });
-
-  const verifyOtpMutation = useVerifyOtp({
-    mutation: {
-      onSuccess: (data) => {
-        persistToken(data);
-        setLocation("/dashboard");
-      },
-      onError: () => setError("Invalid OTP"),
+      onError: () => setError("Invalid email or password"),
     },
   });
 
@@ -96,66 +64,18 @@ export default function LoginPage() {
     loginMutation.mutate({ data: { email, password } });
   };
 
-  const handleSendOtp = () => {
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
-    sendOtpMutation.mutate({ data: { phone } });
-  };
-
-  const handleVerifyOtp = () => {
-    setError("");
-    verifyOtpMutation.mutate({ data: { phone, otp } });
-  };
-
-  // --- Forgot password handlers ---
-  const handleForgotSendOtp = async () => {
-    setError("");
+    if (newPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    setResetBusy(true);
     try {
       const res = await fetch(
-        `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/auth/send-otp`,
+        `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/auth/reset-password-email`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: forgotPhone }),
-        },
-      );
-      if (!res.ok) throw new Error("Failed to send OTP");
-      setForgotOtpSent(true);
-    } catch {
-      setError("Failed to send OTP. Check phone number.");
-    }
-  };
-
-  const handleForgotVerifyOtp = async () => {
-    setError("");
-    try {
-      const res = await fetch(
-        `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/auth/verify-otp`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: forgotPhone, otp: forgotOtp }),
-        },
-      );
-      if (!res.ok) throw new Error("Invalid OTP");
-      setForgotOtpVerified(true);
-    } catch {
-      setError("Invalid or expired OTP");
-    }
-  };
-
-  const handleResetPassword = async () => {
-    setError("");
-    try {
-      const res = await fetch(
-        `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/auth/reset-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone: forgotPhone,
-            otp: forgotOtp,
-            newPassword,
-          }),
+          body: JSON.stringify({ email: forgotEmail, newPassword }),
         },
       );
       if (!res.ok) {
@@ -168,6 +88,8 @@ export default function LoginPage() {
       setTimeout(() => setLocation("/dashboard"), 1200);
     } catch (err: any) {
       setError(err?.message || "Failed to reset password");
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -180,31 +102,16 @@ export default function LoginPage() {
             <motion.div
               key={i}
               className="absolute rounded-full bg-white/5"
-              style={{
-                width: (i + 1) * 80,
-                height: (i + 1) * 80,
-                left: `${20 + i * 10}%`,
-                top: `${10 + i * 12}%`,
-              }}
+              style={{ width: (i + 1) * 80, height: (i + 1) * 80, left: `${20 + i * 10}%`, top: `${10 + i * 12}%` }}
               animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
               transition={{ duration: 3 + i, repeat: Infinity }}
             />
           ))}
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative z-10 text-center text-white space-y-6"
-        >
-          <img
-            src={braintamLogo}
-            alt="Braintam"
-            className="w-32 h-auto mx-auto drop-shadow-xl"
-          />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 text-center text-white space-y-6">
+          <img src={braintamLogo} alt="Braintam" className="w-32 h-auto mx-auto drop-shadow-xl" />
           <h2 className="text-4xl font-bold">Welcome Back!</h2>
-          <p className="text-xl text-white/80 max-w-sm">
-            Your learning journey continues. Let's pick up where you left off.
-          </p>
+          <p className="text-xl text-white/80 max-w-sm">Your learning journey continues. Let's pick up where you left off.</p>
           <div className="grid grid-cols-2 gap-4 mt-8">
             {[
               { label: "Live Classes", value: "500+" },
@@ -212,10 +119,7 @@ export default function LoginPage() {
               { label: "Students", value: "5L+" },
               { label: "Avg Score Boost", value: "40%" },
             ].map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-white/10 backdrop-blur rounded-xl p-4"
-              >
+              <div key={stat.label} className="bg-white/10 backdrop-blur rounded-xl p-4">
                 <div className="text-2xl font-bold">{stat.value}</div>
                 <div className="text-sm text-white/70">{stat.label}</div>
               </div>
@@ -226,12 +130,9 @@ export default function LoginPage() {
 
       {/* Right Panel */}
       <div className="flex-1 flex items-center justify-center p-6 bg-background relative">
-        {/* Back button */}
         <div className="absolute top-5 left-5">
           <button
-            onClick={() =>
-              mode === "login" ? setLocation("/") : setMode("login")
-            }
+            onClick={() => mode === "login" ? setLocation("/") : setMode("login")}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -239,32 +140,19 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="w-full max-w-md space-y-8"
-        >
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <img
-              src={braintamLogo}
-              alt="Braintam"
-              className="w-16 h-auto mx-auto mb-4 lg:hidden"
-            />
+            <img src={braintamLogo} alt="Braintam" className="w-16 h-auto mx-auto mb-4 lg:hidden" />
             <h1 className="text-3xl font-bold text-foreground">
               {mode === "login" ? "Sign in" : "Reset Password"}
             </h1>
             <p className="text-muted-foreground mt-2">
-              {mode === "login"
-                ? "Access your Braintam account"
-                : "Recover your account with OTP"}
+              {mode === "login" ? "Access your Braintam account" : "Set a new password for your account"}
             </p>
           </div>
 
           {error && (
-            <div
-              className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm"
-              data-testid="login-error"
-            >
+            <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm" data-testid="login-error">
               {error}
             </div>
           )}
@@ -272,293 +160,142 @@ export default function LoginPage() {
           {resetSuccess && (
             <div className="bg-green-500/10 text-green-600 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              Password reset successful! Redirecting...
+              Password reset successful! Redirecting…
             </div>
           )}
 
           {mode === "login" ? (
             <>
-              <Tabs defaultValue="email" className="w-full">
-                <TabsList className="grid grid-cols-2 w-full mb-6">
-                  <TabsTrigger value="email" data-testid="tab-email">
-                    Email / Password
-                  </TabsTrigger>
-                  <TabsTrigger value="phone" data-testid="tab-phone">
-                    Phone OTP
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="email">
-                  <form onSubmit={handleEmailLogin} className="space-y-4">
-                    <div>
-                      <Label htmlFor="email">Email address</Label>
-                      <div className="relative mt-1">
-                        <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10"
-                          required
-                          data-testid="input-email"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Password</Label>
-                      <div className="relative mt-1">
-                        <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter your password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-10 pr-10"
-                          required
-                          data-testid="input-password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3 text-muted-foreground"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Forgot password link */}
-                    <div className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode("forgot");
-                          setError("");
-                        }}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full h-12 text-base rounded-xl"
-                      disabled={loginMutation.isPending}
-                      data-testid="button-login"
-                    >
-                      {loginMutation.isPending ? (
-                        "Signing in..."
-                      ) : (
-                        <>
-                          Sign In <ArrowRight className="ml-2 w-4 h-4" />
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="phone">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <div className="relative mt-1">
-                        <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="+91 98765 43210"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="pl-10"
-                          data-testid="input-phone"
-                        />
-                      </div>
-                    </div>
-                    {!otpSent ? (
-                      <Button
-                        onClick={handleSendOtp}
-                        className="w-full h-12 text-base rounded-xl"
-                        disabled={sendOtpMutation.isPending || !phone}
-                        data-testid="button-send-otp"
-                      >
-                        {sendOtpMutation.isPending
-                          ? "Sending..."
-                          : "Send OTP"}
-                      </Button>
-                    ) : (
-                      <>
-                        <div className="bg-primary/10 text-primary px-4 py-3 rounded-lg text-sm">
-                          OTP sent! (Check server logs for demo OTP)
-                        </div>
-                        <div>
-                          <Label htmlFor="otp">Enter OTP</Label>
-                          <Input
-                            id="otp"
-                            type="text"
-                            placeholder="6-digit OTP"
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            className="mt-1 text-center text-2xl tracking-widest"
-                            maxLength={6}
-                            data-testid="input-otp"
-                          />
-                        </div>
-                        <Button
-                          onClick={handleVerifyOtp}
-                          className="w-full h-12 text-base rounded-xl"
-                          disabled={verifyOtpMutation.isPending || otp.length < 6}
-                          data-testid="button-verify-otp"
-                        >
-                          {verifyOtpMutation.isPending
-                            ? "Verifying..."
-                            : "Verify & Login"}
-                        </Button>
-                      </>
-                    )}
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                <div>
+                  <Label htmlFor="email">Email address</Label>
+                  <div className="relative mt-1">
+                    <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                      data-testid="input-email"
+                    />
                   </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative mt-1">
+                    <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 pr-10"
+                      required
+                      data-testid="input-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setMode("forgot"); setError(""); }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 text-base rounded-xl"
+                  disabled={loginMutation.isPending}
+                  data-testid="button-login"
+                >
+                  {loginMutation.isPending ? "Signing in…" : <><span>Sign In</span><ArrowRight className="ml-2 w-4 h-4" /></>}
+                </Button>
+              </form>
 
               <div className="text-center text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link
-                  href="/register"
-                  className="text-primary font-semibold hover:underline"
-                  data-testid="link-register"
-                >
+                <Link href="/register" className="text-primary font-semibold hover:underline" data-testid="link-register">
                   Create one free
                 </Link>
               </div>
             </>
           ) : (
-            // Forgot Password Flow
-            <div className="space-y-6">
-              {!forgotOtpVerified ? (
-                <>
-                  <div>
-                    <Label htmlFor="forgot-phone">Phone Number</Label>
-                    <div className="relative mt-1">
-                      <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="forgot-phone"
-                        type="tel"
-                        placeholder="+91 98765 43210"
-                        value={forgotPhone}
-                        onChange={(e) => setForgotPhone(e.target.value)}
-                        className="pl-10"
-                        disabled={forgotOtpSent}
-                      />
-                    </div>
-                  </div>
-                  {!forgotOtpSent ? (
-                    <Button
-                      onClick={handleForgotSendOtp}
-                      className="w-full h-12 text-base rounded-xl"
-                      disabled={!forgotPhone}
-                    >
-                      Send OTP
-                    </Button>
-                  ) : (
-                    <>
-                      <div className="bg-primary/10 text-primary px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-                        <KeyRound className="w-4 h-4" />
-                        OTP sent to {forgotPhone}
-                      </div>
-                      <div>
-                        <Label htmlFor="forgot-otp">Enter OTP</Label>
-                        <Input
-                          id="forgot-otp"
-                          type="text"
-                          placeholder="6-digit OTP"
-                          value={forgotOtp}
-                          onChange={(e) => setForgotOtp(e.target.value)}
-                          className="mt-1 text-center text-2xl tracking-widest"
-                          maxLength={6}
-                        />
-                      </div>
-                      <Button
-                        onClick={handleForgotVerifyOtp}
-                        className="w-full h-12 text-base rounded-xl"
-                        disabled={forgotOtp.length < 6}
-                      >
-                        Verify OTP
-                      </Button>
-                    </>
-                  )}
-                </>
-              ) : (
-                // New password form
-                <>
-                  <div className="bg-green-500/10 text-green-600 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    OTP verified! Set your new password.
-                  </div>
-                  <div>
-                    <Label htmlFor="new-password">New Password</Label>
-                    <div className="relative mt-1">
-                      <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="new-password"
-                        type={showNewPassword ? "text" : "password"}
-                        placeholder="Min 6 characters"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="pl-10 pr-10"
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-3 text-muted-foreground"
-                      >
-                        {showNewPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleResetPassword}
-                    className="w-full h-12 text-base rounded-xl"
-                    disabled={!newPassword || newPassword.length < 6}
+            /* Forgot Password — email + new password, no OTP */
+            <form onSubmit={handleResetPassword} className="space-y-5">
+              <div>
+                <Label htmlFor="forgot-email">Email address</Label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="Account email address"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative mt-1">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="new-password"
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="Min 6 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground"
                   >
-                    Reset Password & Login
-                  </Button>
-                </>
-              )}
-            </div>
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 text-base rounded-xl"
+                disabled={resetBusy || !forgotEmail || newPassword.length < 6}
+              >
+                {resetBusy ? "Resetting…" : "Reset Password & Login"}
+              </Button>
+            </form>
           )}
 
           <p className="text-center text-xs text-muted-foreground">
             By signing in, you agree to our{" "}
-            <Link
-              href="/terms"
-              className="underline hover:text-primary"
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="/privacy"
-              className="underline hover:text-primary"
-            >
-              Privacy Policy
-            </Link>
+            <Link href="/terms" className="underline hover:text-primary">Terms of Service</Link>
+            {" "}and{" "}
+            <Link href="/privacy" className="underline hover:text-primary">Privacy Policy</Link>
           </p>
         </motion.div>
       </div>
 
-      {/* Scroll-to-top button */}
       <AnimatePresence>
         {showScrollTop && (
           <motion.button

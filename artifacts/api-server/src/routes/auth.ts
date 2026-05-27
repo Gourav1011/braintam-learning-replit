@@ -1,10 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, otpTable } from "@workspace/db";
+import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { RegisterBody, LoginBody, SendOtpBody, VerifyOtpBody } from "@workspace/api-zod";
+import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import crypto from "crypto";
-import { sendOtp } from "../sms.js";
 
 const router = Router();
 
@@ -37,22 +36,20 @@ router.post("/auth/register", async (req, res) => {
     res.status(400).json({ error: "Invalid input" });
     return;
   }
-  const { name, email, phone, grade, password } = parsed.data;
-  if (!email && !phone) {
-    res.status(400).json({ error: "Email or phone required" });
+  const { name, email, grade, password } = parsed.data;
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
     return;
   }
-  const existing = await db.select().from(usersTable).where(
-    email ? eq(usersTable.email, email) : eq(usersTable.phone, phone!)
-  ).limit(1);
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
-    res.status(400).json({ error: "User already exists" });
+    res.status(400).json({ error: "An account with this email already exists" });
     return;
   }
   const [user] = await db.insert(usersTable).values({
     name,
-    email: email ?? null,
-    phone: phone ?? null,
+    email,
+    phone: null,
     grade: grade ?? 0,
     role: "student",
     passwordHash: password ? hashPassword(password) : null,
@@ -70,7 +67,7 @@ router.post("/auth/login", async (req, res) => {
   }
   const { email, phone, password } = parsed.data;
   if (!email && !phone) {
-    res.status(400).json({ error: "Email or phone required" });
+    res.status(400).json({ error: "Email is required" });
     return;
   }
   const users = await db.select().from(usersTable).where(
@@ -88,90 +85,21 @@ router.post("/auth/login", async (req, res) => {
   res.json({ token: generateToken(user.id), student: userToProfile(user) });
 });
 
-router.post("/auth/send-otp", async (req, res) => {
-  const parsed = SendOtpBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
+router.post("/auth/reset-password-email", async (req, res) => {
+  const { email, newPassword } = req.body;
+  if (!email || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: "Email and new password (min 6 chars) required" });
     return;
   }
-  const { phone } = parsed.data;
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  await db.insert(otpTable).values({ phone, code, expiresAt });
-  await sendOtp(phone, code);
-  req.log.info({ phone }, "OTP generated and logged");
-  res.json({ success: true, message: `OTP sent to ${phone}` });
-});
-
-router.post("/auth/verify-otp", async (req, res) => {
-  const parsed = VerifyOtpBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
-    return;
-  }
-  const { phone, otp, name, grade } = parsed.data;
-  const otps = await db.select().from(otpTable).where(
-    eq(otpTable.phone, phone)
-  ).orderBy(otpTable.createdAt).limit(5);
-  const valid = otps.find(o => !o.used && o.code === otp && o.expiresAt > new Date());
-  if (!valid) {
-    res.status(400).json({ error: "Invalid or expired OTP" });
-    return;
-  }
-  await db.update(otpTable).set({ used: true }).where(eq(otpTable.id, valid.id));
-  let users = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
-  let user = users[0];
-  if (!user) {
-    if (!name || !grade) {
-      res.status(400).json({ error: "Name and grade required for new users" });
-      return;
-    }
-    const inserted = await db.insert(usersTable).values({
-      name,
-      phone,
-      grade,
-      role: "student",
-      points: 0,
-      streakDays: 1,
-    }).returning();
-    user = inserted[0];
-  }
-  res.json({ token: generateToken(user.id), student: userToProfile(user) });
-});
-
-router.post("/auth/reset-password", async (req, res) => {
-  const { phone, otp, newPassword } = req.body;
-  if (!phone || !otp || !newPassword || newPassword.length < 6) {
-    res.status(400).json({ error: "Phone, OTP and new password (min 6 chars) required" });
-    return;
-  }
-
-  // Verify OTP
-  const otps = await db.select().from(otpTable).where(
-    eq(otpTable.phone, phone)
-  ).orderBy(otpTable.createdAt).limit(5);
-  const valid = otps.find(o => !o.used && o.code === otp && o.expiresAt > new Date());
-  if (!valid) {
-    res.status(400).json({ error: "Invalid or expired OTP" });
-    return;
-  }
-
-  // Mark OTP as used
-  await db.update(otpTable).set({ used: true }).where(eq(otpTable.id, valid.id));
-
-  // Find user by phone
-  const users = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+  const users = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (users.length === 0) {
-    res.status(404).json({ error: "No user found with this phone number" });
+    res.status(404).json({ error: "No account found with this email address" });
     return;
   }
   const user = users[0];
-
-  // Update password
   await db.update(usersTable)
     .set({ passwordHash: hashPassword(newPassword) })
     .where(eq(usersTable.id, user.id));
-
   res.json({ token: generateToken(user.id), student: userToProfile(user) });
 });
 
