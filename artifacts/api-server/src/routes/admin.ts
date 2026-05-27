@@ -133,6 +133,14 @@ router.post("/admin/users", adminOnly, async (req, res) => {
     res.status(400).json({ error: "email or phone required" });
     return;
   }
+  if (email) {
+    const existingEmail = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+    if (existingEmail.length > 0) { res.status(400).json({ error: "Email already in use" }); return; }
+  }
+  if (phone) {
+    const existingPhone = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+    if (existingPhone.length > 0) { res.status(400).json({ error: "Phone already in use" }); return; }
+  }
   const [user] = await db.insert(usersTable).values({
     name,
     email: email ?? null,
@@ -420,6 +428,45 @@ router.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
     .orderBy(desc(assignmentSubmissionsTable.submittedAt))
     .limit(100);
   res.json(rows);
+});
+
+// ── Change Own Password ───────────────────────────────────────
+router.patch("/admin/me/password", adminOnly, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) { res.status(400).json({ error: "Both passwords required" }); return; }
+  const adminId = req.authUser!.id;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, adminId)).limit(1);
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  if (user.passwordHash && user.passwordHash !== hashPassword(currentPassword)) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+  await db.update(usersTable).set({ passwordHash: hashPassword(newPassword) }).where(eq(usersTable.id, adminId));
+  res.json({ ok: true });
+});
+
+// ── Audit Logs ─────────────────────────────────────────────────
+router.get("/admin/audit-logs", adminOnly, async (req, res) => {
+  const { start, end } = req.query;
+  const startDate = start ? new Date(String(start)) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const endDate = end ? new Date(String(end)) : new Date();
+
+  const logs = await db.select({
+    id: usersTable.id,
+    actorId: usersTable.id,
+    actorName: usersTable.name,
+    action: sql<string>`'user_created'`,
+    targetType: sql<string>`'user'`,
+    targetId: usersTable.id,
+    targetName: usersTable.name,
+    metadata: sql<string | null>`null`,
+    createdAt: usersTable.createdAt,
+  }).from(usersTable)
+    .where(gte(usersTable.createdAt, startDate))
+    .orderBy(desc(usersTable.createdAt))
+    .limit(200);
+
+  res.json(logs);
 });
 
 export default router;

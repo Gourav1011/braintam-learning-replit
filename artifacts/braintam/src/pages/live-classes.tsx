@@ -41,7 +41,9 @@ export default function LiveClassesPage() {
   const joinMutation = useJoinLiveClass({
     mutation: {
       onSuccess: (data) => {
-        window.open(data.joinUrl, "_blank");
+        if (data.joinUrl) {
+          window.open(data.joinUrl, "_blank", "noopener,noreferrer");
+        }
       }
     }
   });

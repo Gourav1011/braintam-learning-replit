@@ -33,7 +33,8 @@ type Tab =
   | "audit"
   | "payments"
   | "crm"
-  | "certificates";
+  | "certificates"
+  | "settings";
 
 type UserSubTab = "active" | "deactivated" | "all";
 type SortField = "name" | "role" | "grade" | "school" | "id";
@@ -530,9 +531,10 @@ export default function AdminPage() {
   async function createUser() {
     if (newUser.password !== newUser.confirmPassword) { flash("Passwords do not match", false); return; }
     setBusy(true);
+    const { confirmPassword: _, ...payload } = newUser;
     const r = await apiFetch("/admin/users", {
       method: "POST",
-      body: JSON.stringify({ ...newUser, grade: Number(newUser.grade), confirmPassword: undefined }),
+      body: JSON.stringify({ ...payload, grade: Number(newUser.grade) }),
     });
     if (r.ok) {
       flash("User created!");
@@ -680,6 +682,7 @@ export default function AdminPage() {
     { id: "audit", label: "Audit Logs", icon: FileText },
     { id: "payments", label: "Payments", icon: CreditCard, placeholder: true },
     { id: "certificates", label: "Certificates", icon: Award, placeholder: true },
+    { id: "settings", label: "Settings", icon: Lock },
   ];
 
   return (
@@ -712,6 +715,13 @@ export default function AdminPage() {
             <RotateCcw className={`w-4 h-4 ${dataLoading ? "animate-spin" : ""}`} />
           </button>
           <span className="text-white/70 text-sm hidden sm:inline">{student.name}</span>
+          <button
+            onClick={() => setTab("settings")}
+            className="text-white/60 hover:text-white transition-colors p-1"
+            title="Settings"
+          >
+            <Lock className="w-4 h-4" />
+          </button>
           <a href="/" className="text-xs px-3 py-1 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">← Site</a>
         </div>
       </div>
@@ -1617,7 +1627,80 @@ export default function AdminPage() {
             ]}
           />
         )}
+
+        {/* ── Settings ─────────────────────────────────────────────────── */}
+        {tab === "settings" && (
+          <div className="space-y-4 max-w-lg">
+            <h3 className="font-bold text-base" style={{ color: NAVY }}>Account Settings</h3>
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">{student?.name}</div>
+                  <div className="text-xs text-gray-400">{student?.email ?? "No email"} · {student?.role}</div>
+                </div>
+              </div>
+              <div className="h-px bg-gray-100" />
+              <ChangePasswordForm flash={flash} />
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// ── Change Password Form ───────────────────────────────────────────────────
+function ChangePasswordForm({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (!currentPw || !newPw || newPw !== confirmPw) {
+      flash("Please fill all fields and confirm password", false);
+      return;
+    }
+    if (newPw.length < 8) { flash("New password must be at least 8 characters", false); return; }
+    setBusy(true);
+    const r = await apiFetch("/admin/me/password", {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+    });
+    setBusy(false);
+    if (r.ok) {
+      flash("Password changed successfully!");
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } else {
+      const d = await r.json();
+      flash(d.error ?? "Failed to change password", false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Change Password</h4>
+      <div className="relative">
+        <Input type={showCurrent ? "text" : "password"} placeholder="Current password" value={currentPw}
+          onChange={e => setCurrentPw(e.target.value)} className="pr-10" />
+        <button onClick={() => setShowCurrent(p => !p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Eye className="w-4 h-4" /></button>
+      </div>
+      <div className="relative">
+        <Input type={showNew ? "text" : "password"} placeholder="New password (min 8 chars)" value={newPw}
+          onChange={e => setNewPw(e.target.value)} className="pr-10" />
+        <button onClick={() => setShowNew(p => !p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Eye className="w-4 h-4" /></button>
+      </div>
+      <Input type="password" placeholder="Confirm new password" value={confirmPw}
+        onChange={e => setConfirmPw(e.target.value)} className={confirmPw && newPw !== confirmPw ? "border-red-300" : ""} />
+      <Button size="sm" className="text-white" style={{ background: ORANGE }}
+        disabled={busy || !currentPw || !newPw || newPw !== confirmPw} onClick={submit}>
+        {busy ? "Updating…" : "Update Password"}
+      </Button>
     </div>
   );
 }

@@ -33,7 +33,7 @@ const NOTIF_PROMPTED_KEY = "braintam_notif_prompted";
 const TOKEN_POLL_MS = 2000;
 
 if (process.env.EXPO_PUBLIC_DOMAIN) {
-  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api`);
 }
 
 setAuthTokenGetter(async () => {

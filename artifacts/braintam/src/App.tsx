@@ -33,6 +33,7 @@ import AdminPage from "@/pages/admin";
 import TeacherPage from "@/pages/teacher";
 import TeacherLoginPage from "@/pages/teacher-login";
 import AdminLoginPage from "@/pages/admin-login";
+import EnrollPage from "@/pages/enroll";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -287,6 +288,7 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/enroll" component={EnrollPage} />
 
       {/* Clerk auth routes */}
       <Route path="/sign-in/*?" component={SignInPage} />

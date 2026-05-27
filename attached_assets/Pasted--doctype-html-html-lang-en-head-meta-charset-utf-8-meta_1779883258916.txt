@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ashpirant — 6-Day Demo + Full (grade-specific)</title>
+<style>
+:root{
+  --bg:#fbfdff; --card:#ffffff; --muted:#6b7280;
+  --primary:#003e6b; --accent:#f7941d; --border:#e6e8eb;
+  --radius:10px; --shadow:0 6px 18px rgba(3,10,24,0.06);
+  --maxw:1000px;
+}
+
+/* base */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow-x:hidden}
+body{
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  background:var(--bg); color:#081225; padding:12px 12px 8px 12px;
+  -webkit-font-smoothing:antialiased;
+}
+.container{max-width:var(--maxw);margin:0 auto}
+
+/* header */
+.header{
+  display:flex;gap:10px;align-items:center;margin-bottom:8px;padding:8px;border-radius:10px;
+  background:linear-gradient(90deg, rgba(0,62,107,0.03), rgba(247,148,29,0.01));
+  border:1px solid var(--border);
+}
+.logo{height:36px;width:36px;border-radius:8px;background:linear-gradient(135deg,#1e88e5,#0ea5a3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+.title h1{font-size:15px;margin:0}
+.title p{margin:3px 0 0;color:var(--muted);font-size:12px}
+
+/* GRADE NAV: desktop wrap; mobile exactly two rows */
+.grade-nav{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:8px 0 10px;
+  align-content:flex-start;
+}
+.grade-btn{
+  flex:0 0 auto;
+  padding:6px 8px;border-radius:999px;border:1px solid transparent;background:#eff7ff;color:var(--primary);
+  font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;height:34px;line-height:18px;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:transform .09s ease, box-shadow .09s ease;
+}
+.grade-btn[aria-selected="true"]{background:#fff;border:1px solid rgba(0,62,107,0.08);box-shadow:0 6px 14px rgba(3,10,24,0.05)}
+.grade-btn:active{transform:translateY(1px)}
+.grade-btn:focus{outline:3px solid rgba(0,62,107,0.08);outline-offset:3px}
+
+/* MOBILE: force two rows only */
+@media(max-width:520px){
+  .grade-nav{
+    max-height: calc( (34px + 6px) * 2 ); /* two rows */
+    overflow: hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  .grade-btn{ padding:5px 7px; font-size:11px; height:32px; }
+}
+
+/* main compact cards */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:920px){.cards{grid-template-columns:1fr}}
+
+.card{
+  background:var(--card);border-radius:var(--radius);padding:11px;border:1px solid var(--border);
+  box-shadow:var(--shadow);transition:transform .12s ease;
+  will-change:transform,opacity;
+}
+.card:hover{transform:translateY(-4px)}
+.meta{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.badge{font-size:11px;padding:6px 9px;border-radius:999px;background:#eef8ff;color:var(--primary);font-weight:800}
+.demo-badge{background:linear-gradient(90deg,#fff7eb,#fff);color:#b3471f;border:1px solid rgba(211,77,31,0.05)}
+.title-lg{margin:4px 0 6px;font-size:15px;font-weight:800}
+.lead{color:var(--muted);font-size:13px;margin-bottom:8px}
+
+/* chips & info */
+.info-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:#f5f8fb;padding:5px 8px;border-radius:999px;font-size:11px;color:#224a68;border:1px solid #eef7ff}
+
+/* small frequency & price */
+.freq{font-weight:800;color:var(--primary);font-size:13px;margin-left:auto}
+.price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.price{font-size:16px;font-weight:900;color:var(--accent)}
+.price-small{font-size:12px;color:#0b7a4b;font-weight:700}
+
+/* CTA: demo card on mobile shows side-by-side small CTAs */
+.cta-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cta-row.demo-mobile-row { flex-wrap:nowrap; } /* used on mobile to keep two side-by-side */
+
+.btn{
+  border-radius:999px;padding:9px 14px;font-weight:800;border:1px solid var(--primary);background:linear-gradient(180deg,#fff,#f4faff);color:var(--primary);text-decoration:none;
+}
+.btn.primary{background:linear-gradient(90deg,var(--primary),#0a63a0);color:#fff;border:1px solid rgba(0,0,0,0.04)}
+.small-link{font-size:12px;color:var(--muted);text-decoration:underline}
+
+/* summary at bottom — reduce size to remove white space */
+.summary{margin-top:10px;padding:10px;border-radius:10px;background:#fff;border:1px solid var(--border);font-size:13px;color:var(--muted)}
+.summary h4{margin:0 0 6px;font-size:14px}
+
+/* mobile tweaks */
+@media(max-width:520px){
+  body{padding:10px 10px 6px 10px}
+  .header{padding:8px}
+  .logo{height:32px;width:32px}
+  .title h1{font-size:14px}
+  .card{padding:10px;border-radius:10px}
+  .title-lg{font-size:14px}
+  .lead{font-size:12px}
+  .chip{font-size:10px;padding:4px 6px}
+  .price{font-size:15px}
+  .btn{padding:8px 10px;font-size:13px}
+  /* keep demo CTAs side-by-side on mobile: */
+  .card#demoCard .cta-row{flex-wrap:nowrap;justify-content:flex-start}
+  .card#demoCard .cta-row a{flex:1 1 auto}
+  .card#demoCard .cta-row a.small-link{flex:0 0 auto;padding:8px 10px}
+  .cta-row{gap:8px}
+  .chips{gap:5px}
+}
+
+/* fade animation for content updates (lightweight) */
+.fade { opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; }
+.fade.in { opacity: 1; transform: translateY(0); }
+
+/* reduced motion preference */
+@media (prefers-reduced-motion: reduce){
+  .card, .grade-btn, .btn { transition: none !important; transform: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- header -->
+  <div class="header" role="banner">
+    <div class="logo" aria-hidden="true">A</div>
+    <div class="title">
+      <h1>Ashpirant Live Courses · Grades 1–12</h1>
+      <p>Concept-first learning, practice & mentor support.</p>
+    </div>
+  </div>
+
+  <!-- grade nav: mobile will wrap to 2 rows and hide overflow -->
+  <nav class="grade-nav" role="tablist" aria-label="Grades">
+    <button class="grade-btn" data-grade="1" role="tab" aria-selected="true">Grade 1</button>
+    <button class="grade-btn" data-grade="2" role="tab" aria-selected="false">Grade 2</button>
+    <button class="grade-btn" data-grade="3" role="tab" aria-selected="false">Grade 3</button>
+    <button class="grade-btn" data-grade="4" role="tab" aria-selected="false">Grade 4</button>
+    <button class="grade-btn" data-grade="5" role="tab" aria-selected="false">Grade 5</button>
+    <button class="grade-btn" data-grade="6" role="tab" aria-selected="false">Grade 6</button>
+    <button class="grade-btn" data-grade="7" role="tab" aria-selected="false">Grade 7</button>
+    <button class="grade-btn" data-grade="8" role="tab" aria-selected="false">Grade 8</button>
+    <button class="grade-btn" data-grade="9" role="tab" aria-selected="false">Grade 9</button>
+    <button class="grade-btn" data-grade="10" role="tab" aria-selected="false">Grade 10</button>
+    <button class="grade-btn" data-grade="11" role="tab" aria-selected="false">Grade 11</button>
+    <button class="grade-btn" data-grade="12" role="tab" aria-selected="false">Grade 12</button>
+  </nav>
+
+  <!-- cards -->
+  <div class="cards" role="region" aria-live="polite">
+
+    <!-- DEMO card -->
+    <article class="card" id="demoCard" aria-labelledby="demoTitle">
+      <div class="meta">
+        <div class="badge demo-badge" aria-hidden="true">6-Day Demo</div>
+        <div style="margin-left:auto;font-size:12px;color:var(--muted)">Short preview</div>
+      </div>
+
+      <h3 class="title-lg fade in" id="demoTitle">6-Day Core Concepts — Demo</h3>
+      <p class="lead fade in" id="demoLead">Quick 6-day tricks & practice to experience our teaching.</p>
+
+      <div class="info-row">
+        <div class="chips" id="demoChips">
+          <div class="chip">Math Tricks</div>
+          <div class="chip">Science Tricks</div>
+          <div class="chip">English Tricks</div>
+        </div>
+        <div class="freq fade in" id="demoFreq">5–6 classes / week</div>
+      </div>
+
+      <div class="price-row">
+        <div class="price fade in" id="demoPrice">₹99</div>
+        <div class="price-small fade in" id="demoNote">6-Day program</div>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn primary" id="demoCta" href="/enroll?grade=1&variant=demo">Join Demo</a>
+        <a class="small-link" id="whyDemo" href="#">Why this demo?</a>
+      </div>
+    </article>
+
+    <!-- FULL card -->
+    <article class="card" id="fullCard" aria-labelledby="fullTitle">
+      <div class="meta">
+        <div class="badge" aria-hidden="true">Full Year</div>
+        <div style="margin-left:auto;font-size:12px;color:var(--muted)" id="fullRibbon">Best value</div>
+      </div>
+
+      <h3 class="title-lg fade in" id="fullTitle">Live Full Syllabus — Grade 1</h3>
+      <p class="lead fade in" id="fullLead">Complete curriculum with tests, homework & reports.</p>
+
+      <div class="info-row">
+        <div class="chips" id="fullChips">
+          <div class="chip">Math</div>
+          <div class="chip">English</div>
+          <div class="chip">EVS</div>
+        </div>
+        <div class="freq fade in" id="fullFreq">5–6 classes / week</div>
+      </div>
+
+      <div class="price-row">
+        <div class="price fade in" id="fullPrice">₹26,999</div>
+        <div class="price-small fade in" id="fullNote">EMI available</div>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn" id="fullCta" href="/enroll?grade=1&variant=full">Enroll Full</a>
+        <a class="small-link" id="talk" href="#">Talk to Counsellor</a>
+      </div>
+    </article>
+
+  </div>
+
+  <!-- summary bottom -->
+  <div class="summary" role="complementary" aria-labelledby="why">
+    <h4 id="why">Why parents choose Ashpirant</h4>
+    <p>Live classes, structured practice and clear progress reports — tight & focused delivery.</p>
+  </div>
+
+</div>
+
+<script>
+/* Grade-specific demo (6-day mix of tricks + core) + full subjects
+   - Demo shows grade-specific mixed chips (e.g. "Math — Tricks", "Science — Activity")
+   - Full shows real syllabus subjects
+   - Demo CTAs stay side-by-side on mobile
+   - Page bottom whitespace reduced by smaller paddings
+*/
+
+(function(){
+  const gradeBtns = Array.from(document.querySelectorAll('.grade-btn'));
+
+  const demoTitle = document.getElementById('demoTitle');
+  const demoLead  = document.getElementById('demoLead');
+  const demoChips = document.getElementById('demoChips');
+  const demoPrice = document.getElementById('demoPrice');
+  const demoFreq  = document.getElementById('demoFreq');
+  const demoCta   = document.getElementById('demoCta');
+
+  const fullTitle = document.getElementById('fullTitle');
+  const fullLead  = document.getElementById('fullLead');
+  const fullChips = document.getElementById('fullChips');
+  const fullPrice = document.getElementById('fullPrice');
+  const fullFreq  = document.getElementById('fullFreq');
+  const fullCta   = document.getElementById('fullCta');
+
+  // grade-specific subject mapping (demo = 6-day mix: core + tricks; full = syllabus)
+  const data = {
+    1:{ demoSubjects:['Counting & Numbers (Tricks)','Phonics & Reading','Shapes & Patterns'], fullSubjects:['Numbers','English','EVS'], fullPrice:'26,999', demoLead:'6-Day camp: basics + fun tricks to start strong.' },
+    2:{ demoSubjects:['Addition & Tricks','Reading Skills','Reasoning Games'], fullSubjects:['Math','English','EVS'], fullPrice:'27,999', demoLead:'6-Day camp: build speed & confidence.' },
+    3:{ demoSubjects:['Tables & Tricks','Science Basics','Comprehension Tips'], fullSubjects:['Math','Science','English'], fullPrice:'28,999', demoLead:'6-Day camp: strengthen fundamentals.' },
+    4:{ demoSubjects:['Fractions Tricks','Science Experiments','Grammar Boost'], fullSubjects:['Math','Science','English'], fullPrice:'29,999', demoLead:'6-Day camp: problem-solving focus.' },
+    5:{ demoSubjects:['High-weight Math Tricks','Hands-on Science','Vocabulary & Writing'], fullSubjects:['Math','Science','Reasoning'], fullPrice:'30,999', demoLead:'6-Day camp: bridge to middle school.' },
+    6:{ demoSubjects:['Algebra Basics (Tricks)','Physics Intros','Comprehension'], fullSubjects:['Math','Science','English'], fullPrice:'31,999', demoLead:'6-Day camp: foundation for higher classes.' },
+    7:{ demoSubjects:['Algebra Tricks','Mechanics Intro','Critical Reading'], fullSubjects:['Math','Science','English'], fullPrice:'32,999', demoLead:'6-Day camp: stronger problem solving.' },
+    8:{ demoSubjects:['Exam-focused Math Tricks','Physics Basics','Chemistry Basics'], fullSubjects:['Math','Science(PCB)','English'], fullPrice:'33,999', demoLead:'6-Day camp: boards & olympiad readiness.' },
+    9:{ demoSubjects:['Grade 9 High-yield Math','Physics Tricks','Chemistry Tricks'], fullSubjects:['Math','Science(PCB)','English'], fullPrice:'34,999', demoLead:'6-Day camp: revision & tests.' },
+    10:{ demoSubjects:['Board Revision Tricks','Quick Physics','Chemistry Shortcuts'], fullSubjects:['Math','Science','English'], fullPrice:'35,999', demoLead:'6-Day camp: board-focused high-yield topics.' },
+    11:{ demoSubjects:['Calculus Beginnings','Mechanics Tricks','Organic Intros'], fullSubjects:['PCM/PCB/Commerce','English'], fullPrice:'36,999', demoLead:'6-Day camp: bridge to class 11 concepts.' },
+    12:{ demoSubjects:['Exam Revision Tricks','PYQ Practice','Strategy & Shortcuts'], fullSubjects:['PCM/PCB/Commerce','English'], fullPrice:'37,999', demoLead:'6-Day camp: final push for boards & entrances.' }
+  };
+
+  function setChips(container, arr){
+    container.innerHTML = '';
+    arr.forEach(it=>{
+      const el = document.createElement('div');
+      el.className = 'chip';
+      el.textContent = it;
+      container.appendChild(el);
+    });
+  }
+
+  function fadeUpdate(elems, updater){
+    elems.forEach(el => { el.classList.remove('in'); el.classList.add('fade'); });
+    setTimeout(()=>{
+      updater();
+      elems.forEach(el => { void el.offsetWidth; el.classList.remove('fade'); el.classList.add('in'); });
+    }, 120);
+  }
+
+  function updateForGrade(g){
+    const info = data[g] || data[1];
+
+    fadeUpdate([demoTitle, demoLead, demoFreq, demoPrice, demoChips], ()=>{
+      demoTitle.textContent = '6-Day Core Concepts — Demo';
+      demoLead.textContent = info.demoLead || '6-Day tricks + core practice.';
+      setChips(demoChips, info.demoSubjects || ['Math Tricks','Science Tricks','English Tricks']);
+      demoPrice.textContent = '₹99';
+      demoFreq.textContent = '5–6 classes / week';
+      demoCta.setAttribute('href', '/enroll?grade=' + encodeURIComponent(g) + '&variant=demo');
+    });
+
+    fadeUpdate([fullTitle, fullLead, fullFreq, fullPrice, fullChips], ()=>{
+      fullTitle.textContent = info.fullSubjects ? ('Live Full Syllabus — Grade ' + g) : ('Live Full Syllabus — Grade ' + g);
+      fullLead.textContent = 'Complete syllabus with tests & mentor support.';
+      setChips(fullChips, info.fullSubjects || ['Math','English']);
+      fullPrice.textContent = '₹' + (info.fullPrice || '');
+      fullFreq.textContent = '5–6 classes / week';
+      fullCta.setAttribute('href', '/enroll?grade=' + encodeURIComponent(g) + '&variant=full');
+    });
+  }
+
+  // init
+  updateForGrade('1');
+
+  gradeBtns.forEach((btn, idx)=>{
+    btn.addEventListener('click', function(){
+      gradeBtns.forEach(b=>b.setAttribute('aria-selected','false'));
+      this.setAttribute('aria-selected','true');
+      updateForGrade(this.dataset.grade);
+      try{ this.scrollIntoView({behavior:'smooth', block:'nearest', inline:'nearest'}); }catch(e){}
+    });
+    btn.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); this.click(); }
+      if(e.key === 'ArrowRight' || e.key === 'ArrowDown'){ e.preventDefault(); const next = gradeBtns[(idx+1)%gradeBtns.length]; next.focus(); }
+      if(e.key === 'ArrowLeft' || e.key === 'ArrowUp'){ e.preventDefault(); const prev = gradeBtns[(idx-1+gradeBtns.length)%gradeBtns.length]; prev.focus(); }
+    });
+  });
+
+  // wys: small "Why this demo?" opens minimal inline modal (non-blocking)
+  document.getElementById('whyDemo').addEventListener('click', function(e){
+    e.preventDefault();
+    alert('6-Day demo includes:\n• Quick tricks to improve speed\n• 6 short sessions with practice\n• A sample of full-course teaching style');
+  });
+
+  // enroll tracking best-effort
+  document.addEventListener('click', function(e){
+    const a = e.target.closest('a.btn, a.btn.primary, a.primary, a');
+    if(!a) return;
+    const href = a.getAttribute('href') || '';
+    if(!href.includes('enroll')) return;
+    const params = new URLSearchParams(href.split('?')[1] || '');
+    const grade = params.get('grade') || '';
+    const variant = params.get('variant') || '';
+    const payload = {event:'enroll_click',grade,variant,ts:Date.now()};
+    try{
+      if(navigator.sendBeacon){
+        const b = new Blob([JSON.stringify(payload)], {type:'application/json'});
+        navigator.sendBeacon('/api/track', b);
+      } else {
+        fetch('/api/track', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),keepalive:true}).catch(()=>{});
+      }
+    }catch(e){}
+  });
+
+})();
+</script>
+</body>
+</html>
