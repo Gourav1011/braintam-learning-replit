@@ -103,10 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isLoaded, user]);
 
   const logout = () => {
+    setStudentLoading(true);
     localStorage.removeItem(STAFF_TOKEN_KEY);
     setStudent(null);
+    // Only sign out from Clerk if the user actually signed in via Clerk.
+    // Staff (admin/teacher) use a custom token and must not trigger Clerk signOut,
+    // because Clerk's sign-out flow can redirect to /sign-in and cause an auto-login loop.
+    if (user) {
+      signOut();
+    }
     setStudentLoading(false);
-    signOut();
   };
 
   return (
