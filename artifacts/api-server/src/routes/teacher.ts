@@ -6,6 +6,7 @@ import {
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable,
+  auditLogsTable,
 } from "@workspace/db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -19,6 +20,25 @@ async function getTeacherCourseIds(teacherId: number): Promise<number[]> {
     .from(teacherCoursesTable)
     .where(eq(teacherCoursesTable.teacherId, teacherId));
   return rows.map(r => r.courseId);
+}
+
+async function logAudit(
+  actorId: number,
+  actorName: string,
+  action: string,
+  targetType: string,
+  targetId: number,
+  targetName: string,
+  metadata?: string,
+) {
+  try {
+    await db.insert(auditLogsTable).values({
+      actorId, actorName, action, targetType, targetId, targetName,
+      metadata: metadata ?? null,
+    });
+  } catch {
+    // non-fatal
+  }
 }
 
 // ── Dashboard ────────────────────────────────────────────────────
@@ -146,6 +166,9 @@ router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     joinUrl: joinUrl ?? null,
     status: "upcoming",
   }).returning();
+
+  await logAudit(teacherId, req.authUser!.name, "live_class_created", "live_class", lc.id, lc.title);
+
   res.status(201).json({ ...lc, scheduledAt: lc.scheduledAt.toISOString(), createdAt: lc.createdAt.toISOString() });
 });
 
@@ -162,17 +185,18 @@ router.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
     dueDate: homeworkTable.dueDate,
     description: homeworkTable.description,
     maxMarks: homeworkTable.maxMarks,
+    questionsJson: homeworkTable.questionsJson,
   })
     .from(homeworkTable)
     .innerJoin(subjectsTable, eq(homeworkTable.subjectId, subjectsTable.id))
     .where(eq(homeworkTable.teacherId, teacherId))
     .orderBy(desc(homeworkTable.dueDate));
-  res.json(hw.map(h => ({ ...h, dueDate: h.dueDate.toISOString(), description: h.description ?? null })));
+  res.json(hw.map(h => ({ ...h, dueDate: h.dueDate.toISOString(), description: h.description ?? null, questionsJson: h.questionsJson ?? null })));
 });
 
 router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
-  const { title, subjectId, grade, courseId, dueDate, description, maxMarks } = req.body;
+  const { title, subjectId, grade, courseId, dueDate, description, maxMarks, questionsJson } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
     res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
     return;
@@ -191,7 +215,13 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
     dueDate: new Date(dueDate),
     description: description ?? null,
     maxMarks: maxMarks ?? 10,
+    questionsJson: questionsJson ? JSON.stringify(questionsJson) : null,
   }).returning();
+
+  await logAudit(teacherId, req.authUser!.name, "homework_created", "homework", hw.id, hw.title,
+    JSON.stringify({ grade, subject: subjectId }),
+  );
+
   res.status(201).json({ ...hw, dueDate: hw.dueDate.toISOString(), createdAt: hw.createdAt.toISOString() });
 });
 
@@ -245,6 +275,9 @@ router.post("/teacher/assignments", teacherOrAdmin, async (req, res) => {
     maxMarks: maxMarks ?? 20,
     attachmentUrl: attachmentUrl ?? null,
   }).returning();
+
+  await logAudit(teacherId, req.authUser!.name, "assignment_created", "assignment", asgn.id, asgn.title);
+
   res.status(201).json({ ...asgn, dueDate: asgn.dueDate.toISOString(), createdAt: asgn.createdAt.toISOString() });
 });
 
@@ -280,6 +313,9 @@ router.post("/teacher/recordings", teacherOrAdmin, async (req, res) => {
     videoUrl, duration,
     thumbnailUrl: thumbnailUrl ?? null,
   }).returning();
+
+  await logAudit(teacherId, req.authUser!.name, "recording_created", "recording", rec.id, rec.title);
+
   res.status(201).json({ ...rec, recordedAt: rec.recordedAt.toISOString(), createdAt: rec.createdAt.toISOString() });
 });
 
@@ -320,6 +356,7 @@ router.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => 
     answer: homeworkSubmissionsTable.answer,
     status: homeworkSubmissionsTable.status,
     marks: homeworkSubmissionsTable.marks,
+    feedback: homeworkSubmissionsTable.feedback,
     submittedAt: homeworkSubmissionsTable.submittedAt,
   })
     .from(homeworkSubmissionsTable)
@@ -341,6 +378,7 @@ router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) 
     answer: assignmentSubmissionsTable.answer,
     status: assignmentSubmissionsTable.status,
     marks: assignmentSubmissionsTable.marks,
+    feedback: assignmentSubmissionsTable.feedback,
     submittedAt: assignmentSubmissionsTable.submittedAt,
   })
     .from(assignmentSubmissionsTable)
@@ -363,6 +401,11 @@ router.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async (r
     .where(eq(homeworkSubmissionsTable.id, subId))
     .returning();
   if (!updated) { res.status(404).json({ error: "Submission not found" }); return; }
+
+  await logAudit(req.authUser!.id, req.authUser!.name, "homework_graded", "submission", subId, `Submission #${subId}`,
+    JSON.stringify({ marks }),
+  );
+
   res.json(updated);
 });
 
@@ -378,6 +421,11 @@ router.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, async
     .where(eq(assignmentSubmissionsTable.id, subId))
     .returning();
   if (!updated) { res.status(404).json({ error: "Submission not found" }); return; }
+
+  await logAudit(req.authUser!.id, req.authUser!.name, "assignment_graded", "submission", subId, `Submission #${subId}`,
+    JSON.stringify({ marks }),
+  );
+
   res.json(updated);
 });
 
