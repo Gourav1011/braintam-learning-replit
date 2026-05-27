@@ -6,6 +6,7 @@ import {
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
+  auditLogsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -20,6 +21,30 @@ function hashPassword(pw: string): string {
 
 function generateToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
+}
+
+async function logAudit(
+  actorId: number,
+  actorName: string,
+  action: string,
+  targetType: string,
+  targetId: number,
+  targetName: string,
+  metadata?: string,
+) {
+  try {
+    await db.insert(auditLogsTable).values({
+      actorId,
+      actorName,
+      action,
+      targetType,
+      targetId,
+      targetName,
+      metadata: metadata ?? null,
+    });
+  } catch {
+    // non-fatal — never let audit failures break the main action
+  }
 }
 
 // ── Analytics ────────────────────────────────────────────────────
@@ -152,6 +177,13 @@ router.post("/admin/users", adminOnly, async (req, res) => {
     points: 0,
     streakDays: 0,
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "user_created", "user", user.id, user.name,
+    JSON.stringify({ role: user.role }),
+  );
+
   res.status(201).json({ ...user, token: generateToken(user.id) });
 });
 
@@ -170,13 +202,60 @@ router.patch("/admin/users/:id", adminOnly, async (req, res) => {
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+
+  const changedFields = Object.keys(updates).filter(k => k !== "passwordHash");
+  const action = isActive === false
+    ? "user_deactivated"
+    : isActive === true
+    ? "user_reactivated"
+    : password !== undefined
+    ? "password_reset"
+    : "user_updated";
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    action, "user", updated.id, updated.name,
+    changedFields.length ? JSON.stringify({ fields: changedFields }) : undefined,
+  );
+
   res.json(updated);
+});
+
+// ── Password Reset (dedicated endpoint) ──────────────────────────
+router.post("/admin/users/:id/reset-password", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const { password } = req.body;
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (!password || String(password).length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
+    return;
+  }
+  const [updated] = await db.update(usersTable)
+    .set({ passwordHash: hashPassword(String(password)) })
+    .where(eq(usersTable.id, id))
+    .returning({ id: usersTable.id, name: usersTable.name });
+  if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "password_reset", "user", updated.id, updated.name,
+  );
+
+  res.json({ ok: true });
 });
 
 router.delete("/admin/users/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [user] = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, id)).limit(1);
   await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, id));
+  if (user) {
+    await logAudit(
+      req.authUser!.id, req.authUser!.name,
+      "user_deactivated", "user", user.id, user.name,
+    );
+  }
   res.json({ success: true });
 });
 
@@ -211,13 +290,37 @@ router.post("/admin/teacher-courses", adminOnly, async (req, res) => {
   }
   const [row] = await db.insert(teacherCoursesTable).values({ teacherId, courseId })
     .onConflictDoNothing().returning();
+
+  if (row) {
+    const [course] = await db.select({ title: coursesTable.title })
+      .from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
+    await logAudit(
+      req.authUser!.id, req.authUser!.name,
+      "teacher_assigned", "course", courseId, course?.title ?? String(courseId),
+      JSON.stringify({ teacherId, teacherName: teacher[0].name }),
+    );
+  }
+
   res.status(201).json(row ?? { message: "Already assigned" });
 });
 
 router.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [row] = await db.select({
+    teacherId: teacherCoursesTable.teacherId,
+    courseId: teacherCoursesTable.courseId,
+  }).from(teacherCoursesTable).where(eq(teacherCoursesTable.id, id)).limit(1);
   await db.delete(teacherCoursesTable).where(eq(teacherCoursesTable.id, id));
+  if (row) {
+    const [course] = await db.select({ title: coursesTable.title })
+      .from(coursesTable).where(eq(coursesTable.id, row.courseId)).limit(1);
+    await logAudit(
+      req.authUser!.id, req.authUser!.name,
+      "teacher_unassigned", "course", row.courseId, course?.title ?? String(row.courseId),
+      JSON.stringify({ teacherId: row.teacherId }),
+    );
+  }
   res.json({ success: true });
 });
 
@@ -225,7 +328,6 @@ router.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
 router.get("/admin/enrollments", adminOnly, async (req, res) => {
   const { courseId } = req.query;
 
-  const studentAlias = usersTable;
   const rows = await db.select({
     id: enrollmentsTable.id,
     studentId: enrollmentsTable.studentId,
@@ -251,13 +353,39 @@ router.post("/admin/enrollments", adminOnly, async (req, res) => {
   const [row] = await db.insert(enrollmentsTable)
     .values({ studentId, courseId, enrolledBy: req.authUser!.id })
     .onConflictDoNothing().returning();
+
+  if (row) {
+    const [student] = await db.select({ name: usersTable.name })
+      .from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+    const [course] = await db.select({ title: coursesTable.title })
+      .from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
+    await logAudit(
+      req.authUser!.id, req.authUser!.name,
+      "student_enrolled", "course", courseId, course?.title ?? String(courseId),
+      JSON.stringify({ studentId, studentName: student?.name }),
+    );
+  }
+
   res.status(201).json(row ?? { message: "Already enrolled" });
 });
 
 router.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [row] = await db.select({
+    studentId: enrollmentsTable.studentId,
+    courseId: enrollmentsTable.courseId,
+  }).from(enrollmentsTable).where(eq(enrollmentsTable.id, id)).limit(1);
   await db.delete(enrollmentsTable).where(eq(enrollmentsTable.id, id));
+  if (row) {
+    const [course] = await db.select({ title: coursesTable.title })
+      .from(coursesTable).where(eq(coursesTable.id, row.courseId)).limit(1);
+    await logAudit(
+      req.authUser!.id, req.authUser!.name,
+      "student_unenrolled", "course", row.courseId, course?.title ?? String(row.courseId),
+      JSON.stringify({ studentId: row.studentId }),
+    );
+  }
   res.json({ success: true });
 });
 
@@ -295,6 +423,12 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
     teacher: teacher ?? null,
     rating: rating ?? null,
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "course_created", "course", course.id, course.title,
+  );
+
   res.status(201).json(course);
 });
 
@@ -315,6 +449,12 @@ router.post("/admin/live-classes", adminOnly, async (req, res) => {
     joinUrl: joinUrl ?? null,
     status: "upcoming",
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "live_class_created", "live_class", lc.id, lc.title,
+  );
+
   res.status(201).json(lc);
 });
 
@@ -332,6 +472,12 @@ router.post("/admin/homework", adminOnly, async (req, res) => {
     description: description ?? null,
     maxMarks: maxMarks ?? 10,
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "homework_created", "homework", hw.id, hw.title,
+  );
+
   res.status(201).json(hw);
 });
 
@@ -350,6 +496,12 @@ router.post("/admin/assignments", adminOnly, async (req, res) => {
     maxMarks: maxMarks ?? 20,
     attachmentUrl: attachmentUrl ?? null,
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "assignment_created", "assignment", asgn.id, asgn.title,
+  );
+
   res.status(201).json(asgn);
 });
 
@@ -368,6 +520,12 @@ router.post("/admin/recordings", adminOnly, async (req, res) => {
     duration,
     thumbnailUrl: thumbnailUrl ?? null,
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "recording_created", "recording", rec.id, rec.title,
+  );
+
   res.status(201).json(rec);
 });
 
@@ -386,6 +544,12 @@ router.post("/admin/tests", adminOnly, async (req, res) => {
     totalQuestions: totalQuestions ?? 10,
     status: "upcoming",
   }).returning();
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "test_created", "test", test.id, test.title,
+  );
+
   res.status(201).json(test);
 });
 
@@ -442,28 +606,26 @@ router.patch("/admin/me/password", adminOnly, async (req, res) => {
     return;
   }
   await db.update(usersTable).set({ passwordHash: hashPassword(newPassword) }).where(eq(usersTable.id, adminId));
+
+  await logAudit(
+    adminId, user.name,
+    "password_changed", "user", adminId, user.name,
+    JSON.stringify({ self: true }),
+  );
+
   res.json({ ok: true });
 });
 
 // ── Audit Logs ─────────────────────────────────────────────────
 router.get("/admin/audit-logs", adminOnly, async (req, res) => {
   const { start, end } = req.query;
-  const startDate = start ? new Date(String(start)) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const startDate = start ? new Date(String(start)) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const endDate = end ? new Date(String(end)) : new Date();
 
-  const logs = await db.select({
-    id: usersTable.id,
-    actorId: usersTable.id,
-    actorName: usersTable.name,
-    action: sql<string>`'user_created'`,
-    targetType: sql<string>`'user'`,
-    targetId: usersTable.id,
-    targetName: usersTable.name,
-    metadata: sql<string | null>`null`,
-    createdAt: usersTable.createdAt,
-  }).from(usersTable)
-    .where(gte(usersTable.createdAt, startDate))
-    .orderBy(desc(usersTable.createdAt))
+  const logs = await db.select()
+    .from(auditLogsTable)
+    .where(gte(auditLogsTable.createdAt, startDate))
+    .orderBy(desc(auditLogsTable.createdAt))
     .limit(200);
 
   res.json(logs);

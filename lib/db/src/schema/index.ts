@@ -12,3 +12,4 @@ export * from "./enrollments";
 export * from "./announcements";
 export * from "./banners";
 export * from "./attendance";
+export * from "./auditLogs";
