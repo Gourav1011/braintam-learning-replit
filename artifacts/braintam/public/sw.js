@@ -1,4 +1,4 @@
-const CACHE_NAME = "braintam-v1";
+const CACHE_NAME = "braintam-v3";
 const STATIC_ASSETS = [
   "/",
   "/favicon.svg",
@@ -31,6 +31,12 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   if (request.url.includes("/api/")) return;
+
+  // Never cache auth routes so login changes always reflect immediately
+  const url = new URL(request.url);
+  if (url.pathname === "/login" || url.pathname === "/sign-in" || url.pathname === "/sign-up") {
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {

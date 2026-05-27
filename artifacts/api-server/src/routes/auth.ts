@@ -139,4 +139,40 @@ router.post("/auth/verify-otp", async (req, res) => {
   res.json({ token: generateToken(user.id), student: userToProfile(user) });
 });
 
+router.post("/auth/reset-password", async (req, res) => {
+  const { phone, otp, newPassword } = req.body;
+  if (!phone || !otp || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: "Phone, OTP and new password (min 6 chars) required" });
+    return;
+  }
+
+  // Verify OTP
+  const otps = await db.select().from(otpTable).where(
+    eq(otpTable.phone, phone)
+  ).orderBy(otpTable.createdAt).limit(5);
+  const valid = otps.find(o => !o.used && o.code === otp && o.expiresAt > new Date());
+  if (!valid) {
+    res.status(400).json({ error: "Invalid or expired OTP" });
+    return;
+  }
+
+  // Mark OTP as used
+  await db.update(otpTable).set({ used: true }).where(eq(otpTable.id, valid.id));
+
+  // Find user by phone
+  const users = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+  if (users.length === 0) {
+    res.status(404).json({ error: "No user found with this phone number" });
+    return;
+  }
+  const user = users[0];
+
+  // Update password
+  await db.update(usersTable)
+    .set({ passwordHash: hashPassword(newPassword) })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ token: generateToken(user.id), student: userToProfile(user) });
+});
+
 export default router;

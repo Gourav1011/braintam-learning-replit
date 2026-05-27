@@ -34,6 +34,7 @@ import AdminPage from "@/pages/admin";
 import TeacherPage from "@/pages/teacher";
 import TeacherLoginPage from "@/pages/teacher-login";
 import AdminLoginPage from "@/pages/admin-login";
+import LoginPage from "@/pages/login";
 import EnrollPage from "@/pages/enroll";
 import DownloadAppPage from "@/pages/download-app";
 
@@ -203,12 +204,23 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
 function SignInPage() {
   return (
     <AuthPageShell form={
-      <SignIn
-        routing="path"
-        path={`${basePath}/sign-in`}
-        signUpUrl={`${basePath}/sign-up`}
-        forceRedirectUrl={`${basePath}/dashboard`}
-      />
+      <div className="w-full max-w-md">
+        <SignIn
+          routing="path"
+          path={`${basePath}/sign-in`}
+          signUpUrl={`${basePath}/sign-up`}
+          forceRedirectUrl={`${basePath}/dashboard`}
+        />
+        <p className="text-center text-sm text-muted-foreground mt-4">
+          <a href={`${basePath}/login`} className="text-primary hover:underline font-medium">
+            Forgot password?
+          </a>
+          {" · "}
+          <a href={`${basePath}/login`} className="text-primary hover:underline font-medium">
+            Sign in with email/OTP
+          </a>
+        </p>
+      </div>
     } />
   );
 }
@@ -293,12 +305,12 @@ function Router() {
       <Route path="/enroll" component={EnrollPage} />
       <Route path="/download-app" component={DownloadAppPage} />
 
-      {/* Clerk auth routes */}
+      {/* Clerk auth routes (Google SSO / email students) */}
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
 
-      {/* Old routes → redirect to Clerk pages */}
-      <Route path="/login"><Redirect to="/sign-in" /></Route>
+      {/* Custom login page with email/password + OTP + forgot password */}
+      <Route path="/login" component={LoginPage} />
       <Route path="/register"><Redirect to="/sign-up" /></Route>
 
       {/* Post-signup onboarding */}

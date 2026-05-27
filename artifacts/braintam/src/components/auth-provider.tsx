@@ -24,12 +24,14 @@ interface AuthContextType {
   isLoading: boolean;
   role: UserRole | null;
   logout: () => void;
+  refreshAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export const STAFF_TOKEN_KEY = "braintam_staff_token";
+export const STUDENT_TOKEN_KEY = "braintam_student_token";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -44,9 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isLoaded) return;
 
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
+    const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
 
     if (staffToken) {
-      // Already in loading state (studentLoading=true); fetch the profile.
+      // Staff token takes priority
       fetch(`${BASE}/api/student/profile`, {
         headers: { Authorization: `Bearer ${staffToken}` },
       })
@@ -67,8 +70,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (studentToken) {
+      // Custom student login token — persist until explicit logout
+      fetch(`${BASE}/api/student/profile`, {
+        headers: { Authorization: `Bearer ${studentToken}` },
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: StudentProfile | null) => {
+          if (data) {
+            setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+          } else {
+            localStorage.removeItem(STUDENT_TOKEN_KEY);
+            setStudent(null);
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem(STUDENT_TOKEN_KEY);
+          setStudent(null);
+        })
+        .finally(() => setStudentLoading(false));
+      return;
+    }
+
     if (!user) {
-      // No staff token, no Clerk user — nothing to load.
+      // No token, no Clerk user — nothing to load.
       setStudent(null);
       setStudentLoading(false);
       return;
@@ -105,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setStudentLoading(true);
     localStorage.removeItem(STAFF_TOKEN_KEY);
+    localStorage.removeItem(STUDENT_TOKEN_KEY);
     setStudent(null);
     // Only sign out from Clerk if the user actually signed in via Clerk.
     // Staff (admin/teacher) use a custom token and must not trigger Clerk signOut,
@@ -115,12 +141,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStudentLoading(false);
   };
 
+  const refreshAuth = () => {
+    // Force re-check tokens (called after storing a new token in localStorage)
+    setStudentLoading(true);
+    const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
+    const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
+    const token = staffToken || studentToken;
+    if (token) {
+      fetch(`${BASE}/api/student/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: StudentProfile | null) => {
+          if (data) {
+            setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+          } else {
+            setStudent(null);
+          }
+        })
+        .catch(() => setStudent(null))
+        .finally(() => setStudentLoading(false));
+    } else if (user) {
+      // Clerk user — just stop loading
+      setStudentLoading(false);
+    } else {
+      setStudent(null);
+      setStudentLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       student,
       isLoading: !isLoaded || studentLoading,
       role: student?.role ?? null,
       logout,
+      refreshAuth,
     }}>
       {children}
     </AuthContext.Provider>
