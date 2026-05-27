@@ -8,6 +8,7 @@ import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wo
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { AuthProvider, useAuth } from "@/components/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
@@ -34,6 +35,7 @@ import TeacherPage from "@/pages/teacher";
 import TeacherLoginPage from "@/pages/teacher-login";
 import AdminLoginPage from "@/pages/admin-login";
 import EnrollPage from "@/pages/enroll";
+import DownloadAppPage from "@/pages/download-app";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -289,6 +291,7 @@ function Router() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/enroll" component={EnrollPage} />
+      <Route path="/download-app" component={DownloadAppPage} />
 
       {/* Clerk auth routes */}
       <Route path="/sign-in/*?" component={SignInPage} />
@@ -361,6 +364,7 @@ export default function App() {
   return (
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />
+      <PWAInstallPrompt />
     </WouterRouter>
   );
 }

@@ -1,0 +1,49 @@
+{
+  "name": "Braintam - India's #1 Learning Platform",
+  "short_name": "Braintam",
+  "description": "Live classes, adaptive tests, animated videos and more - built for Grades 1-10.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B2B6B",
+  "theme_color": "#0B2B6B",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/opengraph.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg"
+    }
+  ],
+  "categories": ["education"],
+  "lang": "en",
+  "dir": "ltr",
+  "screenshots": [
+    {
+      "src": "/opengraph.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Braintam Dashboard"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.braintam",
+      "id": "com.braintam"
+    },
+    {
+      "platform": "itunes",
+      "url": "https://apps.apple.com/app/braintam",
+      "id": "braintam"
+    }
+  ],
+  "prefer_related_applications": false
+}

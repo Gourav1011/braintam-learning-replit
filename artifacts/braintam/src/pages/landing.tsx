@@ -7,7 +7,8 @@ import {
   PlayCircle, GraduationCap, CheckCircle, X, Award,
   Sparkles, Brain, Users, Mail,
   Phone, MapPin,
-  MessageCircle, BookOpen
+  MessageCircle, BookOpen,
+  Smartphone, Globe
 } from "lucide-react";
 
 function FbIcon({ className }: { className?: string }) {
@@ -1217,9 +1218,72 @@ export default function LandingPage() {
 
         </div>
 
+        {/* Download App Bar */}
+        <div className="max-w-6xl mx-auto px-6 py-6 md:py-8"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: ORANGE }}>
+                <Smartphone className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Get the Braintam App</p>
+                <p className="text-white/40 text-xs">Available on iOS, Android & Web</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <motion.a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer"
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" fill="white">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-white/50 leading-none text-[10px]">Download on</div>
+                  <div className="text-white font-bold text-xs leading-tight">App Store</div>
+                </div>
+              </motion.a>
+              <motion.a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer"
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" fill="none">
+                  <path d="M3.18 23.76c.3.17.65.19.97.07L15.88 12 12 8.12 3.18 23.76Z" fill="#EA4335"/>
+                  <path d="M20.7 10.67 17.6 8.9 13.4 12l4.2 4.1 3.1-1.78a1.74 1.74 0 0 0 0-3.06Z" fill="#FBBC04"/>
+                  <path d="M3.18.24A1.74 1.74 0 0 0 2.5 1.6V22.4c0 .54.26 1.01.68 1.36L15.88 12 3.18.24Z" fill="#4285F4"/>
+                  <path d="M3.18 23.76 12 12 3.18.24c-.3.17-.65.19-.97.07A1.74 1.74 0 0 0 2.5 1.6V22.4c0 .54.26 1.01.68 1.36Z" fill="#34A853"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-white/50 leading-none text-[10px]">Get it on</div>
+                  <div className="text-white font-bold text-xs leading-tight">Google Play</div>
+                </div>
+              </motion.a>
+              <motion.div
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer"
+                style={{ background: ORANGE, border: "1px solid rgba(255,255,255,0.2)" }}
+                onClick={() => {
+                  if (window.matchMedia("(display-mode: standalone)").matches) {
+                    alert("Braintam is already installed!");
+                  } else if ((window as any).deferredPrompt) {
+                    (window as any).deferredPrompt.prompt();
+                  } else {
+                    alert("Install Braintam:\n1. Tap the menu (⋮) in your browser\n2. Select \"Add to Home Screen\" or \"Install App\"");
+                  }
+                }}>
+                <Globe className="w-5 h-5 text-white" />
+                <div className="text-left">
+                  <div className="text-white/70 leading-none text-[10px]">Install</div>
+                  <div className="text-white font-bold text-xs leading-tight">Web App</div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
         {/* Bottom bar */}
-        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam Learning. All Rights Reserved.</span>
           <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
             <Link href="/terms"   className="hover:text-white transition-colors">Terms</Link>
