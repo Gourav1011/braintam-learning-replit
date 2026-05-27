@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
 import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import braintamLogo from "@assets/imresizer-Gemini_Generated_Image_40tk9140tk9140tk-removebg-pre_1779898987915.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 

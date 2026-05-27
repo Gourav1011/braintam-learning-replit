@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download, X, Smartphone } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import braintamLogo from "@assets/imresizer-Gemini_Generated_Image_40tk9140tk9140tk-removebg-pre_1779898987915.png";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -71,12 +72,7 @@ export function PWAInstallPrompt() {
           style={{ background: "#0B2B6B" }}
         >
           <div className="flex items-start gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "#FF6B1A" }}
-            >
-              <Smartphone className="w-5 h-5 text-white" />
-            </div>
+            <img src={braintamLogo} alt="Braintam" className="w-10 h-10 rounded-xl flex-shrink-0 object-contain" style={{ background: "#FF6B1A" }} />
             <div className="flex-1 min-w-0">
               <p className="text-white font-semibold text-sm leading-tight">
                 Install Braintam App
