@@ -1825,27 +1825,29 @@ export default function AdminPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
                   {/* Step 1: Course */}
-                  <Select value={(lcForm as any).courseId ?? ""} onValueChange={v => {
-                    const course = courses.find(c => String(c.id) === v);
-                    setLcForm(p => ({ ...p, courseId: v, subjectId: course ? String(course.subjectId ?? "") : p.subjectId, grade: course ? String(course.grade) : p.grade, chapterId: "", topicId: "" } as any));
+                  <Select value={(lcForm as any).courseId || "__none__"} onValueChange={v => {
+                    const val = v === "__none__" ? "" : v;
+                    const course = val ? courses.find(c => String(c.id) === val) : null;
+                    setLcForm(p => ({ ...p, courseId: val, subjectId: course ? String(course.subjectId ?? "") : p.subjectId, grade: course ? String(course.grade) : p.grade, chapterId: "", topicId: "" } as any));
                     setLcTopics([]);
-                    loadChaptersForCourse(v);
+                    loadChaptersForCourse(val);
                   }}>
                     <SelectTrigger><SelectValue placeholder="① Link to Course (recommended)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No course link</SelectItem>
+                      <SelectItem value="__none__">No course link</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · Gr {c.grade}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {/* Step 2: Chapter (loaded after course selected) */}
                   {lcChapters.length > 0 ? (
-                    <Select value={(lcForm as any).chapterId ?? ""} onValueChange={v => {
-                      setLcForm(p => ({ ...p, chapterId: v, topicId: "" } as any));
-                      loadTopicsForChapter(v);
+                    <Select value={(lcForm as any).chapterId || "__none__"} onValueChange={v => {
+                      const val = v === "__none__" ? "" : v;
+                      setLcForm(p => ({ ...p, chapterId: val, topicId: "" } as any));
+                      loadTopicsForChapter(val);
                     }}>
                       <SelectTrigger><SelectValue placeholder="② Select Chapter" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No chapter</SelectItem>
+                        <SelectItem value="__none__">No chapter</SelectItem>
                         {lcChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -1854,10 +1856,10 @@ export default function AdminPage() {
                   )}
                   {/* Step 3: Topic (loaded after chapter selected) */}
                   {lcTopics.length > 0 ? (
-                    <Select value={(lcForm as any).topicId ?? ""} onValueChange={v => setLcForm(p => ({ ...p, topicId: v } as any))}>
+                    <Select value={(lcForm as any).topicId || "__none__"} onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v } as any))}>
                       <SelectTrigger><SelectValue placeholder="③ Select Topic" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No topic</SelectItem>
+                        <SelectItem value="__none__">No topic</SelectItem>
                         {lcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                       </SelectContent>
                     </Select>

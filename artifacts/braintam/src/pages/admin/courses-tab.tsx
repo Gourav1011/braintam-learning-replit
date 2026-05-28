@@ -612,6 +612,9 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           {showAddChapter && (
             <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Chapter</h3>
+              <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                💡 Select the subject first — students browse content by subject. Each chapter belongs to exactly one subject.
+              </p>
               <div className="space-y-1">
                 <Select value={chapterForm.subjectId} onValueChange={v => setChapterForm(p => ({ ...p, subjectId: v }))}>
                   <SelectTrigger className={!chapterForm.subjectId ? "border-orange-300" : ""}>
@@ -619,10 +622,15 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   </SelectTrigger>
                   <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
-                <p className="text-[10px] text-gray-400 pl-1">Each chapter belongs to one subject</p>
+                {!chapterForm.subjectId
+                  ? <p className="text-[10px] text-orange-500 pl-1">⚠ Select subject before saving</p>
+                  : <p className="text-[10px] text-gray-400 pl-1">This chapter will appear under {subjects.find(s => String(s.id) === chapterForm.subjectId)?.name ?? "the selected subject"}</p>}
               </div>
-              <Input placeholder="Chapter name *" value={chapterForm.name}
-                onChange={e => setChapterForm(p => ({ ...p, name: e.target.value }))} />
+              <div className="space-y-1">
+                <Input placeholder="Chapter name *" value={chapterForm.name}
+                  onChange={e => setChapterForm(p => ({ ...p, name: e.target.value }))} />
+                <p className="text-[10px] text-gray-400 pl-1">Use descriptive names, e.g. "Chapter 1: Introduction to Algebra"</p>
+              </div>
               <Textarea placeholder="Description (optional)" value={chapterForm.description}
                 onChange={e => setChapterForm(p => ({ ...p, description: e.target.value }))} rows={2} />
               <div className="flex gap-2">

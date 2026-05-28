@@ -548,17 +548,17 @@ export default function TeacherPage() {
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={hwForm.grade} onChange={e => setHwForm(p => ({ ...p, grade: e.target.value }))} />
 
                   {/* Course → Live Class cascade */}
-                  <Select value={hwForm.courseId} onValueChange={v => setHwForm(p => ({ ...p, courseId: v, liveClassId: "" }))}>
+                  <Select value={hwForm.courseId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, courseId: v === "__none__" ? "" : v, liveClassId: "" }))}>
                     <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No course</SelectItem>
+                      <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Select value={hwForm.liveClassId} onValueChange={v => setHwForm(p => ({ ...p, liveClassId: v }))} disabled={!hwForm.courseId}>
+                  <Select value={hwForm.liveClassId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, liveClassId: v === "__none__" ? "" : v }))} disabled={!hwForm.courseId}>
                     <SelectTrigger><SelectValue placeholder="Live Class (optional)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {liveClasses.filter(lc => !hwForm.courseId || lc.courseId === Number(hwForm.courseId)).map(lc => (
                         <SelectItem key={lc.id} value={String(lc.id)}>{lc.title} · {new Date(lc.scheduledAt).toLocaleDateString("en-IN")}</SelectItem>
                       ))}
@@ -687,24 +687,26 @@ export default function TeacherPage() {
                     <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={lcForm.grade} onChange={e => setLcForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Select value={lcForm.courseId} onValueChange={v => {
-                    setLcForm(p => ({ ...p, courseId: v, chapterId: "", topicId: "" }));
-                    loadLcChapters(v);
+                  <Select value={lcForm.courseId || "__none__"} onValueChange={v => {
+                    const val = v === "__none__" ? "" : v;
+                    setLcForm(p => ({ ...p, courseId: val, chapterId: "", topicId: "" }));
+                    loadLcChapters(val);
                   }}>
                     <SelectTrigger><SelectValue placeholder="① Course (optional)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No course</SelectItem>
+                      <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {lcChapters.length > 0 ? (
-                    <Select value={lcForm.chapterId} onValueChange={v => {
-                      setLcForm(p => ({ ...p, chapterId: v, topicId: "" }));
-                      loadLcTopics(v);
+                    <Select value={lcForm.chapterId || "__none__"} onValueChange={v => {
+                      const val = v === "__none__" ? "" : v;
+                      setLcForm(p => ({ ...p, chapterId: val, topicId: "" }));
+                      loadLcTopics(val);
                     }}>
                       <SelectTrigger><SelectValue placeholder="② Chapter (optional)" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No chapter</SelectItem>
+                        <SelectItem value="__none__">No chapter</SelectItem>
                         {lcChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -713,10 +715,10 @@ export default function TeacherPage() {
                       onChange={e => setLcForm(p => ({ ...p, chapterId: e.target.value }))} />
                   ) : null}
                   {lcTopics.length > 0 ? (
-                    <Select value={lcForm.topicId} onValueChange={v => setLcForm(p => ({ ...p, topicId: v }))}>
+                    <Select value={lcForm.topicId || "__none__"} onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
                       <SelectTrigger><SelectValue placeholder="③ Topic (optional)" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No topic</SelectItem>
+                        <SelectItem value="__none__">No topic</SelectItem>
                         {lcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -805,10 +807,10 @@ export default function TeacherPage() {
                 <div className="bg-blue-50 rounded-xl p-3 space-y-1.5">
                   <p className="text-xs font-semibold text-blue-700">Based on Live Class (optional)</p>
                   <p className="text-xs text-blue-500">Select a live class to auto-fill subject, grade &amp; date</p>
-                  <Select value={testForm.liveClassId} onValueChange={pickLiveClassForTest}>
+                  <Select value={testForm.liveClassId || "__none__"} onValueChange={v => pickLiveClassForTest(v === "__none__" ? "" : v)}>
                     <SelectTrigger className="bg-white text-xs"><SelectValue placeholder="Select live class…" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {liveClasses.map(lc => (
                         <SelectItem key={lc.id} value={String(lc.id)}>
                           {lc.title} · {new Date(lc.scheduledAt).toLocaleDateString("en-IN")} · Grade {lc.grade}
@@ -825,10 +827,10 @@ export default function TeacherPage() {
                     <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={testForm.grade} onChange={e => setTestForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Select value={testForm.courseId} onValueChange={v => setTestForm(p => ({ ...p, courseId: v }))}>
+                  <Select value={testForm.courseId || "__none__"} onValueChange={v => setTestForm(p => ({ ...p, courseId: v === "__none__" ? "" : v }))}>
                     <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No course</SelectItem>
+                      <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -935,10 +937,10 @@ export default function TeacherPage() {
                     <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={asgnForm.grade} onChange={e => setAsgnForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Select value={asgnForm.courseId} onValueChange={v => setAsgnForm(p => ({ ...p, courseId: v }))}>
+                  <Select value={asgnForm.courseId || "__none__"} onValueChange={v => setAsgnForm(p => ({ ...p, courseId: v === "__none__" ? "" : v }))}>
                     <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No course</SelectItem>
+                      <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>

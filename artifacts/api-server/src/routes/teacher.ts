@@ -157,8 +157,8 @@ router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     }
   }
   const [lc] = await db.insert(liveClassesTable).values({
-    title, subjectId, grade,
-    courseId: courseId ?? null,
+    title, subjectId: Number(subjectId), grade: Number(grade),
+    courseId: courseId ? Number(courseId) : null,
     teacherId,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 60,
@@ -212,9 +212,9 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
     }
   }
   const [hw] = await db.insert(homeworkTable).values({
-    title, subjectId, grade,
-    courseId: courseId ?? null,
-    liveClassId: liveClassId ?? null,
+    title, subjectId: Number(subjectId), grade: Number(grade),
+    courseId: courseId ? Number(courseId) : null,
+    liveClassId: liveClassId ? Number(liveClassId) : null,
     homeworkType: homeworkType ?? "writing",
     driveLink: driveLink ?? null,
     teacherId,
@@ -273,8 +273,8 @@ router.post("/teacher/assignments", teacherOrAdmin, async (req, res) => {
     }
   }
   const [asgn] = await db.insert(assignmentsTable).values({
-    title, subjectId, grade,
-    courseId: courseId ?? null,
+    title, subjectId: Number(subjectId), grade: Number(grade),
+    courseId: courseId ? Number(courseId) : null,
     teacherId,
     dueDate: new Date(dueDate),
     description: description ?? null,
@@ -311,8 +311,8 @@ router.post("/teacher/recordings", teacherOrAdmin, async (req, res) => {
     }
   }
   const [rec] = await db.insert(recordingsTable).values({
-    title, subjectId, grade,
-    courseId: courseId ?? null,
+    title, subjectId: Number(subjectId), grade: Number(grade),
+    courseId: courseId ? Number(courseId) : null,
     teacherId,
     recordedAt: new Date(recordedAt),
     teacher: req.authUser!.name,
