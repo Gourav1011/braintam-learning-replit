@@ -684,10 +684,7 @@ export default function AdminPage() {
     { id: "enrollments", label: "Enrollments", icon: UserCheck },
     { id: "announcements", label: "Announcements", icon: Bell },
     { id: "banners", label: "Banners", icon: Image },
-    { id: "fees", label: "Fees", icon: DollarSign, placeholder: true },
     { id: "audit", label: "Audit Logs", icon: FileText },
-    { id: "payments", label: "Payments", icon: CreditCard, placeholder: true },
-    { id: "certificates", label: "Certificates", icon: Award, placeholder: true },
     { id: "settings", label: "Settings", icon: Lock },
   ];
 
