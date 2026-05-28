@@ -77,9 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
 
-    // Staff tokens ONLY apply on admin/teacher routes.
-    // On student routes (sign-in, dashboard, etc.) they are ignored
-    // so a logged-in admin can't accidentally appear as a student session.
+    // ── Staff paths: always use the staff token exclusively ──────────────
     if (isStaffPath(location) && staffToken) {
       fetchProfileWithToken(staffToken)
         .then((data) => {
@@ -91,6 +89,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         })
         .finally(() => setStudentLoading(false));
+      return;
+    }
+
+    // ── Student paths ─────────────────────────────────────────────────────
+    // If a staff token exists, do NOT auto-sync Clerk. The admin must log
+    // out from the admin portal before using the student portal, otherwise
+    // the admin's Clerk session would silently create a student record.
+    if (staffToken && !isStaffPath(location)) {
+      setStudent(null);
+      setStudentLoading(false);
       return;
     }
 
@@ -114,7 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Clerk user — sync with DB to get a real token so all API calls work
+    // Clerk user — sync with DB to get a real token so all API calls work.
+    // Clear any lingering staff token so sessions don't cross-contaminate.
     const email = user.emailAddresses[0]?.emailAddress ?? "";
     const name = user.fullName ?? user.firstName ?? "Student";
 
@@ -127,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     syncClerkUser(email, name)
       .then((result) => {
         if (result) {
+          localStorage.removeItem(STAFF_TOKEN_KEY);
           localStorage.setItem(STUDENT_TOKEN_KEY, result.token);
           setStudent({ ...result.student, streak: (result.student as any).streak ?? 0, role: (result.student.role as UserRole) ?? "student" });
         } else {

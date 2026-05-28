@@ -143,7 +143,11 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
         teacher: teacher.trim() || null,
       };
       const r = await apiFetch("/admin/courses", { method: "POST", body: JSON.stringify(body) });
-      if (!r.ok) { flash("Failed to create course", false); return; }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        flash(d.error ?? "Failed to create course", false);
+        return;
+      }
       setCourseForm(emptyCourseFm);
       setShowAddCourse(false);
       await loadBase();

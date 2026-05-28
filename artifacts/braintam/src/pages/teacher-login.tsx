@@ -42,6 +42,7 @@ export default function TeacherLoginPage() {
         return;
       }
       localStorage.setItem("braintam_staff_token", data.token);
+      localStorage.removeItem("braintam_student_token");
       window.location.href = "/teacher";
     } catch {
       setError("Network error. Please try again.");

@@ -214,10 +214,12 @@ function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPasswo
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => setEditing(p => !p)} title="Edit name & school"
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-              <Edit2 className="w-4 h-4 text-gray-400" />
-            </button>
+            {user.role !== "admin" && (
+              <button onClick={() => setEditing(p => !p)} title="Edit name & school"
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                <Edit2 className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
             <button onClick={onClose}><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
           </div>
         </div>

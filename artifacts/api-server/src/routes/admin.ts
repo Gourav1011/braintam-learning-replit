@@ -431,24 +431,30 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
     res.status(400).json({ error: "title and grade are required" });
     return;
   }
-  const [course] = await db.insert(coursesTable).values({
-    title, subjectId: subjectId ? Number(subjectId) : null, grade: Number(grade),
-    totalLessons: totalLessons ?? 0,
-    thumbnailUrl: thumbnailUrl || "https://placehold.co/400x240?text=Course",
-    description: description ?? null,
-    teacher: teacher ?? null,
-    rating: rating ?? null,
-    board: board ?? null,
-    academicYearId: academicYearId ? Number(academicYearId) : null,
-    isPublished: isPublished !== false,
-  }).returning();
+  try {
+    const [course] = await db.insert(coursesTable).values({
+      title, subjectId: subjectId ? Number(subjectId) : null, grade: Number(grade),
+      totalLessons: totalLessons ?? 0,
+      thumbnailUrl: thumbnailUrl || "https://placehold.co/400x240?text=Course",
+      description: description ?? null,
+      teacher: teacher ?? null,
+      rating: rating ?? null,
+      board: board ?? null,
+      academicYearId: academicYearId ? Number(academicYearId) : null,
+      isPublished: isPublished !== false,
+    }).returning();
 
-  await logAudit(
-    req.authUser!.id, req.authUser!.name,
-    "course_created", "course", course.id, course.title,
-  );
+    await logAudit(
+      req.authUser!.id, req.authUser!.name,
+      "course_created", "course", course.id, course.title,
+    );
 
-  res.status(201).json(course);
+    res.status(201).json(course);
+  } catch (err) {
+    req.log.error({ err }, "Failed to create course");
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: `Database error: ${msg}` });
+  }
 });
 
 router.put("/admin/courses/:id", adminOnly, async (req, res) => {

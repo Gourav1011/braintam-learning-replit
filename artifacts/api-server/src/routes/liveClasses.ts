@@ -19,8 +19,6 @@ router.get("/live-classes", attachUser, async (req, res) => {
     const enrolledIds = enrolled.map(e => e.courseId);
     if (enrolledIds.length > 0) {
       studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
-    } else if (user.grade) {
-      studentFilter = eq(liveClassesTable.grade, user.grade);
     } else {
       res.json([]);
       return;

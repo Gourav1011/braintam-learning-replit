@@ -20,8 +20,6 @@ router.get("/homework", attachUser, async (req, res) => {
     const enrolledIds = enrolled.map(e => e.courseId);
     if (enrolledIds.length > 0) {
       studentFilter = inArray(homeworkTable.courseId, enrolledIds);
-    } else if (user.grade) {
-      studentFilter = eq(homeworkTable.grade, user.grade);
     } else {
       res.json([]);
       return;
