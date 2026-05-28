@@ -8,6 +8,7 @@ import {
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray } from "drizzle-orm";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
+import { checkDailyLogin } from "../services/pointsService.js";
 
 const router = Router();
 
@@ -193,6 +194,12 @@ router.get("/student/recent-activity", requireAuth, async (req, res) => {
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
 
   res.json(activity);
+});
+
+router.post("/student/daily-login", requireAuth, async (req, res) => {
+  const userId = req.authUser!.id;
+  const result = await checkDailyLogin(userId);
+  res.json(result);
 });
 
 router.get("/student/leaderboard", async (req, res) => {

@@ -10,15 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Edit, Camera } from "lucide-react";
-import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
+import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
+import { PointsHub } from "@/components/points-hub";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const GRADES = Array.from({ length: 10 }, (_, i) => i + 1);
 
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem(STAFF_TOKEN_KEY) ?? localStorage.getItem(STUDENT_TOKEN_KEY);
@@ -59,11 +56,11 @@ function resizeImageToBase64(file: File, maxPx = 120): Promise<string> {
 }
 
 export default function ProfilePage() {
+  const { student } = useAuth();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editSchool, setEditSchool] = useState("");
-  const [editGrade, setEditGrade] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -80,7 +77,6 @@ export default function ProfilePage() {
   const openEdit = () => {
     setEditName(profile?.name ?? "");
     setEditSchool(profile?.school ?? "");
-    setEditGrade(String(profile?.grade ?? "6"));
     setSaveError("");
     setEditing(true);
   };
@@ -90,7 +86,7 @@ export default function ProfilePage() {
     setSaveBusy(true);
     setSaveError("");
     try {
-      const r = await patchProfile({ name: editName.trim(), school: editSchool, grade: Number(editGrade) });
+      const r = await patchProfile({ name: editName.trim(), school: editSchool });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         throw new Error(d.error ?? "Failed to update");
@@ -276,6 +272,18 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Points Hub — full width below the profile/stats grid */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <PointsHub
+            data={{
+              totalPoints: progress?.totalPoints ?? student?.points ?? 0,
+              rank:        progress?.rank        ?? student?.rank  ?? null,
+              streakDays:  student?.streak       ?? 0,
+            }}
+            isLoading={progressLoading}
+          />
+        </motion.div>
+
         {/* Edit Dialog */}
         <Dialog open={editing} onOpenChange={setEditing}>
           <DialogContent>
@@ -302,18 +310,17 @@ export default function ProfilePage() {
                   data-testid="edit-school-input"
                 />
               </div>
-              <div>
-                <Label>Grade</Label>
-                <Select value={editGrade} onValueChange={setEditGrade}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select grade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GRADES.map(g => (
-                      <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Grade is read-only — assigned by admin based on enrollment */}
+              <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Grade</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Auto-assigned based on your course enrollment
+                  </p>
+                </div>
+                <Badge variant="secondary" className="text-sm px-3">
+                  Grade {profile?.grade ?? "—"}
+                </Badge>
               </div>
               {saveError && <p className="text-sm text-red-500">{saveError}</p>}
             </div>
