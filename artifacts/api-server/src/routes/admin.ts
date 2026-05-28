@@ -323,9 +323,7 @@ router.get("/admin/users/:id/courses", adminOnly, async (req, res) => {
     id: coursesTable.id,
     title: coursesTable.title,
     grade: coursesTable.grade,
-    subjectName: subjectsTable.name,
   }).from(coursesTable)
-    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
     .orderBy(coursesTable.grade, coursesTable.title);
 
   const enrollments = await db.select({
@@ -412,7 +410,6 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     id: coursesTable.id,
     title: coursesTable.title,
     subjectId: coursesTable.subjectId,
-    subjectName: subjectsTable.name,
     grade: coursesTable.grade,
     board: coursesTable.board,
     academicYearId: coursesTable.academicYearId,
@@ -424,19 +421,18 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     rating: coursesTable.rating,
   })
     .from(coursesTable)
-    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
     .orderBy(desc(coursesTable.createdAt));
-  res.json(courses);
+  res.json(courses.map(c => ({ ...c, subjectName: null })));
 });
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
   const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished } = req.body;
-  if (!title || !subjectId || !grade) {
-    res.status(400).json({ error: "title, subjectId, grade are required" });
+  if (!title || !grade) {
+    res.status(400).json({ error: "title and grade are required" });
     return;
   }
   const [course] = await db.insert(coursesTable).values({
-    title, subjectId: Number(subjectId), grade: Number(grade),
+    title, subjectId: subjectId ? Number(subjectId) : null, grade: Number(grade),
     totalLessons: totalLessons ?? 0,
     thumbnailUrl: thumbnailUrl || "https://placehold.co/400x240?text=Course",
     description: description ?? null,

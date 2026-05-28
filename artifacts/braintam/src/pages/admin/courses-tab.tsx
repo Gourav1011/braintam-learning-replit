@@ -30,7 +30,7 @@ function apiFetch(path: string, opts?: RequestInit) {
 interface AcademicYear { id: number; name: string; isActive: boolean; }
 interface CourseItem {
   id: number; title: string; grade: number; board: string | null;
-  academicYearId: number | null; subjectId: number; subjectName: string;
+  academicYearId: number | null; subjectId: number | null; subjectName: string | null;
   isPublished: boolean; teacher: string | null; description: string | null;
   thumbnailUrl: string | null;
 }
@@ -48,7 +48,7 @@ const gradeLabel = (g: number) => (g === 0 ? "Others" : `Grade ${g}`);
 
 type CmsView = "courses" | "chapters" | "topics";
 
-const emptyCourseFm = { title: "", grade: "", subjectId: "", board: "", academicYearId: "", description: "", teacher: "", thumbnailUrl: "" };
+const emptyCourseFm = { title: "", grade: "", board: "", academicYearId: "", description: "", teacher: "", thumbnailUrl: "" };
 
 export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
@@ -80,7 +80,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const [yearName, setYearName] = useState("");
   const [courseForm, setCourseForm] = useState(emptyCourseFm);
-  const [chapterForm, setChapterForm] = useState({ name: "", description: "" });
+  const [chapterForm, setChapterForm] = useState({ name: "", description: "", subjectId: "" });
   const [topicForm, setTopicForm] = useState({ name: "", description: "" });
 
   const loadBase = useCallback(async () => {
@@ -127,17 +127,15 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   // ── Courses ─────────────────────────────────────────────────────
   const createCourse = async () => {
-    const { title, grade, subjectId, thumbnailUrl, board, academicYearId, description, teacher } = courseForm;
+    const { title, grade, thumbnailUrl, board, academicYearId, description, teacher } = courseForm;
     if (!title.trim()) { flash("Course title is required", false); return; }
     if (!grade) { flash("Please select a grade", false); return; }
-    if (!subjectId) { flash("Please select a subject", false); return; }
     if (!academicYearId) { flash("Academic Year is required — create one in the Academic Years panel above first", false); return; }
     setBusy(true);
     try {
       const body = {
         title: title.trim(),
         grade: Number(grade),
-        subjectId: Number(subjectId),
         thumbnailUrl: thumbnailUrl.trim() || "https://placehold.co/400x240?text=Course",
         board: board || null,
         academicYearId: Number(academicYearId),
@@ -155,7 +153,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const updateCourse = async () => {
     if (!editingCourse) return;
-    const { title, grade, subjectId, thumbnailUrl, board, academicYearId, description, teacher } = editForm;
+    const { title, grade, thumbnailUrl, board, academicYearId, description, teacher } = editForm;
     if (!title.trim()) { flash("Course title is required", false); return; }
     if (!grade) { flash("Please select a grade", false); return; }
     if (!academicYearId) { flash("Academic Year is required", false); return; }
@@ -164,7 +162,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       const body = {
         title: title.trim(),
         grade: Number(grade),
-        subjectId: subjectId ? Number(subjectId) : editingCourse.subjectId,
         thumbnailUrl: thumbnailUrl.trim() || undefined,
         board: board || null,
         academicYearId: Number(academicYearId),
@@ -212,12 +209,13 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   // ── Chapters ────────────────────────────────────────────────────
   const createChapter = async () => {
     if (!selectedCourse || !chapterForm.name.trim()) { flash("Chapter name is required", false); return; }
+    if (!chapterForm.subjectId) { flash("Please select a subject for this chapter", false); return; }
     setBusy(true);
     try {
       const r = await apiFetch("/admin/chapters", {
         method: "POST",
         body: JSON.stringify({
-          subjectId: selectedCourse.subjectId,
+          subjectId: Number(chapterForm.subjectId),
           grade: selectedCourse.grade,
           courseId: selectedCourse.id,
           name: chapterForm.name.trim(),
@@ -228,7 +226,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       if (!r.ok) { flash("Failed to create chapter", false); return; }
       const ch: ChapterItem = await r.json();
       setChapters(p => [...p, ch]);
-      setChapterForm({ name: "", description: "" });
+      setChapterForm({ name: "", description: "", subjectId: "" });
       setShowAddChapter(false);
       flash("Chapter created", true);
     } finally { setBusy(false); }
@@ -431,18 +429,11 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <p className="text-[10px] text-gray-400 pl-1">Determines which students can see and enroll in this course</p>
                 </div>
                 <div className="space-y-1">
-                  <Select value={courseForm.subjectId} onValueChange={v => setCourseForm(p => ({ ...p, subjectId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
-                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-gray-400 pl-1">Set subject before adding chapters &amp; live class links</p>
-                </div>
-                <div className="space-y-1">
                   <Select value={courseForm.board} onValueChange={v => setCourseForm(p => ({ ...p, board: v }))}>
                     <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
                     <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                   </Select>
-                  <p className="text-[10px] text-gray-400 pl-1">Helps filter content by exam board (CBSE, ICSE, etc.)</p>
+                  <p className="text-[10px] text-gray-400 pl-1">Subjects are assigned per chapter, not per course</p>
                 </div>
                 <div className="space-y-1">
                   <Select value={courseForm.academicYearId} onValueChange={v => setCourseForm(p => ({ ...p, academicYearId: v }))}>
@@ -483,10 +474,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                 <Select value={editForm.grade} onValueChange={v => setEditForm(p => ({ ...p, grade: v }))}>
                   <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
                   <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={editForm.subjectId} onValueChange={v => setEditForm(p => ({ ...p, subjectId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
-                  <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
                 <Select value={editForm.board} onValueChange={v => setEditForm(p => ({ ...p, board: v }))}>
                   <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
@@ -531,7 +518,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
               if (courseYearFilter !== "all" && String(c.academicYearId) !== courseYearFilter) return false;
               if (courseSearch) {
                 const q = courseSearch.toLowerCase();
-                return c.title.toLowerCase().includes(q) || (c.subjectName ?? "").toLowerCase().includes(q) || (c.teacher ?? "").toLowerCase().includes(q);
+                return c.title.toLowerCase().includes(q) || (c.teacher ?? "").toLowerCase().includes(q);
               }
               return true;
             });
@@ -562,7 +549,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                           <Layers className="w-3 h-3" /> Chapters
                         </button>
                         <button
-                          onClick={() => { setEditingCourse(c); setEditForm({ title: c.title, grade: String(c.grade), subjectId: String(c.subjectId ?? ""), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", description: c.description ?? "", teacher: c.teacher ?? "", thumbnailUrl: c.thumbnailUrl ?? "" }); setShowAddCourse(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          onClick={() => { setEditingCourse(c); setEditForm({ title: c.title, grade: String(c.grade), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", description: c.description ?? "", teacher: c.teacher ?? "", thumbnailUrl: c.thumbnailUrl ?? "" }); setShowAddCourse(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                           className="text-xs p-1.5 rounded-lg border border-blue-200 hover:border-blue-400 transition-colors text-blue-500"
                           title="Edit course">
                           <Pencil className="w-3.5 h-3.5" />
@@ -600,8 +587,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                 <h2 className="font-bold text-base" style={{ color: NAVY }}>{selectedCourse.title}</h2>
                 <div className="flex gap-1.5 mt-1">
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">Grade {selectedCourse.grade}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">{selectedCourse.subjectName}</span>
                   {selectedCourse.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{selectedCourse.board}</span>}
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">Subject per chapter</span>
                 </div>
               </div>
               <button onClick={goBack} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200">
@@ -621,13 +608,22 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           {showAddChapter && (
             <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Chapter</h3>
+              <div className="space-y-1">
+                <Select value={chapterForm.subjectId} onValueChange={v => setChapterForm(p => ({ ...p, subjectId: v }))}>
+                  <SelectTrigger className={!chapterForm.subjectId ? "border-orange-300" : ""}>
+                    <SelectValue placeholder="Subject * (required)" />
+                  </SelectTrigger>
+                  <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="text-[10px] text-gray-400 pl-1">Each chapter belongs to one subject</p>
+              </div>
               <Input placeholder="Chapter name *" value={chapterForm.name}
                 onChange={e => setChapterForm(p => ({ ...p, name: e.target.value }))} />
               <Textarea placeholder="Description (optional)" value={chapterForm.description}
                 onChange={e => setChapterForm(p => ({ ...p, description: e.target.value }))} rows={2} />
               <div className="flex gap-2">
                 <Button size="sm" onClick={createChapter} disabled={busy} className="text-white" style={{ background: ORANGE }}>Create</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setShowAddChapter(false); setChapterForm({ name: "", description: "" }); }}>Cancel</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowAddChapter(false); setChapterForm({ name: "", description: "", subjectId: "" }); }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -639,7 +635,10 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                     style={{ background: NAVY }}>{idx + 1}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm" style={{ color: NAVY }}>{ch.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm" style={{ color: NAVY }}>{ch.name}</p>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium flex-shrink-0">{ch.subjectName}</span>
+                    </div>
                     {ch.description && <p className="text-xs text-gray-500 truncate">{ch.description}</p>}
                   </div>
                   <div className="flex gap-1.5">

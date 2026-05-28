@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { coursesTable, subjectsTable, lessonsTable, enrollmentsTable } from "@workspace/db";
+import { coursesTable, lessonsTable, enrollmentsTable } from "@workspace/db";
 import { ListCoursesQueryParams, GetCourseParams } from "@workspace/api-zod";
 import { eq, and, ilike, inArray } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
@@ -30,7 +30,6 @@ router.get("/courses", attachUser, async (req, res) => {
     id: coursesTable.id,
     title: coursesTable.title,
     subjectId: coursesTable.subjectId,
-    subjectName: subjectsTable.name,
     grade: coursesTable.grade,
     totalLessons: coursesTable.totalLessons,
     thumbnailUrl: coursesTable.thumbnailUrl,
@@ -39,7 +38,6 @@ router.get("/courses", attachUser, async (req, res) => {
     rating: coursesTable.rating,
   })
     .from(coursesTable)
-    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
     .where(
       and(
         studentFilter,
@@ -76,7 +74,6 @@ router.get("/courses/:id", attachUser, async (req, res) => {
     id: coursesTable.id,
     title: coursesTable.title,
     subjectId: coursesTable.subjectId,
-    subjectName: subjectsTable.name,
     grade: coursesTable.grade,
     thumbnailUrl: coursesTable.thumbnailUrl,
     description: coursesTable.description,
@@ -84,7 +81,6 @@ router.get("/courses/:id", attachUser, async (req, res) => {
     rating: coursesTable.rating,
   })
     .from(coursesTable)
-    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
     .where(eq(coursesTable.id, parsed.data.id));
 
   if (!course) { res.status(404).json({ error: "Not found" }); return; }
@@ -95,6 +91,7 @@ router.get("/courses/:id", attachUser, async (req, res) => {
 
   res.json({
     ...course,
+    subjectName: null,
     description: course.description ?? null,
     teacher: course.teacher ?? null,
     rating: course.rating ?? null,
