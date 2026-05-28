@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Redirect } from "wouter";
 import {
@@ -56,7 +56,8 @@ interface User {
   isActive: boolean;
   createdAt?: string;
 }
-interface Course { id: number; title: string; subjectName: string; subjectId?: number; grade: number; teacher: string | null; }
+interface Course { id: number; title: string; subjectName: string; subjectId?: number; grade: number; teacher: string | null; academicYearId?: number | null; }
+interface AcademicYear { id: number; name: string; isActive: boolean; }
 interface TeacherAssignment { id: number; teacherId: number; teacherName: string; courseId: number; courseTitle: string; assignedAt: string; }
 interface Enrollment { id: number; studentId: number; studentName: string; courseId: number; courseTitle: string; enrolledAt: string; }
 interface Stats { totalUsers: number; totalStudents: number; totalTeachers: number; totalCourses: number; totalEnrollments: number; totalTeacherAssignments: number; }
@@ -646,6 +647,14 @@ export default function AdminPage() {
   const [analyticsGradeFilter, setAnalyticsGradeFilter] = useState("all");
   const [analyticsUserTypeFilter, setAnalyticsUserTypeFilter] = useState("all");
   const [analyticsSearch, setAnalyticsSearch] = useState("");
+  const [analyticsYearFilter, setAnalyticsYearFilter] = useState("all");
+
+  // Academic years (for analytics + other filters)
+  const [academicYearsList, setAcademicYearsList] = useState<AcademicYear[]>([]);
+
+  // User row expansion
+  const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
+  const [expandedUserData, setExpandedUserData] = useState<Record<number, { id: number; title: string; grade: number; enrolled: boolean; enrollmentId: number | null }[]>>({});
 
   // Live class chapter/topic cascade
   const [lcChapters, setLcChapters] = useState<{ id: number; name: string }[]>([]);
@@ -671,7 +680,7 @@ export default function AdminPage() {
 
   async function loadAll() {
     setDataLoading(true);
-    const [s, u, c, a, e, anns, bans, ana, lcs, subjs, audit] = await Promise.all([
+    const [s, u, c, a, e, anns, bans, ana, lcs, subjs, audit, yrs] = await Promise.all([
       apiFetch("/admin/stats").then(r => r.ok ? r.json() : null),
       apiFetch("/admin/users").then(r => r.ok ? r.json() : []),
       apiFetch("/admin/courses").then(r => r.ok ? r.json() : []),
@@ -683,11 +692,21 @@ export default function AdminPage() {
       apiFetch("/admin/live-classes").then(r => r.ok ? r.json() : []),
       apiFetch("/subjects").then(r => r.ok ? r.json() : []),
       apiFetch("/admin/audit-logs").then(r => r.ok ? r.json() : []),
+      apiFetch("/admin/academic-years").then(r => r.ok ? r.json() : []),
     ]);
     setStats(s); setUsers(u); setCourses(c); setAssignments(a); setEnrollments(e);
     setAnnouncements(anns); setBanners(bans); setAnalytics(ana); setLiveClassItems(lcs);
-    setSubjectsList(subjs); setAuditLogs(audit);
+    setSubjectsList(subjs); setAuditLogs(audit); setAcademicYearsList(Array.isArray(yrs) ? yrs : []);
     setDataLoading(false);
+  }
+
+  async function toggleUserExpand(userId: number) {
+    if (expandedUserId === userId) { setExpandedUserId(null); return; }
+    setExpandedUserId(userId);
+    if (!expandedUserData[userId]) {
+      const data = await apiFetch(`/admin/users/${userId}/courses`).then(r => r.ok ? r.json() : []);
+      setExpandedUserData(prev => ({ ...prev, [userId]: Array.isArray(data) ? data : [] }));
+    }
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3500); }
@@ -1030,9 +1049,14 @@ export default function AdminPage() {
 
           // Grade-wise breakdown
           const gradeBreakdown = (() => {
-            const src = analyticsUserTypeFilter === "teacher" ? teacherList
+            let src = analyticsUserTypeFilter === "teacher" ? teacherList
               : analyticsUserTypeFilter === "admin" ? users.filter(u => u.role === "admin")
               : studentList;
+            if (analyticsYearFilter !== "all") {
+              const yearCourseIds = new Set(courses.filter(c => String(c.academicYearId) === analyticsYearFilter).map(c => c.id));
+              const enrolledIds = new Set(enrollments.filter(e => yearCourseIds.has(e.courseId)).map(e => e.studentId));
+              src = src.filter(u => enrolledIds.has(u.id));
+            }
             const byGrade: Record<number, number> = {};
             src.forEach(u => { byGrade[u.grade] = (byGrade[u.grade] ?? 0) + 1; });
             return Object.entries(byGrade)
@@ -1073,6 +1097,15 @@ export default function AdminPage() {
                   {[1,2,3,4,5,6,7,8,9,10].map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {academicYearsList.length > 0 && (
+                <Select value={analyticsYearFilter} onValueChange={setAnalyticsYearFilter}>
+                  <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Academic Year" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Years</SelectItem>
+                    {academicYearsList.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
               <div className="relative flex-1 min-w-[180px]">
                 <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
@@ -1082,9 +1115,9 @@ export default function AdminPage() {
                   className="pl-9 h-8 text-xs"
                 />
               </div>
-              {(analyticsGradeFilter !== "all" || analyticsUserTypeFilter !== "all" || analyticsSearch) && (
+              {(analyticsGradeFilter !== "all" || analyticsUserTypeFilter !== "all" || analyticsSearch || analyticsYearFilter !== "all") && (
                 <button
-                  onClick={() => { setAnalyticsGradeFilter("all"); setAnalyticsUserTypeFilter("all"); setAnalyticsSearch(""); }}
+                  onClick={() => { setAnalyticsGradeFilter("all"); setAnalyticsUserTypeFilter("all"); setAnalyticsSearch(""); setAnalyticsYearFilter("all"); }}
                   className="text-xs text-orange-500 hover:underline"
                 >Clear</button>
               )}
@@ -1450,70 +1483,115 @@ export default function AdminPage() {
                 <tbody>
                   {dataLoading && [1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
                   {!dataLoading && pagedUsers.map(u => (
-                    <tr key={u.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${!u.isActive ? "opacity-60" : ""}`}>
-                      <td className="px-4 py-3">
-                        <button onClick={() => toggleSelect(u.id)}>
-                          {selectedIds.has(u.id) ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-300" />}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => setProfileUser(u)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
-                            style={{ background: NAVY }}>{u.name[0]?.toUpperCase()}</button>
-                          <div>
-                            <button onClick={() => setProfileUser(u)} className="font-semibold hover:underline text-left" style={{ color: NAVY }}>{u.name}</button>
-                            {!u.isActive && <span className="ml-1 text-xs text-red-400">(inactive)</span>}
+                    <Fragment key={u.id}>
+                      <tr className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${!u.isActive ? "opacity-60" : ""} ${expandedUserId === u.id ? "bg-blue-50/30" : ""}`}>
+                        <td className="px-4 py-3">
+                          <button onClick={() => toggleSelect(u.id)}>
+                            {selectedIds.has(u.id) ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-300" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setProfileUser(u)}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
+                              style={{ background: NAVY }}>{u.name[0]?.toUpperCase()}</button>
+                            <div>
+                              <button onClick={() => setProfileUser(u)} className="font-semibold hover:underline text-left" style={{ color: NAVY }}>{u.name}</button>
+                              {!u.isActive && <span className="ml-1 text-xs text-red-400">(inactive)</span>}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        <div>{u.email ?? "—"}</div>
-                        {u.phone && <div className="text-gray-400">{u.phone}</div>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${ROLE_COLORS[u.role] ?? ""}`}>{u.role}</span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{u.grade > 0 ? `Gr ${u.grade}` : "—"}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => setProfileUser(u)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="View Profile">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => setResetPasswordUser(u)} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Reset Password">
-                            <Key className="w-4 h-4" />
-                          </button>
-                          {u.role === "student" && (
-                            <button onClick={() => setAccessUser(u)} className="p-1 text-gray-400 hover:text-green-600 transition-colors" title="Manage Access">
-                              <ShieldCheck className="w-4 h-4" />
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">
+                          <div>{u.email ?? "—"}</div>
+                          {u.phone && <div className="text-gray-400">{u.phone}</div>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${ROLE_COLORS[u.role] ?? ""}`}>{u.role}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{u.grade > 0 ? `Gr ${u.grade}` : "—"}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => toggleUserExpand(u.id)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Expand details">
+                              {expandedUserId === u.id ? <ChevronUp className="w-4 h-4 text-blue-500" /> : <ChevronDown className="w-4 h-4" />}
                             </button>
-                          )}
-                          {u.isActive ? (
+                            <button onClick={() => setProfileUser(u)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="View Profile">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setResetPasswordUser(u)} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Reset Password">
+                              <Key className="w-4 h-4" />
+                            </button>
+                            {u.role === "student" && (
+                              <button onClick={() => setAccessUser(u)} className="p-1 text-gray-400 hover:text-green-600 transition-colors" title="Manage Access">
+                                <ShieldCheck className="w-4 h-4" />
+                              </button>
+                            )}
+                            {u.isActive ? (
+                              <button onClick={() => confirm({
+                                title: "Deactivate User",
+                                message: `Deactivate ${u.name}? They will lose access immediately.`,
+                                confirmLabel: "Deactivate",
+                                onConfirm: () => deactivateUser(u.id),
+                              })} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Deactivate">
+                                <UserX className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button onClick={() => reactivateUser(u.id)} className="p-1 text-gray-400 hover:text-green-500 transition-colors" title="Reactivate">
+                                <UserCheck2 className="w-4 h-4" />
+                              </button>
+                            )}
                             <button onClick={() => confirm({
-                              title: "Deactivate User",
-                              message: `Deactivate ${u.name}? They will lose access immediately.`,
-                              confirmLabel: "Deactivate",
-                              onConfirm: () => deactivateUser(u.id),
-                            })} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Deactivate">
-                              <UserX className="w-4 h-4" />
+                              title: "Permanently Delete",
+                              message: `This will permanently remove ${u.name} from the database. This cannot be undone.`,
+                              confirmLabel: "Delete Forever",
+                              danger: true,
+                              onConfirm: () => permanentDeleteUser(u.id),
+                            })} className="p-1 text-gray-400 hover:text-red-600 transition-colors" title="Permanent Delete">
+                              <Trash2 className="w-4 h-4" />
                             </button>
-                          ) : (
-                            <button onClick={() => reactivateUser(u.id)} className="p-1 text-gray-400 hover:text-green-500 transition-colors" title="Reactivate">
-                              <UserCheck2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button onClick={() => confirm({
-                            title: "Permanently Delete",
-                            message: `This will permanently remove ${u.name} from the database. This cannot be undone.`,
-                            confirmLabel: "Delete Forever",
-                            danger: true,
-                            onConfirm: () => permanentDeleteUser(u.id),
-                          })} className="p-1 text-gray-400 hover:text-red-600 transition-colors" title="Permanent Delete">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedUserId === u.id && (() => {
+                        const userCourses = expandedUserData[u.id];
+                        const enrolledCourses = userCourses ? userCourses.filter(c => c.enrolled) : null;
+                        return (
+                          <tr className="bg-blue-50/20 border-b border-blue-100">
+                            <td colSpan={6} className="px-6 py-4">
+                              <div className="flex flex-wrap gap-6">
+                                <div>
+                                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Enrollments</p>
+                                  {userCourses === undefined ? (
+                                    <p className="text-xs text-gray-400">Loading…</p>
+                                  ) : enrolledCourses!.length === 0 ? (
+                                    <p className="text-xs text-gray-400 italic">No courses enrolled</p>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {enrolledCourses!.map(c => (
+                                        <span key={c.id} className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-700 font-medium">
+                                          {c.title} <span className="text-gray-400">· Gr {c.grade}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                {u.school && (
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">School</p>
+                                    <p className="text-xs text-gray-700">{u.school}</p>
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Enrolled</p>
+                                  <p className="text-sm font-bold" style={{ color: NAVY }}>
+                                    {userCourses === undefined ? "…" : `${enrolledCourses!.length} / ${userCourses.length} courses`}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </Fragment>
                   ))}
                   {!dataLoading && pagedUsers.length === 0 && (
                     <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400 text-sm">No users found</td></tr>
