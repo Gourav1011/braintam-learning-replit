@@ -3,10 +3,10 @@ import { db } from "@workspace/db";
 import {
   usersTable, subjectsTable, homeworkTable, assignmentsTable,
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
-  homeworkSubmissionsTable, assignmentSubmissionsTable,
+  homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
-import { eq, desc, sql, inArray } from "drizzle-orm";
+import { eq, desc, sql, inArray, and } from "drizzle-orm";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
 import { checkDailyLogin } from "../services/pointsService.js";
 
@@ -247,6 +247,57 @@ router.get("/student/leaderboard", async (req, res) => {
   );
 
   res.json(ranked);
+});
+
+// ── Daily Coin Claim ────────────────────────────────────────────
+router.get("/student/daily-coin-status", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const [claim] = await db.select()
+    .from(dailyCoinClaimsTable)
+    .where(and(eq(dailyCoinClaimsTable.userId, studentId), eq(dailyCoinClaimsTable.claimDate, today)));
+
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setHours(24, 0, 0, 0);
+
+  res.json({
+    claimed: !!claim,
+    coins: claim?.coins ?? 10,
+    nextRefreshAt: tomorrow.toISOString(),
+  });
+});
+
+router.post("/student/claim-daily-coins", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [existing] = await db.select()
+    .from(dailyCoinClaimsTable)
+    .where(and(eq(dailyCoinClaimsTable.userId, studentId), eq(dailyCoinClaimsTable.claimDate, today)));
+
+  if (existing) {
+    res.status(409).json({ error: "Already claimed today" });
+    return;
+  }
+
+  const coinsToAward = 10;
+
+  await db.update(usersTable).set({
+    points: sql`${usersTable.points} + ${coinsToAward}`,
+  }).where(eq(usersTable.id, studentId));
+
+  await db.insert(dailyCoinClaimsTable).values({
+    userId: studentId,
+    claimDate: today,
+    coins: coinsToAward,
+  });
+
+  const [updated] = await db.select({ points: usersTable.points })
+    .from(usersTable).where(eq(usersTable.id, studentId));
+
+  res.json({ success: true, coins: coinsToAward, totalPoints: updated?.points ?? 0 });
 });
 
 export default router;

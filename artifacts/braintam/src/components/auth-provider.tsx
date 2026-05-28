@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useUser, useClerk } from "@clerk/react";
+import { useLocation } from "wouter";
 
 export type UserRole = "admin" | "teacher" | "student";
 
@@ -59,9 +60,14 @@ async function syncClerkUser(email: string, name: string): Promise<{ token: stri
   }
 }
 
+function isStaffPath(path: string) {
+  return path.startsWith("/admin") || path.startsWith("/teacher");
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const [location] = useLocation();
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [studentLoading, setStudentLoading] = useState(true);
 
@@ -71,7 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
 
-    if (staffToken) {
+    // Staff tokens ONLY apply on admin/teacher routes.
+    // On student routes (sign-in, dashboard, etc.) they are ignored
+    // so a logged-in admin can't accidentally appear as a student session.
+    if (isStaffPath(location) && staffToken) {
       fetchProfileWithToken(staffToken)
         .then((data) => {
           if (data) {
@@ -125,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => setStudentLoading(false));
-  }, [isLoaded, user]);
+  }, [isLoaded, user, location]);
 
   const logout = () => {
     setStudentLoading(true);
@@ -142,7 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStudentLoading(true);
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
-    const token = staffToken || studentToken;
+    const onStaff = isStaffPath(location);
+    const token = (onStaff && staffToken) ? staffToken : (studentToken || null);
     if (token) {
       fetchProfileWithToken(token)
         .then((data) => {

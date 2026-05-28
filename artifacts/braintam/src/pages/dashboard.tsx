@@ -1,5 +1,5 @@
 import { Redirect } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useGetStudentDashboard, useGetLeaderboard } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth, STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
 import { Video, BookOpen, FileText, CheckSquare, Award, Flame, ArrowRight, PlayCircle, Star } from "lucide-react";
 import { Link } from "wouter";
+import { useState, useEffect, useRef } from "react";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -36,14 +37,196 @@ const activityColors: Record<string, string> = {
   course: "text-green-500 bg-green-50",
 };
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function apiFetch(path: string, opts?: RequestInit) {
+  const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
+  const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
+  const token = studentToken || staffToken;
+  return fetch(`${BASE}/api${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts?.headers,
+    },
+  });
+}
+
+// ── Daily Coin Popup ────────────────────────────────────────────
+function CoinPopup({ onClose }: { onClose: () => void }) {
+  const [claiming, setClaiming] = useState(false);
+  const [claimed, setClaimed] = useState(false);
+  const [totalPoints, setTotalPoints] = useState<number | null>(null);
+  const coins = 10;
+
+  const claim = async () => {
+    setClaiming(true);
+    try {
+      const r = await apiFetch("/student/claim-daily-coins", { method: "POST" });
+      if (r.ok) {
+        const data = await r.json();
+        setTotalPoints(data.totalPoints);
+        setClaimed(true);
+      }
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+    >
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0, y: 30 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center relative overflow-hidden"
+      >
+        {/* Background decoration */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-yellow-100 rounded-full opacity-60" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-orange-100 rounded-full opacity-60" />
+        </div>
+
+        <div className="relative">
+          {!claimed ? (
+            <>
+              {/* Coin icon animation */}
+              <motion.div
+                animate={{ y: [0, -8, 0], rotate: [0, 5, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                className="text-6xl mb-4 inline-block select-none"
+              >
+                🪙
+              </motion.div>
+
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Daily Reward!</h2>
+              <p className="text-gray-500 text-sm mb-6">
+                Come back every day to collect your coins and climb the leaderboard!
+              </p>
+
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl py-4 px-6 mb-6 shadow-inner">
+                <p className="text-white text-xs font-semibold uppercase tracking-wider mb-1">Today's reward</p>
+                <p className="text-white text-4xl font-black">+{coins} Coins</p>
+              </div>
+
+              <Button
+                onClick={claim}
+                disabled={claiming}
+                className="w-full h-12 text-base font-bold rounded-2xl text-white shadow-lg"
+                style={{ background: "linear-gradient(135deg, #FF6B1A, #e55a10)" }}
+              >
+                {claiming ? "Claiming..." : "🎉 Claim Now"}
+              </Button>
+              <button onClick={onClose} className="mt-3 text-xs text-gray-400 hover:text-gray-600 w-full">
+                Remind me later
+              </button>
+            </>
+          ) : (
+            <>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: [0, 1.3, 1] }}
+                transition={{ duration: 0.5, type: "spring" }}
+                className="text-6xl mb-4 inline-block"
+              >
+                🎊
+              </motion.div>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-2xl font-extrabold text-gray-900 mb-1"
+              >
+                Coins Claimed!
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-gray-500 text-sm mb-6"
+              >
+                {totalPoints !== null ? `You now have ${totalPoints} total points.` : `+${coins} coins added to your balance!`} See you tomorrow!
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-green-50 border border-green-200 rounded-2xl py-3 px-6 mb-6"
+              >
+                <p className="text-green-700 font-bold text-2xl">+{coins} 🪙</p>
+                <p className="text-green-600 text-xs mt-1">Added to your score</p>
+              </motion.div>
+
+              <Button
+                onClick={onClose}
+                className="w-full h-12 text-base font-bold rounded-2xl text-white"
+                style={{ background: "linear-gradient(135deg, #0B2B6B, #0d3a92)" }}
+              >
+                Continue Learning 📚
+              </Button>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Main Dashboard ──────────────────────────────────────────────
 export default function DashboardPage() {
   const { student, role, isLoading: authLoading } = useAuth();
+  const [showCoinPopup, setShowCoinPopup] = useState(false);
+  const midnightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!authLoading && role === "admin") return <Redirect to="/admin" />;
   if (!authLoading && role === "teacher") return <Redirect to="/teacher" />;
 
   const { data: dashboard, isLoading } = useGetStudentDashboard();
   const { data: leaderboard } = useGetLeaderboard();
+
+  // Check coin claim status on load
+  useEffect(() => {
+    if (!student) return;
+
+    apiFetch("/student/daily-coin-status")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && !data.claimed) {
+          setShowCoinPopup(true);
+
+          // Schedule re-show at midnight (in case user leaves popup open)
+          if (data.nextRefreshAt) {
+            const msUntilMidnight = new Date(data.nextRefreshAt).getTime() - Date.now();
+            if (msUntilMidnight > 0) {
+              midnightTimerRef.current = setTimeout(() => {
+                setShowCoinPopup(true);
+              }, msUntilMidnight);
+            }
+          }
+        } else if (data && data.claimed && data.nextRefreshAt) {
+          // Already claimed — set timer to re-show tomorrow after midnight
+          const msUntilMidnight = new Date(data.nextRefreshAt).getTime() - Date.now();
+          if (msUntilMidnight > 0) {
+            midnightTimerRef.current = setTimeout(() => {
+              setShowCoinPopup(true);
+            }, msUntilMidnight);
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      if (midnightTimerRef.current) clearTimeout(midnightTimerRef.current);
+    };
+  }, [student?.id]);
 
   const statCards = [
     { label: "Upcoming Live Classes", value: dashboard?.upcomingLiveClasses ?? 0, icon: Video, color: "text-red-500", bg: "bg-red-50", href: "/live-classes" },
@@ -62,6 +245,13 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
+      {/* Daily Coin Popup */}
+      <AnimatePresence>
+        {showCoinPopup && (
+          <CoinPopup onClose={() => setShowCoinPopup(false)} />
+        )}
+      </AnimatePresence>
+
       <div className="p-6 space-y-8 max-w-7xl mx-auto">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
@@ -76,11 +266,16 @@ export default function DashboardPage() {
               <Flame className="w-5 h-5 text-orange-500" />
               <span className="font-bold text-orange-600">{dashboard?.streakDays ?? 0} day streak</span>
             </div>
-            <div className="flex items-center gap-2 bg-secondary/10 border border-secondary/20 px-4 py-2 rounded-xl" data-testid="points-display">
+            <button
+              onClick={() => setShowCoinPopup(true)}
+              className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-4 py-2 rounded-xl hover:bg-yellow-100 transition-colors"
+              title="Daily coin reward"
+              data-testid="points-display"
+            >
               <Star className="w-5 h-5 text-secondary" />
               <span className="font-bold text-secondary">{dashboard?.points ?? 0} pts</span>
               <span className="text-muted-foreground text-sm">• Rank #{dashboard?.rank ?? "—"}</span>
-            </div>
+            </button>
           </div>
         </motion.div>
 
