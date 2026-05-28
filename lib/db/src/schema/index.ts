@@ -20,3 +20,5 @@ export * from "./demoBatches";
 export * from "./demoSessions";
 export * from "./demoBatchEnrollments";
 export * from "./studentProgress";
+export * from "./content";
+export * from "./pointsLedger";

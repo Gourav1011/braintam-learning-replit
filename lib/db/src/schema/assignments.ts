@@ -11,6 +11,7 @@ export const assignmentsTable = pgTable("assignments", {
   topicId: integer("topic_id"),
   teacherId: integer("teacher_id"),
   dueDate: timestamp("due_date").notNull(),
+  deadlineDate: timestamp("deadline_date"),
   description: text("description"),
   maxMarks: real("max_marks").notNull().default(20),
   attachmentUrl: text("attachment_url"),

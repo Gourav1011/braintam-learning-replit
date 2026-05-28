@@ -11,6 +11,7 @@ export const homeworkTable = pgTable("homework", {
   topicId: integer("topic_id"),
   teacherId: integer("teacher_id"),
   dueDate: timestamp("due_date").notNull(),
+  deadlineDate: timestamp("deadline_date"),
   description: text("description"),
   maxMarks: real("max_marks").notNull().default(10),
   questionsJson: text("questions_json"),
