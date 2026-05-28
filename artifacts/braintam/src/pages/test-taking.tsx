@@ -64,6 +64,15 @@ export default function TestTakingPage() {
     submitMutation.mutate({ id, data: { answers: answerList } });
   };
 
+  const handleSelectAnswer = (questionId: number, optionIndex: number) => {
+    setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+    if (currentQ < questions.length - 1) {
+      setTimeout(() => setCurrentQ(q => Math.min(questions.length - 1, q + 1)), 500);
+    } else {
+      setTimeout(() => setShowConfirm(true), 600);
+    }
+  };
+
   if (isLoading) return <AppLayout><div className="p-6"><Skeleton className="w-full h-96" /></div></AppLayout>;
   if (!test) return <AppLayout><div className="p-6 text-center text-muted-foreground">Test not found</div></AppLayout>;
 
@@ -157,7 +166,8 @@ export default function TestTakingPage() {
                       return (
                         <button
                           key={oi}
-                          onClick={() => setAnswers(prev => ({ ...prev, [question.id]: oi }))}
+                          onClick={() => handleSelectAnswer(question.id, oi)}
+                          disabled={result !== null}
                           className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all font-medium ${isSelected ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
                           data-testid={`option-${oi}`}
                         >

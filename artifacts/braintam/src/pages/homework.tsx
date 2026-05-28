@@ -95,6 +95,19 @@ export default function HomeworkPage() {
 
   const mcqComplete = isMcq && questions.every((_, i) => mcqAnswers[i] !== undefined);
 
+  const handleSelectMcq = (qi: number, oi: number) => {
+    const newAnswers = { ...mcqAnswers, [qi]: oi };
+    setMcqAnswers(newAnswers);
+    if (!submitting) return;
+    const allDone = questions.every((_, i) => newAnswers[i] !== undefined);
+    if (allDone) {
+      const answerStr = JSON.stringify(questions.map((_, i) => newAnswers[i] ?? -1));
+      setTimeout(() => {
+        submitMutation.mutate({ id: submitting.id, data: { answer: answerStr, attachmentUrl: null } });
+      }, 400);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -266,7 +279,7 @@ export default function HomeworkPage() {
                             type="radio"
                             name={`q${qi}`}
                             checked={mcqAnswers[qi] === oi}
-                            onChange={() => setMcqAnswers(prev => ({ ...prev, [qi]: oi }))}
+                            onChange={() => handleSelectMcq(qi, oi)}
                             className="accent-orange-500"
                           />
                           <span>{String.fromCharCode(65 + oi)}. {opt}</span>
@@ -310,14 +323,28 @@ export default function HomeworkPage() {
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSubmitting(null)}>Cancel</Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={isMcq ? (!mcqComplete || submitMutation.isPending) : (!answer.trim() || submitMutation.isPending)}
-                data-testid="confirm-submit-hw"
-              >
-                {submitMutation.isPending ? "Submitting..." : isMcq ? `Submit Answers (${Object.keys(mcqAnswers).length}/${questions.length})` : "Submit Homework"}
-              </Button>
+              <Button variant="outline" onClick={() => setSubmitting(null)} disabled={submitMutation.isPending}>Cancel</Button>
+              {isMcq ? (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!mcqComplete || submitMutation.isPending}
+                  data-testid="confirm-submit-hw"
+                >
+                  {submitMutation.isPending
+                    ? "Submitting…"
+                    : mcqComplete
+                    ? "Submitting…"
+                    : `${Object.keys(mcqAnswers).length}/${questions.length} answered`}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!answer.trim() || submitMutation.isPending}
+                  data-testid="confirm-submit-hw"
+                >
+                  {submitMutation.isPending ? "Submitting…" : "Submit Homework"}
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
