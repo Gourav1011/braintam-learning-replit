@@ -1,0 +1,280 @@
+ADMIN PANEL REQUIREMENTS & LMS FLOW UPDATES
+
+1. ANALYTICS MODULE
+
+* Add filters/options:
+
+  * Grade selection
+  * Academic Year selection
+  * Batch selection
+
+Overview section should include:
+
+* Class-wise analytics
+* User-type filter
+
+  * Student
+  * Teacher
+  * Admin
+* Grade-wise analytics
+* Search option
+
+2. COURSES MODULE
+
+* Add Edit Course option
+* Course should represent purchased program/batch
+* Course fields:
+
+  * Course Name
+  * Grade
+  * Academic Year (mandatory)
+  * Batch
+  * Course Description
+  * Banner/Thumbnail
+
+REMOVE:
+
+* Single subject dependency
+
+Because:
+
+* One course may contain multiple subjects
+* Admin can manually select subjects inside course
+
+FLOW:
+Course
+→ Subject
+→ Chapter
+→ Topic
+→ Content
+
+Before selecting Chapter:
+
+* Subject selection should be compulsory
+
+3. TOPIC & ID SYSTEM
+
+* Homework should be topic-wise
+* Tests should be topic-wise
+* Live classes should be topic-wise
+* Assignments should be topic-wise
+
+Current issue:
+Topic IDs are globally sequential:
+1,2,3,4...
+
+Required:
+Every course should have unique 4-digit topic IDs.
+
+Example:
+CBSE Grade 5:
+5001
+5002
+
+NEET Foundation:
+7001
+7002
+
+Topic IDs should be generated course-wise.
+
+4. USERS MODULE
+
+* Add additional management options
+* Improve filtering/search
+* Better user detail section
+
+5. DEMO BATCH SYSTEM
+   Demo batches should work exactly like courses.
+
+Requirements:
+
+* Demo batches visible inside Student Courses section
+* Demo content structure:
+  Course/Demo Batch
+  → Subject
+  → Chapter
+  → Topic
+  → Live Class/Homework/Test
+
+Students should only see assigned demo batches.
+
+6. SETTINGS MODULE
+   Add settings options:
+
+* Change Admin Password
+* Change Teacher Password
+* Change Student/User Password
+
+Use Clerk backend APIs properly.
+
+7. AUDIT LOGS / ACTIVITY LOG SYSTEM
+   Create complete activity tracking system.
+
+Track:
+
+* Student activity
+* Teacher activity
+* Admin activity
+
+Logs should include:
+
+* Login activity
+* Password changes
+* Course assignment
+* Homework creation
+* Test creation
+* Live class creation
+* User edits
+* Role changes
+* Course edits
+* Topic edits
+* Assignment submissions
+
+Add:
+
+* Search by Name
+* Search by Email
+* Search by Role
+
+Admin should be able to see:
+Complete activity history of any specific person.
+
+8. STUDENT ACCESS FLOW
+   When student logs in:
+
+* Only student details should be visible initially
+* No academic content visible initially
+
+Show:
+"No course assigned"
+
+ONLY after admin assigns course:
+
+* Student can see assigned course
+* Homework
+* Tests
+* Live classes
+* Recordings
+* Topics
+* Chapters
+
+Students should NEVER see:
+
+* unassigned courses
+* other batches
+* other student data
+
+9. TEACHER PORTAL
+   Teachers should:
+
+* Assign homework
+* Create tests
+* Upload recordings
+* Conduct live classes
+
+Everything should be:
+Course
+→ Subject
+→ Chapter
+→ Topic based
+
+Student should only see content of assigned courses.
+
+10. LIVE CLASS SYSTEM
+    While creating live class:
+    Admin/Teacher must select:
+
+* Course
+* Subject
+* Chapter
+* Topic
+
+Live class should appear under selected Topic.
+
+11. RECORDED VIDEO SYSTEM
+    After live class ends:
+
+* Class automatically moves to Recorded Videos section
+
+Admin/Teacher can:
+
+* Add recording link
+* Upload recording
+* Add watch recording button
+
+Student flow:
+Click "Watch Recording"
+→ Video starts immediately
+
+12. ADMIN PANEL ASSISTANT / HINT SYSTEM
+    Every admin page/edit window should include:
+
+* Hint section
+* Tooltip guidance
+* Next-step assistance
+* Form help text
+
+Example:
+"Select subject before choosing chapter"
+
+Goal:
+Admin panel should feel beginner-friendly and guided.
+
+13. GENERAL LMS LOGIC
+    Hierarchy must always remain:
+
+Course/Demo Batch
+→ Subject
+→ Chapter
+→ Topic
+→ Content
+
+Content Types:
+
+* Live Class
+* Recording
+* Homework
+* Test
+* Assignment
+* Quiz
+* Notes
+
+14. SECURITY & ACCESS CONTROL
+    Students:
+
+* only assigned content access
+
+Teachers:
+
+* only assigned courses access
+
+Admins:
+
+* full control
+
+15. UI REQUIREMENTS
+    Dashboard should feel modern like:
+
+* CuriousJr
+* ODA Class
+* PhysicsWallah
+* Classplus
+
+Use:
+
+* cards
+* banners
+* accordions
+* progress indicators
+* responsive mobile UI
+* clean admin experience
+
+16. IMPORTANT
+    Do NOT break:
+
+* existing Clerk authentication
+* existing login system
+* existing user roles
+* existing deployed system
+
+Maintain backward compatibility while refactoring.

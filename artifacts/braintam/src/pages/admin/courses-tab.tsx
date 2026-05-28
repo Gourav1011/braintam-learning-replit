@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Plus, Trash2, ChevronRight, Eye, EyeOff, BookOpen,
   GraduationCap, Layers, Tag, Video, FileText, ClipboardList,
-  PlayCircle, RotateCcw, Edit3, ChevronDown, ChevronUp,
+  PlayCircle, RotateCcw, Edit3, ChevronDown, ChevronUp, Search, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ interface CourseItem {
   id: number; title: string; grade: number; board: string | null;
   academicYearId: number | null; subjectId: number; subjectName: string;
   isPublished: boolean; teacher: string | null; description: string | null;
+  thumbnailUrl: string | null;
 }
 interface ChapterItem {
   id: number; name: string; description: string | null; order: number;
@@ -42,7 +43,8 @@ interface SubjectItem { id: number; name: string; }
 interface ContentCounts { liveClasses: number; homework: number; assignments: number; tests: number; recordings: number; }
 
 const BOARDS = ["CBSE", "ICSE", "State Board", "IIT Foundation", "NEET Foundation", "Olympiad", "Other"];
-const GRADES = Array.from({ length: 10 }, (_, i) => i + 1);
+const GRADES = [0, ...Array.from({ length: 10 }, (_, i) => i + 1)];
+const gradeLabel = (g: number) => (g === 0 ? "Others" : `Grade ${g}`);
 
 type CmsView = "courses" | "chapters" | "topics";
 
@@ -66,6 +68,15 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showAddChapter, setShowAddChapter] = useState(false);
   const [showAddTopic, setShowAddTopic] = useState(false);
+
+  // Edit course state
+  const [editingCourse, setEditingCourse] = useState<CourseItem | null>(null);
+  const [editForm, setEditForm] = useState(emptyCourseFm);
+
+  // Course list filters
+  const [courseSearch, setCourseSearch] = useState("");
+  const [courseGradeFilter, setCourseGradeFilter] = useState("all");
+  const [courseYearFilter, setCourseYearFilter] = useState("all");
 
   const [yearName, setYearName] = useState("");
   const [courseForm, setCourseForm] = useState(emptyCourseFm);
@@ -117,7 +128,10 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   // ── Courses ─────────────────────────────────────────────────────
   const createCourse = async () => {
     const { title, grade, subjectId, thumbnailUrl, board, academicYearId, description, teacher } = courseForm;
-    if (!title.trim() || !grade || !subjectId) { flash("Title, Grade, and Subject are required", false); return; }
+    if (!title.trim()) { flash("Course title is required", false); return; }
+    if (!grade) { flash("Please select a grade", false); return; }
+    if (!subjectId) { flash("Please select a subject", false); return; }
+    if (!academicYearId) { flash("Academic Year is required — create one in the Academic Years panel above first", false); return; }
     setBusy(true);
     try {
       const body = {
@@ -126,7 +140,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
         subjectId: Number(subjectId),
         thumbnailUrl: thumbnailUrl.trim() || "https://placehold.co/400x240?text=Course",
         board: board || null,
-        academicYearId: academicYearId ? Number(academicYearId) : null,
+        academicYearId: Number(academicYearId),
         description: description.trim() || null,
         teacher: teacher.trim() || null,
       };
@@ -136,6 +150,32 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       setShowAddCourse(false);
       await loadBase();
       flash("Course created", true);
+    } finally { setBusy(false); }
+  };
+
+  const updateCourse = async () => {
+    if (!editingCourse) return;
+    const { title, grade, subjectId, thumbnailUrl, board, academicYearId, description, teacher } = editForm;
+    if (!title.trim()) { flash("Course title is required", false); return; }
+    if (!grade) { flash("Please select a grade", false); return; }
+    if (!academicYearId) { flash("Academic Year is required", false); return; }
+    setBusy(true);
+    try {
+      const body = {
+        title: title.trim(),
+        grade: Number(grade),
+        subjectId: subjectId ? Number(subjectId) : editingCourse.subjectId,
+        thumbnailUrl: thumbnailUrl.trim() || undefined,
+        board: board || null,
+        academicYearId: Number(academicYearId),
+        description: description.trim() || null,
+        teacher: teacher.trim() || null,
+      };
+      const r = await apiFetch(`/admin/courses/${editingCourse.id}`, { method: "PUT", body: JSON.stringify(body) });
+      if (!r.ok) { flash("Failed to update course", false); return; }
+      setEditingCourse(null);
+      await loadBase();
+      flash("Course updated!", true);
     } finally { setBusy(false); }
   };
 
@@ -328,11 +368,11 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       {/* ── Courses View ─────────────────────────────────────────── */}
       {view === "courses" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-gray-500">
               Create courses and organize them into chapters and topics.
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" onClick={loadBase} className="gap-1.5 text-xs">
                 <RotateCcw className="w-3.5 h-3.5" /> Refresh
               </Button>
@@ -343,15 +383,49 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             </div>
           </div>
 
+          {/* Search + Filter bar */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Input
+                placeholder="Search courses…"
+                value={courseSearch}
+                onChange={e => setCourseSearch(e.target.value)}
+                className="pl-8 h-8 text-xs w-48"
+              />
+            </div>
+            <Select value={courseGradeFilter} onValueChange={setCourseGradeFilter}>
+              <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="All Grades" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Grades</SelectItem>
+                {GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={courseYearFilter} onValueChange={setCourseYearFilter}>
+              <SelectTrigger className="h-8 text-xs w-40"><SelectValue placeholder="All Years" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(courseSearch || courseGradeFilter !== "all" || courseYearFilter !== "all") && (
+              <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setCourseYearFilter("all"); }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
+            )}
+          </div>
+
           {showAddCourse && (
             <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Course</h3>
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                ⚠️ Academic Year is <strong>required</strong>. If none appear below, expand the Academic Years panel and add one first.
+              </p>
               <div className="grid sm:grid-cols-2 gap-3">
                 <Input placeholder="Course title *" value={courseForm.title}
                   onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
                 <Select value={courseForm.grade} onValueChange={v => setCourseForm(p => ({ ...p, grade: v }))}>
                   <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
-                  <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}</SelectContent>
+                  <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
                 </Select>
                 <Select value={courseForm.subjectId} onValueChange={v => setCourseForm(p => ({ ...p, subjectId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
@@ -361,15 +435,18 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
                   <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                 </Select>
-                <Select value={courseForm.academicYearId} onValueChange={v => setCourseForm(p => ({ ...p, academicYearId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Academic Year (optional)" /></SelectTrigger>
-                  <SelectContent>{academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Select value={courseForm.academicYearId} onValueChange={v => setCourseForm(p => ({ ...p, academicYearId: v }))}>
+                    <SelectTrigger className={!courseForm.academicYearId ? "border-red-300" : ""}><SelectValue placeholder="Academic Year * (required)" /></SelectTrigger>
+                    <SelectContent>{academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {!courseForm.academicYearId && <p className="text-[10px] text-red-500">Required for tracking and reporting</p>}
+                </div>
                 <Input placeholder="Teacher name" value={courseForm.teacher}
                   onChange={e => setCourseForm(p => ({ ...p, teacher: e.target.value }))} />
-                <Input placeholder="Thumbnail URL" value={courseForm.thumbnailUrl}
+                <Input placeholder="Thumbnail URL (optional)" value={courseForm.thumbnailUrl}
                   onChange={e => setCourseForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
-                <Textarea placeholder="Description" value={courseForm.description}
+                <Textarea placeholder="Description (optional)" value={courseForm.description}
                   onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))}
                   rows={2} className="sm:col-span-2" />
               </div>
@@ -384,6 +461,52 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             </div>
           )}
 
+          {/* Edit Course inline form */}
+          {editingCourse && (
+            <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit Course — {editingCourse.title}</h3>
+                <button onClick={() => setEditingCourse(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Input placeholder="Course title *" value={editForm.title}
+                  onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+                <Select value={editForm.grade} onValueChange={v => setEditForm(p => ({ ...p, grade: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
+                  <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={editForm.subjectId} onValueChange={v => setEditForm(p => ({ ...p, subjectId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={editForm.board} onValueChange={v => setEditForm(p => ({ ...p, board: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
+                  <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                </Select>
+                <div className="space-y-1">
+                  <Select value={editForm.academicYearId} onValueChange={v => setEditForm(p => ({ ...p, academicYearId: v }))}>
+                    <SelectTrigger className={!editForm.academicYearId ? "border-red-300" : ""}><SelectValue placeholder="Academic Year * (required)" /></SelectTrigger>
+                    <SelectContent>{academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {!editForm.academicYearId && <p className="text-[10px] text-red-500">Required</p>}
+                </div>
+                <Input placeholder="Teacher name" value={editForm.teacher}
+                  onChange={e => setEditForm(p => ({ ...p, teacher: e.target.value }))} />
+                <Input placeholder="Thumbnail URL" value={editForm.thumbnailUrl}
+                  onChange={e => setEditForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
+                <Textarea placeholder="Description" value={editForm.description}
+                  onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
+                  rows={2} className="sm:col-span-2" />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={updateCourse} disabled={busy} className="text-white" style={{ background: NAVY }}>
+                  Save Changes
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingCourse(null)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map(i => (
@@ -393,51 +516,69 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {courses.map(c => (
-                <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="h-1.5 w-full" style={{ background: c.isPublished ? NAVY : "#E5E7EB" }} />
-                  <div className="p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-sm leading-snug" style={{ color: NAVY }}>{c.title}</h3>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 ${c.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                        {c.isPublished ? "LIVE" : "DRAFT"}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">Grade {c.grade}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">{c.subjectName}</span>
-                      {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{c.board}</span>}
-                      {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{yearName_(c.academicYearId)}</span>}
-                    </div>
-                    {c.teacher && <p className="text-xs text-gray-500">👤 {c.teacher}</p>}
-                    <div className="flex gap-1.5 pt-1">
-                      <button onClick={() => selectCourse(c)}
-                        className="flex-1 text-xs py-1.5 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-1"
-                        style={{ background: NAVY }}>
-                        <Layers className="w-3 h-3" /> Chapters
-                      </button>
-                      <button onClick={() => togglePublish(c)}
-                        className="text-xs p-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                        title={c.isPublished ? "Unpublish" : "Publish"}>
-                        {c.isPublished ? <EyeOff className="w-3.5 h-3.5 text-gray-400" /> : <Eye className="w-3.5 h-3.5 text-green-500" />}
-                      </button>
-                      <button onClick={() => deleteCourse(c.id, c.title)}
-                        className="text-xs p-1.5 rounded-lg border border-gray-200 hover:border-red-200 transition-colors text-red-400 hover:text-red-600">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+          ) : (() => {
+            const filteredCourses = courses.filter(c => {
+              if (courseGradeFilter !== "all" && String(c.grade) !== courseGradeFilter) return false;
+              if (courseYearFilter !== "all" && String(c.academicYearId) !== courseYearFilter) return false;
+              if (courseSearch) {
+                const q = courseSearch.toLowerCase();
+                return c.title.toLowerCase().includes(q) || (c.subjectName ?? "").toLowerCase().includes(q) || (c.teacher ?? "").toLowerCase().includes(q);
+              }
+              return true;
+            });
+            return (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCourses.map(c => (
+                  <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="h-1.5 w-full" style={{ background: c.isPublished ? NAVY : "#E5E7EB" }} />
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold text-sm leading-snug" style={{ color: NAVY }}>{c.title}</h3>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 ${c.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                          {c.isPublished ? "LIVE" : "DRAFT"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{gradeLabel(c.grade)}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">{c.subjectName}</span>
+                        {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{c.board}</span>}
+                        {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{yearName_(c.academicYearId)}</span>}
+                        {!c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">No Year</span>}
+                      </div>
+                      {c.teacher && <p className="text-xs text-gray-500">👤 {c.teacher}</p>}
+                      <div className="flex gap-1.5 pt-1">
+                        <button onClick={() => selectCourse(c)}
+                          className="flex-1 text-xs py-1.5 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-1"
+                          style={{ background: NAVY }}>
+                          <Layers className="w-3 h-3" /> Chapters
+                        </button>
+                        <button
+                          onClick={() => { setEditingCourse(c); setEditForm({ title: c.title, grade: String(c.grade), subjectId: String(c.subjectId ?? ""), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", description: c.description ?? "", teacher: c.teacher ?? "", thumbnailUrl: c.thumbnailUrl ?? "" }); setShowAddCourse(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          className="text-xs p-1.5 rounded-lg border border-blue-200 hover:border-blue-400 transition-colors text-blue-500"
+                          title="Edit course">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => togglePublish(c)}
+                          className="text-xs p-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                          title={c.isPublished ? "Unpublish" : "Publish"}>
+                          {c.isPublished ? <EyeOff className="w-3.5 h-3.5 text-gray-400" /> : <Eye className="w-3.5 h-3.5 text-green-500" />}
+                        </button>
+                        <button onClick={() => deleteCourse(c.id, c.title)}
+                          className="text-xs p-1.5 rounded-lg border border-gray-200 hover:border-red-200 transition-colors text-red-400 hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {courses.length === 0 && !loading && (
-                <div className="sm:col-span-2 lg:col-span-3 text-center py-12 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
-                  No courses yet. Click "Add Course" to create one.
-                </div>
-              )}
-            </div>
-          )}
+                ))}
+                {filteredCourses.length === 0 && (
+                  <div className="sm:col-span-2 lg:col-span-3 text-center py-12 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
+                    {courses.length === 0 ? "No courses yet. Click \"Add Course\" to create one." : "No courses match your filters."}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

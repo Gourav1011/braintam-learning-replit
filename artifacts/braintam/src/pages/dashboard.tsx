@@ -52,6 +52,14 @@ export default function DashboardPage() {
     { label: "Upcoming Tests", value: dashboard?.upcomingTests ?? 0, icon: CheckSquare, color: "text-purple-500", bg: "bg-purple-50", href: "/tests" },
   ];
 
+  // Detect "no course assigned" state — loaded but no content
+  const hasNoCourse = !isLoading && !authLoading && !!dashboard &&
+    (dashboard.subjectProgress?.length ?? 0) === 0 &&
+    dashboard.upcomingLiveClasses === 0 &&
+    dashboard.pendingHomework === 0 &&
+    dashboard.pendingAssignments === 0 &&
+    dashboard.upcomingTests === 0;
+
   return (
     <AppLayout>
       <div className="p-6 space-y-8 max-w-7xl mx-auto">
@@ -75,6 +83,40 @@ export default function DashboardPage() {
             </div>
           </div>
         </motion.div>
+
+        {/* No course assigned banner */}
+        {hasNoCourse && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="border-2 border-dashed border-orange-200 bg-orange-50/40">
+              <CardContent className="p-8 flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-orange-100 flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-orange-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">No course assigned yet</h2>
+                  <p className="text-muted-foreground mt-2 max-w-md">
+                    Your dashboard is ready! Once an admin assigns a course to your account, you'll see live classes, homework, tests, and your progress here.
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-3 mt-2">
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
+                    <Video className="w-4 h-4 text-red-400" /> Live classes
+                  </div>
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
+                    <FileText className="w-4 h-4 text-yellow-400" /> Homework
+                  </div>
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
+                    <CheckSquare className="w-4 h-4 text-purple-400" /> Tests
+                  </div>
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
+                    <Award className="w-4 h-4 text-yellow-500" /> Leaderboard
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Contact your teacher or admin to get enrolled in a course.</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -580,6 +580,16 @@ export default function AdminPage() {
   const [showLcForm, setShowLcForm] = useState(false);
   const [editingLc, setEditingLc] = useState<LiveClassItem | null>(null);
   const [auditSearch, setAuditSearch] = useState("");
+  const [auditRoleFilter, setAuditRoleFilter] = useState("all");
+
+  // Analytics filters
+  const [analyticsGradeFilter, setAnalyticsGradeFilter] = useState("all");
+  const [analyticsUserTypeFilter, setAnalyticsUserTypeFilter] = useState("all");
+  const [analyticsSearch, setAnalyticsSearch] = useState("");
+
+  // Live class chapter/topic cascade
+  const [lcChapters, setLcChapters] = useState<{ id: number; name: string }[]>([]);
+  const [lcTopics, setLcTopics] = useState<{ id: number; name: string }[]>([]);
 
   const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", role: "student" as Role, grade: "6", school: "" });
   const [showNewPw, setShowNewPw] = useState(false);
@@ -800,6 +810,18 @@ export default function AdminPage() {
   async function deleteBanner(id: number) { await apiFetch(`/admin/banners/${id}`, { method: "DELETE" }); loadAll(); }
   async function toggleBanner(banner: Banner) { await apiFetch(`/admin/banners/${banner.id}`, { method: "PATCH", body: JSON.stringify({ isActive: !banner.isActive }) }); loadAll(); }
 
+  async function loadChaptersForCourse(courseId: string) {
+    if (!courseId || courseId === "") { setLcChapters([]); setLcTopics([]); return; }
+    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    if (r.ok) setLcChapters(await r.json());
+  }
+
+  async function loadTopicsForChapter(chapterId: string) {
+    if (!chapterId || chapterId === "") { setLcTopics([]); return; }
+    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    if (r.ok) setLcTopics(await r.json());
+  }
+
   async function createLiveClass() {
     setBusy(true);
     const hasTeacher = lcForm.teacherId && lcForm.teacherId !== "none";
@@ -941,8 +963,72 @@ export default function AdminPage() {
         )}
 
         {/* ── Analytics ───────────────────────────────────────────────── */}
-        {tab === "analytics" && analytics && (
+        {tab === "analytics" && analytics && (() => {
+          const studentList = users.filter(u => u.role === "student");
+          const teacherList = users.filter(u => u.role === "teacher");
+
+          // Grade-wise breakdown
+          const gradeBreakdown = (() => {
+            const src = analyticsUserTypeFilter === "teacher" ? teacherList
+              : analyticsUserTypeFilter === "admin" ? users.filter(u => u.role === "admin")
+              : studentList;
+            const byGrade: Record<number, number> = {};
+            src.forEach(u => { byGrade[u.grade] = (byGrade[u.grade] ?? 0) + 1; });
+            return Object.entries(byGrade)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([g, c]) => ({ grade: Number(g), count: c as number }));
+          })();
+
+          // Filtered top students
+          const filteredTopStudents = analytics.topStudents.filter(s => {
+            if (analyticsGradeFilter !== "all" && String(s.grade) !== analyticsGradeFilter) return false;
+            if (analyticsSearch) {
+              const q = analyticsSearch.toLowerCase();
+              return s.name.toLowerCase().includes(q) || (s.school ?? "").toLowerCase().includes(q);
+            }
+            return true;
+          });
+
+          void analyticsUserTypeFilter; // used via gradeBreakdown/filteredTopStudents
+
+          return (
           <div className="space-y-5">
+            {/* Filter bar */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-wrap gap-3 items-center">
+              <span className="text-xs font-semibold text-gray-500">Filters:</span>
+              <Select value={analyticsUserTypeFilter} onValueChange={setAnalyticsUserTypeFilter}>
+                <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="User Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  <SelectItem value="student">Students</SelectItem>
+                  <SelectItem value="teacher">Teachers</SelectItem>
+                  <SelectItem value="admin">Admins</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={analyticsGradeFilter} onValueChange={setAnalyticsGradeFilter}>
+                <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="Grade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grades</SelectItem>
+                  {[1,2,3,4,5,6,7,8,9,10].map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  placeholder="Search student or school…"
+                  value={analyticsSearch}
+                  onChange={e => setAnalyticsSearch(e.target.value)}
+                  className="pl-9 h-8 text-xs"
+                />
+              </div>
+              {(analyticsGradeFilter !== "all" || analyticsUserTypeFilter !== "all" || analyticsSearch) && (
+                <button
+                  onClick={() => { setAnalyticsGradeFilter("all"); setAnalyticsUserTypeFilter("all"); setAnalyticsSearch(""); }}
+                  className="text-xs text-orange-500 hover:underline"
+                >Clear</button>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {[
                 { label: "Total Users", value: analytics.totals.users, color: NAVY },
@@ -997,12 +1083,41 @@ export default function AdminPage() {
               </div>
 
               <div className="space-y-4">
+                {/* Grade-wise breakdown */}
+                {gradeBreakdown.length > 0 && (
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    <h3 className="font-bold text-sm mb-3 flex items-center gap-2" style={{ color: NAVY }}>
+                      <GradCap className="w-4 h-4" style={{ color: ORANGE }} />
+                      {analyticsUserTypeFilter === "teacher" ? "Teachers" : analyticsUserTypeFilter === "admin" ? "Admins" : "Students"} by Grade
+                    </h3>
+                    <div className="space-y-2">
+                      {gradeBreakdown.map(({ grade, count }) => {
+                        const maxCount = Math.max(...gradeBreakdown.map(x => x.count), 1);
+                        return (
+                          <div key={grade}>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-gray-600 font-medium">{grade === 0 ? "Others" : `Grade ${grade}`}</span>
+                              <span className="font-bold" style={{ color: NAVY }}>{count}</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-gray-100">
+                              <div className="h-2 rounded-full transition-all" style={{ background: NAVY, width: `${Math.min(100, (count / maxCount) * 100)}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                   <h3 className="font-bold text-sm mb-3 flex items-center gap-2" style={{ color: NAVY }}>
                     <Award className="w-4 h-4" style={{ color: ORANGE }} /> Top Students
+                    {(analyticsGradeFilter !== "all" || analyticsSearch) && (
+                      <span className="text-xs font-normal text-gray-400 ml-1">({filteredTopStudents.length} shown)</span>
+                    )}
                   </h3>
                   <div className="space-y-2">
-                    {analytics.topStudents.map((s, i) => (
+                    {filteredTopStudents.map((s, i) => (
                       <div key={s.id} className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
                           style={{ background: i === 0 ? "#F59E0B" : i === 1 ? "#6B7280" : i === 2 ? "#92400E" : NAVY }}>
@@ -1036,7 +1151,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        )}
+          ); })()}
 
         {/* ── Courses CMS ──────────────────────────────────────────────── */}
         {tab === "courses" && (
@@ -1567,22 +1682,51 @@ export default function AdminPage() {
                 <p className="text-xs text-gray-400">💡 Tip: Select a course first, then optionally narrow down to chapter and topic. The class will appear under that course in the student's recordings after it ends.</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-                  <Select value={(lcForm as any).courseId ?? ""} onValueChange={v => setLcForm(p => {
+                  {/* Step 1: Course */}
+                  <Select value={(lcForm as any).courseId ?? ""} onValueChange={v => {
                     const course = courses.find(c => String(c.id) === v);
-                    return { ...p, courseId: v, subjectId: course ? String(course.subjectId ?? "") : p.subjectId, grade: course ? String(course.grade) : p.grade };
-                  })}>
-                    <SelectTrigger><SelectValue placeholder="Link to Course (recommended)" /></SelectTrigger>
+                    setLcForm(p => ({ ...p, courseId: v, subjectId: course ? String(course.subjectId ?? "") : p.subjectId, grade: course ? String(course.grade) : p.grade, chapterId: "", topicId: "" } as any));
+                    setLcTopics([]);
+                    loadChaptersForCourse(v);
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="① Link to Course (recommended)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">No course link</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · Gr {c.grade}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {/* Step 2: Chapter (loaded after course selected) */}
+                  {lcChapters.length > 0 ? (
+                    <Select value={(lcForm as any).chapterId ?? ""} onValueChange={v => {
+                      setLcForm(p => ({ ...p, chapterId: v, topicId: "" } as any));
+                      loadTopicsForChapter(v);
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="② Select Chapter" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No chapter</SelectItem>
+                        {lcChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input placeholder="② Chapter name (optional, type freely)" value={(lcForm as any).chapterName ?? ""} onChange={e => setLcForm(p => ({ ...p, chapterName: e.target.value } as any))} />
+                  )}
+                  {/* Step 3: Topic (loaded after chapter selected) */}
+                  {lcTopics.length > 0 ? (
+                    <Select value={(lcForm as any).topicId ?? ""} onValueChange={v => setLcForm(p => ({ ...p, topicId: v } as any))}>
+                      <SelectTrigger><SelectValue placeholder="③ Select Topic" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No topic</SelectItem>
+                        {lcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (lcChapters.length > 0 && (lcForm as any).chapterId) ? (
+                    <Input placeholder="③ Topic name (optional)" value={(lcForm as any).topicName ?? ""} onChange={e => setLcForm(p => ({ ...p, topicName: e.target.value } as any))} />
+                  ) : null}
                   <Select value={lcForm.subjectId} onValueChange={v => setLcForm(p => ({ ...p, subjectId: v }))}>
                     <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
                     <SelectContent>{subjectsList.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade (1-10) *" type="number" min="1" max="10" value={lcForm.grade} onChange={e => setLcForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Input placeholder="Chapter / Topic (e.g. Chapter 3 – Photosynthesis)" value={(lcForm as any).chapterName ?? ""} onChange={e => setLcForm(p => ({ ...p, chapterName: e.target.value } as any))} className="sm:col-span-2" />
                   <Select value={lcForm.teacherId} onValueChange={v => setLcForm(p => ({ ...p, teacherId: v, teacher: teachers.find(t => String(t.id) === v)?.name ?? "" }))}>
                     <SelectTrigger><SelectValue placeholder="Assign teacher" /></SelectTrigger>
                     <SelectContent>
@@ -1741,17 +1885,25 @@ export default function AdminPage() {
 
         {/* ── Audit Logs ─────────────────────────────────────────────────── */}
         {tab === "audit" && (() => {
-          const filteredLogs = auditSearch
-            ? auditLogs.filter(l => {
-                const q = auditSearch.toLowerCase();
-                return (
-                  (l.actorName ?? "").toLowerCase().includes(q) ||
-                  (l.actorEmail ?? "").toLowerCase().includes(q) ||
-                  (l.action ?? "").toLowerCase().includes(q) ||
-                  (l.targetName ?? "").toLowerCase().includes(q)
-                );
-              })
-            : auditLogs;
+          // Build a map: actorId → role from users list
+          const userRoleMap = new Map(users.map(u => [u.id, u.role]));
+
+          let filteredLogs = auditLogs;
+          if (auditSearch) {
+            const q = auditSearch.toLowerCase();
+            filteredLogs = filteredLogs.filter(l =>
+              (l.actorName ?? "").toLowerCase().includes(q) ||
+              (l.actorEmail ?? "").toLowerCase().includes(q) ||
+              (l.action ?? "").toLowerCase().includes(q) ||
+              (l.targetName ?? "").toLowerCase().includes(q)
+            );
+          }
+          if (auditRoleFilter !== "all") {
+            filteredLogs = filteredLogs.filter(l => {
+              const role = userRoleMap.get(l.actorId) ?? (l.actorName?.toLowerCase().includes("admin") ? "admin" : "");
+              return role === auditRoleFilter;
+            });
+          }
           return (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1759,16 +1911,25 @@ export default function AdminPage() {
                   <h3 className="font-bold text-base" style={{ color: NAVY }}>Audit Log</h3>
                   <p className="text-xs text-gray-400 mt-0.5">All portal activity — student logins, edits, deletes, password resets, enrollments</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <Input
                       placeholder="Search by name, email, action…"
                       value={auditSearch}
                       onChange={e => setAuditSearch(e.target.value)}
-                      className="pl-9 text-xs h-9 w-64"
+                      className="pl-9 text-xs h-9 w-56"
                     />
                   </div>
+                  <Select value={auditRoleFilter} onValueChange={setAuditRoleFilter}>
+                    <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Roles" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button size="sm" variant="outline" onClick={() => exportCSV("audit_log.csv",
                     ["Time", "Actor", "Email", "Action", "Target Type", "Target"],
                     filteredLogs.map(l => [l.createdAt, l.actorName, (l as any).actorEmail ?? "", l.action, l.targetType, l.targetName])
