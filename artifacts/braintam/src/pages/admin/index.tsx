@@ -164,45 +164,103 @@ function ConfirmModal({ dialog, onClose }: { dialog: ConfirmDialog; onClose: () 
 }
 
 // ── Profile Modal ───────────────────────────────────────────────────────────
-function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPassword, onEnroll }: {
+function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPassword, onEnroll, flash }: {
   user: User;
   onClose: () => void;
   onDeactivate: (id: number) => void;
   onReactivate: (id: number) => void;
   onResetPassword: (user: User) => void;
   onEnroll: (user: User) => void;
+  flash: (msg: string, ok?: boolean) => void;
 }) {
+  const [enrollmentCount, setEnrollmentCount] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(user.name);
+  const [editSchool, setEditSchool] = useState(user.school ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch(`/admin/users/${user.id}/courses`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: { enrolled: boolean }[]) =>
+        setEnrollmentCount(Array.isArray(data) ? data.filter((c: { enrolled: boolean }) => c.enrolled).length : 0)
+      )
+      .catch(() => setEnrollmentCount(0));
+  }, [user.id]);
+
+  const saveEdit = async () => {
+    if (!editName.trim()) return;
+    setSaving(true);
+    const r = await apiFetch(`/admin/users/${user.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name: editName.trim(), school: editSchool.trim() || null }),
+    });
+    setSaving(false);
+    if (r.ok) { flash("Profile updated!"); setEditing(false); }
+    else flash("Failed to update profile", false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-black flex-shrink-0"
-              style={{ background: NAVY }}>{user.name[0]?.toUpperCase()}</div>
+              style={{ background: NAVY }}>{(editName || user.name)[0]?.toUpperCase()}</div>
             <div>
               <div className="font-black text-base" style={{ color: NAVY }}>{user.name}</div>
               <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${ROLE_COLORS[user.role] ?? ""}`}>{user.role}</span>
               {!user.isActive && <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">Inactive</span>}
             </div>
           </div>
-          <button onClick={onClose}><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setEditing(p => !p)} title="Edit name & school"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+              <Edit2 className="w-4 h-4 text-gray-400" />
+            </button>
+            <button onClick={onClose}><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          {[
-            { label: "Email", value: user.email ?? "—" },
-            { label: "Phone", value: user.phone ?? "—" },
-            { label: "Grade", value: user.grade > 0 ? `Grade ${user.grade}` : "—" },
-            { label: "School", value: user.school ?? "—" },
-            { label: "User ID", value: `#${user.id}` },
-            { label: "Joined", value: user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-IN") : "—" },
-          ].map(f => (
-            <div key={f.label} className="bg-gray-50 rounded-xl p-2.5">
-              <div className="text-gray-400 font-medium">{f.label}</div>
-              <div className="font-semibold text-gray-700 mt-0.5 truncate">{f.value}</div>
+        {editing ? (
+          <div className="space-y-2 border border-blue-100 rounded-xl p-3 bg-blue-50/40">
+            <p className="text-xs font-semibold text-blue-700">Edit Profile</p>
+            <div>
+              <label className="text-[11px] text-gray-500 font-medium">Full Name</label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="mt-1 text-sm h-8" />
             </div>
-          ))}
-        </div>
+            <div>
+              <label className="text-[11px] text-gray-500 font-medium">School Name</label>
+              <Input value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="School name" className="mt-1 text-sm h-8" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={saveEdit} disabled={saving || !editName.trim()} className="text-white flex-1 h-8" style={{ background: ORANGE }}>
+                {saving ? "Saving…" : "Save Changes"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setEditName(user.name); setEditSchool(user.school ?? ""); }} className="h-8">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {[
+              { label: "Email", value: user.email ?? "—" },
+              { label: "Phone", value: user.phone ?? "—" },
+              { label: "Grade", value: user.grade > 0 ? `Grade ${user.grade}` : "—" },
+              { label: "School", value: user.school ?? "—" },
+              { label: "User ID", value: `#${user.id}` },
+              { label: "Joined", value: user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-IN") : "—" },
+              { label: "Enrollments", value: enrollmentCount === null ? "…" : `${enrollmentCount} course${enrollmentCount !== 1 ? "s" : ""}` },
+              { label: "Last Login", value: (user as any).lastLoginAt ? new Date((user as any).lastLoginAt).toLocaleDateString("en-IN") : "Not tracked" },
+            ].map(f => (
+              <div key={f.label} className="bg-gray-50 rounded-xl p-2.5">
+                <div className="text-gray-400 font-medium">{f.label}</div>
+                <div className="font-semibold text-gray-700 mt-0.5 truncate">{f.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2 pt-2">
           <Button size="sm" onClick={() => { onResetPassword(user); onClose(); }} variant="outline" className="gap-1.5 text-xs">
@@ -880,6 +938,7 @@ export default function AdminPage() {
       {profileUser && (
         <ProfileModal
           user={profileUser}
+          flash={flash}
           onClose={() => setProfileUser(null)}
           onDeactivate={id => confirm({ title: "Deactivate User", message: `Deactivate ${profileUser.name}? They will lose access.`, confirmLabel: "Deactivate", danger: false, onConfirm: () => deactivateUser(id) })}
           onReactivate={id => reactivateUser(id)}

@@ -423,18 +423,27 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
               <div className="grid sm:grid-cols-2 gap-3">
                 <Input placeholder="Course title *" value={courseForm.title}
                   onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-                <Select value={courseForm.grade} onValueChange={v => setCourseForm(p => ({ ...p, grade: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
-                  <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={courseForm.subjectId} onValueChange={v => setCourseForm(p => ({ ...p, subjectId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
-                  <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={courseForm.board} onValueChange={v => setCourseForm(p => ({ ...p, board: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
-                  <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Select value={courseForm.grade} onValueChange={v => setCourseForm(p => ({ ...p, grade: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
+                    <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-gray-400 pl-1">Determines which students can see and enroll in this course</p>
+                </div>
+                <div className="space-y-1">
+                  <Select value={courseForm.subjectId} onValueChange={v => setCourseForm(p => ({ ...p, subjectId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
+                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-gray-400 pl-1">Set subject before adding chapters &amp; live class links</p>
+                </div>
+                <div className="space-y-1">
+                  <Select value={courseForm.board} onValueChange={v => setCourseForm(p => ({ ...p, board: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
+                    <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-gray-400 pl-1">Helps filter content by exam board (CBSE, ICSE, etc.)</p>
+                </div>
                 <div className="space-y-1">
                   <Select value={courseForm.academicYearId} onValueChange={v => setCourseForm(p => ({ ...p, academicYearId: v }))}>
                     <SelectTrigger className={!courseForm.academicYearId ? "border-red-300" : ""}><SelectValue placeholder="Academic Year * (required)" /></SelectTrigger>

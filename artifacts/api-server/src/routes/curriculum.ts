@@ -16,6 +16,7 @@ import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
 const adminOnly = requireRole("admin");
+const staffOnly = requireRole("admin", "teacher");
 
 // ── Academic Years ───────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ router.delete("/admin/academic-years/:id", adminOnly, async (req, res) => {
 
 // ── Chapters ─────────────────────────────────────────────────────
 
-router.get("/admin/chapters", adminOnly, async (req, res) => {
+router.get("/admin/chapters", staffOnly, async (req, res) => {
   const courseId = req.query.courseId ? Number(req.query.courseId) : undefined;
   const subjectId = req.query.subjectId ? Number(req.query.subjectId) : undefined;
   const grade = req.query.grade ? Number(req.query.grade) : undefined;
@@ -136,7 +137,7 @@ router.delete("/admin/chapters/:id", adminOnly, async (req, res) => {
 
 // ── Topics ───────────────────────────────────────────────────────
 
-router.get("/admin/topics", adminOnly, async (req, res) => {
+router.get("/admin/topics", staffOnly, async (req, res) => {
   const chapterId = req.query.chapterId ? Number(req.query.chapterId) : undefined;
   const rows = await db
     .select()
