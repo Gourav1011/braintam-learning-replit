@@ -689,7 +689,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
+    <div className="min-h-screen flex" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
       {/* Confirm Dialog */}
       {confirmDialog && <ConfirmModal dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />}
       {/* Profile Modal */}
@@ -706,45 +706,66 @@ export default function AdminPage() {
       {/* Password Reset Modal */}
       {resetPasswordUser && <PasswordResetModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} flash={flash} />}
 
-      {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-30" style={{ background: NAVY }}>
-        <div className="flex items-center gap-3">
-          <Shield className="w-6 h-6 text-white" />
-          <span className="font-black text-white text-lg">Admin Panel</span>
-          <span className="text-white/40 text-sm hidden md:inline">— Braintam ERP</span>
+      {/* Left Sidebar */}
+      <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
+        {/* Brand */}
+        <div className="px-5 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-2 mb-0.5">
+            <Shield className="w-5 h-5" style={{ color: NAVY }} />
+            <span className="font-black text-sm" style={{ color: NAVY }}>Admin Panel</span>
+          </div>
+          <span className="text-xs text-gray-400">Braintam ERP</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={loadAll} className="text-white/60 hover:text-white transition-colors p-1" title="Refresh">
-            <RotateCcw className={`w-4 h-4 ${dataLoading ? "animate-spin" : ""}`} />
-          </button>
-          <span className="text-white/70 text-sm hidden sm:inline">{student.name}</span>
-          <button
-            onClick={() => setTab("settings")}
-            className="text-white/60 hover:text-white transition-colors p-1"
-            title="Settings"
-          >
-            <Lock className="w-4 h-4" />
-          </button>
-          <a href="/" className="text-xs px-3 py-1 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">← Site</a>
+
+        {/* Nav list */}
+        <nav className="flex-1 py-2 overflow-y-auto">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="w-full flex items-center gap-3 px-5 py-2.5 text-sm text-left transition-colors"
+                style={{
+                  color: isActive ? ORANGE : "#6B7280",
+                  background: isActive ? "#FFF4EE" : "transparent",
+                  fontWeight: isActive ? 600 : 400,
+                  borderRight: isActive ? `3px solid ${ORANGE}` : "3px solid transparent",
+                }}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: NAVY }}>
+              {student.name?.[0] ?? "A"}
+            </div>
+            <span className="text-xs text-gray-600 font-medium truncate">{student.name}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={loadAll} className="text-gray-400 hover:text-gray-600 transition-colors" title="Refresh">
+              <RotateCcw className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`} />
+            </button>
+            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Back to site</a>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 px-4 pt-4 pb-0 overflow-x-auto scrollbar-hide">
-        {TABS.map(t => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-t-xl text-xs font-semibold transition-all whitespace-nowrap ${isActive ? "text-white" : "text-gray-500 hover:text-gray-700"}`}
-              style={{ background: isActive ? ORANGE : "rgba(255,255,255,0.6)" }}>
-              <Icon className="w-3.5 h-3.5" />
-              {t.label}
-              {t.placeholder && <span className="text-[9px] px-1 py-0.5 rounded bg-white/30 text-inherit font-bold ml-0.5">BETA</span>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Main content */}
+      <div className="flex-1 min-w-0">
+        {/* Slim top bar */}
+        <div className="px-6 py-3 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-20">
+          <span className="text-sm font-semibold" style={{ color: NAVY }}>
+            {TABS.find(t => t.id === tab)?.label ?? ""}
+          </span>
+        </div>
 
       <div className="p-5 space-y-5">
         {/* Toast */}
@@ -1660,6 +1681,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
