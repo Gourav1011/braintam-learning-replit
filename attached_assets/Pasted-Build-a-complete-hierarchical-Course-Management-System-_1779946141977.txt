@@ -1,0 +1,155 @@
+Build a complete hierarchical Course Management System for the Braintam Learning Platform.
+
+CURRENT GOAL:
+The admin should be able to create and manage multiple courses, grades, academic years, subjects, topics, live classes, homework, tests, recordings, and assignments in a structured hierarchy.
+
+FEATURE REQUIREMENTS:
+
+1. COURSE STRUCTURE HIERARCHY
+
+Create this structure:
+
+Course
+→ Grade
+→ Academic Year
+→ Subject
+→ Chapters→  Topics
+
+→ Content inside topic
+
+Example:
+
+CBSE Course
+→ Grade 5
+→ 2026-27
+→ Science
+→ Chapter 1: Plants
+→ Live Class, Homework, Assignment, Recording, Test
+
+2. ADMIN PANEL FEATURES
+
+Admin should be able to:
+
+* Create Courses
+* Create Grades
+* Create Academic Years
+* Create Subjects
+* Create Topics/Chapters
+* Assign Teachers to specific Courses/Grades/Subjects
+* Assign Students to specific Courses/Grades
+* Create Live Classes under topics
+* Create Homework under topics
+* Create Assignments under topics
+* Create Tests under topics
+* Upload Recordings under topics
+* Publish/unpublish content
+
+3. STUDENT ACCESS CONTROL
+
+Students should ONLY see:
+
+* Assigned Course
+* Assigned Grade
+* Assigned Subjects
+* Assigned Topics
+* Assigned Homework
+* Assigned Live Classes
+* Assigned Recordings
+
+Students should NOT access other grades/courses.
+
+4. TEACHER ACCESS CONTROL
+
+Teachers should only manage:
+
+* courses assigned by admin
+* topics assigned by admin
+* students of assigned course
+
+5. DATABASE REQUIREMENTS
+
+Create proper relational database schema.
+
+Suggested tables:
+
+* courses
+* grades
+* academic_years
+* subjects
+* topics
+* student_course_assignments
+* teacher_course_assignments
+* live_classes
+* homework
+* assignments
+* recordings
+* tests
+
+Use proper foreign keys and relationships.
+
+6. UI REQUIREMENTS
+
+Admin Panel should have:
+
+Course Management Page
+
+* Add Course
+* Add Grade
+* Add Subject
+* Add Topic
+
+Topic Content Management:
+
+* Add Live Class
+* Add Homework
+* Add Assignment
+* Add Test
+* Add Recording
+
+Student Dashboard:
+
+* Organized by Course → Subject → Topic
+
+7. IMPORTANT
+
+Do NOT break existing authentication system.
+Keep Clerk authentication working.
+Keep existing admin/teacher/student roles.
+
+8. ADDITIONAL FEATURE
+
+When admin creates content:
+they must select:
+
+* Course
+* Grade
+* Academic Year
+* Subject
+* Topic
+
+before publishing.
+
+9. FUTURE READY ARCHITECTURE
+
+System should support:
+
+* CBSE
+* ICSE
+* State Board
+* IIT Foundation
+* NEET Foundation
+* Olympiad
+* Multiple batches
+
+10. TECH REQUIREMENTS
+
+Use:
+
+* existing React frontend
+* existing Express backend
+* existing PostgreSQL/Drizzle setup
+* existing role system
+
+Create clean scalable architecture.
+Do not remove current features.
+Migrate existing content safely if needed.

@@ -10,7 +10,8 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — session signing
+- Required env: `DATABASE_URL` — local Postgres (psql testing only), `NEON_DATABASE_URL` — Neon cloud DB used at runtime (takes priority), `SESSION_SECRET` — session signing
+- **DB migrations**: always run against `NEON_DATABASE_URL` — the API server uses that, not `DATABASE_URL`
 
 ## Stack
 
@@ -47,9 +48,10 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## Staff accounts
 
-| Name   | Email                  | Role    | Password   |
-|--------|------------------------|---------|------------|
-| poonam | braintam20@gmail.com   | teacher | poonam2026 |
+| Name   | Email                     | Role    | Password   |
+|--------|---------------------------|---------|------------|
+| poonam | braintam20@gmail.com      | teacher | poonam2026 |
+| gourav | gourav.manhas10@gmail.com | admin   | admin2026  |
 
 ## Product
 

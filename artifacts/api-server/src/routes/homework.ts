@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { homeworkTable, homeworkSubmissionsTable, subjectsTable } from "@workspace/db";
+import { homeworkTable, homeworkSubmissionsTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListHomeworkQueryParams, GetHomeworkParams, SubmitHomeworkParams, SubmitHomeworkBody } from "@workspace/api-zod";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { recomputeAndSavePoints } from "../points";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
 
@@ -13,13 +13,19 @@ router.get("/homework", attachUser, async (req, res) => {
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
 
-  let gradeFilter: ReturnType<typeof eq> | undefined;
+  let studentFilter: ReturnType<typeof inArray> | ReturnType<typeof eq> | undefined;
   if (user && user.role === "student") {
-    if (!user.grade) {
+    const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
+    const enrolledIds = enrolled.map(e => e.courseId);
+    if (enrolledIds.length > 0) {
+      studentFilter = inArray(homeworkTable.courseId, enrolledIds);
+    } else if (user.grade) {
+      studentFilter = eq(homeworkTable.grade, user.grade);
+    } else {
       res.json([]);
       return;
     }
-    gradeFilter = eq(homeworkTable.grade, user.grade);
   }
 
   const hw = await db.select({
@@ -36,7 +42,7 @@ router.get("/homework", attachUser, async (req, res) => {
     .from(homeworkTable)
     .innerJoin(subjectsTable, eq(homeworkTable.subjectId, subjectsTable.id))
     .where(and(
-      gradeFilter,
+      studentFilter,
       params.grade ? eq(homeworkTable.grade, params.grade) : undefined,
       params.subjectId ? eq(homeworkTable.subjectId, params.subjectId) : undefined,
     ));

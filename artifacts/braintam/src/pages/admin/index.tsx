@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CourseManagementTab } from "./courses-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -23,6 +24,7 @@ type Role = "admin" | "teacher" | "student";
 type Tab =
   | "analytics"
   | "overview"
+  | "courses"
   | "users"
   | "assignments"
   | "enrollments"
@@ -672,6 +674,7 @@ export default function AdminPage() {
   const TABS: { id: Tab; label: string; icon: React.ElementType; placeholder?: boolean }[] = [
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "overview", label: "Overview", icon: Activity },
+    { id: "courses", label: "Courses", icon: BookOpen },
     { id: "users", label: "Users", icon: Users },
     { id: "liveclasses", label: "Live Classes", icon: Video },
     { id: "assignments", label: "Teachers", icon: LinkIcon },
@@ -848,6 +851,11 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── Courses CMS ──────────────────────────────────────────────── */}
+        {tab === "courses" && (
+          <CourseManagementTab flash={flash} />
         )}
 
         {/* ── Overview ─────────────────────────────────────────────────── */}

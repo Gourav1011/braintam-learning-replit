@@ -397,6 +397,9 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     subjectId: coursesTable.subjectId,
     subjectName: subjectsTable.name,
     grade: coursesTable.grade,
+    board: coursesTable.board,
+    academicYearId: coursesTable.academicYearId,
+    isPublished: coursesTable.isPublished,
     totalLessons: coursesTable.totalLessons,
     thumbnailUrl: coursesTable.thumbnailUrl,
     description: coursesTable.description,
@@ -410,18 +413,21 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating } = req.body;
-  if (!title || !subjectId || !grade || !thumbnailUrl) {
-    res.status(400).json({ error: "title, subjectId, grade, thumbnailUrl are required" });
+  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished } = req.body;
+  if (!title || !subjectId || !grade) {
+    res.status(400).json({ error: "title, subjectId, grade are required" });
     return;
   }
   const [course] = await db.insert(coursesTable).values({
-    title, subjectId, grade,
+    title, subjectId: Number(subjectId), grade: Number(grade),
     totalLessons: totalLessons ?? 0,
-    thumbnailUrl,
+    thumbnailUrl: thumbnailUrl || "https://placehold.co/400x240?text=Course",
     description: description ?? null,
     teacher: teacher ?? null,
     rating: rating ?? null,
+    board: board ?? null,
+    academicYearId: academicYearId ? Number(academicYearId) : null,
+    isPublished: isPublished !== false,
   }).returning();
 
   await logAudit(
@@ -432,9 +438,38 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
   res.status(201).json(course);
 });
 
+router.put("/admin/courses/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (title !== undefined) updates.title = title;
+  if (description !== undefined) updates.description = description;
+  if (teacher !== undefined) updates.teacher = teacher;
+  if (board !== undefined) updates.board = board;
+  if (academicYearId !== undefined) updates.academicYearId = academicYearId ? Number(academicYearId) : null;
+  if (isPublished !== undefined) updates.isPublished = Boolean(isPublished);
+  if (thumbnailUrl !== undefined) updates.thumbnailUrl = thumbnailUrl;
+  const [course] = await db.update(coursesTable).set(updates as never).where(eq(coursesTable.id, id)).returning();
+  if (!course) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(course);
+});
+
+router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [course] = await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, id));
+  await db.delete(coursesTable).where(eq(coursesTable.id, id));
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "course_deleted", "course", id, course?.title ?? String(id),
+  );
+  res.json({ success: true });
+});
+
 // ── Content Creation ─────────────────────────────────────────────
 router.post("/admin/live-classes", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, teacherId, scheduledAt, duration, teacher, joinUrl } = req.body;
+  const { title, subjectId, grade, courseId, topicId, teacherId, scheduledAt, duration, teacher, joinUrl, isPublished } = req.body;
   if (!title || !subjectId || !grade || !scheduledAt || !teacher) {
     res.status(400).json({ error: "title, subjectId, grade, scheduledAt, teacher are required" });
     return;
@@ -442,12 +477,14 @@ router.post("/admin/live-classes", adminOnly, async (req, res) => {
   const [lc] = await db.insert(liveClassesTable).values({
     title, subjectId, grade,
     courseId: courseId ?? null,
+    topicId: topicId ?? null,
     teacherId: teacherId ?? null,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 60,
     teacher,
     joinUrl: joinUrl ?? null,
     status: "upcoming",
+    isPublished: isPublished !== false,
   }).returning();
 
   await logAudit(
@@ -459,7 +496,7 @@ router.post("/admin/live-classes", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/homework", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, teacherId, dueDate, description, maxMarks } = req.body;
+  const { title, subjectId, grade, courseId, topicId, teacherId, dueDate, description, maxMarks, isPublished } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
     res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
     return;
@@ -467,10 +504,12 @@ router.post("/admin/homework", adminOnly, async (req, res) => {
   const [hw] = await db.insert(homeworkTable).values({
     title, subjectId, grade,
     courseId: courseId ?? null,
+    topicId: topicId ?? null,
     teacherId: teacherId ?? null,
     dueDate: new Date(dueDate),
     description: description ?? null,
     maxMarks: maxMarks ?? 10,
+    isPublished: isPublished !== false,
   }).returning();
 
   await logAudit(
@@ -482,7 +521,7 @@ router.post("/admin/homework", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/assignments", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, teacherId, dueDate, description, maxMarks, attachmentUrl } = req.body;
+  const { title, subjectId, grade, courseId, topicId, teacherId, dueDate, description, maxMarks, attachmentUrl, isPublished } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
     res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
     return;
@@ -490,11 +529,13 @@ router.post("/admin/assignments", adminOnly, async (req, res) => {
   const [asgn] = await db.insert(assignmentsTable).values({
     title, subjectId, grade,
     courseId: courseId ?? null,
+    topicId: topicId ?? null,
     teacherId: teacherId ?? null,
     dueDate: new Date(dueDate),
     description: description ?? null,
     maxMarks: maxMarks ?? 20,
     attachmentUrl: attachmentUrl ?? null,
+    isPublished: isPublished !== false,
   }).returning();
 
   await logAudit(
@@ -506,7 +547,7 @@ router.post("/admin/assignments", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/recordings", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, teacherId, recordedAt, teacher, videoUrl, duration, thumbnailUrl } = req.body;
+  const { title, subjectId, grade, courseId, topicId, teacherId, recordedAt, teacher, videoUrl, duration, thumbnailUrl, isPublished } = req.body;
   if (!title || !subjectId || !grade || !videoUrl || !teacher || !duration || !recordedAt) {
     res.status(400).json({ error: "title, subjectId, grade, videoUrl, teacher, duration, recordedAt are required" });
     return;
@@ -514,11 +555,13 @@ router.post("/admin/recordings", adminOnly, async (req, res) => {
   const [rec] = await db.insert(recordingsTable).values({
     title, subjectId, grade,
     courseId: courseId ?? null,
+    topicId: topicId ?? null,
     teacherId: teacherId ?? null,
     recordedAt: new Date(recordedAt),
     teacher, videoUrl,
     duration,
     thumbnailUrl: thumbnailUrl ?? null,
+    isPublished: isPublished !== false,
   }).returning();
 
   await logAudit(
@@ -530,7 +573,7 @@ router.post("/admin/recordings", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/tests", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, teacherId, scheduledAt, duration, totalQuestions } = req.body;
+  const { title, subjectId, grade, courseId, topicId, teacherId, scheduledAt, duration, totalQuestions, isPublished } = req.body;
   if (!title || !subjectId || !grade || !scheduledAt) {
     res.status(400).json({ error: "title, subjectId, grade, scheduledAt are required" });
     return;
@@ -538,11 +581,13 @@ router.post("/admin/tests", adminOnly, async (req, res) => {
   const [test] = await db.insert(testsTable).values({
     title, subjectId, grade,
     courseId: courseId ?? null,
+    topicId: topicId ?? null,
     teacherId: teacherId ?? null,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 30,
     totalQuestions: totalQuestions ?? 10,
     status: "upcoming",
+    isPublished: isPublished !== false,
   }).returning();
 
   await logAudit(

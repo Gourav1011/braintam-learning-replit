@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { liveClassesTable, subjectsTable } from "@workspace/db";
+import { liveClassesTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
@@ -12,10 +12,19 @@ router.get("/live-classes", attachUser, async (req, res) => {
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
 
-  let gradeFilter: ReturnType<typeof eq> | undefined;
+  let studentFilter: ReturnType<typeof inArray> | ReturnType<typeof eq> | undefined;
   if (user && user.role === "student") {
-    if (!user.grade) { res.json([]); return; }
-    gradeFilter = eq(liveClassesTable.grade, user.grade);
+    const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
+    const enrolledIds = enrolled.map(e => e.courseId);
+    if (enrolledIds.length > 0) {
+      studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
+    } else if (user.grade) {
+      studentFilter = eq(liveClassesTable.grade, user.grade);
+    } else {
+      res.json([]);
+      return;
+    }
   }
 
   const classes = await db.select({
@@ -36,7 +45,7 @@ router.get("/live-classes", attachUser, async (req, res) => {
     .innerJoin(subjectsTable, eq(liveClassesTable.subjectId, subjectsTable.id))
     .where(
       and(
-        gradeFilter,
+        studentFilter,
         params.grade ? eq(liveClassesTable.grade, params.grade) : undefined,
         params.subjectId ? eq(liveClassesTable.subjectId, params.subjectId) : undefined,
       )

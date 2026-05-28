@@ -13,3 +13,6 @@ export * from "./announcements";
 export * from "./banners";
 export * from "./attendance";
 export * from "./auditLogs";
+export * from "./academicYears";
+export * from "./chapters";
+export * from "./topics";

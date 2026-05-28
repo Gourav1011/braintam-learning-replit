@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -8,6 +8,7 @@ export const recordingsTable = pgTable("recordings", {
   subjectId: integer("subject_id").notNull(),
   grade: integer("grade").notNull(),
   courseId: integer("course_id"),
+  topicId: integer("topic_id"),
   teacherId: integer("teacher_id"),
   recordedAt: timestamp("recorded_at").notNull(),
   teacher: text("teacher").notNull(),
@@ -15,6 +16,7 @@ export const recordingsTable = pgTable("recordings", {
   duration: integer("duration").notNull(),
   thumbnailUrl: text("thumbnail_url"),
   views: integer("views").default(0),
+  isPublished: boolean("is_published").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
