@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CourseManagementTab } from "./courses-tab";
+import { DemoBatchesTab } from "./demo-batches-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -25,6 +26,7 @@ type Tab =
   | "analytics"
   | "overview"
   | "courses"
+  | "demo-batches"
   | "users"
   | "assignments"
   | "enrollments"
@@ -675,6 +677,7 @@ export default function AdminPage() {
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "overview", label: "Overview", icon: Activity },
     { id: "courses", label: "Courses", icon: BookOpen },
+    { id: "demo-batches", label: "Demo Batches", icon: Layers },
     { id: "users", label: "Users", icon: Users },
     { id: "liveclasses", label: "Live Classes", icon: Video },
     { id: "assignments", label: "Teachers", icon: LinkIcon },
@@ -856,6 +859,11 @@ export default function AdminPage() {
         {/* ── Courses CMS ──────────────────────────────────────────────── */}
         {tab === "courses" && (
           <CourseManagementTab flash={flash} />
+        )}
+
+        {/* ── Demo Batches ─────────────────────────────────────────────── */}
+        {tab === "demo-batches" && (
+          <DemoBatchesTab flash={flash} />
         )}
 
         {/* ── Overview ─────────────────────────────────────────────────── */}

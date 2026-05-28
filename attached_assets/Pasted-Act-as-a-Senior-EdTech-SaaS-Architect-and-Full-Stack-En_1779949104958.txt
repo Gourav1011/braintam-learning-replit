@@ -1,0 +1,344 @@
+Act as a Senior EdTech SaaS Architect and Full Stack Engineer.
+
+I need to refactor and scale my Braintam Learning Platform into a professional modern EdTech LMS similar to CuriousJr, ODA Class, PW, and Classplus.
+
+IMPORTANT:
+Do NOT break existing authentication, existing users, Clerk auth, or current admin/teacher/student roles.
+
+TECH STACK:
+
+* React frontend
+* Express backend
+* PostgreSQL
+* Drizzle ORM
+* Clerk Authentication
+* Existing role-based system already working
+
+---
+
+1. COMPLETE HIERARCHICAL LMS STRUCTURE
+
+---
+
+Create a deeply nested scalable content architecture:
+
+Course
+→ Grade
+→ Academic Year
+→ Subject
+→ Chapter
+→ Topic
+→ Content
+
+Content Types:
+
+* LIVE_CLASS
+* RECORDING
+* HOMEWORK
+* ASSIGNMENT
+* TEST
+* QUIZ
+* NOTES
+* PDF
+
+Everything in the platform must belong to this hierarchy.
+
+---
+
+2. DATABASE REFACTOR
+
+---
+
+Refactor database schema to support:
+
+Course
+Grade
+AcademicYear
+Subject
+Chapter
+Topic
+Content
+
+Add:
+
+* orderIndex field in:
+
+  * Chapter
+  * Topic
+  * Content
+
+for drag-drop ordering and syllabus sequencing.
+
+Content model must include:
+
+* contentType enum
+* title
+* description
+* thumbnail/banner
+* liveClassLink
+* recordingUrl
+* startTime
+* endTime
+* duration
+* teacherId
+* chapterId
+* topicId
+* visibility
+* publishStatus
+
+Create proper foreign key relationships.
+
+---
+
+3. ADMIN WORKFLOW
+
+---
+
+Admin should be able to:
+
+* Create Course
+* Create Grade
+* Create Academic Year
+* Create Subject
+* Create Chapter
+* Create Topic
+* Assign Teachers
+* Assign Students
+* Publish syllabus
+
+When admin creates a LIVE CLASS:
+Admin must select:
+
+* Course
+* Grade
+* Academic Year
+* Subject
+* Chapter
+* Topic
+* Teacher
+* Date & Time
+* Banner
+* Meeting Link
+
+Admin can:
+
+* reorder chapters/topics
+* move content
+* publish/unpublish
+* duplicate syllabus
+
+---
+
+4. TEACHER WORKFLOW
+
+---
+
+Teachers can ONLY access assigned Chapters/Topics.
+
+Teachers can:
+
+* Create Live Classes
+* Upload Recordings
+* Add Homework
+* Add Assignments
+* Add Tests
+* Add Notes/PDFs
+
+Teachers cannot modify content outside assigned chapters.
+
+---
+
+5. STUDENT EXPERIENCE
+
+---
+
+Student dashboard should feel like modern EdTech apps:
+
+* CuriousJr
+* ODA
+* PW
+* Classplus
+
+NOT table-based UI.
+
+Use:
+
+* cards
+* chapter banners
+* accordion syllabus
+* progress bars
+* continue learning section
+* chapter-wise recordings
+* modern responsive mobile-first UI
+
+---
+
+6. CHAPTER/TOPIC VIEW
+
+---
+
+Frontend must have a SyllabusComponent:
+
+Course
+→ Chapter accordion
+→ Topic accordion
+→ Content cards
+
+Each content card should show:
+
+* thumbnail/banner
+* LIVE badge
+* Recording Available
+* Teacher name
+* Start time
+* duration
+* Join button
+* Watch Recording button
+
+Use Chevron expand/collapse UI.
+
+---
+
+7. PROGRESS TRACKING
+
+---
+
+Students should see:
+
+* chapter completion %
+* topic completion %
+* watched recordings
+* attended live classes
+* completed homework/tests
+
+Example:
+
+* Topic Progress: 3/5 completed
+* Chapter Progress: 12/20 completed
+
+---
+
+8. LIVE CLASS SYSTEM
+
+---
+
+Class states:
+
+* Upcoming
+* Live Now
+* Completed
+* Recording Available
+
+Auto attendance tracking:
+
+* join time
+* leave time
+* duration attended
+
+Teacher/Admin can view attendance analytics.
+
+---
+
+9. SINGLE SYLLABUS API
+
+---
+
+Create optimized API endpoint:
+
+GET /api/course-syllabus/:courseId
+
+Use efficient nested query structure.
+
+Response format:
+
+Course
+→ Chapters[]
+→ Topics[]
+→ Content[]
+
+Optimized for frontend accordion rendering.
+
+---
+
+10. SECURITY & PERFORMANCE
+
+---
+
+Ensure:
+
+* role-based permissions
+* protected APIs
+* scalable schema
+* pagination where needed
+* lazy loading for recordings
+* optimized DB queries
+
+---
+
+11. FUTURE READY FEATURES
+
+---
+
+Architecture must support:
+
+* CBSE
+* ICSE
+* State Board
+* IIT Foundation
+* NEET
+* Olympiad
+* Multiple batches
+* Multi-language support
+* AI learning features later
+
+---
+
+12. UI QUALITY
+
+---
+
+The UI should look premium and modern.
+
+Design inspiration:
+
+* CuriousJr
+* ODA Class
+* PhysicsWallah
+* Unacademy
+* Classplus
+
+Use:
+
+* modern cards
+* gradients
+* responsive layouts
+* smooth accordions
+* loading skeletons
+* progress indicators
+* clean mobile UI
+
+---
+
+13. IMPORTANT
+
+---
+
+Do NOT remove existing functionality.
+
+Safely migrate existing data.
+
+Maintain backward compatibility where possible.
+
+Generate:
+
+* updated schema
+* backend routes
+* API controllers
+* frontend components
+* migration files
+* admin UI
+* teacher UI
+* student syllabus UI
+* reusable architecture
+
+Build production-grade scalable code.

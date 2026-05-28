@@ -26,6 +26,8 @@ import TestsPage from "@/pages/tests";
 import TestTakingPage from "@/pages/test-taking";
 import ProfilePage from "@/pages/profile";
 import LeaderboardPage from "@/pages/leaderboard";
+import DemoBatchesPage from "@/pages/demo-batches";
+import DemoBatchPage from "@/pages/demo-batch";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
@@ -337,6 +339,8 @@ function Router() {
       <Route path="/tests/:id"><ProtectedRoute component={TestTakingPage} /></Route>
       <Route path="/profile"><ProtectedRoute component={ProfilePage} /></Route>
       <Route path="/leaderboard"><ProtectedRoute component={LeaderboardPage} /></Route>
+      <Route path="/demo-batches"><ProtectedRoute component={DemoBatchesPage} /></Route>
+      <Route path="/demo-batches/:id"><ProtectedRoute component={DemoBatchPage} /></Route>
 
       <Route component={NotFound} />
     </Switch>

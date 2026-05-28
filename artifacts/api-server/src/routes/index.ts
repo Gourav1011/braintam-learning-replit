@@ -16,6 +16,8 @@ import announcementsRouter from "./announcements";
 import attendanceRouter from "./attendance";
 import teacherTestsRouter from "./teacherTests";
 import curriculumRouter from "./curriculum";
+import syllabusRouter from "./syllabus";
+import demoBatchesRouter from "./demoBatches";
 
 const router: IRouter = Router();
 
@@ -27,6 +29,8 @@ router.use(announcementsRouter);
 router.use(attendanceRouter);
 router.use(teacherTestsRouter);
 router.use(curriculumRouter);
+router.use(syllabusRouter);
+router.use(demoBatchesRouter);
 router.use(subjectsRouter);
 router.use(coursesRouter);
 router.use(liveClassesRouter);

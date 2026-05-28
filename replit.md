@@ -25,7 +25,7 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## Where things live
 
-- `lib/db/src/schema/` — database schema (users, subjects, courses, live_classes, recordings, animated_videos, homework, assignments, tests, questions, submissions)
+- `lib/db/src/schema/` — database schema (users, subjects, courses, live_classes, recordings, animated_videos, homework, assignments, tests, questions, submissions, academic_years, chapters, topics, demo_batches, demo_sessions, demo_batch_enrollments, student_progress)
 - `lib/api-spec/src/openapi.yaml` — OpenAPI contract (source of truth for all endpoints)
 - `lib/api-client-react/src/generated/` — generated React Query hooks
 - `lib/api-zod/src/generated/` — generated Zod schemas

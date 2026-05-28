@@ -1,0 +1,132 @@
+11. ADVANCED LIVE CLASS + CHAPTER EXPERIENCE
+
+I want the live class system to work similar to platforms like CuriousJr, ODA, PhysicsWallah, etc.
+
+LIVE CLASS CREATION FLOW:
+
+When admin creates a live class, the admin must select:
+
+* Course
+* Grade
+* Academic Year
+* Subject
+* Chapter/Topic
+* Teacher
+* Date & Time
+* Banner/Thumbnail Image
+* Live Meeting Link
+* Class Title
+* Class Description
+
+The teacher assigned should only see and manage their own classes.
+
+12. CHAPTER-WISE CLASS EXPERIENCE FOR STUDENTS
+
+Students should see classes organized chapter-wise.
+
+Example:
+
+Science
+→ Chapter 1: Plants
+→ Live Class 1
+→ Live Class 2
+→ Homework
+→ Recording
+→ Test
+
+→ Chapter 2: Human Body
+→ Live Class
+→ Recording
+→ Assignment
+
+13. CLASS BANNER UI
+
+Each live class should display:
+
+* Beautiful banner/card UI
+* Teacher name
+* Subject
+* Chapter name
+* Start time
+* LIVE badge
+* Join button
+* Recording button after class ends
+
+UI should look modern similar to:
+
+* CuriousJr
+* ODA Class
+* PW
+* Classplus style cards
+
+14. OLD CLASS RECORDINGS
+
+Students should be able to:
+
+* Watch old classes chapter-wise
+* Filter by subject
+* Filter by chapter
+* See uploaded recordings
+* Resume watched classes
+
+15. LIVE CLASS STATUS SYSTEM
+
+Classes should automatically show:
+
+* Upcoming
+* Live Now
+* Completed
+* Recording Available
+
+based on current time.
+
+16. TEACHER DASHBOARD
+
+Teacher dashboard should show:
+
+* Today's classes
+* Upcoming classes
+* Completed classes
+* Assigned chapters
+* Student attendance
+* Uploaded recordings
+
+17. ATTENDANCE SYSTEM
+
+When student joins class:
+
+* auto-mark attendance
+* save join time
+* save leave time
+
+Admin and teacher should see attendance reports.
+
+18. SCALABLE CONTENT STRUCTURE
+
+Everything should always stay linked to:
+
+Course
+→ Grade
+→ Academic Year
+→ Subject
+→ Chapter
+→ Content
+
+so future expansion becomes easy.
+
+19. IMPORTANT UI REQUIREMENT
+
+Student dashboard should feel like a modern EdTech app.
+
+NOT simple tables.
+
+Use:
+
+* cards
+* banners
+* chapter sections
+* progress indicators
+* recent classes
+* continue learning section
+* chapter-wise recordings
+* modern responsive design

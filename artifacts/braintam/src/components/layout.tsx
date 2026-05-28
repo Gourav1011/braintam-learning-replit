@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useAuth, UserRole } from "./auth-provider";
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
-import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +37,7 @@ const studentNavItems = [
   { href: "/homework", icon: FileText, label: "Homework" },
   { href: "/assignments", icon: FileText, label: "Assignments" },
   { href: "/tests", icon: CheckSquare, label: "Tests" },
+  { href: "/demo-batches", icon: Zap, label: "Demo Batches" },
   { href: "/leaderboard", icon: Award, label: "Leaderboard" },
 ];
 

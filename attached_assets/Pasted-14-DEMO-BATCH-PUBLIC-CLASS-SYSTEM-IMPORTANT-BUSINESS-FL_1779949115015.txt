@@ -1,0 +1,177 @@
+14. DEMO BATCH / PUBLIC CLASS SYSTEM
+
+IMPORTANT BUSINESS FLOW:
+
+We conduct:
+
+* 5-day demo batches
+* 6-day workshops
+* free competitions
+* webinar-style classes
+
+Thousands of students may join.
+
+Students should NOT see:
+
+* total participant count
+* other students
+* paid batch structure
+
+This should work like a large EdTech webinar/demo batch system.
+
+---
+
+## DEMO BATCH STRUCTURE
+
+Create a separate system:
+
+DemoBatch
+→ Demo Sessions
+→ Live Classes
+→ Homework
+→ Assignments
+→ Recordings
+
+Example:
+
+Mental Math Demo Batch
+→ Day 1
+→ Day 2
+→ Day 3
+→ Day 4
+→ Day 5
+
+OR
+
+Science Workshop
+→ Session 1
+→ Session 2
+→ Session 3
+
+---
+
+## DEMO BATCH FEATURES
+
+Admin should be able to:
+
+* Create Demo Batch
+* Select batch duration
+* Assign teacher
+* Schedule classes
+* Upload banners
+* Add joining links
+* Add recordings
+* Add homework
+* Send announcements
+
+---
+
+## STUDENT EXPERIENCE
+
+Students joining demo batches should:
+
+* only see their own dashboard
+* NOT see number of participants
+* NOT see student list
+* NOT access paid courses
+* only access assigned demo content
+
+UI should feel:
+
+* premium
+* simple
+* webinar style
+* mobile friendly
+
+---
+
+## POST-DEMO CONVERSION FLOW
+
+After demo completion:
+
+Admin should be able to:
+
+* convert student to paid course
+* assign full course
+* assign grade
+* assign batch
+* assign long-term syllabus
+
+Student account should remain SAME.
+
+Only dashboard content changes from:
+Demo Batch → Paid Course Structure
+
+---
+
+## IMPORTANT
+
+Demo batch system and paid course system should remain separate internally.
+
+Because:
+
+* demo classes are mass/public style
+* paid courses are structured syllabus-based
+
+Both systems should share:
+
+* same login
+* same user account
+* same authentication
+
+but different dashboard experiences.
+
+---
+
+## EXTRA FEATURES
+
+Demo batches should support:
+
+* unlimited students
+* quick onboarding
+* OTP login
+* temporary access
+* expiry after demo ends
+* popup/payment conversion banners
+* WhatsApp join links
+* certificate generation later
+
+---
+
+## LIVE CLASS EXPERIENCE
+
+Students should feel like:
+
+* CuriousJr workshops
+* ODA webinars
+* PW demo classes
+
+with:
+
+* banners
+* countdown timer
+* upcoming/live/completed status
+* replay recordings
+* homework after class
+
+---
+
+## SECURITY
+
+Students cannot:
+
+* download restricted recordings
+* access hidden sessions
+* see backend structure
+* see participant counts
+
+---
+
+## SCALABILITY
+
+Architecture must support:
+
+* 10 students
+* 100 students
+* 10,000+ students
+  in demo batches efficiently.
