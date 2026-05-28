@@ -98,6 +98,7 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     rank: student.rank ?? null,
     school: student.school ?? null,
     state: student.state ?? null,
+    city: student.city ?? null,
     board: student.board ?? null,
   });
 });
@@ -111,9 +112,14 @@ router.patch("/student/profile", requireAuth, async (req, res) => {
   if (parsed.data.name) updates.name = parsed.data.name;
   if (parsed.data.school !== undefined) updates.school = parsed.data.school;
   if (parsed.data.state !== undefined) updates.state = parsed.data.state;
+  if (parsed.data.city !== undefined) updates.city = parsed.data.city;
   if (parsed.data.board !== undefined) updates.board = parsed.data.board;
   if (parsed.data.grade !== undefined) updates.grade = parsed.data.grade;
   if (parsed.data.avatarUrl) updates.avatarUrl = parsed.data.avatarUrl;
+  // Phone can only be set once — don't overwrite if already set
+  if (parsed.data.phone && !((await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, studentId)).limit(1))[0]?.phone)) {
+    updates.phone = parsed.data.phone;
+  }
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning();
   res.json({
@@ -128,6 +134,7 @@ router.patch("/student/profile", requireAuth, async (req, res) => {
     rank: updated.rank ?? null,
     school: updated.school ?? null,
     state: updated.state ?? null,
+    city: updated.city ?? null,
     board: updated.board ?? null,
   });
 });
@@ -222,7 +229,7 @@ router.get("/student/leaderboard", async (req, res) => {
         : eq(usersTable.role, "student")
     )
     .orderBy(desc(usersTable.points))
-    .limit(50);
+    .limit(30);
 
   const ranked = students.map((s, i) => ({
     rank: i + 1,

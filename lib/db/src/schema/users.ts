@@ -16,6 +16,7 @@ export const usersTable = pgTable("users", {
   avatarUrl: text("avatar_url"),
   school: text("school"),
   state: text("state"),
+  city: text("city"),
   board: text("board"),
   points: integer("points").notNull().default(0),
   rank: integer("rank"),

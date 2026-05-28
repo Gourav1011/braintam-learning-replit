@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Calendar, AlertCircle, Send, CheckCircle, FileText } from "lucide-react";
+import { BookOpen, Calendar, AlertCircle, Send, CheckCircle, FileText, Lock, Clock } from "lucide-react";
+
+const EXPIRY_DAYS = 14;
 
 function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
@@ -76,18 +78,34 @@ export default function AssignmentsPage() {
             {(assignments ?? []).map((asgn, i) => {
               const days = daysUntil(asgn.dueDate);
               const isUrgent = days <= 2 && days >= 0;
+              const isExpired = asgn.status === "pending" && days < -EXPIRY_DAYS;
               return (
                 <motion.div key={asgn.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }} data-testid={`assignment-card-${asgn.id}`}>
-                  <Card className={`border-2 ${isUrgent && asgn.status === "pending" ? "border-red-300" : "border-border"}`}>
+                  <Card className={`border-2 transition-all ${
+                    isExpired
+                      ? "border-gray-200 bg-gray-50 opacity-60"
+                      : isUrgent && asgn.status === "pending"
+                        ? "border-red-300"
+                        : "border-border"
+                  }`}>
                     <CardContent className="p-5">
                       <div className="flex items-start gap-5">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${asgn.status === "graded" ? "bg-green-100" : asgn.status === "submitted" ? "bg-blue-100" : isUrgent ? "bg-red-100" : "bg-orange-100"}`}>
-                          <FileText className={`w-6 h-6 ${asgn.status === "graded" ? "text-green-600" : asgn.status === "submitted" ? "text-blue-600" : isUrgent ? "text-red-600" : "text-orange-600"}`} />
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          isExpired ? "bg-gray-200" :
+                          asgn.status === "graded" ? "bg-green-100" :
+                          asgn.status === "submitted" ? "bg-blue-100" :
+                          isUrgent ? "bg-red-100" : "bg-orange-100"
+                        }`}>
+                          {isExpired
+                            ? <Lock className="w-6 h-6 text-gray-400" />
+                            : <FileText className={`w-6 h-6 ${asgn.status === "graded" ? "text-green-600" : asgn.status === "submitted" ? "text-blue-600" : isUrgent ? "text-red-600" : "text-orange-600"}`} />
+                          }
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <h3 className="font-bold text-base">{asgn.title}</h3>
+                            <h3 className={`font-bold text-base ${isExpired ? "text-gray-400" : ""}`}>{asgn.title}</h3>
                             <div className="flex gap-2 flex-shrink-0">
+                              {isExpired && <Badge className="text-xs bg-gray-100 text-gray-400 border border-gray-200">Expired</Badge>}
                               <Badge variant="outline" className="text-xs">{asgn.maxMarks} marks</Badge>
                               <Badge variant="secondary" className="text-xs">
                                 {asgn.status.charAt(0).toUpperCase() + asgn.status.slice(1)}
@@ -97,17 +115,31 @@ export default function AssignmentsPage() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <Badge variant="outline" className="text-xs">{asgn.subjectName}</Badge>
                             <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />Due: {new Date(asgn.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
-                            {days >= 0 && days <= 7 && (
+                            {isExpired ? (
+                              <span className="flex items-center gap-1 text-gray-400 text-xs">
+                                <Clock className="w-3.5 h-3.5" />
+                                Submission closed
+                              </span>
+                            ) : days >= 0 && days <= 7 ? (
                               <span className={`flex items-center gap-1 font-medium ${isUrgent ? "text-red-600" : "text-orange-500"}`}>
                                 {isUrgent && <AlertCircle className="w-3.5 h-3.5" />}
                                 {days === 0 ? "Due today!" : `${days}d left`}
                               </span>
-                            )}
+                            ) : days < 0 && !isExpired ? (
+                              <span className="flex items-center gap-1 text-orange-500 text-xs font-medium">
+                                Overdue · {Math.abs(days)}d ago
+                              </span>
+                            ) : null}
                           </div>
                           {asgn.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{asgn.description}</p>}
                           {asgn.marks !== null && <div className="mt-2 text-sm font-semibold text-green-600">Marks: {asgn.marks}/{asgn.maxMarks}</div>}
+                          {isExpired && (
+                            <p className="text-xs text-gray-400 mt-2">
+                              This assignment expired {EXPIRY_DAYS} days after the due date and can no longer be submitted.
+                            </p>
+                          )}
                         </div>
-                        {asgn.status === "pending" && (
+                        {asgn.status === "pending" && !isExpired && (
                           <Button onClick={() => { setSubmitting(asgn.id); setAnswer(""); }} className="flex-shrink-0" data-testid={`submit-asgn-${asgn.id}`}>
                             <Send className="w-4 h-4 mr-1" /> Submit
                           </Button>
@@ -124,10 +156,19 @@ export default function AssignmentsPage() {
         <Dialog open={!!submitting} onOpenChange={v => !v && setSubmitting(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle>Submit Assignment</DialogTitle></DialogHeader>
-            <Textarea placeholder="Write your answer..." value={answer} onChange={e => setAnswer(e.target.value)} rows={6} />
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Write your answer or paste a link below:</p>
+              <Textarea
+                placeholder="Write your answer or paste a Google Drive link to your submission..."
+                value={answer}
+                onChange={e => setAnswer(e.target.value)}
+                rows={6}
+                data-testid="assignment-answer"
+              />
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSubmitting(null)}>Cancel</Button>
-              <Button onClick={() => submitting && submitMutation.mutate({ id: submitting, data: { answer } })} disabled={!answer.trim() || submitMutation.isPending}>
+              <Button onClick={() => submitting && submitMutation.mutate({ id: submitting, data: { answer } })} disabled={!answer.trim() || submitMutation.isPending} data-testid="confirm-submit-asgn">
                 {submitMutation.isPending ? "Submitting..." : "Submit Assignment"}
               </Button>
             </DialogFooter>

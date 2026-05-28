@@ -37,7 +37,6 @@ const studentNavItems = [
   { href: "/homework", icon: FileText, label: "Homework" },
   { href: "/assignments", icon: FileText, label: "Assignments" },
   { href: "/tests", icon: CheckSquare, label: "Tests" },
-  { href: "/demo-batches", icon: Zap, label: "Demo Batches" },
   { href: "/leaderboard", icon: Award, label: "Leaderboard" },
 ];
 
@@ -46,8 +45,9 @@ const teacherNavItems = [
   { href: "/teacher?tab=courses", icon: BookOpen, label: "My Courses" },
   { href: "/teacher?tab=live", icon: Video, label: "Live Classes" },
   { href: "/teacher?tab=homework", icon: FileText, label: "Homework" },
-  { href: "/teacher?tab=submissions", icon: ClipboardList, label: "Submissions" },
-  { href: "/teacher?tab=students", icon: Users, label: "Students" },
+  { href: "/teacher?tab=assignments", icon: ClipboardList, label: "Assignments" },
+  { href: "/teacher?tab=tests", icon: CheckSquare, label: "Tests" },
+  { href: "/teacher?tab=submissions", icon: ClipboardList, label: "Grade Work" },
   { href: "/teacher?tab=attendance", icon: CheckSquare, label: "Attendance" },
 ];
 

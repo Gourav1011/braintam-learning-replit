@@ -56,7 +56,7 @@ interface User {
   isActive: boolean;
   createdAt?: string;
 }
-interface Course { id: number; title: string; subjectName: string; grade: number; teacher: string | null; }
+interface Course { id: number; title: string; subjectName: string; subjectId?: number; grade: number; teacher: string | null; }
 interface TeacherAssignment { id: number; teacherId: number; teacherName: string; courseId: number; courseTitle: string; assignedAt: string; }
 interface Enrollment { id: number; studentId: number; studentName: string; courseId: number; courseTitle: string; enrolledAt: string; }
 interface Stats { totalUsers: number; totalStudents: number; totalTeachers: number; totalCourses: number; totalEnrollments: number; totalTeacherAssignments: number; }
@@ -70,7 +70,7 @@ interface Analytics {
 interface Announcement { id: number; title: string; body: string; grade: number | null; targetRole: string; isActive: boolean; createdAt: string; }
 interface Banner { id: number; title: string; imageUrl: string; link: string | null; isActive: boolean; displayOrder: number; }
 interface LiveClassItem { id: number; title: string; subjectId: number; subjectName: string; grade: number; teacher: string; teacherId: number | null; scheduledAt: string; duration: number; status: string; joinUrl: string | null; studentsJoined: number; courseId: number | null; }
-interface AuditLog { id: number; actorId: number; actorName: string; action: string; targetType: string; targetId: number; targetName: string; metadata: string | null; createdAt: string; }
+interface AuditLog { id: number; actorId: number; actorName: string; actorEmail?: string; action: string; targetType: string; targetId: number; targetName: string; metadata: string | null; createdAt: string; }
 
 interface ConfirmDialog {
   title: string;
@@ -579,6 +579,7 @@ export default function AdminPage() {
   const [showBannerForm, setShowBannerForm] = useState(false);
   const [showLcForm, setShowLcForm] = useState(false);
   const [editingLc, setEditingLc] = useState<LiveClassItem | null>(null);
+  const [auditSearch, setAuditSearch] = useState("");
 
   const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", role: "student" as Role, grade: "6", school: "" });
   const [showNewPw, setShowNewPw] = useState(false);
@@ -1563,13 +1564,25 @@ export default function AdminPage() {
             {showLcForm && (
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Live Class</h3>
+                <p className="text-xs text-gray-400">💡 Tip: Select a course first, then optionally narrow down to chapter and topic. The class will appear under that course in the student's recordings after it ends.</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+                  <Select value={(lcForm as any).courseId ?? ""} onValueChange={v => setLcForm(p => {
+                    const course = courses.find(c => String(c.id) === v);
+                    return { ...p, courseId: v, subjectId: course ? String(course.subjectId ?? "") : p.subjectId, grade: course ? String(course.grade) : p.grade };
+                  })}>
+                    <SelectTrigger><SelectValue placeholder="Link to Course (recommended)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No course link</SelectItem>
+                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · Gr {c.grade}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <Select value={lcForm.subjectId} onValueChange={v => setLcForm(p => ({ ...p, subjectId: v }))}>
                     <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
                     <SelectContent>{subjectsList.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade (1-10) *" type="number" min="1" max="10" value={lcForm.grade} onChange={e => setLcForm(p => ({ ...p, grade: e.target.value }))} />
+                  <Input placeholder="Chapter / Topic (e.g. Chapter 3 – Photosynthesis)" value={(lcForm as any).chapterName ?? ""} onChange={e => setLcForm(p => ({ ...p, chapterName: e.target.value } as any))} className="sm:col-span-2" />
                   <Select value={lcForm.teacherId} onValueChange={v => setLcForm(p => ({ ...p, teacherId: v, teacher: teachers.find(t => String(t.id) === v)?.name ?? "" }))}>
                     <SelectTrigger><SelectValue placeholder="Assign teacher" /></SelectTrigger>
                     <SelectContent>
@@ -1727,58 +1740,92 @@ export default function AdminPage() {
         )}
 
         {/* ── Audit Logs ─────────────────────────────────────────────────── */}
-        {tab === "audit" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base" style={{ color: NAVY }}>Audit Log</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Track all admin actions: edits, deletes, password resets, enrollments</p>
+        {tab === "audit" && (() => {
+          const filteredLogs = auditSearch
+            ? auditLogs.filter(l => {
+                const q = auditSearch.toLowerCase();
+                return (
+                  (l.actorName ?? "").toLowerCase().includes(q) ||
+                  (l.actorEmail ?? "").toLowerCase().includes(q) ||
+                  (l.action ?? "").toLowerCase().includes(q) ||
+                  (l.targetName ?? "").toLowerCase().includes(q)
+                );
+              })
+            : auditLogs;
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="font-bold text-base" style={{ color: NAVY }}>Audit Log</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">All portal activity — student logins, edits, deletes, password resets, enrollments</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Input
+                      placeholder="Search by name, email, action…"
+                      value={auditSearch}
+                      onChange={e => setAuditSearch(e.target.value)}
+                      className="pl-9 text-xs h-9 w-64"
+                    />
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => exportCSV("audit_log.csv",
+                    ["Time", "Actor", "Email", "Action", "Target Type", "Target"],
+                    filteredLogs.map(l => [l.createdAt, l.actorName, (l as any).actorEmail ?? "", l.action, l.targetType, l.targetName])
+                  )} className="gap-1.5 text-xs h-9">
+                    <Download className="w-3.5 h-3.5" /> Export
+                  </Button>
+                </div>
               </div>
-              <Button size="sm" variant="outline" onClick={() => exportCSV("audit_log.csv",
-                ["Time", "Actor", "Action", "Target Type", "Target"],
-                auditLogs.map(l => [l.createdAt, l.actorName, l.action, l.targetType, l.targetName])
-              )} className="gap-1.5 text-xs">
-                <Download className="w-3.5 h-3.5" /> Export
-              </Button>
-            </div>
 
-            {auditLogs.length > 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Time</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Actor</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Action</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Target</th>
-                  </tr></thead>
-                  <tbody>
-                    {auditLogs.slice(0, 100).map(l => (
-                      <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">{new Date(l.createdAt).toLocaleString("en-IN")}</td>
-                        <td className="px-4 py-2.5 font-medium text-xs" style={{ color: NAVY }}>{l.actorName}</td>
-                        <td className="px-4 py-2.5">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                            l.action.includes("delete") || l.action.includes("deactivate") ? "bg-red-100 text-red-600" :
-                            l.action.includes("create") || l.action.includes("enroll") ? "bg-green-100 text-green-600" :
-                            l.action.includes("reset") ? "bg-orange-100 text-orange-600" :
-                            "bg-blue-100 text-blue-600"
-                          }`}>{l.action}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-500 text-xs">{l.targetType}: <span className="font-medium">{l.targetName}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
-                <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-400 font-medium">No audit logs yet</p>
-                <p className="text-xs text-gray-300 mt-1">Actions will be tracked once the audit_logs table is set up on the backend</p>
-              </div>
-            )}
-          </div>
-        )}
+              {auditSearch && (
+                <p className="text-xs text-gray-400">
+                  Showing {filteredLogs.length} of {auditLogs.length} records matching "{auditSearch}"
+                </p>
+              )}
+
+              {filteredLogs.length > 0 ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Time</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Actor</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Action</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Target</th>
+                    </tr></thead>
+                    <tbody>
+                      {filteredLogs.slice(0, 200).map(l => (
+                        <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50">
+                          <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">{new Date(l.createdAt).toLocaleString("en-IN")}</td>
+                          <td className="px-4 py-2.5 text-xs">
+                            <div className="font-medium" style={{ color: NAVY }}>{l.actorName}</div>
+                            {(l as any).actorEmail && <div className="text-gray-400 text-[10px]">{(l as any).actorEmail}</div>}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                              l.action.includes("delete") || l.action.includes("deactivate") ? "bg-red-100 text-red-600" :
+                              l.action.includes("create") || l.action.includes("enroll") ? "bg-green-100 text-green-600" :
+                              l.action.includes("reset") || l.action.includes("password") ? "bg-orange-100 text-orange-600" :
+                              l.action.includes("login") ? "bg-purple-100 text-purple-600" :
+                              "bg-blue-100 text-blue-600"
+                            }`}>{l.action}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-500 text-xs">{l.targetType}: <span className="font-medium">{l.targetName}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
+                  <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-400 font-medium">{auditSearch ? "No matching logs found" : "No audit logs yet"}</p>
+                  <p className="text-xs text-gray-300 mt-1">{auditSearch ? "Try a different search term" : "Actions will appear here as users interact with the portal"}</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Fees (Placeholder) ────────────────────────────────────────── */}
         {tab === "fees" && (
@@ -1832,8 +1879,10 @@ export default function AdminPage() {
 
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === "settings" && (
-          <div className="space-y-4 max-w-lg">
+          <div className="space-y-5 max-w-2xl">
             <h3 className="font-bold text-base" style={{ color: NAVY }}>Account Settings</h3>
+
+            {/* Admin own password */}
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -1847,10 +1896,110 @@ export default function AdminPage() {
               <div className="h-px bg-gray-100" />
               <ChangePasswordForm flash={flash} />
             </div>
+
+            {/* Reset any user's password */}
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4" style={{ color: NAVY }} />
+                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Reset User / Teacher Password</h4>
+              </div>
+              <p className="text-xs text-gray-400">Search for any teacher or student and reset their password directly.</p>
+              <AdminUserPasswordReset users={users} flash={flash} />
+            </div>
           </div>
         )}
       </div>
       </div>
+    </div>
+  );
+}
+
+// ── Admin: Reset Any User Password ─────────────────────────────────────────
+function AdminUserPasswordReset({ users, flash }: { users: User[]; flash: (msg: string, ok?: boolean) => void }) {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<User | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    return users
+      .filter(u => u.role !== "admin")
+      .filter(u =>
+        u.name.toLowerCase().includes(q) ||
+        (u.email ?? "").toLowerCase().includes(q) ||
+        (u.phone ?? "").includes(q)
+      )
+      .slice(0, 8);
+  }, [users, search]);
+
+  async function resetPw() {
+    if (!selected || !newPw || newPw.length < 6) return;
+    setBusy(true);
+    const r = await apiFetch(`/admin/users/${selected.id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword: newPw }),
+    });
+    setBusy(false);
+    if (r.ok) {
+      flash(`Password reset for ${selected.name}!`);
+      setNewPw(""); setSelected(null); setSearch("");
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash(d.error ?? "Failed to reset password", false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <Input
+          placeholder="Search teacher or student by name / email…"
+          value={search}
+          onChange={e => { setSearch(e.target.value); setSelected(null); }}
+          className="pl-9 text-sm"
+        />
+      </div>
+      {filtered.length > 0 && !selected && (
+        <div className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+          {filtered.map(u => (
+            <button
+              key={u.id}
+              onClick={() => { setSelected(u); setSearch(u.name); }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0"
+            >
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: NAVY }}>{u.name[0]}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate" style={{ color: NAVY }}>{u.name}</div>
+                <div className="text-xs text-gray-400 truncate">{u.email ?? u.phone ?? "—"} · {u.role}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {selected && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2.5">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: NAVY }}>{selected.name[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold" style={{ color: NAVY }}>{selected.name}</div>
+              <div className="text-xs text-gray-500">{selected.email ?? selected.phone} · {selected.role}</div>
+            </div>
+            <button onClick={() => { setSelected(null); setSearch(""); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+          </div>
+          <Input
+            type="password"
+            placeholder="New password (min 6 chars)"
+            value={newPw}
+            onChange={e => setNewPw(e.target.value)}
+          />
+          <Button size="sm" onClick={resetPw} disabled={busy || !newPw || newPw.length < 6} className="text-white" style={{ background: ORANGE }}>
+            {busy ? "Resetting…" : `Reset Password for ${selected.name}`}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

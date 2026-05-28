@@ -1,0 +1,60 @@
+admin panel 
+analytics -- option to select - grade , acadmic year, batch.
+overview - options needed - class wise , select user type , grade wise  and search option 
+courses - edit course option needed , inside course then before selecting chapter then only we can select subject , courses is like which course student purchase so in courses - name, grade also add others in grade , remove subject because course will include all the subjects or manual selects , academic year should be complusary , courses , topic wise we can make homework for student,
+topic id should be grade wise   currently its like 1 -2 in squence ffrom all the courses , so every course should have unique 4 digit id 
+ users - add one more option
+ demo batch also works same as courses and it should be shown in the student courses section. 
+ in settings put option be like change admin password , teacher password , user password,
+ audit logs -- teacher, student , admin - it will show all the edits in the portal from the student teacher admin, passoword change assign course , search optioin by name email to check perticular person all the edits , it will be like acitivity log 
+ so it will be like 
+ student login - it will shown in the admin portal 
+ student detials only shown in the detials other than that nothing they can see only option which is no course assigned
+ then if student purchased any course then admin will asing coure to them then only that course will ve visible to them. homw work class text for the same only they can see 
+ then teacher can assign homework from their portal which will be visible to the student under the course , and test 
+ live class - while adding live class admin have to select - course chapter and topic under that topic live clss should be shown
+ recorded video option - after every live class will move to the recorded video seciton after class finished -admin can put link in for recorded class same option will be watch recording. after clicking video will start
+ -in admin portal every window or edit option should have hint option to assist admin for next step-
+ 
+ Teacher portal - 
+ Home work - teacher will select course then live class ( whichever created by admin for that perticular course topics )  Teacher will select MCQ maximum mcqs 10 in homework there should be + there should be option of add more mcq - or writing work ( upload option should be there in writing work for which teacher will attach google drive link - for mcq students directly do the work on web app, for writing work they can uplaod image as per the teacher given link option should be shown to student as upload homework  , live class wise he can make homework
+ test - test teacher can make by combining mcqs ( mcqs for text can go upto 20 ) or writing test ( upload option if it is writing test)
+ remove student list from the teacher portal
+ teacher can also give assignments to the students 
+ 
+ student portal - 
+ student can only see courses, test , homework, recording of the class animated video associated with the course assignments, which admin will asign to them
+ remove demo class option as demo class will be shown in the courses option only whatever demo they take 
+ Homework - after asigning expiry in 5 days after 5 days he will not be able to click it it will go greyish, while doing homework or test by selecting the answer automaticly he will go to next question 
+ assignments - expiry in 14 days after 14 days he will not be able to click it it will go greyishshould upload uption 
+ Student profile  - rank in the student profile should be shown for their asigned course only so course wise rank should be there,
+ for other option needed in student my profile ,total points earned, total homework given and completed , total tests and completed , and assignments also 
+ stdent can edit name name , phone number , email address, location - state and city ,school name ( student can change name n number of times - but phone number, email only once then it will not editable if while login we have those details then no edit option should be there for these option) 
+ profile photo is seen on right side but while optning student profile it should also show there in profile photo type.
+ recored video - recorded video should be that should be list of recodings by chapter wise also calander option by selection date rerding will show , recorded video option - after every live class will move to the recorded video seciton after class
+ points system for students 
+ for every right answer in the student will get 10 points for wrong 2 points deduct 
+ everyday login student will get 5 points which will be shown as popup claim your todays point daily login to earn more.
+ 
+ leaderboard will show 
+ only max top 30 students as per points  not more than 30
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ student portal 
+ remove grade select option from the courses, that should be automatic what ever admin will asign 
+ 
+ 

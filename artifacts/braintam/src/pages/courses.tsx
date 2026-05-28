@@ -12,12 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BookOpen, Search, Star, Users } from "lucide-react";
 
 export default function CoursesPage() {
-  const [grade, setGrade] = useState<string>("all");
   const [subject, setSubject] = useState<string>("all");
   const [search, setSearch] = useState("");
 
   const params = {
-    grade: grade !== "all" ? Number(grade) : undefined,
     subjectId: subject !== "all" ? Number(subject) : undefined,
     search: search.trim() || undefined,
   };
@@ -37,7 +35,7 @@ export default function CoursesPage() {
             </div>
             Courses
           </h1>
-          <p className="text-muted-foreground mt-1">Browse all courses by subject and grade</p>
+          <p className="text-muted-foreground mt-1">Your enrolled courses</p>
         </motion.div>
 
         <div className="flex gap-3 flex-wrap">
@@ -51,17 +49,6 @@ export default function CoursesPage() {
               data-testid="search-courses"
             />
           </div>
-          <Select value={grade} onValueChange={setGrade}>
-            <SelectTrigger className="w-36" data-testid="grade-filter">
-              <SelectValue placeholder="All Grades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
-              {[1,2,3,4,5,6,7,8,9,10].map(g => (
-                <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={subject} onValueChange={setSubject}>
             <SelectTrigger className="w-44" data-testid="subject-filter">
               <SelectValue placeholder="All Subjects" />

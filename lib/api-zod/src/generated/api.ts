@@ -572,6 +572,8 @@ export const UpdateStudentProfileBody = zod.object({
   "grade": zod.number().optional(),
   "school": zod.string().optional(),
   "state": zod.string().optional(),
+  "city": zod.string().optional(),
+  "phone": zod.string().optional(),
   "board": zod.string().optional(),
   "avatarUrl": zod.string().optional()
 })

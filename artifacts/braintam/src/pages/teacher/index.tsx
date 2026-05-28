@@ -15,7 +15,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-type Tab = "dashboard" | "courses" | "homework" | "live" | "students" | "submissions" | "tests" | "attendance";
+type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
 interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; }
@@ -329,7 +329,7 @@ export default function TeacherPage() {
     { id: "homework", label: "Homework", icon: FileText },
     { id: "live", label: "Live Classes", icon: Video },
     { id: "tests", label: "Tests", icon: ClipboardList },
-    { id: "students", label: "Students", icon: Users },
+    { id: "assignments", label: "Assignments", icon: FileText },
     { id: "submissions", label: "Grade Work", icon: CheckCircle },
     { id: "attendance", label: "Attendance", icon: Clock },
   ];
@@ -779,45 +779,6 @@ export default function TeacherPage() {
           </div>
         )}
 
-        {/* ── Students ── */}
-        {tab === "students" && (
-          <div className="space-y-4">
-            <h3 className="font-bold" style={{ color: NAVY }}>Students in My Courses ({students.length})</h3>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Student</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Grade</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Course</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((s: any, i: number) => (
-                    <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: NAVY }}>{s.studentName?.[0]}</div>
-                          <div>
-                            <div className="font-medium text-sm" style={{ color: NAVY }}>{s.studentName}</div>
-                            <div className="text-xs text-gray-400">{s.email ?? s.phone ?? "—"}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">Grade {s.grade}</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{s.courseTitle}</td>
-                      <td className="px-4 py-3"><span className="text-xs font-semibold" style={{ color: ORANGE }}>{s.points ?? 0} pts</span></td>
-                    </tr>
-                  ))}
-                  {students.length === 0 && (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400 text-sm">No students enrolled yet</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* ── Grade Submissions ── */}
         {tab === "submissions" && (

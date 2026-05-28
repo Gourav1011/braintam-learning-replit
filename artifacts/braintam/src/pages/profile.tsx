@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQueryClient } from "@tanstack/react-query";
-import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Edit, Camera } from "lucide-react";
+import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Edit, Camera, Phone, MapPin, FileText, ClipboardList, Lock } from "lucide-react";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { PointsHub } from "@/components/points-hub";
 
@@ -61,6 +61,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editSchool, setEditSchool] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editState, setEditState] = useState("");
+  const [editCity, setEditCity] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -74,9 +77,15 @@ export default function ProfilePage() {
     queryClient.invalidateQueries({ queryKey: getGetStudentProgressQueryKey() });
   }
 
+  const phoneAlreadySet = !!(profile as any)?.phone;
+  const emailAlreadySet = !!(profile?.email);
+
   const openEdit = () => {
     setEditName(profile?.name ?? "");
     setEditSchool(profile?.school ?? "");
+    setEditPhone(!phoneAlreadySet ? "" : "");
+    setEditState((profile as any)?.state ?? "");
+    setEditCity((profile as any)?.city ?? "");
     setSaveError("");
     setEditing(true);
   };
@@ -86,7 +95,16 @@ export default function ProfilePage() {
     setSaveBusy(true);
     setSaveError("");
     try {
-      const r = await patchProfile({ name: editName.trim(), school: editSchool });
+      const payload: Record<string, unknown> = {
+        name: editName.trim(),
+        school: editSchool,
+        state: editState,
+        city: editCity,
+      };
+      if (!phoneAlreadySet && editPhone.trim()) {
+        payload.phone = editPhone.trim();
+      }
+      const r = await patchProfile(payload);
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         throw new Error(d.error ?? "Failed to update");
@@ -110,7 +128,6 @@ export default function ProfilePage() {
       if (!r.ok) throw new Error("Upload failed");
       invalidate();
     } catch {
-      // silent — avatar just stays as initials
     } finally {
       setAvatarBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -121,9 +138,11 @@ export default function ProfilePage() {
 
   const statsCards = [
     { icon: Star, label: "Total Points", value: progress?.totalPoints ?? 0, color: "text-yellow-500 bg-yellow-50" },
-    { icon: Trophy, label: "Rank", value: `#${progress?.rank ?? "—"}`, color: "text-orange-500 bg-orange-50" },
+    { icon: Trophy, label: "Overall Rank", value: `#${progress?.rank ?? "—"}`, color: "text-orange-500 bg-orange-50" },
     { icon: BookOpen, label: "Courses Done", value: progress?.coursesCompleted ?? 0, color: "text-green-500 bg-green-50" },
     { icon: CheckSquare, label: "Tests Attempted", value: progress?.testsAttempted ?? 0, color: "text-purple-500 bg-purple-50" },
+    { icon: FileText, label: "Homework Done", value: (progress as any)?.homeworkCompleted ?? 0, color: "text-blue-500 bg-blue-50" },
+    { icon: ClipboardList, label: "Assignments Done", value: (progress as any)?.assignmentsCompleted ?? 0, color: "text-pink-500 bg-pink-50" },
   ];
 
   return (
@@ -150,23 +169,16 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <>
-                    {/* Avatar with upload button */}
+                    {/* Avatar */}
                     <div className="text-center">
                       <div className="relative inline-block">
-                        {/* Avatar: fixed size, object-cover, no zoom */}
                         <div className="w-20 h-20 rounded-full mx-auto border-4 border-primary/20 overflow-hidden bg-gradient-to-br from-secondary to-primary flex items-center justify-center">
                           {profile?.avatarUrl ? (
-                            <img
-                              src={profile.avatarUrl}
-                              alt={profile.name}
-                              className="w-full h-full object-cover"
-                              draggable={false}
-                            />
+                            <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" draggable={false} />
                           ) : (
                             <span className="text-white text-2xl font-bold select-none">{initials}</span>
                           )}
                         </div>
-                        {/* Camera upload button */}
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={avatarBusy}
@@ -178,30 +190,38 @@ export default function ProfilePage() {
                             : <Camera className="w-3.5 h-3.5 text-gray-500" />
                           }
                         </button>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleAvatarChange}
-                        />
+                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                       </div>
                       <p className="text-xs text-gray-400 mt-2">Click the camera icon to change photo</p>
                       <h2 className="text-xl font-bold mt-3" data-testid="profile-name">{profile?.name}</h2>
                       <Badge variant="secondary" className="mt-1">Grade {profile?.grade}</Badge>
                     </div>
 
-                    <div className="space-y-3 text-sm">
+                    <div className="space-y-2.5 text-sm">
                       {profile?.email && (
                         <div className="flex items-center gap-3 text-muted-foreground">
                           <Mail className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate" data-testid="profile-email">{profile.email}</span>
+                          {emailAlreadySet && <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" aria-label="Email cannot be changed" />}
+                        </div>
+                      )}
+                      {(profile as any)?.phone && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <Phone className="w-4 h-4 flex-shrink-0" />
+                          <span>{(profile as any).phone}</span>
+                          <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" aria-label="Phone cannot be changed once set" />
                         </div>
                       )}
                       {profile?.school && (
                         <div className="flex items-center gap-3 text-muted-foreground">
                           <School className="w-4 h-4 flex-shrink-0" />
                           <span data-testid="profile-school">{profile.school}</span>
+                        </div>
+                      )}
+                      {((profile as any)?.city || (profile as any)?.state) && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <span>{[(profile as any).city, (profile as any).state].filter(Boolean).join(", ")}</span>
                         </div>
                       )}
                     </div>
@@ -217,19 +237,19 @@ export default function ProfilePage() {
 
           {/* Stats & Progress */}
           <div className="lg:col-span-2 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {statsCards.map((s, i) => (
-                <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}>
+                <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 * i }}>
                   <Card>
-                    <CardContent className="p-4 flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${s.color}`}>
-                        <s.icon className="w-6 h-6" />
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${s.color}`}>
+                        <s.icon className="w-5 h-5" />
                       </div>
                       <div>
-                        {progressLoading ? <Skeleton className="w-16 h-6" /> : (
-                          <div className="text-2xl font-bold" data-testid={`stat-${s.label.toLowerCase().replace(/ /g, "-")}`}>{s.value}</div>
+                        {progressLoading ? <Skeleton className="w-12 h-5" /> : (
+                          <div className="text-xl font-bold" data-testid={`stat-${s.label.toLowerCase().replace(/ /g, "-")}`}>{s.value}</div>
                         )}
-                        <div className="text-xs text-muted-foreground">{s.label}</div>
+                        <div className="text-[10px] text-muted-foreground leading-tight">{s.label}</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -272,7 +292,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Points Hub — full width below the profile/stats grid */}
+        {/* Points Hub */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <PointsHub
             data={{
@@ -286,51 +306,73 @@ export default function ProfilePage() {
 
         {/* Edit Dialog */}
         <Dialog open={editing} onOpenChange={setEditing}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-name">Full Name</Label>
-                <Input
-                  id="edit-name"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  className="mt-1"
-                  data-testid="edit-name-input"
-                />
+                <Label htmlFor="edit-name">Full Name <span className="text-xs text-muted-foreground">(can be changed anytime)</span></Label>
+                <Input id="edit-name" value={editName} onChange={e => setEditName(e.target.value)} className="mt-1" data-testid="edit-name-input" />
               </div>
               <div>
                 <Label htmlFor="edit-school">School Name</Label>
-                <Input
-                  id="edit-school"
-                  value={editSchool}
-                  onChange={e => setEditSchool(e.target.value)}
-                  placeholder="Your school name"
-                  className="mt-1"
-                  data-testid="edit-school-input"
-                />
+                <Input id="edit-school" value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="Your school name" className="mt-1" data-testid="edit-school-input" />
               </div>
-              {/* Grade is read-only — assigned by admin based on enrollment */}
+              {/* Phone — editable only once */}
+              <div>
+                <Label htmlFor="edit-phone" className="flex items-center gap-2">
+                  Phone Number
+                  {phoneAlreadySet
+                    ? <span className="text-xs text-amber-600 flex items-center gap-1"><Lock className="w-3 h-3" />Set already, cannot change</span>
+                    : <span className="text-xs text-muted-foreground">(can only be set once)</span>
+                  }
+                </Label>
+                {phoneAlreadySet ? (
+                  <Input value={(profile as any)?.phone ?? ""} disabled className="mt-1 bg-gray-50 text-gray-400" />
+                ) : (
+                  <Input
+                    id="edit-phone"
+                    value={editPhone}
+                    onChange={e => setEditPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="mt-1"
+                    data-testid="edit-phone-input"
+                  />
+                )}
+              </div>
+              {/* Email — read-only if set via Clerk */}
+              {emailAlreadySet && (
+                <div>
+                  <Label className="flex items-center gap-2">
+                    Email
+                    <span className="text-xs text-amber-600 flex items-center gap-1"><Lock className="w-3 h-3" />Managed by your login provider</span>
+                  </Label>
+                  <Input value={profile?.email ?? ""} disabled className="mt-1 bg-gray-50 text-gray-400" />
+                </div>
+              )}
+              {/* Location */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="edit-state">State</Label>
+                  <Input id="edit-state" value={editState} onChange={e => setEditState(e.target.value)} placeholder="e.g. Maharashtra" className="mt-1" />
+                </div>
+                <div>
+                  <Label htmlFor="edit-city">City</Label>
+                  <Input id="edit-city" value={editCity} onChange={e => setEditCity(e.target.value)} placeholder="e.g. Mumbai" className="mt-1" />
+                </div>
+              </div>
+              {/* Grade — read-only */}
               <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">Grade</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Auto-assigned based on your course enrollment
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Auto-assigned based on your course enrollment</p>
                 </div>
-                <Badge variant="secondary" className="text-sm px-3">
-                  Grade {profile?.grade ?? "—"}
-                </Badge>
+                <Badge variant="secondary" className="text-sm px-3">Grade {profile?.grade ?? "—"}</Badge>
               </div>
               {saveError && <p className="text-sm text-red-500">{saveError}</p>}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
-              <Button
-                onClick={handleUpdate}
-                disabled={saveBusy || !editName.trim()}
-                data-testid="save-profile-btn"
-              >
+              <Button onClick={handleUpdate} disabled={saveBusy || !editName.trim()} data-testid="save-profile-btn">
                 {saveBusy ? "Saving…" : "Save Changes"}
               </Button>
             </DialogFooter>
