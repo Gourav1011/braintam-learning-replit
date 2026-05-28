@@ -9,6 +9,7 @@ import {
   CheckSquare, Square, AlertTriangle, UserX, UserCheck2, Key, FileText,
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -372,6 +373,165 @@ function PlaceholderTab({ icon: Icon, title, description, features }: {
   );
 }
 
+// ── Access Management Modal ───────────────────────────────────────────────────
+function AccessModal({ user, onClose, flash }: {
+  user: User;
+  onClose: () => void;
+  flash: (msg: string, ok?: boolean) => void;
+}) {
+  type CourseRow = { id: number; title: string; grade: number; subjectName: string; enrolled: boolean; enrollmentId: number | null };
+  const [courses, setCourses] = useState<CourseRow[]>([]);
+  const [grade, setGrade] = useState(String(user.grade > 0 ? user.grade : ""));
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [savingGrade, setSavingGrade] = useState(false);
+  const [toggling, setToggling] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiFetch(`/admin/users/${user.id}/courses`)
+      .then(r => r.json())
+      .then((data: CourseRow[]) => { setCourses(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [user.id]);
+
+  const saveGrade = async () => {
+    if (!grade) return;
+    setSavingGrade(true);
+    const r = await apiFetch(`/admin/users/${user.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ grade: Number(grade) }),
+    });
+    setSavingGrade(false);
+    if (r.ok) flash("Grade updated successfully");
+    else flash("Failed to update grade", false);
+  };
+
+  const toggleEnroll = async (course: CourseRow) => {
+    setToggling(course.id);
+    if (course.enrolled && course.enrollmentId) {
+      const r = await apiFetch(`/admin/enrollments/${course.enrollmentId}`, { method: "DELETE" });
+      if (r.ok) {
+        setCourses(prev => prev.map(c => c.id === course.id ? { ...c, enrolled: false, enrollmentId: null } : c));
+        flash(`Removed access to "${course.title}"`);
+      } else flash("Failed to remove access", false);
+    } else {
+      const r = await apiFetch("/admin/enrollments", {
+        method: "POST",
+        body: JSON.stringify({ studentId: user.id, courseId: course.id }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        setCourses(prev => prev.map(c => c.id === course.id ? { ...c, enrolled: true, enrollmentId: data.id } : c));
+        flash(`Access granted to "${course.title}"`);
+      } else flash("Failed to grant access", false);
+    }
+    setToggling(null);
+  };
+
+  const filtered = courses.filter(c =>
+    c.title.toLowerCase().includes(search.toLowerCase()) ||
+    c.subjectName.toLowerCase().includes(search.toLowerCase())
+  );
+  const enrolledCount = courses.filter(c => c.enrolled).length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col" style={{ maxHeight: "85vh" }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: NAVY }}>
+              {user.name[0]?.toUpperCase()}
+            </div>
+            <div>
+              <div className="font-bold text-sm" style={{ color: NAVY }}>Manage Access — {user.name}</div>
+              <div className="text-xs text-gray-400">{user.email ?? user.phone ?? `ID ${user.id}`}</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Grade */}
+          <div className="bg-blue-50 rounded-xl p-4 flex items-center gap-3">
+            <GraduationCap className="w-4 h-4 shrink-0" style={{ color: NAVY }} />
+            <span className="text-xs font-semibold text-gray-600 shrink-0">Grade</span>
+            <select
+              value={grade}
+              onChange={e => setGrade(e.target.value)}
+              className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none"
+            >
+              <option value="">Not assigned</option>
+              {[1,2,3,4,5,6,7,8,9,10].map(g => (
+                <option key={g} value={g}>Grade {g}</option>
+              ))}
+            </select>
+            <Button size="sm" onClick={saveGrade} disabled={savingGrade || !grade}
+              className="text-white text-xs shrink-0" style={{ background: NAVY }}>
+              {savingGrade ? "Saving…" : "Save"}
+            </Button>
+          </div>
+
+          {/* Course access */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold" style={{ color: NAVY }}>Course Access</span>
+              <span className="text-xs text-gray-400">{enrolledCount} of {courses.length} granted</span>
+            </div>
+            <div className="relative mb-3">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                placeholder="Search courses or subjects…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 text-xs h-9"
+              />
+            </div>
+            {loading ? (
+              <div className="text-center py-8 text-gray-400 text-xs">Loading courses…</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-xs">No courses found</div>
+            ) : (
+              <div className="space-y-1.5">
+                {filtered.map(c => (
+                  <div key={c.id}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-colors ${
+                      c.enrolled ? "bg-green-50 border-green-100" : "bg-gray-50 border-transparent"
+                    }`}
+                  >
+                    <div className="min-w-0 mr-3">
+                      <div className="text-xs font-semibold truncate" style={{ color: NAVY }}>{c.title}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">{c.subjectName} · Grade {c.grade}</div>
+                    </div>
+                    <button
+                      onClick={() => toggleEnroll(c)}
+                      disabled={toggling === c.id}
+                      className={`shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                        c.enrolled
+                          ? "bg-white border border-red-200 text-red-500 hover:bg-red-50"
+                          : "text-white hover:opacity-90"
+                      }`}
+                      style={c.enrolled ? {} : { background: ORANGE }}
+                    >
+                      {toggling === c.id ? "…" : c.enrolled ? "Remove" : "Grant"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex justify-end">
+          <Button size="sm" variant="ghost" onClick={onClose} className="text-xs">Done</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { student, role, isLoading } = useAuth();
@@ -408,6 +568,7 @@ export default function AdminPage() {
   // Modals
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [accessUser, setAccessUser] = useState<User | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
 
   // Forms
@@ -705,6 +866,8 @@ export default function AdminPage() {
       )}
       {/* Password Reset Modal */}
       {resetPasswordUser && <PasswordResetModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} flash={flash} />}
+      {/* Access Management Modal */}
+      {accessUser && <AccessModal user={accessUser} onClose={() => setAccessUser(null)} flash={flash} />}
 
       {/* Left Sidebar */}
       <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
@@ -1143,6 +1306,11 @@ export default function AdminPage() {
                           <button onClick={() => setResetPasswordUser(u)} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Reset Password">
                             <Key className="w-4 h-4" />
                           </button>
+                          {u.role === "student" && (
+                            <button onClick={() => setAccessUser(u)} className="p-1 text-gray-400 hover:text-green-600 transition-colors" title="Manage Access">
+                              <ShieldCheck className="w-4 h-4" />
+                            </button>
+                          )}
                           {u.isActive ? (
                             <button onClick={() => confirm({
                               title: "Deactivate User",

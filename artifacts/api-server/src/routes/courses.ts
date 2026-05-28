@@ -19,9 +19,8 @@ router.get("/courses", attachUser, async (req, res) => {
     const enrolledIds = enrolled.map(e => e.courseId);
     if (enrolledIds.length > 0) {
       studentFilter = inArray(coursesTable.id, enrolledIds);
-    } else if (user.grade) {
-      studentFilter = eq(coursesTable.grade, user.grade);
     } else {
+      // No enrollments — admin must grant access first
       res.json([]);
       return;
     }

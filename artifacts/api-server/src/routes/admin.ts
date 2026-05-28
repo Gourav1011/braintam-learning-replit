@@ -324,6 +324,33 @@ router.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
+// ── User course access (all courses + enrolled status for one student) ──
+router.get("/admin/users/:id/courses", adminOnly, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const allCourses = await db.select({
+    id: coursesTable.id,
+    title: coursesTable.title,
+    grade: coursesTable.grade,
+    subjectName: subjectsTable.name,
+  }).from(coursesTable)
+    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
+    .orderBy(coursesTable.grade, coursesTable.title);
+
+  const enrollments = await db.select({
+    id: enrollmentsTable.id,
+    courseId: enrollmentsTable.courseId,
+  }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, studentId));
+
+  const enrollmentMap = new Map(enrollments.map(e => [e.courseId, e.id]));
+  res.json(allCourses.map(c => ({
+    ...c,
+    enrolled: enrollmentMap.has(c.id),
+    enrollmentId: enrollmentMap.get(c.id) ?? null,
+  })));
+});
+
 // ── Enrollments ──────────────────────────────────────────────────
 router.get("/admin/enrollments", adminOnly, async (req, res) => {
   const { courseId } = req.query;
