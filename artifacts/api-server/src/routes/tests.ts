@@ -35,6 +35,8 @@ router.get("/tests", attachUser, async (req, res) => {
     subjectName: subjectsTable.name,
     grade: testsTable.grade,
     courseId: testsTable.courseId,
+    testType: testsTable.testType,
+    driveLink: testsTable.driveLink,
     scheduledAt: testsTable.scheduledAt,
     duration: testsTable.duration,
     totalQuestions: testsTable.totalQuestions,
@@ -51,7 +53,7 @@ router.get("/tests", attachUser, async (req, res) => {
       )
     );
 
-  res.json(tests.map(t => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), courseId: t.courseId ?? null, score: null, maxScore: null })));
+  res.json(tests.map(t => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), courseId: t.courseId ?? null, testType: t.testType ?? "mcq", driveLink: t.driveLink ?? null, score: null, maxScore: null })));
 });
 
 router.get("/tests/:id", async (req, res) => {

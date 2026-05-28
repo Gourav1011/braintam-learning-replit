@@ -182,6 +182,9 @@ router.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
     subjectName: subjectsTable.name,
     grade: homeworkTable.grade,
     courseId: homeworkTable.courseId,
+    liveClassId: homeworkTable.liveClassId,
+    homeworkType: homeworkTable.homeworkType,
+    driveLink: homeworkTable.driveLink,
     dueDate: homeworkTable.dueDate,
     description: homeworkTable.description,
     maxMarks: homeworkTable.maxMarks,
@@ -191,12 +194,12 @@ router.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
     .innerJoin(subjectsTable, eq(homeworkTable.subjectId, subjectsTable.id))
     .where(eq(homeworkTable.teacherId, teacherId))
     .orderBy(desc(homeworkTable.dueDate));
-  res.json(hw.map(h => ({ ...h, dueDate: h.dueDate.toISOString(), description: h.description ?? null, questionsJson: h.questionsJson ?? null })));
+  res.json(hw.map(h => ({ ...h, dueDate: h.dueDate.toISOString(), description: h.description ?? null, questionsJson: h.questionsJson ?? null, driveLink: h.driveLink ?? null })));
 });
 
 router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
-  const { title, subjectId, grade, courseId, dueDate, description, maxMarks, questionsJson } = req.body;
+  const { title, subjectId, grade, courseId, liveClassId, homeworkType, driveLink, dueDate, description, maxMarks, questionsJson } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
     res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
     return;
@@ -211,6 +214,9 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
   const [hw] = await db.insert(homeworkTable).values({
     title, subjectId, grade,
     courseId: courseId ?? null,
+    liveClassId: liveClassId ?? null,
+    homeworkType: homeworkType ?? "writing",
+    driveLink: driveLink ?? null,
     teacherId,
     dueDate: new Date(dueDate),
     description: description ?? null,

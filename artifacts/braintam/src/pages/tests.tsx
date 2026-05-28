@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckSquare, Clock, Calendar, Trophy, AlertCircle, PlayCircle } from "lucide-react";
+import { CheckSquare, Clock, Calendar, Trophy, AlertCircle, PlayCircle, ExternalLink } from "lucide-react";
 
 function countdown(iso: string) {
   const diff = new Date(iso).getTime() - Date.now();
@@ -19,9 +19,10 @@ function countdown(iso: string) {
   return h > 0 ? `Starts in ${h}h ${m}m` : `Starts in ${m}m`;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; bg: string; icon: typeof Calendar }> = {
   upcoming: { label: "Upcoming", bg: "bg-blue-100 text-blue-700", icon: Calendar },
   ongoing: { label: "Ongoing", bg: "bg-green-100 text-green-700", icon: PlayCircle },
+  active: { label: "Live Now", bg: "bg-green-100 text-green-700", icon: PlayCircle },
   completed: { label: "Completed", bg: "bg-gray-100 text-gray-700", icon: CheckSquare },
 };
 

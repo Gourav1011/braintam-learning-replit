@@ -40,7 +40,7 @@ router.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
 // ── Create a test with questions ──────────────────────────────
 router.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
-  const { title, subjectId, grade, courseId, scheduledAt, duration, questions } = req.body;
+  const { title, subjectId, grade, courseId, scheduledAt, duration, questions, testType, driveLink } = req.body;
 
   if (!title || !subjectId || !grade || !scheduledAt) {
     res.status(400).json({ error: "title, subjectId, grade, scheduledAt required" });
@@ -60,9 +60,11 @@ router.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
     grade,
     courseId: courseId ?? null,
     teacherId,
+    testType: testType ?? "mcq",
+    driveLink: driveLink ?? null,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 30,
-    totalQuestions: Array.isArray(questions) ? questions.length : 0,
+    totalQuestions: Array.isArray(questions) ? questions.length : (testType === "writing" ? 1 : 0),
     status: "upcoming",
   }).returning();
 

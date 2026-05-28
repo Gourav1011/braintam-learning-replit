@@ -4,7 +4,7 @@ import { Redirect } from "wouter";
 import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
-  ToggleLeft, ToggleRight, LogOut,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,13 @@ const ORANGE = "#FF6B1A";
 type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
-interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; }
-interface Homework { id: number; title: string; subjectName: string; grade: number; dueDate: string; maxMarks: number; questionsJson: string | null; }
+interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; }
+interface Homework { id: number; title: string; subjectName: string; grade: number; dueDate: string; maxMarks: number; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
+interface Assignment { id: number; title: string; subjectName: string; grade: number; dueDate: string; description: string | null; maxMarks: number; attachmentUrl: string | null; }
 interface Submission { id: number; homeworkTitle?: string; assignmentTitle?: string; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
 interface Subject { id: number; name: string; }
 interface DashStats { teacherName: string; totalCourses: number; totalStudents: number; upcomingLiveClasses: number; pendingHomework: number; }
-interface TeacherTest { id: number; title: string; subjectName: string; grade: number; scheduledAt: string; duration: number; totalQuestions: number; status: string; }
+interface TeacherTest { id: number; title: string; subjectName: string; grade: number; scheduledAt: string; duration: number; totalQuestions: number; status: string; testType?: string; driveLink?: string | null; }
 interface AttendanceRecord { studentId: number; studentName: string; present: boolean; }
 
 type QuestionType = "mcq" | "truefalse";
@@ -71,12 +72,17 @@ export default function TeacherPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [tests, setTests] = useState<TeacherTest[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
 
   // Homework form
   const [showHwForm, setShowHwForm] = useState(false);
-  const [hwForm, setHwForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", dueDate: "", description: "", maxMarks: "10" });
+  const [hwType, setHwType] = useState<"mcq" | "writing">("writing");
+  const [hwForm, setHwForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
   const [hwQuestions, setHwQuestions] = useState<HwQuestion[]>([newMcqQuestion()]);
-  const [hwHasQuestions, setHwHasQuestions] = useState(false);
+
+  // Assignment form
+  const [showAsgnForm, setShowAsgnForm] = useState(false);
+  const [asgnForm, setAsgnForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", dueDate: "", description: "", maxMarks: "20", attachmentUrl: "" });
 
   // Live class form
   const [showLcForm, setShowLcForm] = useState(false);
@@ -84,7 +90,8 @@ export default function TeacherPage() {
 
   // Test form
   const [showTestForm, setShowTestForm] = useState(false);
-  const [testForm, setTestForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "30", liveClassId: "" });
+  const [testType, setTestType] = useState<"mcq" | "writing">("mcq");
+  const [testForm, setTestForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "30", liveClassId: "", driveLink: "" });
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([
     { text: "", options: ["", "", "", ""], correctOption: 0 },
   ]);
@@ -105,7 +112,7 @@ export default function TeacherPage() {
   }, [isLoading, role]);
 
   async function loadAll() {
-    const [d, c, lc, hw, sub, subj, stu, tst] = await Promise.all([
+    const [d, c, lc, hw, sub, subj, stu, tst, asgn] = await Promise.all([
       apiFetch("/teacher/dashboard").then(r => r.ok ? r.json() : null),
       apiFetch("/teacher/courses").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/live-classes").then(r => r.ok ? r.json() : []),
@@ -114,9 +121,10 @@ export default function TeacherPage() {
       apiFetch("/subjects").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/students").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/tests").then(r => r.ok ? r.json() : []),
+      apiFetch("/teacher/assignments").then(r => r.ok ? r.json() : []),
     ]);
     setDash(d); setCourses(c); setLiveClasses(lc); setHomework(hw);
-    setSubmissions(sub); setSubjects(subj); setStudents(stu); setTests(tst);
+    setSubmissions(sub); setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn);
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000); }
@@ -133,6 +141,7 @@ export default function TeacherPage() {
 
   // ── Homework Actions ──────────────────────────────────────────
   function addHwQuestion(type: QuestionType) {
+    if (hwQuestions.length >= 10) return;
     setHwQuestions(prev => [...prev, type === "mcq" ? newMcqQuestion() : newTfQuestion()]);
   }
 
@@ -158,12 +167,17 @@ export default function TeacherPage() {
 
   async function createHomework() {
     setBusy(true);
-    const validQs = hwHasQuestions ? hwQuestions.filter(q => q.text.trim()) : [];
+    const validQs = hwType === "mcq" ? hwQuestions.filter(q => q.text.trim()) : [];
     const payload = {
-      ...hwForm,
+      title: hwForm.title,
       subjectId: Number(hwForm.subjectId),
       grade: Number(hwForm.grade),
       courseId: hwForm.courseId ? Number(hwForm.courseId) : null,
+      liveClassId: hwForm.liveClassId ? Number(hwForm.liveClassId) : null,
+      homeworkType: hwType,
+      driveLink: hwType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
+      dueDate: hwForm.dueDate,
+      description: hwForm.description || null,
       maxMarks: Number(hwForm.maxMarks),
       questionsJson: validQs.length > 0 ? validQs : null,
     };
@@ -171,9 +185,36 @@ export default function TeacherPage() {
     if (r.ok) {
       flash("Homework posted!");
       setShowHwForm(false);
-      setHwForm({ title: "", subjectId: "", grade: "", courseId: "", dueDate: "", description: "", maxMarks: "10" });
+      setHwForm({ title: "", subjectId: "", grade: "", courseId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
       setHwQuestions([newMcqQuestion()]);
-      setHwHasQuestions(false);
+      setHwType("writing");
+      loadAll();
+    } else {
+      const d = await r.json();
+      flash(d.error ?? "Error", false);
+    }
+    setBusy(false);
+  }
+
+  async function createAssignment() {
+    setBusy(true);
+    const r = await apiFetch("/teacher/assignments", {
+      method: "POST",
+      body: JSON.stringify({
+        title: asgnForm.title,
+        subjectId: Number(asgnForm.subjectId),
+        grade: Number(asgnForm.grade),
+        courseId: asgnForm.courseId ? Number(asgnForm.courseId) : null,
+        dueDate: asgnForm.dueDate,
+        description: asgnForm.description || null,
+        maxMarks: Number(asgnForm.maxMarks),
+        attachmentUrl: asgnForm.attachmentUrl || null,
+      }),
+    });
+    if (r.ok) {
+      flash("Assignment posted!");
+      setShowAsgnForm(false);
+      setAsgnForm({ title: "", subjectId: "", grade: "", courseId: "", dueDate: "", description: "", maxMarks: "20", attachmentUrl: "" });
       loadAll();
     } else {
       const d = await r.json();
@@ -215,6 +256,7 @@ export default function TeacherPage() {
 
   // ── Test Actions ───────────────────────────────────────────────
   function addTestQuestion() {
+    if (testQuestions.length >= 20) return;
     setTestQuestions(prev => [...prev, { text: "", options: ["", "", "", ""], correctOption: 0 }]);
   }
 
@@ -252,7 +294,7 @@ export default function TeacherPage() {
 
   async function createTest() {
     setBusy(true);
-    const validQs = testQuestions.filter(q => q.text.trim() && q.options.every(o => o.trim()));
+    const validQs = testType === "mcq" ? testQuestions.filter(q => q.text.trim() && q.options.every(o => o.trim())) : [];
     const r = await apiFetch("/teacher/tests", {
       method: "POST",
       body: JSON.stringify({
@@ -262,14 +304,17 @@ export default function TeacherPage() {
         courseId: testForm.courseId ? Number(testForm.courseId) : null,
         scheduledAt: testForm.scheduledAt,
         duration: Number(testForm.duration),
+        testType,
+        driveLink: testType === "writing" && testForm.driveLink ? testForm.driveLink : null,
         questions: validQs,
       }),
     });
     if (r.ok) {
       flash("Test created!");
       setShowTestForm(false);
-      setTestForm({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "30", liveClassId: "" });
+      setTestForm({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "30", liveClassId: "", driveLink: "" });
       setTestQuestions([{ text: "", options: ["", "", "", ""], correctOption: 0 }]);
+      setTestType("mcq");
       loadAll();
     } else {
       const d = await r.json();
@@ -379,10 +424,9 @@ export default function TeacherPage() {
         {/* ── Dashboard ── */}
         {tab === "dashboard" && dash && (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "My Courses", value: dash.totalCourses, color: NAVY },
-                { label: "My Students", value: dash.totalStudents, color: "#22C55E" },
                 { label: "Upcoming Classes", value: dash.upcomingLiveClasses, color: ORANGE },
                 { label: "Homework Posted", value: dash.pendingHomework, color: "#8B5CF6" },
               ].map(s => (
@@ -472,6 +516,18 @@ export default function TeacherPage() {
             {showHwForm && (
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Homework</h3>
+
+                {/* Type Toggle */}
+                <div className="flex gap-2">
+                  {(["writing", "mcq"] as const).map(t => (
+                    <button key={t} onClick={() => setHwType(t)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${hwType === t ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
+                      style={hwType === t ? { background: ORANGE, borderColor: ORANGE } : {}}>
+                      {t === "writing" ? "✍ Writing Work" : "📝 MCQ Quiz"}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Title *" value={hwForm.title} onChange={e => setHwForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
                   <Select value={hwForm.subjectId} onValueChange={v => setHwForm(p => ({ ...p, subjectId: v }))}>
@@ -479,84 +535,91 @@ export default function TeacherPage() {
                     <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={hwForm.grade} onChange={e => setHwForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Select value={hwForm.courseId} onValueChange={v => setHwForm(p => ({ ...p, courseId: v }))}>
+
+                  {/* Course → Live Class cascade */}
+                  <Select value={hwForm.courseId} onValueChange={v => setHwForm(p => ({ ...p, courseId: v, liveClassId: "" }))}>
                     <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Select value={hwForm.liveClassId} onValueChange={v => setHwForm(p => ({ ...p, liveClassId: v }))} disabled={!hwForm.courseId}>
+                    <SelectTrigger><SelectValue placeholder="Live Class (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {liveClasses.filter(lc => !hwForm.courseId || lc.courseId === Number(hwForm.courseId)).map(lc => (
+                        <SelectItem key={lc.id} value={String(lc.id)}>{lc.title} · {new Date(lc.scheduledAt).toLocaleDateString("en-IN")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   <Input type="datetime-local" value={hwForm.dueDate} onChange={e => setHwForm(p => ({ ...p, dueDate: e.target.value }))} />
                   <Input placeholder="Max marks" type="number" value={hwForm.maxMarks} onChange={e => setHwForm(p => ({ ...p, maxMarks: e.target.value }))} />
                   <Textarea placeholder="Instructions / description" value={hwForm.description} onChange={e => setHwForm(p => ({ ...p, description: e.target.value }))} className="sm:col-span-2" rows={2} />
                 </div>
 
-                {/* MCQ Questions Toggle */}
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <span className="text-sm font-bold" style={{ color: NAVY }}>Add Questions (MCQ / True–False)</span>
-                      <p className="text-xs text-gray-400 mt-0.5">Optional — attach questions to auto-grade</p>
+                {/* MCQ Questions */}
+                {hwType === "mcq" && (
+                  <div className="border-t border-gray-100 pt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold" style={{ color: NAVY }}>Questions
+                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${hwQuestions.length >= 10 ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-600"}`}>{hwQuestions.length}/10</span>
+                      </span>
                     </div>
-                    <button onClick={() => setHwHasQuestions(p => !p)} className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: ORANGE }}>
-                      {hwHasQuestions ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
-                      {hwHasQuestions ? "Enabled" : "Disabled"}
-                    </button>
-                  </div>
-
-                  {hwHasQuestions && (
-                    <div className="space-y-3">
-                      {hwQuestions.map((q, qi) => (
-                        <div key={qi} className="rounded-xl border border-gray-200 p-4 space-y-2 bg-gray-50">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black w-5 flex-shrink-0" style={{ color: ORANGE }}>Q{qi + 1}</span>
-                            <Input
-                              placeholder="Question (1 line) *"
-                              value={q.text}
-                              onChange={e => updateHwQuestion(qi, "text", e.target.value)}
-                              className="flex-1 bg-white"
-                            />
-                            {/* MCQ / T-F toggle button */}
-                            <button
-                              onClick={() => toggleHwQuestionType(qi)}
-                              title={q.type === "mcq" ? "Switch to True/False" : "Switch to MCQ (4 options)"}
-                              className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-lg font-semibold border transition-colors ${q.type === "truefalse" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200"}`}>
-                              {q.type === "truefalse" ? "T/F" : "MCQ"}
-                            </button>
-                            {hwQuestions.length > 1 && (
-                              <button onClick={() => removeHwQuestion(qi)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X className="w-4 h-4" /></button>
-                            )}
-                          </div>
-
-                          {q.type === "mcq" ? (
-                            <div className="grid grid-cols-2 gap-2 ml-7">
-                              {q.options.map((opt, oi) => (
-                                <div key={oi} className="flex items-center gap-1.5">
-                                  <input type="radio" name={`hw-q${qi}`} checked={q.correctOption === oi} onChange={() => updateHwQuestion(qi, "correctOption", oi)} className="w-3.5 h-3.5 accent-orange-500 flex-shrink-0" />
-                                  <Input placeholder={`Option ${String.fromCharCode(65 + oi)} *`} value={opt} onChange={e => updateHwOption(qi, oi, e.target.value)} className="bg-white text-xs" />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="flex gap-4 ml-7">
-                              {["True", "False"].map((opt, oi) => (
-                                <label key={oi} className="flex items-center gap-1.5 cursor-pointer">
-                                  <input type="radio" name={`hw-q${qi}`} checked={q.correctOption === oi} onChange={() => updateHwQuestion(qi, "correctOption", oi)} className="w-3.5 h-3.5 accent-orange-500" />
-                                  <span className="text-sm font-medium text-gray-700">{opt}</span>
-                                </label>
-                              ))}
-                            </div>
+                    {hwQuestions.map((q, qi) => (
+                      <div key={qi} className="rounded-xl border border-gray-200 p-4 space-y-2 bg-gray-50">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black w-5 flex-shrink-0" style={{ color: ORANGE }}>Q{qi + 1}</span>
+                          <Input placeholder="Question *" value={q.text} onChange={e => updateHwQuestion(qi, "text", e.target.value)} className="flex-1 bg-white" />
+                          <button onClick={() => toggleHwQuestionType(qi)}
+                            className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-lg font-semibold border transition-colors ${q.type === "truefalse" ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200"}`}>
+                            {q.type === "truefalse" ? "T/F" : "MCQ"}
+                          </button>
+                          {hwQuestions.length > 1 && (
+                            <button onClick={() => removeHwQuestion(qi)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X className="w-4 h-4" /></button>
                           )}
-                          <p className="text-xs text-gray-400 ml-7">Select correct answer · click <span className="font-semibold">{q.type === "mcq" ? "MCQ" : "T/F"}</span> to switch type</p>
                         </div>
-                      ))}
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => addHwQuestion("mcq")} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add MCQ</Button>
-                        <Button size="sm" variant="outline" onClick={() => addHwQuestion("truefalse")} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add True/False</Button>
+                        {q.type === "mcq" ? (
+                          <div className="grid grid-cols-2 gap-2 ml-7">
+                            {q.options.map((opt, oi) => (
+                              <div key={oi} className="flex items-center gap-1.5">
+                                <input type="radio" name={`hw-q${qi}`} checked={q.correctOption === oi} onChange={() => updateHwQuestion(qi, "correctOption", oi)} className="w-3.5 h-3.5 accent-orange-500 flex-shrink-0" />
+                                <Input placeholder={`Option ${String.fromCharCode(65 + oi)} *`} value={opt} onChange={e => updateHwOption(qi, oi, e.target.value)} className="bg-white text-xs" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex gap-4 ml-7">
+                            {["True", "False"].map((opt, oi) => (
+                              <label key={oi} className="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" name={`hw-q${qi}`} checked={q.correctOption === oi} onChange={() => updateHwQuestion(qi, "correctOption", oi)} className="w-3.5 h-3.5 accent-orange-500" />
+                                <span className="text-sm font-medium text-gray-700">{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
                       </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => addHwQuestion("mcq")} disabled={hwQuestions.length >= 10} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add MCQ</Button>
+                      <Button size="sm" variant="outline" onClick={() => addHwQuestion("truefalse")} disabled={hwQuestions.length >= 10} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add True/False</Button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {/* Writing Type: Drive Link */}
+                {hwType === "writing" && (
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="text-xs text-gray-500 mb-2 font-medium">📎 Attach a Google Drive link for students to reference</p>
+                    <Input
+                      placeholder="Google Drive link (optional)"
+                      value={hwForm.driveLink}
+                      onChange={e => setHwForm(p => ({ ...p, driveLink: e.target.value }))}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Students will see this link and submit their written work as an image upload</p>
+                  </div>
+                )}
 
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" onClick={createHomework} disabled={busy || !hwForm.title || !hwForm.subjectId || !hwForm.grade || !hwForm.dueDate} className="text-white" style={{ background: ORANGE }}>
@@ -686,7 +749,18 @@ export default function TeacherPage() {
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>Create New Test</h3>
 
-                {/* Link to live class (auto-fills fields) */}
+                {/* Type Toggle */}
+                <div className="flex gap-2">
+                  {(["mcq", "writing"] as const).map(t => (
+                    <button key={t} onClick={() => setTestType(t)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${testType === t ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
+                      style={testType === t ? { background: ORANGE, borderColor: ORANGE } : {}}>
+                      {t === "mcq" ? "📝 MCQ Test" : "✍ Writing Test"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Link to live class */}
                 <div className="bg-blue-50 rounded-xl p-3 space-y-1.5">
                   <p className="text-xs font-semibold text-blue-700">Based on Live Class (optional)</p>
                   <p className="text-xs text-blue-500">Select a live class to auto-fill subject, grade &amp; date</p>
@@ -721,35 +795,55 @@ export default function TeacherPage() {
                   <Input placeholder="Duration (min)" type="number" value={testForm.duration} onChange={e => setTestForm(p => ({ ...p, duration: e.target.value }))} />
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Questions ({testQuestions.length})</h4>
-                    <Button size="sm" variant="outline" onClick={addTestQuestion} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add</Button>
-                  </div>
-                  {testQuestions.map((q, qi) => (
-                    <div key={qi} className="rounded-xl border border-gray-200 p-4 space-y-2 bg-gray-50">
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs font-black mt-2 w-5 flex-shrink-0" style={{ color: ORANGE }}>Q{qi + 1}</span>
-                        <Input placeholder="Question text *" value={q.text} onChange={e => updateTestQuestion(qi, "text", e.target.value)} className="flex-1 bg-white" />
-                        {testQuestions.length > 1 && (
-                          <button onClick={() => removeTestQuestion(qi)} className="mt-1 text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 ml-7">
-                        {q.options.map((opt, oi) => (
-                          <div key={oi} className="flex items-center gap-1.5">
-                            <input type="radio" name={`test-q${qi}`} checked={q.correctOption === oi} onChange={() => updateTestQuestion(qi, "correctOption", oi)} className="w-3.5 h-3.5 accent-orange-500 flex-shrink-0" />
-                            <Input placeholder={`Option ${String.fromCharCode(65 + oi)} *`} value={opt} onChange={e => updateTestOption(qi, oi, e.target.value)} className="bg-white text-xs" />
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-400 ml-7">Select the radio button next to the correct answer</p>
+                {/* MCQ Questions */}
+                {testType === "mcq" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Questions
+                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${testQuestions.length >= 20 ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-600"}`}>{testQuestions.length}/20</span>
+                      </h4>
+                      <Button size="sm" variant="outline" onClick={addTestQuestion} disabled={testQuestions.length >= 20} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add</Button>
                     </div>
-                  ))}
-                </div>
+                    {testQuestions.map((q, qi) => (
+                      <div key={qi} className="rounded-xl border border-gray-200 p-4 space-y-2 bg-gray-50">
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-black mt-2 w-5 flex-shrink-0" style={{ color: ORANGE }}>Q{qi + 1}</span>
+                          <Input placeholder="Question text *" value={q.text} onChange={e => updateTestQuestion(qi, "text", e.target.value)} className="flex-1 bg-white" />
+                          {testQuestions.length > 1 && (
+                            <button onClick={() => removeTestQuestion(qi)} className="mt-1 text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 ml-7">
+                          {q.options.map((opt, oi) => (
+                            <div key={oi} className="flex items-center gap-1.5">
+                              <input type="radio" name={`test-q${qi}`} checked={q.correctOption === oi} onChange={() => updateTestQuestion(qi, "correctOption", oi)} className="w-3.5 h-3.5 accent-orange-500 flex-shrink-0" />
+                              <Input placeholder={`Option ${String.fromCharCode(65 + oi)} *`} value={opt} onChange={e => updateTestOption(qi, oi, e.target.value)} className="bg-white text-xs" />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-400 ml-7">Select the radio button next to the correct answer</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Writing Test: Drive Link */}
+                {testType === "writing" && (
+                  <div className="border-t border-gray-100 pt-4 space-y-2">
+                    <p className="text-xs font-medium text-gray-600">📎 Attach a Google Drive link with the test paper for students</p>
+                    <Input
+                      placeholder="Google Drive link *"
+                      value={testForm.driveLink}
+                      onChange={e => setTestForm(p => ({ ...p, driveLink: e.target.value }))}
+                    />
+                    <p className="text-xs text-gray-400">Students will see this link and upload their answer as an image</p>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={createTest} disabled={busy || !testForm.title || !testForm.subjectId || !testForm.grade || !testForm.scheduledAt} className="text-white" style={{ background: ORANGE }}>
+                  <Button size="sm" onClick={createTest}
+                    disabled={busy || !testForm.title || !testForm.subjectId || !testForm.grade || !testForm.scheduledAt || (testType === "writing" && !testForm.driveLink)}
+                    className="text-white" style={{ background: ORANGE }}>
                     {busy ? "Creating…" : "Create Test"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setShowTestForm(false)}>Cancel</Button>
@@ -779,6 +873,82 @@ export default function TeacherPage() {
           </div>
         )}
 
+
+        {/* ── Assignments ── */}
+        {tab === "assignments" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold" style={{ color: NAVY }}>Assignments</h3>
+              <Button size="sm" onClick={() => setShowAsgnForm(!showAsgnForm)} className="text-white gap-1.5" style={{ background: ORANGE }}>
+                <Plus className="w-3.5 h-3.5" /> Post Assignment
+              </Button>
+            </div>
+
+            {showAsgnForm && (
+              <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Assignment</h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input placeholder="Title *" value={asgnForm.title} onChange={e => setAsgnForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+                  <Select value={asgnForm.subjectId} onValueChange={v => setAsgnForm(p => ({ ...p, subjectId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
+                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Input placeholder="Grade *" type="number" min="1" max="10" value={asgnForm.grade} onChange={e => setAsgnForm(p => ({ ...p, grade: e.target.value }))} />
+                  <Select value={asgnForm.courseId} onValueChange={v => setAsgnForm(p => ({ ...p, courseId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No course</SelectItem>
+                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input type="datetime-local" value={asgnForm.dueDate} onChange={e => setAsgnForm(p => ({ ...p, dueDate: e.target.value }))} />
+                  <Input placeholder="Max marks" type="number" value={asgnForm.maxMarks} onChange={e => setAsgnForm(p => ({ ...p, maxMarks: e.target.value }))} />
+                  <Textarea placeholder="Instructions / description" value={asgnForm.description} onChange={e => setAsgnForm(p => ({ ...p, description: e.target.value }))} className="sm:col-span-2" rows={2} />
+                </div>
+                <div className="border-t border-gray-100 pt-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-600">📎 Attach a Google Drive / external resource link</p>
+                  <Input
+                    placeholder="Resource / Drive link (optional)"
+                    value={asgnForm.attachmentUrl}
+                    onChange={e => setAsgnForm(p => ({ ...p, attachmentUrl: e.target.value }))}
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={createAssignment} disabled={busy || !asgnForm.title || !asgnForm.subjectId || !asgnForm.grade || !asgnForm.dueDate} className="text-white" style={{ background: ORANGE }}>
+                    {busy ? "Posting…" : "Post Assignment"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAsgnForm(false)}>Cancel</Button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {assignments.map(a => (
+                <div key={a.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm" style={{ color: NAVY }}>{a.title}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {a.subjectName} · Grade {a.grade} · Due {new Date(a.dueDate).toLocaleDateString("en-IN")}
+                    </div>
+                    {a.description && <div className="text-xs text-gray-500 mt-1 line-clamp-1">{a.description}</div>}
+                    {a.attachmentUrl && (
+                      <a href={a.attachmentUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
+                        📎 View resource
+                      </a>
+                    )}
+                  </div>
+                  <span className="ml-3 text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded-full font-semibold flex-shrink-0">{a.maxMarks} marks</span>
+                </div>
+              ))}
+              {assignments.length === 0 && !showAsgnForm && (
+                <div className="py-12 text-center">
+                  <ClipboardList className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">No assignments posted yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Grade Submissions ── */}
         {tab === "submissions" && (
