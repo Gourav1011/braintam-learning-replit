@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { coursesTable, subjectsTable, lessonsTable, enrollmentsTable } from "@workspace/db";
+import { coursesTable, subjectsTable, lessonsTable } from "@workspace/db";
 import { ListCoursesQueryParams, GetCourseParams } from "@workspace/api-zod";
-import { eq, and, ilike, inArray } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
@@ -10,22 +10,15 @@ const router = Router();
 router.get("/courses", attachUser, async (req, res) => {
   const parsed = ListCoursesQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
-
   const user = req.authUser;
 
-  let courseIdFilter: ReturnType<typeof inArray> | undefined;
+  let gradeFilter: ReturnType<typeof eq> | undefined;
   if (user && user.role === "student") {
-    const enrolled = await db
-      .select({ courseId: enrollmentsTable.courseId })
-      .from(enrollmentsTable)
-      .where(eq(enrollmentsTable.studentId, user.id));
-    const ids = enrolled.map(e => e.courseId);
-    if (ids.length > 0) {
-      courseIdFilter = inArray(coursesTable.id, ids);
-    } else {
+    if (!user.grade) {
       res.json([]);
       return;
     }
+    gradeFilter = eq(coursesTable.grade, user.grade);
   }
 
   const courses = await db.select({
@@ -44,7 +37,7 @@ router.get("/courses", attachUser, async (req, res) => {
     .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
     .where(
       and(
-        courseIdFilter,
+        gradeFilter,
         params.grade ? eq(coursesTable.grade, params.grade) : undefined,
         params.subjectId ? eq(coursesTable.subjectId, params.subjectId) : undefined,
         params.search ? ilike(coursesTable.title, `%${params.search}%`) : undefined,
@@ -66,10 +59,12 @@ router.get("/courses/:id", attachUser, async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const user = req.authUser;
-  if (user && user.role === "student") {
-    const [enrollment] = await db.select().from(enrollmentsTable)
-      .where(and(eq(enrollmentsTable.studentId, user.id), eq(enrollmentsTable.courseId, parsed.data.id)));
-    if (!enrollment) { res.status(403).json({ error: "Not enrolled in this course" }); return; }
+  if (user && user.role === "student" && user.grade) {
+    const [course] = await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, parsed.data.id));
+    if (course && course.grade !== user.grade) {
+      res.status(403).json({ error: "This course is not available for your grade" });
+      return;
+    }
   }
 
   const [course] = await db.select({

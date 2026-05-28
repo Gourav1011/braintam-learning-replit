@@ -85,6 +85,34 @@ router.post("/auth/login", async (req, res) => {
   res.json({ token: generateToken(user.id), student: userToProfile(user) });
 });
 
+router.post("/auth/clerk-sync", async (req, res) => {
+  const { email, name } = req.body;
+  if (!email || !name) {
+    res.status(400).json({ error: "email and name required" });
+    return;
+  }
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+  if (existing) {
+    const [updated] = await db.update(usersTable)
+      .set({ name })
+      .where(eq(usersTable.id, existing.id))
+      .returning();
+    res.json({ token: generateToken(existing.id), student: userToProfile(updated) });
+    return;
+  }
+  const [user] = await db.insert(usersTable).values({
+    name,
+    email,
+    phone: null,
+    grade: 0,
+    role: "student",
+    passwordHash: null,
+    points: 0,
+    streakDays: 1,
+  }).returning();
+  res.status(201).json({ token: generateToken(user.id), student: userToProfile(user) });
+});
+
 router.post("/auth/reset-password-email", async (req, res) => {
   const { email, newPassword } = req.body;
   if (!email || !newPassword || newPassword.length < 6) {

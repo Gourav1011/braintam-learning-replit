@@ -3,12 +3,20 @@ import { db } from "@workspace/db";
 import { animatedVideosTable, subjectsTable } from "@workspace/db";
 import { ListAnimatedVideosQueryParams, GetAnimatedVideoParams } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
+import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/animated-videos", async (req, res) => {
+router.get("/animated-videos", attachUser, async (req, res) => {
   const parsed = ListAnimatedVideosQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
+  const user = req.authUser;
+
+  let gradeFilter: ReturnType<typeof eq> | undefined;
+  if (user && user.role === "student") {
+    if (!user.grade) { res.json([]); return; }
+    gradeFilter = eq(animatedVideosTable.grade, user.grade);
+  }
 
   const vids = await db.select({
     id: animatedVideosTable.id,
@@ -26,6 +34,7 @@ router.get("/animated-videos", async (req, res) => {
     .innerJoin(subjectsTable, eq(animatedVideosTable.subjectId, subjectsTable.id))
     .where(
       and(
+        gradeFilter,
         params.grade ? eq(animatedVideosTable.grade, params.grade) : undefined,
         params.subjectId ? eq(animatedVideosTable.subjectId, params.subjectId) : undefined,
       )

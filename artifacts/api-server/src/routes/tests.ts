@@ -11,6 +11,13 @@ const router = Router();
 router.get("/tests", attachUser, async (req, res) => {
   const parsed = ListTestsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
+  const user = req.authUser;
+
+  let gradeFilter: ReturnType<typeof eq> | undefined;
+  if (user && user.role === "student") {
+    if (!user.grade) { res.json([]); return; }
+    gradeFilter = eq(testsTable.grade, user.grade);
+  }
 
   const tests = await db.select({
     id: testsTable.id,
@@ -28,6 +35,7 @@ router.get("/tests", attachUser, async (req, res) => {
     .innerJoin(subjectsTable, eq(testsTable.subjectId, subjectsTable.id))
     .where(
       and(
+        gradeFilter,
         params.grade ? eq(testsTable.grade, params.grade) : undefined,
         params.subjectId ? eq(testsTable.subjectId, params.subjectId) : undefined,
         params.status ? eq(testsTable.status, params.status) : undefined,

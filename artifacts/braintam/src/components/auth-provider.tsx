@@ -33,13 +33,36 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export const STAFF_TOKEN_KEY = "braintam_staff_token";
 export const STUDENT_TOKEN_KEY = "braintam_student_token";
 
+async function fetchProfileWithToken(token: string): Promise<StudentProfile | null> {
+  try {
+    const r = await fetch(`${BASE}/api/student/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+async function syncClerkUser(email: string, name: string): Promise<{ token: string; student: StudentProfile } | null> {
+  try {
+    const r = await fetch(`${BASE}/api/auth/clerk-sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [student, setStudent] = useState<StudentProfile | null>(null);
-  // Start as true — stay in loading state until the first effect run completes.
-  // This prevents a brief flash where isLoaded=true but the fetch hasn't started yet,
-  // which would cause route guards to redirect prematurely.
   const [studentLoading, setStudentLoading] = useState(true);
 
   useEffect(() => {
@@ -49,81 +72,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
 
     if (staffToken) {
-      // Staff token takes priority
-      fetch(`${BASE}/api/student/profile`, {
-        headers: { Authorization: `Bearer ${staffToken}` },
-      })
-        .then(r => (r.ok ? r.json() : null))
-        .then((data: StudentProfile | null) => {
+      fetchProfileWithToken(staffToken)
+        .then((data) => {
           if (data) {
-            setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+            setStudent({ ...data, streak: (data as any).streak ?? 0, role: (data.role as UserRole) ?? "student" });
           } else {
             localStorage.removeItem(STAFF_TOKEN_KEY);
             setStudent(null);
           }
-        })
-        .catch(() => {
-          localStorage.removeItem(STAFF_TOKEN_KEY);
-          setStudent(null);
         })
         .finally(() => setStudentLoading(false));
       return;
     }
 
     if (studentToken) {
-      // Custom student login token — persist until explicit logout
-      fetch(`${BASE}/api/student/profile`, {
-        headers: { Authorization: `Bearer ${studentToken}` },
-      })
-        .then(r => (r.ok ? r.json() : null))
-        .then((data: StudentProfile | null) => {
+      fetchProfileWithToken(studentToken)
+        .then((data) => {
           if (data) {
-            setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+            setStudent({ ...data, streak: (data as any).streak ?? 0, role: (data.role as UserRole) ?? "student" });
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
             setStudent(null);
           }
-        })
-        .catch(() => {
-          localStorage.removeItem(STUDENT_TOKEN_KEY);
-          setStudent(null);
         })
         .finally(() => setStudentLoading(false));
       return;
     }
 
     if (!user) {
-      // No token, no Clerk user — nothing to load.
       setStudent(null);
       setStudentLoading(false);
       return;
     }
 
-    // Clerk user — fetch their profile.
-    fetch(`${BASE}/api/student/profile`, { credentials: "include" })
-      .then(r => (r.ok ? r.json() : null))
-      .then((data: StudentProfile | null) => {
-        if (data) {
-          setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+    // Clerk user — sync with DB to get a real token so all API calls work
+    const email = user.emailAddresses[0]?.emailAddress ?? "";
+    const name = user.fullName ?? user.firstName ?? "Student";
+
+    if (!email) {
+      setStudent(null);
+      setStudentLoading(false);
+      return;
+    }
+
+    syncClerkUser(email, name)
+      .then((result) => {
+        if (result) {
+          localStorage.setItem(STUDENT_TOKEN_KEY, result.token);
+          setStudent({ ...result.student, streak: (result.student as any).streak ?? 0, role: (result.student.role as UserRole) ?? "student" });
         } else {
-          setStudent({
-            id: 0,
-            name: user.fullName ?? user.firstName ?? "Student",
-            email: user.emailAddresses[0]?.emailAddress ?? null,
-            phone: null,
-            grade: 6,
-            role: "student",
-            school: null,
-            state: null,
-            board: null,
-            points: 0,
-            rank: 1,
-            streak: 0,
-            avatarUrl: user.imageUrl ?? null,
-          });
+          setStudent(null);
         }
       })
-      .catch(() => setStudent(null))
       .finally(() => setStudentLoading(false));
   }, [isLoaded, user]);
 
@@ -132,9 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STAFF_TOKEN_KEY);
     localStorage.removeItem(STUDENT_TOKEN_KEY);
     setStudent(null);
-    // Only sign out from Clerk if the user actually signed in via Clerk.
-    // Staff (admin/teacher) use a custom token and must not trigger Clerk signOut,
-    // because Clerk's sign-out flow can redirect to /sign-in and cause an auto-login loop.
     if (user) {
       signOut();
     }
@@ -142,28 +139,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshAuth = () => {
-    // Force re-check tokens (called after storing a new token in localStorage)
     setStudentLoading(true);
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
     const token = staffToken || studentToken;
     if (token) {
-      fetch(`${BASE}/api/student/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then(r => (r.ok ? r.json() : null))
-        .then((data: StudentProfile | null) => {
+      fetchProfileWithToken(token)
+        .then((data) => {
           if (data) {
-            setStudent({ ...data, role: (data.role as UserRole) ?? "student" });
+            setStudent({ ...data, streak: (data as any).streak ?? 0, role: (data.role as UserRole) ?? "student" });
           } else {
             setStudent(null);
           }
         })
-        .catch(() => setStudent(null))
         .finally(() => setStudentLoading(false));
-    } else if (user) {
-      // Clerk user — just stop loading
-      setStudentLoading(false);
     } else {
       setStudent(null);
       setStudentLoading(false);

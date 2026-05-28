@@ -3,12 +3,20 @@ import { db } from "@workspace/db";
 import { recordingsTable, subjectsTable } from "@workspace/db";
 import { ListRecordingsQueryParams, GetRecordingParams } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
+import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/recordings", async (req, res) => {
+router.get("/recordings", attachUser, async (req, res) => {
   const parsed = ListRecordingsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
+  const user = req.authUser;
+
+  let gradeFilter: ReturnType<typeof eq> | undefined;
+  if (user && user.role === "student") {
+    if (!user.grade) { res.json([]); return; }
+    gradeFilter = eq(recordingsTable.grade, user.grade);
+  }
 
   const recs = await db.select({
     id: recordingsTable.id,
@@ -27,6 +35,7 @@ router.get("/recordings", async (req, res) => {
     .innerJoin(subjectsTable, eq(recordingsTable.subjectId, subjectsTable.id))
     .where(
       and(
+        gradeFilter,
         params.grade ? eq(recordingsTable.grade, params.grade) : undefined,
         params.subjectId ? eq(recordingsTable.subjectId, params.subjectId) : undefined,
       )

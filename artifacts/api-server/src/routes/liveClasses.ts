@@ -3,12 +3,20 @@ import { db } from "@workspace/db";
 import { liveClassesTable, subjectsTable } from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
 import { eq, and } from "drizzle-orm";
+import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/live-classes", async (req, res) => {
+router.get("/live-classes", attachUser, async (req, res) => {
   const parsed = ListLiveClassesQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
+  const user = req.authUser;
+
+  let gradeFilter: ReturnType<typeof eq> | undefined;
+  if (user && user.role === "student") {
+    if (!user.grade) { res.json([]); return; }
+    gradeFilter = eq(liveClassesTable.grade, user.grade);
+  }
 
   const classes = await db.select({
     id: liveClassesTable.id,
@@ -28,6 +36,7 @@ router.get("/live-classes", async (req, res) => {
     .innerJoin(subjectsTable, eq(liveClassesTable.subjectId, subjectsTable.id))
     .where(
       and(
+        gradeFilter,
         params.grade ? eq(liveClassesTable.grade, params.grade) : undefined,
         params.subjectId ? eq(liveClassesTable.subjectId, params.subjectId) : undefined,
       )
