@@ -20,6 +20,7 @@ export const usersTable = pgTable("users", {
   points: integer("points").notNull().default(0),
   rank: integer("rank"),
   streakDays: integer("streak_days").notNull().default(0),
+  lastLoginDate: timestamp("last_login_date"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

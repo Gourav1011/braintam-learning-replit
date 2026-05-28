@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
+import { logAction } from "../utils/audit.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -23,6 +24,7 @@ function generateToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
 }
 
+/** Positional shim so existing call sites in this file need no changes. */
 async function logAudit(
   actorId: number,
   actorName: string,
@@ -32,19 +34,7 @@ async function logAudit(
   targetName: string,
   metadata?: string,
 ) {
-  try {
-    await db.insert(auditLogsTable).values({
-      actorId,
-      actorName,
-      action,
-      targetType,
-      targetId,
-      targetName,
-      metadata: metadata ?? null,
-    });
-  } catch {
-    // non-fatal — never let audit failures break the main action
-  }
+  await logAction({ actorId, actorName, action, targetType, targetId, targetName, metadata });
 }
 
 // ── Analytics ────────────────────────────────────────────────────
