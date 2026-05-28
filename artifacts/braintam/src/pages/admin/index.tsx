@@ -595,7 +595,7 @@ function AccessModal({ user, onClose, flash }: {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const { student, role, isLoading } = useAuth();
+  const { student, role, isLoading, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("analytics");
 
   // Data
@@ -1019,7 +1019,10 @@ export default function AdminPage() {
             <button onClick={loadAll} className="text-gray-400 hover:text-gray-600 transition-colors" title="Refresh">
               <RotateCcw className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`} />
             </button>
-            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Back to site</a>
+            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Site</a>
+            <button onClick={logout} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto" title="Logout">
+              <LogOut className="w-3.5 h-3.5" /> Logout
+            </button>
           </div>
         </div>
       </div>

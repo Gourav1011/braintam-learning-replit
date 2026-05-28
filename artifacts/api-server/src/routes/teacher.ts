@@ -4,7 +4,7 @@ import {
   usersTable, coursesTable, subjectsTable,
   teacherCoursesTable, enrollmentsTable,
   liveClassesTable, homeworkTable, assignmentsTable,
-  recordingsTable, testsTable,
+  recordingsTable, testsTable, questionsTable, attendanceTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable,
   auditLogsTable,
 } from "@workspace/db";
@@ -433,6 +433,120 @@ router.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, async
   );
 
   res.json(updated);
+});
+
+// ── Tests ─────────────────────────────────────────────────────────
+router.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const rows = await db.select({
+    id: testsTable.id,
+    title: testsTable.title,
+    subjectId: testsTable.subjectId,
+    subjectName: subjectsTable.name,
+    grade: testsTable.grade,
+    courseId: testsTable.courseId,
+    scheduledAt: testsTable.scheduledAt,
+    duration: testsTable.duration,
+    totalQuestions: testsTable.totalQuestions,
+    status: testsTable.status,
+    testType: testsTable.testType,
+    driveLink: testsTable.driveLink,
+  })
+  .from(testsTable)
+  .leftJoin(subjectsTable, eq(testsTable.subjectId, subjectsTable.id))
+  .where(eq(testsTable.teacherId, teacherId))
+  .orderBy(desc(testsTable.scheduledAt));
+  res.json(rows);
+});
+
+router.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
+  const { title, subjectId, grade, courseId, scheduledAt, duration, testType, driveLink, questions } = req.body;
+  if (!title || !subjectId || !grade || !scheduledAt) {
+    res.status(400).json({ error: "title, subjectId, grade, scheduledAt required" });
+    return;
+  }
+  const validQuestions = Array.isArray(questions) ? questions.filter((q: any) => q.text?.trim()) : [];
+  const [test] = await db.insert(testsTable).values({
+    title,
+    subjectId: Number(subjectId),
+    grade: Number(grade),
+    courseId: courseId ? Number(courseId) : null,
+    scheduledAt: new Date(scheduledAt),
+    duration: Number(duration) || 30,
+    testType: testType ?? "mcq",
+    driveLink: driveLink ?? null,
+    teacherId: req.authUser!.id,
+    totalQuestions: validQuestions.length,
+    status: "upcoming",
+  }).returning();
+  if (validQuestions.length > 0) {
+    await db.insert(questionsTable).values(
+      validQuestions.map((q: any, i: number) => ({
+        testId: test.id,
+        text: q.text,
+        options: q.options,
+        correctOption: q.correctOption,
+        order: i,
+      }))
+    );
+  }
+  await logAudit(req.authUser!.id, req.authUser!.name, "test_created", "test", test.id, title);
+  res.status(201).json(test);
+});
+
+router.delete("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
+  const testId = parseInt(String(req.params.id), 10);
+  if (isNaN(testId)) { res.status(400).json({ error: "invalid id" }); return; }
+  const [test] = await db.select().from(testsTable)
+    .where(and(eq(testsTable.id, testId), eq(testsTable.teacherId, req.authUser!.id)));
+  if (!test) { res.status(404).json({ error: "Test not found" }); return; }
+  await db.delete(questionsTable).where(eq(questionsTable.testId, testId));
+  await db.delete(testsTable).where(eq(testsTable.id, testId));
+  await logAudit(req.authUser!.id, req.authUser!.name, "test_deleted", "test", testId, test.title);
+  res.json({ ok: true });
+});
+
+// ── Live class status & attendance ────────────────────────────────
+router.patch("/teacher/live-classes/:id/status", teacherOrAdmin, async (req, res) => {
+  const classId = parseInt(String(req.params.id), 10);
+  const { status } = req.body;
+  if (isNaN(classId) || !status) { res.status(400).json({ error: "status required" }); return; }
+  const [updated] = await db.update(liveClassesTable)
+    .set({ status })
+    .where(eq(liveClassesTable.id, classId))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Class not found" }); return; }
+  res.json(updated);
+});
+
+router.get("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, res) => {
+  const classId = parseInt(String(req.params.id), 10);
+  if (isNaN(classId)) { res.status(400).json({ error: "invalid id" }); return; }
+  const records = await db.select({
+    studentId: attendanceTable.studentId,
+    present: attendanceTable.present,
+    studentName: usersTable.name,
+  })
+  .from(attendanceTable)
+  .leftJoin(usersTable, eq(attendanceTable.studentId, usersTable.id))
+  .where(eq(attendanceTable.liveClassId, classId));
+  res.json(records);
+});
+
+router.post("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, res) => {
+  const classId = parseInt(String(req.params.id), 10);
+  const { records } = req.body;
+  if (isNaN(classId) || !Array.isArray(records)) {
+    res.status(400).json({ error: "records array required" });
+    return;
+  }
+  await db.delete(attendanceTable).where(eq(attendanceTable.liveClassId, classId));
+  if (records.length > 0) {
+    await db.insert(attendanceTable).values(
+      records.map((r: any) => ({ liveClassId: classId, studentId: r.studentId, present: Boolean(r.present) }))
+    );
+  }
+  res.json({ ok: true });
 });
 
 export default router;

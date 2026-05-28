@@ -205,8 +205,7 @@ export default function TeacherPage() {
       setHwType("writing");
       loadAll();
     } else {
-      const d = await r.json();
-      flash(d.error ?? "Error", false);
+      try { const d = await r.json(); flash(d.error ?? "Error posting homework", false); } catch { flash("Error posting homework", false); }
     }
     setBusy(false);
   }
@@ -232,8 +231,7 @@ export default function TeacherPage() {
       setAsgnForm({ title: "", subjectId: "", grade: "", courseId: "", dueDate: "", description: "", maxMarks: "20", attachmentUrl: "" });
       loadAll();
     } else {
-      const d = await r.json();
-      flash(d.error ?? "Error", false);
+      try { const d = await r.json(); flash(d.error ?? "Error posting assignment", false); } catch { flash("Error posting assignment", false); }
     }
     setBusy(false);
   }
@@ -333,8 +331,7 @@ export default function TeacherPage() {
       setTestType("mcq");
       loadAll();
     } else {
-      const d = await r.json();
-      flash(d.error ?? "Error", false);
+      try { const d = await r.json(); flash(d.error ?? "Error creating test", false); } catch { flash("Error creating test", false); }
     }
     setBusy(false);
   }
@@ -484,8 +481,7 @@ export default function TeacherPage() {
                       <div className="font-semibold text-sm" style={{ color: NAVY }}>{c.title}</div>
                       <div className="text-xs text-gray-400 mt-0.5">{c.subjectName} · Grade {c.grade}</div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.enrolledStudents}</span>
-                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{c.totalLessons}</span>
+                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{c.totalLessons} lessons</span>
                       </div>
                     </div>
                   ))}
@@ -502,8 +498,7 @@ export default function TeacherPage() {
               <div key={c.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 <div className="font-bold text-base mb-1" style={{ color: NAVY }}>{c.title}</div>
                 <div className="text-xs text-gray-400 mb-3">{c.subjectName} · Grade {c.grade}</div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-orange-50 rounded-xl p-2 text-center"><div className="font-black text-lg" style={{ color: ORANGE }}>{c.enrolledStudents}</div><div className="text-gray-500">Students</div></div>
+                <div className="grid grid-cols-1 gap-2 text-xs">
                   <div className="bg-blue-50 rounded-xl p-2 text-center"><div className="font-black text-lg text-blue-600">{c.totalLessons}</div><div className="text-gray-500">Lessons</div></div>
                 </div>
                 {c.rating && <div className="mt-2 text-xs text-yellow-500 font-semibold">★ {c.rating.toFixed(1)}</div>}
