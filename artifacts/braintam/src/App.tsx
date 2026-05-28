@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
-import { SignUpPageContent } from "@/pages/sign-up";
+import ImportedSignUpPage from "@/pages/sign-up";
 import { ClerkProvider, SignIn, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -227,9 +227,7 @@ function SignInPage() {
   );
 }
 
-function SignUpPage() {
-  return <AuthPageShell form={<SignUpPageContent />} />;
-}
+const SignUpPage = ImportedSignUpPage;
 
 // ── Route guards ──────────────────────────────────────────────
 const queryClient = new QueryClient({
