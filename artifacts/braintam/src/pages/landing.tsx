@@ -1292,17 +1292,12 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Right: image panel */}
-            <div className="flex-shrink-0 md:w-60 hidden md:block relative" style={{ background: NAVY }}>
+            {/* Right: image panel — scaled + clipped to remove outer bg, keeps card border/shadow */}
+            <div className="flex-shrink-0 md:w-60 hidden md:block overflow-hidden"
+              style={{ background: NAVY, borderRadius: "16px" }}>
               <img src={expertCardImg} alt="Braintam student"
-                className="w-full h-auto object-contain block" />
-              {/* Edge bleed overlays — fade all four sides into exact footer navy */}
-              <div className="absolute inset-0 pointer-events-none" style={{
-                background: `
-                  linear-gradient(to right,  ${NAVY} 0%, transparent 18%, transparent 82%, ${NAVY} 100%),
-                  linear-gradient(to bottom, ${NAVY} 0%, transparent 12%, transparent 88%, ${NAVY} 100%)
-                `
-              }} />
+                className="w-full h-auto block"
+                style={{ transform: "scale(1.09)", transformOrigin: "center center" }} />
             </div>
           </div>
 
