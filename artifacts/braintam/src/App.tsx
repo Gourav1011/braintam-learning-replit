@@ -233,7 +233,15 @@ const SignUpPage = ImportedSignUpPage;
 
 // ── Route guards ──────────────────────────────────────────────
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 2 } },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 0,              // always consider data stale → refetch on every mount/focus
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  },
 });
 
 function LoadingScreen() {

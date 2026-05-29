@@ -38,6 +38,14 @@ app.use(
   })),
 );
 
+// Prevent browsers and proxies from caching any API response
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
 app.use("/api", router);
 
 export default app;

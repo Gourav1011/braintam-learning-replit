@@ -77,7 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [studentLoading, setStudentLoading] = useState(true);
 
   // Track last resolved identity so we don't re-fetch on every navigation.
-  const lastResolvedRef = useRef<{ userId: string | null; staffToken: string | null; studentToken: string | null } | null>(null);
+  // Include a timestamp so we force a re-fetch every 3 minutes even if nothing else changed.
+  const lastResolvedRef = useRef<{ userId: string | null; staffToken: string | null; studentToken: string | null; at: number } | null>(null);
+  const PROFILE_TTL_MS = 3 * 60 * 1000; // re-fetch profile every 3 minutes
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -86,10 +88,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
     const clerkUserId = user?.id ?? null;
 
+    const now = Date.now();
+    const profileFresh = lastResolvedRef.current
+      ? (now - lastResolvedRef.current.at) < PROFILE_TTL_MS
+      : false;
+
     // ── Staff paths: always use the staff token exclusively ──────────────
     if (isStaffPath(location) && staffToken) {
-      // Skip re-fetch if nothing changed
+      // Skip re-fetch if nothing changed AND profile is still fresh
       if (
+        profileFresh &&
         lastResolvedRef.current?.staffToken === staffToken &&
         lastResolvedRef.current?.userId === clerkUserId &&
         student !== null
@@ -100,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then((data) => {
           if (data) {
             setStudent(normalize(data));
-            lastResolvedRef.current = { userId: clerkUserId, staffToken, studentToken: null };
+            lastResolvedRef.current = { userId: clerkUserId, staffToken, studentToken: null, at: Date.now() };
           } else {
             localStorage.removeItem(STAFF_TOKEN_KEY);
             setStudent(null);
@@ -121,8 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (studentToken) {
-      // Skip re-fetch if same token + same Clerk user and we already have a profile
+      // Skip re-fetch if same token + same Clerk user, profile is loaded, and still fresh
       if (
+        profileFresh &&
         lastResolvedRef.current?.studentToken === studentToken &&
         lastResolvedRef.current?.userId === clerkUserId &&
         student !== null
@@ -133,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then((data) => {
           if (data) {
             setStudent(normalize(data));
-            lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken };
+            lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken, at: Date.now() };
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
             setStudent(null);
@@ -147,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setStudent(null);
       setStudentLoading(false);
-      lastResolvedRef.current = { userId: null, staffToken: null, studentToken: null };
+      lastResolvedRef.current = { userId: null, staffToken: null, studentToken: null, at: Date.now() };
       return;
     }
 
@@ -170,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(STAFF_TOKEN_KEY);
           localStorage.setItem(STUDENT_TOKEN_KEY, result.token);
           setStudent(normalize(result.student));
-          lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken: result.token };
+          lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken: result.token, at: Date.now() };
         } else {
           setStudent(null);
           lastResolvedRef.current = null;
