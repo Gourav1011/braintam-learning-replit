@@ -173,7 +173,8 @@ function Step1({
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    if (!isLoaded || !signUp) return;
+    if (!isLoaded) { setErrors({ general: "Authentication is still loading — please wait a moment and try again." }); return; }
+    if (!signUp) { setErrors({ general: "Sign-up is not available right now. Please refresh the page." }); return; }
     setBusy(true);
     setErrors({});
     try {
@@ -186,7 +187,13 @@ function Step1({
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       onNext(firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.replace(/\D/g, ""));
     } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong";
+      const clerkErr = err?.errors?.[0];
+      let msg = clerkErr?.longMessage ?? clerkErr?.message ?? "Something went wrong. Please try again.";
+      if (clerkErr?.code === "form_identifier_exists" || msg.toLowerCase().includes("already")) {
+        msg = "This email is already registered. Please sign in instead.";
+      } else if (clerkErr?.code === "form_password_pwned" || msg.toLowerCase().includes("password")) {
+        msg = "Please choose a stronger password (min 8 characters, avoid common passwords).";
+      }
       setErrors({ general: msg });
     } finally {
       setBusy(false);
@@ -199,6 +206,14 @@ function Step1({
         <h2 className="font-black text-2xl" style={{ color: NAVY }}>Create your account</h2>
         <p className="text-gray-500 text-sm mt-1">Step 1 of 3 — your login details</p>
       </div>
+
+      {/* General error — shown at TOP so it's always visible */}
+      {errors.general && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-3 text-sm text-red-700 font-medium flex items-start gap-2">
+          <span className="text-red-500 text-base leading-none mt-0.5">⚠</span>
+          <span>{errors.general}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -248,15 +263,9 @@ function Step1({
       <PasswordInput id="confirmPassword" label="Confirm Password *" value={confirmPassword}
         onChange={setConfirmPassword} placeholder="Re-enter your password" error={errors.confirmPassword} />
 
-      {errors.general && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">
-          {errors.general}
-        </div>
-      )}
-
-      <Button type="submit" disabled={busy} className="w-full h-12 font-bold text-base rounded-xl text-white"
+      <Button type="submit" disabled={busy || !isLoaded} className="w-full h-12 font-bold text-base rounded-xl text-white"
         style={{ background: ORANGE }}>
-        {busy ? "Creating account…" : "Continue →"}
+        {!isLoaded ? "Loading…" : busy ? "Creating account…" : "Continue →"}
       </Button>
 
       <p className="text-center text-sm text-gray-500">
