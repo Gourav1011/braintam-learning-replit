@@ -28,13 +28,13 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const canSubmit = grade && state && board;
+  const digits = phone.replace(/\D/g, "");
+  const canSubmit = grade && state && board && digits.length === 10;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    const digits = phone.replace(/\D/g, "");
-    if (phone && digits.length !== 10) {
+    if (digits.length !== 10) {
       setError("Please enter a valid 10-digit mobile number");
       return;
     }
@@ -149,11 +149,10 @@ export default function OnboardingPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Phone — optional, no OTP */}
+            {/* Phone — required, no OTP */}
             <div className="space-y-1.5">
               <Label className="font-semibold text-sm" style={{ color: NAVY }}>
-                Mobile Number
-                <span className="ml-1 text-gray-400 font-normal text-xs">(optional)</span>
+                Mobile Number *
               </Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
