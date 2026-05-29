@@ -741,10 +741,10 @@ function AdminPageInner() {
   async function toggleUserExpand(userId: number) {
     if (expandedUserId === userId) { setExpandedUserId(null); return; }
     setExpandedUserId(userId);
-    if (!expandedUserData[userId]) {
-      const data = await apiFetch(`/admin/users/${userId}/courses`).then(r => r.ok ? r.json() : []);
-      setExpandedUserData(prev => ({ ...prev, [userId]: Array.isArray(data) ? data : [] }));
-    }
+    // Always re-fetch so enrollment changes are reflected immediately
+    setExpandedUserData(prev => ({ ...prev, [userId]: undefined as any }));
+    const data = await apiFetch(`/admin/users/${userId}/courses`).then(r => r.ok ? r.json() : []);
+    setExpandedUserData(prev => ({ ...prev, [userId]: Array.isArray(data) ? data : [] }));
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3500); }
@@ -905,16 +905,28 @@ function AdminPageInner() {
 
   async function enrollStudent() {
     setBusy(true);
+    const studentId = Number(enrollForm.studentId);
     const r = await apiFetch("/admin/enrollments", {
       method: "POST",
-      body: JSON.stringify({ studentId: Number(enrollForm.studentId), courseId: Number(enrollForm.courseId) }),
+      body: JSON.stringify({ studentId, courseId: Number(enrollForm.courseId) }),
     });
-    if (r.ok) { flash("Student enrolled!"); setShowEnrollStudent(false); setEnrollForm({ studentId: "", courseId: "" }); loadAll(); }
-    else { const d = await r.json(); flash(d.error ?? "Error", false); }
+    if (r.ok) {
+      flash("Student enrolled!");
+      setShowEnrollStudent(false);
+      setEnrollForm({ studentId: "", courseId: "" });
+      // Invalidate cached course list for this student so expanded row refreshes
+      setExpandedUserData(prev => { const next = { ...prev }; delete next[studentId]; return next; });
+      loadAll();
+    } else { const d = await r.json(); flash(d.error ?? "Error", false); }
     setBusy(false);
   }
 
-  async function removeEnrollment(id: number) { await apiFetch(`/admin/enrollments/${id}`, { method: "DELETE" }); loadAll(); }
+  async function removeEnrollment(enrollmentId: number, studentId?: number) {
+    await apiFetch(`/admin/enrollments/${enrollmentId}`, { method: "DELETE" });
+    // Invalidate cached course list for this student
+    if (studentId) setExpandedUserData(prev => { const next = { ...prev }; delete next[studentId]; return next; });
+    loadAll();
+  }
 
   async function createAnnouncement() {
     setBusy(true);
@@ -1860,7 +1872,7 @@ function AdminPageInner() {
                       <td className="px-4 py-3 text-gray-600">{e.courseTitle}</td>
                       <td className="px-4 py-3 text-gray-400 text-xs">{new Date(e.enrolledAt).toLocaleDateString("en-IN")}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => confirm({ title: "Remove Enrollment", message: `Remove ${e.studentName} from ${e.courseTitle}?`, confirmLabel: "Remove", danger: true, onConfirm: () => removeEnrollment(e.id) })}
+                        <button onClick={() => confirm({ title: "Remove Enrollment", message: `Remove ${e.studentName} from ${e.courseTitle}?`, confirmLabel: "Remove", danger: true, onConfirm: () => removeEnrollment(e.id, e.studentId) })}
                           className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                       </td>
                     </tr>
