@@ -714,11 +714,12 @@ export default function LandingPage() {
                 onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
                 onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>Sign in</span>
             </Link>
-            <button onClick={() => setModalOpen(true)}
-              className="px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105"
-              style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 20px rgba(255,107,26,0.35)` }}>
-              Join Free
-            </button>
+            <Link href="/sign-up">
+              <button className="px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105"
+                style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 20px rgba(255,107,26,0.35)` }}>
+                Join Free
+              </button>
+            </Link>
           </div>
         </div>
       </motion.nav>
@@ -747,11 +748,12 @@ export default function LandingPage() {
               AI-powered live classes, adaptive testing, and curated content for Grades 1–10. Built for results.
             </motion.p>
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3} className="flex flex-wrap gap-3">
-              <button onClick={() => setModalOpen(true)}
-                className="group flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-white text-sm transition-all hover:scale-105"
-                style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 40px rgba(255,107,26,0.35)` }}>
-                Start for free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+              <Link href="/sign-up">
+                <button className="group flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-white text-sm transition-all hover:scale-105"
+                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 40px rgba(255,107,26,0.35)` }}>
+                  Start for free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </Link>
               <Link href="/sign-in">
                 <button className="group flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-sm transition-all hover:scale-105"
                   style={{ background: NAVY, color: "#fff", boxShadow: "0 4px 18px rgba(11,43,107,0.28)" }}>
