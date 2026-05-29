@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import expertCardImg from "@assets/expert-card.png";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowRight, Star, Video, Zap, BarChart3, Shield,
@@ -1293,91 +1294,13 @@ export default function LandingPage() {
 
             {/* Right: CTA card */}
             <div className="flex-shrink-0 md:w-64">
-              <div className="rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden h-full"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-10"
-                  style={{ background: ORANGE }} />
-                {/* 3D Avatar SVG */}
-                <div className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
-                  style={{ boxShadow: `0 4px 20px rgba(255,107,26,0.45)` }}>
-                  <svg viewBox="0 0 56 56" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <radialGradient id="bgGrad" cx="45%" cy="38%" r="60%">
-                        <stop offset="0%" stopColor="#FF9040"/>
-                        <stop offset="100%" stopColor="#C94A00"/>
-                      </radialGradient>
-                      <radialGradient id="skinGrad" cx="40%" cy="35%" r="60%">
-                        <stop offset="0%" stopColor="#FFD09A"/>
-                        <stop offset="60%" stopColor="#F5A85A"/>
-                        <stop offset="100%" stopColor="#D97B2A"/>
-                      </radialGradient>
-                      <radialGradient id="cheekL" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#FF8C6B" stopOpacity="0.55"/>
-                        <stop offset="100%" stopColor="#FF8C6B" stopOpacity="0"/>
-                      </radialGradient>
-                      <radialGradient id="cheekR" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#FF8C6B" stopOpacity="0.55"/>
-                        <stop offset="100%" stopColor="#FF8C6B" stopOpacity="0"/>
-                      </radialGradient>
-                      <radialGradient id="hairGrad" cx="50%" cy="0%" r="80%">
-                        <stop offset="0%" stopColor="#3a2510"/>
-                        <stop offset="100%" stopColor="#1a0e06"/>
-                      </radialGradient>
-                      <filter id="soft"><feGaussianBlur stdDeviation="0.6"/></filter>
-                    </defs>
-                    {/* Background sphere */}
-                    <circle cx="28" cy="28" r="28" fill="url(#bgGrad)"/>
-                    {/* Highlight on sphere */}
-                    <ellipse cx="20" cy="16" rx="7" ry="5" fill="white" opacity="0.15"/>
-                    {/* Body/shirt */}
-                    <ellipse cx="28" cy="54" rx="17" ry="11" fill="#0B2B6B"/>
-                    <ellipse cx="28" cy="54" rx="12" ry="7" fill="#1a3d8a"/>
-                    {/* Neck */}
-                    <rect x="23" y="36" width="10" height="8" rx="4" fill="#F5A85A"/>
-                    <rect x="24" y="38" width="8" height="6" fill="#D97B2A" opacity="0.3"/>
-                    {/* Head */}
-                    <ellipse cx="28" cy="25" rx="13.5" ry="14" fill="url(#skinGrad)"/>
-                    {/* Head shadow underside */}
-                    <ellipse cx="28" cy="37" rx="11" ry="3" fill="#A05010" opacity="0.25" filter="url(#soft)"/>
-                    {/* Hair */}
-                    <path d="M14.5 22 C14 10 42 10 41.5 22 C40 13 16 13 14.5 22Z" fill="url(#hairGrad)"/>
-                    <path d="M14 24 C13 14 15 8 28 7 C41 8 43 14 42 24 C41 16 15 16 14 24Z" fill="url(#hairGrad)"/>
-                    {/* Ear left */}
-                    <ellipse cx="14.5" cy="26" rx="2.5" ry="3.5" fill="#F5A85A"/>
-                    <ellipse cx="14.5" cy="26" rx="1.2" ry="2" fill="#D97B2A" opacity="0.5"/>
-                    {/* Ear right */}
-                    <ellipse cx="41.5" cy="26" rx="2.5" ry="3.5" fill="#F5A85A"/>
-                    <ellipse cx="41.5" cy="26" rx="1.2" ry="2" fill="#D97B2A" opacity="0.5"/>
-                    {/* Glasses frame */}
-                    <rect x="16.5" y="23.5" width="9" height="6.5" rx="3" fill="none" stroke="#2a1a08" strokeWidth="1.5"/>
-                    <rect x="29.5" y="23.5" width="9" height="6.5" rx="3" fill="none" stroke="#2a1a08" strokeWidth="1.5"/>
-                    <line x1="25.5" y1="26.5" x2="29.5" y2="26.5" stroke="#2a1a08" strokeWidth="1.5"/>
-                    <line x1="14.5" y1="26" x2="16.5" y2="26.5" stroke="#2a1a08" strokeWidth="1.3"/>
-                    <line x1="41.5" y1="26" x2="38.5" y2="26.5" stroke="#2a1a08" strokeWidth="1.3"/>
-                    {/* Lens glint */}
-                    <ellipse cx="19.5" cy="25" rx="1.5" ry="1" fill="white" opacity="0.35"/>
-                    <ellipse cx="32.5" cy="25" rx="1.5" ry="1" fill="white" opacity="0.35"/>
-                    {/* Eyes */}
-                    <ellipse cx="21" cy="27" rx="2" ry="2.2" fill="#2a1a08"/>
-                    <ellipse cx="34" cy="27" rx="2" ry="2.2" fill="#2a1a08"/>
-                    <circle cx="21.6" cy="26.2" r="0.7" fill="white" opacity="0.7"/>
-                    <circle cx="34.6" cy="26.2" r="0.7" fill="white" opacity="0.7"/>
-                    {/* Cheeks */}
-                    <ellipse cx="18" cy="31" rx="4" ry="3" fill="url(#cheekL)"/>
-                    <ellipse cx="38" cy="31" rx="4" ry="3" fill="url(#cheekR)"/>
-                    {/* Nose */}
-                    <path d="M27 28 Q26 31 24.5 32.5 Q28 33.5 31.5 32.5 Q30 31 29 28Z" fill="#D97B2A" opacity="0.6"/>
-                    {/* Smile */}
-                    <path d="M22 34.5 Q28 39.5 34 34.5" fill="none" stroke="#A05010" strokeWidth="1.4" strokeLinecap="round"/>
-                    <path d="M23.5 35.5 Q28 38.5 32.5 35.5" fill="#FF8060" opacity="0.4"/>
-                    {/* Head highlight */}
-                    <ellipse cx="23" cy="17" rx="5" ry="3.5" fill="white" opacity="0.12"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0 relative z-10">
+              <div className="rounded-2xl relative overflow-hidden h-full flex"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", minHeight: "100px" }}>
+                {/* Text side */}
+                <div className="flex-1 p-4 flex flex-col justify-center relative z-10">
                   <p className="text-white font-bold text-sm leading-snug">Know more about our courses.</p>
                   <p className="text-white/50 text-xs mt-0.5 mb-3">Book a free counselling session.</p>
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <a href="tel:+918492944473"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-opacity hover:opacity-90 flex-shrink-0"
                       style={{ background: ORANGE }}>
@@ -1385,6 +1308,14 @@ export default function LandingPage() {
                     </a>
                     <span className="text-xs font-semibold whitespace-nowrap" style={{ color: ORANGE }}>+91 84929 44473</span>
                   </div>
+                </div>
+                {/* Image side */}
+                <div className="flex-shrink-0 w-28 relative overflow-hidden rounded-r-2xl">
+                  <img src={expertCardImg} alt="Braintam student"
+                    className="absolute inset-0 w-full h-full object-cover object-center" />
+                  {/* fade left edge into card bg */}
+                  <div className="absolute inset-y-0 left-0 w-8"
+                    style={{ background: "linear-gradient(to right, rgba(10,22,60,0.85), transparent)" }} />
                 </div>
               </div>
             </div>
