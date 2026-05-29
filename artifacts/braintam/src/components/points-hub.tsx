@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star, Flame, Gift, Zap, CheckSquare, BookOpen, FileText, Trophy } from "lucide-react";
 import { STAFF_TOKEN_KEY, STUDENT_TOKEN_KEY } from "@/components/auth-provider";
+import { getGetStudentProfileQueryKey, getGetStudentProgressQueryKey } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -50,9 +52,16 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
   const [alreadyClaimed, setAlreadyClaimed] = useState(data?.dailyLoginClaimed ?? false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const queryClient = useQueryClient();
 
   const totalPoints = claimResult?.totalPoints ?? data?.totalPoints ?? 0;
   const streakDays  = claimResult?.streakDays  ?? data?.streakDays  ?? 0;
+
+  // Sync alreadyClaimed when the profile query finishes loading
+  // (useState initial value is stale when data arrives asynchronously)
+  useEffect(() => {
+    if (data?.dailyLoginClaimed) setAlreadyClaimed(true);
+  }, [data?.dailyLoginClaimed]);
 
   async function claimDailyLogin() {
     setClaiming(true);
@@ -65,14 +74,14 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
       if (!r.ok) throw new Error("Failed");
       const result: ClaimResult = await r.json();
       setClaimResult(result);
-      if (!result.claimed) {
-        setAlreadyClaimed(true);
-      } else {
-        setAlreadyClaimed(true);
+      setAlreadyClaimed(true);
+      if (result.claimed) {
         onPointsClaimed?.(result.totalPoints);
       }
+      // Refresh profile + progress so dailyLoginClaimed stays true on re-mount
+      void queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: getGetStudentProgressQueryKey() });
     } catch {
-      // silent — just mark as attempted
       setAlreadyClaimed(true);
     } finally {
       setClaiming(false);

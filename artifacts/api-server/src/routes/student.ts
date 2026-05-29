@@ -115,6 +115,7 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     state: student.state ?? null,
     city: student.city ?? null,
     board: student.board ?? null,
+    streak: student.streakDays ?? 0,
     dailyLoginClaimed: lastLoginUTC === todayUTC,
   });
 });

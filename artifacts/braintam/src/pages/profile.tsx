@@ -118,8 +118,12 @@ export default function ProfilePage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: profile, isLoading: profileLoading } = useGetStudentProfile();
-  const { data: progress, isLoading: progressLoading } = useGetStudentProgress();
+  const { data: profile, isLoading: profileLoading } = useGetStudentProfile({
+    query: { queryKey: getGetStudentProfileQueryKey(), enabled: !!student }
+  });
+  const { data: progress, isLoading: progressLoading } = useGetStudentProgress({
+    query: { queryKey: getGetStudentProgressQueryKey(), enabled: !!student }
+  });
 
   const p = profile as any;
 
