@@ -7,6 +7,7 @@ import {
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
   auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
+  academicYearsTable, announcementsTable, bannersTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -739,6 +740,105 @@ router.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
   res.json(rows);
 });
 
+// ── Academic Years ────────────────────────────────────────────────
+router.get("/admin/academic-years", adminOnly, async (req, res) => {
+  const rows = await db.select().from(academicYearsTable).orderBy(desc(academicYearsTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/admin/academic-years", adminOnly, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) { res.status(400).json({ error: "name is required" }); return; }
+  const [yr] = await db.insert(academicYearsTable).values({ name: name.trim() }).returning();
+  res.status(201).json(yr);
+});
+
+router.put("/admin/academic-years/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { isActive } = req.body;
+  const [yr] = await db.update(academicYearsTable).set({ isActive }).where(eq(academicYearsTable.id, id)).returning();
+  if (!yr) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(yr);
+});
+
+router.delete("/admin/academic-years/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(academicYearsTable).where(eq(academicYearsTable.id, id));
+  res.json({ success: true });
+});
+
+// ── Announcements ─────────────────────────────────────────────────
+router.get("/admin/announcements", adminOnly, async (req, res) => {
+  const rows = await db.select().from(announcementsTable).orderBy(desc(announcementsTable.createdAt)).limit(100);
+  res.json(rows);
+});
+
+router.post("/admin/announcements", adminOnly, async (req, res) => {
+  const { title, body, grade, targetRole } = req.body;
+  if (!title?.trim() || !body?.trim()) { res.status(400).json({ error: "title and body are required" }); return; }
+  const [ann] = await db.insert(announcementsTable).values({
+    title: title.trim(), body: body.trim(),
+    grade: grade ? Number(grade) : null,
+    targetRole: targetRole ?? "all",
+    createdBy: req.authUser!.id,
+  }).returning();
+  res.status(201).json(ann);
+});
+
+router.patch("/admin/announcements/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { isActive } = req.body;
+  const [ann] = await db.update(announcementsTable).set({ isActive }).where(eq(announcementsTable.id, id)).returning();
+  if (!ann) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(ann);
+});
+
+router.delete("/admin/announcements/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(announcementsTable).where(eq(announcementsTable.id, id));
+  res.json({ success: true });
+});
+
+// ── Banners ───────────────────────────────────────────────────────
+router.get("/admin/banners", adminOnly, async (req, res) => {
+  const rows = await db.select().from(bannersTable).orderBy(bannersTable.displayOrder);
+  res.json(rows);
+});
+
+router.post("/admin/banners", adminOnly, async (req, res) => {
+  const { title, imageUrl, link, displayOrder } = req.body;
+  if (!title?.trim() || !imageUrl?.trim()) { res.status(400).json({ error: "title and imageUrl are required" }); return; }
+  const [banner] = await db.insert(bannersTable).values({
+    title: title.trim(), imageUrl: imageUrl.trim(),
+    link: link ?? null,
+    displayOrder: displayOrder ? Number(displayOrder) : 0,
+  }).returning();
+  res.status(201).json(banner);
+});
+
+router.patch("/admin/banners/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { isActive, displayOrder } = req.body;
+  const updates: Partial<typeof bannersTable.$inferInsert> = {};
+  if (isActive !== undefined) updates.isActive = isActive;
+  if (displayOrder !== undefined) updates.displayOrder = Number(displayOrder);
+  const [banner] = await db.update(bannersTable).set(updates).where(eq(bannersTable.id, id)).returning();
+  if (!banner) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(banner);
+});
+
+router.delete("/admin/banners/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(bannersTable).where(eq(bannersTable.id, id));
+  res.json({ success: true });
+});
+
 // ── Course Subjects / Chapters / Topics (for live-class scheduling) ──
 router.get("/admin/course-subjects", adminOnly, async (req, res) => {
   const courseId = Number(req.query.courseId);
@@ -765,6 +865,99 @@ router.get("/admin/topics", adminOnly, async (req, res) => {
     .where(eq(topicsTable.chapterId, chapterId))
     .orderBy(topicsTable.order, topicsTable.name);
   res.json(rows);
+});
+
+router.post("/admin/course-subjects", adminOnly, async (req, res) => {
+  const { courseId, name, description, thumbnailUrl } = req.body;
+  if (!courseId || !name?.trim()) { res.status(400).json({ error: "courseId and name are required" }); return; }
+  const [sub] = await db.insert(courseSubjectsTable).values({
+    courseId: Number(courseId), name: name.trim(),
+    description: description ?? null, thumbnailUrl: thumbnailUrl ?? null,
+  }).returning();
+  res.status(201).json(sub);
+});
+
+router.put("/admin/course-subjects/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { name, description, thumbnailUrl } = req.body;
+  const [sub] = await db.update(courseSubjectsTable).set({
+    name: name?.trim(), description: description ?? null, thumbnailUrl: thumbnailUrl ?? null,
+  }).where(eq(courseSubjectsTable.id, id)).returning();
+  if (!sub) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(sub);
+});
+
+router.delete("/admin/course-subjects/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(topicsTable).where(
+    sql`${topicsTable.chapterId} IN (SELECT id FROM chapters WHERE course_subject_id = ${id})`
+  );
+  await db.delete(chaptersTable).where(eq(chaptersTable.courseSubjectId, id));
+  await db.delete(courseSubjectsTable).where(eq(courseSubjectsTable.id, id));
+  res.json({ success: true });
+});
+
+router.post("/admin/chapters", adminOnly, async (req, res) => {
+  const { courseSubjectId, courseId, name, description, sequenceNo, order } = req.body;
+  if (!courseSubjectId || !name?.trim()) { res.status(400).json({ error: "courseSubjectId and name are required" }); return; }
+  const [course] = courseId
+    ? await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, Number(courseId)))
+    : [];
+  const grade = course?.grade ?? 1;
+  const [ch] = await db.insert(chaptersTable).values({
+    courseSubjectId: Number(courseSubjectId), courseId: courseId ? Number(courseId) : null,
+    name: name.trim(), description: description ?? null,
+    sequenceNo: sequenceNo ? Number(sequenceNo) : null,
+    order: order ?? 0, grade,
+  }).returning();
+  res.status(201).json(ch);
+});
+
+router.delete("/admin/chapters/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(topicsTable).where(eq(topicsTable.chapterId, id));
+  await db.delete(chaptersTable).where(eq(chaptersTable.id, id));
+  res.json({ success: true });
+});
+
+router.post("/admin/topics", adminOnly, async (req, res) => {
+  const { chapterId, name, description, learningObjective, topicStatus, order } = req.body;
+  if (!chapterId || !name?.trim()) { res.status(400).json({ error: "chapterId and name are required" }); return; }
+  const [tp] = await db.insert(topicsTable).values({
+    chapterId: Number(chapterId), name: name.trim(),
+    description: description ?? null, learningObjective: learningObjective ?? null,
+    topicStatus: topicStatus ?? "active", order: order ?? 0,
+  }).returning();
+  res.status(201).json(tp);
+});
+
+router.delete("/admin/topics/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(topicsTable).where(eq(topicsTable.id, id));
+  res.json({ success: true });
+});
+
+router.get("/admin/topic-content/:id", adminOnly, async (req, res) => {
+  const topicId = Number(req.params.id);
+  if (!topicId) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [lcCount, hwCount, asnCount, tstCount, recCount] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(liveClassesTable).where(eq(liveClassesTable.topicId, topicId)),
+    db.select({ count: sql<number>`count(*)` }).from(homeworkTable).where(eq(homeworkTable.topicId, topicId)),
+    db.select({ count: sql<number>`count(*)` }).from(assignmentsTable).where(eq(assignmentsTable.topicId, topicId)),
+    db.select({ count: sql<number>`count(*)` }).from(testsTable).where(eq(testsTable.topicId, topicId)),
+    db.select({ count: sql<number>`count(*)` }).from(recordingsTable).where(eq(recordingsTable.topicId, topicId)),
+  ]);
+  res.json({
+    liveClasses: Number(lcCount[0]?.count ?? 0),
+    homework: Number(hwCount[0]?.count ?? 0),
+    assignments: Number(asnCount[0]?.count ?? 0),
+    tests: Number(tstCount[0]?.count ?? 0),
+    recordings: Number(recCount[0]?.count ?? 0),
+  });
 });
 
 // ── Change Own Password ───────────────────────────────────────
