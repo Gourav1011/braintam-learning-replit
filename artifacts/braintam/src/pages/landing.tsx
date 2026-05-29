@@ -1292,12 +1292,16 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Right: image panel — scaled + clipped to remove outer bg, keeps card border/shadow */}
+            {/* Right: image panel */}
             <div className="flex-shrink-0 md:w-60 hidden md:block overflow-hidden"
-              style={{ background: NAVY, borderRadius: "16px" }}>
+              style={{ borderRadius: "20px", background: NAVY }}>
               <img src={expertCardImg} alt="Braintam student"
                 className="w-full h-auto block"
-                style={{ transform: "scale(1.09)", transformOrigin: "center center" }} />
+                style={{
+                  transform: "scale(1.18)",
+                  transformOrigin: "center center",
+                  filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.55)) drop-shadow(0 2px 8px rgba(0,0,0,0.35))"
+                }} />
             </div>
           </div>
 
