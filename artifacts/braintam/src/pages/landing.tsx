@@ -197,22 +197,22 @@ const footerLinks: Record<string, { label: string; href: string }[]> = {
     { label: "Recordings",        href: "/recordings" },
   ],
   Company: [
-    { label: "About Braintam",    href: "#about" },
-    { label: "Our Educators",     href: "#educators" },
-    { label: "Careers",           href: "#careers" },
-    { label: "Blog & Insights",   href: "#blog" },
-    { label: "Press & Media",     href: "#press" },
-    { label: "Partnerships",      href: "#partners" },
-    { label: "Contact Us",        href: "#contact" },
+    { label: "Our Story",         href: "#about" },
+    { label: "Meet the Masters",  href: "#educators" },
+    { label: "Join the Mission",  href: "#careers" },
+    { label: "Knowledge Hub",     href: "#blog" },
+    { label: "Newsroom",          href: "#press" },
+    { label: "Global Alliances",  href: "#partners" },
+    { label: "Connect With Us",   href: "#contact" },
   ],
   Support: [
-    { label: "Help Center",       href: "#help" },
-    { label: "Terms of Service",  href: "/terms" },
-    { label: "Privacy Policy",    href: "/privacy" },
-    { label: "Refund Policy",     href: "#refund" },
-    { label: "Student Safety",    href: "#safety" },
-    { label: "Parent Dashboard",  href: "/dashboard" },
-    { label: "Report an Issue",   href: "#report" },
+    { label: "Priority Help Center",  href: "#help" },
+    { label: "Terms & Conditions",    href: "/terms" },
+    { label: "Data Commitment",       href: "/privacy" },
+    { label: "Fair Refund Policy",    href: "#refund" },
+    { label: "Student Protection",    href: "#safety" },
+    { label: "Parent Dashboard",      href: "/dashboard" },
+    { label: "Resolution Center",     href: "mailto:support@braintam.com" },
   ],
 };
 
@@ -1288,9 +1288,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam Learning. All Rights Reserved.</span>
           <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-            <Link href="/terms"   className="hover:text-white transition-colors">Terms</Link>
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <a href="#refund"     className="hover:text-white transition-colors cursor-pointer">Refund</a>
+            <Link href="/terms"   className="hover:text-white transition-colors">Terms & Conditions</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Data Commitment</Link>
+            <a href="#refund"     className="hover:text-white transition-colors cursor-pointer">Fair Refund Policy</a>
           </div>
           <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Made with ❤️ in India 🇮🇳</span>
         </div>
