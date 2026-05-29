@@ -9,35 +9,46 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Search, Star, Users, Trophy, Sparkles, ArrowRight, GraduationCap, Zap, Award } from "lucide-react";
+import { BookOpen, Search, Star, Users, Trophy, Sparkles, ArrowRight, GraduationCap, Zap, Award, CheckCircle, MessageCircle, Clock } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-const DEMO_COURSES = [
-  { title: "Mathematics — CBSE Grade 6", subject: "Mathematics", grade: 6, lessons: 48, rating: 4.9, students: 1240, emoji: "📐", from: "#3B82F6", to: "#6366F1" },
-  { title: "Science & Technology Gr 7", subject: "Science", grade: 7, lessons: 52, rating: 4.8, students: 980, emoji: "🔬", from: "#10B981", to: "#0D9488" },
-  { title: "English Language Arts", subject: "English", grade: 5, lessons: 36, rating: 4.7, students: 820, emoji: "📚", from: "#8B5CF6", to: "#A855F7" },
-  { title: "Social Studies — India Gr 8", subject: "Social Studies", grade: 8, lessons: 44, rating: 4.9, students: 1050, emoji: "🌏", from: "#F59E0B", to: "#EF4444" },
-  { title: "Hindi — Vyakaran Plus", subject: "Hindi", grade: 4, lessons: 28, rating: 4.6, students: 760, emoji: "🗣️", from: "#EC4899", to: "#F43F5E" },
-  { title: "Computer Science Basics Gr 9", subject: "Computers", grade: 9, lessons: 60, rating: 5.0, students: 1420, emoji: "💻", from: "#06B6D4", to: "#3B82F6" },
-];
+// ── Grade course data ──────────────────────────────────────────
+interface GradeCourseData {
+  demo: { topics: string[]; desc: string };
+  full: { subjects: string[]; desc: string; price: string };
+}
+
+const GRADE_DATA: Record<number, GradeCourseData> = {
+  1:  { demo: { topics: ["Counting & Numbers", "Phonics & Reading", "Shapes & Patterns"],   desc: "Fun tricks to build a strong foundation." },             full: { subjects: ["Numbers", "English", "EVS"],        desc: "Complete Grade 1 syllabus with tests & mentor support.", price: "₹26,999" } },
+  2:  { demo: { topics: ["Multiplication Basics", "Story Writing", "Maps & Globe"],          desc: "Core concepts in an engaging 6-day camp." },            full: { subjects: ["Maths", "English", "EVS"],          desc: "Structured full-year program with live classes.",        price: "₹26,999" } },
+  3:  { demo: { topics: ["Fractions & Decimals", "Grammar Basics", "Our Environment"],       desc: "Hands-on learning for quick concept clarity." },         full: { subjects: ["Maths", "English", "Science"],      desc: "Chapter-by-chapter coverage with weekly tests.",         price: "₹26,999" } },
+  4:  { demo: { topics: ["LCM & HCF", "Reading Skills", "Forces & Motion"],                 desc: "Jump-start key concepts across all subjects." },         full: { subjects: ["Maths", "English", "Science"],      desc: "Deep-dive into Grade 4 syllabus with doubt sessions.",   price: "₹26,999" } },
+  5:  { demo: { topics: ["Algebra Intro", "Essay Writing", "Solar System"],                  desc: "Get a head-start before the full program." },            full: { subjects: ["Maths", "English", "Science"],      desc: "Complete CBSE/ICSE syllabus + board-pattern tests.",     price: "₹26,999" } },
+  6:  { demo: { topics: ["Integers & Ratios", "Creative Writing", "Living World"],           desc: "Middle-school concepts demystified in 6 days." },        full: { subjects: ["Maths", "English", "Science"],      desc: "Live classes 5–6×/week with weekly mock exams.",        price: "₹29,999" } },
+  7:  { demo: { topics: ["Linear Equations", "Advanced Grammar", "Heat & Light"],            desc: "Solve tricky problems with expert shortcuts." },         full: { subjects: ["Maths", "English", "Science"],      desc: "Comprehensive coverage + Olympiad prep modules.",       price: "₹29,999" } },
+  8:  { demo: { topics: ["Quadratic Basics", "Literature Analysis", "Cell Biology"],         desc: "Board-prep strategies unlocked in 6 days." },           full: { subjects: ["Maths", "English", "Science"],      desc: "Board-aligned syllabus + full mock test series.",       price: "₹29,999" } },
+  9:  { demo: { topics: ["Polynomials", "Comprehension Skills", "Chemical Reactions"],       desc: "Crack Grade 9 concepts with top educators." },          full: { subjects: ["Maths", "Science", "Social"],       desc: "CBSE/ICSE full syllabus + JEE/NEET foundation start.",  price: "₹34,999" } },
+  10: { demo: { topics: ["Trigonometry", "Board Writing Skills", "Genetics Basics"],         desc: "Score 90+ in boards with targeted practice." },         full: { subjects: ["Maths", "Science", "Social"],       desc: "Board exam mastery + competitive exam readiness.",      price: "₹34,999" } },
+};
 
 const TOPPERS = [
-  { name: "Arjun Sharma", grade: 8, school: "Delhi Public School", score: "98%", subject: "Mathematics", city: "New Delhi", achievement: "State Topper 🏆", initials: "AS", color: "from-amber-400 to-orange-500" },
-  { name: "Priya Patel", grade: 7, school: "Kendriya Vidyalaya", score: "96%", subject: "Science", city: "Mumbai", achievement: "National Finalist 🥇", initials: "PP", color: "from-blue-400 to-indigo-600" },
-  { name: "Riya Gupta", grade: 9, school: "DAV Public School", score: "95%", subject: "English", city: "Pune", achievement: "School Topper ⭐", initials: "RG", color: "from-pink-400 to-rose-600" },
+  { name: "Arjun Sharma",  grade: 8,  school: "Delhi Public School",  score: "98%", subject: "Mathematics", city: "New Delhi",  achievement: "State Topper 🏆",      initials: "AS", color: "from-amber-400 to-orange-500" },
+  { name: "Priya Patel",   grade: 7,  school: "Kendriya Vidyalaya",   score: "96%", subject: "Science",     city: "Mumbai",    achievement: "National Finalist 🥇",  initials: "PP", color: "from-blue-400 to-indigo-600"  },
+  { name: "Riya Gupta",    grade: 9,  school: "DAV Public School",    score: "95%", subject: "English",     city: "Pune",      achievement: "School Topper ⭐",      initials: "RG", color: "from-pink-400 to-rose-600"    },
 ];
 
 const STATS = [
-  { value: "200+", label: "Courses", icon: BookOpen },
-  { value: "50+", label: "Expert Teachers", icon: GraduationCap },
-  { value: "10,000+", label: "Happy Students", icon: Users },
-  { value: "4.9★", label: "Avg Rating", icon: Star },
+  { value: "200+",    label: "Courses",         icon: BookOpen    },
+  { value: "50+",     label: "Expert Teachers", icon: GraduationCap },
+  { value: "10,000+", label: "Happy Students",  icon: Users       },
+  { value: "4.9★",   label: "Avg Rating",      icon: Star        },
 ];
 
+// ── Nav ────────────────────────────────────────────────────────
 function PublicNav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -69,19 +80,204 @@ function PublicNav() {
   );
 }
 
-function FloatBadge({ children, delay = 0, x = 0, y = 0 }: { children: React.ReactNode; delay?: number; x?: number; y?: number }) {
+// ── Grade Tab Selector ─────────────────────────────────────────
+function GradeTabs({ active, onChange }: { active: number; onChange: (g: number) => void }) {
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {Array.from({ length: 10 }, (_, i) => i + 1).map(g => (
+        <button
+          key={g}
+          onClick={() => onChange(g)}
+          className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 relative"
+          style={{
+            background: active === g ? NAVY : "white",
+            color: active === g ? "white" : "#6B7280",
+            boxShadow: active === g ? `0 4px 16px rgba(11,43,107,0.25)` : "0 1px 4px rgba(0,0,0,0.06)",
+            border: active === g ? "none" : "1px solid #E5E7EB",
+          }}
+        >
+          Grade {g}
+          {active === g && (
+            <motion.div layoutId="tab-indicator" className="absolute inset-0 rounded-xl" style={{ background: NAVY, zIndex: -1 }} />
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Demo Card ─────────────────────────────────────────────────
+function DemoCard({ grade, data }: { grade: number; data: GradeCourseData["demo"] }) {
   return (
     <motion.div
-      animate={{ y: [0, -8, 0], rotate: [0, 3, -3, 0] }}
-      transition={{ duration: 3 + delay, repeat: Infinity, ease: "easeInOut", delay }}
-      className="absolute bg-white rounded-xl shadow-lg px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 border border-gray-100"
-      style={{ left: x, top: y }}>
-      {children}
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+      className="bg-white rounded-2xl border-2 p-6 flex flex-col gap-4 relative overflow-hidden"
+      style={{ borderColor: "rgba(255,107,26,0.2)", boxShadow: "0 8px 32px rgba(255,107,26,0.08)" }}
+    >
+      {/* Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${ORANGE}, #FFA040)` }} />
+
+      <div className="flex items-start justify-between">
+        <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full"
+          style={{ background: "rgba(255,107,26,0.12)", color: ORANGE }}>
+          ⚡ 6-Day Demo
+        </span>
+        <span className="text-xs text-gray-400 font-medium">Short preview</span>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black leading-tight" style={{ color: NAVY }}>
+          6-Day Core Concepts — Grade {grade}
+        </h3>
+        <p className="text-gray-500 text-sm mt-1">{data.desc}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {data.topics.map(t => (
+          <span key={t} className="text-xs px-3 py-1 rounded-full font-medium border"
+            style={{ background: "rgba(11,43,107,0.04)", borderColor: "rgba(11,43,107,0.12)", color: NAVY }}>
+            {t}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <Clock className="w-3.5 h-3.5" />
+        <span>5–6 classes / week</span>
+      </div>
+
+      <div className="border-t border-gray-100 pt-3 flex items-center gap-2">
+        <span className="font-black text-2xl" style={{ color: ORANGE }}>₹99</span>
+        <span className="text-xs text-gray-400 font-medium">6-Day program</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Link href="/sign-up" className="flex-1">
+          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="w-full py-3 rounded-xl font-black text-sm text-white transition-all"
+            style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)`, boxShadow: `0 4px 16px rgba(11,43,107,0.3)` }}>
+            Join Demo
+          </motion.button>
+        </Link>
+        <Link href="/connect">
+          <button className="text-xs font-semibold whitespace-nowrap hover:underline" style={{ color: NAVY }}>
+            Why this demo?
+          </button>
+        </Link>
+      </div>
     </motion.div>
   );
 }
 
+// ── Full Year Card ─────────────────────────────────────────────
+function FullYearCard({ grade, data }: { grade: number; data: GradeCourseData["full"] }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }}
+      className="bg-white rounded-2xl border-2 p-6 flex flex-col gap-4 relative overflow-hidden"
+      style={{ borderColor: "rgba(11,43,107,0.18)", boxShadow: "0 8px 40px rgba(11,43,107,0.1)" }}
+    >
+      {/* Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${NAVY}, #3B6FD4)` }} />
+
+      <div className="flex items-start justify-between">
+        <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full text-white"
+          style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
+          🏆 Full Year
+        </span>
+        <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,107,26,0.1)", color: ORANGE }}>Best value</span>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black leading-tight" style={{ color: NAVY }}>
+          Live Full Syllabus — Grade {grade}
+        </h3>
+        <p className="text-gray-500 text-sm mt-1">{data.desc}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {data.subjects.map(s => (
+          <span key={s} className="text-xs px-3 py-1 rounded-full font-semibold text-white"
+            style={{ background: `linear-gradient(135deg, ${NAVY}CC, #1a3a7aCC)` }}>
+            {s}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <Clock className="w-3.5 h-3.5" />
+        <span>5–6 classes / week</span>
+      </div>
+
+      {/* Included perks */}
+      <div className="grid grid-cols-2 gap-1.5">
+        {["Live classes", "Doubt sessions", "Mock tests", "Mentor support"].map(f => (
+          <div key={f} className="flex items-center gap-1.5 text-xs text-gray-600">
+            <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />
+            {f}
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-gray-100 pt-3">
+        <div className="flex items-baseline gap-2">
+          <span className="font-black text-2xl" style={{ color: NAVY }}>{data.price}</span>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(34,197,94,0.1)", color: "#16A34A" }}>EMI available</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Link href="/sign-up" className="flex-1">
+          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="w-full py-3 rounded-xl font-black text-sm border-2 transition-all"
+            style={{ borderColor: NAVY, color: NAVY, background: "white" }}>
+            Enroll Full
+          </motion.button>
+        </Link>
+        <Link href="/connect">
+          <button className="flex items-center gap-1 text-xs font-semibold whitespace-nowrap hover:underline" style={{ color: "#6B7280" }}>
+            <MessageCircle className="w-3.5 h-3.5" /> Talk to Counsellor
+          </button>
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Why Parents Choose Braintam ─────────────────────────────────
+function WhyParents() {
+  const reasons = [
+    { icon: "🎥", title: "Live classes by IIT/NIT experts", desc: "Not pre-recorded — real-time teaching with Q&A." },
+    { icon: "📊", title: "Structured practice & progress reports", desc: "Parents get weekly PDF reports on weak areas." },
+    { icon: "🤝", title: "Dedicated mentor per student", desc: "1-on-1 mentor calls every fortnight to track goals." },
+    { icon: "🏅", title: "Tight & focused delivery", desc: "No filler content — every class mapped to the syllabus." },
+  ];
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+      className="mt-10 rounded-2xl p-6 border border-gray-100"
+      style={{ background: "linear-gradient(135deg, #F8FAFF 0%, #EEF4FF 100%)" }}>
+      <h3 className="font-black text-lg mb-1" style={{ color: NAVY }}>Why parents choose Braintam</h3>
+      <p className="text-gray-500 text-sm mb-5">Live classes, structured practice and clear progress reports — tight &amp; focused delivery.</p>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {reasons.map(r => (
+          <div key={r.title} className="flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">{r.icon}</span>
+            <div>
+              <p className="font-bold text-sm" style={{ color: NAVY }}>{r.title}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{r.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Public Courses View ─────────────────────────────────────────
 function PublicCoursesView() {
+  const [activeGrade, setActiveGrade] = useState(1);
+
   return (
     <div className="min-h-screen" style={{ background: "#F8FAFF" }}>
       <PublicNav />
@@ -106,14 +302,14 @@ function PublicCoursesView() {
               </span>
             </h1>
             <p className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mb-8">
-              CBSE · ICSE · State Board · IIT Foundation — taught by India's top educators. Start learning today.
+              Full School Syllabus + Competitive Exam Preparation — taught by India's top educators.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
               <Link href="/sign-up">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                   className="px-8 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 4px 24px rgba(255,107,26,0.45)` }}>
-                  Book Demo Class Free <ArrowRight className="w-4 h-4" />
+                  Book Demo Class — ₹99 <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
               <Link href="/sign-in">
@@ -139,49 +335,42 @@ function PublicCoursesView() {
         </motion.div>
       </div>
 
-      {/* ── Popular Courses ── */}
-      <section className="max-w-6xl mx-auto px-6 py-14">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-center mb-10">
-          <h2 className="text-3xl font-black" style={{ color: NAVY }}>Popular Courses</h2>
-          <p className="text-gray-500 mt-2">Full School Syllabus + Competitive Exam Preparation — Grades 1–10</p>
+      {/* ── Grade-Based Courses ── */}
+      <section className="max-w-5xl mx-auto px-6 py-14">
+        {/* Section header */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
+              <img src={braintamLogo} alt="" className="w-7 h-7 object-contain" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black leading-tight" style={{ color: NAVY }}>
+                Braintam Live Courses · Grades 1–10
+              </h2>
+              <p className="text-gray-500 text-sm">Full School Syllabus + Competitive Exam Preparation</p>
+            </div>
+          </div>
         </motion.div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {DEMO_COURSES.map((c, i) => (
-            <motion.div key={c.title} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * i + 0.3 }}
-              whileHover={{ y: -6, boxShadow: "0 20px 40px rgba(0,0,0,0.12)" }}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer">
-              <div className="h-36 flex items-center justify-center relative"
-                style={{ background: `linear-gradient(135deg, ${c.from}, ${c.to})` }}>
-                <span className="text-5xl">{c.emoji}</span>
-                <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1 text-white text-xs font-bold">
-                  Grade {c.grade}
-                </div>
-              </div>
-              <div className="p-4 space-y-2.5">
-                <h3 className="font-bold text-sm leading-snug" style={{ color: NAVY }}>{c.title}</h3>
-                <div className="flex items-center text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{c.lessons} lessons</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ background: "rgba(11,43,107,0.08)", color: NAVY }}>{c.subject}</span>
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-500">
-                    <Star className="w-3.5 h-3.5 fill-amber-500" />{c.rating}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-        <div className="text-center mt-8">
-          <Link href="/sign-up">
-            <motion.button whileHover={{ scale: 1.04 }}
-              className="px-8 py-3 rounded-full font-bold text-white text-sm"
-              style={{ background: NAVY }}>
-              View All Courses — Join Free
-            </motion.button>
-          </Link>
-        </div>
+
+        {/* Grade tabs */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mb-6">
+          <GradeTabs active={activeGrade} onChange={setActiveGrade} />
+        </motion.div>
+
+        {/* Two cards */}
+        <AnimatePresence mode="wait">
+          <motion.div key={activeGrade}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22 }}
+            className="grid md:grid-cols-2 gap-5">
+            <DemoCard grade={activeGrade} data={GRADE_DATA[activeGrade].demo} />
+            <FullYearCard grade={activeGrade} data={GRADE_DATA[activeGrade].full} />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Why parents choose Braintam */}
+        <WhyParents />
       </section>
 
       {/* ── AI Topper Students ── */}
@@ -205,12 +394,8 @@ function PublicCoursesView() {
                 className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 relative overflow-hidden text-center">
                 <div className="absolute top-0 left-0 right-0 h-1.5 rounded-t-3xl"
                   style={{ background: `linear-gradient(to right, ${NAVY}, ${ORANGE})` }} />
-
-                {/* Floating achievement badge */}
                 <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.5 }}
                   className="absolute top-4 right-4 text-lg">{t.achievement.split(" ")[1]}</motion.div>
-
-                {/* Avatar */}
                 <div className="relative mx-auto w-20 h-20 mb-4">
                   <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white text-2xl font-black shadow-lg`}>
                     {t.initials}
@@ -220,22 +405,17 @@ function PublicCoursesView() {
                     <GraduationCap className="w-3.5 h-3.5 text-white" />
                   </motion.div>
                 </div>
-
                 <h3 className="font-black text-base" style={{ color: NAVY }}>{t.name}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{t.school} · {t.city}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Grade {t.grade} · {t.subject}</p>
-
                 <div className="mt-4 flex items-center justify-center gap-2">
                   <span className="text-2xl font-black" style={{ color: ORANGE }}>{t.score}</span>
                   <span className="text-xs text-gray-400 font-medium">Score</span>
                 </div>
-
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
                   style={{ background: "rgba(11,43,107,0.07)", color: NAVY }}>
                   <Award className="w-3 h-3" /> {t.achievement.split(" ")[0]}
                 </div>
-
-                {/* Stars */}
                 <div className="flex justify-center gap-1 mt-3">
                   {[1, 2, 3, 4, 5].map(s => (
                     <motion.div key={s} animate={{ opacity: [0.5, 1, 0.5] }}
@@ -248,7 +428,6 @@ function PublicCoursesView() {
             ))}
           </div>
 
-          {/* AI badge */}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             className="mt-10 text-center">
             <div className="inline-flex items-center gap-3 bg-white rounded-2xl px-6 py-4 shadow-md border border-gray-100">
@@ -280,7 +459,6 @@ function PublicCoursesView() {
         </motion.div>
       </section>
 
-      {/* Footer */}
       <div className="bg-black/90 text-white/40 text-center py-4 text-xs">
         © 2026 Braintam · India's Premium EdTech Platform
       </div>
