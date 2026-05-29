@@ -117,25 +117,34 @@ function PublicNav() {
 // ── Grade Tab Selector ─────────────────────────────────────────
 function GradeTabs({ active, onChange }: { active: number; onChange: (g: number) => void }) {
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-      {Array.from({ length: 10 }, (_, i) => i + 1).map(g => (
-        <button
-          key={g}
-          onClick={() => onChange(g)}
-          className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 relative"
-          style={{
-            background: active === g ? NAVY : "white",
-            color: active === g ? "white" : "#6B7280",
-            boxShadow: active === g ? `0 4px 16px rgba(11,43,107,0.25)` : "0 1px 4px rgba(0,0,0,0.06)",
-            border: active === g ? "none" : "1px solid #E5E7EB",
-          }}
-        >
-          Grade {g}
-          {active === g && (
-            <motion.div layoutId="tab-indicator" className="absolute inset-0 rounded-xl" style={{ background: NAVY, zIndex: -1 }} />
-          )}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#9CA3AF" }}>Select Grade</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map(g => {
+          const isActive = active === g;
+          return (
+            <button
+              key={g}
+              onClick={() => onChange(g)}
+              className="relative flex-shrink-0 w-9 h-9 rounded-full text-xs font-black transition-all duration-200 overflow-hidden"
+              style={{
+                background: isActive ? `linear-gradient(135deg, ${NAVY}, #1a3a7a)` : "white",
+                color: isActive ? "white" : "#6B7280",
+                boxShadow: isActive
+                  ? `0 4px 14px rgba(11,43,107,0.35), 0 0 0 2px rgba(255,107,26,0.5)`
+                  : "0 1px 3px rgba(0,0,0,0.08)",
+                border: isActive ? "none" : "1.5px solid #E5E7EB",
+              }}
+            >
+              {g}
+              {isActive && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                  style={{ background: ORANGE }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
