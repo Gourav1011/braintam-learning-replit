@@ -295,10 +295,30 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+// ── Subdomain routing ─────────────────────────────────────────
+// admin.braintam.com  → /admin portal
+// teacher.braintam.com → /teacher portal
+// braintam.com        → student-facing site (unchanged)
+function SubdomainRedirect() {
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    const host = window.location.hostname; // e.g. "admin.braintam.com"
+    const sub = host.split(".")[0].toLowerCase();
+    if (sub === "admin" && !location.startsWith("/admin")) {
+      setLocation("/admin");
+    } else if (sub === "teacher" && !location.startsWith("/teacher")) {
+      setLocation("/teacher");
+    }
+  }, []);
+  return null;
+}
+
 // ── Router ────────────────────────────────────────────────────
 function Router() {
   return (
-    <Switch>
+    <>
+      <SubdomainRedirect />
+      <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
@@ -342,6 +362,7 @@ function Router() {
 
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
