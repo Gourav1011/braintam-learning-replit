@@ -1070,7 +1070,7 @@ export default function LandingPage() {
               className="flex-1 text-center lg:text-left space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
                 style={{ background: "rgba(255,107,26,0.2)", border: "1px solid rgba(255,107,26,0.4)", color: "#FFA870" }}>
-                <Sparkles className="w-3 h-3" /> Available on Android &amp; iOS
+                <Sparkles className="w-3 h-3" /> Available on Android, iOS &amp; Web
               </div>
               <h2 className="text-2xl md:text-3xl font-black leading-tight text-white">
                 Learn anywhere,{" "}
@@ -1080,15 +1080,15 @@ export default function LandingPage() {
               </h2>
               <p className="text-sm leading-relaxed max-w-md mx-auto lg:mx-0"
                 style={{ color: "rgba(255,255,255,0.6)" }}>
-                Live classes, doubt solving, animated videos, and progress tracking — all from your phone.
+                Live classes, doubt solving, animated videos, and progress tracking — on your phone, tablet, or laptop.
               </p>
 
               {/* Store badges */}
-              <div className="flex flex-col sm:flex-row gap-4 items-center lg:items-start justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-3 items-center lg:items-start justify-center lg:justify-start flex-wrap">
                 {/* Google Play */}
                 <motion.a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer"
-                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 160, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
+                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 155, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
                   <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="none">
                     <path d="M3.18 23.76c.3.17.65.19.97.07L15.88 12 12 8.12 3.18 23.76Z" fill="#EA4335"/>
                     <path d="M20.7 10.67 17.6 8.9 13.4 12l4.2 4.1 3.1-1.78a1.74 1.74 0 0 0 0-3.06Z" fill="#FBBC04"/>
@@ -1104,7 +1104,7 @@ export default function LandingPage() {
                 {/* App Store */}
                 <motion.a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer"
-                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 160, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
+                  style={{ background: "#000", border: "1.5px solid rgba(255,255,255,0.15)", minWidth: 155, boxShadow: "0 6px 24px rgba(0,0,0,0.4)" }}>
                   <svg viewBox="0 0 24 24" className="w-6 h-6 flex-shrink-0" fill="white">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                   </svg>
@@ -1113,6 +1113,32 @@ export default function LandingPage() {
                     <div className="text-white font-bold text-sm leading-tight">App Store</div>
                   </div>
                 </motion.a>
+
+                {/* Web App — highlighted */}
+                <motion.div
+                  whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer relative overflow-hidden"
+                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #FF8C42)`, minWidth: 155, boxShadow: `0 8px 28px rgba(255,107,26,0.45)`, border: "1.5px solid rgba(255,255,255,0.25)" }}
+                  onClick={() => {
+                    if (window.matchMedia("(display-mode: standalone)").matches) {
+                      alert("Braintam is already installed!");
+                    } else if ((window as any).deferredPrompt) {
+                      (window as any).deferredPrompt.prompt();
+                    } else {
+                      alert("Install Braintam:\n1. Tap the menu (⋮) in your browser\n2. Select \"Add to Home Screen\" or \"Install App\"");
+                    }
+                  }}>
+                  <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-20"
+                    style={{ background: "white", transform: "translate(30%, -30%)" }} />
+                  <Globe className="w-6 h-6 text-white flex-shrink-0 relative z-10" />
+                  <div className="text-left relative z-10">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <div className="text-white/80 leading-none" style={{ fontSize: 9 }}>INSTANT ACCESS</div>
+                      <span className="text-[8px] font-black bg-white/20 text-white px-1 py-0.5 rounded leading-none">NEW</span>
+                    </div>
+                    <div className="text-white font-bold text-sm leading-tight">Web App</div>
+                  </div>
+                </motion.div>
               </div>
 
               {/* Small trust row */}
