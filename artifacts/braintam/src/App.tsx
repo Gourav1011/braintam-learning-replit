@@ -347,8 +347,8 @@ function Router() {
 
       {/* Protected */}
       <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>
-      <Route path="/live-classes"><ProtectedRoute component={LiveClassesPage} /></Route>
-      <Route path="/courses"><ProtectedRoute component={CoursesPage} /></Route>
+      <Route path="/live-classes" component={LiveClassesPage} />
+      <Route path="/courses" component={CoursesPage} />
       <Route path="/courses/:id"><ProtectedRoute component={CourseDetailPage} /></Route>
       <Route path="/recordings"><ProtectedRoute component={RecordingsPage} /></Route>
       <Route path="/animated-videos"><ProtectedRoute component={AnimatedVideosPage} /></Route>
@@ -357,7 +357,7 @@ function Router() {
       <Route path="/tests"><ProtectedRoute component={TestsPage} /></Route>
       <Route path="/tests/:id"><ProtectedRoute component={TestTakingPage} /></Route>
       <Route path="/profile"><ProtectedRoute component={ProfilePage} /></Route>
-      <Route path="/leaderboard"><ProtectedRoute component={LeaderboardPage} /></Route>
+      <Route path="/leaderboard" component={LeaderboardPage} />
       <Route path="/demo-batches"><ProtectedRoute component={DemoBatchesPage} /></Route>
       <Route path="/demo-batches/:id"><ProtectedRoute component={DemoBatchPage} /></Route>
 
