@@ -396,11 +396,7 @@ export default function DashboardPage() {
   ].slice(0, 4);
 
   const hasNoCourse = !isLoading && !authLoading && !!dashboard &&
-    (dashboard.subjectProgress?.length ?? 0) === 0 &&
-    dashboard.upcomingLiveClasses === 0 &&
-    dashboard.pendingHomework === 0 &&
-    dashboard.pendingAssignments === 0 &&
-    dashboard.upcomingTests === 0;
+    (dashboard as any).enrolledCourseCount === 0;
 
   return (
     <AppLayout>
@@ -496,12 +492,12 @@ export default function DashboardPage() {
                 <BookOpen className="w-7 h-7 text-orange-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-800">No course assigned yet</h2>
+                <h2 className="text-lg font-bold text-gray-800">No course enrolled yet</h2>
                 <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-                  Once an admin enrolls you, you'll see live classes, homework, tests, and progress here.
+                  Your admin hasn't enrolled you in a course yet. Once enrolled, live classes, homework, tests, and progress will appear here.
                 </p>
               </div>
-              <p className="text-xs text-gray-400">Contact your teacher or admin to get enrolled.</p>
+              <p className="text-xs text-gray-400">Contact your teacher or admin to get enrolled in your course.</p>
             </div>
           </motion.div>
         )}

@@ -74,6 +74,7 @@ router.get("/student/dashboard", requireAuth, async (req, res) => {
     pendingAssignments: asgn.length,
     upcomingTests: tests.length,
     streakDays: student?.streakDays ?? 0,
+    enrolledCourseCount: courseIds.length,
     recentActivity,
     subjectProgress: subjects.map((s, i) => ({
       subjectId: s.id,
