@@ -1,0 +1,42 @@
+For every page (e.g., "Our Story", "Terms & Conditions"), use this prompt structure to ensure high-quality output:
+
+"Write the full content for the '[Insert Page Name]' page for my website, Braintam.
+
+Brand Context: Braintam is an EdTech brand specializing in a premium '6-Day Smart Learning Course' for students in grades 1-10. We focus on rapid calculation and mental math shortcuts.
+
+Page Goal: [Insert goal, e.g., 'To inspire trust and explain our mission'].
+
+Tone: Premium, professional, encouraging, and trustworthy.
+
+Key Requirement: Include a clear call-to-action to contact us at support@braintam.com.
+
+Format: Use professional headings, bullet points for readability, and a clean layout suitable for a modern website."
+
+What to ask for each page (Copy/Paste this list)
+Here is exactly what to ask Replit to fill under each link:
+
+Our Story: "Write the 'Our Story' page focusing on how Braintam was founded to simplify learning for kids."
+
+Meet the Masters: "Write 'Meet the Masters' focusing on the expertise of our educators and how they teach mental math."
+
+Join the Mission: "Write the 'Join the Mission' careers page, emphasizing innovation in education."
+
+Knowledge Hub: "Write an intro for our 'Knowledge Hub' blog, focusing on study tips for students."
+
+Newsroom: "Write a 'Newsroom' page template for press releases and media mentions."
+
+Global Alliances: "Write a 'Global Alliances' page for schools and brands to partner with Braintam."
+
+Connect With Us: "Write a 'Connect With Us' page with a friendly message and a button to email support@braintam.com."
+
+Priority Help Center: "Write the 'Priority Help Center' content, including 3 FAQs about the 6-Day Smart Learning Course."
+
+Terms & Conditions: "Write a professional, standard 'Terms & Conditions' page for an EdTech course."
+
+Data Commitment: "Write a 'Data Commitment' (Privacy Policy) page emphasizing student data safety."
+
+Fair Refund Policy: "Write a 'Fair Refund Policy' for our 6-Day course, explaining the cancellation terms."
+
+Student Protection: "Write a 'Student Protection' page focusing on creating a safe, moderated digital learning space."
+
+Resolution Center: "Write the 'Resolution Center' page. State clearly that for any issues, students and parents should email support@braintam.com directly for a 24-hour response."

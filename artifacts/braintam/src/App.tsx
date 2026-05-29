@@ -31,6 +31,16 @@ import DemoBatchesPage from "@/pages/demo-batches";
 import DemoBatchPage from "@/pages/demo-batch";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import OurStoryPage from "@/pages/our-story";
+import MeetTheMastersPage from "@/pages/meet-the-masters";
+import JoinTheMissionPage from "@/pages/join-the-mission";
+import KnowledgeHubPage from "@/pages/knowledge-hub";
+import NewsroomPage from "@/pages/newsroom";
+import GlobalAlliancesPage from "@/pages/global-alliances";
+import ConnectPage from "@/pages/connect";
+import HelpPage from "@/pages/help";
+import RefundPage from "@/pages/refund";
+import StudentProtectionPage from "@/pages/student-protection";
 import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
 import AdminPage from "@/pages/admin";
@@ -323,6 +333,16 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/our-story" component={OurStoryPage} />
+      <Route path="/meet-the-masters" component={MeetTheMastersPage} />
+      <Route path="/join-the-mission" component={JoinTheMissionPage} />
+      <Route path="/knowledge-hub" component={KnowledgeHubPage} />
+      <Route path="/newsroom" component={NewsroomPage} />
+      <Route path="/global-alliances" component={GlobalAlliancesPage} />
+      <Route path="/connect" component={ConnectPage} />
+      <Route path="/help" component={HelpPage} />
+      <Route path="/refund" component={RefundPage} />
+      <Route path="/student-protection" component={StudentProtectionPage} />
       <Route path="/enroll" component={EnrollPage} />
       <Route path="/download-app" component={DownloadAppPage} />
 
