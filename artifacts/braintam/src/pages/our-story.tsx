@@ -25,7 +25,7 @@ export default function OurStoryPage() {
           <Heart className="w-4 h-4" style={{ color: ORANGE }} /> Made in India, Built for Every Child
         </div>
         <h1 className="text-4xl md:text-5xl font-black mb-4">Our Story</h1>
-        <p className="text-lg text-blue-200 max-w-xl mx-auto">How a simple question — <em>"Why do kids fear Mathematics?"</em> — led to a movement that's changing how India's children learn.</p>
+        <p className="text-lg text-blue-200 max-w-xl mx-auto">Two friends. One mission. Transform the way India's students learn.</p>
       </div>
 
       <div className="container mx-auto px-4 py-14 max-w-3xl space-y-12">
@@ -39,21 +39,54 @@ export default function OurStoryPage() {
             <h2 className="text-2xl font-black" style={{ color: NAVY }}>Where It All Began</h2>
           </div>
           <p className="text-gray-600 leading-relaxed mb-4">
-            Braintam was born from a conversation in a Delhi classroom in 2022. Our founder, watching a bright Grade 5 student struggle with a simple multiplication problem — not because she lacked intelligence, but because she had never been taught <em>how</em> to think fast — realised that the Indian education system was teaching children <em>what</em> to learn, but rarely <em>how</em> to learn it efficiently.
+            Braintam was founded by two friends with a shared mission — to transform the way students learn.
           </p>
           <p className="text-gray-600 leading-relaxed mb-4">
-            The insight was simple but powerful: <strong>mental speed and calculation confidence</strong> are the foundation of every academic subject. A child who can calculate quickly and think mathematically doesn't just excel at Maths — they excel across Science, Economics, Competitive Exams, and life itself.
+            One is an <strong>educator with over 20 years of teaching experience</strong> in Mumbai. The other is a <strong>Data Analyst, EdTech expert, and mentor</strong> who has worked with more than 2,000 students. Through years of teaching, mentoring, and researching student learning patterns, they noticed a common problem: students were studying harder than ever, yet many lacked confidence, strong fundamentals, and effective learning skills.
+          </p>
+          <p className="text-gray-600 leading-relaxed mb-4">
+            They also observed that many large EdTech platforms were heavily focused on sales and enrollments, but often fell short when it came to personalized guidance, student progress tracking, and long-term support.
           </p>
           <p className="text-gray-600 leading-relaxed">
-            That insight became the seed of Braintam's flagship programme — the <strong>6-Day Smart Learning Course</strong> — a concentrated, expert-led experience designed to rewire the way children approach numbers, patterns, and problem-solving.
+            This inspired them to create Braintam — <strong>a platform that puts student growth before sales.</strong> By combining academics with Mental Math, Mind Mapping, Logical Reasoning, Memory Techniques, and effective study skills, Braintam helps students become confident learners, faster thinkers, and future-ready individuals.
           </p>
+        </section>
+
+        {/* Founders */}
+        <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${NAVY}12` }}>
+              <Users className="w-5 h-5" style={{ color: NAVY }} />
+            </div>
+            <h2 className="text-2xl font-black" style={{ color: NAVY }}>The Founders</h2>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-5">
+            <div className="rounded-2xl p-6 border" style={{ background: `linear-gradient(135deg, ${NAVY}08, ${NAVY}03)`, borderColor: `${NAVY}20` }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl font-black mb-4"
+                style={{ background: `linear-gradient(135deg, ${NAVY}, #1a4494)` }}>👨‍🏫</div>
+              <p className="font-black text-base mb-1" style={{ color: NAVY }}>The Educator</p>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: ORANGE }}>20+ Years of Teaching · Mumbai</p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                A seasoned classroom teacher who has spent over two decades shaping young minds. His deep understanding of how students think, struggle, and grow forms the academic backbone of Braintam.
+              </p>
+            </div>
+            <div className="rounded-2xl p-6 border" style={{ background: `linear-gradient(135deg, ${ORANGE}08, ${ORANGE}03)`, borderColor: `${ORANGE}20` }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl font-black mb-4"
+                style={{ background: `linear-gradient(135deg, ${ORANGE}, #e55a0a)` }}>📊</div>
+              <p className="font-black text-base mb-1" style={{ color: NAVY }}>The EdTech Expert</p>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: ORANGE }}>Data Analyst · 2,000+ Students Mentored</p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                A data-driven mentor who has worked closely with 2,000+ students, uncovering patterns in how they learn and where they lose confidence. He brings the technology, structure, and personalization that make Braintam stand apart.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* Mission */}
         <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${NAVY}12` }}>
-              <Target className="w-5 h-5" style={{ color: NAVY }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${ORANGE}18` }}>
+              <Target className="w-5 h-5" style={{ color: ORANGE }} />
             </div>
             <h2 className="text-2xl font-black" style={{ color: NAVY }}>Our Mission</h2>
           </div>
@@ -62,10 +95,10 @@ export default function OurStoryPage() {
           </p>
           <div className="grid sm:grid-cols-2 gap-4">
             {[
-              { icon: "🎯", title: "Results in 6 Days", desc: "Measurable improvement in calculation speed and mental agility — guaranteed." },
-              { icon: "🧠", title: "Smart Techniques", desc: "Vedic Maths, shortcut methods, and proven rapid-calculation frameworks." },
-              { icon: "👩‍🏫", title: "Expert Masters", desc: "Taught by educators with 10+ years of competitive exam coaching experience." },
-              { icon: "🌍", title: "Pan-India Reach", desc: "Serving students across 500+ cities with live online and hybrid learning." },
+              { icon: "🧠", title: "Mental Math & Mind Mapping", desc: "Build faster thinking and stronger recall through proven cognitive techniques." },
+              { icon: "🔗", title: "Logical Reasoning", desc: "Develop analytical skills that help students across every subject and exam." },
+              { icon: "💾", title: "Memory Techniques", desc: "Equip students with tools to retain more and revise less — for life." },
+              { icon: "📚", title: "Effective Study Skills", desc: "Teach students how to study smarter, not just harder — building lifelong habits." },
             ].map(m => (
               <div key={m.title} className="flex gap-3 p-4 rounded-xl bg-[#F8FAFF] border border-gray-100">
                 <span className="text-2xl flex-shrink-0">{m.icon}</span>
@@ -78,37 +111,30 @@ export default function OurStoryPage() {
           </div>
         </section>
 
-        {/* Journey */}
-        <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+        {/* The Problem We Solve */}
+        <section className="rounded-2xl p-8 border" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4494 100%)` }}>
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${ORANGE}18` }}>
-              <Rocket className="w-5 h-5" style={{ color: ORANGE }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10">
+              <Rocket className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-2xl font-black" style={{ color: NAVY }}>The Journey So Far</h2>
+            <h2 className="text-2xl font-black text-white">What Makes Us Different</h2>
           </div>
-          <div className="space-y-5">
+          <div className="grid sm:grid-cols-3 gap-4">
             {[
-              { year: "2022", label: "The Idea", desc: "First prototype of the Smart Learning Course tested with 50 students in Delhi. Results were extraordinary — average calculation speed improved by 3×." },
-              { year: "2023", label: "Going Digital", desc: "Braintam launched its first online cohort, reaching 500 students across 12 states. Live classes, homework, and tests — all in one platform." },
-              { year: "2024", label: "Scaling Up", desc: "Partnered with 100+ schools. Built the full LMS with animated videos, adaptive tests, and real-time leaderboards. 10,000+ students enrolled." },
-              { year: "2025", label: "Premium Platform", desc: "Launched Braintam 2.0 — a complete EdTech ecosystem for Grades 1–10, Olympiad preparation, JEE/NEET Foundation, and beyond." },
-              { year: "2026", label: "Today", desc: "Serving 50,000+ students, with 200+ expert-crafted courses and a team of 50+ educators. India's most trusted rapid-learning platform for school students." },
-            ].map((ev, i) => (
-              <div key={ev.year} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ background: i % 2 === 0 ? NAVY : ORANGE }}>{ev.year}</div>
-                  {i < 4 && <div className="w-0.5 flex-1 mt-1" style={{ background: "#E5E7EB" }} />}
-                </div>
-                <div className="pb-5">
-                  <p className="font-bold text-sm mb-1" style={{ color: NAVY }}>{ev.label}</p>
-                  <p className="text-sm text-gray-500 leading-relaxed">{ev.desc}</p>
-                </div>
+              { icon: "🎯", label: "Student Growth First", desc: "We measure success by student progress — not enrollment numbers or sales targets." },
+              { icon: "🤝", label: "Personalized Guidance", desc: "Every student gets dedicated mentorship, not just access to a course library." },
+              { icon: "📈", label: "Progress Tracking", desc: "Detailed, data-driven insights so parents and students always know where they stand." },
+            ].map(v => (
+              <div key={v.label} className="text-center p-5 rounded-xl bg-white/10 backdrop-blur border border-white/10">
+                <div className="text-3xl mb-2">{v.icon}</div>
+                <p className="font-bold text-sm mb-1 text-white">{v.label}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>{v.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Values */}
+        {/* What We Stand For */}
         <section className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${NAVY}12` }}>
@@ -119,7 +145,7 @@ export default function OurStoryPage() {
           <div className="grid sm:grid-cols-3 gap-4">
             {[
               { icon: "🔬", label: "Evidence-Based", desc: "Every technique we teach is backed by cognitive science and measurable outcomes." },
-              { icon: "🤝", label: "Trust First", desc: "Transparent pricing, fair refund policies, and dedicated support — always." },
+              { icon: "🤝", label: "Trust First", desc: "Transparent pricing, fair support, and long-term commitment to every student's journey." },
               { icon: "🌱", label: "Child-Centred", desc: "Our content, pace, and design are built around how children actually learn best." },
             ].map(v => (
               <div key={v.label} className="text-center p-5 rounded-xl bg-[#F8FAFF] border border-gray-100">
@@ -131,20 +157,23 @@ export default function OurStoryPage() {
           </div>
         </section>
 
-        {/* CTA */}
+        {/* Closing line + CTA */}
         <div className="rounded-2xl p-8 text-center text-white" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4494 100%)` }}>
-          <Users className="w-10 h-10 mx-auto mb-3 opacity-80" />
-          <h3 className="text-2xl font-black mb-2">Be Part of the Story</h3>
-          <p className="text-blue-200 mb-6">Join 50,000+ students who are learning faster, scoring higher, and loving the process.</p>
+          <div className="text-4xl mb-4">💡</div>
+          <blockquote className="text-xl font-black mb-2 leading-snug">
+            "True education doesn't end with enrollment —<br className="hidden sm:block" /> it begins there."
+          </blockquote>
+          <p className="text-blue-200 text-sm mb-7 mt-3">Join thousands of students who are learning smarter, growing faster, and building real confidence.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild className="font-bold px-8 py-3" style={{ background: ORANGE }}>
-              <Link href="/enroll">Enroll in the 6-Day Course →</Link>
+              <Link href="/sign-up">Start Learning Today →</Link>
             </Button>
             <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-3">
               <a href="mailto:support@braintam.com">Connect With Us</a>
             </Button>
           </div>
         </div>
+
       </div>
     </div>
   );
