@@ -1,0 +1,215 @@
+Braintam Admin Panel - Course Management System
+
+Goal:
+Create a scalable Course Management System that can handle thousands of courses, subjects, chapters, topics, live classes, and batches without creating large dropdown lists.
+
+MODULE 1: COURSE MANAGEMENT
+
+Create Course
+
+Fields:
+
+* Course ID (Auto Generated)
+* Course Name
+* Grade
+* Academic Year
+* Description
+* Thumbnail
+* Status (Active / Archived / Draft)
+
+Example:
+CRS0001 - Grade 5 CBSE 2026-27
+
+Actions:
+
+* Create
+* Edit
+* Archive
+* Duplicate
+* Delete
+
+MODULE 2: SUBJECT MANAGEMENT
+
+Inside each Course:
+
+Fields:
+
+* Subject ID (Auto Generated)
+* Subject Name
+* Subject Description
+* Subject Thumbnail
+
+Example:
+SUB0001 - Mathematics
+
+Actions:
+
+* Create
+* Edit
+* Delete
+
+MODULE 3: CHAPTER MANAGEMENT
+
+Inside Subject:
+
+Fields:
+
+* Chapter ID (Auto Generated)
+* Chapter Name
+* Sequence Number
+* Chapter Description
+
+Example:
+CHP0001 - Fractions
+
+Actions:
+
+* Create
+* Edit
+* Reorder
+* Delete
+
+MODULE 4: TOPIC MANAGEMENT
+
+Inside Chapter:
+
+Fields:
+
+* Topic ID (Auto Generated)
+* Topic Name
+* Sequence Number
+* Topic Description
+* Learning Objective
+* Topic Status
+
+Example:
+TOP0001 - Introduction to Fractions
+
+Actions:
+
+* Create
+* Edit
+* Duplicate
+* Delete
+
+MODULE 5: GLOBAL SEARCH
+
+Single Search Box
+
+Search by:
+
+* Course ID
+* Subject ID
+* Chapter ID
+* Topic ID
+* Name
+
+Examples:
+CRS0001
+SUB0001
+Fractions
+Grade 5
+
+Show full breadcrumb:
+
+Grade 5 > Mathematics > Fractions > Like Fractions
+
+MODULE 6: LIVE CLASS CREATION
+
+Fields:
+
+1. Academic Year
+2. Course
+3. Subject
+4. Chapter
+5. Topic
+6. Teacher
+7. Batch
+8. Date
+9. Time
+10. Duration
+11. Meeting Link
+
+Dependent Dropdown Logic:
+
+Course Selected
+→ Show Subjects
+
+Subject Selected
+→ Show Chapters
+
+Chapter Selected
+→ Show Topics
+
+No large dropdowns should load at once.
+
+MODULE 7: RECENT & FAVOURITES
+
+Show:
+
+Recent Topics
+Favourite Topics
+
+Teachers can pin frequently used topics.
+
+MODULE 8: PROGRESS TRACKING
+
+For every batch:
+
+Course Progress
+Subject Progress
+Chapter Progress
+Topic Completion
+
+Example:
+
+Fractions
+8/10 Topics Completed
+80%
+
+MODULE 9: SMART NEXT TOPIC
+
+When creating a live class:
+
+Last Topic Completed:
+Like Fractions
+
+Suggested Next Topic:
+Unlike Fractions
+
+One-click selection.
+
+MODULE 10: ARCHIVE SYSTEM
+
+Only Active Courses should appear during Live Class Creation.
+
+Archived Courses remain available in admin panel but hidden from normal workflows.
+
+MODULE 11: ID SYSTEM
+
+Auto Generate IDs
+
+Course = CRS0001
+Subject = SUB0001
+Chapter = CHP0001
+Topic = TOP0001
+Live Class = CLS0001
+Batch = BAT0001
+Student = STD0001
+Teacher = TCH0001
+
+MODULE 12: DASHBOARD
+
+Show:
+
+* Total Courses
+* Total Subjects
+* Total Chapters
+* Total Topics
+* Total Live Classes
+* Total Students
+* Total Teachers
+* Total Batches
+
+Important:
+System must be optimized for 10,000+ topics and future scaling. All selections should use search, filters, and dependent dropdowns instead of loading huge lists.
