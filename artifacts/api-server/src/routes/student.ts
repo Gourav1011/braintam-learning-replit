@@ -98,6 +98,8 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     .where(eq(enrollmentsTable.studentId, studentId))
     .limit(1);
   const effectiveGrade: number = enrolled[0]?.grade ?? student.grade ?? 6;
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
   res.json({
     id: student.id,
     name: student.name,
@@ -113,6 +115,7 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     state: student.state ?? null,
     city: student.city ?? null,
     board: student.board ?? null,
+    dailyLoginClaimed: lastLoginUTC === todayUTC,
   });
 });
 

@@ -1118,8 +1118,12 @@ components:
           type: ["string", "null"]
         state:
           type: ["string", "null"]
+        city:
+          type: ["string", "null"]
         board:
           type: ["string", "null"]
+        dailyLoginClaimed:
+          type: boolean
 
     ProfileUpdate:
       type: object
@@ -1131,6 +1135,10 @@ components:
         school:
           type: string
         state:
+          type: string
+        city:
+          type: string
+        phone:
           type: string
         board:
           type: string

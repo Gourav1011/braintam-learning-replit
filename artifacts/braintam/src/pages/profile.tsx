@@ -525,9 +525,10 @@ export default function ProfilePage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <PointsHub
             data={{
-              totalPoints: progress?.totalPoints ?? student?.points ?? 0,
-              rank:        progress?.rank        ?? student?.rank  ?? null,
-              streakDays:  student?.streak       ?? 0,
+              totalPoints:       progress?.totalPoints ?? student?.points ?? 0,
+              rank:              progress?.rank        ?? student?.rank  ?? null,
+              streakDays:        student?.streak       ?? 0,
+              dailyLoginClaimed: (p as any)?.dailyLoginClaimed ?? false,
             }}
             isLoading={progressLoading}
           />

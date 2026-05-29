@@ -1,6 +1,6 @@
 import { db, usersTable, pointsLedgerTable } from "@workspace/db";
 import type { PointsLedger } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, gt } from "drizzle-orm";
 
 type ActionType = PointsLedger["actionType"];
 
@@ -54,6 +54,14 @@ export async function addPoints(
     .update(usersTable)
     .set({ points: newBalance, updatedAt: new Date() })
     .where(eq(usersTable.id, userId));
+
+  // 4. Recalculate rank — count how many students have strictly more points
+  const [above] = await db
+    .select({ cnt: sql<number>`COUNT(*)` })
+    .from(usersTable)
+    .where(gt(usersTable.points, newBalance));
+  const newRank = Number(above?.cnt ?? 0) + 1;
+  await db.update(usersTable).set({ rank: newRank }).where(eq(usersTable.id, userId));
 
   return newBalance;
 }
