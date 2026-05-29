@@ -47,7 +47,7 @@ const bottomNavItems = [
   { href: "/dashboard",   icon: LayoutDashboard, label: "Home" },
   { href: "/courses",     icon: BookOpen,         label: "Courses" },
   { href: "/live-classes",icon: Video,            label: "Live" },
-  { href: "/leaderboard", icon: Award,            label: "Ranks" },
+  { href: "/homework",    icon: FileText,         label: "Homework" },
   { href: "/profile",     icon: User,             label: "Profile" },
 ];
 
