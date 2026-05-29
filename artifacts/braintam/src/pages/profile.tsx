@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Edit, Camera, Phone, MapPin, FileText, ClipboardList, Lock } from "lucide-react";
+import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Pencil, Camera, Phone, MapPin, FileText, ClipboardList, Lock, X, Check } from "lucide-react";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { PointsHub } from "@/components/points-hub";
 
@@ -55,13 +55,61 @@ function resizeImageToBase64(file: File, maxPx = 120): Promise<string> {
   });
 }
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Chandigarh", "Jammu and Kashmir", "Ladakh", "Puducherry",
+  "Andaman and Nicobar Islands", "Dadra and Nagar Haveli", "Lakshadweep",
+];
+
+const CITIES_BY_STATE: Record<string, string[]> = {
+  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Tirupati", "Rajahmundry", "Kakinada"],
+  "Arunachal Pradesh": ["Itanagar", "Naharlagun", "Pasighat"],
+  "Assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon"],
+  "Bihar": ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Purnia", "Darbhanga"],
+  "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Korba", "Durg"],
+  "Goa": ["Panaji", "Margao", "Vasco da Gama", "Mapusa"],
+  "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar", "Gandhinagar", "Anand"],
+  "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Yamunanagar", "Rohtak", "Hisar"],
+  "Himachal Pradesh": ["Shimla", "Mandi", "Solan", "Dharamshala", "Baddi"],
+  "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Deoghar"],
+  "Karnataka": ["Bangalore", "Mysore", "Mangalore", "Hubli", "Belgaum", "Dharwad", "Tumkur", "Davangere"],
+  "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kollam", "Palakkad", "Kannur"],
+  "Madhya Pradesh": ["Indore", "Bhopal", "Jabalpur", "Gwalior", "Ujjain", "Rewa", "Sagar"],
+  "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad", "Solapur", "Thane", "Navi Mumbai", "Kolhapur", "Pimpri-Chinchwad"],
+  "Manipur": ["Imphal", "Thoubal", "Churachandpur"],
+  "Meghalaya": ["Shillong", "Tura", "Jowai"],
+  "Mizoram": ["Aizawl", "Lunglei"],
+  "Nagaland": ["Kohima", "Dimapur"],
+  "Odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Berhampur", "Sambalpur"],
+  "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda", "Mohali"],
+  "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Bikaner", "Ajmer", "Bhilwara"],
+  "Sikkim": ["Gangtok", "Namchi"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli", "Vellore", "Erode"],
+  "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"],
+  "Tripura": ["Agartala", "Udaipur"],
+  "Uttar Pradesh": ["Lucknow", "Kanpur", "Agra", "Ghaziabad", "Meerut", "Varanasi", "Allahabad", "Bareilly", "Noida", "Aligarh", "Moradabad", "Gorakhpur"],
+  "Uttarakhand": ["Dehradun", "Haridwar", "Roorkee", "Haldwani", "Rudrapur"],
+  "West Bengal": ["Kolkata", "Howrah", "Durgapur", "Asansol", "Siliguri", "Bardhaman"],
+  "Delhi": ["New Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi", "Central Delhi", "Dwarka", "Rohini", "Janakpuri"],
+  "Chandigarh": ["Chandigarh"],
+  "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag", "Baramulla"],
+  "Ladakh": ["Leh", "Kargil"],
+  "Puducherry": ["Puducherry", "Karaikal"],
+  "Andaman and Nicobar Islands": ["Port Blair"],
+  "Dadra and Nagar Haveli": ["Silvassa"],
+  "Lakshadweep": ["Kavaratti"],
+};
+
 export default function ProfilePage() {
   const { student } = useAuth();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editSchool, setEditSchool] = useState("");
-  const [editPhone, setEditPhone] = useState("");
   const [editState, setEditState] = useState("");
   const [editCity, setEditCity] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
@@ -72,22 +120,25 @@ export default function ProfilePage() {
   const { data: profile, isLoading: profileLoading } = useGetStudentProfile();
   const { data: progress, isLoading: progressLoading } = useGetStudentProgress();
 
+  const p = profile as any;
+
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetStudentProgressQueryKey() });
   }
 
-  const phoneAlreadySet = !!(profile as any)?.phone;
-  const emailAlreadySet = !!(profile?.email);
-
   const openEdit = () => {
-    setEditName(profile?.name ?? "");
-    setEditSchool(profile?.school ?? "");
-    setEditPhone(!phoneAlreadySet ? "" : "");
-    setEditState((profile as any)?.state ?? "");
-    setEditCity((profile as any)?.city ?? "");
+    setEditName(p?.name ?? "");
+    setEditSchool(p?.school ?? "");
+    setEditState(p?.state ?? "");
+    setEditCity(p?.city ?? "");
     setSaveError("");
     setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setSaveError("");
   };
 
   const handleUpdate = async () => {
@@ -95,16 +146,12 @@ export default function ProfilePage() {
     setSaveBusy(true);
     setSaveError("");
     try {
-      const payload: Record<string, unknown> = {
+      const r = await patchProfile({
         name: editName.trim(),
         school: editSchool,
         state: editState,
         city: editCity,
-      };
-      if (!phoneAlreadySet && editPhone.trim()) {
-        payload.phone = editPhone.trim();
-      }
-      const r = await patchProfile(payload);
+      });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         throw new Error(d.error ?? "Failed to update");
@@ -134,7 +181,8 @@ export default function ProfilePage() {
     }
   };
 
-  const initials = (profile?.name ?? "U").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  const citiesForState = CITIES_BY_STATE[editState] ?? [];
+  const initials = (p?.name ?? "U").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
 
   const statsCards = [
     { icon: Star, label: "Total Points", value: progress?.totalPoints ?? 0, color: "text-yellow-500 bg-yellow-50" },
@@ -166,6 +214,7 @@ export default function ProfilePage() {
                   <div className="space-y-3">
                     <Skeleton className="w-20 h-20 rounded-full mx-auto" />
                     <Skeleton className="w-40 h-6 mx-auto" />
+                    <Skeleton className="w-32 h-4 mx-auto" />
                   </div>
                 ) : (
                   <>
@@ -173,8 +222,8 @@ export default function ProfilePage() {
                     <div className="text-center">
                       <div className="relative inline-block">
                         <div className="w-20 h-20 rounded-full mx-auto border-4 border-primary/20 overflow-hidden bg-gradient-to-br from-secondary to-primary flex items-center justify-center">
-                          {profile?.avatarUrl ? (
-                            <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" draggable={false} />
+                          {p?.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" draggable={false} />
                           ) : (
                             <span className="text-white text-2xl font-bold select-none">{initials}</span>
                           )}
@@ -192,43 +241,200 @@ export default function ProfilePage() {
                         </button>
                         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                       </div>
-                      <p className="text-xs text-gray-400 mt-2">Click the camera icon to change photo</p>
-                      <h2 className="text-xl font-bold mt-3" data-testid="profile-name">{profile?.name}</h2>
-                      <Badge variant="secondary" className="mt-1">Grade {profile?.grade}</Badge>
+                      <p className="text-xs text-gray-400 mt-2">Tap camera to change photo</p>
                     </div>
 
-                    <div className="space-y-2.5 text-sm">
-                      {profile?.email && (
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                          <Mail className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate" data-testid="profile-email">{profile.email}</span>
-                          {emailAlreadySet && <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" aria-label="Email cannot be changed" />}
+                    {/* ── READ-ONLY VIEW ── */}
+                    {!editing && (
+                      <div className="space-y-3">
+                        {/* Name row */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">Full Name</p>
+                            <p className="font-bold text-base truncate" data-testid="profile-name">{p?.name ?? "—"}</p>
+                          </div>
+                          <button
+                            onClick={openEdit}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                            title="Edit profile"
+                            data-testid="edit-profile-btn"
+                          >
+                            <Pencil className="w-4 h-4 text-muted-foreground" />
+                          </button>
                         </div>
-                      )}
-                      {(profile as any)?.phone && (
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                          <Phone className="w-4 h-4 flex-shrink-0" />
-                          <span>{(profile as any).phone}</span>
-                          <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" aria-label="Phone cannot be changed once set" />
-                        </div>
-                      )}
-                      {profile?.school && (
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                          <School className="w-4 h-4 flex-shrink-0" />
-                          <span data-testid="profile-school">{profile.school}</span>
-                        </div>
-                      )}
-                      {((profile as any)?.city || (profile as any)?.state) && (
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
-                          <span>{[(profile as any).city, (profile as any).state].filter(Boolean).join(", ")}</span>
-                        </div>
-                      )}
-                    </div>
 
-                    <Button className="w-full" variant="outline" onClick={openEdit} data-testid="edit-profile-btn">
-                      <Edit className="w-4 h-4 mr-2" /> Edit Profile
-                    </Button>
+                        <div className="h-px bg-gray-100" />
+
+                        {/* Grade */}
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">Grade</p>
+                          <Badge variant="secondary">Grade {p?.grade ?? "—"}</Badge>
+                        </div>
+
+                        {/* Email — read-only */}
+                        {p?.email && (
+                          <div className="flex items-start gap-2.5">
+                            <Mail className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-muted-foreground">Email</p>
+                              <p className="text-sm truncate" data-testid="profile-email">{p.email}</p>
+                            </div>
+                            <Lock className="w-3.5 h-3.5 text-gray-300 mt-1 flex-shrink-0" />
+                          </div>
+                        )}
+
+                        {/* Phone — read-only, always show if available */}
+                        <div className="flex items-start gap-2.5">
+                          <Phone className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="text-sm">{p?.phone ?? <span className="text-gray-400 italic">Not provided</span>}</p>
+                          </div>
+                          <Lock className="w-3.5 h-3.5 text-gray-300 mt-1 flex-shrink-0" />
+                        </div>
+
+                        {/* School */}
+                        <div className="flex items-start gap-2.5">
+                          <School className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">School</p>
+                            <p className="text-sm" data-testid="profile-school">{p?.school || <span className="text-gray-400 italic">Not set</span>}</p>
+                          </div>
+                        </div>
+
+                        {/* Location */}
+                        <div className="flex items-start gap-2.5">
+                          <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">Location</p>
+                            <p className="text-sm">
+                              {[p?.city, p?.state].filter(Boolean).join(", ") || <span className="text-gray-400 italic">Not set</span>}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── EDIT MODE ── */}
+                    {editing && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-3"
+                      >
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wide">Editing Profile</p>
+
+                        {/* Name */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">Full Name *</Label>
+                          <Input
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            placeholder="Your full name"
+                            data-testid="edit-name-input"
+                          />
+                        </div>
+
+                        {/* School */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">School Name</Label>
+                          <Input
+                            value={editSchool}
+                            onChange={e => setEditSchool(e.target.value)}
+                            placeholder="e.g. Delhi Public School"
+                            data-testid="edit-school-input"
+                          />
+                        </div>
+
+                        {/* State */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">State</Label>
+                          <Select
+                            value={editState || "__none__"}
+                            onValueChange={v => {
+                              const val = v === "__none__" ? "" : v;
+                              setEditState(val);
+                              setEditCity("");
+                            }}
+                          >
+                            <SelectTrigger data-testid="edit-state-select">
+                              <SelectValue placeholder="Select State" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64">
+                              <SelectItem value="__none__">— Select State —</SelectItem>
+                              {INDIAN_STATES.map(s => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* City */}
+                        <div className="space-y-1">
+                          <Label className="text-xs">City</Label>
+                          {citiesForState.length > 0 ? (
+                            <Select
+                              value={editCity || "__none__"}
+                              onValueChange={v => setEditCity(v === "__none__" ? "" : v)}
+                            >
+                              <SelectTrigger data-testid="edit-city-select">
+                                <SelectValue placeholder="Select City" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-64">
+                                <SelectItem value="__none__">— Select City —</SelectItem>
+                                {citiesForState.map(c => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              value={editCity}
+                              onChange={e => setEditCity(e.target.value)}
+                              placeholder={editState ? "Enter city name" : "Select state first"}
+                              disabled={!editState}
+                              data-testid="edit-city-input"
+                            />
+                          )}
+                        </div>
+
+                        {/* Email — always locked */}
+                        {p?.email && (
+                          <div className="rounded-lg bg-gray-50 border border-gray-100 p-2.5 flex items-center gap-2">
+                            <Mail className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            <span className="text-xs text-gray-500 truncate flex-1">{p.email}</span>
+                            <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                          </div>
+                        )}
+
+                        {/* Phone — always locked */}
+                        <div className="rounded-lg bg-gray-50 border border-gray-100 p-2.5 flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 flex-1">{p?.phone ?? "No phone on file"}</span>
+                          <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                        </div>
+
+                        {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            onClick={handleUpdate}
+                            disabled={saveBusy || !editName.trim()}
+                            className="flex-1"
+                            data-testid="save-profile-btn"
+                          >
+                            {saveBusy
+                              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              : <><Check className="w-3.5 h-3.5 mr-1" /> Save</>
+                            }
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={cancelEdit} disabled={saveBusy} className="flex-1">
+                            <X className="w-3.5 h-3.5 mr-1" /> Cancel
+                          </Button>
+                        </div>
+                      </motion.div>
+                    )}
                   </>
                 )}
               </CardContent>
@@ -303,81 +509,6 @@ export default function ProfilePage() {
             isLoading={progressLoading}
           />
         </motion.div>
-
-        {/* Edit Dialog */}
-        <Dialog open={editing} onOpenChange={setEditing}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Full Name <span className="text-xs text-muted-foreground">(can be changed anytime)</span></Label>
-                <Input id="edit-name" value={editName} onChange={e => setEditName(e.target.value)} className="mt-1" data-testid="edit-name-input" />
-              </div>
-              <div>
-                <Label htmlFor="edit-school">School Name</Label>
-                <Input id="edit-school" value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="Your school name" className="mt-1" data-testid="edit-school-input" />
-              </div>
-              {/* Phone — editable only once */}
-              <div>
-                <Label htmlFor="edit-phone" className="flex items-center gap-2">
-                  Phone Number
-                  {phoneAlreadySet
-                    ? <span className="text-xs text-amber-600 flex items-center gap-1"><Lock className="w-3 h-3" />Set already, cannot change</span>
-                    : <span className="text-xs text-muted-foreground">(can only be set once)</span>
-                  }
-                </Label>
-                {phoneAlreadySet ? (
-                  <Input value={(profile as any)?.phone ?? ""} disabled className="mt-1 bg-gray-50 text-gray-400" />
-                ) : (
-                  <Input
-                    id="edit-phone"
-                    value={editPhone}
-                    onChange={e => setEditPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="mt-1"
-                    data-testid="edit-phone-input"
-                  />
-                )}
-              </div>
-              {/* Email — read-only if set via Clerk */}
-              {emailAlreadySet && (
-                <div>
-                  <Label className="flex items-center gap-2">
-                    Email
-                    <span className="text-xs text-amber-600 flex items-center gap-1"><Lock className="w-3 h-3" />Managed by your login provider</span>
-                  </Label>
-                  <Input value={profile?.email ?? ""} disabled className="mt-1 bg-gray-50 text-gray-400" />
-                </div>
-              )}
-              {/* Location */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="edit-state">State</Label>
-                  <Input id="edit-state" value={editState} onChange={e => setEditState(e.target.value)} placeholder="e.g. Maharashtra" className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="edit-city">City</Label>
-                  <Input id="edit-city" value={editCity} onChange={e => setEditCity(e.target.value)} placeholder="e.g. Mumbai" className="mt-1" />
-                </div>
-              </div>
-              {/* Grade — read-only */}
-              <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Grade</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Auto-assigned based on your course enrollment</p>
-                </div>
-                <Badge variant="secondary" className="text-sm px-3">Grade {profile?.grade ?? "—"}</Badge>
-              </div>
-              {saveError && <p className="text-sm text-red-500">{saveError}</p>}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
-              <Button onClick={handleUpdate} disabled={saveBusy || !editName.trim()} data-testid="save-profile-btn">
-                {saveBusy ? "Saving…" : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </AppLayout>
   );
