@@ -700,10 +700,12 @@ export default function LandingPage() {
             <img src={braintamLogo} alt="Braintam" className="w-24 h-24 object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: MUTED }}>
-            {["Courses","Live Classes","Leaderboard"].map(l => (
-              <a key={l} href="#" className="hover:text-navy-900 transition-colors" style={{ color: MUTED }}
-                onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
-                onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>{l}</a>
+            {([["Courses","/courses"],["Live Classes","/live-classes"],["Leaderboard","/leaderboard"]] as [string,string][]).map(([l, href]) => (
+              <Link key={l} href={href}>
+                <span className="cursor-pointer transition-colors" style={{ color: MUTED }}
+                  onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
+                  onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>{l}</span>
+              </Link>
             ))}
           </div>
           <div className="flex items-center gap-3">
