@@ -802,7 +802,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[300px] sm:h-[440px] hidden lg:block">
+            transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[260px] sm:h-[380px] lg:h-[440px] block">
             <HeroVisual />
           </motion.div>
         </div>

@@ -18,21 +18,44 @@ const ORANGE = "#FF6B1A";
 
 // ── Grade course data ──────────────────────────────────────────
 interface GradeCourseData {
+  specialty: string;
+  specialtyIcon: string;
+  bubbleColor: string;
   demo: { topics: string[]; desc: string };
   full: { subjects: string[]; desc: string; price: string };
 }
 
 const GRADE_DATA: Record<number, GradeCourseData> = {
-  1:  { demo: { topics: ["Counting & Numbers", "Phonics & Reading", "Shapes & Patterns"],   desc: "Fun tricks to build a strong foundation." },             full: { subjects: ["Numbers", "English", "EVS"],        desc: "Complete Grade 1 syllabus with tests & mentor support.", price: "₹26,999" } },
-  2:  { demo: { topics: ["Multiplication Basics", "Story Writing", "Maps & Globe"],          desc: "Core concepts in an engaging 6-day camp." },            full: { subjects: ["Maths", "English", "EVS"],          desc: "Structured full-year program with live classes.",        price: "₹26,999" } },
-  3:  { demo: { topics: ["Fractions & Decimals", "Grammar Basics", "Our Environment"],       desc: "Hands-on learning for quick concept clarity." },         full: { subjects: ["Maths", "English", "Science"],      desc: "Chapter-by-chapter coverage with weekly tests.",         price: "₹26,999" } },
-  4:  { demo: { topics: ["LCM & HCF", "Reading Skills", "Forces & Motion"],                 desc: "Jump-start key concepts across all subjects." },         full: { subjects: ["Maths", "English", "Science"],      desc: "Deep-dive into Grade 4 syllabus with doubt sessions.",   price: "₹26,999" } },
-  5:  { demo: { topics: ["Algebra Intro", "Essay Writing", "Solar System"],                  desc: "Get a head-start before the full program." },            full: { subjects: ["Maths", "English", "Science"],      desc: "Complete CBSE/ICSE syllabus + board-pattern tests.",     price: "₹26,999" } },
-  6:  { demo: { topics: ["Integers & Ratios", "Creative Writing", "Living World"],           desc: "Middle-school concepts demystified in 6 days." },        full: { subjects: ["Maths", "English", "Science"],      desc: "Live classes 5–6×/week with weekly mock exams.",        price: "₹29,999" } },
-  7:  { demo: { topics: ["Linear Equations", "Advanced Grammar", "Heat & Light"],            desc: "Solve tricky problems with expert shortcuts." },         full: { subjects: ["Maths", "English", "Science"],      desc: "Comprehensive coverage + Olympiad prep modules.",       price: "₹29,999" } },
-  8:  { demo: { topics: ["Quadratic Basics", "Literature Analysis", "Cell Biology"],         desc: "Board-prep strategies unlocked in 6 days." },           full: { subjects: ["Maths", "English", "Science"],      desc: "Board-aligned syllabus + full mock test series.",       price: "₹29,999" } },
-  9:  { demo: { topics: ["Polynomials", "Comprehension Skills", "Chemical Reactions"],       desc: "Crack Grade 9 concepts with top educators." },          full: { subjects: ["Maths", "Science", "Social"],       desc: "CBSE/ICSE full syllabus + JEE/NEET foundation start.",  price: "₹34,999" } },
-  10: { demo: { topics: ["Trigonometry", "Board Writing Skills", "Genetics Basics"],         desc: "Score 90+ in boards with targeted practice." },         full: { subjects: ["Maths", "Science", "Social"],       desc: "Board exam mastery + competitive exam readiness.",      price: "₹34,999" } },
+  1:  { specialty: "Abacus-based Mental Maths",       specialtyIcon: "🧮", bubbleColor: "#FF6B1A",
+        demo: { topics: ["Counting & Numbers", "Phonics & Reading", "Shapes & Patterns"],   desc: "Fun tricks to build a rock-solid foundation." },
+        full: { subjects: ["Numbers", "English", "EVS"],        desc: "Complete Grade 1 syllabus with tests & mentor support.",  price: "₹29,999" } },
+  2:  { specialty: "Times Tables Speed Mastery",       specialtyIcon: "⚡", bubbleColor: "#3B82F6",
+        demo: { topics: ["Multiplication Basics", "Story Writing", "Maps & Globe"],          desc: "Core concepts in an engaging 6-day camp." },
+        full: { subjects: ["Maths", "English", "EVS"],          desc: "Structured full-year program with live classes daily.",   price: "₹29,999" } },
+  3:  { specialty: "Vedic Maths Shortcuts",            specialtyIcon: "🔢", bubbleColor: "#8B5CF6",
+        demo: { topics: ["Fractions & Decimals", "Grammar Basics", "Our Environment"],       desc: "Hands-on learning for quick concept clarity." },
+        full: { subjects: ["Maths", "English", "Science"],      desc: "Chapter-by-chapter coverage with weekly tests.",          price: "₹29,999" } },
+  4:  { specialty: "Speed Reading Techniques",         specialtyIcon: "📖", bubbleColor: "#10B981",
+        demo: { topics: ["LCM & HCF", "Reading Skills", "Forces & Motion"],                 desc: "Jump-start key concepts across all subjects." },
+        full: { subjects: ["Maths", "English", "Science"],      desc: "Deep-dive into Grade 4 syllabus with doubt sessions.",    price: "₹29,999" } },
+  5:  { specialty: "Science Olympiad Foundation",      specialtyIcon: "🔭", bubbleColor: "#F59E0B",
+        demo: { topics: ["Algebra Intro", "Essay Writing", "Solar System"],                  desc: "Get a head-start before the full program." },
+        full: { subjects: ["Maths", "English", "Science"],      desc: "Complete CBSE/ICSE syllabus + Olympiad prep built in.",   price: "₹29,999" } },
+  6:  { specialty: "Algebra Thinking & Logic",         specialtyIcon: "📐", bubbleColor: "#EC4899",
+        demo: { topics: ["Integers & Ratios", "Creative Writing", "Living World"],           desc: "Middle-school concepts demystified in 6 days." },
+        full: { subjects: ["Maths", "English", "Science"],      desc: "Live classes 5–6×/week with weekly mock exams.",         price: "₹32,999" } },
+  7:  { specialty: "IQ & Olympiad Prep",               specialtyIcon: "🏆", bubbleColor: "#06B6D4",
+        demo: { topics: ["Linear Equations", "Advanced Grammar", "Heat & Light"],            desc: "Solve tricky problems with expert shortcuts." },
+        full: { subjects: ["Maths", "English", "Science"],      desc: "Comprehensive coverage + dedicated Olympiad modules.",    price: "₹32,999" } },
+  8:  { specialty: "Board Exam Strategy",              specialtyIcon: "📋", bubbleColor: "#6366F1",
+        demo: { topics: ["Quadratic Basics", "Literature Analysis", "Cell Biology"],         desc: "Board-prep strategies unlocked in 6 days." },
+        full: { subjects: ["Maths", "English", "Science"],      desc: "Board-aligned syllabus + full mock test series.",        price: "₹32,999" } },
+  9:  { specialty: "JEE / NEET Foundation",            specialtyIcon: "🚀", bubbleColor: "#EF4444",
+        demo: { topics: ["Polynomials", "Comprehension Skills", "Chemical Reactions"],       desc: "Crack Grade 9 concepts with top educators." },
+        full: { subjects: ["Maths", "Science", "Social"],       desc: "CBSE/ICSE full syllabus + JEE/NEET foundation start.",   price: "₹37,999" } },
+  10: { specialty: "90+ Board Score Program",          specialtyIcon: "🎯", bubbleColor: "#FF6B1A",
+        demo: { topics: ["Trigonometry", "Board Writing Skills", "Genetics Basics"],         desc: "Score 90+ in boards with targeted practice." },
+        full: { subjects: ["Maths", "Science", "Social"],       desc: "Board exam mastery + competitive exam readiness.",       price: "₹37,999" } },
 };
 
 const TOPPERS = [
@@ -107,17 +130,29 @@ function GradeTabs({ active, onChange }: { active: number; onChange: (g: number)
 }
 
 // ── Demo Card ─────────────────────────────────────────────────
-function DemoCard({ grade, data }: { grade: number; data: GradeCourseData["demo"] }) {
+function DemoCard({ grade, data, specialty, specialtyIcon, bubbleColor }: {
+  grade: number; data: GradeCourseData["demo"];
+  specialty: string; specialtyIcon: string; bubbleColor: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-      className="bg-white rounded-2xl border-2 p-6 flex flex-col gap-4 relative overflow-hidden"
-      style={{ borderColor: "rgba(255,107,26,0.2)", boxShadow: "0 8px 32px rgba(255,107,26,0.08)" }}
+      className="rounded-2xl border-2 p-6 flex flex-col gap-4 relative overflow-hidden"
+      style={{ background: "white", borderColor: "rgba(255,107,26,0.2)", boxShadow: "0 8px 32px rgba(255,107,26,0.08)" }}
     >
-      {/* Accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${ORANGE}, #FFA040)` }} />
+      {/* Decorative bubbles */}
+      <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 blur-xl pointer-events-none"
+        style={{ background: bubbleColor }} />
+      <div className="absolute -bottom-8 -left-4 w-32 h-32 rounded-full opacity-8 blur-2xl pointer-events-none"
+        style={{ background: ORANGE }} />
+      <div className="absolute top-1/2 right-4 w-12 h-12 rounded-full opacity-6 blur-lg pointer-events-none"
+        style={{ background: bubbleColor }} />
 
-      <div className="flex items-start justify-between">
+      {/* Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl"
+        style={{ background: `linear-gradient(90deg, ${ORANGE}, #FFA040)` }} />
+
+      <div className="flex items-start justify-between relative z-10">
         <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full"
           style={{ background: "rgba(255,107,26,0.12)", color: ORANGE }}>
           ⚡ 6-Day Demo
@@ -125,14 +160,24 @@ function DemoCard({ grade, data }: { grade: number; data: GradeCourseData["demo"
         <span className="text-xs text-gray-400 font-medium">Short preview</span>
       </div>
 
-      <div>
+      {/* Specialty badge */}
+      <div className="relative z-10 flex items-center gap-2 px-3 py-2 rounded-xl"
+        style={{ background: `${bubbleColor}14`, border: `1px solid ${bubbleColor}30` }}>
+        <span className="text-base">{specialtyIcon}</span>
+        <div>
+          <span className="text-xs font-black" style={{ color: bubbleColor }}>Grade Specialty</span>
+          <p className="text-xs font-semibold text-gray-700 leading-tight">{specialty}</p>
+        </div>
+      </div>
+
+      <div className="relative z-10">
         <h3 className="text-xl font-black leading-tight" style={{ color: NAVY }}>
           6-Day Core Concepts — Grade {grade}
         </h3>
         <p className="text-gray-500 text-sm mt-1">{data.desc}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 relative z-10">
         {data.topics.map(t => (
           <span key={t} className="text-xs px-3 py-1 rounded-full font-medium border"
             style={{ background: "rgba(11,43,107,0.04)", borderColor: "rgba(11,43,107,0.12)", color: NAVY }}>
@@ -141,17 +186,17 @@ function DemoCard({ grade, data }: { grade: number; data: GradeCourseData["demo"
         ))}
       </div>
 
-      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+      <div className="flex items-center gap-1.5 text-xs text-gray-400 relative z-10">
         <Clock className="w-3.5 h-3.5" />
         <span>5–6 classes / week</span>
       </div>
 
-      <div className="border-t border-gray-100 pt-3 flex items-center gap-2">
+      <div className="border-t border-gray-100 pt-3 flex items-center gap-2 relative z-10">
         <span className="font-black text-2xl" style={{ color: ORANGE }}>₹99</span>
         <span className="text-xs text-gray-400 font-medium">6-Day program</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 relative z-10">
         <Link href="/sign-up" className="flex-1">
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             className="w-full py-3 rounded-xl font-black text-sm text-white transition-all"
@@ -170,32 +215,55 @@ function DemoCard({ grade, data }: { grade: number; data: GradeCourseData["demo"
 }
 
 // ── Full Year Card ─────────────────────────────────────────────
-function FullYearCard({ grade, data }: { grade: number; data: GradeCourseData["full"] }) {
+function FullYearCard({ grade, data, specialty, specialtyIcon, bubbleColor }: {
+  grade: number; data: GradeCourseData["full"];
+  specialty: string; specialtyIcon: string; bubbleColor: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }}
-      className="bg-white rounded-2xl border-2 p-6 flex flex-col gap-4 relative overflow-hidden"
-      style={{ borderColor: "rgba(11,43,107,0.18)", boxShadow: "0 8px 40px rgba(11,43,107,0.1)" }}
+      className="rounded-2xl border-2 p-6 flex flex-col gap-4 relative overflow-hidden"
+      style={{ background: "white", borderColor: "rgba(11,43,107,0.18)", boxShadow: "0 8px 40px rgba(11,43,107,0.1)" }}
     >
-      {/* Accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${NAVY}, #3B6FD4)` }} />
+      {/* Decorative bubbles */}
+      <div className="absolute -top-8 -left-8 w-32 h-32 rounded-full opacity-8 blur-2xl pointer-events-none"
+        style={{ background: NAVY }} />
+      <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-10 blur-xl pointer-events-none"
+        style={{ background: bubbleColor }} />
+      <div className="absolute top-1/3 right-8 w-16 h-16 rounded-full opacity-5 blur-xl pointer-events-none"
+        style={{ background: bubbleColor }} />
 
-      <div className="flex items-start justify-between">
+      {/* Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl"
+        style={{ background: `linear-gradient(90deg, ${NAVY}, #3B6FD4)` }} />
+
+      <div className="flex items-start justify-between relative z-10">
         <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full text-white"
           style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
           🏆 Full Year
         </span>
-        <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,107,26,0.1)", color: ORANGE }}>Best value</span>
+        <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+          style={{ background: "rgba(255,107,26,0.1)", color: ORANGE }}>Best value</span>
       </div>
 
-      <div>
+      {/* Specialty badge */}
+      <div className="relative z-10 flex items-center gap-2 px-3 py-2 rounded-xl"
+        style={{ background: `${bubbleColor}14`, border: `1px solid ${bubbleColor}30` }}>
+        <span className="text-base">{specialtyIcon}</span>
+        <div>
+          <span className="text-xs font-black" style={{ color: bubbleColor }}>Grade Specialty</span>
+          <p className="text-xs font-semibold text-gray-700 leading-tight">{specialty}</p>
+        </div>
+      </div>
+
+      <div className="relative z-10">
         <h3 className="text-xl font-black leading-tight" style={{ color: NAVY }}>
           Live Full Syllabus — Grade {grade}
         </h3>
         <p className="text-gray-500 text-sm mt-1">{data.desc}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 relative z-10">
         {data.subjects.map(s => (
           <span key={s} className="text-xs px-3 py-1 rounded-full font-semibold text-white"
             style={{ background: `linear-gradient(135deg, ${NAVY}CC, #1a3a7aCC)` }}>
@@ -204,13 +272,13 @@ function FullYearCard({ grade, data }: { grade: number; data: GradeCourseData["f
         ))}
       </div>
 
-      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+      <div className="flex items-center gap-1.5 text-xs text-gray-400 relative z-10">
         <Clock className="w-3.5 h-3.5" />
         <span>5–6 classes / week</span>
       </div>
 
-      {/* Included perks */}
-      <div className="grid grid-cols-2 gap-1.5">
+      {/* Perks */}
+      <div className="grid grid-cols-2 gap-1.5 relative z-10">
         {["Live classes", "Doubt sessions", "Mock tests", "Mentor support"].map(f => (
           <div key={f} className="flex items-center gap-1.5 text-xs text-gray-600">
             <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />
@@ -219,7 +287,7 @@ function FullYearCard({ grade, data }: { grade: number; data: GradeCourseData["f
         ))}
       </div>
 
-      <div className="border-t border-gray-100 pt-3">
+      <div className="border-t border-gray-100 pt-3 relative z-10">
         <div className="flex items-baseline gap-2">
           <span className="font-black text-2xl" style={{ color: NAVY }}>{data.price}</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -227,7 +295,7 @@ function FullYearCard({ grade, data }: { grade: number; data: GradeCourseData["f
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 relative z-10">
         <Link href="/sign-up" className="flex-1">
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             className="w-full py-3 rounded-xl font-black text-sm border-2 transition-all"
@@ -236,7 +304,8 @@ function FullYearCard({ grade, data }: { grade: number; data: GradeCourseData["f
           </motion.button>
         </Link>
         <Link href="/connect">
-          <button className="flex items-center gap-1 text-xs font-semibold whitespace-nowrap hover:underline" style={{ color: "#6B7280" }}>
+          <button className="flex items-center gap-1 text-xs font-semibold whitespace-nowrap hover:underline"
+            style={{ color: "#6B7280" }}>
             <MessageCircle className="w-3.5 h-3.5" /> Talk to Counsellor
           </button>
         </Link>
@@ -364,8 +433,20 @@ function PublicCoursesView() {
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22 }}
             className="grid md:grid-cols-2 gap-5">
-            <DemoCard grade={activeGrade} data={GRADE_DATA[activeGrade].demo} />
-            <FullYearCard grade={activeGrade} data={GRADE_DATA[activeGrade].full} />
+            <DemoCard
+              grade={activeGrade}
+              data={GRADE_DATA[activeGrade].demo}
+              specialty={GRADE_DATA[activeGrade].specialty}
+              specialtyIcon={GRADE_DATA[activeGrade].specialtyIcon}
+              bubbleColor={GRADE_DATA[activeGrade].bubbleColor}
+            />
+            <FullYearCard
+              grade={activeGrade}
+              data={GRADE_DATA[activeGrade].full}
+              specialty={GRADE_DATA[activeGrade].specialty}
+              specialtyIcon={GRADE_DATA[activeGrade].specialtyIcon}
+              bubbleColor={GRADE_DATA[activeGrade].bubbleColor}
+            />
           </motion.div>
         </AnimatePresence>
 
