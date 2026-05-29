@@ -619,7 +619,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                         <h3 className="font-semibold text-sm leading-snug" style={{ color: NAVY }}>{c.title}</h3>
                       </div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 flex items-center gap-0.5 ${statusBadge(c.status)}`}>
-                        {statusIcon(c.status)} {c.status.toUpperCase()}
+                        {statusIcon(c.status)} {c.status?.toUpperCase() ?? ""}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1">

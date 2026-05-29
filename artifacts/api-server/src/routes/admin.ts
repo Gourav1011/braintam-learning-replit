@@ -6,7 +6,7 @@ import {
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
-  auditLogsTable,
+  auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -736,6 +736,34 @@ router.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
     .innerJoin(usersTable, eq(assignmentSubmissionsTable.studentId, usersTable.id))
     .orderBy(desc(assignmentSubmissionsTable.submittedAt))
     .limit(100);
+  res.json(rows);
+});
+
+// ── Course Subjects / Chapters / Topics (for live-class scheduling) ──
+router.get("/admin/course-subjects", adminOnly, async (req, res) => {
+  const courseId = Number(req.query.courseId);
+  if (!courseId) { res.status(400).json({ error: "courseId required" }); return; }
+  const rows = await db.select().from(courseSubjectsTable)
+    .where(eq(courseSubjectsTable.courseId, courseId))
+    .orderBy(courseSubjectsTable.name);
+  res.json(rows);
+});
+
+router.get("/admin/chapters", adminOnly, async (req, res) => {
+  const courseSubjectId = Number(req.query.courseSubjectId);
+  if (!courseSubjectId) { res.status(400).json({ error: "courseSubjectId required" }); return; }
+  const rows = await db.select().from(chaptersTable)
+    .where(eq(chaptersTable.courseSubjectId, courseSubjectId))
+    .orderBy(chaptersTable.order, chaptersTable.name);
+  res.json(rows);
+});
+
+router.get("/admin/topics", adminOnly, async (req, res) => {
+  const chapterId = Number(req.query.chapterId);
+  if (!chapterId) { res.status(400).json({ error: "chapterId required" }); return; }
+  const rows = await db.select().from(topicsTable)
+    .where(eq(topicsTable.chapterId, chapterId))
+    .orderBy(topicsTable.order, topicsTable.name);
   res.json(rows);
 });
 
