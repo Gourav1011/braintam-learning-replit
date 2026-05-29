@@ -50,6 +50,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CourseManagementTab } from "./courses-tab";
 import { DemoBatchesTab } from "./demo-batches-tab";
 
@@ -697,7 +698,6 @@ function AdminPageInner() {
   const [lcCourseSubjects, setLcCourseSubjects] = useState<{ id: number; name: string; subjectCode: string }[]>([]);
   const [lcChapters, setLcChapters] = useState<{ id: number; name: string; chapterCode: string }[]>([]);
   const [lcTopics, setLcTopics] = useState<{ id: number; name: string; topicCode: string }[]>([]);
-  const [lcCourseSearch, setLcCourseSearch] = useState("");
 
   const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", role: "student" as Role, grade: "6", school: "" });
   const [showNewPw, setShowNewPw] = useState(false);
@@ -1007,7 +1007,6 @@ function AdminPageInner() {
       setLcCourseSubjects([]);
       setLcChapters([]);
       setLcTopics([]);
-      setLcCourseSearch("");
       loadAll();
     } else { const d = await r.json(); flash(d.error ?? "Error", false); }
     setBusy(false);
@@ -1788,14 +1787,20 @@ function AdminPageInner() {
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>Assign Teacher to Course</h3>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <Select value={assignForm.teacherId} onValueChange={v => setAssignForm(p => ({ ...p, teacherId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select Teacher" /></SelectTrigger>
-                    <SelectContent>{teachers.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Select value={assignForm.courseId} onValueChange={v => setAssignForm(p => ({ ...p, courseId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select Course" /></SelectTrigger>
-                    <SelectContent>{courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} (Gr {c.grade})</SelectItem>)}</SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={teachers.map(t => ({ value: String(t.id), label: t.name }))}
+                    value={assignForm.teacherId}
+                    onValueChange={v => setAssignForm(p => ({ ...p, teacherId: v }))}
+                    placeholder="Select Teacher"
+                    searchPlaceholder="Search teachers…"
+                  />
+                  <SearchableSelect
+                    options={courses.map(c => ({ value: String(c.id), label: `${c.title} (Gr ${c.grade})` }))}
+                    value={assignForm.courseId}
+                    onValueChange={v => setAssignForm(p => ({ ...p, courseId: v }))}
+                    placeholder="Select Course"
+                    searchPlaceholder="Search courses…"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={assignTeacher} disabled={busy || !assignForm.teacherId || !assignForm.courseId} className="text-white" style={{ background: ORANGE }}>Assign</Button>
@@ -1848,14 +1853,20 @@ function AdminPageInner() {
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>Enroll Student in Course</h3>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <Select value={enrollForm.studentId} onValueChange={v => setEnrollForm(p => ({ ...p, studentId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select Student" /></SelectTrigger>
-                    <SelectContent>{students.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name} (Gr {s.grade})</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Select value={enrollForm.courseId} onValueChange={v => setEnrollForm(p => ({ ...p, courseId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select Course" /></SelectTrigger>
-                    <SelectContent>{courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} (Gr {c.grade})</SelectItem>)}</SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={students.map(s => ({ value: String(s.id), label: `${s.name} (Gr ${s.grade})` }))}
+                    value={enrollForm.studentId}
+                    onValueChange={v => setEnrollForm(p => ({ ...p, studentId: v }))}
+                    placeholder="Select Student"
+                    searchPlaceholder="Search students…"
+                  />
+                  <SearchableSelect
+                    options={courses.map(c => ({ value: String(c.id), label: `#${c.id} ${c.title} · Gr ${c.grade}` }))}
+                    value={enrollForm.courseId}
+                    onValueChange={v => setEnrollForm(p => ({ ...p, courseId: v }))}
+                    placeholder="Select Course"
+                    searchPlaceholder="Search by name or ID…"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={enrollStudent} disabled={busy || !enrollForm.studentId || !enrollForm.courseId} className="text-white" style={{ background: ORANGE }}>Enroll</Button>
@@ -1972,115 +1983,106 @@ function AdminPageInner() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
 
-                  {/* Step 1: Course (with search by ID or name) */}
+                  {/* Step 1: Course */}
                   <div className="sm:col-span-2 space-y-1.5">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                      <Input
-                        placeholder="Search course by name or ID…"
-                        value={lcCourseSearch}
-                        onChange={e => setLcCourseSearch(e.target.value)}
-                        className="pl-8 text-sm"
-                      />
-                    </div>
-                    <Select value={lcForm.courseId || "__none__"} onValueChange={v => {
-                      const val = v === "__none__" ? "" : v;
-                      const course = val ? courses.find(c => String(c.id) === val) : null;
-                      setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade }));
-                      setLcCourseSubjects([]);
-                      setLcChapters([]);
-                      setLcTopics([]);
-                      loadSubjectsForCourse(val);
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="① Select Course *" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No course</SelectItem>
-                        {courses
-                          .filter(c => {
-                            const q = lcCourseSearch.trim().toLowerCase();
-                            if (!q) return true;
-                            return String(c.id).includes(q) || c.title.toLowerCase().includes(q);
-                          })
-                          .map(c => (
-                            <SelectItem key={c.id} value={String(c.id)}>
-                              <span className="text-xs text-gray-400 mr-1">#{c.id}</span>
-                              {c.title} · Gr {c.grade}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[
+                        { value: "__none__", label: "No course" },
+                        ...courses.map(c => ({ value: String(c.id), label: `#${c.id} ${c.title} · Gr ${c.grade}` })),
+                      ]}
+                      value={lcForm.courseId || "__none__"}
+                      onValueChange={v => {
+                        const val = v === "__none__" ? "" : v;
+                        const course = val ? courses.find(c => String(c.id) === val) : null;
+                        setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade }));
+                        setLcCourseSubjects([]);
+                        setLcChapters([]);
+                        setLcTopics([]);
+                        loadSubjectsForCourse(val);
+                      }}
+                      placeholder="① Select Course *"
+                      searchPlaceholder="Search by name or ID…"
+                    />
                     {lcForm.courseId && (
-                      <p className="text-xs text-green-600 font-medium">
-                        ✓ Course #{lcForm.courseId} selected
-                      </p>
+                      <p className="text-xs text-green-600 font-medium">✓ Course #{lcForm.courseId} selected</p>
                     )}
                   </div>
 
-                  {/* Step 2: Subject (loaded after course selected) */}
+                  {/* Step 2: Subject */}
                   {lcCourseSubjects.length > 0 ? (
-                    <Select value={lcForm.courseSubjectId || "__none__"} onValueChange={v => {
-                      const val = v === "__none__" ? "" : v;
-                      setLcForm(p => ({ ...p, courseSubjectId: val, chapterId: "", topicId: "" }));
-                      setLcChapters([]);
-                      setLcTopics([]);
-                      loadChaptersForSubject(val);
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="② Select Subject" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No subject</SelectItem>
-                        {lcCourseSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[
+                        { value: "__none__", label: "No subject" },
+                        ...lcCourseSubjects.map(s => ({ value: String(s.id), label: s.name })),
+                      ]}
+                      value={lcForm.courseSubjectId || "__none__"}
+                      onValueChange={v => {
+                        const val = v === "__none__" ? "" : v;
+                        setLcForm(p => ({ ...p, courseSubjectId: val, chapterId: "", topicId: "" }));
+                        setLcChapters([]);
+                        setLcTopics([]);
+                        loadChaptersForSubject(val);
+                      }}
+                      placeholder="② Select Subject"
+                      searchPlaceholder="Search subjects…"
+                    />
                   ) : lcForm.courseId ? (
                     <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
                       ⚠ No subjects in this course yet — add them in Course Management first.
                     </div>
                   ) : <div />}
 
-                  {/* Step 3: Chapter (loaded after subject selected) */}
+                  {/* Step 3: Chapter */}
                   {lcChapters.length > 0 ? (
-                    <Select value={lcForm.chapterId || "__none__"} onValueChange={v => {
-                      const val = v === "__none__" ? "" : v;
-                      setLcForm(p => ({ ...p, chapterId: val, topicId: "" }));
-                      setLcTopics([]);
-                      loadTopicsForChapter(val);
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="③ Select Chapter" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No chapter</SelectItem>
-                        {lcChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[
+                        { value: "__none__", label: "No chapter" },
+                        ...lcChapters.map(c => ({ value: String(c.id), label: c.name })),
+                      ]}
+                      value={lcForm.chapterId || "__none__"}
+                      onValueChange={v => {
+                        const val = v === "__none__" ? "" : v;
+                        setLcForm(p => ({ ...p, chapterId: val, topicId: "" }));
+                        setLcTopics([]);
+                        loadTopicsForChapter(val);
+                      }}
+                      placeholder="③ Select Chapter"
+                      searchPlaceholder="Search chapters…"
+                    />
                   ) : lcForm.courseSubjectId ? (
                     <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
                       ⚠ No chapters in this subject yet.
                     </div>
                   ) : <div />}
 
-                  {/* Step 4: Topic (loaded after chapter selected) */}
+                  {/* Step 4: Topic */}
                   {lcTopics.length > 0 ? (
-                    <Select value={lcForm.topicId || "__none__"} onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
-                      <SelectTrigger><SelectValue placeholder="④ Select Topic" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No topic</SelectItem>
-                        {lcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[
+                        { value: "__none__", label: "No topic" },
+                        ...lcTopics.map(t => ({ value: String(t.id), label: t.name })),
+                      ]}
+                      value={lcForm.topicId || "__none__"}
+                      onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}
+                      placeholder="④ Select Topic"
+                      searchPlaceholder="Search topics…"
+                    />
                   ) : lcForm.chapterId ? (
                     <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
                       ⚠ No topics in this chapter yet.
                     </div>
                   ) : <div />}
 
-                  <Select value={lcForm.teacherId} onValueChange={v => setLcForm(p => ({ ...p, teacherId: v, teacher: teachers.find(t => String(t.id) === v)?.name ?? "" }))}>
-                    <SelectTrigger><SelectValue placeholder="Assign teacher" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No specific teacher</SelectItem>
-                      {teachers.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={[
+                      { value: "none", label: "No specific teacher" },
+                      ...teachers.map(t => ({ value: String(t.id), label: t.name })),
+                    ]}
+                    value={lcForm.teacherId}
+                    onValueChange={v => setLcForm(p => ({ ...p, teacherId: v, teacher: teachers.find(t => String(t.id) === v)?.name ?? "" }))}
+                    placeholder="Assign teacher"
+                    searchPlaceholder="Search teachers…"
+                  />
                   <Input placeholder="Teacher name *" value={lcForm.teacher} onChange={e => setLcForm(p => ({ ...p, teacher: e.target.value }))} />
                   <Input type="datetime-local" value={lcForm.scheduledAt} onChange={e => setLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
                   <Input placeholder="Duration (minutes)" type="number" min="15" value={lcForm.duration} onChange={e => setLcForm(p => ({ ...p, duration: e.target.value }))} />
@@ -2090,7 +2092,7 @@ function AdminPageInner() {
                   <Button size="sm" onClick={createLiveClass}
                     disabled={busy || !lcForm.title || !lcForm.courseId || !lcForm.scheduledAt || (!lcForm.teacher && !lcForm.teacherId)}
                     className="text-white" style={{ background: ORANGE }}>Schedule</Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); setLcCourseSearch(""); }}>Cancel</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); }}>Cancel</Button>
                 </div>
               </div>
             )}
