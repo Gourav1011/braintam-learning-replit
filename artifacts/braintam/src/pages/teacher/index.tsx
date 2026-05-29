@@ -4,7 +4,7 @@ import { Redirect } from "wouter";
 import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
-  LogOut,
+  LogOut, Link as LinkIcon, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments";
+type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
 interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; }
@@ -77,7 +77,7 @@ export default function TeacherPage() {
   // Homework form
   const [showHwForm, setShowHwForm] = useState(false);
   const [hwType, setHwType] = useState<"mcq" | "writing">("writing");
-  const [hwForm, setHwForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
+  const [hwForm, setHwForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
   const [hwQuestions, setHwQuestions] = useState<HwQuestion[]>([newMcqQuestion()]);
 
   // Assignment form
@@ -93,10 +93,24 @@ export default function TeacherPage() {
   // Test form
   const [showTestForm, setShowTestForm] = useState(false);
   const [testType, setTestType] = useState<"mcq" | "writing">("mcq");
-  const [testForm, setTestForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "30", liveClassId: "", driveLink: "" });
+  const [testForm, setTestForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "30", liveClassId: "", driveLink: "" });
+  const [testChapters, setTestChapters] = useState<{ id: number; name: string }[]>([]);
+  const [testTopics, setTestTopics] = useState<{ id: number; name: string }[]>([]);
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([
     { text: "", options: ["", "", "", ""], correctOption: 0 },
   ]);
+
+  // Homework cascade
+  const [hwChapters, setHwChapters] = useState<{ id: number; name: string }[]>([]);
+  const [hwTopics, setHwTopics] = useState<{ id: number; name: string }[]>([]);
+
+  // Notes
+  interface Note { id: number; title: string; resourceType: string; url: string; description: string | null; topicId: number | null; chapterId: number | null; courseId: number | null; grade: number | null; createdAt: string; }
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [noteForm, setNoteForm] = useState({ title: "", resourceType: "pdf", url: "", description: "", courseId: "", chapterId: "", topicId: "", grade: "" });
+  const [noteChapters, setNoteChapters] = useState<{ id: number; name: string }[]>([]);
+  const [noteTopics, setNoteTopics] = useState<{ id: number; name: string }[]>([]);
 
   // Grading
   const [grading, setGrading] = useState<{ id: number; marks: string; feedback: string; type: "homework" | "assignment" } | null>(null);
@@ -114,7 +128,7 @@ export default function TeacherPage() {
   }, [isLoading, role]);
 
   async function loadAll() {
-    const [d, c, lc, hw, sub, subj, stu, tst, asgn] = await Promise.all([
+    const [d, c, lc, hw, sub, subj, stu, tst, asgn, nts] = await Promise.all([
       apiFetch("/teacher/dashboard").then(r => r.ok ? r.json() : null),
       apiFetch("/teacher/courses").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/live-classes").then(r => r.ok ? r.json() : []),
@@ -124,9 +138,10 @@ export default function TeacherPage() {
       apiFetch("/teacher/students").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/tests").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/assignments").then(r => r.ok ? r.json() : []),
+      apiFetch("/teacher/notes").then(r => r.ok ? r.json() : []),
     ]);
     setDash(d); setCourses(c); setLiveClasses(lc); setHomework(hw);
-    setSubmissions(sub); setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn);
+    setSubmissions(sub); setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn); setNotes(nts);
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000); }
@@ -142,6 +157,45 @@ export default function TeacherPage() {
     if (!chapterId) { setLcTopics([]); return; }
     const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
     setLcTopics(r.ok ? await r.json() : []);
+  }
+
+  async function loadHwChapters(courseId: string) {
+    if (!courseId) { setHwChapters([]); setHwTopics([]); return; }
+    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    setHwChapters(r.ok ? await r.json() : []);
+    setHwTopics([]);
+  }
+
+  async function loadHwTopics(chapterId: string) {
+    if (!chapterId) { setHwTopics([]); return; }
+    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    setHwTopics(r.ok ? await r.json() : []);
+  }
+
+  async function loadTestChapters(courseId: string) {
+    if (!courseId) { setTestChapters([]); setTestTopics([]); return; }
+    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    setTestChapters(r.ok ? await r.json() : []);
+    setTestTopics([]);
+  }
+
+  async function loadTestTopics(chapterId: string) {
+    if (!chapterId) { setTestTopics([]); return; }
+    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    setTestTopics(r.ok ? await r.json() : []);
+  }
+
+  async function loadNoteChapters(courseId: string) {
+    if (!courseId) { setNoteChapters([]); setNoteTopics([]); return; }
+    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    setNoteChapters(r.ok ? await r.json() : []);
+    setNoteTopics([]);
+  }
+
+  async function loadNoteTopics(chapterId: string) {
+    if (!chapterId) { setNoteTopics([]); return; }
+    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    setNoteTopics(r.ok ? await r.json() : []);
   }
 
   if (isLoading) return (
@@ -188,6 +242,8 @@ export default function TeacherPage() {
       subjectId: Number(hwForm.subjectId),
       grade: Number(hwForm.grade),
       courseId: hwForm.courseId ? Number(hwForm.courseId) : null,
+      chapterId: hwForm.chapterId ? Number(hwForm.chapterId) : null,
+      topicId: hwForm.topicId ? Number(hwForm.topicId) : null,
       liveClassId: hwForm.liveClassId ? Number(hwForm.liveClassId) : null,
       homeworkType: hwType,
       driveLink: hwType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
@@ -200,7 +256,8 @@ export default function TeacherPage() {
     if (r.ok) {
       flash("Homework posted!");
       setShowHwForm(false);
-      setHwForm({ title: "", subjectId: "", grade: "", courseId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
+      setHwForm({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
+      setHwChapters([]); setHwTopics([]);
       setHwQuestions([newMcqQuestion()]);
       setHwType("writing");
       loadAll();
@@ -270,7 +327,7 @@ export default function TeacherPage() {
 
   // ── Test Actions ───────────────────────────────────────────────
   function addTestQuestion() {
-    if (testQuestions.length >= 20) return;
+    if (testQuestions.length >= 30) return;
     setTestQuestions(prev => [...prev, { text: "", options: ["", "", "", ""], correctOption: 0 }]);
   }
 
@@ -316,6 +373,8 @@ export default function TeacherPage() {
         subjectId: Number(testForm.subjectId),
         grade: Number(testForm.grade),
         courseId: testForm.courseId ? Number(testForm.courseId) : null,
+        chapterId: testForm.chapterId ? Number(testForm.chapterId) : null,
+        topicId: testForm.topicId ? Number(testForm.topicId) : null,
         scheduledAt: testForm.scheduledAt,
         duration: Number(testForm.duration),
         testType,
@@ -326,7 +385,8 @@ export default function TeacherPage() {
     if (r.ok) {
       flash("Test created!");
       setShowTestForm(false);
-      setTestForm({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "30", liveClassId: "", driveLink: "" });
+      setTestForm({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "30", liveClassId: "", driveLink: "" });
+      setTestChapters([]); setTestTopics([]);
       setTestQuestions([{ text: "", options: ["", "", "", ""], correctOption: 0 }]);
       setTestType("mcq");
       loadAll();
@@ -338,6 +398,38 @@ export default function TeacherPage() {
 
   async function deleteTest(id: number) {
     await apiFetch(`/teacher/tests/${id}`, { method: "DELETE" });
+    loadAll();
+  }
+
+  // ── Notes / Resources ──────────────────────────────────────────
+  async function createNote() {
+    if (!noteForm.title || !noteForm.url) return;
+    setBusy(true);
+    const r = await apiFetch("/teacher/notes", {
+      method: "POST",
+      body: JSON.stringify({
+        title: noteForm.title,
+        resourceType: noteForm.resourceType,
+        url: noteForm.url,
+        description: noteForm.description || null,
+        courseId: noteForm.courseId ? Number(noteForm.courseId) : null,
+        chapterId: noteForm.chapterId ? Number(noteForm.chapterId) : null,
+        topicId: noteForm.topicId ? Number(noteForm.topicId) : null,
+        grade: noteForm.grade ? Number(noteForm.grade) : null,
+      }),
+    });
+    if (r.ok) {
+      flash("Resource added!");
+      setShowNoteForm(false);
+      setNoteForm({ title: "", resourceType: "pdf", url: "", description: "", courseId: "", chapterId: "", topicId: "", grade: "" });
+      setNoteChapters([]); setNoteTopics([]);
+      loadAll();
+    } else flash("Error adding resource", false);
+    setBusy(false);
+  }
+
+  async function deleteNote(id: number) {
+    await apiFetch(`/teacher/notes/${id}`, { method: "DELETE" });
     loadAll();
   }
 
@@ -388,6 +480,7 @@ export default function TeacherPage() {
     { id: "live", label: "Live Classes", icon: Video },
     { id: "tests", label: "Tests", icon: ClipboardList },
     { id: "assignments", label: "Assignments", icon: FileText },
+    { id: "notes", label: "Notes & Resources", icon: LinkIcon },
     { id: "submissions", label: "Grade Work", icon: CheckCircle },
     { id: "attendance", label: "Attendance", icon: Clock },
   ];
@@ -547,14 +640,32 @@ export default function TeacherPage() {
                   </Select>
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={hwForm.grade} onChange={e => setHwForm(p => ({ ...p, grade: e.target.value }))} />
 
-                  {/* Course → Live Class cascade */}
-                  <Select value={hwForm.courseId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, courseId: v === "__none__" ? "" : v, liveClassId: "" }))}>
+                  {/* Course → Chapter → Topic → Live Class cascade */}
+                  <Select value={hwForm.courseId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setHwForm(p => ({ ...p, courseId: id, chapterId: "", topicId: "", liveClassId: "" })); loadHwChapters(id); }}>
                     <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {hwChapters.length > 0 && (
+                    <Select value={hwForm.chapterId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setHwForm(p => ({ ...p, chapterId: id, topicId: "" })); loadHwTopics(id); }}>
+                      <SelectTrigger><SelectValue placeholder="Chapter (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No chapter</SelectItem>
+                        {hwChapters.map(ch => <SelectItem key={ch.id} value={String(ch.id)}>{ch.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {hwTopics.length > 0 && (
+                    <Select value={hwForm.topicId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger><SelectValue placeholder="Topic (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No topic</SelectItem>
+                        {hwTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <Select value={hwForm.liveClassId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, liveClassId: v === "__none__" ? "" : v }))} disabled={!hwForm.courseId}>
                     <SelectTrigger><SelectValue placeholder="Live Class (optional)" /></SelectTrigger>
                     <SelectContent>
@@ -827,13 +938,31 @@ export default function TeacherPage() {
                     <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Input placeholder="Grade *" type="number" min="1" max="10" value={testForm.grade} onChange={e => setTestForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Select value={testForm.courseId || "__none__"} onValueChange={v => setTestForm(p => ({ ...p, courseId: v === "__none__" ? "" : v }))}>
+                  <Select value={testForm.courseId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setTestForm(p => ({ ...p, courseId: id, chapterId: "", topicId: "" })); loadTestChapters(id); }}>
                     <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {testChapters.length > 0 && (
+                    <Select value={testForm.chapterId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setTestForm(p => ({ ...p, chapterId: id, topicId: "" })); loadTestTopics(id); }}>
+                      <SelectTrigger><SelectValue placeholder="Chapter (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No chapter</SelectItem>
+                        {testChapters.map(ch => <SelectItem key={ch.id} value={String(ch.id)}>{ch.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {testTopics.length > 0 && (
+                    <Select value={testForm.topicId || "__none__"} onValueChange={v => setTestForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger><SelectValue placeholder="Topic (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No topic</SelectItem>
+                        {testTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <Input type="datetime-local" value={testForm.scheduledAt} onChange={e => setTestForm(p => ({ ...p, scheduledAt: e.target.value }))} />
                   <Input placeholder="Duration (min)" type="number" value={testForm.duration} onChange={e => setTestForm(p => ({ ...p, duration: e.target.value }))} />
                 </div>
@@ -843,9 +972,9 @@ export default function TeacherPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Questions
-                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${testQuestions.length >= 20 ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-600"}`}>{testQuestions.length}/20</span>
+                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-semibold ${testQuestions.length >= 30 ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-600"}`}>{testQuestions.length}/30</span>
                       </h4>
-                      <Button size="sm" variant="outline" onClick={addTestQuestion} disabled={testQuestions.length >= 20} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add</Button>
+                      <Button size="sm" variant="outline" onClick={addTestQuestion} disabled={testQuestions.length >= 30} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add</Button>
                     </div>
                     {testQuestions.map((q, qi) => (
                       <div key={qi} className="rounded-xl border border-gray-200 p-4 space-y-2 bg-gray-50">
@@ -990,6 +1119,124 @@ export default function TeacherPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── Notes & Resources ── */}
+        {tab === "notes" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold" style={{ color: NAVY }}>Notes &amp; Resources</h3>
+              <Button size="sm" onClick={() => setShowNoteForm(!showNoteForm)} className="text-white gap-1.5" style={{ background: ORANGE }}>
+                <Plus className="w-3.5 h-3.5" /> Add Resource
+              </Button>
+            </div>
+
+            {showNoteForm && (
+              <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Resource / Note</h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input placeholder="Title *" value={noteForm.title} onChange={e => setNoteForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+
+                  {/* Resource type */}
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Resource Type</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: "pdf", label: "📄 PDF Link" },
+                        { id: "drive", label: "📁 Google Drive" },
+                        { id: "youtube", label: "▶️ YouTube" },
+                        { id: "website", label: "🌐 Website" },
+                      ].map(rt => (
+                        <button key={rt.id} onClick={() => setNoteForm(p => ({ ...p, resourceType: rt.id }))}
+                          className={`text-xs px-3 py-1.5 rounded-lg font-semibold border transition-all ${noteForm.resourceType === rt.id ? "text-white border-transparent" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"}`}
+                          style={noteForm.resourceType === rt.id ? { background: ORANGE, borderColor: ORANGE } : {}}>
+                          {rt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Input placeholder="URL / Link *" value={noteForm.url} onChange={e => setNoteForm(p => ({ ...p, url: e.target.value }))} className="sm:col-span-2" />
+
+                  {/* Course → Chapter → Topic cascade */}
+                  <Select value={noteForm.courseId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setNoteForm(p => ({ ...p, courseId: id, chapterId: "", topicId: "" })); loadNoteChapters(id); }}>
+                    <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">No course</SelectItem>
+                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input placeholder="Grade (optional)" type="number" min="1" max="10" value={noteForm.grade} onChange={e => setNoteForm(p => ({ ...p, grade: e.target.value }))} />
+
+                  {noteChapters.length > 0 && (
+                    <Select value={noteForm.chapterId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setNoteForm(p => ({ ...p, chapterId: id, topicId: "" })); loadNoteTopics(id); }}>
+                      <SelectTrigger><SelectValue placeholder="Chapter (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No chapter</SelectItem>
+                        {noteChapters.map(ch => <SelectItem key={ch.id} value={String(ch.id)}>{ch.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {noteTopics.length > 0 && (
+                    <Select value={noteForm.topicId || "__none__"} onValueChange={v => setNoteForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger><SelectValue placeholder="Topic (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No topic</SelectItem>
+                        {noteTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <Textarea placeholder="Description / notes (optional)" value={noteForm.description} onChange={e => setNoteForm(p => ({ ...p, description: e.target.value }))} className="sm:col-span-2" rows={2} />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={createNote} disabled={busy || !noteForm.title || !noteForm.url} className="text-white" style={{ background: ORANGE }}>
+                    {busy ? "Saving…" : "Save Resource"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowNoteForm(false); setNoteForm({ title: "", resourceType: "pdf", url: "", description: "", courseId: "", chapterId: "", topicId: "", grade: "" }); setNoteChapters([]); setNoteTopics([]); }}>Cancel</Button>
+                </div>
+              </div>
+            )}
+
+            {/* Resource type icons */}
+            {(() => {
+              const typeIcon: Record<string, string> = { pdf: "📄", drive: "📁", youtube: "▶️", website: "🌐" };
+              const typeColor: Record<string, string> = { pdf: "bg-red-50 text-red-600", drive: "bg-blue-50 text-blue-600", youtube: "bg-rose-50 text-rose-600", website: "bg-green-50 text-green-600" };
+              return (
+                <div className="space-y-3">
+                  {notes.map(n => (
+                    <div key={n.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <span className={`flex-shrink-0 text-lg w-9 h-9 rounded-xl flex items-center justify-center ${typeColor[n.resourceType] ?? "bg-gray-100 text-gray-500"}`}>
+                          {typeIcon[n.resourceType] ?? "📎"}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm truncate" style={{ color: NAVY }}>{n.title}</div>
+                          <div className="text-xs text-gray-400 mt-0.5 capitalize">{n.resourceType} resource</div>
+                          {n.description && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{n.description}</div>}
+                          <a href={n.url} target="_blank" rel="noreferrer"
+                            className="inline-flex items-center gap-1 mt-2 text-xs font-medium hover:underline"
+                            style={{ color: ORANGE }}>
+                            <ExternalLink className="w-3 h-3" /> Open Resource
+                          </a>
+                        </div>
+                      </div>
+                      <button onClick={() => deleteNote(n.id)} className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors mt-0.5">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {notes.length === 0 && !showNoteForm && (
+                    <div className="py-12 text-center">
+                      <LinkIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-400 text-sm">No resources added yet</p>
+                      <p className="text-gray-300 text-xs mt-1">Add PDF, Drive, YouTube or website links for students</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

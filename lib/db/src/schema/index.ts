@@ -24,3 +24,4 @@ export * from "./studentProgress";
 export * from "./content";
 export * from "./pointsLedger";
 export * from "./dailyCoinClaims";
+export * from "./notes";

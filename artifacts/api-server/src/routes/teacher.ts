@@ -6,7 +6,7 @@ import {
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable, questionsTable, attendanceTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable,
-  auditLogsTable,
+  auditLogsTable, topicNotesTable,
 } from "@workspace/db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -546,6 +546,40 @@ router.post("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, 
       records.map((r: any) => ({ liveClassId: classId, studentId: r.studentId, present: Boolean(r.present) }))
     );
   }
+  res.json({ ok: true });
+});
+
+// ── Notes / Resources ──────────────────────────────────────────────
+router.get("/teacher/notes", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const notes = await db.select().from(topicNotesTable)
+    .where(eq(topicNotesTable.teacherId, teacherId))
+    .orderBy(desc(topicNotesTable.createdAt));
+  res.json(notes);
+});
+
+router.post("/teacher/notes", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const { title, resourceType, url, description, topicId, chapterId, courseId, grade } = req.body;
+  if (!title || !url) { res.status(400).json({ error: "title and url are required" }); return; }
+  const [note] = await db.insert(topicNotesTable).values({
+    title,
+    resourceType: resourceType ?? "pdf",
+    url,
+    description: description ?? null,
+    topicId:   topicId   ? Number(topicId)   : null,
+    chapterId: chapterId ? Number(chapterId) : null,
+    courseId:  courseId  ? Number(courseId)  : null,
+    grade:     grade     ? Number(grade)     : null,
+    teacherId,
+  }).returning();
+  res.json(note);
+});
+
+router.delete("/teacher/notes/:id", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const teacherId = req.authUser!.id;
+  await db.delete(topicNotesTable).where(and(eq(topicNotesTable.id, id), eq(topicNotesTable.teacherId, teacherId)));
   res.json({ ok: true });
 });
 

@@ -1,0 +1,509 @@
+Braintam LMS - Complete Academic Structure + Teacher Portal Integration
+
+IMPORTANT ARCHITECTURE
+
+The system must have separate Admin Portal and Teacher Portal.
+
+ADMIN PORTAL controls the academic structure.
+
+TEACHER PORTAL uses the academic structure created by Admin.
+
+Teachers must NOT be allowed to create or edit:
+
+* Courses
+* Subjects
+* Chapters
+* Topics
+
+Only Admin can create and manage academic content.
+
+================================================
+
+ADMIN PORTAL
+
+ACADEMIC STRUCTURE
+
+Hierarchy:
+
+Course
+→ Subject
+→ Chapter
+→ Topic
+
+Example:
+
+Course:
+Grade 5 CBSE
+
+Subject:
+Mathematics
+
+Chapter:
+Fractions
+
+Topic:
+Like Fractions
+
+Auto Generate IDs:
+
+Course = CRS0001
+Subject = SUB0001
+Chapter = CHP0001
+Topic = TOP0001
+
+ADMIN FEATURES
+
+Course Management
+
+Fields:
+
+* Course ID
+* Course Name
+* Grade
+* Academic Year
+* Description
+* Status (Active / Archived)
+
+Subject Management
+
+Fields:
+
+* Subject ID
+* Subject Name
+
+Chapter Management
+
+Fields:
+
+* Chapter ID
+* Chapter Name
+* Sequence Number
+
+Topic Management
+
+Fields:
+
+* Topic ID
+* Topic Name
+* Sequence Number
+* Learning Objective
+
+Search Support
+
+Admin can search by:
+
+* ID
+* Course Name
+* Subject Name
+* Chapter Name
+* Topic Name
+
+Example:
+
+Search:
+Fractions
+
+Result:
+
+Grade 5 CBSE
+→ Mathematics
+→ Fractions
+→ Like Fractions
+
+================================================
+
+TEACHER PORTAL
+
+Teachers should only see content created by Admin.
+
+Teacher workflow should be simple.
+
+================================================
+
+LIVE CLASS CREATION
+
+Teacher creates Live Class.
+
+Fields:
+
+* Class ID (Auto Generated)
+* Academic Year
+* Course
+* Subject
+* Chapter
+* Topic
+* Batch
+* Teacher
+* Date
+* Time
+* Duration
+* Meeting Link
+
+Selection Flow:
+
+Course
+→ Subject
+→ Chapter
+→ Topic
+
+Use dependent dropdowns.
+
+Example:
+
+Grade 5 CBSE
+→ Mathematics
+→ Fractions
+→ Like Fractions
+
+Teacher:
+Rahul Sharma
+
+Date:
+10 Aug 2026
+
+Time:
+5 PM
+
+Duration:
+60 Minutes
+
+Meeting Link:
+Zoom / Google Meet
+
+================================================
+
+HOMEWORK MODULE
+
+Teachers can create Homework.
+
+Homework must be linked to a Topic.
+
+Fields:
+
+* Homework ID
+* Homework Name
+* Topic
+* Due Date
+
+Question Count:
+
+5 to 10 MCQs
+
+Each Question:
+
+Question
+
+Option A
+Option B
+Option C
+Option D
+
+Teacher selects Correct Answer.
+
+Example:
+
+Question:
+
+1/2 + 1/2 = ?
+
+A. 1
+B. 2
+C. 3
+D. 4
+
+Correct Answer:
+A
+
+System Features:
+
+* Auto Evaluation
+* Auto Marks Calculation
+* Auto Percentage Calculation
+
+Student Result Example:
+
+Score:
+8/10
+
+Percentage:
+80%
+
+================================================
+
+TEST MODULE
+
+Teachers can create Tests.
+
+Tests must be linked to a Topic or Chapter.
+
+Fields:
+
+* Test ID
+* Test Name
+* Linked Topic
+* Duration
+* Total Marks
+
+Question Count:
+
+10 to 30 MCQs
+
+Teacher selects correct answer while creating questions.
+
+Example:
+
+Question:
+
+3/4 + 1/4 = ?
+
+A. 1
+B. 2
+C. 3
+D. 4
+
+Correct Answer:
+A
+
+System Features:
+
+* Auto Evaluation
+* Auto Result Generation
+* Percentage Calculation
+* Rank Calculation
+* Leaderboard
+
+================================================
+
+ASSIGNMENT MODULE
+
+Keep assignment system simple.
+
+Teachers create:
+
+* Assignment Title
+* Instructions
+* Assignment Link
+
+Supported Links:
+
+* Google Form
+* Google Drive
+* Canva
+* PDF Link
+* Website Link
+* YouTube Link
+
+Example:
+
+Title:
+Fraction Chart Activity
+
+Instructions:
+Create a chart showing proper and improper fractions.
+
+Link:
+Google Drive URL
+
+Student clicks:
+
+View Assignment
+
+No file upload system required in V1.
+
+================================================
+
+NOTES & RESOURCES
+
+Teachers can add resources linked to a Topic.
+
+Supported:
+
+* PDF Link
+* Google Drive Link
+* YouTube Link
+* Website Link
+
+Example:
+
+Chapter Notes PDF
+
+Practice Worksheet PDF
+
+YouTube Explanation Video
+
+================================================
+
+CLASS PUBLISH FLOW
+
+Teacher creates class.
+
+Step 1:
+Select Course
+
+Step 2:
+Select Subject
+
+Step 3:
+Select Chapter
+
+Step 4:
+Select Topic
+
+Step 5:
+Create Live Class
+
+Optional Attachments:
+
+☑ Homework
+
+☑ Test
+
+☑ Assignment
+
+☑ Notes
+
+Click Publish
+
+================================================
+
+TOPIC CONTENT STRUCTURE
+
+Every Topic should automatically contain:
+
+Topic
+├── Live Classes
+├── Homework
+├── Tests
+├── Assignments
+├── Notes
+└── Resources
+
+Example:
+
+Grade 5
+→ Mathematics
+→ Fractions
+→ Like Fractions
+
+Inside Topic:
+
+* Live Classes
+* Homework
+* Tests
+* Assignments
+* Notes
+
+Everything remains organized under the selected Topic.
+
+================================================
+
+STUDENT PORTAL
+
+Students should see:
+
+Dashboard
+
+* Today's Classes
+* Upcoming Classes
+* Pending Homework
+* Pending Tests
+* Assignments
+* Notes
+* Results
+
+When a student opens a Topic:
+
+Grade 5
+→ Mathematics
+→ Fractions
+→ Like Fractions
+
+Student sees:
+
+* Live Class Recordings
+* Homework
+* Tests
+* Assignments
+* Notes
+
+================================================
+
+RESULTS MODULE
+
+Homework Results
+
+* Score
+* Percentage
+
+Test Results
+
+* Score
+* Percentage
+* Rank
+
+Example:
+
+Homework:
+8/10
+80%
+
+Test:
+18/20
+90%
+
+Rank:
+3
+
+================================================
+
+SEARCH SYSTEM
+
+Global Search throughout Admin and Teacher Portal.
+
+Search by:
+
+* Course ID
+* Subject ID
+* Chapter ID
+* Topic ID
+* Name
+
+Example:
+
+Search:
+TOP0001
+
+Result:
+
+Grade 5 CBSE
+→ Mathematics
+→ Fractions
+→ Like Fractions
+
+================================================
+
+IMPORTANT DEVELOPMENT RULES
+
+1. Teachers cannot create Courses, Subjects, Chapters or Topics.
+
+2. Admin controls academic structure.
+
+3. All Homework, Tests, Assignments, Notes and Live Classes must be linked to an existing Topic.
+
+4. When Teacher selects:
+
+Course → Subject → Chapter → Topic
+
+all created content must automatically be stored under that Topic.
+
+5. Use search and dependent dropdowns.
+
+6. Avoid huge dropdown lists.
+
+7. Build scalable database architecture for future growth.
+
+8. Keep UI modern, simple and similar to leading EdTech platforms.
+
+9. System must support future growth to thousands of topics, classes, homework records and test attempts.
+
+10. This architecture must be fully integrated with existing Course Management, Teacher Portal and Student Portal.
