@@ -1294,7 +1294,7 @@ export default function LandingPage() {
 
             {/* Right: student image */}
             <div className="flex-shrink-0 md:w-80 hidden md:flex items-end justify-center"
-              style={{ marginBottom: "-20px", marginLeft: "24px" }}>
+              style={{ marginBottom: "-20px", marginLeft: "-16px" }}>
               <img src={expertCardImg} alt="Braintam student"
                 className="w-full h-auto block object-contain"
                 style={{
