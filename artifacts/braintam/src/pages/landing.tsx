@@ -855,6 +855,85 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── DUAL TEACHER MODEL ── */}
+      <section className="py-8 md:py-14 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 space-y-2">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Our Signature Model</div>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
+              Every child gets <span style={{ color: ORANGE }}>two teachers.</span>
+            </h2>
+            <p className="text-sm max-w-lg mx-auto" style={{ color: MUTED }}>
+              Not one — two. An IIT/NIT expert who teaches live, and a personal mentor who tracks your child's growth every week.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-5">
+            {/* Card 1 — Expert Teacher */}
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0}
+              className="relative rounded-2xl p-6 overflow-hidden"
+              style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a3a7a 100%)`, boxShadow: "0 12px 40px rgba(11,43,107,0.2)" }}>
+              <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-10 blur-2xl" style={{ background: ORANGE }} />
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(255,107,26,0.25)", border: "1.5px solid rgba(255,107,26,0.5)" }}>
+                  <GraduationCap className="w-6 h-6" style={{ color: ORANGE }} />
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: "rgba(255,107,26,0.9)" }}>Teacher 1</div>
+                  <h3 className="text-lg font-black text-white leading-tight">IIT / NIT Expert</h3>
+                  <p className="text-sm mt-1.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
+                    Your child's live class teacher — a graduate of India's top institutions. Real-time teaching, concept-building, and live Q&A every session.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {["Live Classes", "Real-time Q&A", "Concept Clarity"].map(t => (
+                      <span key={t} className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                        style={{ background: "rgba(255,107,26,0.2)", color: "rgba(255,200,150,0.95)", border: "1px solid rgba(255,107,26,0.3)" }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 2 — Personal Mentor */}
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={1}
+              className="relative rounded-2xl p-6 overflow-hidden border-2"
+              style={{ background: "white", borderColor: "rgba(255,107,26,0.2)", boxShadow: "0 12px 40px rgba(11,43,107,0.08)" }}>
+              <div className="absolute -bottom-8 -right-8 w-36 h-36 rounded-full opacity-8 blur-2xl" style={{ background: NAVY }} />
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: `rgba(11,43,107,0.08)`, border: `1.5px solid rgba(11,43,107,0.15)` }}>
+                  <Users className="w-6 h-6" style={{ color: NAVY }} />
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: NAVY }}>Teacher 2</div>
+                  <h3 className="text-lg font-black leading-tight" style={{ color: NAVY }}>Personal Mentor</h3>
+                  <p className="text-sm mt-1.5 leading-relaxed" style={{ color: MUTED }}>
+                    Dedicated 1-on-1 mentor who calls every fortnight, tracks weak areas, shares progress reports with parents, and keeps your child on track.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {["1-on-1 Calls", "Progress Reports", "Parent Updates"].map(t => (
+                      <span key={t} className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                        style={{ background: `rgba(11,43,107,0.07)`, color: NAVY, border: `1px solid rgba(11,43,107,0.15)` }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Bottom note */}
+          <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="text-center text-xs mt-5 font-semibold" style={{ color: MUTED }}>
+            🏆 Combined, this is why Braintam students consistently score <span style={{ color: TEXT, fontWeight: 800 }}>15–30% higher</span> than the national average.
+          </motion.p>
+        </div>
+      </section>
+
       {/* ── PROGRAMS / PRICING ── */}
       <section className="py-6 md:py-12 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-5xl mx-auto">

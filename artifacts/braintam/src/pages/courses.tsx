@@ -336,20 +336,60 @@ function FullYearCard({ grade, data, specialty, specialtyIcon, bubbleColor }: {
 
 // ── Why Parents Choose Braintam ─────────────────────────────────
 function WhyParents() {
-  const reasons = [
-    { icon: "🎥", title: "Live classes by IIT/NIT experts", desc: "Not pre-recorded — real-time teaching with Q&A." },
+  const extras = [
     { icon: "📊", title: "Structured practice & progress reports", desc: "Parents get weekly PDF reports on weak areas." },
-    { icon: "🤝", title: "Dedicated mentor per student", desc: "1-on-1 mentor calls every fortnight to track goals." },
     { icon: "🏅", title: "Tight & focused delivery", desc: "No filler content — every class mapped to the syllabus." },
   ];
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-      className="mt-10 rounded-2xl p-6 border border-gray-100"
+      className="mt-10 rounded-2xl overflow-hidden border border-gray-100"
       style={{ background: "linear-gradient(135deg, #F8FAFF 0%, #EEF4FF 100%)" }}>
-      <h3 className="font-black text-lg mb-1" style={{ color: NAVY }}>Why parents choose Braintam</h3>
-      <p className="text-gray-500 text-sm mb-5">Live classes, structured practice and clear progress reports — tight &amp; focused delivery.</p>
-      <div className="grid sm:grid-cols-2 gap-4">
-        {reasons.map(r => (
+
+      {/* Dual Teacher highlight */}
+      <div className="px-6 pt-6 pb-5">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="font-black text-lg" style={{ color: NAVY }}>Why parents choose Braintam</h3>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-black px-2.5 py-0.5 rounded-full text-white" style={{ background: ORANGE }}>
+            Signature
+          </span>
+          <span className="text-xs font-bold" style={{ color: NAVY }}>Dual Teacher Model — only at Braintam</span>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {/* IIT/NIT Expert */}
+          <div className="flex items-start gap-3 rounded-xl p-3"
+            style={{ background: `linear-gradient(135deg, ${NAVY}F2, #1a3a7a)` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(255,107,26,0.3)", border: "1px solid rgba(255,107,26,0.5)" }}>
+              <span className="text-base">🎓</span>
+            </div>
+            <div>
+              <p className="font-black text-sm text-white">IIT / NIT Expert Teacher</p>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>Live classes with real-time Q&A every session.</p>
+            </div>
+          </div>
+          {/* Personal Mentor */}
+          <div className="flex items-start gap-3 rounded-xl p-3 border"
+            style={{ background: "white", borderColor: `rgba(11,43,107,0.12)` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: `rgba(11,43,107,0.08)`, border: `1px solid rgba(11,43,107,0.15)` }}>
+              <span className="text-base">🤝</span>
+            </div>
+            <div>
+              <p className="font-black text-sm" style={{ color: NAVY }}>Personal Mentor</p>
+              <p className="text-xs mt-0.5 text-gray-500">1-on-1 calls, progress tracking & parent updates.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-gray-100 mx-6" />
+
+      {/* Other reasons */}
+      <div className="grid sm:grid-cols-2 gap-4 px-6 py-5">
+        {extras.map(r => (
           <div key={r.title} className="flex items-start gap-3">
             <span className="text-xl flex-shrink-0">{r.icon}</span>
             <div>
@@ -390,9 +430,32 @@ function PublicCoursesView() {
                 Best Courses
               </span>
             </h1>
-            <p className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mb-8">
+            <p className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mb-5">
               Full School Syllabus + Competitive Exam Preparation — taught by India's top educators.
             </p>
+
+            {/* Dual teacher strip */}
+            <div className="inline-flex flex-wrap items-center justify-center gap-3 mb-8 px-5 py-3 rounded-2xl"
+              style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={{ background: "rgba(255,107,26,0.3)", border: "1px solid rgba(255,107,26,0.5)" }}>
+                  <GraduationCap className="w-4 h-4" style={{ color: ORANGE }} />
+                </div>
+                <span className="text-sm font-bold text-white">IIT/NIT Expert Teacher</span>
+              </div>
+              <span className="text-white/30 text-lg font-thin hidden sm:block">+</span>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <Users className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm font-bold text-white">Personal Mentor</span>
+              </div>
+              <span className="text-xs px-3 py-1 rounded-full font-black"
+                style={{ background: ORANGE, color: "white" }}>Dual Teacher Model</span>
+            </div>
+
             <div className="flex flex-wrap gap-3 justify-center">
               <Link href="/sign-up">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
