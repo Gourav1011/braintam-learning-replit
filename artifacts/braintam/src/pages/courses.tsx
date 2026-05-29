@@ -143,7 +143,7 @@ function PublicCoursesView() {
       <section className="max-w-6xl mx-auto px-6 py-14">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-center mb-10">
           <h2 className="text-3xl font-black" style={{ color: NAVY }}>Popular Courses</h2>
-          <p className="text-gray-500 mt-2">Designed to help students excel — across every subject and grade</p>
+          <p className="text-gray-500 mt-2">Full School Syllabus + Competitive Exam Preparation — Grades 1–10</p>
         </motion.div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {DEMO_COURSES.map((c, i) => (
@@ -160,9 +160,8 @@ function PublicCoursesView() {
               </div>
               <div className="p-4 space-y-2.5">
                 <h3 className="font-bold text-sm leading-snug" style={{ color: NAVY }}>{c.title}</h3>
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center text-xs text-gray-500">
                   <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{c.lessons} lessons</span>
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{c.students.toLocaleString()} students</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ background: "rgba(11,43,107,0.08)", color: NAVY }}>{c.subject}</span>
