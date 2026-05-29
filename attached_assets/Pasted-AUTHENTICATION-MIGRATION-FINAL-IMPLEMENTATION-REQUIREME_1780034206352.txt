@@ -1,0 +1,166 @@
+AUTHENTICATION MIGRATION - FINAL IMPLEMENTATION REQUIREMENTS
+
+Project: Braintam LMS
+Authentication Provider: Clerk
+Frontend: React + Vite
+Backend: Node.js API
+
+OBJECTIVE
+
+Complete the migration from legacy/localStorage authentication to Clerk authentication across the entire platform.
+
+CURRENT STATUS
+
+Completed:
+
+* apiFetch updated to support Clerk tokens
+* useAuth hook integrated
+* Clerk authentication configured
+
+Remaining Work:
+
+* Verify every API request throughout the application uses Clerk tokens correctly.
+
+REQUIRED IMPLEMENTATION
+
+1. Global Authentication Audit
+
+Search entire codebase for:
+
+* apiFetch(
+* fetch(
+* axios(
+* useQuery
+* useMutation
+
+Review every API request.
+
+2. Token Requirements
+
+Every protected request must use:
+
+const token = await getToken();
+
+and pass the token into apiFetch.
+
+Example:
+
+const token = await getToken();
+
+await apiFetch("/api/admin/courses", {
+method: "POST",
+token,
+body
+});
+
+3. Verify All Request Types
+
+Audit:
+
+* GET
+* POST
+* PUT
+* PATCH
+* DELETE
+
+No protected endpoint should be missing a Clerk token.
+
+4. Modules To Verify
+
+Admin:
+
+* Dashboard
+* Analytics
+* Users
+* Courses
+* Subjects
+* Chapters
+* Topics
+* Homework
+* Tests
+* Live Classes
+* Recordings
+* Settings
+* Audit Logs
+
+Teacher:
+
+* Homework
+* Tests
+* Attendance
+* Live Classes
+* Recordings
+
+Student:
+
+* Dashboard
+* Courses
+* Homework
+* Tests
+* Recordings
+* Progress
+
+5. Remove Legacy Authentication
+
+Remove all remaining references to:
+
+* localStorage token auth
+* sessionStorage token auth
+* manual JWT storage
+
+Clerk should be the single source of truth.
+
+6. Error Handling
+
+If token is missing:
+
+* redirect to login
+* show friendly error
+* prevent silent failures
+
+7. Authorization Verification
+
+Verify backend role checks:
+
+* Admin
+* Teacher
+* Student
+
+continue functioning correctly after migration.
+
+8. Security
+
+Ensure every protected request sends:
+
+Authorization: Bearer <Clerk Token>
+
+Ensure backend validates Clerk JWT correctly.
+
+9. Deliverables
+
+Provide report containing:
+
+* Files updated
+* Endpoints updated
+* Remaining authentication issues
+* Any endpoint still returning 401
+* Any endpoint still using localStorage auth
+
+10. Success Criteria
+
+All admin panel actions work without 401 Unauthorized errors:
+
+* Create Course
+* Edit Course
+* Delete Course
+* Create Chapter
+* Delete Chapter
+* Create Topic
+* Delete Topic
+* Assign Courses
+* Manage Users
+* Analytics
+* Settings
+* Audit Logs
+
+Clerk becomes the single authentication system for the entire LMS.
