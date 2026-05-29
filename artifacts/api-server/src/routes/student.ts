@@ -6,7 +6,7 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
-import { eq, desc, sql, inArray, and } from "drizzle-orm";
+import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
 import { checkDailyLogin } from "../services/pointsService.js";
 
@@ -26,13 +26,17 @@ router.get("/student/dashboard", requireAuth, async (req, res) => {
   const upcoming = await db.select().from(liveClassesTable)
     .where(eq(liveClassesTable.status, "upcoming")).limit(5);
 
-  const hw = courseIds.length
-    ? await db.select().from(homeworkTable).where(inArray(homeworkTable.courseId, courseIds)).limit(10)
-    : await db.select().from(homeworkTable).where(eq(homeworkTable.grade, student?.grade ?? 6)).limit(10);
+  const hw = await db.select().from(homeworkTable).where(
+    courseIds.length
+      ? or(inArray(homeworkTable.courseId, courseIds), isNull(homeworkTable.courseId))
+      : isNull(homeworkTable.courseId)
+  ).limit(10);
 
-  const asgn = courseIds.length
-    ? await db.select().from(assignmentsTable).where(inArray(assignmentsTable.courseId, courseIds)).limit(10)
-    : await db.select().from(assignmentsTable).where(eq(assignmentsTable.grade, student?.grade ?? 6)).limit(10);
+  const asgn = await db.select().from(assignmentsTable).where(
+    courseIds.length
+      ? or(inArray(assignmentsTable.courseId, courseIds), isNull(assignmentsTable.courseId))
+      : isNull(assignmentsTable.courseId)
+  ).limit(10);
 
   const tests = await db.select().from(testsTable)
     .where(eq(testsTable.status, "upcoming")).limit(5);

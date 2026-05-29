@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { homeworkTable, homeworkSubmissionsTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListHomeworkQueryParams, GetHomeworkParams, SubmitHomeworkParams, SubmitHomeworkBody } from "@workspace/api-zod";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, or, isNull } from "drizzle-orm";
 import { recomputeAndSavePoints } from "../points";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
 
@@ -13,16 +13,17 @@ router.get("/homework", attachUser, async (req, res) => {
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
 
-  let studentFilter: ReturnType<typeof inArray> | ReturnType<typeof eq> | undefined;
+  let studentFilter: ReturnType<typeof or> | ReturnType<typeof isNull> | undefined;
   if (user && user.role === "student") {
     const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
       .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map(e => e.courseId);
     if (enrolledIds.length > 0) {
-      studentFilter = inArray(homeworkTable.courseId, enrolledIds);
+      // Show homework linked to enrolled courses OR grade-level homework (no course)
+      studentFilter = or(inArray(homeworkTable.courseId, enrolledIds), isNull(homeworkTable.courseId));
     } else {
-      res.json([]);
-      return;
+      // Not enrolled in any course — show only grade-level homework (no course assigned)
+      studentFilter = isNull(homeworkTable.courseId);
     }
   }
 
