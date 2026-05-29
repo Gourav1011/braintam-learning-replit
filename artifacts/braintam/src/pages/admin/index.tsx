@@ -690,6 +690,8 @@ function AdminPageInner() {
   // User row expansion
   const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
   const [expandedUserData, setExpandedUserData] = useState<Record<number, { id: number; title: string; grade: number; enrolled: boolean; enrollmentId: number | null }[]>>({});
+  const [inlineEditUserId, setInlineEditUserId] = useState<number | null>(null);
+  const [inlineEditForm, setInlineEditForm] = useState({ name: "", grade: "", school: "" });
 
   // Live class chapter/topic cascade
   const [lcChapters, setLcChapters] = useState<{ id: number; name: string }[]>([]);
@@ -848,6 +850,23 @@ function AdminPageInner() {
   async function permanentDeleteUser(id: number) {
     await apiFetch(`/admin/users/${id}`, { method: "DELETE" });
     flash("User permanently deleted"); loadAll();
+  }
+
+  async function saveInlineEdit(userId: number) {
+    const { name, grade, school } = inlineEditForm;
+    if (!name.trim()) { flash("Name is required", false); return; }
+    setBusy(true);
+    try {
+      const body: Record<string, unknown> = { name: name.trim(), school: school.trim() || null };
+      const gradeNum = Number(grade);
+      if (!isNaN(gradeNum) && gradeNum >= 0) body.grade = gradeNum;
+      const r = await apiFetch(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) });
+      if (!r.ok) { flash("Failed to update user", false); return; }
+      const updated = await r.json();
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updated } : u));
+      setInlineEditUserId(null);
+      flash("User updated");
+    } finally { setBusy(false); }
   }
 
   async function bulkDeactivate() {
@@ -1592,38 +1611,92 @@ function AdminPageInner() {
                       {expandedUserId === u.id && (() => {
                         const userCourses = expandedUserData[u.id];
                         const enrolledCourses = userCourses ? userCourses.filter(c => c.enrolled) : null;
+                        const lastLoginLog = auditLogs
+                          .filter(l => l.actorId === u.id && l.action.includes("login"))
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+                        const isEditing = inlineEditUserId === u.id;
                         return (
                           <tr className="bg-blue-50/20 border-b border-blue-100">
                             <td colSpan={6} className="px-6 py-4">
-                              <div className="flex flex-wrap gap-6">
-                                <div>
-                                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Enrollments</p>
-                                  {userCourses === undefined ? (
-                                    <p className="text-xs text-gray-400">Loading…</p>
-                                  ) : enrolledCourses!.length === 0 ? (
-                                    <p className="text-xs text-gray-400 italic">No courses enrolled</p>
-                                  ) : (
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {enrolledCourses!.map(c => (
-                                        <span key={c.id} className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-700 font-medium">
-                                          {c.title} <span className="text-gray-400">· Gr {c.grade}</span>
-                                        </span>
-                                      ))}
+                              <div className="space-y-3">
+                                {/* Stats row */}
+                                <div className="flex flex-wrap gap-6">
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Enrolled Courses</p>
+                                    {userCourses === undefined ? (
+                                      <p className="text-xs text-gray-400">Loading…</p>
+                                    ) : enrolledCourses!.length === 0 ? (
+                                      <p className="text-xs text-gray-400 italic">No courses enrolled</p>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {enrolledCourses!.map(c => (
+                                          <span key={c.id} className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-700 font-medium">
+                                            {c.title} <span className="text-gray-400">· Gr {c.grade}</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Enrolled</p>
+                                    <p className="text-sm font-bold" style={{ color: NAVY }}>
+                                      {userCourses === undefined ? "…" : `${enrolledCourses!.length} / ${userCourses.length}`}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Last Login</p>
+                                    <p className="text-xs text-gray-700">
+                                      {lastLoginLog
+                                        ? new Date(lastLoginLog.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                                        : <span className="italic text-gray-400">Never logged in</span>}
+                                    </p>
+                                  </div>
+                                  {u.school && !isEditing && (
+                                    <div>
+                                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">School</p>
+                                      <p className="text-xs text-gray-700">{u.school}</p>
+                                    </div>
+                                  )}
+                                  {/* Quick-edit toggle */}
+                                  {!isEditing && (
+                                    <div className="ml-auto self-start">
+                                      <button
+                                        onClick={() => { setInlineEditUserId(u.id); setInlineEditForm({ name: u.name, grade: String(u.grade ?? ""), school: u.school ?? "" }); }}
+                                        className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                                      >
+                                        <Edit2 className="w-3 h-3" /> Edit
+                                      </button>
                                     </div>
                                   )}
                                 </div>
-                                {u.school && (
-                                  <div>
-                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">School</p>
-                                    <p className="text-xs text-gray-700">{u.school}</p>
+                                {/* Inline edit form */}
+                                {isEditing && (
+                                  <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-3">
+                                    <p className="text-xs font-semibold text-gray-500">Quick Edit — {u.name}</p>
+                                    <div className="grid sm:grid-cols-3 gap-3">
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 uppercase tracking-wide">Name *</label>
+                                        <Input value={inlineEditForm.name} onChange={e => setInlineEditForm(p => ({ ...p, name: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                      </div>
+                                      {u.role === "student" && (
+                                        <div>
+                                          <label className="text-[10px] text-gray-400 uppercase tracking-wide">Grade</label>
+                                          <Input type="number" min="0" max="10" value={inlineEditForm.grade} onChange={e => setInlineEditForm(p => ({ ...p, grade: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                        </div>
+                                      )}
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 uppercase tracking-wide">School</label>
+                                        <Input value={inlineEditForm.school} onChange={e => setInlineEditForm(p => ({ ...p, school: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button size="sm" onClick={() => saveInlineEdit(u.id)} disabled={busy} className="h-7 text-xs text-white px-4" style={{ background: NAVY }}>
+                                        {busy ? "Saving…" : "Save"}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={() => setInlineEditUserId(null)} className="h-7 text-xs px-3">Cancel</Button>
+                                    </div>
                                   </div>
                                 )}
-                                <div>
-                                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Enrolled</p>
-                                  <p className="text-sm font-bold" style={{ color: NAVY }}>
-                                    {userCourses === undefined ? "…" : `${enrolledCourses!.length} / ${userCourses.length} courses`}
-                                  </p>
-                                </div>
                               </div>
                             </td>
                           </tr>

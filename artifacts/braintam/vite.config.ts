@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import fs from "fs";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
@@ -32,6 +33,19 @@ export default defineConfig({
     react(),
     tailwindcss({ optimize: false }),
     runtimeErrorOverlay(),
+    // Generate version.json on every production build so clients can detect deploys
+    {
+      name: "generate-version-json",
+      apply: "build" as const,
+      closeBundle() {
+        const outDir = path.resolve(import.meta.dirname, "dist/public");
+        fs.mkdirSync(outDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(outDir, "version.json"),
+          JSON.stringify({ buildTime: Date.now() })
+        );
+      },
+    },
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

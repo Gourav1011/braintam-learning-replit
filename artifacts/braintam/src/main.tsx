@@ -14,7 +14,37 @@ setAuthTokenGetter(() => {
 });
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
+  navigator.serviceWorker
+    .register(`${BASE_PATH}/sw.js`, { scope: `${BASE_PATH}/` })
+    .then((registration) => {
+      // Detect when a new SW finishes installing
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (
+            newWorker.state === "installed" &&
+            navigator.serviceWorker.controller
+          ) {
+            window.dispatchEvent(new CustomEvent("swUpdate", { detail: "updateAvailable" }));
+          }
+        });
+      });
+
+      // Periodically check for a new SW version
+      setInterval(() => registration.update(), 2 * 60 * 1000);
+    })
+    .catch(() => {});
+
+  // Reload once the new SW takes control
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

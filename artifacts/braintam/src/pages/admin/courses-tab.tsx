@@ -723,8 +723,14 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           {showAddTopic && (
             <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Topic</h3>
-              <Input placeholder="Topic name *" value={topicForm.name}
-                onChange={e => setTopicForm(p => ({ ...p, name: e.target.value }))} />
+              <p className="text-[10px] text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+                💡 After creating a topic, you can assign live classes, homework, assignments, tests, and recordings to it — this is how students discover content for each lesson.
+              </p>
+              <div className="space-y-1">
+                <Input placeholder="Topic name *" value={topicForm.name}
+                  onChange={e => setTopicForm(p => ({ ...p, name: e.target.value }))} />
+                <p className="text-[10px] text-gray-400 pl-1">Use clear lesson names, e.g. "Topic 1: Variables and Constants"</p>
+              </div>
               <Input placeholder="Description (optional)" value={topicForm.description}
                 onChange={e => setTopicForm(p => ({ ...p, description: e.target.value }))} />
               <div className="flex gap-2">

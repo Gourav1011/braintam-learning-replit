@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
+import { UpdateBanner } from "@/components/update-banner";
 import { AuthProvider, useAuth } from "@/components/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
@@ -400,6 +401,7 @@ export default function App() {
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />
       <PWAInstallPrompt />
+      <UpdateBanner />
     </WouterRouter>
   );
 }
