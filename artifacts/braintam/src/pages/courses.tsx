@@ -365,7 +365,7 @@ function WhyParents() {
               <span className="text-base">🎓</span>
             </div>
             <div>
-              <p className="font-black text-sm text-white">IIT / NIT Expert Teacher</p>
+              <p className="font-black text-sm text-white">NIT / IIT Experienced Teacher</p>
               <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>Live classes with real-time Q&A every session.</p>
             </div>
           </div>
@@ -442,7 +442,7 @@ function PublicCoursesView() {
                   style={{ background: "rgba(255,107,26,0.3)", border: "1px solid rgba(255,107,26,0.5)" }}>
                   <GraduationCap className="w-4 h-4" style={{ color: ORANGE }} />
                 </div>
-                <span className="text-sm font-bold text-white">IIT/NIT Expert Teacher</span>
+                <span className="text-sm font-bold text-white">NIT/IIT Experienced Teacher</span>
               </div>
               <span className="text-white/30 text-lg font-thin hidden sm:block">+</span>
               <div className="flex items-center gap-2">

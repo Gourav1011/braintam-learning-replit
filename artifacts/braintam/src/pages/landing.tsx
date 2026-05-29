@@ -860,7 +860,7 @@ export default function LandingPage() {
               Every child gets <span style={{ color: ORANGE }}>two teachers.</span>
             </h2>
             <p className="text-sm max-w-lg mx-auto" style={{ color: MUTED }}>
-              Not one — two. An IIT/NIT expert who teaches live, and a personal mentor who tracks your child's growth every week.
+              Not one — two. A NIT/IIT experienced teacher who teaches live, and a personal mentor who tracks your child's growth every week.
             </p>
           </motion.div>
 
@@ -877,9 +877,9 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: "rgba(255,107,26,0.9)" }}>Teacher 1</div>
-                  <h3 className="text-lg font-black text-white leading-tight">IIT / NIT Expert</h3>
+                  <h3 className="text-lg font-black text-white leading-tight">NIT / IIT Experienced Teacher</h3>
                   <p className="text-sm mt-1.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-                    Your child's live class teacher — a graduate of India's top institutions. Real-time teaching, concept-building, and live Q&A every session.
+                    Your child's live class teacher — a highly experienced graduate of NIT or IIT. Real-time teaching, concept-building, and live Q&A every session.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {["Live Classes", "Real-time Q&A", "Concept Clarity"].map(t => (
