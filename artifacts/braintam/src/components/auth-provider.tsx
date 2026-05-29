@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 
@@ -65,6 +65,10 @@ function isStaffPath(path: string) {
   return path.startsWith("/admin") || path.startsWith("/teacher");
 }
 
+function normalize(s: StudentProfile): StudentProfile {
+  return { ...s, streak: (s as any).streak ?? 0, role: (s.role as UserRole) ?? "student" };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -72,21 +76,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [studentLoading, setStudentLoading] = useState(true);
 
+  // Track last resolved identity so we don't re-fetch on every navigation.
+  const lastResolvedRef = useRef<{ userId: string | null; staffToken: string | null; studentToken: string | null } | null>(null);
+
   useEffect(() => {
     if (!isLoaded) return;
 
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
+    const clerkUserId = user?.id ?? null;
 
     // ── Staff paths: always use the staff token exclusively ──────────────
     if (isStaffPath(location) && staffToken) {
+      // Skip re-fetch if nothing changed
+      if (
+        lastResolvedRef.current?.staffToken === staffToken &&
+        lastResolvedRef.current?.userId === clerkUserId &&
+        student !== null
+      ) return;
+
+      setStudentLoading(true);
       fetchProfileWithToken(staffToken)
         .then((data) => {
           if (data) {
-            setStudent({ ...data, streak: (data as any).streak ?? 0, role: (data.role as UserRole) ?? "student" });
+            setStudent(normalize(data));
+            lastResolvedRef.current = { userId: clerkUserId, staffToken, studentToken: null };
           } else {
             localStorage.removeItem(STAFF_TOKEN_KEY);
             setStudent(null);
+            lastResolvedRef.current = null;
           }
         })
         .finally(() => setStudentLoading(false));
@@ -94,9 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // ── Student paths ─────────────────────────────────────────────────────
-    // If a staff token exists, do NOT auto-sync Clerk. The admin must log
-    // out from the admin portal before using the student portal, otherwise
-    // the admin's Clerk session would silently create a student record.
+    // If a staff token exists on a student page, block the student view.
+    // The admin must log out of the admin portal first.
     if (staffToken && !isStaffPath(location)) {
       setStudent(null);
       setStudentLoading(false);
@@ -104,13 +121,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (studentToken) {
+      // Skip re-fetch if same token + same Clerk user and we already have a profile
+      if (
+        lastResolvedRef.current?.studentToken === studentToken &&
+        lastResolvedRef.current?.userId === clerkUserId &&
+        student !== null
+      ) return;
+
+      setStudentLoading(true);
       fetchProfileWithToken(studentToken)
         .then((data) => {
           if (data) {
-            setStudent({ ...data, streak: (data as any).streak ?? 0, role: (data.role as UserRole) ?? "student" });
+            setStudent(normalize(data));
+            lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken };
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
             setStudent(null);
+            lastResolvedRef.current = null;
           }
         })
         .finally(() => setStudentLoading(false));
@@ -120,11 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setStudent(null);
       setStudentLoading(false);
+      lastResolvedRef.current = { userId: null, staffToken: null, studentToken: null };
       return;
     }
 
-    // Clerk user — sync with DB to get a real token so all API calls work.
-    // Clear any lingering staff token so sessions don't cross-contaminate.
+    // Clerk user present but no token yet — sync with DB to get a real token.
+    // IMPORTANT: set loading BEFORE the async call so ProtectedRoute shows a
+    // loading screen instead of redirecting to /sign-in while sync is in flight.
     const email = user.emailAddresses[0]?.emailAddress ?? "";
     const name = user.fullName ?? user.firstName ?? "Student";
 
@@ -134,14 +163,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    setStudentLoading(true);
     syncClerkUser(email, name)
       .then((result) => {
         if (result) {
           localStorage.removeItem(STAFF_TOKEN_KEY);
           localStorage.setItem(STUDENT_TOKEN_KEY, result.token);
-          setStudent({ ...result.student, streak: (result.student as any).streak ?? 0, role: (result.student.role as UserRole) ?? "student" });
+          setStudent(normalize(result.student));
+          lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken: result.token };
         } else {
           setStudent(null);
+          lastResolvedRef.current = null;
         }
       })
       .finally(() => setStudentLoading(false));
@@ -151,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStudentLoading(true);
     localStorage.removeItem(STAFF_TOKEN_KEY);
     localStorage.removeItem(STUDENT_TOKEN_KEY);
+    lastResolvedRef.current = null;
     setStudent(null);
     if (user) {
       signOut();
@@ -160,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAuth = () => {
     setStudentLoading(true);
+    lastResolvedRef.current = null;
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
     const onStaff = isStaffPath(location);
@@ -168,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fetchProfileWithToken(token)
         .then((data) => {
           if (data) {
-            setStudent({ ...data, streak: (data as any).streak ?? 0, role: (data.role as UserRole) ?? "student" });
+            setStudent(normalize(data));
           } else {
             setStudent(null);
           }
