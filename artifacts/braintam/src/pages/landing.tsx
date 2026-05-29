@@ -1235,31 +1235,13 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{ background: NAVY }}>
-        <div className="max-w-6xl mx-auto px-6 py-5">
-          <div className="flex flex-col md:flex-row gap-6 items-stretch">
+        <div className="max-w-6xl mx-auto px-6 py-3">
+          <div className="flex flex-col md:flex-row gap-5 items-stretch">
 
             {/* Left: brand block */}
             <div className="flex-shrink-0 md:w-56 space-y-2">
-              {/* Logo row + socials in one line */}
-              <div className="flex items-center justify-between">
-                <img src={braintamLogo} alt="Braintam" className="w-9 h-9 object-contain" />
-                <div className="flex gap-1.5">
-                  {[
-                    { Icon: WaIcon, href: "https://wa.me/918492944473" },
-                    { Icon: IgIcon, href: "https://instagram.com/braintamofficoal" },
-                    { Icon: FbIcon, href: "https://facebook.com/braintam" },
-                    { Icon: YtIcon, href: "https://youtube.com/@braintam" },
-                  ].map(({ Icon, href }, i) => (
-                    <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                      className="w-6 h-6 rounded-md flex items-center justify-center transition-all"
-                      style={{ background: "rgba(255,255,255,0.08)" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
-                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
-                      <Icon className="w-2.5 h-2.5 text-white" />
-                    </a>
-                  ))}
-                </div>
-              </div>
+              {/* Logo */}
+              <img src={braintamLogo} alt="Braintam" className="w-12 h-12 object-contain" />
               <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
                 India's premium EdTech for grades 1–10.
               </p>
@@ -1269,6 +1251,23 @@ export default function LandingPage() {
                 <div className="flex items-start gap-1.5"><MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
                   <span>C/23, Durvas Complex, near Capital Mall Gate No. 5, Nallasopara (E), Palghar, 401209</span>
                 </div>
+              </div>
+              {/* Social icons at the bottom */}
+              <div className="flex gap-2 pt-1">
+                {[
+                  { Icon: WaIcon, href: "https://wa.me/918492944473" },
+                  { Icon: IgIcon, href: "https://instagram.com/braintamofficoal" },
+                  { Icon: FbIcon, href: "https://facebook.com/braintam" },
+                  { Icon: YtIcon, href: "https://youtube.com/@braintam" },
+                ].map(({ Icon, href }, i) => (
+                  <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                    style={{ background: "rgba(255,255,255,0.08)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+                    <Icon className="w-3.5 h-3.5 text-white" />
+                  </a>
+                ))}
               </div>
             </div>
 
