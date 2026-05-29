@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
-import expertCardImg from "@assets/ChatGPT_Image_May_29,_2026,_11_37_57_PM_1780078450533.png";
+import expertCardImg from "@assets/ChatGPT_Image_May_29__2026__09_13_20_PM-removebg-preview_1780077158367.png";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowRight, Star, Video, Zap, BarChart3, Shield,
@@ -1272,37 +1272,31 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Company links */}
-            <div className="flex-shrink-0">
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: ORANGE }}>Company</p>
-              <ul className="space-y-2">
-                {footerLinks.Company.map(({ label, href }) => (
-                  <li key={label}>
-                    <Link href={href} className="text-xs transition-colors hover:text-white"
-                      style={{ color: "rgba(255,255,255,0.45)" }}>{label}</Link>
-                  </li>
-                ))}
-              </ul>
+            {/* Middle: Company + Support links */}
+            <div className="flex-1 grid grid-cols-2 gap-6">
+              {Object.entries(footerLinks).map(([group, links]) => (
+                <div key={group}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: ORANGE }}>{group}</p>
+                  <ul className="space-y-2">
+                    {links.map(({ label, href }) => (
+                      <li key={label}>
+                        <Link href={href}
+                          className="text-xs transition-colors hover:text-white"
+                          style={{ color: "rgba(255,255,255,0.45)" }}>
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
 
-            {/* Support links */}
-            <div className="flex-shrink-0">
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: ORANGE }}>Support</p>
-              <ul className="space-y-2">
-                {footerLinks.Support.map(({ label, href }) => (
-                  <li key={label}>
-                    <Link href={href} className="text-xs transition-colors hover:text-white"
-                      style={{ color: "rgba(255,255,255,0.45)" }}>{label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Student image — right next to Support, larger, transparent bg blends with footer */}
-            <div className="flex-shrink-0 hidden md:flex items-end justify-center" style={{ width: "220px" }}>
+            {/* Right: student image (bg removed — blends naturally into footer) */}
+            <div className="flex-shrink-0 md:w-56 hidden md:flex items-end justify-center">
               <img src={expertCardImg} alt="Braintam student"
                 className="w-full h-auto block object-contain"
-                style={{ filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.45))" }} />
+                style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.4))" }} />
             </div>
           </div>
 
