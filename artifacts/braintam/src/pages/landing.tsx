@@ -1272,8 +1272,28 @@ export default function LandingPage() {
               </div>
             </div>
 
+            {/* Middle: Company + Support links */}
+            <div className="flex-1 grid grid-cols-2 gap-6">
+              {Object.entries(footerLinks).map(([group, links]) => (
+                <div key={group}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: ORANGE }}>{group}</p>
+                  <ul className="space-y-2">
+                    {links.map(({ label, href }) => (
+                      <li key={label}>
+                        <Link href={href}
+                          className="text-xs transition-colors hover:text-white"
+                          style={{ color: "rgba(255,255,255,0.45)" }}>
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
             {/* Right: CTA card */}
-            <div className="flex-1">
+            <div className="flex-shrink-0 md:w-64">
               <div className="rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden h-full"
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
                 <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-10"
