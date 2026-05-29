@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
-import expertCardImg from "@assets/ChatGPT_Image_May_29__2026__09_13_20_PM-removebg-preview_1780077158367.png";
+import expertCardImg from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowRight, Star, Video, Zap, BarChart3, Shield,
@@ -1292,11 +1292,16 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Right: student image (bg removed — blends naturally into footer) */}
-            <div className="flex-shrink-0 md:w-56 hidden md:flex items-end justify-center">
+            {/* Right: student image — transparent bg, shifted up so she peeks above footer */}
+            <div className="flex-shrink-0 md:w-64 hidden md:flex items-end justify-center"
+              style={{ marginBottom: "-20px" }}>
               <img src={expertCardImg} alt="Braintam student"
                 className="w-full h-auto block object-contain"
-                style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.4))" }} />
+                style={{
+                  transform: "translateY(-12px) scale(1.08)",
+                  transformOrigin: "bottom center",
+                  filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.5))"
+                }} />
             </div>
           </div>
 
