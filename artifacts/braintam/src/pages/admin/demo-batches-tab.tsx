@@ -57,7 +57,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     setLoading(true);
     try {
       const r = await apiFetch("/admin/demo-batches");
-      setBatches(await r.json());
+      if (r.ok) setBatches(await r.json());
     } finally { setLoading(false); }
   }, []);
 
@@ -65,7 +65,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     setLoading(true);
     try {
       const r = await apiFetch(`/admin/demo-batches/${batchId}/sessions`);
-      setSessions(await r.json());
+      if (r.ok) setSessions(await r.json());
     } finally { setLoading(false); }
   }, []);
 

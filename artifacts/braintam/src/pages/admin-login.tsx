@@ -154,6 +154,7 @@ export default function AdminLoginPage() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="admin@braintam.com"
@@ -170,6 +171,7 @@ export default function AdminLoginPage() {
                 <input
                   type={showPw ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Your password"

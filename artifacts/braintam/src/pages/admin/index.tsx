@@ -1,6 +1,41 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment, Component, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Redirect } from "wouter";
+
+// ── Error boundary to prevent full white-screen crashes ─────────────────────
+class AdminErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      const err = this.state.error as Error;
+      return (
+        <div className="min-h-screen flex items-center justify-center p-8" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-lg w-full border border-red-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <span className="text-red-500 text-lg font-black">!</span>
+              </div>
+              <div>
+                <p className="font-black text-sm" style={{ color: "#0B2B6B" }}>Something went wrong</p>
+                <p className="text-xs text-gray-400">Admin panel encountered an error</p>
+              </div>
+            </div>
+            <pre className="text-xs text-red-600 bg-red-50 rounded-xl p-4 overflow-auto mb-4 max-h-40">{err.message}</pre>
+            <button
+              onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+              className="px-4 py-2 rounded-xl text-white text-sm font-semibold"
+              style={{ background: "#FF6B1A" }}
+            >
+              Reload page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import {
   Users, BookOpen, GraduationCap, UserCheck, Plus, Trash2, Shield,
   ChevronRight, BarChart3, Link as LinkIcon, Bell, Image, Edit2, X,
@@ -594,7 +629,7 @@ function AccessModal({ user, onClose, flash }: {
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
-export default function AdminPage() {
+function AdminPageInner() {
   const { student, role, isLoading, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("analytics");
 
@@ -2359,5 +2394,13 @@ function ChangePasswordForm({ flash }: { flash: (msg: string, ok?: boolean) => v
         {busy ? "Updating…" : "Update Password"}
       </Button>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <AdminErrorBoundary>
+      <AdminPageInner />
+    </AdminErrorBoundary>
   );
 }

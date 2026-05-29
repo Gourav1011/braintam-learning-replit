@@ -161,6 +161,7 @@ export default function TeacherLoginPage() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@school.com"
@@ -177,6 +178,7 @@ export default function TeacherLoginPage() {
                 <input
                   type={showPw ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Your password"
