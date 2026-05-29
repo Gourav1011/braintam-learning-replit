@@ -239,9 +239,7 @@ function Step1({
             maxLength={10}
           />
         </div>
-        {errors.phone
-          ? <p className="text-xs text-red-500">{errors.phone}</p>
-          : <p className="text-xs text-gray-400">For important notifications only · no OTP</p>}
+        {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
       </div>
 
       <PasswordInput id="password" label="Password *" value={password} onChange={setPassword}
