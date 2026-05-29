@@ -469,6 +469,59 @@ function PublicCoursesView() {
           </motion.div>
         </AnimatePresence>
 
+        {/* ── Discount CTA Banner ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="relative mt-6 rounded-2xl overflow-hidden"
+          style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a3a7a 55%, #0d1f4a 100%)` }}
+        >
+          {/* Background bubbles */}
+          <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-10 blur-2xl pointer-events-none"
+            style={{ background: ORANGE }} />
+          <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full opacity-8 blur-2xl pointer-events-none"
+            style={{ background: ORANGE }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-16 rounded-full opacity-5 blur-3xl pointer-events-none"
+            style={{ background: ORANGE }} />
+
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-5 px-6 py-5">
+            {/* Left: text */}
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,107,26,0.25)", border: "1px solid rgba(255,107,26,0.4)" }}>
+                <span className="text-xl">🎁</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full"
+                    style={{ background: ORANGE, color: "white" }}>LIMITED OFFER</span>
+                  <span className="text-white font-black text-base">Get an exclusive discount!</span>
+                </div>
+                <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.65)" }}>
+                  Join a demo class <span style={{ color: "rgba(255,255,255,0.4)" }}>·</span> or contact our team — mention this page and unlock a special price on the Full Year plan.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: CTAs */}
+            <div className="flex items-center gap-2.5 flex-shrink-0 w-full sm:w-auto">
+              <Link href="/sign-up" className="flex-1 sm:flex-initial">
+                <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
+                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 4px 18px rgba(255,107,26,0.45)` }}>
+                  ⚡ Join Demo — ₹99
+                </motion.button>
+              </Link>
+              <Link href="/connect" className="flex-1 sm:flex-initial">
+                <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold"
+                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white" }}>
+                  💬 Talk to Team
+                </motion.button>
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Why parents choose Braintam */}
         <WhyParents />
       </section>
