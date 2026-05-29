@@ -1026,7 +1026,7 @@ function AdminPageInner() {
             return (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => { setTab(t.id); setMsg(null); }}
                 className="w-full flex items-center gap-3 px-5 py-2.5 text-sm text-left transition-colors"
                 style={{
                   color: isActive ? ORANGE : "#6B7280",

@@ -100,6 +100,16 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   useEffect(() => { loadBase(); }, [loadBase]);
 
+  // Auto-select the only/active academic year so users don't have to pick it manually
+  useEffect(() => {
+    if (academicYears.length === 0) return;
+    const active = academicYears.find(y => y.isActive) ?? academicYears[0];
+    if (active) {
+      setCourseForm(p => p.academicYearId ? p : { ...p, academicYearId: String(active.id) });
+      setEditForm(p => p.academicYearId ? p : { ...p, academicYearId: String(active.id) });
+    }
+  }, [academicYears]);
+
   // ── Academic Years ──────────────────────────────────────────────
   const createYear = async () => {
     if (!yearName.trim()) return;
