@@ -1272,17 +1272,15 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right: two CTA cards */}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-              {/* Card 1 — Talk to an Expert */}
-              <div className="rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+            {/* Right: CTA card */}
+            <div className="flex-1">
+              <div className="rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden h-full"
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full opacity-10"
+                <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-10"
                   style={{ background: ORANGE }} />
                 {/* Avatar SVG */}
-                <div className="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
-                  style={{ background: ORANGE, boxShadow: `0 4px 16px rgba(255,107,26,0.4)` }}>
+                <div className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
+                  style={{ background: ORANGE, boxShadow: `0 4px 20px rgba(255,107,26,0.45)` }}>
                   <svg viewBox="0 0 56 56" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="28" cy="28" r="28" fill={ORANGE}/>
                     <ellipse cx="28" cy="52" rx="16" ry="10" fill="#0B2B6B"/>
@@ -1294,39 +1292,20 @@ export default function LandingPage() {
                     <path d="M23 34 Q28 38 33 34" fill="none" stroke="#c4732a" strokeWidth="1.2" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 relative z-10">
                   <p className="text-white font-bold text-sm leading-snug">Know more about our courses.</p>
-                  <p className="text-white/50 text-xs mt-0.5 mb-3">Book a free counselling session.</p>
-                  <a href="https://wa.me/918492944473?text=Hi%2C%20I%20want%20to%20know%20more%20about%20Braintam%20courses"
-                    target="_blank" rel="noopener noreferrer"
+                  <p className="text-white/50 text-xs mt-0.5">Book a free counselling session.</p>
+                  <div className="flex items-center gap-1.5 mt-2 mb-3">
+                    <Phone className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />
+                    <span className="text-white font-semibold text-sm">+91 84929 44473</span>
+                  </div>
+                  <a href="tel:+918492944473"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-opacity hover:opacity-90"
                     style={{ background: ORANGE }}>
                     Talk to an Expert →
                   </a>
                 </div>
               </div>
-
-              {/* Card 2 — Join Community (different design) */}
-              <div className="rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
-                style={{ background: "linear-gradient(135deg, rgba(37,211,102,0.12) 0%, rgba(37,211,102,0.05) 100%)", border: "1px solid rgba(37,211,102,0.25)" }}>
-                <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full opacity-10"
-                  style={{ background: "#25D366" }} />
-                <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center"
-                  style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)" }}>
-                  <div style={{ color: "#25D366" }}><WaIcon className="w-7 h-7" /></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-bold text-sm leading-snug">Join our learning community.</p>
-                  <p className="text-white/50 text-xs mt-0.5 mb-3">Get tips, alerts & study updates.</p>
-                  <a href="https://wa.me/918492944473?text=Hi%2C%20I%20want%20to%20join%20the%20Braintam%20WhatsApp%20community"
-                    target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-opacity hover:opacity-90"
-                    style={{ background: "#25D366" }}>
-                    <WaIcon className="w-3 h-3" /> Join on WhatsApp
-                  </a>
-                </div>
-              </div>
-
             </div>
           </div>
 
