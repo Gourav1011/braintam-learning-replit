@@ -1292,13 +1292,13 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Right: student image — transparent bg, shifted up so she peeks above footer */}
-            <div className="flex-shrink-0 md:w-64 hidden md:flex items-end justify-center"
-              style={{ marginBottom: "-20px" }}>
+            {/* Right: student image */}
+            <div className="flex-shrink-0 md:w-80 hidden md:flex items-end justify-center"
+              style={{ marginBottom: "-20px", marginLeft: "24px" }}>
               <img src={expertCardImg} alt="Braintam student"
                 className="w-full h-auto block object-contain"
                 style={{
-                  transform: "translateY(-12px) scale(1.08)",
+                  transform: "translateY(-18px) scale(1.12)",
                   transformOrigin: "bottom center",
                   filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.5))"
                 }} />
