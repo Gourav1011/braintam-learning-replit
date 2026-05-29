@@ -691,7 +691,7 @@ function AdminPageInner() {
   const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
   const [expandedUserData, setExpandedUserData] = useState<Record<number, { id: number; title: string; grade: number; enrolled: boolean; enrollmentId: number | null }[]>>({});
   const [inlineEditUserId, setInlineEditUserId] = useState<number | null>(null);
-  const [inlineEditForm, setInlineEditForm] = useState({ name: "", grade: "", school: "" });
+  const [inlineEditForm, setInlineEditForm] = useState({ name: "", grade: "", school: "", email: "" });
 
   // Live class cascade: Course → Subject → Chapter → Topic
   const [lcCourseSubjects, setLcCourseSubjects] = useState<{ id: number; name: string; subjectCode: string }[]>([]);
@@ -855,11 +855,11 @@ function AdminPageInner() {
   }
 
   async function saveInlineEdit(userId: number) {
-    const { name, grade, school } = inlineEditForm;
+    const { name, grade, school, email } = inlineEditForm;
     if (!name.trim()) { flash("Name is required", false); return; }
     setBusy(true);
     try {
-      const body: Record<string, unknown> = { name: name.trim(), school: school.trim() || null };
+      const body: Record<string, unknown> = { name: name.trim(), school: school.trim() || null, email: email.trim() || null };
       const gradeNum = Number(grade);
       if (!isNaN(gradeNum) && gradeNum >= 0) body.grade = gradeNum;
       const r = await apiFetch(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) });
@@ -1696,7 +1696,7 @@ function AdminPageInner() {
                                   {!isEditing && (
                                     <div className="ml-auto self-start">
                                       <button
-                                        onClick={() => { setInlineEditUserId(u.id); setInlineEditForm({ name: u.name, grade: String(u.grade ?? ""), school: u.school ?? "" }); }}
+                                        onClick={() => { setInlineEditUserId(u.id); setInlineEditForm({ name: u.name, grade: String(u.grade ?? ""), school: u.school ?? "", email: u.email ?? "" }); }}
                                         className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5"
                                       >
                                         <Edit2 className="w-3 h-3" /> Edit
@@ -1708,10 +1708,14 @@ function AdminPageInner() {
                                 {isEditing && (
                                   <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-3">
                                     <p className="text-xs font-semibold text-gray-500">Quick Edit — {u.name}</p>
-                                    <div className="grid sm:grid-cols-3 gap-3">
+                                    <div className="grid sm:grid-cols-2 gap-3">
                                       <div>
                                         <label className="text-[10px] text-gray-400 uppercase tracking-wide">Name *</label>
                                         <Input value={inlineEditForm.name} onChange={e => setInlineEditForm(p => ({ ...p, name: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 uppercase tracking-wide">Login Email (Google / Clerk)</label>
+                                        <Input type="email" placeholder="e.g. aan@gmail.com" value={inlineEditForm.email} onChange={e => setInlineEditForm(p => ({ ...p, email: e.target.value }))} className="mt-1 h-8 text-sm" />
                                       </div>
                                       {u.role === "student" && (
                                         <div>

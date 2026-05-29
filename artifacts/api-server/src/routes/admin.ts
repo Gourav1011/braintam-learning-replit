@@ -179,11 +179,12 @@ router.post("/admin/users", adminOnly, async (req, res) => {
 
 router.patch("/admin/users/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
-  const { name, role, grade, school, isActive, password } = req.body;
+  const { name, role, grade, school, isActive, password, email } = req.body;
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const updates: Partial<typeof usersTable.$inferInsert> = {};
   if (name !== undefined) updates.name = name;
+  if (email !== undefined) updates.email = email || null;
   if (role !== undefined) updates.role = role;
   if (grade !== undefined) updates.grade = grade;
   if (school !== undefined) updates.school = school;

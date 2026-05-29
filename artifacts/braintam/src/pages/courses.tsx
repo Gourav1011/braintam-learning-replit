@@ -798,8 +798,19 @@ function AuthCoursesView() {
         ) : (courses ?? []).length === 0 ? (
           <div className="text-center py-16">
             <div className="text-5xl mb-3">📚</div>
-            <p className="text-base font-bold text-gray-700">No courses found</p>
-            <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
+            {(search || subject !== "all") ? (
+              <>
+                <p className="text-base font-bold text-gray-700">No courses found</p>
+                <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-bold text-gray-700">No courses yet</p>
+                <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
+                  Your admin hasn't enrolled you in a course yet. Contact your teacher or admin to get started.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div>
