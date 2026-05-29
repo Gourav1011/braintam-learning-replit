@@ -331,11 +331,16 @@ function PublicLiveClassesView() {
 // ── Authenticated view ──────────────────────────────────────────────────
 function AuthLiveClassesView() {
   const [subject, setSubject] = useState<string>("all");
-  const queryClient = useQueryClient();
+  const [, setTick] = useState(0);
   const { student } = useAuth();
 
-  const effectiveGrade = student?.effectiveGrade ?? student?.grade;
+  // Re-render every 30s so countdown timers stay fresh
+  useEffect(() => {
+    const t = setInterval(() => setTick(x => x + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
 
+  const effectiveGrade = student?.effectiveGrade ?? student?.grade;
   const params = {
     grade: effectiveGrade,
     subjectId: subject !== "all" ? Number(subject) : undefined,
@@ -354,88 +359,176 @@ function AuthLiveClassesView() {
     }
   });
 
-  return (
-    <AppLayout>
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-              <Video className="w-6 h-6 text-red-500" />
-            </div>
-            Live Classes
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Join live sessions with top educators
-            {effectiveGrade && <span className="ml-2 text-sm font-medium text-primary">· Grade {effectiveGrade}</span>}
-          </p>
-        </motion.div>
+  const liveNow  = (classes ?? []).filter(c => c.status === "live");
+  const upcoming = (classes ?? []).filter(c => c.status === "upcoming");
+  const ended    = (classes ?? []).filter(c => c.status === "ended");
 
-        <div className="flex gap-3 flex-wrap">
-          <Select value={subject} onValueChange={setSubject}>
-            <SelectTrigger className="w-44" data-testid="subject-filter"><SelectValue placeholder="All Subjects" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {(subjects ?? []).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+  const SUBJ_GRAD: Record<string, string> = {
+    Mathematics: "linear-gradient(135deg,#1d4ed8,#1e40af)",
+    Science:     "linear-gradient(135deg,#059669,#047857)",
+    English:     "linear-gradient(135deg,#7c3aed,#6d28d9)",
+    Social:      "linear-gradient(135deg,#b45309,#92400e)",
+    Hindi:       "linear-gradient(135deg,#dc2626,#b91c1c)",
+  };
+  const getGrad = (name?: string) => (name && SUBJ_GRAD[name]) ?? `linear-gradient(135deg,${NAVY},#123D7A)`;
+
+  const ClassCard = ({ cls }: { cls: any }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "white", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
+      data-testid={`live-class-card-${cls.id}`}
+    >
+      <div className="h-1.5" style={{ background: getGrad(cls.subjectName) }} />
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span
+            className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
+            style={{ background: cls.status === "live" ? "#EF4444" : cls.status === "upcoming" ? NAVY : "#94a3b8" }}
+          >
+            {cls.status === "live" ? "🔴 LIVE NOW" : cls.status === "upcoming" ? "⏰ Upcoming" : "✓ Ended"}
+          </span>
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{cls.subjectName}</span>
         </div>
 
+        <h3 className="font-bold text-sm text-gray-900 leading-tight mb-3">{cls.title}</h3>
+
+        <div className="flex items-center gap-2 mb-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+            style={{ background: getGrad(cls.subjectName) }}
+          >
+            {(cls.teacher ?? "T").charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-700">{cls.teacher ?? "Braintam Teacher"}</p>
+            <p className="text-[10px] text-gray-400">{formatDateTime(cls.scheduledAt)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-4">
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{cls.duration} min</span>
+          <span className="flex items-center gap-1"><Users className="w-3 h-3" />{cls.studentsJoined ?? 0} joined</span>
+          {cls.status === "upcoming" && (
+            <span className="flex items-center gap-1 font-bold ml-auto" style={{ color: NAVY }}>
+              ⏱ {countdown(cls.scheduledAt)}
+            </span>
+          )}
+        </div>
+
+        <button
+          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          style={{ background: cls.status === "live" ? "#EF4444" : cls.status === "upcoming" ? `linear-gradient(135deg,${NAVY},#123D7A)` : "#94a3b8" }}
+          disabled={cls.status === "ended" || joinMutation.isPending}
+          onClick={() => joinMutation.mutate({ id: cls.id })}
+          data-testid={`join-class-${cls.id}`}
+        >
+          {cls.status === "live" ? "🚀 Join Now" : cls.status === "upcoming" ? "Set Reminder" : "Class Ended"}
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  return (
+    <AppLayout>
+      {/* Navy header */}
+      <div
+        className="px-4 pt-5 pb-5 relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg,${NAVY} 0%,#123D7A 100%)` }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-5"
+          style={{ backgroundImage: "radial-gradient(circle,white 1px,transparent 1px)", backgroundSize: "24px 24px" }}
+        />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h1 className="text-white text-xl font-extrabold">Live Classes</h1>
+            <p className="text-white/50 text-xs mt-0.5">
+              {effectiveGrade ? `Grade ${effectiveGrade} · ` : ""}Join live sessions with top educators
+            </p>
+          </div>
+          {liveNow.length > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+              style={{ background: "#EF4444" }}
+            >
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              {liveNow.length} LIVE
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 max-w-2xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+        <Select value={subject} onValueChange={setSubject}>
+          <SelectTrigger className="w-44 h-9 text-sm rounded-xl" data-testid="subject-filter">
+            <SelectValue placeholder="All Subjects" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Subjects</SelectItem>
+            {(subjects ?? []).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
         {isLoading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-52" />)}
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
           </div>
         ) : (classes ?? []).length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-lg font-medium">No live classes scheduled</p>
-            <p className="text-sm">Check back soon for upcoming sessions</p>
+          <div className="flex flex-col items-center text-center py-14 px-4">
+            <div
+              className="w-24 h-24 rounded-3xl flex items-center justify-center mb-5"
+              style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}
+            >
+              <Video className="w-12 h-12 text-white opacity-80" />
+            </div>
+            <h2 className="text-lg font-extrabold text-gray-800">No Classes Scheduled</h2>
+            <p className="text-sm text-gray-400 mt-2 max-w-xs">
+              Your next live class will appear here. New sessions are added regularly!
+            </p>
+            <div className="mt-5 flex flex-col gap-2 w-full max-w-xs">
+              {[
+                { icon: "📅", title: "Classes 5–6× per week",         sub: "New sessions added every day" },
+                { icon: "🔔", title: "Get reminders via WhatsApp",     sub: "Never miss a session again" },
+              ].map(item => (
+                <div
+                  key={item.title}
+                  className="flex items-center gap-3 rounded-2xl p-3"
+                  style={{ background: "white", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-base">{item.icon}</div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-gray-700">{item.title}</p>
+                    <p className="text-[10px] text-gray-400">{item.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(classes ?? []).map((cls, i) => (
-              <motion.div key={cls.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }} data-testid={`live-class-card-${cls.id}`}>
-                <Card className={`overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 border-2 ${cls.status === "live" ? "border-red-400" : "border-transparent"}`}>
-                  <div className="h-3" style={{ background: `linear-gradient(to right, ${NAVY}, ${ORANGE})` }} />
-                  <CardContent className="p-5 space-y-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-base leading-tight">{cls.title}</h3>
-                      {cls.status === "live" ? (
-                        <Badge className="bg-red-500 text-white flex-shrink-0 animate-pulse">LIVE</Badge>
-                      ) : cls.status === "upcoming" ? (
-                        <Badge variant="outline" className="flex-shrink-0 text-xs border-primary text-primary">{countdown(cls.scheduledAt)}</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="flex-shrink-0">Ended</Badge>
-                      )}
-                    </div>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-secondary">{cls.teacher?.charAt(0)}</span>
-                        </div>
-                        <span>{cls.teacher}</span>
-                        <Badge variant="secondary" className="text-xs ml-auto">{cls.subjectName}</Badge>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatDateTime(cls.scheduledAt)}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{cls.duration} min</span>
-                        <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{cls.studentsJoined ?? 0} joined</span>
-                      </div>
-                    </div>
-                    <Button className="w-full" variant={cls.status === "live" ? "default" : "outline"}
-                      disabled={cls.status === "ended" || joinMutation.isPending}
-                      onClick={() => joinMutation.mutate({ id: cls.id })}
-                      data-testid={`join-class-${cls.id}`}>
-                      {cls.status === "live" ? "Join Now" : cls.status === "upcoming" ? "Remind Me" : "Class Ended"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+          <>
+            {liveNow.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">🔴 Live Now</h2>
+                <div className="space-y-3">{liveNow.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+              </div>
+            )}
+            {upcoming.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">⏰ Upcoming Classes</h2>
+                <div className="space-y-3">{upcoming.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+              </div>
+            )}
+            {ended.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">✓ Past Classes</h2>
+                <div className="space-y-3">{ended.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+              </div>
+            )}
+          </>
         )}
+        <div className="h-2" />
       </div>
     </AppLayout>
   );

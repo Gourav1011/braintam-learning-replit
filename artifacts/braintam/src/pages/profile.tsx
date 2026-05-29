@@ -196,17 +196,96 @@ export default function ProfilePage() {
     { icon: ClipboardList, label: "Assignments Done", value: (progress as any)?.assignmentsCompleted ?? 0, color: "text-pink-500 bg-pink-50" },
   ];
 
+  const streak        = (student as any)?.streak ?? 0;
+  const totalPoints   = progress?.totalPoints ?? (student as any)?.points ?? 0;
+  const rankNum       = progress?.rank ?? (student as any)?.rank ?? null;
+
+  const achievements = [
+    ...(streak >= 1    ? [{ icon: "🔥", label: streak >= 7 ? `${streak} Day Streak!` : `${streak} Day Streak`, bg: "#fff7ed", border: "#fed7aa" }] : []),
+    ...(totalPoints >= 50  ? [{ icon: "⭐", label: "Points Collector",    bg: "#fefce8", border: "#fde68a" }] : []),
+    ...((progress?.testsAttempted ?? 0) > 0  ? [{ icon: "🏅", label: "First Quiz Done",     bg: "#f0fdf4", border: "#bbf7d0" }] : []),
+    ...((progress?.coursesCompleted ?? 0) > 0 ? [{ icon: "🚀", label: "Course Explorer",     bg: "#eff6ff", border: "#bfdbfe" }] : []),
+    ...((progress?.subjectWise?.length ?? 0) >= 2 ? [{ icon: "🧪", label: "Multi-Subject Learner", bg: "#faf5ff", border: "#e9d5ff" }] : []),
+  ].slice(0, 6);
+
   return (
     <AppLayout>
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <User className="w-6 h-6 text-indigo-600" />
+      {/* Premium Navy Hero */}
+      <div
+        className="px-4 pt-6 pb-6 relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg,#0A2342 0%,#123D7A 100%)" }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-5"
+          style={{ backgroundImage: "radial-gradient(circle,white 1px,transparent 1px)", backgroundSize: "24px 24px" }}
+        />
+        <div className="relative flex items-center gap-4">
+          {/* Avatar */}
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl border-2 border-white/30 overflow-hidden" style={{ background: "linear-gradient(135deg,#1d4ed8,#0A2342)" }}>
+              {p?.avatarUrl ? (
+                <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">{initials}</span>
+              )}
             </div>
-            My Profile
-          </h1>
-        </motion.div>
+          </div>
+          {/* Name + grade */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-white text-lg font-extrabold truncate">{p?.name ?? student?.name ?? "Student"}</h1>
+            <p className="text-white/60 text-xs mt-0.5">Grade {p?.grade ?? student?.grade ?? "—"} · {p?.school || "Braintam Student"}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full text-white" style={{ background: "rgba(212,175,55,0.25)", border: "1px solid rgba(212,175,55,0.4)", color: "#D4AF37" }}>
+                🪙 {totalPoints} pts
+              </span>
+              {streak > 0 && (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.12)", color: "white" }}>
+                  🔥 {streak}d streak
+                </span>
+              )}
+              {rankNum && (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.12)", color: "white" }}>
+                  🏆 Rank #{rankNum}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 max-w-2xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+
+        {/* Achievements */}
+        {achievements.length > 0 && (
+          <div>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Achievements</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {achievements.map(ach => (
+                <div
+                  key={ach.label}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl border"
+                  style={{ background: ach.bg, borderColor: ach.border }}
+                >
+                  <span className="text-xl">{ach.icon}</span>
+                  <span className="text-xs font-semibold text-gray-700 leading-tight">{ach.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Subscription plan */}
+        <div
+          className="rounded-2xl p-4 flex items-center gap-3"
+          style={{ background: "linear-gradient(135deg,#0A2342,#123D7A)" }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "rgba(212,175,55,0.2)" }}>👑</div>
+          <div className="flex-1">
+            <p className="text-white font-bold text-sm">Premium Plan</p>
+            <p className="text-white/50 text-xs">Full syllabus · Live classes · Tests</p>
+          </div>
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "#D4AF37", color: "#0A2342" }}>Active</span>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Profile Card */}
