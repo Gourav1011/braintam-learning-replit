@@ -1271,65 +1271,6 @@ export default function LandingPage() {
 
         </div>
 
-        {/* Download App Bar */}
-        <div className="max-w-6xl mx-auto px-6 py-4"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: ORANGE }}>
-                <Smartphone className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm">Get the Braintam App</p>
-                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  {[
-                    { label: "iOS", color: "#A78BFA" },
-                    { label: "Android", color: "#34D399" },
-                    { label: "Web", color: ORANGE },
-                  ].map(p => (
-                    <span key={p.label} className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: p.color + "22", color: p.color, border: `1px solid ${p.color}44` }}>
-                      {p.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <motion.a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
-                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" fill="white">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                </svg>
-                <div className="text-left">
-                  <div className="text-white/50 leading-none text-[10px]">Download on</div>
-                  <div className="text-white font-bold text-xs leading-tight">App Store</div>
-                </div>
-              </motion.a>
-              <motion.div
-                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer"
-                style={{ background: ORANGE, border: "1px solid rgba(255,255,255,0.2)" }}
-                onClick={() => {
-                  if (window.matchMedia("(display-mode: standalone)").matches) {
-                    alert("Braintam is already installed!");
-                  } else if ((window as any).deferredPrompt) {
-                    (window as any).deferredPrompt.prompt();
-                  } else {
-                    alert("Install Braintam:\n1. Tap the menu (⋮) in your browser\n2. Select \"Add to Home Screen\" or \"Install App\"");
-                  }
-                }}>
-                <Globe className="w-5 h-5 text-white" />
-                <div className="text-left">
-                  <div className="text-white/70 leading-none text-[10px]">Install for free</div>
-                  <div className="text-white font-bold text-xs leading-tight">Web App</div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </div>
 
         {/* Bottom bar */}
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
