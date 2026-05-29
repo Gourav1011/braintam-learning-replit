@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckSquare, Clock, Calendar, Trophy, AlertCircle, PlayCircle, ExternalLink } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 
 function countdown(iso: string) {
   const diff = new Date(iso).getTime() - Date.now();
@@ -27,11 +28,13 @@ const statusConfig: Record<string, { label: string; bg: string; icon: typeof Cal
 };
 
 export default function TestsPage() {
-  const [grade, setGrade] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  const { student } = useAuth();
+
+  const effectiveGrade = student?.effectiveGrade ?? student?.grade;
 
   const params = {
-    grade: grade !== "all" ? Number(grade) : undefined,
+    grade: effectiveGrade,
     status: status !== "all" ? (status as "upcoming" | "ongoing" | "completed") : undefined,
   };
 
@@ -49,21 +52,13 @@ export default function TestsPage() {
             </div>
             Tests & Quizzes
           </h1>
-          <p className="text-muted-foreground mt-1">Assess your learning with chapter-wise tests</p>
+          <p className="text-muted-foreground mt-1">
+            Assess your learning with chapter-wise tests
+            {effectiveGrade && <span className="ml-2 text-sm font-medium text-primary">· Grade {effectiveGrade}</span>}
+          </p>
         </motion.div>
 
         <div className="flex gap-3 flex-wrap">
-          <Select value={grade} onValueChange={setGrade}>
-            <SelectTrigger className="w-36" data-testid="grade-filter">
-              <SelectValue placeholder="All Grades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
-              {[1,2,3,4,5,6,7,8,9,10].map(g => (
-                <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-40" data-testid="status-filter">
               <SelectValue placeholder="All Status" />

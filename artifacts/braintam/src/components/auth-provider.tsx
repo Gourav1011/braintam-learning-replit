@@ -10,6 +10,7 @@ export interface StudentProfile {
   email: string | null;
   phone: string | null;
   grade: number;
+  effectiveGrade: number;
   role: UserRole;
   school: string | null;
   state: string | null;

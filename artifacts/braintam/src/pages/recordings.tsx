@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { PlaySquare, Clock, Eye, Calendar, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -17,13 +18,15 @@ function formatDuration(seconds: number) {
 }
 
 export default function RecordingsPage() {
-  const [grade, setGrade] = useState<string>("all");
   const [subject, setSubject] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set(["all"]));
+  const { student } = useAuth();
+
+  const effectiveGrade = student?.effectiveGrade ?? student?.grade;
 
   const params = {
-    grade: grade !== "all" ? Number(grade) : undefined,
+    grade: effectiveGrade,
     subjectId: subject !== "all" ? Number(subject) : undefined,
   };
 
@@ -71,21 +74,13 @@ export default function RecordingsPage() {
             </div>
             Recorded Classes
           </h1>
-          <p className="text-muted-foreground mt-1">Watch past live sessions anytime, organised by chapter</p>
+          <p className="text-muted-foreground mt-1">
+            Watch past live sessions anytime, organised by chapter
+            {effectiveGrade && <span className="ml-2 text-sm font-medium text-primary">· Grade {effectiveGrade}</span>}
+          </p>
         </motion.div>
 
         <div className="flex gap-3 flex-wrap">
-          <Select value={grade} onValueChange={setGrade}>
-            <SelectTrigger className="w-36" data-testid="grade-filter">
-              <SelectValue placeholder="All Grades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
-              {[1,2,3,4,5,6,7,8,9,10].map(g => (
-                <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={subject} onValueChange={setSubject}>
             <SelectTrigger className="w-44" data-testid="subject-filter">
               <SelectValue placeholder="All Subjects" />

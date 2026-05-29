@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video, Clock, Users, Calendar } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/components/auth-provider";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -24,12 +25,14 @@ function countdown(iso: string) {
 }
 
 export default function LiveClassesPage() {
-  const [grade, setGrade] = useState<string>("all");
   const [subject, setSubject] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { student } = useAuth();
+
+  const effectiveGrade = student?.effectiveGrade ?? student?.grade;
 
   const params = {
-    grade: grade !== "all" ? Number(grade) : undefined,
+    grade: effectiveGrade,
     subjectId: subject !== "all" ? Number(subject) : undefined,
   };
 
@@ -58,21 +61,13 @@ export default function LiveClassesPage() {
             </div>
             Live Classes
           </h1>
-          <p className="text-muted-foreground mt-1">Join live sessions with top educators</p>
+          <p className="text-muted-foreground mt-1">
+            Join live sessions with top educators
+            {effectiveGrade && <span className="ml-2 text-sm font-medium text-primary">· Grade {effectiveGrade}</span>}
+          </p>
         </motion.div>
 
         <div className="flex gap-3 flex-wrap">
-          <Select value={grade} onValueChange={setGrade}>
-            <SelectTrigger className="w-36" data-testid="grade-filter">
-              <SelectValue placeholder="All Grades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
-              {[1,2,3,4,5,6,7,8,9,10].map(g => (
-                <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={subject} onValueChange={setSubject}>
             <SelectTrigger className="w-44" data-testid="subject-filter">
               <SelectValue placeholder="All Subjects" />

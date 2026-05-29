@@ -4,6 +4,7 @@ import {
   usersTable, subjectsTable, homeworkTable, assignmentsTable,
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
+  coursesTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -90,12 +91,20 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     res.status(404).json({ error: "User not found" });
     return;
   }
+  const enrolled = await db
+    .select({ grade: coursesTable.grade })
+    .from(enrollmentsTable)
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .where(eq(enrollmentsTable.studentId, studentId))
+    .limit(1);
+  const effectiveGrade: number = enrolled[0]?.grade ?? student.grade ?? 6;
   res.json({
     id: student.id,
     name: student.name,
     email: student.email ?? null,
     phone: student.phone ?? null,
     grade: student.grade,
+    effectiveGrade,
     role: student.role ?? "student",
     avatarUrl: student.avatarUrl ?? null,
     points: student.points,
