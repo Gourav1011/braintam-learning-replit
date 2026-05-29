@@ -21,39 +21,50 @@ interface GradeCourseData {
   specialty: string;
   specialtyIcon: string;
   bubbleColor: string;
+  demoHighlights: string[];
   demo: { topics: string[]; desc: string };
   full: { subjects: string[]; desc: string; price: string };
 }
 
 const GRADE_DATA: Record<number, GradeCourseData> = {
   1:  { specialty: "Abacus-based Mental Maths",       specialtyIcon: "🧮", bubbleColor: "#FF6B1A",
+        demoHighlights: ["Number Tricks", "Concept Clarity", "Mind Mapping", "Fun Recall"],
         demo: { topics: ["Counting & Numbers", "Phonics & Reading", "Shapes & Patterns"],   desc: "Fun tricks to build a rock-solid foundation." },
         full: { subjects: ["Numbers", "English", "EVS"],        desc: "Complete Grade 1 syllabus with tests & mentor support.",  price: "₹22,999" } },
   2:  { specialty: "Times Tables Speed Mastery",       specialtyIcon: "⚡", bubbleColor: "#3B82F6",
+        demoHighlights: ["Fast Calculation", "Short Tricks", "Quick Recall", "Mind Maps"],
         demo: { topics: ["Multiplication Basics", "Story Writing", "Maps & Globe"],          desc: "Core concepts in an engaging 6-day camp." },
         full: { subjects: ["Maths", "English", "EVS"],          desc: "Structured full-year program with live classes daily.",   price: "₹24,999" } },
   3:  { specialty: "Vedic Maths Shortcuts",            specialtyIcon: "🔢", bubbleColor: "#8B5CF6",
+        demoHighlights: ["Vedic Shortcuts", "Concept Clarity", "Speed Maths", "Mind Mapping"],
         demo: { topics: ["Fractions & Decimals", "Grammar Basics", "Our Environment"],       desc: "Hands-on learning for quick concept clarity." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Chapter-by-chapter coverage with weekly tests.",          price: "₹25,999" } },
   4:  { specialty: "Speed Reading Techniques",         specialtyIcon: "📖", bubbleColor: "#10B981",
+        demoHighlights: ["Fast Calculation", "LCM/HCF Tricks", "Reading Speed", "Concept Maps"],
         demo: { topics: ["LCM & HCF", "Reading Skills", "Forces & Motion"],                 desc: "Jump-start key concepts across all subjects." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Deep-dive into Grade 4 syllabus with doubt sessions.",    price: "₹26,999" } },
   5:  { specialty: "Science Olympiad Foundation",      specialtyIcon: "🔭", bubbleColor: "#F59E0B",
+        demoHighlights: ["Algebra Basics", "Short Tricks", "Concept Clarity", "Mind Mapping"],
         demo: { topics: ["Algebra Intro", "Essay Writing", "Solar System"],                  desc: "Get a head-start before the full program." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Complete CBSE/ICSE syllabus + Olympiad prep built in.",   price: "₹27,999" } },
   6:  { specialty: "Algebra Thinking & Logic",         specialtyIcon: "📐", bubbleColor: "#EC4899",
+        demoHighlights: ["Algebra Shortcuts", "Fast Calculation", "Logic Building", "Mind Maps"],
         demo: { topics: ["Integers & Ratios", "Creative Writing", "Living World"],           desc: "Middle-school concepts demystified in 6 days." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Live classes 5–6×/week with weekly mock exams.",         price: "₹29,999" } },
   7:  { specialty: "IQ & Olympiad Prep",               specialtyIcon: "🏆", bubbleColor: "#06B6D4",
+        demoHighlights: ["Equation Tricks", "Fast Formulae", "IQ Hacks", "Concept Clarity"],
         demo: { topics: ["Linear Equations", "Advanced Grammar", "Heat & Light"],            desc: "Solve tricky problems with expert shortcuts." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Comprehensive coverage + dedicated Olympiad modules.",    price: "₹31,999" } },
   8:  { specialty: "Board Exam Strategy",              specialtyIcon: "📋", bubbleColor: "#6366F1",
+        demoHighlights: ["Short Tricks", "Rapid Recall", "Answer Mapping", "Fast Calculation"],
         demo: { topics: ["Quadratic Basics", "Literature Analysis", "Cell Biology"],         desc: "Board-prep strategies unlocked in 6 days." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Board-aligned syllabus + full mock test series.",        price: "₹33,999" } },
   9:  { specialty: "JEE / NEET Foundation",            specialtyIcon: "🚀", bubbleColor: "#EF4444",
+        demoHighlights: ["Polynomial Tricks", "Fast Derivation", "Concept Clarity", "Mind Mapping"],
         demo: { topics: ["Polynomials", "Comprehension Skills", "Chemical Reactions"],       desc: "Crack Grade 9 concepts with top educators." },
         full: { subjects: ["Maths", "Science", "Social"],       desc: "CBSE/ICSE full syllabus + JEE/NEET foundation start.",   price: "₹35,999" } },
   10: { specialty: "90+ Board Score Program",          specialtyIcon: "🎯", bubbleColor: "#FF6B1A",
+        demoHighlights: ["Trig Shortcuts", "Answer Writing", "Speed Revision", "Mind Maps"],
         demo: { topics: ["Trigonometry", "Board Writing Skills", "Genetics Basics"],         desc: "Score 90+ in boards with targeted practice." },
         full: { subjects: ["Maths", "Science", "Social"],       desc: "Board exam mastery + competitive exam readiness.",       price: "₹37,999" } },
 };
@@ -130,9 +141,9 @@ function GradeTabs({ active, onChange }: { active: number; onChange: (g: number)
 }
 
 // ── Demo Card ─────────────────────────────────────────────────
-function DemoCard({ grade, data, specialty, specialtyIcon, bubbleColor }: {
+function DemoCard({ grade, data, demoHighlights, bubbleColor }: {
   grade: number; data: GradeCourseData["demo"];
-  specialty: string; specialtyIcon: string; bubbleColor: string;
+  demoHighlights: string[]; bubbleColor: string;
 }) {
   return (
     <motion.div
@@ -160,14 +171,14 @@ function DemoCard({ grade, data, specialty, specialtyIcon, bubbleColor }: {
         <span className="text-xs text-gray-400 font-medium">Short preview</span>
       </div>
 
-      {/* Specialty badge */}
-      <div className="relative z-10 flex items-center gap-2 px-3 py-2 rounded-xl"
-        style={{ background: `${bubbleColor}14`, border: `1px solid ${bubbleColor}30` }}>
-        <span className="text-base">{specialtyIcon}</span>
-        <div>
-          <span className="text-xs font-black" style={{ color: bubbleColor }}>Grade Specialty</span>
-          <p className="text-xs font-semibold text-gray-700 leading-tight">{specialty}</p>
-        </div>
+      {/* Demo highlights chips */}
+      <div className="relative z-10 flex flex-wrap gap-1.5">
+        {demoHighlights.map(h => (
+          <span key={h} className="text-xs font-bold px-2.5 py-1 rounded-full"
+            style={{ background: `${bubbleColor}18`, color: bubbleColor, border: `1px solid ${bubbleColor}35` }}>
+            {h}
+          </span>
+        ))}
       </div>
 
       <div className="relative z-10">
@@ -436,8 +447,7 @@ function PublicCoursesView() {
             <DemoCard
               grade={activeGrade}
               data={GRADE_DATA[activeGrade].demo}
-              specialty={GRADE_DATA[activeGrade].specialty}
-              specialtyIcon={GRADE_DATA[activeGrade].specialtyIcon}
+              demoHighlights={GRADE_DATA[activeGrade].demoHighlights}
               bubbleColor={GRADE_DATA[activeGrade].bubbleColor}
             />
             <FullYearCard
