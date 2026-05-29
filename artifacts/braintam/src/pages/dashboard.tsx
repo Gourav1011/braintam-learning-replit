@@ -98,13 +98,7 @@ function CoinPopup({ onClose }: { onClose: () => void }) {
           {!claimed ? (
             <>
               {/* Coin icon animation */}
-              <motion.div
-                animate={{ y: [0, -8, 0], rotate: [0, 5, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                className="text-6xl mb-4 inline-block select-none"
-              >
-                🪙
-              </motion.div>
+              <div className="bt-float-sm bt-sway text-6xl mb-4 inline-block select-none">🪙</div>
 
               <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Daily Reward!</h2>
               <p className="text-gray-500 text-sm mb-6">

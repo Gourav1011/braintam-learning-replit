@@ -94,18 +94,14 @@ function PublicLeaderboardView() {
           <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full opacity-10 blur-3xl" style={{ background: ORANGE }} />
         </div>
 
-        {/* Animated trophy */}
-        <motion.div animate={{ y: [0, -12, 0], rotate: [-3, 3, -3] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-          className="relative z-10 inline-block mb-6">
+        {/* Trophy */}
+        <div className="bt-float-sm relative z-10 inline-block mb-6">
           <div className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl mx-auto"
             style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)" }}>
             <Trophy className="w-12 h-12 text-white" />
           </div>
-          <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-300 rounded-full" />
-        </motion.div>
+          <div className="bt-pulse-scale absolute -top-2 -right-2 w-6 h-6 bg-yellow-300 rounded-full" />
+        </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-4"
@@ -158,18 +154,16 @@ function PublicLeaderboardView() {
           {/* 1st place */}
           <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             className="flex-1 max-w-[200px] text-center">
-            <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}>
+            <div className="bt-float-sm">
               <Crown className="w-6 h-6 text-amber-400 mx-auto mb-1" />
               <div className="relative mb-3">
                 <div className="w-20 h-20 rounded-full mx-auto bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-white text-2xl font-black shadow-xl border-4 border-amber-300">
                   {top3[0].name.charAt(0)}
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-base">🥇</div>
-                <motion.div animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1.2, repeat: Infinity }}
-                  className="absolute -top-1 -left-1 w-4 h-4 bg-yellow-300 rounded-full" />
+                <div className="bt-pulse-scale absolute -top-1 -left-1 w-4 h-4 bg-yellow-300 rounded-full" />
               </div>
-            </motion.div>
+            </div>
             <p className="font-black text-base truncate" style={{ color: NAVY }}>{top3[0].name}</p>
             <p className="text-xs text-gray-500 truncate">{top3[0].school}</p>
             <p className="text-sm font-black mt-1" style={{ color: ORANGE }}>{top3[0].points.toLocaleString()} pts</p>
@@ -375,8 +369,7 @@ export default function LeaderboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-4 border-t-transparent rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
+        <div className="bt-spin-fast w-8 h-8 border-4 rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
       </div>
     );
   }

@@ -99,12 +99,10 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-secondary via-secondary/90 to-primary/80 flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0">
           {[...Array(6)].map((_, i) => (
-            <motion.div
+            <div
               key={i}
               className="absolute rounded-full bg-white/5"
-              style={{ width: (i + 1) * 80, height: (i + 1) * 80, left: `${20 + i * 10}%`, top: `${10 + i * 12}%` }}
-              animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 3 + i, repeat: Infinity }}
+              style={{ width: (i + 1) * 80, height: (i + 1) * 80, left: `${20 + i * 10}%`, top: `${10 + i * 12}%`, opacity: 0.08 }}
             />
           ))}
         </div>

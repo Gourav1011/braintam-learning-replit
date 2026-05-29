@@ -610,16 +610,14 @@ function PublicCoursesView() {
                 className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 relative overflow-hidden text-center">
                 <div className="absolute top-0 left-0 right-0 h-1.5 rounded-t-3xl"
                   style={{ background: `linear-gradient(to right, ${NAVY}, ${ORANGE})` }} />
-                <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.5 }}
-                  className="absolute top-4 right-4 text-lg">{t.achievement.split(" ")[1]}</motion.div>
+                <div className="bt-float-sm absolute top-4 right-4 text-lg">{t.achievement.split(" ")[1]}</div>
                 <div className="relative mx-auto w-20 h-20 mb-4">
                   <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white text-2xl font-black shadow-lg`}>
                     {t.initials}
                   </div>
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                    className="absolute -top-1 -right-1 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center shadow-md">
+                  <div className="bt-spin-slow absolute -top-1 -right-1 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center shadow-md">
                     <GraduationCap className="w-3.5 h-3.5 text-white" />
-                  </motion.div>
+                  </div>
                 </div>
                 <h3 className="font-black text-base" style={{ color: NAVY }}>{t.name}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{t.school} · {t.city}</p>
@@ -634,10 +632,7 @@ function PublicCoursesView() {
                 </div>
                 <div className="flex justify-center gap-1 mt-3">
                   {[1, 2, 3, 4, 5].map(s => (
-                    <motion.div key={s} animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 1.5, repeat: Infinity, delay: s * 0.2 }}>
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    </motion.div>
+                    <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
               </motion.div>
@@ -780,8 +775,7 @@ export default function CoursesPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-3 border-t-transparent rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
+        <div className="bt-spin-fast w-8 h-8 border-4 rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
       </div>
     );
   }

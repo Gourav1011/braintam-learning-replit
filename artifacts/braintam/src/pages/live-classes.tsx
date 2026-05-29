@@ -84,24 +84,16 @@ function StudentScene() {
   return (
     <div className="relative w-full max-w-sm mx-auto h-64 select-none">
       {/* Floating notification bubbles */}
-      <motion.div animate={{ y: [0, -10, 0], opacity: [0.8, 1, 0.8] }}
-        transition={{ duration: 2.5, repeat: Infinity, delay: 0 }}
-        className="absolute top-2 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+      <div className="bt-float-sm absolute top-2 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
         <Wifi className="w-3 h-3" /> Class is LIVE!
-      </motion.div>
-
-      <motion.div animate={{ y: [0, -8, 0], opacity: [0.7, 1, 0.7] }}
-        transition={{ duration: 3, repeat: Infinity, delay: 0.8 }}
-        className="absolute top-8 left-0 bg-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-gray-100"
+      </div>
+      <div className="bt-float-a absolute top-8 left-0 bg-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-gray-100"
         style={{ color: NAVY }}>
         ⭐ 4.9 Rating
-      </motion.div>
-
-      <motion.div animate={{ y: [0, -6, 0], opacity: [0.7, 1, 0.7] }}
-        transition={{ duration: 2.8, repeat: Infinity, delay: 1.5 }}
-        className="absolute top-1 left-1/3 bg-amber-400 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
+      </div>
+      <div className="bt-float-sm-2 absolute top-1 left-1/3 bg-amber-400 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
         🎯 98% Score!
-      </motion.div>
+      </div>
 
       {/* Desk */}
       <div className="absolute bottom-0 left-4 right-4 h-3 rounded-full bg-gray-300 shadow-md" />
@@ -109,9 +101,8 @@ function StudentScene() {
       {/* Laptop body */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-52">
         {/* Screen */}
-        <motion.div animate={{ boxShadow: ["0 0 0 0 rgba(255,107,26,0)", "0 0 0 6px rgba(255,107,26,0.15)", "0 0 0 0 rgba(255,107,26,0)"] }}
-          transition={{ duration: 2.5, repeat: Infinity }}
-          className="w-52 h-32 rounded-t-xl border-4 border-gray-700 bg-gray-900 overflow-hidden relative">
+        <div className="w-52 h-32 rounded-t-xl border-4 border-gray-700 bg-gray-900 overflow-hidden relative"
+          style={{ boxShadow: "0 0 0 3px rgba(255,107,26,0.12)" }}>
           {/* Braintam screen interface */}
           <div className="h-full flex flex-col" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4a9b 100%)` }}>
             {/* Top bar */}
@@ -124,27 +115,23 @@ function StudentScene() {
             {/* Teacher video area */}
             <div className="flex-1 relative p-1">
               <div className="w-full h-full rounded-lg bg-blue-800/50 flex flex-col items-center justify-center gap-1">
-                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-black">R</div>
-                </motion.div>
+                <div className="bt-pulse-scale w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-black">R</div>
                 <span className="text-white/70 text-[7px] font-semibold">Dr. Ramesh Kumar</span>
-                <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity }}
-                  className="w-16 h-1 rounded-full bg-green-400 mt-0.5" />
+                <div className="bt-pulse-op w-16 h-1 rounded-full bg-green-400 mt-0.5" />
               </div>
             </div>
             {/* Bottom toolbar */}
             <div className="px-2 py-1 flex items-center justify-center gap-2" style={{ background: "rgba(0,0,0,0.3)" }}>
-              <motion.div animate={{ backgroundColor: ["#ef4444", "#22c55e", "#ef4444"] }} transition={{ duration: 2, repeat: Infinity }}
-                className="w-4 h-4 rounded-full flex items-center justify-center">
+              <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
                 <Video className="w-2.5 h-2.5 text-white" />
-              </motion.div>
+              </div>
               <div className="w-4 h-4 rounded-full bg-gray-600 flex items-center justify-center">
                 <span className="text-[6px] text-white">🎤</span>
               </div>
               <div className="text-[7px] text-white/60 ml-1">245 watching</div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Laptop base/keyboard */}
         <div className="w-56 -ml-2 h-4 rounded-b-lg bg-gray-600 shadow-xl" />
@@ -152,10 +139,7 @@ function StudentScene() {
       </div>
 
       {/* Student figure */}
-      <motion.div
-        animate={{ rotate: [-1, 1, -1] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-5 left-1/2 -translate-x-1/2 ml-16">
+      <div className="bt-sway absolute bottom-5 left-1/2 -translate-x-1/2 ml-16">
         {/* Head */}
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center text-xl shadow-md border-2 border-amber-200 -mb-1">
           😊
@@ -165,18 +149,7 @@ function StudentScene() {
           style={{ background: `linear-gradient(to bottom, ${NAVY}, #1a4a9b)` }}>
           <span className="text-[10px] text-white/80 font-bold">STUDENT</span>
         </div>
-        {/* Arm reaching to laptop (implied by position) */}
-      </motion.div>
-
-      {/* Happy sparkles around student */}
-      {[0, 1, 2].map(i => (
-        <motion.div key={i}
-          animate={{ y: [0, -20, -40], opacity: [1, 0.5, 0], x: [0, (i - 1) * 15, (i - 1) * 30] }}
-          transition={{ duration: 2, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
-          className="absolute bottom-20 right-10 text-xs">
-          {["⭐", "✨", "🌟"][i]}
-        </motion.div>
-      ))}
+      </div>
 
       {/* Chair legs (simple) */}
       <div className="absolute bottom-0 left-1/2 ml-8 flex gap-6">
@@ -293,8 +266,7 @@ function PublicLiveClassesView() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-8">
             <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-3"
               style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }}>
-              <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1, repeat: Infinity }}
-                className="w-2 h-2 rounded-full bg-red-500" />
+              <div className="bt-pulse-scale w-2 h-2 rounded-full bg-red-500" />
               Upcoming Demo Classes — Open to all
             </span>
             <h2 className="text-2xl font-black" style={{ color: NAVY }}>Join a FREE Demo Class Today</h2>
@@ -334,7 +306,7 @@ function PublicLiveClassesView() {
       {/* ── CTA ── */}
       <section className="py-16 px-6 text-center" style={{ background: NAVY }}>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-          <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-5xl mb-6">🎓</motion.div>
+          <div className="bt-sway text-5xl mb-6">🎓</div>
           <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Your first class is FREE</h2>
           <p className="text-white/60 mb-8 text-lg max-w-xl mx-auto">
             Join 10,000+ students already attending live classes. No risk, no payment needed.
@@ -475,8 +447,7 @@ export default function LiveClassesPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-4 border-t-transparent rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
+        <div className="bt-spin-fast w-8 h-8 border-4 rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
       </div>
     );
   }

@@ -217,22 +217,25 @@ const footerLinks: Record<string, { label: string; href: string }[]> = {
 };
 
 // ── Particles ─────────────────────────────────────────────────
+const PARTICLES = [
+  { sz:2, l:"8%",  t:"12%", dur:"9s",  dl:"0s",   op:0.25, c:ORANGE   },
+  { sz:3, l:"22%", t:"38%", dur:"13s", dl:"1.2s",  op:0.18, c:"#FFA040"},
+  { sz:2, l:"41%", t:"22%", dur:"10s", dl:"0.5s",  op:0.20, c:"#fff"   },
+  { sz:2, l:"58%", t:"55%", dur:"11s", dl:"2s",    op:0.22, c:ORANGE   },
+  { sz:3, l:"73%", t:"18%", dur:"14s", dl:"0.8s",  op:0.15, c:"#FFA040"},
+  { sz:2, l:"87%", t:"42%", dur:"8s",  dl:"1.5s",  op:0.28, c:"#fff"   },
+  { sz:2, l:"15%", t:"70%", dur:"12s", dl:"3s",    op:0.20, c:ORANGE   },
+  { sz:3, l:"64%", t:"78%", dur:"9s",  dl:"0.3s",  op:0.18, c:"#FFA040"},
+];
 function Particles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 20 }).map((_, i) => {
-        const sz = Math.random() * 2.5 + 1;
-        const dur = Math.random() * 9 + 5;
-        const delay = Math.random() * 6;
-        const op = Math.random() * 0.3 + 0.1;
-        return (
-          <motion.div key={i} className="absolute rounded-full"
-            style={{ width: sz, height: sz, left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`,
-                     background: i % 3 === 0 ? ORANGE : i % 3 === 1 ? "#FFA040" : "#fff", opacity: op }}
-            animate={{ y: [0, -24, 0], opacity: [op, op * 0.2, op] }}
-            transition={{ duration: dur, delay, repeat: Infinity, ease: "easeInOut" }} />
-        );
-      })}
+      {PARTICLES.map((p, i) => (
+        <div key={i} className="absolute rounded-full"
+          style={{ width: p.sz, height: p.sz, left: p.l, top: p.t, background: p.c,
+                   "--op": p.op, opacity: p.op,
+                   animation: `bt-particle ${p.dur} ease-in-out infinite ${p.dl}` } as React.CSSProperties} />
+      ))}
     </div>
   );
 }
@@ -297,22 +300,19 @@ function HeroVisual() {
         style={{ background: "radial-gradient(ellipse at 30% 75%, rgba(11,43,107,0.08) 0%, transparent 55%)" }} />
 
       {/* ── Floating toppers badge ── */}
-      <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full"
+      <div className="bt-float absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full"
         style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
         <span className="text-xs sm:text-sm">🏆</span>
         <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">10,000+ Toppers across India</span>
-      </motion.div>
+      </div>
 
       {/* ── Three student cards ── */}
       <div className="relative z-10 flex items-end gap-2 sm:gap-4 mt-6">
 
         {/* Card: Ananya — left */}
         {(() => { const s = toppers[2]; return (
-          <motion.div key={s.name}
-            animate={{ y: [4, -8, 4] }}
-            transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-            className="rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
+          <div key={s.name}
+            className="bt-float-a rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
             style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
                      boxShadow: "0 12px 32px rgba(11,43,107,0.12)" }}>
             <div className="relative mb-2 sm:mb-3">
@@ -334,15 +334,13 @@ function HeroVisual() {
             <div className="flex justify-center gap-0.5 mt-1.5">
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
             </div>
-          </motion.div>
+          </div>
         ); })()}
 
         {/* Card: Kaniahya — center, featured */}
         {(() => { const s = toppers[0]; return (
-          <motion.div key={s.name}
-            animate={{ y: [0, -14, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="rounded-2xl sm:rounded-3xl p-3 sm:p-5 w-[118px] sm:w-44 flex-shrink-0 relative"
+          <div key={s.name}
+            className="bt-float-b rounded-2xl sm:rounded-3xl p-3 sm:p-5 w-[118px] sm:w-44 flex-shrink-0 relative"
             style={{ background: "#fff", border: `2px solid rgba(255,107,26,0.2)`,
                      boxShadow: "0 20px 50px rgba(11,43,107,0.18), 0 0 0 3px rgba(255,107,26,0.06)" }}>
             <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 text-lg sm:text-2xl">👑</div>
@@ -366,15 +364,13 @@ function HeroVisual() {
             <div className="flex justify-center gap-0.5 mt-1.5">
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 9 }}>★</span>)}
             </div>
-          </motion.div>
+          </div>
         ); })()}
 
         {/* Card: Rohan — right */}
         {(() => { const s = toppers[1]; return (
-          <motion.div key={s.name}
-            animate={{ y: [4, -10, 4] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.4 }}
-            className="rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
+          <div key={s.name}
+            className="bt-float-c rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
             style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
                      boxShadow: "0 12px 32px rgba(11,43,107,0.12)" }}>
             <div className="relative mb-2 sm:mb-3">
@@ -396,13 +392,12 @@ function HeroVisual() {
             <div className="flex justify-center gap-0.5 mt-1.5">
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
             </div>
-          </motion.div>
+          </div>
         ); })()}
       </div>
 
       {/* ── Bottom badge ── */}
-      <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl"
+      <div className="bt-float-down absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
                  boxShadow: "0 8px 28px rgba(11,43,107,0.13)" }}>
         <div className="flex -space-x-1.5">
@@ -414,7 +409,7 @@ function HeroVisual() {
         <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 10 }}>
           <span className="font-black" style={{ color: ORANGE }}>5,00,000+</span> Happy Students
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -518,11 +513,9 @@ function StatsTicker() {
   const doubled = [...tickerStats, ...tickerStats];
   return (
     <div className="overflow-hidden py-6" style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-      <motion.div className="flex gap-10 w-max"
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}>
+      <div className="bt-marquee-22 flex gap-10 w-max">
         {doubled.map((s, i) => (
-          <div key={i} className="flex items-center gap-3 px-6 py-2 flex-shrink-0">
+          <div key={i} className="flex items-center gap-3 px-6 py-2 flex-shrink-0 select-none">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,107,26,0.1)" }}>
               <s.icon className="w-4 h-4" style={{ color: ORANGE }} />
             </div>
@@ -533,7 +526,7 @@ function StatsTicker() {
             <div className="ml-6 w-px h-8" style={{ background: BORDER }} />
           </div>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -646,9 +639,7 @@ function TestimonialsLoop() {
   const doubled = [...testimonials, ...testimonials];
   return (
     <div className="overflow-hidden">
-      <motion.div className="flex gap-4 w-max"
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}>
+      <div className="bt-marquee-30 flex gap-4 w-max">
         {doubled.map((t, i) => (
           <div key={i} className="flex-shrink-0 w-72 rounded-2xl p-5 space-y-3"
             style={{ background: SURFACE, border: `1px solid ${BORDER2}` }}>
@@ -663,7 +654,7 @@ function TestimonialsLoop() {
             </div>
           </div>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -1073,15 +1064,11 @@ export default function LandingPage() {
       {/* ── APP DOWNLOAD ── */}
       <section className="relative overflow-hidden py-8 md:py-12 px-6"
         style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0e3580 50%, #1a1a5e 100%)` }}>
-        {/* Animated background blobs */}
-        <motion.div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: `radial-gradient(circle, rgba(255,107,26,0.18) 0%, transparent 70%)`, filter: "blur(40px)" }}
-          animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.div className="absolute bottom-0 left-10 w-56 h-56 rounded-full pointer-events-none"
-          style={{ background: `radial-gradient(circle, rgba(255,107,26,0.12) 0%, transparent 70%)`, filter: "blur(50px)" }}
-          animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.8, 0.4] }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1.5 }} />
+        {/* Background blobs — static, no JS animation needed */}
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
+          style={{ background: `radial-gradient(circle, rgba(255,107,26,0.18) 0%, transparent 70%)`, filter: "blur(40px)", opacity: 0.8 }} />
+        <div className="absolute bottom-0 left-10 w-56 h-56 rounded-full pointer-events-none"
+          style={{ background: `radial-gradient(circle, rgba(255,107,26,0.12) 0%, transparent 70%)`, filter: "blur(50px)", opacity: 0.6 }} />
 
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-12">
@@ -1178,10 +1165,8 @@ export default function LandingPage() {
                       { label: "Your Score", sub: "92% · Science Test", color: "#7C3AED", dot: ORANGE },
                       { label: "Homework", sub: "2 pending", color: "#0EA5E9", dot: "#facc15" },
                     ].map((c, i) => (
-                      <motion.div key={c.label}
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{ duration: 3 + i, repeat: Infinity, ease: "easeInOut", delay: i * 0.8 }}
-                        className="rounded-xl p-2.5 flex items-center gap-2.5"
+                      <div key={c.label}
+                        className={`rounded-xl p-2.5 flex items-center gap-2.5 ${["bt-float-sm","bt-float-sm-2","bt-float-sm-3"][i]}`}
                         style={{ background: "#fff", boxShadow: "0 2px 12px rgba(11,43,107,0.1)", border: "1px solid rgba(11,43,107,0.06)" }}>
                         <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center"
                           style={{ background: `${c.color}15` }}>
@@ -1192,7 +1177,7 @@ export default function LandingPage() {
                           <div className="text-gray-400 truncate" style={{ fontSize: 9 }}>{c.sub}</div>
                         </div>
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: c.dot }} />
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                   {/* Bottom tab bar */}
@@ -1208,25 +1193,22 @@ export default function LandingPage() {
                 </div>
               </div>
               {/* Floating badge — rating */}
-              <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -left-8 top-16 px-3 py-2 rounded-2xl flex items-center gap-2"
+              <div className="bt-float-sm absolute -left-8 top-16 px-3 py-2 rounded-2xl flex items-center gap-2"
                 style={{ background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", minWidth: 100 }}>
                 <span style={{ fontSize: 18 }}>⭐</span>
                 <div>
                   <div className="font-black text-sm" style={{ color: NAVY }}>4.9</div>
                   <div className="text-gray-400" style={{ fontSize: 9 }}>10K reviews</div>
                 </div>
-              </motion.div>
-              {/* Floating badge — downloads */}
-              <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute -right-6 bottom-20 px-3 py-2 rounded-2xl flex items-center gap-2"
+              </div>
+              <div className="bt-float-down absolute -right-6 bottom-20 px-3 py-2 rounded-2xl flex items-center gap-2"
                 style={{ background: ORANGE, boxShadow: `0 8px 32px rgba(255,107,26,0.4)`, minWidth: 110 }}>
                 <Users className="w-4 h-4 text-white flex-shrink-0" />
                 <div>
                   <div className="font-black text-sm text-white">5L+</div>
                   <div className="text-white/70" style={{ fontSize: 9 }}>Students</div>
                 </div>
-              </motion.div>
+              </div>
             </motion.div>
 
           </div>

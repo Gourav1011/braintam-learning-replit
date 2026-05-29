@@ -54,12 +54,10 @@ export default function RegisterPage() {
       <div className="hidden lg:flex lg:w-2/5 bg-gradient-to-br from-primary via-primary/90 to-secondary flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           {[...Array(8)].map((_, i) => (
-            <motion.div
+            <div
               key={i}
-              className="absolute rounded-full border-2 border-white"
-              style={{ width: (i + 1) * 60, height: (i + 1) * 60, left: `${i * 12}%`, top: `${5 + i * 10}%` }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 10 + i * 2, repeat: Infinity, ease: "linear" }}
+              className="absolute rounded-full border-2 border-white/20"
+              style={{ width: (i + 1) * 60, height: (i + 1) * 60, left: `${i * 12}%`, top: `${5 + i * 10}%`, animation: `bt-spin ${10 + i * 2}s linear infinite` }}
             />
           ))}
         </div>

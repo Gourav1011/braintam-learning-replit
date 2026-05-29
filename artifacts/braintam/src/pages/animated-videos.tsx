@@ -96,12 +96,10 @@ export default function AnimatedVideosPage() {
                       <div className={`w-full h-44 bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
                         <div className="absolute inset-0 opacity-20">
                           {[...Array(4)].map((_, j) => (
-                            <motion.div
+                            <div
                               key={j}
                               className="absolute rounded-full bg-white"
-                              style={{ width: 30 + j * 20, height: 30 + j * 20, left: `${15 + j * 20}%`, top: `${10 + j * 15}%` }}
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ duration: 2 + j, repeat: Infinity }}
+                              style={{ width: 30 + j * 20, height: 30 + j * 20, left: `${15 + j * 20}%`, top: `${10 + j * 15}%`, opacity: 0.15 }}
                             />
                           ))}
                         </div>

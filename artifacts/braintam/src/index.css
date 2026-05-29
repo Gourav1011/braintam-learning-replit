@@ -268,3 +268,58 @@
     inset: -1px;
   }
 }
+
+/* ── GPU-composited CSS animations (replaces framer-motion repeat:Infinity) ── */
+@keyframes bt-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes bt-float-down {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(7px); }
+}
+@keyframes bt-float-sm {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes bt-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes bt-pulse-op {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+@keyframes bt-pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+@keyframes bt-sway {
+  0%, 100% { transform: rotate(-1deg); }
+  50%       { transform: rotate(1deg); }
+}
+@keyframes bt-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes bt-particle {
+  0%, 100% { transform: translateY(0px); opacity: var(--op, 0.2); }
+  50%       { transform: translateY(-20px); opacity: calc(var(--op, 0.2) * 0.25); }
+}
+
+.bt-float        { animation: bt-float 4s ease-in-out infinite; will-change: transform; }
+.bt-float-a      { animation: bt-float 5.5s ease-in-out infinite 0.8s; will-change: transform; }
+.bt-float-b      { animation: bt-float 5s ease-in-out infinite; will-change: transform; }
+.bt-float-c      { animation: bt-float 6s ease-in-out infinite 1.4s; will-change: transform; }
+.bt-float-down   { animation: bt-float-down 5s ease-in-out infinite 0.5s; will-change: transform; }
+.bt-float-sm     { animation: bt-float-sm 3.5s ease-in-out infinite; will-change: transform; }
+.bt-float-sm-2   { animation: bt-float-sm 4s ease-in-out infinite 1s; will-change: transform; }
+.bt-float-sm-3   { animation: bt-float-sm 3.5s ease-in-out infinite 0.8s; will-change: transform; }
+.bt-float-sm-4   { animation: bt-float-sm 4.5s ease-in-out infinite 1.6s; will-change: transform; }
+.bt-spin-slow    { animation: bt-spin 8s linear infinite; will-change: transform; }
+.bt-spin-fast    { animation: bt-spin 1s linear infinite; will-change: transform; }
+.bt-pulse-op     { animation: bt-pulse-op 2.5s ease-in-out infinite; }
+.bt-pulse-fast   { animation: bt-pulse-op 1s ease-in-out infinite; }
+.bt-pulse-scale  { animation: bt-pulse-scale 1.5s ease-in-out infinite; will-change: transform; }
+.bt-sway         { animation: bt-sway 3s ease-in-out infinite; will-change: transform; }
+.bt-marquee-22   { animation: bt-marquee 22s linear infinite; will-change: transform; }
+.bt-marquee-30   { animation: bt-marquee 30s linear infinite; will-change: transform; }
