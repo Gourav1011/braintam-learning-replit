@@ -1,0 +1,334 @@
+BRAINTAM MOBILE WEB APP UI/UX REQUIREMENTS
+
+Build a premium, modern, mobile-first EdTech web application for Braintam inspired by ODA Class's user flow and engagement, but using Braintam's existing brand identity and colors from braintam.com.
+
+The application should feel like a native Android app while running as a Progressive Web App (PWA).
+
+Design Philosophy
+
+Create a premium educational platform that combines:
+
+ODA Class's engagement and gamification
+Clean Apple-style layouts
+Modern SaaS dashboard design
+Parent trust and professionalism
+
+The UI must be minimal, modern, highly responsive, and visually appealing for both students and parents.
+
+BRAND COLORS
+
+Primary Color:
+
+#0A2342 (Deep Navy)
+
+Secondary Color:
+
+#123D7A (Royal Blue)
+
+Accent Color:
+
+#D4AF37 (Premium Gold)
+
+Background:
+
+#FFFFFF
+
+Light Background:
+
+#F8FAFC
+
+Success:
+
+#22C55E
+
+Warning:
+
+#F59E0B
+
+Danger:
+
+#EF4444
+TYPOGRAPHY
+
+Headings:
+
+Poppins Bold
+
+Body:
+
+Inter
+
+Use clean spacing and premium typography hierarchy.
+
+MOBILE APP STRUCTURE
+
+Bottom Navigation Fixed:
+
+Home
+Courses
+Live Classes
+Leaderboard
+Profile
+
+The bottom navigation should feel identical to modern Android applications.
+
+Selected tab:
+
+Navy background
+Gold icon
+
+Unselected tabs:
+
+Neutral gray
+HOME SCREEN
+
+Top Section:
+
+Display:
+
+Student profile photo
+Greeting message
+Notification icon
+
+Example:
+
+Hello, [Student Name] 👋
+
+Ready to learn something amazing today?
+
+Hero Banner Carousel
+
+Rotating banners controlled by Admin Panel.
+
+Purpose:
+
+Live Classes
+Competitions
+Olympiads
+Announcements
+Offers
+
+Large premium cards with smooth sliding animation.
+
+Continue Learning Section
+
+Horizontal card layout.
+
+Display:
+
+Subject image
+Subject name
+Progress percentage
+Continue button
+
+Today's Classes
+
+Display:
+
+Teacher photo
+Subject
+Date
+Time
+Join Class button
+
+Join button should be prominent.
+
+Performance Dashboard
+
+Show:
+
+Attendance %
+Learning Score
+Rank
+Lessons Completed
+XP Points
+
+Modern card design.
+
+COURSES SCREEN
+
+Hierarchy:
+
+Grade
+→ Subject
+→ Chapter
+→ Topic
+→ Video
+→ Notes
+→ Quiz
+
+Features:
+
+Search
+Filters
+Progress Tracking
+Locked/Unlocked Content
+Completion Badges
+
+Cards should be visually attractive and mobile-friendly.
+
+LIVE CLASS SCREEN
+
+Display:
+
+Today's Classes
+
+Upcoming Classes
+
+Past Recordings
+
+Each class card should contain:
+
+Teacher Image
+Subject
+Class Title
+Time
+Duration
+Join Button
+
+Use premium card design.
+
+LEADERBOARD SCREEN
+
+Gamified experience.
+
+Display:
+
+Top 3 Students using Podium Design
+
+🥇 Rank 1
+
+🥈 Rank 2
+
+🥉 Rank 3
+
+Ranking List
+
+Show:
+
+Student Name
+XP Points
+Badges
+Weekly Rank
+
+Filters:
+
+Grade Wise
+Subject Wise
+Monthly
+Overall
+
+Smooth animations.
+
+PROFILE SCREEN
+
+Display:
+
+Student Photo
+Student Name
+Grade
+Parent Name
+
+Sections:
+
+Subscription Plan
+Attendance
+Certificates
+Payment History
+Refer & Earn
+Settings
+GAMIFICATION SYSTEM
+
+Implement:
+
+XP Points
+Achievement Badges
+Learning Streaks
+Daily Challenges
+Weekly Rewards
+Leaderboards
+
+Students should feel rewarded for learning.
+
+PARENT DASHBOARD
+
+Dedicated Parent Analytics Section.
+
+Display:
+
+Attendance
+Academic Performance
+Learning Time
+Weak Topics
+Upcoming Classes
+Fee Status
+
+Clean and professional design.
+
+NOTIFICATIONS
+
+Notification Center
+
+Categories:
+
+Homework
+Live Classes
+Competitions
+Announcements
+New Courses
+
+Real-time notifications.
+
+BACKGROUND DESIGN
+
+Use subtle educational graphics at 3-5% opacity:
+
+Rockets
+Stars
+Mathematics Symbols
+Science Icons
+Brain Graphics
+
+Keep minimal and elegant.
+
+CARD DESIGN
+
+Use:
+
+Rounded corners (18px–24px)
+Soft shadows
+Smooth hover animations
+Glassmorphism effects where suitable
+Modern gradients
+ADMIN PANEL INTEGRATION
+
+Everything must be dynamic and controlled through Admin Panel.
+
+Admin should manage:
+
+Courses
+Subjects
+Chapters
+Topics
+Students
+Teachers
+Live Classes
+Notifications
+Leaderboards
+Banners
+Payments
+Analytics
+
+No hardcoded content.
+
+PERFORMANCE REQUIREMENTS
+Mobile First
+Responsive Design
+Fast Loading
+Progressive Web App (PWA)
+Installable on Android and iPhone
+Offline support for selected pages
+Real-time updates without app updates
+FINAL GOAL
+
+The platform should feel like a premium EdTech application comparable to ODA Class, while maintaining Braintam's own identity, using Navy Blue, Royal Blue, Gold, and White branding. The user experience should be modern, smooth, premium, engaging, and highly optimized for students and parents.
