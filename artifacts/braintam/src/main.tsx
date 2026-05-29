@@ -4,7 +4,7 @@ import "./index.css";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-setBaseUrl(`${BASE}/api`);
+setBaseUrl(`${BASE}`);
 
 setAuthTokenGetter(() => {
   const path = window.location.pathname;
