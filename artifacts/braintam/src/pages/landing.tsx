@@ -1235,62 +1235,98 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{ background: NAVY }}>
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="flex flex-col gap-6 md:flex-row md:gap-10">
+        <div className="max-w-6xl mx-auto px-6 py-5">
+          <div className="flex flex-col md:flex-row gap-6 items-stretch">
 
-            {/* Brand / contact */}
-            <div className="space-y-2.5 md:w-52 flex-shrink-0">
-              <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
-              <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                India's premium EdTech platform for school students grades 1–10.
-              </p>
-              <div className="space-y-1 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                <div className="flex items-center gap-2"><Mail className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com</div>
-                <div className="flex items-center gap-2"><Phone className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
-                <div className="flex items-start gap-2"><MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
-                  <span>Nallasopara (E), Palghar, 401209</span>
+            {/* Left: brand block */}
+            <div className="flex-shrink-0 md:w-56 space-y-2">
+              {/* Logo row + socials in one line */}
+              <div className="flex items-center justify-between">
+                <img src={braintamLogo} alt="Braintam" className="w-9 h-9 object-contain" />
+                <div className="flex gap-1.5">
+                  {[
+                    { Icon: WaIcon, href: "https://wa.me/918492944473" },
+                    { Icon: IgIcon, href: "https://instagram.com/braintamofficoal" },
+                    { Icon: FbIcon, href: "https://facebook.com/braintam" },
+                    { Icon: YtIcon, href: "https://youtube.com/@braintam" },
+                  ].map(({ Icon, href }, i) => (
+                    <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                      className="w-6 h-6 rounded-md flex items-center justify-center transition-all"
+                      style={{ background: "rgba(255,255,255,0.08)" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
+                      <Icon className="w-2.5 h-2.5 text-white" />
+                    </a>
+                  ))}
                 </div>
               </div>
-              <div className="flex gap-1.5">
-                {[
-                  { Icon: WaIcon,  href: "https://wa.me/918492944473" },
-                  { Icon: IgIcon,  href: "https://instagram.com/braintamofficoal" },
-                  { Icon: FbIcon,  href: "https://facebook.com/braintam" },
-                  { Icon: YtIcon,  href: "https://youtube.com/@braintam" },
-                ].map(({ Icon, href }, i) => (
-                  <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
-                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
-                    <Icon className="w-3 h-3 text-white" />
-                  </a>
-                ))}
+              <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+                India's premium EdTech for grades 1–10.
+              </p>
+              <div className="space-y-1 text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <div className="flex items-center gap-1.5"><Mail className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com</div>
+                <div className="flex items-center gap-1.5"><Phone className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
+                <div className="flex items-start gap-1.5"><MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
+                  <span>C/23, Durvas Complex, near Capital Mall Gate No. 5, Nallasopara (E), Palghar, 401209</span>
+                </div>
               </div>
             </div>
 
-            {/* Link columns */}
-            <div className="grid grid-cols-2 gap-8 flex-1">
-              {Object.entries(footerLinks).map(([section, links]) => (
-                <div key={section} className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-widest text-white mb-3">{section}</div>
-                  {links.map(({ label, href }) => (
-                    href.startsWith("/") ? (
-                      <Link key={label} href={href}
-                        className="block text-xs transition-colors hover:text-white"
-                        style={{ color: "rgba(255,255,255,0.5)" }}>
-                        {label}
-                      </Link>
-                    ) : (
-                      <a key={label} href={href}
-                        className="block text-xs transition-colors hover:text-white cursor-pointer"
-                        style={{ color: "rgba(255,255,255,0.5)" }}>
-                        {label}
-                      </a>
-                    )
-                  ))}
+            {/* Right: two CTA cards */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Card 1 — Talk to an Expert */}
+              <div className="rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full opacity-10"
+                  style={{ background: ORANGE }} />
+                {/* Avatar SVG */}
+                <div className="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+                  style={{ background: ORANGE, boxShadow: `0 4px 16px rgba(255,107,26,0.4)` }}>
+                  <svg viewBox="0 0 56 56" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="28" cy="28" r="28" fill={ORANGE}/>
+                    <ellipse cx="28" cy="52" rx="16" ry="10" fill="#0B2B6B"/>
+                    <circle cx="28" cy="26" r="13" fill="#FBBF7A"/>
+                    <path d="M15 22 C15 11 41 11 41 22 C41 16 15 16 15 22Z" fill="#1a1a2e"/>
+                    <rect x="18" y="24" width="8" height="5.5" rx="2.5" fill="none" stroke="#4B3F2A" strokeWidth="1.2"/>
+                    <rect x="30" y="24" width="8" height="5.5" rx="2.5" fill="none" stroke="#4B3F2A" strokeWidth="1.2"/>
+                    <line x1="26" y1="26.5" x2="30" y2="26.5" stroke="#4B3F2A" strokeWidth="1.2"/>
+                    <path d="M23 34 Q28 38 33 34" fill="none" stroke="#c4732a" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
                 </div>
-              ))}
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm leading-snug">Know more about our courses.</p>
+                  <p className="text-white/50 text-xs mt-0.5 mb-3">Book a free counselling session.</p>
+                  <a href="https://wa.me/918492944473?text=Hi%2C%20I%20want%20to%20know%20more%20about%20Braintam%20courses"
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-opacity hover:opacity-90"
+                    style={{ background: ORANGE }}>
+                    Talk to an Expert →
+                  </a>
+                </div>
+              </div>
+
+              {/* Card 2 — Join Community (different design) */}
+              <div className="rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+                style={{ background: "linear-gradient(135deg, rgba(37,211,102,0.12) 0%, rgba(37,211,102,0.05) 100%)", border: "1px solid rgba(37,211,102,0.25)" }}>
+                <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full opacity-10"
+                  style={{ background: "#25D366" }} />
+                <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)" }}>
+                  <div style={{ color: "#25D366" }}><WaIcon className="w-7 h-7" /></div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm leading-snug">Join our learning community.</p>
+                  <p className="text-white/50 text-xs mt-0.5 mb-3">Get tips, alerts & study updates.</p>
+                  <a href="https://wa.me/918492944473?text=Hi%2C%20I%20want%20to%20join%20the%20Braintam%20WhatsApp%20community"
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-opacity hover:opacity-90"
+                    style={{ background: "#25D366" }}>
+                    <WaIcon className="w-3 h-3" /> Join on WhatsApp
+                  </a>
+                </div>
+              </div>
+
             </div>
           </div>
 
