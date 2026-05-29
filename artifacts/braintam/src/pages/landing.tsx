@@ -1292,32 +1292,11 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Right: CTA card */}
-            <div className="flex-shrink-0 md:w-64">
-              <div className="rounded-2xl relative overflow-hidden h-full flex"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", minHeight: "100px" }}>
-                {/* Text side */}
-                <div className="flex-1 p-4 flex flex-col justify-center relative z-10">
-                  <p className="text-white font-bold text-sm leading-snug">Know more about our courses.</p>
-                  <p className="text-white/50 text-xs mt-0.5 mb-3">Book a free counselling session.</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <a href="tel:+918492944473"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-opacity hover:opacity-90 flex-shrink-0"
-                      style={{ background: ORANGE }}>
-                      Talk to an Expert →
-                    </a>
-                    <span className="text-xs font-semibold whitespace-nowrap" style={{ color: ORANGE }}>+91 84929 44473</span>
-                  </div>
-                </div>
-                {/* Image side */}
-                <div className="flex-shrink-0 w-28 relative overflow-hidden rounded-r-2xl">
-                  <img src={expertCardImg} alt="Braintam student"
-                    className="absolute inset-0 w-full h-full object-cover object-center" />
-                  {/* fade left edge into card bg */}
-                  <div className="absolute inset-y-0 left-0 w-8"
-                    style={{ background: "linear-gradient(to right, rgba(10,22,60,0.85), transparent)" }} />
-                </div>
-              </div>
+            {/* Right: image panel */}
+            <div className="flex-shrink-0 md:w-56 rounded-2xl overflow-hidden hidden md:block"
+              style={{ minHeight: "140px" }}>
+              <img src={expertCardImg} alt="Braintam student"
+                className="w-full h-full object-cover object-top" />
             </div>
           </div>
 
