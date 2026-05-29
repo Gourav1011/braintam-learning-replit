@@ -40,7 +40,7 @@ router.get("/live-classes", attachUser, async (req, res) => {
     studentsJoined: liveClassesTable.studentsJoined,
   })
     .from(liveClassesTable)
-    .innerJoin(subjectsTable, eq(liveClassesTable.subjectId, subjectsTable.id))
+    .leftJoin(subjectsTable, eq(liveClassesTable.subjectId, subjectsTable.id))
     .where(
       and(
         studentFilter,

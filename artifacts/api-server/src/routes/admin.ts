@@ -494,6 +494,63 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
+// ── Live Classes ──────────────────────────────────────────────────
+router.get("/admin/live-classes", adminOnly, async (req, res) => {
+  const rows = await db
+    .select({
+      id: liveClassesTable.id,
+      title: liveClassesTable.title,
+      subjectId: liveClassesTable.subjectId,
+      subjectName: subjectsTable.name,
+      grade: liveClassesTable.grade,
+      teacher: liveClassesTable.teacher,
+      teacherId: liveClassesTable.teacherId,
+      scheduledAt: liveClassesTable.scheduledAt,
+      duration: liveClassesTable.duration,
+      status: liveClassesTable.status,
+      joinUrl: liveClassesTable.joinUrl,
+      studentsJoined: liveClassesTable.studentsJoined,
+      courseId: liveClassesTable.courseId,
+      courseSubjectId: liveClassesTable.courseSubjectId,
+      chapterId: liveClassesTable.chapterId,
+      topicId: liveClassesTable.topicId,
+      isPublished: liveClassesTable.isPublished,
+      createdAt: liveClassesTable.createdAt,
+    })
+    .from(liveClassesTable)
+    .leftJoin(subjectsTable, eq(liveClassesTable.subjectId, subjectsTable.id))
+    .orderBy(desc(liveClassesTable.scheduledAt));
+
+  res.json(rows.map(r => ({
+    ...r,
+    subjectName: r.subjectName ?? null,
+    scheduledAt: r.scheduledAt.toISOString(),
+    createdAt: r.createdAt.toISOString(),
+    studentsJoined: r.studentsJoined ?? 0,
+  })));
+});
+
+router.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { status, joinUrl } = req.body;
+  const updates: Partial<typeof liveClassesTable.$inferInsert> = {};
+  if (status !== undefined) updates.status = status;
+  if (joinUrl !== undefined) updates.joinUrl = joinUrl;
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+  const [lc] = await db.update(liveClassesTable).set(updates).where(eq(liveClassesTable.id, id)).returning();
+  if (!lc) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(lc);
+});
+
+router.delete("/admin/live-classes/:id", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(liveClassesTable).where(eq(liveClassesTable.id, id));
+  await logAudit(req.authUser!.id, req.authUser!.name, "live_class_deleted", "live_class", id, String(id));
+  res.json({ success: true });
+});
+
 // ── Content Creation ─────────────────────────────────────────────
 router.post("/admin/live-classes", adminOnly, async (req, res) => {
   const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration, teacher, joinUrl, isPublished } = req.body;

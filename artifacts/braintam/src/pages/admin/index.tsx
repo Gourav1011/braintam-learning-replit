@@ -697,6 +697,7 @@ function AdminPageInner() {
   const [lcCourseSubjects, setLcCourseSubjects] = useState<{ id: number; name: string; subjectCode: string }[]>([]);
   const [lcChapters, setLcChapters] = useState<{ id: number; name: string; chapterCode: string }[]>([]);
   const [lcTopics, setLcTopics] = useState<{ id: number; name: string; topicCode: string }[]>([]);
+  const [lcCourseSearch, setLcCourseSearch] = useState("");
 
   const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", role: "student" as Role, grade: "6", school: "" });
   const [showNewPw, setShowNewPw] = useState(false);
@@ -1006,6 +1007,7 @@ function AdminPageInner() {
       setLcCourseSubjects([]);
       setLcChapters([]);
       setLcTopics([]);
+      setLcCourseSearch("");
       loadAll();
     } else { const d = await r.json(); flash(d.error ?? "Error", false); }
     setBusy(false);
@@ -1966,22 +1968,51 @@ function AdminPageInner() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
 
-                  {/* Step 1: Course */}
-                  <Select value={lcForm.courseId || "__none__"} onValueChange={v => {
-                    const val = v === "__none__" ? "" : v;
-                    const course = val ? courses.find(c => String(c.id) === val) : null;
-                    setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade }));
-                    setLcCourseSubjects([]);
-                    setLcChapters([]);
-                    setLcTopics([]);
-                    loadSubjectsForCourse(val);
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="① Select Course *" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No course</SelectItem>
-                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · Gr {c.grade}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {/* Step 1: Course (with search by ID or name) */}
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                      <Input
+                        placeholder="Search course by name or ID…"
+                        value={lcCourseSearch}
+                        onChange={e => setLcCourseSearch(e.target.value)}
+                        className="pl-8 text-sm"
+                      />
+                    </div>
+                    <Select value={lcForm.courseId || "__none__"} onValueChange={v => {
+                      const val = v === "__none__" ? "" : v;
+                      const course = val ? courses.find(c => String(c.id) === val) : null;
+                      setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade }));
+                      setLcCourseSubjects([]);
+                      setLcChapters([]);
+                      setLcTopics([]);
+                      loadSubjectsForCourse(val);
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="① Select Course *" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No course</SelectItem>
+                        {courses
+                          .filter(c => {
+                            const q = lcCourseSearch.trim().toLowerCase();
+                            if (!q) return true;
+                            return String(c.id).includes(q) || c.title.toLowerCase().includes(q);
+                          })
+                          .map(c => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              <span className="text-xs text-gray-400 mr-1">#{c.id}</span>
+                              {c.title} · Gr {c.grade}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {lcForm.courseId && (
+                      <p className="text-xs text-green-600 font-medium">
+                        ✓ Course #{lcForm.courseId} selected
+                      </p>
+                    )}
+                  </div>
 
                   {/* Step 2: Subject (loaded after course selected) */}
                   {lcCourseSubjects.length > 0 ? (
@@ -2055,7 +2086,7 @@ function AdminPageInner() {
                   <Button size="sm" onClick={createLiveClass}
                     disabled={busy || !lcForm.title || !lcForm.courseId || !lcForm.scheduledAt || (!lcForm.teacher && !lcForm.teacherId)}
                     className="text-white" style={{ background: ORANGE }}>Schedule</Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); }}>Cancel</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); setLcCourseSearch(""); }}>Cancel</Button>
                 </div>
               </div>
             )}
