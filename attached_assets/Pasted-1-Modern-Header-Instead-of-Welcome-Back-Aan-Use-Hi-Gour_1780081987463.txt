@@ -1,0 +1,169 @@
+1. Modern Header
+
+Instead of:
+
+Welcome Back, Aan!
+
+Use:
+
+👋 Hi Gourav
+
+Ready to become a Top Performer today?
+
+Add:
+
+Notification Bell
+Coins
+XP Points
+Streak
+2. Add Hero Banner
+
+Immediately below header.
+
+Example:
+
+🚀 Summer Coding Camp
+
+Join India's Most Interactive Learning Program
+
+[Explore Now]
+
+Rotating carousel banners.
+
+This is what apps like ODA, Byju's and Unacademy use.
+
+3. Replace Plain Cards
+
+Current cards:
+
+Upcoming Live Classes
+Homework
+Assignments
+Tests
+
+look basic.
+
+Use colored gradient cards:
+
+📹 Live Classes → Blue
+
+📝 Homework → Orange
+
+📚 Assignments → Purple
+
+🏆 Tests → Green
+
+Each card should contain:
+
+Icon
+Count
+Small description
+Progress indicator
+4. Add Continue Learning Section
+Continue Learning
+
+Horizontal scroll:
+
+Maths
+Science
+English
+
+Show progress bars.
+
+5. Add Leaderboard Preview
+Top Learners This Week
+
+🥇 Aarav
+
+🥈 Siya
+
+🥉 Rohan
+
+[View Full Leaderboard]
+
+This increases engagement dramatically.
+
+6. Add Achievements Section
+Achievements
+
+🏅 First Quiz Completed
+
+🔥 7 Day Streak
+
+⭐ Homework Champion
+
+7. Improve Bottom Navigation
+
+Current bottom bar is functional.
+
+For Braintam:
+
+Home
+Courses
+Live
+Rewards
+Profile
+
+Selected tab:
+
+Gold icon
+Navy background
+8. Add Premium Braintam Theme
+
+Current UI:
+
+90% White
+10% Blue
+
+Recommended:
+
+Navy Header
+White Content Area
+Gold Highlights
+Royal Blue Buttons
+
+Colors:
+
+Primary: #0A2342
+Secondary: #123D7A
+Accent: #D4AF37
+Background: #F8FAFC
+9. Floating Quick Action
+
+Replace WhatsApp button with:
+
+Need Help?
+
+Options:
+
+WhatsApp
+Call Support
+Raise Ticket
+10. Home Screen Layout
+Header
+├── Profile
+├── XP
+├── Coins
+├── Notifications
+
+Hero Banner
+
+Continue Learning
+
+Quick Stats
+├── Live Classes
+├── Homework
+├── Assignments
+├── Tests
+
+Today's Live Classes
+
+Top Learners
+
+Achievements
+
+Recent Activity
+
+Bottom Navigation
+
+If you're targeting ODA-level quality, I'd rate the current screen 6/10. After these changes, it can reach 9/10 and feel much more like a premium EdTech product while keeping the Braintam identity.

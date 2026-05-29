@@ -2,19 +2,24 @@ import { Redirect } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetStudentDashboard, useGetLeaderboard } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth, STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
-import { Video, BookOpen, FileText, CheckSquare, Award, Flame, ArrowRight, PlayCircle, Star } from "lucide-react";
+import { Video, BookOpen, FileText, CheckSquare, Award, Flame, ArrowRight, PlayCircle, Star, Bell, MessageCircle, Phone, Ticket, X, ChevronRight, Zap, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect, useRef } from "react";
 
+const NAVY   = "#0A2342";
+const NAVY2  = "#123D7A";
+const GOLD   = "#D4AF37";
+const BG     = "#F8FAFC";
+
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.4 } }),
+  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.08, duration: 0.4 } }),
 };
 
 const activityIcons: Record<string, any> = {
@@ -28,19 +33,19 @@ const activityIcons: Record<string, any> = {
 };
 
 const activityColors: Record<string, string> = {
-  live_class: "text-red-500 bg-red-50",
-  recording: "text-blue-500 bg-blue-50",
-  homework: "text-yellow-500 bg-yellow-50",
-  assignment: "text-orange-500 bg-orange-50",
-  test: "text-purple-500 bg-purple-50",
-  video: "text-cyan-500 bg-cyan-50",
-  course: "text-green-500 bg-green-50",
+  live_class:  "text-blue-500 bg-blue-50",
+  recording:   "text-blue-500 bg-blue-50",
+  homework:    "text-orange-500 bg-orange-50",
+  assignment:  "text-purple-500 bg-purple-50",
+  test:        "text-green-500 bg-green-50",
+  video:       "text-cyan-500 bg-cyan-50",
+  course:      "text-indigo-500 bg-indigo-50",
 };
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function apiFetch(path: string, opts?: RequestInit) {
-  const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
+  const staffToken   = localStorage.getItem(STAFF_TOKEN_KEY);
   const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
   const token = studentToken || staffToken;
   return fetch(`${BASE}/api${path}`, {
@@ -53,10 +58,10 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-// ── Daily Coin Popup ────────────────────────────────────────────
+// ── Daily Coin Popup ─────────────────────────────────────────────
 function CoinPopup({ onClose }: { onClose: () => void }) {
-  const [claiming, setClaiming] = useState(false);
-  const [claimed, setClaimed] = useState(false);
+  const [claiming, setClaiming]   = useState(false);
+  const [claimed, setClaimed]     = useState(false);
   const [totalPoints, setTotalPoints] = useState<number | null>(null);
   const coins = 10;
 
@@ -76,9 +81,7 @@ function CoinPopup({ onClose }: { onClose: () => void }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
     >
       <motion.div
@@ -88,82 +91,37 @@ function CoinPopup({ onClose }: { onClose: () => void }) {
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
         className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center relative overflow-hidden"
       >
-        {/* Background decoration */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-yellow-100 rounded-full opacity-60" />
           <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-orange-100 rounded-full opacity-60" />
         </div>
-
         <div className="relative">
           {!claimed ? (
             <>
-              {/* Coin icon animation */}
               <div className="bt-float-sm bt-sway text-6xl mb-4 inline-block select-none">🪙</div>
-
               <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Daily Reward!</h2>
-              <p className="text-gray-500 text-sm mb-6">
-                Come back every day to collect your coins and climb the leaderboard!
-              </p>
-
+              <p className="text-gray-500 text-sm mb-6">Come back every day to collect your coins and climb the leaderboard!</p>
               <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl py-4 px-6 mb-6 shadow-inner">
                 <p className="text-white text-xs font-semibold uppercase tracking-wider mb-1">Today's reward</p>
                 <p className="text-white text-4xl font-black">+{coins} Coins</p>
               </div>
-
-              <Button
-                onClick={claim}
-                disabled={claiming}
-                className="w-full h-12 text-base font-bold rounded-2xl text-white shadow-lg"
-                style={{ background: "linear-gradient(135deg, #FF6B1A, #e55a10)" }}
-              >
+              <Button onClick={claim} disabled={claiming} className="w-full h-12 text-base font-bold rounded-2xl text-white shadow-lg" style={{ background: "linear-gradient(135deg, #FF6B1A, #e55a10)" }}>
                 {claiming ? "Claiming..." : "🎉 Claim Now"}
               </Button>
-              <button onClick={onClose} className="mt-3 text-xs text-gray-400 hover:text-gray-600 w-full">
-                Remind me later
-              </button>
+              <button onClick={onClose} className="mt-3 text-xs text-gray-400 hover:text-gray-600 w-full">Remind me later</button>
             </>
           ) : (
             <>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: [0, 1.3, 1] }}
-                transition={{ duration: 0.5, type: "spring" }}
-                className="text-6xl mb-4 inline-block"
-              >
-                🎊
-              </motion.div>
-
-              <motion.h2
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-2xl font-extrabold text-gray-900 mb-1"
-              >
-                Coins Claimed!
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-gray-500 text-sm mb-6"
-              >
+              <motion.div initial={{ scale: 0 }} animate={{ scale: [0, 1.3, 1] }} transition={{ duration: 0.5, type: "spring" }} className="text-6xl mb-4 inline-block">🎊</motion.div>
+              <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-extrabold text-gray-900 mb-1">Coins Claimed!</motion.h2>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-gray-500 text-sm mb-6">
                 {totalPoints !== null ? `You now have ${totalPoints} total points.` : `+${coins} coins added to your balance!`} See you tomorrow!
               </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-green-50 border border-green-200 rounded-2xl py-3 px-6 mb-6"
-              >
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-green-50 border border-green-200 rounded-2xl py-3 px-6 mb-6">
                 <p className="text-green-700 font-bold text-2xl">+{coins} 🪙</p>
                 <p className="text-green-600 text-xs mt-1">Added to your score</p>
               </motion.div>
-
-              <Button
-                onClick={onClose}
-                className="w-full h-12 text-base font-bold rounded-2xl text-white"
-                style={{ background: "linear-gradient(135deg, #0B2B6B, #0d3a92)" }}
-              >
+              <Button onClick={onClose} className="w-full h-12 text-base font-bold rounded-2xl text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, ${NAVY2})` }}>
                 Continue Learning 📚
               </Button>
             </>
@@ -174,62 +132,269 @@ function CoinPopup({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Main Dashboard ──────────────────────────────────────────────
+// ── Hero Banner Carousel ─────────────────────────────────────────
+const BANNERS = [
+  {
+    emoji: "🚀",
+    title: "Summer Learning Camp",
+    sub: "Join India's Most Interactive Learning Program",
+    cta: "Explore Now",
+    href: "/courses",
+    from: "#1e3a8a",
+    to: "#0A2342",
+  },
+  {
+    emoji: "🏆",
+    title: "Live Classes This Week",
+    sub: "Don't miss your scheduled classes — join now!",
+    cta: "View Classes",
+    href: "/live-classes",
+    from: "#7c3aed",
+    to: "#4c1d95",
+  },
+  {
+    emoji: "⭐",
+    title: "Climb the Leaderboard",
+    sub: "Complete homework & tests to earn XP points",
+    cta: "See Rankings",
+    href: "/leaderboard",
+    from: "#b45309",
+    to: "#78350f",
+  },
+];
+
+function HeroBanner() {
+  const [idx, setIdx]   = useState(0);
+  const [dir, setDir]   = useState(1);
+  const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const go = (next: number) => {
+    setDir(next > idx ? 1 : -1);
+    setIdx(next);
+  };
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      setDir(1);
+      setIdx(i => (i + 1) % BANNERS.length);
+    }, 4000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const b = BANNERS[idx];
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 130 }}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={idx}
+          initial={{ x: dir * 80, opacity: 0 }}
+          animate={{ x: 0,        opacity: 1 }}
+          exit={{  x: -dir * 80,  opacity: 0 }}
+          transition={{ duration: 0.35, ease: "easeInOut" }}
+          className="absolute inset-0 flex items-center px-5 py-5"
+          style={{ background: `linear-gradient(135deg, ${b.from}, ${b.to})` }}
+        >
+          <div className="flex-1">
+            <p className="text-3xl mb-1">{b.emoji}</p>
+            <h2 className="text-white font-extrabold text-lg leading-tight">{b.title}</h2>
+            <p className="text-white/70 text-xs mt-1 mb-3">{b.sub}</p>
+            <Link href={b.href}>
+              <button
+                className="text-xs font-bold px-4 py-1.5 rounded-full transition-opacity hover:opacity-90"
+                style={{ background: GOLD, color: NAVY }}
+              >
+                {b.cta} →
+              </button>
+            </Link>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+      {/* Invisible height spacer */}
+      <div style={{ minHeight: 130 }} />
+      {/* Dots */}
+      <div className="absolute bottom-3 right-4 flex gap-1.5 z-10">
+        {BANNERS.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => go(i)}
+            className="rounded-full transition-all"
+            style={{ width: i === idx ? 16 : 6, height: 6, background: i === idx ? GOLD : "rgba(255,255,255,0.4)" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Help FAB ─────────────────────────────────────────────────────
+const WA_NUMBER = "918492944473";
+
+function HelpFab() {
+  const [open, setOpen] = useState(false);
+
+  const options = [
+    { icon: MessageCircle, label: "WhatsApp",     color: "#25D366", action: () => window.open(`https://wa.me/${WA_NUMBER}?text=Hi%20Braintam%2C%20I%20need%20help!`, "_blank") },
+    { icon: Phone,         label: "Call Support", color: NAVY2,     action: () => window.open("tel:+918492944473") },
+    { icon: Ticket,        label: "Raise Ticket", color: "#7c3aed", action: () => window.open(`https://wa.me/${WA_NUMBER}?text=I%20want%20to%20raise%20a%20support%20ticket`, "_blank") },
+  ];
+
+  return (
+    <div className="fixed z-50" style={{ bottom: "80px", right: "16px" }}>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{   opacity: 0, y: 10,  scale: 0.9 }}
+            className="mb-3 flex flex-col gap-2 items-end"
+          >
+            {options.map(({ icon: Icon, label, color, action }) => (
+              <button
+                key={label}
+                onClick={() => { action(); setOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-full text-white text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
+                style={{ background: color }}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-4 py-3 rounded-full text-white text-xs font-bold shadow-xl hover:scale-105 transition-transform"
+        style={{ background: open ? "#64748b" : NAVY }}
+      >
+        {open ? <X className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
+        {open ? "Close" : "Need Help?"}
+      </button>
+    </div>
+  );
+}
+
+// ── Gradient Stat Card ────────────────────────────────────────────
+interface StatCardProps {
+  label: string;
+  value: number;
+  icon: any;
+  gradient: string;
+  href: string;
+  desc: string;
+  index: number;
+  isLoading: boolean;
+}
+
+function StatCard({ label, value, icon: Icon, gradient, href, desc, index, isLoading }: StatCardProps) {
+  return (
+    <motion.div custom={index} initial="hidden" animate="visible" variants={cardVariants}>
+      <Link href={href}>
+        <div
+          className="relative rounded-2xl p-4 cursor-pointer overflow-hidden hover:-translate-y-1 transition-transform"
+          style={{ background: gradient, minHeight: 110 }}
+          data-testid={`stat-card-${index}`}
+        >
+          <div className="absolute top-3 right-3 opacity-20">
+            <Icon className="w-12 h-12 text-white" />
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-2">
+            <Icon className="w-5 h-5 text-white" />
+          </div>
+          {isLoading ? (
+            <div className="w-10 h-7 bg-white/30 rounded animate-pulse mb-1" />
+          ) : (
+            <div className="text-3xl font-extrabold text-white">{value}</div>
+          )}
+          <div className="text-white/90 text-xs font-semibold leading-tight">{label}</div>
+          <div className="text-white/60 text-[10px] mt-0.5">{desc}</div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────
 export default function DashboardPage() {
   const { student, role, isLoading: authLoading } = useAuth();
-  const [showCoinPopup, setShowCoinPopup] = useState(false);
+  const [showCoinPopup, setShowCoinPopup]         = useState(false);
   const midnightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  if (!authLoading && role === "admin") return <Redirect to="/admin" />;
+  if (!authLoading && role === "admin")   return <Redirect to="/admin" />;
   if (!authLoading && role === "teacher") return <Redirect to="/teacher" />;
 
   const { data: dashboard, isLoading } = useGetStudentDashboard();
-  const { data: leaderboard } = useGetLeaderboard();
+  const { data: leaderboard }          = useGetLeaderboard();
 
-  // Check coin claim status on load
   useEffect(() => {
     if (!student) return;
-
     apiFetch("/student/daily-coin-status")
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && !data.claimed) {
           setShowCoinPopup(true);
-
-          // Schedule re-show at midnight (in case user leaves popup open)
           if (data.nextRefreshAt) {
-            const msUntilMidnight = new Date(data.nextRefreshAt).getTime() - Date.now();
-            if (msUntilMidnight > 0) {
-              midnightTimerRef.current = setTimeout(() => {
-                setShowCoinPopup(true);
-              }, msUntilMidnight);
-            }
+            const ms = new Date(data.nextRefreshAt).getTime() - Date.now();
+            if (ms > 0) midnightTimerRef.current = setTimeout(() => setShowCoinPopup(true), ms);
           }
         } else if (data && data.claimed && data.nextRefreshAt) {
-          // Already claimed — set timer to re-show tomorrow after midnight
-          const msUntilMidnight = new Date(data.nextRefreshAt).getTime() - Date.now();
-          if (msUntilMidnight > 0) {
-            midnightTimerRef.current = setTimeout(() => {
-              setShowCoinPopup(true);
-            }, msUntilMidnight);
-          }
+          const ms = new Date(data.nextRefreshAt).getTime() - Date.now();
+          if (ms > 0) midnightTimerRef.current = setTimeout(() => setShowCoinPopup(true), ms);
         }
       })
       .catch(() => {});
-
-    return () => {
-      if (midnightTimerRef.current) clearTimeout(midnightTimerRef.current);
-    };
+    return () => { if (midnightTimerRef.current) clearTimeout(midnightTimerRef.current); };
   }, [student?.id]);
 
+  const firstName = dashboard?.studentName?.split(" ")[0] ?? student?.name?.split(" ")[0] ?? "Student";
+  const streak    = dashboard?.streakDays ?? 0;
+  const points    = dashboard?.points ?? 0;
+  const rankNum   = dashboard?.rank;
+
   const statCards = [
-    { label: "Upcoming Live Classes", value: dashboard?.upcomingLiveClasses ?? 0, icon: Video, color: "text-red-500", bg: "bg-red-50", href: "/live-classes" },
-    { label: "Pending Homework", value: dashboard?.pendingHomework ?? 0, icon: FileText, color: "text-yellow-500", bg: "bg-yellow-50", href: "/homework" },
-    { label: "Pending Assignments", value: dashboard?.pendingAssignments ?? 0, icon: BookOpen, color: "text-orange-500", bg: "bg-orange-50", href: "/assignments" },
-    { label: "Upcoming Tests", value: dashboard?.upcomingTests ?? 0, icon: CheckSquare, color: "text-purple-500", bg: "bg-purple-50", href: "/tests" },
+    {
+      label: "Live Classes",
+      value: dashboard?.upcomingLiveClasses ?? 0,
+      icon: Video,
+      gradient: "linear-gradient(135deg, #1d4ed8, #1e40af)",
+      href: "/live-classes",
+      desc: "Upcoming today",
+    },
+    {
+      label: "Homework",
+      value: dashboard?.pendingHomework ?? 0,
+      icon: FileText,
+      gradient: "linear-gradient(135deg, #ea580c, #c2410c)",
+      href: "/homework",
+      desc: "Pending tasks",
+    },
+    {
+      label: "Assignments",
+      value: dashboard?.pendingAssignments ?? 0,
+      icon: BookOpen,
+      gradient: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+      href: "/assignments",
+      desc: "Due soon",
+    },
+    {
+      label: "Tests",
+      value: dashboard?.upcomingTests ?? 0,
+      icon: CheckSquare,
+      gradient: "linear-gradient(135deg, #059669, #047857)",
+      href: "/tests",
+      desc: "Upcoming",
+    },
   ];
 
-  // Detect "no course assigned" state — loaded but no content
+  // Derived achievements
+  const achievements = [
+    ...(streak >= 1  ? [{ icon: "🔥", label: streak >= 7 ? `${streak} Day Streak!` : `${streak} Day Streak`,  color: "#fff7ed", border: "#fed7aa" }] : []),
+    ...(points >= 50 ? [{ icon: "⭐", label: "Points Collector",  color: "#fefce8", border: "#fde68a" }] : []),
+    ...((dashboard?.upcomingTests ?? 0) === 0 && !isLoading ? [{ icon: "✅", label: "All Tests Clear",    color: "#f0fdf4", border: "#bbf7d0" }] : []),
+    ...((dashboard?.pendingHomework ?? 0) === 0 && !isLoading ? [{ icon: "📚", label: "Homework Champion",  color: "#eff6ff", border: "#bfdbfe" }] : []),
+  ].slice(0, 4);
+
   const hasNoCourse = !isLoading && !authLoading && !!dashboard &&
     (dashboard.subjectProgress?.length ?? 0) === 0 &&
     dashboard.upcomingLiveClasses === 0 &&
@@ -239,207 +404,319 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      {/* Daily Coin Popup */}
       <AnimatePresence>
-        {showCoinPopup && (
-          <CoinPopup onClose={() => setShowCoinPopup(false)} />
-        )}
+        {showCoinPopup && <CoinPopup onClose={() => setShowCoinPopup(false)} />}
       </AnimatePresence>
 
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              {isLoading ? <Skeleton className="w-64 h-8" /> : `Welcome back, ${dashboard?.studentName?.split(" ")[0] ?? student?.name?.split(" ")[0] ?? "Student"}!`}
-            </h1>
-            <p className="text-muted-foreground mt-1">Grade {dashboard?.grade ?? student?.grade ?? "—"} | Keep up the great work!</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 px-4 py-2 rounded-xl" data-testid="streak-counter">
-              <Flame className="w-5 h-5 text-orange-500" />
-              <span className="font-bold text-orange-600">{dashboard?.streakDays ?? 0} day streak</span>
-            </div>
-            <button
-              onClick={() => setShowCoinPopup(true)}
-              className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-4 py-2 rounded-xl hover:bg-yellow-100 transition-colors"
-              title="Daily coin reward"
-              data-testid="points-display"
-            >
-              <Star className="w-5 h-5 text-secondary" />
-              <span className="font-bold text-secondary">{dashboard?.points ?? 0} pts</span>
-              <span className="text-muted-foreground text-sm">• Rank #{dashboard?.rank ?? "—"}</span>
-            </button>
-          </div>
-        </motion.div>
+      {/* ── Navy Header ──────────────────────────────────────────── */}
+      <div
+        className="px-4 pt-5 pb-6 relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)` }}
+      >
+        {/* subtle pattern dots */}
+        <div className="absolute inset-0 pointer-events-none opacity-5"
+          style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
 
-        {/* No course assigned banner */}
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {isLoading ? (
+              <div className="space-y-1.5">
+                <div className="w-40 h-6 bg-white/20 rounded-lg animate-pulse" />
+                <div className="w-56 h-4 bg-white/10 rounded-lg animate-pulse" />
+              </div>
+            ) : (
+              <>
+                <p className="text-white/70 text-sm font-medium">👋 Hi {firstName}</p>
+                <h1 className="text-white text-xl font-extrabold leading-tight mt-0.5">
+                  Ready to become a<br />
+                  <span style={{ color: GOLD }}>Top Performer</span> today?
+                </h1>
+              </>
+            )}
+
+            {/* Streak + Points + Rank row */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              <button
+                onClick={() => setShowCoinPopup(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold hover:opacity-90 transition-opacity"
+                style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+                title="Daily coin reward"
+                data-testid="points-display"
+              >
+                <span style={{ color: GOLD }}>🪙</span>
+                <span>{points} pts</span>
+              </button>
+              {streak > 0 && (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+                  data-testid="streak-counter"
+                >
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  <span>{streak}d streak</span>
+                </div>
+              )}
+              {rankNum && (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+                >
+                  <Trophy className="w-3.5 h-3.5" style={{ color: GOLD }} />
+                  <span>Rank #{rankNum}</span>
+                </div>
+              )}
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+              >
+                <Zap className="w-3.5 h-3.5 text-yellow-300" />
+                <span>Grade {dashboard?.grade ?? student?.grade ?? "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notification bell */}
+          <button className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-1" style={{ background: "rgba(255,255,255,0.12)" }}>
+            <Bell className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Page Body ─────────────────────────────────────────────── */}
+      <div className="space-y-5 p-4 max-w-2xl mx-auto" style={{ background: BG }}>
+
+        {/* Hero Banner */}
+        <HeroBanner />
+
+        {/* No course banner */}
         {hasNoCourse && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="border-2 border-dashed border-orange-200 bg-orange-50/40">
-              <CardContent className="p-8 flex flex-col items-center text-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-orange-100 flex items-center justify-center">
-                  <BookOpen className="w-8 h-8 text-orange-400" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">No course assigned yet</h2>
-                  <p className="text-muted-foreground mt-2 max-w-md">
-                    Your dashboard is ready! Once an admin assigns a course to your account, you'll see live classes, homework, tests, and your progress here.
-                  </p>
-                </div>
-                <div className="flex flex-wrap justify-center gap-3 mt-2">
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
-                    <Video className="w-4 h-4 text-red-400" /> Live classes
-                  </div>
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
-                    <FileText className="w-4 h-4 text-yellow-400" /> Homework
-                  </div>
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
-                    <CheckSquare className="w-4 h-4 text-purple-400" /> Tests
-                  </div>
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600">
-                    <Award className="w-4 h-4 text-yellow-500" /> Leaderboard
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Contact your teacher or admin to get enrolled in a course.</p>
-              </CardContent>
-            </Card>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/40 p-6 flex flex-col items-center text-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
+                <BookOpen className="w-7 h-7 text-orange-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">No course assigned yet</h2>
+                <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
+                  Once an admin enrolls you, you'll see live classes, homework, tests, and progress here.
+                </p>
+              </div>
+              <p className="text-xs text-gray-400">Contact your teacher or admin to get enrolled.</p>
+            </div>
           </motion.div>
         )}
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((card, i) => (
-            <motion.div key={card.label} custom={i} initial="hidden" animate="visible" variants={cardVariants}>
-              <Link href={card.href}>
-                <Card className="cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 border-2 hover:border-primary/20" data-testid={`stat-card-${i}`}>
-                  <CardContent className="p-5">
-                    <div className={`w-11 h-11 rounded-xl ${card.bg} flex items-center justify-center mb-3`}>
-                      <card.icon className={`w-6 h-6 ${card.color}`} />
-                    </div>
-                    {isLoading ? (
-                      <Skeleton className="w-12 h-8 mb-1" />
-                    ) : (
-                      <div className="text-3xl font-bold text-foreground">{card.value}</div>
-                    )}
-                    <div className="text-sm text-muted-foreground mt-1">{card.label}</div>
-                  </CardContent>
-                </Card>
+        {/* Quick Stats */}
+        <div>
+          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Quick Stats</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {statCards.map((card, i) => (
+              <StatCard key={card.label} {...card} index={i} isLoading={isLoading} />
+            ))}
+          </div>
+        </div>
+
+        {/* Continue Learning */}
+        {(dashboard?.subjectProgress?.length ?? 0) > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Continue Learning</h2>
+              <Link href="/courses">
+                <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY2 }}>
+                  All <ChevronRight className="w-3 h-3" />
+                </span>
               </Link>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Subject Progress */}
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  Subject Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? (
-                  [...Array(4)].map((_, i) => <Skeleton key={i} className="w-full h-8" />)
-                ) : (
-                  dashboard?.subjectProgress?.map((sp, i) => (
-                    <motion.div key={sp.subjectId} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 * i }} data-testid={`subject-progress-${sp.subjectId}`}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">{sp.subjectName}</span>
-                        <span className="text-muted-foreground">{Math.round(sp.progress)}%</span>
-                      </div>
-                      <Progress value={sp.progress} className="h-2.5" style={{ "--progress-indicator-color": sp.color } as any} />
-                    </motion.div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Leaderboard Preview */}
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span className="flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" /> Top Rankers</span>
-                  <Link href="/leaderboard">
-                    <Button variant="ghost" size="sm" className="text-primary text-xs">View All</Button>
-                  </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {(leaderboard ?? []).slice(0, 5).map((entry, i) => (
-                  <motion.div
-                    key={entry.rank}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 * i }}
-                    className={`flex items-center gap-3 p-2 rounded-lg ${i < 3 ? "bg-yellow-50" : "bg-muted/30"}`}
-                    data-testid={`leaderboard-entry-${entry.rank}`}
-                  >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-400 text-white" : i === 1 ? "bg-slate-300 text-white" : i === 2 ? "bg-amber-600 text-white" : "bg-muted text-muted-foreground"}`}>
-                      {entry.rank}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate">{entry.studentName}</div>
-                      <div className="text-xs text-muted-foreground">{entry.points} pts</div>
-                    </div>
-                  </motion.div>
-                ))}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Recent Activity */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <span>Recent Activity</span>
-                <Button variant="ghost" size="sm" className="text-primary text-xs" asChild>
-                  <Link href="/recordings">View All <ArrowRight className="ml-1 w-3 h-3" /></Link>
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {isLoading ? (
-                  [...Array(4)].map((_, i) => <Skeleton key={i} className="w-full h-12" />)
-                ) : (
-                  (dashboard?.recentActivity ?? []).slice(0, 5).map((item, i) => {
-                    const Icon = activityIcons[item.type] ?? BookOpen;
-                    const colorClass = activityColors[item.type] ?? "text-gray-500 bg-gray-50";
-                    return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.05 * i }}
-                        className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
-                        data-testid={`activity-item-${item.id}`}
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+              {dashboard!.subjectProgress!.map((sp, i) => (
+                <motion.div
+                  key={sp.subjectId}
+                  custom={i}
+                  initial="hidden"
+                  animate="visible"
+                  variants={cardVariants}
+                  className="flex-shrink-0 w-36"
+                >
+                  <Link href="/courses">
+                    <div
+                      className="rounded-2xl p-3.5 cursor-pointer hover:shadow-md transition-shadow"
+                      style={{ background: "white", boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}
+                      data-testid={`subject-progress-${sp.subjectId}`}
+                    >
+                      <div
+                        className="w-9 h-9 rounded-xl mb-2 flex items-center justify-center text-base"
+                        style={{ background: sp.color ? `${sp.color}22` : "#e0e7ff" }}
                       >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorClass}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold truncate">{item.title}</div>
-                          <div className="text-xs text-muted-foreground">{item.subjectName} • {new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
-                        </div>
-                        {item.score !== null && item.score !== undefined && (
-                          <Badge variant="secondary" className="text-xs">{item.score}%</Badge>
-                        )}
-                      </motion.div>
-                    );
-                  })
+                        📖
+                      </div>
+                      <div className="text-xs font-bold text-gray-800 truncate">{sp.subjectName}</div>
+                      <div className="text-[10px] text-gray-400 mb-2">{Math.round(sp.progress)}% done</div>
+                      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${sp.progress}%`, background: sp.color || NAVY2 }}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Leaderboard Preview */}
+        {(leaderboard?.length ?? 0) > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Top Learners This Week</h2>
+              <Link href="/leaderboard">
+                <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY2 }}>
+                  View All <ChevronRight className="w-3 h-3" />
+                </span>
+              </Link>
+            </div>
+
+            {/* Top 3 podium */}
+            <div
+              className="rounded-2xl p-4 mb-3"
+              style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)` }}
+            >
+              <div className="flex items-end justify-center gap-3">
+                {/* 2nd */}
+                {leaderboard && leaderboard[1] && (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-lg font-bold text-white shadow">
+                      {leaderboard[1].studentName.charAt(0)}
+                    </div>
+                    <div className="text-white text-[10px] font-semibold truncate w-16 text-center">{leaderboard[1].studentName.split(" ")[0]}</div>
+                    <div className="text-white/60 text-[9px]">{leaderboard[1].points} pts</div>
+                    <div className="w-12 h-10 rounded-t-xl flex items-center justify-center text-base font-bold" style={{ background: "rgba(255,255,255,0.1)", color: "#94a3b8" }}>🥈</div>
+                  </div>
+                )}
+                {/* 1st */}
+                {leaderboard && leaderboard[0] && (
+                  <div className="flex flex-col items-center gap-1 -mb-1">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg" style={{ background: GOLD, color: NAVY }}>
+                      {leaderboard[0].studentName.charAt(0)}
+                    </div>
+                    <div className="text-white text-xs font-bold truncate w-20 text-center">{leaderboard[0].studentName.split(" ")[0]}</div>
+                    <div className="text-[10px]" style={{ color: GOLD }}>{leaderboard[0].points} pts</div>
+                    <div className="w-14 h-14 rounded-t-xl flex items-center justify-center text-xl font-bold" style={{ background: "rgba(255,255,255,0.15)" }}>🥇</div>
+                  </div>
+                )}
+                {/* 3rd */}
+                {leaderboard && leaderboard[2] && (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white shadow" style={{ background: "#b45309" }}>
+                      {leaderboard[2].studentName.charAt(0)}
+                    </div>
+                    <div className="text-white text-[10px] font-semibold truncate w-16 text-center">{leaderboard[2].studentName.split(" ")[0]}</div>
+                    <div className="text-white/60 text-[9px]">{leaderboard[2].points} pts</div>
+                    <div className="w-12 h-8 rounded-t-xl flex items-center justify-center text-base font-bold" style={{ background: "rgba(255,255,255,0.1)", color: "#b45309" }}>🥉</div>
+                  </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+
+            {/* Ranks 4-5 */}
+            <div className="space-y-2">
+              {(leaderboard ?? []).slice(3, 5).map((entry, i) => (
+                <motion.div
+                  key={entry.rank}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
+                  style={{ background: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+                  data-testid={`leaderboard-entry-${entry.rank}`}
+                >
+                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">{entry.rank}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold truncate">{entry.studentName}</div>
+                  </div>
+                  <div className="text-xs font-bold" style={{ color: NAVY2 }}>{entry.points} pts</div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Achievements */}
+        {achievements.length > 0 && (
+          <div>
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Achievements</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {achievements.map((ach, i) => (
+                <motion.div
+                  key={ach.label}
+                  custom={i}
+                  initial="hidden"
+                  animate="visible"
+                  variants={cardVariants}
+                  className="flex items-center gap-3 px-3 py-3 rounded-2xl border"
+                  style={{ background: ach.color, borderColor: ach.border }}
+                >
+                  <span className="text-2xl">{ach.icon}</span>
+                  <span className="text-xs font-semibold text-gray-700 leading-tight">{ach.label}</span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Activity */}
+        {(dashboard?.recentActivity?.length ?? 0) > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Recent Activity</h2>
+              <Link href="/recordings">
+                <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY2 }}>
+                  View All <ChevronRight className="w-3 h-3" />
+                </span>
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {isLoading ? (
+                [...Array(3)].map((_, i) => <Skeleton key={i} className="w-full h-14 rounded-2xl" />)
+              ) : (
+                (dashboard?.recentActivity ?? []).slice(0, 5).map((item, i) => {
+                  const Icon       = activityIcons[item.type] ?? BookOpen;
+                  const colorClass = activityColors[item.type] ?? "text-gray-500 bg-gray-50";
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * i }}
+                      className="flex items-center gap-3 p-3 rounded-2xl"
+                      style={{ background: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+                      data-testid={`activity-item-${item.id}`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">{item.title}</div>
+                        <div className="text-xs text-muted-foreground">{item.subjectName} · {new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
+                      </div>
+                      {item.score !== null && item.score !== undefined && (
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{item.score}%</Badge>
+                      )}
+                    </motion.div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom padding for mobile nav */}
+        <div className="h-2" />
       </div>
+
+      {/* Premium Help FAB */}
+      <HelpFab />
     </AppLayout>
   );
 }
