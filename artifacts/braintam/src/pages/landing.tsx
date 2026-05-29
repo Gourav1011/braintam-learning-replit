@@ -1235,24 +1235,23 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{ background: NAVY }}>
-        <div className="max-w-6xl mx-auto px-6 pt-8 pb-6 md:pt-10 md:pb-8">
-          {/* Top row: logo block + 2 link columns */}
-          <div className="flex flex-col gap-8 md:flex-row md:gap-12">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="flex flex-col gap-6 md:flex-row md:gap-10">
 
             {/* Brand / contact */}
-            <div className="space-y-4 md:w-56 flex-shrink-0">
-              <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
+            <div className="space-y-2.5 md:w-52 flex-shrink-0">
+              <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
               <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                India's premium learning platform for school students in grades 1–10. Live classes, adaptive tests, animated videos, and more.
+                India's premium EdTech platform for school students grades 1–10.
               </p>
-              <div className="space-y-1.5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com / braintam20@gmail.com</div>
-                <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
-                <div className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
-                  <span>C/23, Durvas Complex, near captial mall gate No. 5, Nallasopara (E), Palghar, 401209</span>
+              <div className="space-y-1 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <div className="flex items-center gap-2"><Mail className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com</div>
+                <div className="flex items-center gap-2"><Phone className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />+91 84929 44473</div>
+                <div className="flex items-start gap-2"><MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />
+                  <span>Nallasopara (E), Palghar, 401209</span>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 {[
                   { Icon: WaIcon,  href: "https://wa.me/918492944473" },
                   { Icon: IgIcon,  href: "https://instagram.com/braintamofficoal" },
@@ -1260,21 +1259,21 @@ export default function LandingPage() {
                   { Icon: YtIcon,  href: "https://youtube.com/@braintam" },
                 ].map(({ Icon, href }, i) => (
                   <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
                     style={{ background: "rgba(255,255,255,0.08)" }}
                     onMouseEnter={e => (e.currentTarget.style.background = ORANGE)}
                     onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}>
-                    <Icon className="w-3.5 h-3.5 text-white" />
+                    <Icon className="w-3 h-3 text-white" />
                   </a>
                 ))}
               </div>
             </div>
 
             {/* Link columns */}
-            <div className="grid grid-cols-2 gap-10 flex-1">
+            <div className="grid grid-cols-2 gap-8 flex-1">
               {Object.entries(footerLinks).map(([section, links]) => (
-                <div key={section} className="space-y-3">
-                  <div className="text-xs font-bold uppercase tracking-widest text-white">{section}</div>
+                <div key={section} className="space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-widest text-white mb-3">{section}</div>
                   {links.map(({ label, href }) => (
                     href.startsWith("/") ? (
                       <Link key={label} href={href}
