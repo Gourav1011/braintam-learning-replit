@@ -199,12 +199,6 @@ const footerLinks: Record<string, { label: string; href: string }[]> = {
     { label: "Careers",           href: "/join-the-mission" },
     { label: "Contact Us",        href: "/connect" },
   ],
-  Programs: [
-    { label: "Grades 1–5",        href: "/courses" },
-    { label: "Grades 6–8",        href: "/courses" },
-    { label: "Grades 9–10",       href: "/courses" },
-    { label: "6-Day Demo Program", href: "/demo-batches" },
-  ],
   Support: [
     { label: "Help Center",       href: "/help" },
     { label: "Parent Dashboard",  href: "/dashboard" },
@@ -1215,9 +1209,9 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{ background: NAVY }}>
-        <div className="max-w-6xl mx-auto px-6 pt-8 pb-6 md:pt-14 md:pb-10">
-          {/* Top row: logo block + 3 link columns */}
-          <div className="flex flex-col gap-10 md:flex-row md:gap-12">
+        <div className="max-w-6xl mx-auto px-6 pt-8 pb-6 md:pt-10 md:pb-8">
+          {/* Top row: logo block + 2 link columns */}
+          <div className="flex flex-col gap-8 md:flex-row md:gap-12">
 
             {/* Brand / contact */}
             <div className="space-y-4 md:w-56 flex-shrink-0">
@@ -1250,8 +1244,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Link columns — always 3-across */}
-            <div className="grid grid-cols-3 gap-6 flex-1">
+            {/* Link columns */}
+            <div className="grid grid-cols-2 gap-10 flex-1">
               {Object.entries(footerLinks).map(([section, links]) => (
                 <div key={section} className="space-y-3">
                   <div className="text-xs font-bold uppercase tracking-widest text-white">{section}</div>
@@ -1278,16 +1272,27 @@ export default function LandingPage() {
         </div>
 
         {/* Download App Bar */}
-        <div className="max-w-6xl mx-auto px-6 py-6 md:py-8"
+        <div className="max-w-6xl mx-auto px-6 py-4"
           style={{ borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: ORANGE }}>
-                <Smartphone className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: ORANGE }}>
+                <Smartphone className="w-4 h-4 text-white" />
               </div>
               <div>
                 <p className="text-white font-semibold text-sm">Get the Braintam App</p>
-                <p className="text-white/40 text-xs">Available on iOS, Android & Web</p>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  {[
+                    { label: "iOS", color: "#A78BFA" },
+                    { label: "Android", color: "#34D399" },
+                    { label: "Web", color: ORANGE },
+                  ].map(p => (
+                    <span key={p.label} className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: p.color + "22", color: p.color, border: `1px solid ${p.color}44` }}>
+                      {p.label}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -1301,21 +1306,6 @@ export default function LandingPage() {
                 <div className="text-left">
                   <div className="text-white/50 leading-none text-[10px]">Download on</div>
                   <div className="text-white font-bold text-xs leading-tight">App Store</div>
-                </div>
-              </motion.a>
-              <motion.a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
-                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" fill="none">
-                  <path d="M3.18 23.76c.3.17.65.19.97.07L15.88 12 12 8.12 3.18 23.76Z" fill="#EA4335"/>
-                  <path d="M20.7 10.67 17.6 8.9 13.4 12l4.2 4.1 3.1-1.78a1.74 1.74 0 0 0 0-3.06Z" fill="#FBBC04"/>
-                  <path d="M3.18.24A1.74 1.74 0 0 0 2.5 1.6V22.4c0 .54.26 1.01.68 1.36L15.88 12 3.18.24Z" fill="#4285F4"/>
-                  <path d="M3.18 23.76 12 12 3.18.24c-.3.17-.65.19-.97.07A1.74 1.74 0 0 0 2.5 1.6V22.4c0 .54.26 1.01.68 1.36Z" fill="#34A853"/>
-                </svg>
-                <div className="text-left">
-                  <div className="text-white/50 leading-none text-[10px]">Get it on</div>
-                  <div className="text-white font-bold text-xs leading-tight">Google Play</div>
                 </div>
               </motion.a>
               <motion.div
@@ -1333,7 +1323,7 @@ export default function LandingPage() {
                 }}>
                 <Globe className="w-5 h-5 text-white" />
                 <div className="text-left">
-                  <div className="text-white/70 leading-none text-[10px]">Install</div>
+                  <div className="text-white/70 leading-none text-[10px]">Install for free</div>
                   <div className="text-white font-bold text-xs leading-tight">Web App</div>
                 </div>
               </motion.div>
