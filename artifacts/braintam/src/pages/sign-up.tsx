@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSignUp } from "@clerk/react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, CheckCircle, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -144,13 +144,14 @@ function LeftPanel({ step }: { step: number }) {
 function Step1({
   onNext,
 }: {
-  onNext: (firstName: string, lastName: string, email: string) => void;
+  onNext: (firstName: string, lastName: string, email: string, phone: string) => void;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { signUp, isLoaded } = useSignUp() as any;
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -161,6 +162,8 @@ function Step1({
     if (!firstName.trim()) e.firstName = "First name is required";
     if (!lastName.trim()) e.lastName = "Last name is required";
     if (!email.trim() || !email.includes("@")) e.email = "Enter a valid email";
+    const digits = phone.replace(/\D/g, "");
+    if (!digits || digits.length !== 10) e.phone = "Enter a valid 10-digit mobile number";
     if (password.length < 8) e.password = "Password must be at least 8 characters";
     if (password !== confirmPassword) e.confirmPassword = "Passwords do not match";
     return e;
@@ -181,7 +184,7 @@ function Step1({
         password,
       });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      onNext(firstName.trim(), lastName.trim(), email.trim().toLowerCase());
+      onNext(firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.replace(/\D/g, ""));
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong";
       setErrors({ general: msg });
@@ -217,6 +220,28 @@ function Step1({
         <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
           placeholder="arjun@gmail.com" className="h-11 border-gray-200" style={{ color: NAVY }} />
         {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+      </div>
+
+      {/* Phone — collected here, used in Step 3 profile; email-only verification */}
+      <div className="space-y-1.5">
+        <Label htmlFor="phone1" className="font-semibold text-sm" style={{ color: NAVY }}>Phone Number *</Label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <span className="absolute left-9 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">+91</span>
+          <Input
+            id="phone1"
+            value={phone}
+            onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="9876543210"
+            className="h-11 pl-[4.25rem] border-gray-200"
+            style={{ color: NAVY }}
+            inputMode="numeric"
+            maxLength={10}
+          />
+        </div>
+        {errors.phone
+          ? <p className="text-xs text-red-500">{errors.phone}</p>
+          : <p className="text-xs text-gray-400">For important notifications only · no OTP</p>}
       </div>
 
       <PasswordInput id="password" label="Password *" value={password} onChange={setPassword}
@@ -350,9 +375,9 @@ function Step2({
 }
 
 // ── Step 3: Profile details ────────────────────────────────────
-function Step3({ firstName }: { firstName: string }) {
+function Step3({ firstName, initialPhone }: { firstName: string; initialPhone: string }) {
   const [, setLocation] = useLocation();
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(initialPhone);
   const [grade, setGrade] = useState("");
   const [board, setBoard] = useState("");
   const [state, setState] = useState("");
@@ -507,6 +532,7 @@ export function SignUpPageContent() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   return (
     <div className="w-full max-w-md">
@@ -516,8 +542,8 @@ export function SignUpPageContent() {
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
             <Step1
-              onNext={(fn, ln, em) => {
-                setFirstName(fn); setLastName(ln); setEmail(em);
+              onNext={(fn, ln, em, ph) => {
+                setFirstName(fn); setLastName(ln); setEmail(em); setPhone(ph);
                 setStep(2);
               }}
             />
@@ -538,7 +564,7 @@ export function SignUpPageContent() {
           <motion.div key="step3"
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
-            <Step3 firstName={firstName} />
+            <Step3 firstName={firstName} initialPhone={phone} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -551,6 +577,7 @@ export default function SignUpPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   return (
     <div className="min-h-screen flex">
@@ -590,8 +617,8 @@ export default function SignUpPage() {
                 initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
                 <Step1
-                  onNext={(fn, ln, em) => {
-                    setFirstName(fn); setLastName(ln); setEmail(em);
+                  onNext={(fn, ln, em, ph) => {
+                    setFirstName(fn); setLastName(ln); setEmail(em); setPhone(ph);
                     setStep(2);
                   }}
                 />
@@ -612,7 +639,7 @@ export default function SignUpPage() {
               <motion.div key="step3"
                 initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
-                <Step3 firstName={firstName} />
+                <Step3 firstName={firstName} initialPhone={phone} />
               </motion.div>
             )}
           </AnimatePresence>
