@@ -7,7 +7,10 @@ export const topicsTable = pgTable("topics", {
   chapterId: integer("chapter_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
+  learningObjective: text("learning_objective"),
+  topicStatus: text("topic_status").notNull().default("active"),
   order: integer("order").notNull().default(0),
+  sequenceNo: integer("sequence_no"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

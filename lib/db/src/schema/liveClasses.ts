@@ -5,9 +5,11 @@ import { z } from "zod/v4";
 export const liveClassesTable = pgTable("live_classes", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  subjectId: integer("subject_id").notNull(),
+  subjectId: integer("subject_id"),
   grade: integer("grade").notNull(),
   courseId: integer("course_id"),
+  courseSubjectId: integer("course_subject_id"),
+  chapterId: integer("chapter_id"),
   topicId: integer("topic_id"),
   teacherId: integer("teacher_id"),
   scheduledAt: timestamp("scheduled_at").notNull(),

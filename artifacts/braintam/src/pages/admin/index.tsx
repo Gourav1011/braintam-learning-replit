@@ -693,9 +693,10 @@ function AdminPageInner() {
   const [inlineEditUserId, setInlineEditUserId] = useState<number | null>(null);
   const [inlineEditForm, setInlineEditForm] = useState({ name: "", grade: "", school: "" });
 
-  // Live class chapter/topic cascade
-  const [lcChapters, setLcChapters] = useState<{ id: number; name: string }[]>([]);
-  const [lcTopics, setLcTopics] = useState<{ id: number; name: string }[]>([]);
+  // Live class cascade: Course → Subject → Chapter → Topic
+  const [lcCourseSubjects, setLcCourseSubjects] = useState<{ id: number; name: string; subjectCode: string }[]>([]);
+  const [lcChapters, setLcChapters] = useState<{ id: number; name: string; chapterCode: string }[]>([]);
+  const [lcTopics, setLcTopics] = useState<{ id: number; name: string; topicCode: string }[]>([]);
 
   const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", role: "student" as Role, grade: "6", school: "" });
   const [showNewPw, setShowNewPw] = useState(false);
@@ -703,7 +704,7 @@ function AdminPageInner() {
   const [enrollForm, setEnrollForm] = useState({ studentId: "", courseId: "" });
   const [annForm, setAnnForm] = useState({ title: "", body: "", grade: "", targetRole: "all" });
   const [bannerForm, setBannerForm] = useState({ title: "", imageUrl: "", link: "", displayOrder: "0" });
-  const [lcForm, setLcForm] = useState({ title: "", subjectId: "", grade: "", teacherId: "", teacher: "", scheduledAt: "", duration: "60", joinUrl: "" });
+  const [lcForm, setLcForm] = useState({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", grade: "", teacherId: "", teacher: "", scheduledAt: "", duration: "60", joinUrl: "" });
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -943,10 +944,18 @@ function AdminPageInner() {
   async function deleteBanner(id: number) { await apiFetch(`/admin/banners/${id}`, { method: "DELETE" }); loadAll(); }
   async function toggleBanner(banner: Banner) { await apiFetch(`/admin/banners/${banner.id}`, { method: "PATCH", body: JSON.stringify({ isActive: !banner.isActive }) }); loadAll(); }
 
-  async function loadChaptersForCourse(courseId: string) {
-    if (!courseId || courseId === "") { setLcChapters([]); setLcTopics([]); return; }
-    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+  async function loadSubjectsForCourse(courseId: string) {
+    if (!courseId) { setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); return; }
+    const r = await apiFetch(`/admin/course-subjects?courseId=${courseId}`);
+    if (r.ok) setLcCourseSubjects(await r.json());
+    else setLcCourseSubjects([]);
+  }
+
+  async function loadChaptersForSubject(courseSubjectId: string) {
+    if (!courseSubjectId) { setLcChapters([]); setLcTopics([]); return; }
+    const r = await apiFetch(`/admin/chapters?courseSubjectId=${courseSubjectId}`);
     if (r.ok) setLcChapters(await r.json());
+    else setLcChapters([]);
   }
 
   async function loadTopicsForChapter(chapterId: string) {
@@ -961,18 +970,30 @@ function AdminPageInner() {
     const teacherName = hasTeacher
       ? (teachers.find(t => String(t.id) === lcForm.teacherId)?.name ?? lcForm.teacher)
       : lcForm.teacher;
+    const selectedCourseForLc = lcForm.courseId ? courses.find(c => String(c.id) === lcForm.courseId) : null;
     const r = await apiFetch("/admin/live-classes", {
       method: "POST",
       body: JSON.stringify({
-        title: lcForm.title, subjectId: Number(lcForm.subjectId), grade: Number(lcForm.grade),
-        teacherId: hasTeacher ? Number(lcForm.teacherId) : null, teacher: teacherName,
-        scheduledAt: lcForm.scheduledAt, duration: Number(lcForm.duration), joinUrl: lcForm.joinUrl || null,
+        title: lcForm.title,
+        courseId: lcForm.courseId ? Number(lcForm.courseId) : null,
+        courseSubjectId: lcForm.courseSubjectId ? Number(lcForm.courseSubjectId) : null,
+        chapterId: lcForm.chapterId ? Number(lcForm.chapterId) : null,
+        topicId: lcForm.topicId ? Number(lcForm.topicId) : null,
+        grade: lcForm.grade ? Number(lcForm.grade) : (selectedCourseForLc?.grade ?? null),
+        teacherId: hasTeacher ? Number(lcForm.teacherId) : null,
+        teacher: teacherName,
+        scheduledAt: lcForm.scheduledAt,
+        duration: Number(lcForm.duration),
+        joinUrl: lcForm.joinUrl || null,
       }),
     });
     if (r.ok) {
       flash("Live class scheduled!");
       setShowLcForm(false);
-      setLcForm({ title: "", subjectId: "", grade: "", teacherId: "", teacher: "", scheduledAt: "", duration: "60", joinUrl: "" });
+      setLcForm({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", grade: "", teacherId: "", teacher: "", scheduledAt: "", duration: "60", joinUrl: "" });
+      setLcCourseSubjects([]);
+      setLcChapters([]);
+      setLcTopics([]);
       loadAll();
     } else { const d = await r.json(); flash(d.error ?? "Error", false); }
     setBusy(false);
@@ -1929,56 +1950,83 @@ function AdminPageInner() {
             {showLcForm && (
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Live Class</h3>
-                <p className="text-xs text-gray-400">💡 Tip: Select a course first, then optionally narrow down to chapter and topic. The class will appear under that course in the student's recordings after it ends.</p>
+                <p className="text-xs text-gray-400">Select Course → Subject → Chapter → Topic to link this class to the right place in the curriculum.</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+
                   {/* Step 1: Course */}
-                  <Select value={(lcForm as any).courseId || "__none__"} onValueChange={v => {
+                  <Select value={lcForm.courseId || "__none__"} onValueChange={v => {
                     const val = v === "__none__" ? "" : v;
                     const course = val ? courses.find(c => String(c.id) === val) : null;
-                    setLcForm(p => ({ ...p, courseId: val, subjectId: course ? String(course.subjectId ?? "") : p.subjectId, grade: course ? String(course.grade) : p.grade, chapterId: "", topicId: "" } as any));
+                    setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade }));
+                    setLcCourseSubjects([]);
+                    setLcChapters([]);
                     setLcTopics([]);
-                    loadChaptersForCourse(val);
+                    loadSubjectsForCourse(val);
                   }}>
-                    <SelectTrigger><SelectValue placeholder="① Link to Course (recommended)" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="① Select Course *" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">No course link</SelectItem>
+                      <SelectItem value="__none__">No course</SelectItem>
                       {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · Gr {c.grade}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  {/* Step 2: Chapter (loaded after course selected) */}
-                  {lcChapters.length > 0 ? (
-                    <Select value={(lcForm as any).chapterId || "__none__"} onValueChange={v => {
+
+                  {/* Step 2: Subject (loaded after course selected) */}
+                  {lcCourseSubjects.length > 0 ? (
+                    <Select value={lcForm.courseSubjectId || "__none__"} onValueChange={v => {
                       const val = v === "__none__" ? "" : v;
-                      setLcForm(p => ({ ...p, chapterId: val, topicId: "" } as any));
+                      setLcForm(p => ({ ...p, courseSubjectId: val, chapterId: "", topicId: "" }));
+                      setLcChapters([]);
+                      setLcTopics([]);
+                      loadChaptersForSubject(val);
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="② Select Subject" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No subject</SelectItem>
+                        {lcCourseSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : lcForm.courseId ? (
+                    <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                      ⚠ No subjects in this course yet — add them in Course Management first.
+                    </div>
+                  ) : <div />}
+
+                  {/* Step 3: Chapter (loaded after subject selected) */}
+                  {lcChapters.length > 0 ? (
+                    <Select value={lcForm.chapterId || "__none__"} onValueChange={v => {
+                      const val = v === "__none__" ? "" : v;
+                      setLcForm(p => ({ ...p, chapterId: val, topicId: "" }));
+                      setLcTopics([]);
                       loadTopicsForChapter(val);
                     }}>
-                      <SelectTrigger><SelectValue placeholder="② Select Chapter" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="③ Select Chapter" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">No chapter</SelectItem>
                         {lcChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  ) : (
-                    <Input placeholder="② Chapter name (optional, type freely)" value={(lcForm as any).chapterName ?? ""} onChange={e => setLcForm(p => ({ ...p, chapterName: e.target.value } as any))} />
-                  )}
-                  {/* Step 3: Topic (loaded after chapter selected) */}
+                  ) : lcForm.courseSubjectId ? (
+                    <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                      ⚠ No chapters in this subject yet.
+                    </div>
+                  ) : <div />}
+
+                  {/* Step 4: Topic (loaded after chapter selected) */}
                   {lcTopics.length > 0 ? (
-                    <Select value={(lcForm as any).topicId || "__none__"} onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v } as any))}>
-                      <SelectTrigger><SelectValue placeholder="③ Select Topic" /></SelectTrigger>
+                    <Select value={lcForm.topicId || "__none__"} onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger><SelectValue placeholder="④ Select Topic" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">No topic</SelectItem>
                         {lcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  ) : (lcChapters.length > 0 && (lcForm as any).chapterId) ? (
-                    <Input placeholder="③ Topic name (optional)" value={(lcForm as any).topicName ?? ""} onChange={e => setLcForm(p => ({ ...p, topicName: e.target.value } as any))} />
-                  ) : null}
-                  <Select value={lcForm.subjectId} onValueChange={v => setLcForm(p => ({ ...p, subjectId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
-                    <SelectContent>{subjectsList.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Input placeholder="Grade (1-10) *" type="number" min="1" max="10" value={lcForm.grade} onChange={e => setLcForm(p => ({ ...p, grade: e.target.value }))} />
+                  ) : lcForm.chapterId ? (
+                    <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                      ⚠ No topics in this chapter yet.
+                    </div>
+                  ) : <div />}
+
                   <Select value={lcForm.teacherId} onValueChange={v => setLcForm(p => ({ ...p, teacherId: v, teacher: teachers.find(t => String(t.id) === v)?.name ?? "" }))}>
                     <SelectTrigger><SelectValue placeholder="Assign teacher" /></SelectTrigger>
                     <SelectContent>
@@ -1986,15 +2034,16 @@ function AdminPageInner() {
                       {teachers.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Input placeholder="Teacher name (if not above)" value={lcForm.teacher} onChange={e => setLcForm(p => ({ ...p, teacher: e.target.value }))} />
+                  <Input placeholder="Teacher name *" value={lcForm.teacher} onChange={e => setLcForm(p => ({ ...p, teacher: e.target.value }))} />
                   <Input type="datetime-local" value={lcForm.scheduledAt} onChange={e => setLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
                   <Input placeholder="Duration (minutes)" type="number" min="15" value={lcForm.duration} onChange={e => setLcForm(p => ({ ...p, duration: e.target.value }))} />
                   <Input placeholder="Join link (Google Meet / Zoom)" value={lcForm.joinUrl} onChange={e => setLcForm(p => ({ ...p, joinUrl: e.target.value }))} className="sm:col-span-2" />
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={createLiveClass} disabled={busy || !lcForm.title || !lcForm.subjectId || !lcForm.grade || !lcForm.scheduledAt || (!lcForm.teacher && !lcForm.teacherId)}
+                  <Button size="sm" onClick={createLiveClass}
+                    disabled={busy || !lcForm.title || !lcForm.courseId || !lcForm.scheduledAt || (!lcForm.teacher && !lcForm.teacherId)}
                     className="text-white" style={{ background: ORANGE }}>Schedule</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowLcForm(false)}>Cancel</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); }}>Cancel</Button>
                 </div>
               </div>
             )}

@@ -414,6 +414,7 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     board: coursesTable.board,
     academicYearId: coursesTable.academicYearId,
     isPublished: coursesTable.isPublished,
+    status: coursesTable.status,
     totalLessons: coursesTable.totalLessons,
     thumbnailUrl: coursesTable.thumbnailUrl,
     description: coursesTable.description,
@@ -422,11 +423,15 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
   })
     .from(coursesTable)
     .orderBy(desc(coursesTable.createdAt));
-  res.json(courses.map(c => ({ ...c, subjectName: null })));
+  res.json(courses.map(c => ({
+    ...c,
+    subjectName: null,
+    courseCode: `CRS${String(c.id).padStart(4, "0")}`,
+  })));
 });
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished } = req.body;
+  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status } = req.body;
   if (!title || grade === undefined || grade === null || grade === "") {
     res.status(400).json({ error: "title and grade are required" });
     return;
@@ -442,6 +447,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
       board: board ?? null,
       academicYearId: academicYearId ? Number(academicYearId) : null,
       isPublished: isPublished !== false,
+      status: status ?? "active",
     }).returning();
 
     await logAudit(
@@ -449,7 +455,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
       "course_created", "course", course.id, course.title,
     );
 
-    res.status(201).json(course);
+    res.status(201).json({ ...course, courseCode: `CRS${String(course.id).padStart(4, "0")}` });
   } catch (err) {
     req.log.error({ err }, "Failed to create course");
     const msg = err instanceof Error ? err.message : String(err);
@@ -460,7 +466,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
 router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl } = req.body;
+  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade } = req.body;
   const updates: Record<string, unknown> = {};
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
@@ -469,9 +475,11 @@ router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   if (academicYearId !== undefined) updates.academicYearId = academicYearId ? Number(academicYearId) : null;
   if (isPublished !== undefined) updates.isPublished = Boolean(isPublished);
   if (thumbnailUrl !== undefined) updates.thumbnailUrl = thumbnailUrl;
+  if (status !== undefined) updates.status = status;
+  if (grade !== undefined) updates.grade = Number(grade);
   const [course] = await db.update(coursesTable).set(updates as never).where(eq(coursesTable.id, id)).returning();
   if (!course) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(course);
+  res.json({ ...course, courseCode: `CRS${String(course.id).padStart(4, "0")}` });
 });
 
 router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
@@ -488,15 +496,30 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
 
 // ── Content Creation ─────────────────────────────────────────────
 router.post("/admin/live-classes", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, topicId, teacherId, scheduledAt, duration, teacher, joinUrl, isPublished } = req.body;
-  if (!title || !subjectId || !grade || !scheduledAt || !teacher) {
-    res.status(400).json({ error: "title, subjectId, grade, scheduledAt, teacher are required" });
+  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration, teacher, joinUrl, isPublished } = req.body;
+  if (!title || !scheduledAt || !teacher) {
+    res.status(400).json({ error: "title, scheduledAt, teacher are required" });
     return;
   }
+
+  let resolvedGrade = grade ? Number(grade) : null;
+  if (!resolvedGrade && courseId) {
+    const [course] = await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, Number(courseId)));
+    if (course) resolvedGrade = course.grade;
+  }
+  if (!resolvedGrade) {
+    res.status(400).json({ error: "grade is required (or select a course)" });
+    return;
+  }
+
   const [lc] = await db.insert(liveClassesTable).values({
-    title, subjectId, grade,
-    courseId: courseId ?? null,
-    topicId: topicId ?? null,
+    title,
+    subjectId: subjectId ? Number(subjectId) : null,
+    grade: resolvedGrade,
+    courseId: courseId ? Number(courseId) : null,
+    courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null,
+    chapterId: chapterId ? Number(chapterId) : null,
+    topicId: topicId ? Number(topicId) : null,
     teacherId: teacherId ?? null,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 60,

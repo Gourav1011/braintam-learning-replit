@@ -16,6 +16,7 @@ export * from "./auditLogs";
 export * from "./academicYears";
 export * from "./chapters";
 export * from "./topics";
+export * from "./courseSubjects";
 export * from "./demoBatches";
 export * from "./demoSessions";
 export * from "./demoBatchEnrollments";
