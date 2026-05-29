@@ -112,6 +112,7 @@ export default function ProfilePage() {
   const [editSchool, setEditSchool] = useState("");
   const [editState, setEditState] = useState("");
   const [editCity, setEditCity] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -132,6 +133,7 @@ export default function ProfilePage() {
     setEditSchool(p?.school ?? "");
     setEditState(p?.state ?? "");
     setEditCity(p?.city ?? "");
+    setEditPhone(p?.phone ?? "");
     setSaveError("");
     setEditing(true);
   };
@@ -151,6 +153,7 @@ export default function ProfilePage() {
         school: editSchool,
         state: editState,
         city: editCity,
+        ...(!p?.phone && editPhone.trim() ? { phone: editPhone.trim() } : {}),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -407,11 +410,31 @@ export default function ProfilePage() {
                           </div>
                         )}
 
-                        {/* Phone — always locked */}
-                        <div className="rounded-lg bg-gray-50 border border-gray-100 p-2.5 flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 flex-1">{p?.phone ?? "No phone on file"}</span>
-                          <Lock className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                        {/* Phone — editable only if not yet set */}
+                        <div className="space-y-1">
+                          <Label className="text-xs flex items-center gap-1">
+                            Phone Number
+                            {p?.phone && <Lock className="w-3 h-3 text-gray-300" />}
+                          </Label>
+                          {p?.phone ? (
+                            <div className="rounded-lg bg-gray-50 border border-gray-100 p-2.5 flex items-center gap-2">
+                              <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-600 flex-1">{p.phone}</span>
+                              <span className="text-xs text-gray-400 italic">Cannot be changed</span>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                              <Input
+                                value={editPhone}
+                                onChange={e => setEditPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                                placeholder="10-digit mobile number"
+                                className="pl-8"
+                                maxLength={10}
+                                inputMode="numeric"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {saveError && <p className="text-xs text-red-500">{saveError}</p>}
