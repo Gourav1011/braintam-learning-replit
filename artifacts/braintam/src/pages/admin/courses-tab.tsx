@@ -48,7 +48,7 @@ const gradeLabel = (g: number) => (g === 0 ? "Others" : `Grade ${g}`);
 
 type CmsView = "courses" | "chapters" | "topics";
 
-const emptyCourseFm = { title: "", grade: "", board: "", academicYearId: "", description: "", teacher: "", thumbnailUrl: "" };
+const emptyCourseFm = { title: "", grade: "", subjectId: "", board: "", academicYearId: "", description: "", teacher: "", thumbnailUrl: "" };
 
 export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
@@ -137,7 +137,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   // ── Courses ─────────────────────────────────────────────────────
   const createCourse = async () => {
-    const { title, grade, thumbnailUrl, board, academicYearId, description, teacher } = courseForm;
+    const { title, grade, subjectId, thumbnailUrl, board, academicYearId, description, teacher } = courseForm;
     if (!title.trim()) { flash("Course title is required", false); return; }
     if (!grade) { flash("Please select a grade", false); return; }
     if (!academicYearId) { flash("Academic Year is required — create one in the Academic Years panel above first", false); return; }
@@ -146,6 +146,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       const body = {
         title: title.trim(),
         grade: Number(grade),
+        subjectId: (subjectId && subjectId !== "none") ? Number(subjectId) : null,
         thumbnailUrl: thumbnailUrl.trim() || "https://placehold.co/400x240?text=Course",
         board: board || null,
         academicYearId: Number(academicYearId),
@@ -167,7 +168,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const updateCourse = async () => {
     if (!editingCourse) return;
-    const { title, grade, thumbnailUrl, board, academicYearId, description, teacher } = editForm;
+    const { title, grade, subjectId, thumbnailUrl, board, academicYearId, description, teacher } = editForm;
     if (!title.trim()) { flash("Course title is required", false); return; }
     if (!grade) { flash("Please select a grade", false); return; }
     if (!academicYearId) { flash("Academic Year is required", false); return; }
@@ -176,6 +177,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       const body = {
         title: title.trim(),
         grade: Number(grade),
+        subjectId: (subjectId && subjectId !== "none") ? Number(subjectId) : null,
         thumbnailUrl: thumbnailUrl.trim() || undefined,
         board: board || null,
         academicYearId: Number(academicYearId),
@@ -454,11 +456,21 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <p className="text-[10px] text-gray-400 pl-1">Determines which students can see and enroll in this course</p>
                 </div>
                 <div className="space-y-1">
+                  <Select value={courseForm.subjectId} onValueChange={v => setCourseForm(p => ({ ...p, subjectId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No subject</SelectItem>
+                      {subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-gray-400 pl-1">Primary subject — chapters can have their own subjects too</p>
+                </div>
+                <div className="space-y-1">
                   <Select value={courseForm.board} onValueChange={v => setCourseForm(p => ({ ...p, board: v }))}>
                     <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
                     <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                   </Select>
-                  <p className="text-[10px] text-gray-400 pl-1">Subjects are assigned per chapter, not per course</p>
+                  <p className="text-[10px] text-gray-400 pl-1">Curriculum board (CBSE, ICSE, etc.)</p>
                 </div>
                 <div className="space-y-1">
                   <Select value={courseForm.academicYearId} onValueChange={v => setCourseForm(p => ({ ...p, academicYearId: v }))}>
@@ -499,6 +511,13 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                 <Select value={editForm.grade} onValueChange={v => setEditForm(p => ({ ...p, grade: v }))}>
                   <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
                   <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={editForm.subjectId} onValueChange={v => setEditForm(p => ({ ...p, subjectId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No subject</SelectItem>
+                    {subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
                 <Select value={editForm.board} onValueChange={v => setEditForm(p => ({ ...p, board: v }))}>
                   <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
@@ -574,7 +593,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                           <Layers className="w-3 h-3" /> Chapters
                         </button>
                         <button
-                          onClick={() => { setEditingCourse(c); setEditForm({ title: c.title, grade: String(c.grade), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", description: c.description ?? "", teacher: c.teacher ?? "", thumbnailUrl: c.thumbnailUrl ?? "" }); setShowAddCourse(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          onClick={() => { setEditingCourse(c); setEditForm({ title: c.title, grade: String(c.grade), subjectId: c.subjectId ? String(c.subjectId) : "", board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", description: c.description ?? "", teacher: c.teacher ?? "", thumbnailUrl: c.thumbnailUrl ?? "" }); setShowAddCourse(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                           className="text-xs p-1.5 rounded-lg border border-blue-200 hover:border-blue-400 transition-colors text-blue-500"
                           title="Edit course">
                           <Pencil className="w-3.5 h-3.5" />

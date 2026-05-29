@@ -427,7 +427,7 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
   const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished } = req.body;
-  if (!title || !grade) {
+  if (!title || grade === undefined || grade === null || grade === "") {
     res.status(400).json({ error: "title and grade are required" });
     return;
   }
