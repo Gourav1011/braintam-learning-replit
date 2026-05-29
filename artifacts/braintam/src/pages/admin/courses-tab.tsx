@@ -64,7 +64,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showYearPanel, setShowYearPanel] = useState(false);
+  const [showYearPanel, setShowYearPanel] = useState(true);
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showAddChapter, setShowAddChapter] = useState(false);
   const [showAddTopic, setShowAddTopic] = useState(false);
@@ -370,6 +370,17 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       {/* ── Courses View ─────────────────────────────────────────── */}
       {view === "courses" && (
         <div className="space-y-4">
+          {academicYears.length === 0 && !loading && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-5 py-4">
+              <span className="text-xl mt-0.5">⚠️</span>
+              <div>
+                <p className="font-semibold text-amber-800 text-sm">Academic Year required before adding courses</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Type a year name (e.g. <strong>2025-26</strong>) in the <strong>Academic Years</strong> panel above and click <strong>+</strong> to create one first.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-gray-500">
               Create courses and organize them into chapters and topics.
