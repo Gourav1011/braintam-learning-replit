@@ -1,0 +1,84 @@
+<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warning
+index-DRvVMMUI.js:82  GET https://braintam.com/api/admin/live-classes 404 (Not Found)
+Xe @ index-DRvVMMUI.js:82
+Yt @ index-DRvVMMUI.js:83
+(anonymous) @ index-DRvVMMUI.js:83
+ad @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+er @ index-DRvVMMUI.js:8
+dj @ index-DRvVMMUI.js:8
+Rj @ index-DRvVMMUI.js:8
+(anonymous) @ index-DRvVMMUI.js:8
+fe @ index-DRvVMMUI.js:1
+postMessage
+re @ index-DRvVMMUI.js:1
+fe @ index-DRvVMMUI.js:1
+postMessage
+re @ index-DRvVMMUI.js:1
+e.unstable_scheduleCallback @ index-DRvVMMUI.js:1
+Oj @ index-DRvVMMUI.js:8
+Pj @ index-DRvVMMUI.js:8
+(anonymous) @ index-DRvVMMUI.js:8Understand this error
+index-DRvVMMUI.js:8 TypeError: Cannot read properties of undefined (reading 'toUpperCase')
+    at index-DRvVMMUI.js:82:203500
+    at Array.map (<anonymous>)
+    at LW (index-DRvVMMUI.js:82:202711)
+    at Op (index-DRvVMMUI.js:8:34162)
+    at Jp (index-DRvVMMUI.js:8:62391)
+    at Y1 (index-DRvVMMUI.js:8:72919)
+    at wj (index-DRvVMMUI.js:8:106990)
+    at i6 (index-DRvVMMUI.js:8:106053)
+    at wx (index-DRvVMMUI.js:8:105883)
+    at gj (index-DRvVMMUI.js:8:102982)
