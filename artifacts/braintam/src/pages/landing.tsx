@@ -298,124 +298,120 @@ function HeroVisual() {
 
       {/* ── Floating toppers badge ── */}
       <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full"
+        className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full"
         style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
-        <span style={{ fontSize: 14 }}>🏆</span>
-        <span className="text-xs font-bold text-white">10,000+ Toppers across India</span>
+        <span className="text-xs sm:text-sm">🏆</span>
+        <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">10,000+ Toppers across India</span>
       </motion.div>
 
       {/* ── Three student cards ── */}
-      <div className="relative z-10 flex items-end gap-4 mt-6">
+      <div className="relative z-10 flex items-end gap-2 sm:gap-4 mt-6">
 
-        {/* Card: Ananya — left, slightly lower */}
+        {/* Card: Ananya — left */}
         {(() => { const s = toppers[2]; return (
           <motion.div key={s.name}
             animate={{ y: [4, -8, 4] }}
             transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-            className="rounded-3xl p-4 w-40 flex-shrink-0"
+            className="rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
             style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
-                     boxShadow: "0 16px 48px rgba(11,43,107,0.12)" }}>
-            {/* Avatar */}
-            <div className="relative mb-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto text-white text-xl font-black"
+                     boxShadow: "0 12px 32px rgba(11,43,107,0.12)" }}>
+            <div className="relative mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-white text-sm sm:text-xl font-black"
                 style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 8px 20px ${s.avatarFrom}40` }}>
+                         boxShadow: `0 6px 14px ${s.avatarFrom}40` }}>
                 {s.initial}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-lg leading-none">{s.medal}</div>
+              <div className="absolute -bottom-1 -right-1 text-sm sm:text-lg leading-none">{s.medal}</div>
             </div>
-            <div className="text-xs font-bold text-center mb-0.5" style={{ color: TEXT }}>{s.name}</div>
-            <div className="text-xs text-center mb-2" style={{ color: MUTED }}>{s.grade}</div>
-            <div className="flex justify-center mb-2">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+            <div className="font-bold text-center mb-0.5 truncate" style={{ color: TEXT, fontSize: 9 }}>{s.name}</div>
+            <div className="text-center mb-1.5 truncate" style={{ color: MUTED, fontSize: 8 }}>{s.grade}</div>
+            <div className="flex justify-center mb-1.5">
+              <span className="font-bold px-1.5 py-0.5 rounded-full truncate" style={{ background: s.tagBg, color: s.tagColor, fontSize: 8 }}>{s.tag}</span>
             </div>
             <div className="text-center">
-              <div className="text-lg font-black" style={{ color: s.tagColor }}>{s.score}</div>
+              <div className="font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
             </div>
-            <div className="flex justify-center gap-0.5 mt-2">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 10 }}>★</span>)}
+            <div className="flex justify-center gap-0.5 mt-1.5">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
             </div>
           </motion.div>
         ); })()}
 
-        {/* Card: Priya — center, tallest (gold, featured) */}
+        {/* Card: Kaniahya — center, featured */}
         {(() => { const s = toppers[0]; return (
           <motion.div key={s.name}
             animate={{ y: [0, -14, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="rounded-3xl p-5 w-44 flex-shrink-0 relative"
+            className="rounded-2xl sm:rounded-3xl p-3 sm:p-5 w-[118px] sm:w-44 flex-shrink-0 relative"
             style={{ background: "#fff", border: `2px solid rgba(255,107,26,0.2)`,
-                     boxShadow: "0 24px 60px rgba(11,43,107,0.18), 0 0 0 4px rgba(255,107,26,0.06)" }}>
-            {/* Crown */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-2xl">👑</div>
-            {/* Avatar */}
-            <div className="relative mb-3 mt-1">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto text-white text-2xl font-black"
+                     boxShadow: "0 20px 50px rgba(11,43,107,0.18), 0 0 0 3px rgba(255,107,26,0.06)" }}>
+            <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 text-lg sm:text-2xl">👑</div>
+            <div className="relative mb-2 sm:mb-3 mt-1">
+              <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-white text-lg sm:text-2xl font-black"
                 style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 10px 24px ${s.avatarFrom}50` }}>
+                         boxShadow: `0 8px 18px ${s.avatarFrom}50` }}>
                 {s.initial}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-xl leading-none">{s.medal}</div>
+              <div className="absolute -bottom-1 -right-1 text-base sm:text-xl leading-none">{s.medal}</div>
             </div>
-            <div className="text-sm font-bold text-center mb-0.5" style={{ color: TEXT }}>{s.name}</div>
-            <div className="text-xs text-center mb-2" style={{ color: MUTED }}>{s.grade}</div>
-            <div className="flex justify-center mb-3">
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+            <div className="font-bold text-center mb-0.5 truncate" style={{ color: TEXT, fontSize: 10 }}>{s.name}</div>
+            <div className="text-center mb-1.5 truncate" style={{ color: MUTED, fontSize: 8 }}>{s.grade}</div>
+            <div className="flex justify-center mb-2">
+              <span className="font-bold px-2 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 8 }}>{s.tag}</span>
             </div>
-            <div className="text-center mb-2">
-              <div className="text-2xl font-black" style={{ color: s.tagColor }}>{s.score}</div>
+            <div className="text-center mb-1">
+              <div className="font-black" style={{ color: s.tagColor, fontSize: 18 }}>{s.score}</div>
             </div>
-            <div className="text-xs text-center italic px-1" style={{ color: MUTED }}>"{s.quote}"</div>
-            <div className="flex justify-center gap-0.5 mt-2">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 11 }}>★</span>)}
+            <div className="text-center italic hidden sm:block px-1" style={{ color: MUTED, fontSize: 10 }}>"{s.quote}"</div>
+            <div className="flex justify-center gap-0.5 mt-1.5">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 9 }}>★</span>)}
             </div>
           </motion.div>
         ); })()}
 
-        {/* Card: Rohan — right, slightly lower */}
+        {/* Card: Rohan — right */}
         {(() => { const s = toppers[1]; return (
           <motion.div key={s.name}
             animate={{ y: [4, -10, 4] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.4 }}
-            className="rounded-3xl p-4 w-40 flex-shrink-0"
+            className="rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
             style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
-                     boxShadow: "0 16px 48px rgba(11,43,107,0.12)" }}>
-            {/* Avatar */}
-            <div className="relative mb-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto text-white text-xl font-black"
+                     boxShadow: "0 12px 32px rgba(11,43,107,0.12)" }}>
+            <div className="relative mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-white text-sm sm:text-xl font-black"
                 style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 8px 20px ${s.avatarFrom}40` }}>
+                         boxShadow: `0 6px 14px ${s.avatarFrom}40` }}>
                 {s.initial}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-lg leading-none">{s.medal}</div>
+              <div className="absolute -bottom-1 -right-1 text-sm sm:text-lg leading-none">{s.medal}</div>
             </div>
-            <div className="text-xs font-bold text-center mb-0.5" style={{ color: TEXT }}>{s.name}</div>
-            <div className="text-xs text-center mb-2" style={{ color: MUTED }}>{s.grade}</div>
-            <div className="flex justify-center mb-2">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
+            <div className="font-bold text-center mb-0.5 truncate" style={{ color: TEXT, fontSize: 9 }}>{s.name}</div>
+            <div className="text-center mb-1.5 truncate" style={{ color: MUTED, fontSize: 8 }}>{s.grade}</div>
+            <div className="flex justify-center mb-1.5">
+              <span className="font-bold px-1.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 8 }}>{s.tag}</span>
             </div>
             <div className="text-center">
-              <div className="text-lg font-black" style={{ color: s.tagColor }}>{s.score}</div>
+              <div className="font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
             </div>
-            <div className="flex justify-center gap-0.5 mt-2">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 10 }}>★</span>)}
+            <div className="flex justify-center gap-0.5 mt-1.5">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
             </div>
           </motion.div>
         ); })()}
       </div>
 
-      {/* ── Bottom floating: "Join them" CTA badge ── */}
+      {/* ── Bottom badge ── */}
       <motion.div animate={{ y: [0, 7, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5 px-5 py-2.5 rounded-2xl"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
                  boxShadow: "0 8px 28px rgba(11,43,107,0.13)" }}>
-        <div className="flex -space-x-2">
+        <div className="flex -space-x-1.5">
           {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
-            <div key={i} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: c }}>{"PRA"[i]}</div>
+            <div key={i} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-bold"
+              style={{ background: c, fontSize: 9 }}>{"PRA"[i]}</div>
           ))}
         </div>
-        <div className="text-xs font-semibold" style={{ color: TEXT }}>
+        <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 10 }}>
           <span className="font-black" style={{ color: ORANGE }}>5,00,000+</span> Happy Students
         </div>
       </motion.div>
