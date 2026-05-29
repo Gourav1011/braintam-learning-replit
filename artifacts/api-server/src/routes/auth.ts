@@ -114,14 +114,16 @@ router.post("/auth/clerk-sync", async (req, res) => {
 });
 
 router.post("/auth/reset-password-email", async (req, res) => {
-  const { email, newPassword } = req.body;
-  if (!email || !newPassword || newPassword.length < 6) {
-    res.status(400).json({ error: "Email and new password (min 6 chars) required" });
+  const { email, phone, newPassword } = req.body;
+  if ((!email && !phone) || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: "Email or phone and new password (min 6 chars) required" });
     return;
   }
-  const users = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+  const users = await db.select().from(usersTable).where(
+    email ? eq(usersTable.email, email) : eq(usersTable.phone, phone)
+  ).limit(1);
   if (users.length === 0) {
-    res.status(404).json({ error: "No account found with this email address" });
+    res.status(404).json({ error: "No account found. Please check and try again." });
     return;
   }
   const user = users[0];
