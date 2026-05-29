@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Pencil, Camera, Phone, MapPin, FileText, ClipboardList, Lock, X, Check } from "lucide-react";
+import { User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Pencil, Camera, Phone, MapPin, FileText, ClipboardList, Lock, X, Check, UserCheck } from "lucide-react";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { PointsHub } from "@/components/points-hub";
 
@@ -603,6 +603,35 @@ export default function ProfilePage() {
             </Card>
           </div>
         </div>
+
+        {/* Know Your Personal Teacher */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <Card className="border-2 border-dashed border-blue-100">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#0A2342,#123D7A)" }}
+                >
+                  <UserCheck className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-gray-800">Know Your Personal Teacher</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Your dedicated mentor &amp; guide</p>
+                </div>
+                <span
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                  style={{ background: "#FFF3E0", color: "#FF6B1A" }}
+                >
+                  Coming Soon
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-3 leading-relaxed">
+                Your assigned mentor teacher details will appear here once configured by the admin. They'll guide you through your learning journey.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Points Hub */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>

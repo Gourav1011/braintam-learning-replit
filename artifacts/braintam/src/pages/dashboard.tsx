@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth, STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
-import { Video, BookOpen, FileText, CheckSquare, Award, Flame, ArrowRight, PlayCircle, Star, Bell, MessageCircle, Phone, Ticket, X, ChevronRight, Zap, Trophy } from "lucide-react";
+import { Video, BookOpen, FileText, CheckSquare, Flame, PlayCircle, Bell, MessageCircle, Phone, Ticket, X, ChevronRight, Zap, Trophy, Megaphone } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect, useRef } from "react";
 
@@ -221,6 +221,69 @@ function HeroBanner() {
             className="rounded-full transition-all"
             style={{ width: i === idx ? 16 : 6, height: 6, background: i === idx ? GOLD : "rgba(255,255,255,0.4)" }}
           />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Announcements Strip ───────────────────────────────────────────
+interface Announcement {
+  id: number;
+  title: string;
+  body: string;
+  grade: number | null;
+  isActive: boolean;
+}
+
+function AnnouncementStrip() {
+  const [items, setItems]       = useState<Announcement[]>([]);
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    apiFetch("/student/announcements")
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Announcement[]) => setItems(data))
+      .catch(() => {});
+  }, []);
+
+  const visible = items.filter(a => !dismissed.has(a.id));
+  if (visible.length === 0) return null;
+
+  const BG_COLORS = [
+    "linear-gradient(135deg,#1e3a8a,#1d4ed8)",
+    "linear-gradient(135deg,#7c3aed,#6d28d9)",
+    "linear-gradient(135deg,#b45309,#92400e)",
+    "linear-gradient(135deg,#065f46,#047857)",
+    "linear-gradient(135deg,#9d174d,#be185d)",
+  ];
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-2">
+        <Megaphone className="w-3.5 h-3.5" style={{ color: NAVY2 }} />
+        <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: NAVY2 }}>Announcements</h2>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        {visible.map((ann, i) => (
+          <div
+            key={ann.id}
+            className="flex-shrink-0 rounded-2xl p-3.5 relative"
+            style={{
+              background: BG_COLORS[i % BG_COLORS.length],
+              minWidth: 220,
+              maxWidth: 260,
+            }}
+          >
+            <button
+              onClick={() => setDismissed(prev => new Set([...prev, ann.id]))}
+              className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <X className="w-3 h-3 text-white/70" />
+            </button>
+            <p className="text-white font-bold text-sm leading-tight pr-5">{ann.title}</p>
+            <p className="text-white/70 text-xs mt-1 leading-snug line-clamp-3">{ann.body}</p>
+          </div>
         ))}
       </div>
     </div>
@@ -483,6 +546,9 @@ export default function DashboardPage() {
 
         {/* Hero Banner */}
         <HeroBanner />
+
+        {/* Announcements from admin */}
+        <AnnouncementStrip />
 
         {/* No course banner */}
         {hasNoCourse && (

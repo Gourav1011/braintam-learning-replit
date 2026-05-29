@@ -4,7 +4,7 @@ import {
   usersTable, subjectsTable, homeworkTable, assignmentsTable,
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
-  coursesTable,
+  coursesTable, announcementsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -16,13 +16,19 @@ const router = Router();
 router.get("/student/dashboard", requireAuth, async (req, res) => {
   const studentId = req.authUser!.id;
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
-  const subjects = await db.select().from(subjectsTable).limit(6);
 
   const enrolledRows = await db
     .select({ courseId: enrollmentsTable.courseId })
     .from(enrollmentsTable)
     .where(eq(enrollmentsTable.studentId, studentId));
   const courseIds = enrolledRows.map(e => e.courseId);
+
+  const enrolledCourses = courseIds.length > 0
+    ? await db.select({ id: coursesTable.id, title: coursesTable.title })
+        .from(coursesTable)
+        .where(inArray(coursesTable.id, courseIds))
+        .limit(6)
+    : [];
 
   const upcoming = await db.select().from(liveClassesTable)
     .where(eq(liveClassesTable.status, "upcoming")).limit(5);
@@ -76,13 +82,49 @@ router.get("/student/dashboard", requireAuth, async (req, res) => {
     streakDays: student?.streakDays ?? 0,
     enrolledCourseCount: courseIds.length,
     recentActivity,
-    subjectProgress: subjects.map((s, i) => ({
-      subjectId: s.id,
-      subjectName: s.name,
-      progress: [72, 58, 89, 45, 63, 77][i] ?? 50,
-      color: s.color,
-    })),
+    subjectProgress: await Promise.all(
+      enrolledCourses.map(async (course, i) => {
+        const COLORS = ["#1d4ed8", "#7c3aed", "#059669", "#ea580c", "#0891b2", "#be185d"];
+        const [[hwTotal], [asgnTotal], [hwDone], [asgnDone]] = await Promise.all([
+          db.select({ n: sql<number>`count(*)::int` }).from(homeworkTable).where(eq(homeworkTable.courseId, course.id)),
+          db.select({ n: sql<number>`count(*)::int` }).from(assignmentsTable).where(eq(assignmentsTable.courseId, course.id)),
+          db.select({ n: sql<number>`count(*)::int` })
+            .from(homeworkSubmissionsTable)
+            .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+            .where(and(eq(homeworkSubmissionsTable.studentId, studentId), eq(homeworkTable.courseId, course.id))),
+          db.select({ n: sql<number>`count(*)::int` })
+            .from(assignmentSubmissionsTable)
+            .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+            .where(and(eq(assignmentSubmissionsTable.studentId, studentId), eq(assignmentsTable.courseId, course.id))),
+        ]);
+        const total = Number(hwTotal?.n ?? 0) + Number(asgnTotal?.n ?? 0);
+        const done  = Number(hwDone?.n  ?? 0) + Number(asgnDone?.n  ?? 0);
+        return {
+          subjectId:   course.id,
+          subjectName: course.title,
+          progress:    total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0,
+          color:       COLORS[i] ?? COLORS[0],
+        };
+      })
+    ),
   });
+});
+
+router.get("/student/announcements", attachUser, async (req, res) => {
+  const grade = req.authUser?.grade ?? null;
+  const rows = await db.select().from(announcementsTable)
+    .where(
+      and(
+        eq(announcementsTable.isActive, true),
+        or(
+          isNull(announcementsTable.grade),
+          grade !== null ? eq(announcementsTable.grade, grade) : isNull(announcementsTable.grade)
+        )
+      )
+    )
+    .orderBy(desc(announcementsTable.createdAt))
+    .limit(10);
+  res.json(rows);
 });
 
 router.get("/student/profile", requireAuth, async (req, res) => {
