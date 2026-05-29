@@ -224,15 +224,6 @@ function SignInPage() {
           signUpUrl={`${basePath}/sign-up`}
           forceRedirectUrl={`${basePath}/dashboard`}
         />
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          <a href={`${basePath}/login`} className="text-primary hover:underline font-medium">
-            Forgot password?
-          </a>
-          {" · "}
-          <a href={`${basePath}/login`} className="text-primary hover:underline font-medium">
-            Sign in with email
-          </a>
-        </p>
       </div>
     } />
   );
