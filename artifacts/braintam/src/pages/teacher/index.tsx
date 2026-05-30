@@ -326,6 +326,7 @@ export default function TeacherPage() {
         grade: Number(lcForm.grade),
         courseId: lcForm.courseId ? Number(lcForm.courseId) : null,
         duration: Number(lcForm.duration),
+        scheduledAt: new Date(lcForm.scheduledAt).toISOString(),
       }),
     });
     if (r.ok) {
@@ -372,7 +373,7 @@ export default function TeacherPage() {
     if (!lcId) { setTestForm(p => ({ ...p, liveClassId: "" })); return; }
     const lc = liveClasses.find(l => l.id === Number(lcId));
     if (lc) {
-      const dt = new Date(lc.scheduledAt).toISOString().slice(0, 16);
+      const d2 = new Date(lc.scheduledAt); const pp = (n: number) => String(n).padStart(2,"0"); const dt = `${d2.getFullYear()}-${pp(d2.getMonth()+1)}-${pp(d2.getDate())}T${pp(d2.getHours())}:${pp(d2.getMinutes())}`;
       setTestForm(p => ({
         ...p,
         liveClassId: lcId,
