@@ -205,14 +205,25 @@ router.get("/student/progress", requireAuth, async (req, res) => {
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   const subjects = await db.select().from(subjectsTable).limit(6);
 
-  const [hwCount] = await db.select({ count: sql<number>`count(*)` }).from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.studentId, studentId));
-  const [testCount] = await db.select({ count: sql<number>`count(*)` }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId));
+  const studentGrade = student?.grade ?? 6;
+
+  const [
+    [hwSubmitted], [hwTotal],
+    [asgnSubmitted], [asgnTotal],
+    [testSubmittedRow], [testsTotal],
+  ] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.studentId, studentId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(homeworkTable).where(eq(homeworkTable.grade, studentGrade)),
+    db.select({ count: sql<number>`count(*)::int` }).from(assignmentSubmissionsTable).where(eq(assignmentSubmissionsTable.studentId, studentId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(assignmentsTable).where(eq(assignmentsTable.grade, studentGrade)),
+    db.select({ count: sql<number>`count(*)::int` }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(testsTable).where(eq(testsTable.grade, studentGrade)),
+  ]);
+
   const testResults = await db.select({ score: testSubmissionsTable.score, maxScore: testSubmissionsTable.maxScore }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId));
   const avgScore = testResults.length > 0
     ? Math.round(testResults.reduce((sum, t) => sum + (t.maxScore && t.maxScore > 0 ? (t.score! / t.maxScore) * 100 : 0), 0) / testResults.length)
     : 0;
-
-  const studentGrade = student?.grade ?? 6;
   const subjectWise = await Promise.all(subjects.map(async (s, i) => {
     const COLORS = ["#1d4ed8", "#7c3aed", "#059669", "#ea580c", "#0891b2", "#be185d"];
     const [[hwTotal], [hwDone]] = await Promise.all([
@@ -236,8 +247,12 @@ router.get("/student/progress", requireAuth, async (req, res) => {
     totalPoints: student?.points ?? 0,
     rank: student?.rank ?? null,
     coursesCompleted: 0,
-    testsAttempted: Number(testCount.count),
-    homeworkSubmitted: Number(hwCount.count),
+    testsAttempted: Number(testSubmittedRow?.count ?? 0),
+    testsTotal: Number(testsTotal?.count ?? 0),
+    homeworkSubmitted: Number(hwSubmitted?.count ?? 0),
+    homeworkTotal: Number(hwTotal?.count ?? 0),
+    assignmentsSubmitted: Number(asgnSubmitted?.count ?? 0),
+    assignmentsTotal: Number(asgnTotal?.count ?? 0),
     averageScore: avgScore,
     subjectWise,
   });

@@ -191,13 +191,19 @@ export default function ProfilePage() {
 
   const enrolledCourses: { id: number; title: string }[] = p?.enrolledCourses ?? [];
 
+  const fmt = (done: number | undefined, total: number | undefined) => {
+    const d = done ?? 0;
+    const t = total ?? 0;
+    return t > 0 ? `${d}/${t}` : `${d}`;
+  };
+
   const statsCards = [
-    { icon: Star,          label: "Total Points",      value: progress?.totalPoints ?? 0,                   color: "text-yellow-500 bg-yellow-50" },
-    { icon: Trophy,        label: "Overall Rank",       value: `#${progress?.rank ?? "—"}`,                  color: "text-orange-500 bg-orange-50" },
-    { icon: BookOpen,      label: "Courses Done",       value: progress?.coursesCompleted ?? 0,              color: "text-green-500 bg-green-50" },
-    { icon: CheckSquare,   label: "Tests Attempted",    value: progress?.testsAttempted ?? 0,                color: "text-purple-500 bg-purple-50" },
-    { icon: FileText,      label: "Homework Done",      value: (progress as any)?.homeworkCompleted ?? 0,   color: "text-blue-500 bg-blue-50" },
-    { icon: ClipboardList, label: "Assignments Done",   value: (progress as any)?.assignmentsCompleted ?? 0, color: "text-pink-500 bg-pink-50" },
+    { icon: Star,          label: "Total Points",      value: progress?.totalPoints ?? 0,                                                            color: "text-yellow-500 bg-yellow-50" },
+    { icon: Trophy,        label: "Overall Rank",       value: `#${progress?.rank ?? "—"}`,                                                          color: "text-orange-500 bg-orange-50" },
+    { icon: CheckSquare,   label: "Tests Done",         value: fmt(progress?.testsAttempted, progress?.testsTotal),                                   color: "text-purple-500 bg-purple-50" },
+    { icon: FileText,      label: "Homework Done",      value: fmt(progress?.homeworkSubmitted, progress?.homeworkTotal),                             color: "text-blue-500 bg-blue-50" },
+    { icon: ClipboardList, label: "Assignments Done",   value: fmt(progress?.assignmentsSubmitted, progress?.assignmentsTotal),                       color: "text-pink-500 bg-pink-50" },
+    { icon: BookOpen,      label: "Avg Score",          value: progress?.averageScore !== undefined ? `${Math.round(progress.averageScore)}%` : "—",  color: "text-green-500 bg-green-50" },
   ];
 
   const achievements = [

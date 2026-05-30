@@ -617,6 +617,11 @@ export const GetStudentProgressResponse = zod.object({
   "rank": zod.number(),
   "coursesCompleted": zod.number(),
   "testsAttempted": zod.number(),
+  "testsTotal": zod.number().optional(),
+  "homeworkSubmitted": zod.number().optional(),
+  "homeworkTotal": zod.number().optional(),
+  "assignmentsSubmitted": zod.number().optional(),
+  "assignmentsTotal": zod.number().optional(),
   "averageScore": zod.number(),
   "subjectWise": zod.array(zod.object({
   "subjectId": zod.number(),

@@ -397,6 +397,11 @@ export interface StudentProgress {
   rank: number;
   coursesCompleted: number;
   testsAttempted: number;
+  testsTotal?: number;
+  homeworkSubmitted?: number;
+  homeworkTotal?: number;
+  assignmentsSubmitted?: number;
+  assignmentsTotal?: number;
   averageScore: number;
   subjectWise: SubjectProgress[];
 }

@@ -1212,6 +1212,16 @@ components:
           type: integer
         testsAttempted:
           type: integer
+        testsTotal:
+          type: integer
+        homeworkSubmitted:
+          type: integer
+        homeworkTotal:
+          type: integer
+        assignmentsSubmitted:
+          type: integer
+        assignmentsTotal:
+          type: integer
         averageScore:
           type: number
         subjectWise:
