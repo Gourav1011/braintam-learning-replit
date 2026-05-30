@@ -143,9 +143,6 @@ export default function CoursesScreen() {
 
   const allCourses = courses ?? [];
 
-  // Separate in-progress courses for the Continue Learning strip
-  const continueLearning = allCourses.filter(c => getCourseStatus(c) === "current");
-
   // Tab-filtered list
   const filteredCourses = courseTab === "all"
     ? allCourses
@@ -163,32 +160,6 @@ export default function CoursesScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Courses</Text>
       </View>
-
-      {/* ── Continue Learning capsule strip ── */}
-      {continueLearning.length > 0 && (
-        <View style={styles.clSection}>
-          <Text style={styles.clLabel}>▶ Continue Learning</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clRow}>
-            {continueLearning.map(c => {
-              const color = getSubjectColor(c.subjectName, Colors.navy);
-              const pct = c.completedLessons != null && c.totalLessons > 0
-                ? Math.round((c.completedLessons / c.totalLessons) * 100) : 0;
-              return (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[styles.clCapsule, { borderColor: color }]}
-                  onPress={() => router.push(`/course/${c.id}` as any)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.clDot, { backgroundColor: color }]} />
-                  <Text style={styles.clTitle} numberOfLines={1}>{c.title}</Text>
-                  <Text style={[styles.clPct, { color }]}>{pct}%</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
 
       {/* ── Search ── */}
       <View style={styles.searchWrap}>
@@ -312,25 +283,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { paddingHorizontal: 20, paddingBottom: 4, paddingTop: 8 },
   headerTitle: { fontSize: 26, fontFamily: "Poppins_700Bold", color: Colors.navy },
-
-  /* Continue Learning strip */
-  clSection: { paddingBottom: 10 },
-  clLabel: { fontSize: 11, fontFamily: "Poppins_700Bold", color: Colors.primary, textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: 20, marginBottom: 6 },
-  clRow: { paddingHorizontal: 20, gap: 8 },
-  clCapsule: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    backgroundColor: "#fff",
-    maxWidth: 200,
-  },
-  clDot: { width: 8, height: 8, borderRadius: 4 },
-  clTitle: { flex: 1, fontSize: 12, fontFamily: "Poppins_600SemiBold", color: Colors.navy },
-  clPct: { fontSize: 11, fontFamily: "Poppins_700Bold" },
 
   /* Search */
   searchWrap: {
