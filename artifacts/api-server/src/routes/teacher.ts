@@ -6,6 +6,7 @@ import {
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable, questionsTable, attendanceTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable,
+  testSubmissionsTable,
   auditLogsTable, topicNotesTable,
 } from "@workspace/db";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
@@ -401,6 +402,9 @@ router.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => 
     id: homeworkSubmissionsTable.id,
     homeworkId: homeworkSubmissionsTable.homeworkId,
     homeworkTitle: homeworkTable.title,
+    homeworkType: homeworkTable.homeworkType,
+    maxMarks: homeworkTable.maxMarks,
+    questionsJson: homeworkTable.questionsJson,
     studentId: homeworkSubmissionsTable.studentId,
     studentName: usersTable.name,
     answer: homeworkSubmissionsTable.answer,
@@ -414,7 +418,7 @@ router.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => 
     .innerJoin(usersTable, eq(homeworkSubmissionsTable.studentId, usersTable.id))
     .where(isAdmin ? undefined : eq(homeworkTable.teacherId, teacherId))
     .orderBy(desc(homeworkSubmissionsTable.submittedAt));
-  res.json(rows);
+  res.json(rows.map(r => ({ ...r, homeworkType: r.homeworkType ?? "writing" })));
 });
 
 router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) => {
@@ -424,6 +428,7 @@ router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) 
     id: assignmentSubmissionsTable.id,
     assignmentId: assignmentSubmissionsTable.assignmentId,
     assignmentTitle: assignmentsTable.title,
+    maxMarks: assignmentsTable.maxMarks,
     studentId: assignmentSubmissionsTable.studentId,
     studentName: usersTable.name,
     answer: assignmentSubmissionsTable.answer,
@@ -438,6 +443,37 @@ router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) 
     .where(isAdmin ? undefined : eq(assignmentsTable.teacherId, teacherId))
     .orderBy(desc(assignmentSubmissionsTable.submittedAt));
   res.json(rows);
+});
+
+router.get("/teacher/submissions/tests", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
+  const rows = await db.select({
+    id: testSubmissionsTable.id,
+    testId: testSubmissionsTable.testId,
+    testTitle: testsTable.title,
+    subjectName: subjectsTable.name,
+    grade: testsTable.grade,
+    totalQuestions: testsTable.totalQuestions,
+    studentId: testSubmissionsTable.studentId,
+    studentName: usersTable.name,
+    answers: testSubmissionsTable.answers,
+    score: testSubmissionsTable.score,
+    maxScore: testSubmissionsTable.maxScore,
+    submittedAt: testSubmissionsTable.submittedAt,
+  })
+    .from(testSubmissionsTable)
+    .innerJoin(testsTable, eq(testSubmissionsTable.testId, testsTable.id))
+    .innerJoin(subjectsTable, eq(testsTable.subjectId, subjectsTable.id))
+    .innerJoin(usersTable, eq(testSubmissionsTable.studentId, usersTable.id))
+    .where(isAdmin ? undefined : eq(testsTable.teacherId, teacherId))
+    .orderBy(desc(testSubmissionsTable.submittedAt));
+  res.json(rows.map(r => ({
+    ...r,
+    submittedAt: r.submittedAt.toISOString(),
+    score: r.score ?? null,
+    maxScore: r.maxScore ?? null,
+  })));
 });
 
 router.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async (req, res) => {

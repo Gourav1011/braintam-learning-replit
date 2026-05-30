@@ -126,17 +126,39 @@ router.post("/homework/:id/submit", requireAuth, async (req, res) => {
     return;
   }
 
+  // Auto-grade MCQ homework: right = 1 mark, wrong = 0
+  const [hw] = await db.select({
+    homeworkType: homeworkTable.homeworkType,
+    questionsJson: homeworkTable.questionsJson,
+  }).from(homeworkTable).where(eq(homeworkTable.id, idParsed.data.id));
+
+  let autoMarks: number | null = null;
+  let autoStatus = "submitted";
+  if (hw?.homeworkType === "mcq" && hw.questionsJson) {
+    try {
+      const questions = JSON.parse(hw.questionsJson) as Array<{ correctOption: number }>;
+      const selectedAnswers = JSON.parse(bodyParsed.data.answer) as number[];
+      let correct = 0;
+      for (let i = 0; i < questions.length; i++) {
+        if (selectedAnswers[i] !== undefined && selectedAnswers[i] === questions[i].correctOption) correct++;
+      }
+      autoMarks = correct;
+      autoStatus = "graded";
+    } catch { /* not parseable — leave as submitted */ }
+  }
+
   await db.insert(homeworkSubmissionsTable).values({
     homeworkId: idParsed.data.id,
     studentId,
     answer: bodyParsed.data.answer,
     attachmentUrl: bodyParsed.data.attachmentUrl ?? null,
-    status: "submitted",
+    status: autoStatus,
+    marks: autoMarks,
   });
 
   await recomputeAndSavePoints(studentId);
 
-  res.json({ success: true, message: "Homework submitted successfully!" });
+  res.json({ success: true, message: "Homework submitted successfully!", autoGraded: autoStatus === "graded", marks: autoMarks });
 });
 
 export default router;

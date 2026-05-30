@@ -25,6 +25,9 @@ interface Course { id: number; title: string; subjectName: string; subjectId: nu
 interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; chapterId: number | null; topicId: number | null; }
 interface Homework { id: number; title: string; subjectId: number; subjectName: string; grade: number; courseId: number | null; liveClassId: number | null; chapterId: number | null; topicId: number | null; dueDate: string; maxMarks: number; description: string | null; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
 interface Assignment { id: number; title: string; subjectName: string; grade: number; dueDate: string; description: string | null; maxMarks: number; attachmentUrl: string | null; }
+interface HwSubmission { id: number; homeworkId: number; homeworkTitle: string; homeworkType: string; maxMarks: number; questionsJson: string | null; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
+interface AsgnSubmission { id: number; assignmentId: number; assignmentTitle: string; maxMarks: number; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
+interface TestSubmission { id: number; testId: number; testTitle: string; subjectName: string; grade: number; totalQuestions: number; studentName: string; answers: string; score: number | null; maxScore: number | null; submittedAt: string; }
 interface Submission { id: number; homeworkTitle?: string; assignmentTitle?: string; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
 interface Subject { id: number; name: string; }
 interface DashStats { teacherName: string; totalCourses: number; totalStudents: number; upcomingLiveClasses: number; pendingHomework: number; }
@@ -73,6 +76,11 @@ export default function TeacherPage() {
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [hwSubmissions, setHwSubmissions] = useState<HwSubmission[]>([]);
+  const [asgnSubmissions, setAsgnSubmissions] = useState<AsgnSubmission[]>([]);
+  const [testSubmissions, setTestSubmissions] = useState<TestSubmission[]>([]);
+  const [gradeSubTab, setGradeSubTab] = useState<"mcq" | "written" | "tests" | "assignments">("mcq");
+  const [submDate, setSubmDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [tests, setTests] = useState<TeacherTest[]>([]);
@@ -138,12 +146,14 @@ export default function TeacherPage() {
   }, [isLoading, role]);
 
   async function loadAll() {
-    const [d, c, lc, hw, sub, subj, stu, tst, asgn, nts] = await Promise.all([
+    const [d, c, lc, hw, hwSub, asgnSub, testSub, subj, stu, tst, asgn, nts] = await Promise.all([
       apiFetch("/teacher/dashboard").then(r => r.ok ? r.json() : null),
       apiFetch("/teacher/courses").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/live-classes").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/homework").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/submissions/homework").then(r => r.ok ? r.json() : []),
+      apiFetch("/teacher/submissions/assignments").then(r => r.ok ? r.json() : []),
+      apiFetch("/teacher/submissions/tests").then(r => r.ok ? r.json() : []),
       apiFetch("/subjects").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/students").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/tests").then(r => r.ok ? r.json() : []),
@@ -151,7 +161,9 @@ export default function TeacherPage() {
       apiFetch("/teacher/notes").then(r => r.ok ? r.json() : []),
     ]);
     setDash(d); setCourses(c); setLiveClasses(lc); setHomework(hw);
-    setSubmissions(sub); setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn); setNotes(nts);
+    setSubmissions(hwSub);
+    setHwSubmissions(hwSub); setAsgnSubmissions(asgnSub); setTestSubmissions(testSub);
+    setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn); setNotes(nts);
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000); }
@@ -553,9 +565,17 @@ export default function TeacherPage() {
       ? `/teacher/submissions/homework/${grading.id}/grade`
       : `/teacher/submissions/assignments/${grading.id}/grade`;
     const r = await apiFetch(path, { method: "PATCH", body: JSON.stringify({ marks: Number(grading.marks), feedback: grading.feedback || null }) });
-    if (r.ok) { flash("Graded!"); setGrading(null); loadAll(); }
+    if (r.ok) { flash("✅ Graded!"); setGrading(null); loadAll(); }
     else flash("Failed to grade", false);
     setBusy(false);
+  }
+
+  // Helper: filter submissions by selected date (IST)
+  function matchesDate(isoTs: string, dateStr: string) {
+    const d = new Date(isoTs);
+    const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+    const y = ist.getUTCFullYear(), mo = String(ist.getUTCMonth() + 1).padStart(2, "0"), dy = String(ist.getUTCDate()).padStart(2, "0");
+    return `${y}-${mo}-${dy}` === dateStr;
   }
 
   // ── Attendance ─────────────────────────────────────────────────
@@ -1431,60 +1451,86 @@ export default function TeacherPage() {
 
         {/* ── Grade Submissions ── */}
         {tab === "submissions" && (() => {
-          // Parse MCQ answer JSON into readable format
-          function formatAnswer(answer: string): { isMcq: boolean; text: string } {
-            try {
-              const parsed = JSON.parse(answer);
-              if (Array.isArray(parsed)) {
-                const letters = ["A", "B", "C", "D", "E"];
-                const readable = parsed.map((v: number, i: number) => `Q${i+1}: ${letters[v] ?? v}`).join("  ·  ");
-                return { isMcq: true, text: readable };
-              }
-            } catch { /* not JSON */ }
-            return { isMcq: false, text: answer };
+          // ── helpers ────────────────────────────────────────────
+          function fmtDate(iso: string) {
+            return new Date(iso).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
           }
+          function mcqBreakdown(answer: string, questionsJson: string | null): { correct: number; wrong: number; total: number; rows: { q: number; selected: number; correct: number; ok: boolean }[] } | null {
+            try {
+              const selected = JSON.parse(answer) as number[];
+              if (!Array.isArray(selected)) return null;
+              if (!questionsJson) return { correct: 0, wrong: 0, total: selected.length, rows: [] };
+              const qs = JSON.parse(questionsJson) as Array<{ correctOption: number }>;
+              let correct = 0;
+              const rows = selected.map((sel, i) => {
+                const ok = sel === qs[i]?.correctOption;
+                if (ok) correct++;
+                return { q: i + 1, selected: sel, correct: qs[i]?.correctOption ?? -1, ok };
+              });
+              return { correct, wrong: selected.length - correct, total: selected.length, rows };
+            } catch { return null; }
+          }
+          const LETTERS = ["A", "B", "C", "D", "E"];
 
-          const filtered = submissions.filter(s => {
-            const matchSearch = !submSearch.trim() ||
-              s.studentName.toLowerCase().includes(submSearch.toLowerCase()) ||
-              (s.homeworkTitle ?? s.assignmentTitle ?? "").toLowerCase().includes(submSearch.toLowerCase());
-            const matchStatus = submTypeFilter === "all" || s.status === submTypeFilter;
-            return matchSearch && matchStatus;
-          });
+          // ── date-filtered slices ────────────────────────────────
+          const mcqSubs   = hwSubmissions.filter(s => s.homeworkType === "mcq"     && (submDate ? matchesDate(s.submittedAt, submDate) : true));
+          const writSubs  = hwSubmissions.filter(s => s.homeworkType !== "mcq"     && (submDate ? matchesDate(s.submittedAt, submDate) : true));
+          const testSubs  = testSubmissions.filter(s =>                               submDate ? matchesDate(s.submittedAt, submDate) : true);
+          const asgnSubs  = asgnSubmissions.filter(s =>                               submDate ? matchesDate(s.submittedAt, submDate) : true);
+
+          const pendingWritten = writSubs.filter(s => s.status !== "graded").length;
+          const pendingAsgn    = asgnSubs.filter(s => s.status !== "graded").length;
+          const totalPending   = pendingWritten + pendingAsgn;
+
+          const SUBTABS: { key: typeof gradeSubTab; label: string; count?: number }[] = [
+            { key: "mcq",         label: "MCQs",        count: mcqSubs.length },
+            { key: "written",     label: "Written",      count: writSubs.length },
+            { key: "tests",       label: "Tests",        count: testSubs.length },
+            { key: "assignments", label: "Assignments",  count: asgnSubs.length },
+          ];
 
           return (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold" style={{ color: NAVY }}>Grade Work</h3>
-                <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-600 font-semibold">{submissions.filter(s => s.status !== "graded").length} pending</span>
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input
-                  placeholder="🔍 Search student or homework name…"
-                  value={submSearch}
-                  onChange={e => setSubmSearch(e.target.value)}
-                  className="flex-1"
-                />
-                <div className="flex gap-1">
-                  {(["all", "pending", "graded"] as const).map(f => (
-                    <button key={f}
-                      onClick={() => setSubmTypeFilter(f)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all capitalize ${submTypeFilter === f ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
-                      style={submTypeFilter === f ? { background: NAVY, borderColor: NAVY } : {}}>
-                      {f}
-                    </button>
-                  ))}
+              {/* Header row */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h3 className="font-bold text-lg" style={{ color: NAVY }}>Grade Work</h3>
+                <div className="flex items-center gap-2">
+                  {totalPending > 0 && <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-600 font-semibold">{totalPending} pending</span>}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-500">Date:</span>
+                    <input
+                      type="date"
+                      value={submDate}
+                      onChange={e => setSubmDate(e.target.value)}
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      style={{ colorScheme: "light" }}
+                    />
+                    {submDate && <button onClick={() => setSubmDate("")} className="text-xs text-gray-400 hover:text-gray-600">All</button>}
+                  </div>
                 </div>
               </div>
 
-              {/* Grade form */}
+              {/* Sub-tabs */}
+              <div className="flex gap-1 flex-wrap">
+                {SUBTABS.map(st => (
+                  <button key={st.key}
+                    onClick={() => { setGradeSubTab(st.key); setGrading(null); }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all flex items-center gap-1 ${gradeSubTab === st.key ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
+                    style={gradeSubTab === st.key ? { background: NAVY, borderColor: NAVY } : {}}>
+                    {st.label}
+                    {st.count !== undefined && st.count > 0 && (
+                      <span className={`rounded-full px-1.5 text-[10px] font-bold ${gradeSubTab === st.key ? "bg-white/20" : "bg-gray-100 text-gray-600"}`}>{st.count}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Grade form (written & assignments) */}
               {grading && (
-                <div className="bg-white rounded-2xl p-4 border border-orange-200 shadow-sm space-y-3">
-                  <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Grade Submission</h4>
+                <div className="bg-white rounded-2xl p-4 border-2 shadow-sm space-y-3" style={{ borderColor: ORANGE }}>
+                  <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Enter Marks</h4>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <Input type="number" placeholder="Marks *" value={grading.marks} onChange={e => setGrading(p => p ? { ...p, marks: e.target.value } : null)} />
+                    <Input type="number" min="0" placeholder="Marks *" value={grading.marks} onChange={e => setGrading(p => p ? { ...p, marks: e.target.value } : null)} />
                     <Input placeholder="Feedback (optional)" value={grading.feedback} onChange={e => setGrading(p => p ? { ...p, feedback: e.target.value } : null)} />
                   </div>
                   <div className="flex gap-2">
@@ -1494,44 +1540,131 @@ export default function TeacherPage() {
                 </div>
               )}
 
-              <div className="space-y-3">
-                {filtered.map(s => {
-                  const fmt = formatAnswer(s.answer);
-                  return (
+              {/* ── MCQ tab ── */}
+              {gradeSubTab === "mcq" && (
+                <div className="space-y-3">
+                  {mcqSubs.length === 0 && <div className="py-10 text-center text-gray-400 text-sm">No MCQ submissions{submDate ? " on this date" : ""}</div>}
+                  {mcqSubs.map(s => {
+                    const bd = mcqBreakdown(s.answer, s.questionsJson);
+                    return (
+                      <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div>
+                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <span className="ml-2 text-xs text-gray-400">{s.homeworkTitle}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{fmtDate(s.submittedAt)}</span>
+                            {s.marks !== null && (
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{s.marks}/{s.maxMarks} marks</span>
+                            )}
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600 font-semibold">Auto-graded ✓</span>
+                          </div>
+                        </div>
+                        {/* Score bar */}
+                        {bd && (
+                          <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                            <div className="flex gap-4 text-xs font-semibold">
+                              <span className="text-green-600">✓ Correct: {bd.correct}</span>
+                              <span className="text-red-500">✗ Wrong: {bd.wrong}</span>
+                              <span className="text-gray-500">Total: {bd.total}</span>
+                            </div>
+                            {bd.rows.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {bd.rows.map(r => (
+                                  <span key={r.q} className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${r.ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                                    Q{r.q}: {LETTERS[r.selected] ?? "?"} {!r.ok && `(✓${LETTERS[r.correct] ?? "?"})`}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── Written tab ── */}
+              {gradeSubTab === "written" && (
+                <div className="space-y-3">
+                  {writSubs.length === 0 && <div className="py-10 text-center text-gray-400 text-sm">No written submissions{submDate ? " on this date" : ""}</div>}
+                  {writSubs.map(s => (
                     <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}`}>{s.status}</span>
-                            {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks} marks</span>}
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700"}`}>{s.status}</span>
+                            {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks}/{s.maxMarks} marks</span>}
                           </div>
-                          <div className="text-xs text-gray-400 mt-0.5">{s.homeworkTitle ?? s.assignmentTitle} · {new Date(s.submittedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</div>
-                          {/* Answer display */}
-                          {fmt.isMcq ? (
-                            <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
-                              <div className="text-xs font-semibold text-blue-600 mb-1">📝 MCQ Answers</div>
-                              <div className="text-xs text-blue-800 font-mono">{fmt.text}</div>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-600 mt-1.5 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap">{fmt.text}</div>
-                          )}
-                          {s.feedback && <div className="text-xs text-blue-600 mt-1 italic">Feedback: {s.feedback}</div>}
+                          <div className="text-xs text-gray-400">{s.homeworkTitle} · {fmtDate(s.submittedAt)}</div>
+                          <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap max-h-28 overflow-y-auto">{s.answer}</div>
+                          {s.feedback && <div className="text-xs text-blue-600 italic">Feedback: {s.feedback}</div>}
                         </div>
                         {s.status !== "graded" && (
                           <Button size="sm" onClick={() => setGrading({ id: s.id, marks: "", feedback: "", type: "homework" })} className="text-white flex-shrink-0" style={{ background: ORANGE }}>Grade</Button>
                         )}
                       </div>
                     </div>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <div className="py-12 text-center">
-                    <CheckCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">{submissions.length === 0 ? "No submissions yet" : "No results match your filters"}</p>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Tests tab ── */}
+              {gradeSubTab === "tests" && (
+                <div className="space-y-3">
+                  {testSubs.length === 0 && <div className="py-10 text-center text-gray-400 text-sm">No test submissions{submDate ? " on this date" : ""}</div>}
+                  {testSubs.map(s => {
+                    const pct = s.maxScore && s.maxScore > 0 ? Math.round((s.score ?? 0) / s.maxScore * 100) : null;
+                    return (
+                      <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div>
+                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <span className="ml-2 text-xs text-gray-400">{s.testTitle} · Grade {s.grade}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{fmtDate(s.submittedAt)}</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pct !== null && pct >= 50 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                              {s.score ?? 0}/{s.maxScore ?? "?"} {pct !== null ? `(${pct}%)` : ""}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 font-semibold">Auto-graded ✓</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">{s.subjectName}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── Assignments tab ── */}
+              {gradeSubTab === "assignments" && (
+                <div className="space-y-3">
+                  {asgnSubs.length === 0 && <div className="py-10 text-center text-gray-400 text-sm">No assignment submissions{submDate ? " on this date" : ""}</div>}
+                  {asgnSubs.map(s => (
+                    <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700"}`}>{s.status}</span>
+                            {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks}/{s.maxMarks} marks</span>}
+                          </div>
+                          <div className="text-xs text-gray-400">{s.assignmentTitle} · {fmtDate(s.submittedAt)}</div>
+                          <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap max-h-28 overflow-y-auto">{s.answer}</div>
+                          {s.feedback && <div className="text-xs text-blue-600 italic">Feedback: {s.feedback}</div>}
+                        </div>
+                        {s.status !== "graded" && (
+                          <Button size="sm" onClick={() => setGrading({ id: s.id, marks: "", feedback: "", type: "assignment" })} className="text-white flex-shrink-0" style={{ background: ORANGE }}>Grade</Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })()}
