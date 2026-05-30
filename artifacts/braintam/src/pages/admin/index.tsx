@@ -2073,24 +2073,41 @@ function AdminPageInner() {
                     </div>
                   ) : <div />}
 
+                  {/* Grade — auto-filled by course, or manual if no course */}
+                  <Input
+                    placeholder="Grade (1–10) *"
+                    type="number" min="1" max="10"
+                    value={lcForm.grade}
+                    onChange={e => setLcForm(p => ({ ...p, grade: e.target.value }))}
+                    readOnly={!!lcForm.courseId}
+                    className={lcForm.courseId ? "bg-gray-50" : ""}
+                  />
+
                   <SearchableSelect
                     options={[
                       { value: "none", label: "No specific teacher" },
                       ...teachers.map(t => ({ value: String(t.id), label: t.name })),
                     ]}
-                    value={lcForm.teacherId}
-                    onValueChange={v => setLcForm(p => ({ ...p, teacherId: v, teacher: teachers.find(t => String(t.id) === v)?.name ?? "" }))}
-                    placeholder="Assign teacher"
+                    value={lcForm.teacherId || "none"}
+                    onValueChange={v => {
+                      const name = v !== "none" ? (teachers.find(t => String(t.id) === v)?.name ?? "") : "";
+                      setLcForm(p => ({ ...p, teacherId: v, teacher: name }));
+                    }}
+                    placeholder="Assign teacher (optional)"
                     searchPlaceholder="Search teachers…"
                   />
-                  <Input placeholder="Teacher name *" value={lcForm.teacher} onChange={e => setLcForm(p => ({ ...p, teacher: e.target.value }))} />
+                  <Input
+                    placeholder="Teacher name *"
+                    value={lcForm.teacher}
+                    onChange={e => setLcForm(p => ({ ...p, teacher: e.target.value }))}
+                  />
                   <Input type="datetime-local" value={lcForm.scheduledAt} onChange={e => setLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
                   <Input placeholder="Duration (minutes)" type="number" min="15" value={lcForm.duration} onChange={e => setLcForm(p => ({ ...p, duration: e.target.value }))} />
                   <Input placeholder="Join link (Google Meet / Zoom)" value={lcForm.joinUrl} onChange={e => setLcForm(p => ({ ...p, joinUrl: e.target.value }))} className="sm:col-span-2" />
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={createLiveClass}
-                    disabled={busy || !lcForm.title || !lcForm.courseId || !lcForm.scheduledAt || (!lcForm.teacher && !lcForm.teacherId)}
+                    disabled={busy || !lcForm.title || !lcForm.scheduledAt || !lcForm.teacher || (!lcForm.grade && !lcForm.courseId)}
                     className="text-white" style={{ background: ORANGE }}>Schedule</Button>
                   <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); }}>Cancel</Button>
                 </div>
