@@ -944,6 +944,9 @@ components:
           type: ["number", "null"]
         maxMarks:
           type: ["number", "null"]
+        submittedAnswer:
+          type: ["string", "null"]
+          description: "Student's submitted answer; JSON number array for MCQ"
 
     HomeworkSubmission:
       type: object

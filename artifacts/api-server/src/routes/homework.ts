@@ -50,14 +50,14 @@ router.get("/homework", attachUser, async (req, res) => {
       params.subjectId ? eq(homeworkTable.subjectId, params.subjectId) : undefined,
     ));
 
-  let submissionMap: Record<number, { status: string; marks: number | null; feedback: string | null }> = {};
+  let submissionMap: Record<number, { status: string; marks: number | null; feedback: string | null; answer: string | null }> = {};
   if (user) {
     const subs = await db
-      .select({ homeworkId: homeworkSubmissionsTable.homeworkId, status: homeworkSubmissionsTable.status, marks: homeworkSubmissionsTable.marks, feedback: homeworkSubmissionsTable.feedback })
+      .select({ homeworkId: homeworkSubmissionsTable.homeworkId, status: homeworkSubmissionsTable.status, marks: homeworkSubmissionsTable.marks, feedback: homeworkSubmissionsTable.feedback, answer: homeworkSubmissionsTable.answer })
       .from(homeworkSubmissionsTable)
       .where(eq(homeworkSubmissionsTable.studentId, user.id));
     for (const s of subs) {
-      submissionMap[s.homeworkId] = { status: s.status, marks: s.marks ?? null, feedback: s.feedback ?? null };
+      submissionMap[s.homeworkId] = { status: s.status, marks: s.marks ?? null, feedback: s.feedback ?? null, answer: s.answer };
     }
   }
 
@@ -73,6 +73,7 @@ router.get("/homework", attachUser, async (req, res) => {
     status: submissionMap[h.id]?.status ?? "pending",
     marks: submissionMap[h.id]?.marks ?? null,
     feedback: submissionMap[h.id]?.feedback ?? null,
+    submittedAnswer: submissionMap[h.id]?.answer ?? null,
     maxMarks: h.maxMarks,
   })));
 });

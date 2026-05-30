@@ -225,6 +225,11 @@ export interface Homework {
   marks?: number | null;
   /** @nullable */
   maxMarks?: number | null;
+  /**
+     * Student's submitted answer; JSON number array for MCQ
+     * @nullable
+     */
+  submittedAnswer?: string | null;
 }
 
 export interface HomeworkSubmission {

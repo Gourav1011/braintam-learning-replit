@@ -44,6 +44,7 @@ type ExtendedHw = {
   homeworkType?: string | null;
   driveLink?: string | null;
   questionsJson?: string | null;
+  submittedAnswer?: string | null;
 };
 
 type HwQuestion = { text: string; options: string[]; correctOption: number };
@@ -66,6 +67,10 @@ export default function HomeworkPage() {
   const [mcqAnswers, setMcqAnswers] = useState<Record<number, number>>({});
   const [currentQ, setCurrentQ] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+
+  // Review mode for submitted MCQ homework
+  const [reviewing, setReviewing] = useState<ExtendedHw | null>(null);
+  const [reviewQ, setReviewQ] = useState(0);
 
   const queryClient = useQueryClient();
   const params = { subjectId: subject !== "all" ? Number(subject) : undefined };
@@ -185,7 +190,7 @@ export default function HomeworkPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
                   data-testid={`homework-card-${hw.id}`}
-                  className={isExpired || isDone ? "pointer-events-none select-none" : ""}
+                  className={isExpired || (isDone && !isMcqHw) ? "pointer-events-none select-none" : ""}
                 >
                   <Card className={`border-2 transition-all ${
                     isExpired
@@ -296,6 +301,20 @@ export default function HomeworkPage() {
                               style={{ background: isMcqHw ? NAVY : ORANGE, color: "white" }}
                             >
                               {isMcqHw ? "📝 Start Quiz" : <><Send className="w-4 h-4 mr-1.5" />Submit Homework</>}
+                            </Button>
+                          </div>
+                        )}
+                        {/* Review Answers button for submitted MCQ homework */}
+                        {isDone && isMcqHw && (
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setReviewing(hw); setReviewQ(0); }}
+                              className="gap-1.5 text-sm border-2"
+                              style={{ borderColor: NAVY, color: NAVY }}
+                            >
+                              <CheckCircle className="w-4 h-4" /> Review Answers
                             </Button>
                           </div>
                         )}
@@ -451,6 +470,139 @@ export default function HomeworkPage() {
             )}
           </div>
         )}
+
+        {/* ── MCQ Review overlay (read-only, shows correct/wrong) ── */}
+        {reviewing && (() => {
+          const rqs = parsedQuestions(reviewing.questionsJson);
+          let rAnswers: number[] = [];
+          try { rAnswers = JSON.parse(reviewing.submittedAnswer ?? "[]"); } catch { rAnswers = []; }
+          const rq = rqs[reviewQ];
+          if (!rq) return null;
+          const totalCorrect = rqs.filter((q, i) => rAnswers[i] === q.correctOption).length;
+          return (
+            <div className="fixed inset-0 z-50 flex flex-col bg-white" style={{ overscrollBehavior: "contain" }}>
+              {/* Header */}
+              <div className="flex-shrink-0 px-4 pt-4 pb-3" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-white/70 text-xs font-semibold uppercase tracking-wider">Review Answers</p>
+                  <button onClick={() => setReviewing(null)} className="text-white/60 hover:text-white p-1 -mr-1">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <h2 className="text-white font-bold text-sm leading-snug line-clamp-2">{reviewing.title}</h2>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-white/80 text-xs">Q {reviewQ + 1}<span className="text-white/40"> / {rqs.length}</span></span>
+                  <span className="text-white/80 text-xs font-semibold">{totalCorrect}/{rqs.length} correct</span>
+                </div>
+                <Progress value={(totalCorrect / rqs.length) * 100} className="mt-1.5 h-1 bg-white/20" />
+              </div>
+
+              {/* Scrollable question */}
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={reviewQ}
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-3"
+                  >
+                    <p className="font-semibold text-sm leading-relaxed">
+                      <span className="font-black mr-1.5" style={{ color: ORANGE }}>Q{reviewQ + 1}.</span>
+                      {rq.text}
+                    </p>
+
+                    <div className="space-y-2">
+                      {rq.options.map((opt: string, oi: number) => {
+                        const isChosen = rAnswers[reviewQ] === oi;
+                        const isCorrect = rq.correctOption === oi;
+                        let border = "border-gray-200 bg-white";
+                        let labelStyle = "bg-gray-100 text-gray-500";
+                        let textStyle = "text-gray-600";
+                        if (isCorrect) {
+                          border = "border-green-500 bg-green-50";
+                          labelStyle = "bg-green-500 text-white";
+                          textStyle = "text-green-800 font-semibold";
+                        } else if (isChosen && !isCorrect) {
+                          border = "border-red-400 bg-red-50";
+                          labelStyle = "bg-red-400 text-white";
+                          textStyle = "text-red-700 font-semibold";
+                        }
+                        return (
+                          <div key={oi} className={`w-full px-3 py-2.5 rounded-xl border-2 flex items-center gap-2.5 ${border}`}>
+                            <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-black flex-shrink-0 ${labelStyle}`}>
+                              {String.fromCharCode(65 + oi)}
+                            </span>
+                            <span className={`text-sm flex-1 ${textStyle}`}>{opt}</span>
+                            {isCorrect && <span className="text-green-600 text-xs font-bold">✓</span>}
+                            {isChosen && !isCorrect && <span className="text-red-500 text-xs font-bold">✗</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Correct answer callout for wrong answers */}
+                    {rAnswers[reviewQ] !== undefined && rAnswers[reviewQ] !== rq.correctOption && (
+                      <div className="mt-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700 font-semibold flex items-center gap-2">
+                        <span className="text-green-500 text-base">✓</span>
+                        Correct answer: <span className="font-black">{String.fromCharCode(65 + rq.correctOption)}. {rq.options[rq.correctOption]}</span>
+                      </div>
+                    )}
+                    {rAnswers[reviewQ] === rq.correctOption && (
+                      <div className="mt-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700 font-semibold flex items-center gap-2">
+                        <span className="text-green-500 text-base">🎉</span>
+                        Correct! Well done.
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Sticky footer */}
+              <div className="flex-shrink-0 border-t bg-white px-4 py-3 flex items-center justify-between gap-2">
+                <Button variant="outline" size="sm" onClick={() => setReviewQ(q => Math.max(0, q - 1))} disabled={reviewQ === 0} className="gap-1 text-xs h-9 px-3">
+                  <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                </Button>
+
+                <div className="flex gap-1 overflow-x-auto max-w-[40vw] scrollbar-none">
+                  {rqs.map((q, qi) => {
+                    const chosen = rAnswers[qi];
+                    const correct = q.correctOption;
+                    const isRight = chosen === correct;
+                    const isWrong = chosen !== undefined && chosen !== correct;
+                    return (
+                      <button
+                        key={qi}
+                        onClick={() => setReviewQ(qi)}
+                        className={`w-6 h-6 flex-shrink-0 rounded-md text-xs font-bold transition-all ${
+                          qi === reviewQ
+                            ? "ring-2 ring-offset-1 ring-navy"
+                            : isRight ? "bg-green-500 text-white"
+                            : isWrong ? "bg-red-400 text-white"
+                            : "bg-gray-100 text-gray-400"
+                        }`}
+                        style={qi === reviewQ ? { background: NAVY, color: "#fff" } : {}}
+                      >
+                        {qi + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {reviewQ < rqs.length - 1 ? (
+                  <Button size="sm" onClick={() => setReviewQ(q => Math.min(rqs.length - 1, q + 1))} style={{ background: NAVY, color: "white" }} className="gap-1 text-xs h-9 px-3">
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => setReviewing(null)} className="text-xs h-9 px-3">
+                    Done
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Writing Homework Dialog ── */}
         {submitting && !isMcq && (
