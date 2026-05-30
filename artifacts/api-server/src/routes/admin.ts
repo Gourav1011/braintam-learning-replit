@@ -535,10 +535,15 @@ router.get("/admin/live-classes", adminOnly, async (req, res) => {
 router.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { status, joinUrl } = req.body;
+  const { status, joinUrl, title, teacher, grade, scheduledAt, duration } = req.body;
   const updates: Partial<typeof liveClassesTable.$inferInsert> = {};
   if (status !== undefined) updates.status = status;
   if (joinUrl !== undefined) updates.joinUrl = joinUrl;
+  if (title !== undefined) updates.title = title;
+  if (teacher !== undefined) updates.teacher = teacher;
+  if (grade !== undefined) updates.grade = Number(grade);
+  if (scheduledAt !== undefined) updates.scheduledAt = new Date(scheduledAt);
+  if (duration !== undefined) updates.duration = Number(duration);
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [lc] = await db.update(liveClassesTable).set(updates).where(eq(liveClassesTable.id, id)).returning();
   if (!lc) { res.status(404).json({ error: "Not found" }); return; }

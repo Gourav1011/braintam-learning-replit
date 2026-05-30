@@ -676,6 +676,7 @@ function AdminPageInner() {
   const [showBannerForm, setShowBannerForm] = useState(false);
   const [showLcForm, setShowLcForm] = useState(false);
   const [editingLc, setEditingLc] = useState<LiveClassItem | null>(null);
+  const [editingLcFull, setEditingLcFull] = useState<{ id: number; title: string; teacher: string; grade: string; scheduledAt: string; duration: string; joinUrl: string } | null>(null);
   const [auditSearch, setAuditSearch] = useState("");
   const [auditRoleFilter, setAuditRoleFilter] = useState("all");
 
@@ -1020,6 +1021,25 @@ function AdminPageInner() {
     const r = await apiFetch(`/admin/live-classes/${id}`, { method: "PATCH", body: JSON.stringify({ joinUrl }) });
     if (r.ok) { flash("Join link updated!"); setEditingLc(null); loadAll(); }
     else flash("Failed to update link", false);
+  }
+
+  async function updateLiveClassFull() {
+    if (!editingLcFull) return;
+    setBusy(true);
+    const r = await apiFetch(`/admin/live-classes/${editingLcFull.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: editingLcFull.title,
+        teacher: editingLcFull.teacher,
+        grade: Number(editingLcFull.grade),
+        scheduledAt: editingLcFull.scheduledAt,
+        duration: Number(editingLcFull.duration),
+        joinUrl: editingLcFull.joinUrl || null,
+      }),
+    });
+    if (r.ok) { flash("Live class updated!"); setEditingLcFull(null); loadAll(); }
+    else { const d = await r.json(); flash(d.error ?? "Failed to update", false); }
+    setBusy(false);
   }
 
   async function deleteLiveClass(id: number) { await apiFetch(`/admin/live-classes/${id}`, { method: "DELETE" }); loadAll(); }
@@ -2176,10 +2196,77 @@ function AdminPageInner() {
                           <SelectItem value="ended">End Class</SelectItem>
                         </SelectContent>
                       </Select>
+                      <button
+                        onClick={() => {
+                          setEditingLcFull({
+                            id: lc.id,
+                            title: lc.title,
+                            teacher: lc.teacher,
+                            grade: String(lc.grade),
+                            scheduledAt: new Date(lc.scheduledAt).toISOString().slice(0, 16),
+                            duration: String(lc.duration),
+                            joinUrl: lc.joinUrl ?? "",
+                          });
+                          setEditingLc(null);
+                        }}
+                        className="text-blue-400 hover:text-blue-600 transition-colors p-1" title="Edit">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       <button onClick={() => confirm({ title: "Delete Live Class", message: `Delete "${lc.title}"?`, confirmLabel: "Delete", danger: true, onConfirm: () => deleteLiveClass(lc.id) })}
                         className="text-red-400 hover:text-red-600 transition-colors p-1"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
+
+                  {/* ── Full edit form ── */}
+                  {editingLcFull?.id === lc.id && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        className="sm:col-span-2 h-8 text-xs"
+                        placeholder="Title *"
+                        value={editingLcFull.title}
+                        onChange={e => setEditingLcFull(p => p && ({ ...p, title: e.target.value }))}
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="Teacher name *"
+                        value={editingLcFull.teacher}
+                        onChange={e => setEditingLcFull(p => p && ({ ...p, teacher: e.target.value }))}
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="Grade (1–10)"
+                        type="number" min="1" max="10"
+                        value={editingLcFull.grade}
+                        onChange={e => setEditingLcFull(p => p && ({ ...p, grade: e.target.value }))}
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        type="datetime-local"
+                        value={editingLcFull.scheduledAt}
+                        onChange={e => setEditingLcFull(p => p && ({ ...p, scheduledAt: e.target.value }))}
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="Duration (minutes)"
+                        type="number" min="15"
+                        value={editingLcFull.duration}
+                        onChange={e => setEditingLcFull(p => p && ({ ...p, duration: e.target.value }))}
+                      />
+                      <Input
+                        className="sm:col-span-2 h-8 text-xs"
+                        placeholder="Join link (Google Meet / Zoom)"
+                        value={editingLcFull.joinUrl}
+                        onChange={e => setEditingLcFull(p => p && ({ ...p, joinUrl: e.target.value }))}
+                      />
+                      <div className="sm:col-span-2 flex gap-2">
+                        <Button size="sm" className="h-7 text-xs text-white px-4" style={{ background: NAVY }}
+                          disabled={busy || !editingLcFull.title || !editingLcFull.teacher}
+                          onClick={updateLiveClassFull}>Save Changes</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs"
+                          onClick={() => setEditingLcFull(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {liveClassItems.length === 0 && !showLcForm && (
