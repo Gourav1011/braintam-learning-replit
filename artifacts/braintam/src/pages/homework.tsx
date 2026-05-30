@@ -195,8 +195,8 @@ export default function HomeworkPage() {
                           ? "border-red-300 bg-red-50/30"
                           : "border-border"
                   }`}>
-                    <CardContent className="p-5 flex items-start gap-5">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    <CardContent className="p-5 flex items-start gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
                         isExpired || isDone ? "bg-gray-200" :
                         isUrgent ? "bg-red-100" : "bg-yellow-100"
                       }`}>
@@ -207,25 +207,31 @@ export default function HomeworkPage() {
                             : <FileText className={`w-6 h-6 ${isUrgent ? "text-red-600" : "text-yellow-600"}`} />
                         }
                       </div>
+
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className={`font-bold text-base ${isExpired || isDone ? "text-gray-400" : ""}`}>{hw.title}</h3>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Title row with badges */}
+                        <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                          <h3 className={`font-bold text-base leading-snug ${isExpired || isDone ? "text-gray-400" : ""}`}>
+                            {hw.title}
+                          </h3>
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             {isMcqHw && (
                               <Badge className="text-xs border bg-blue-50 text-blue-600 border-blue-200">📝 {hwQuestions.length} MCQs</Badge>
                             )}
-                            {hw.homeworkType === "writing" && (
+                            {!isMcqHw && hw.homeworkType === "writing" && (
                               <Badge className="text-xs border bg-orange-50 text-orange-600 border-orange-200">✍ Writing</Badge>
                             )}
                             {isExpired && (
                               <Badge className="text-xs border bg-gray-100 text-gray-400 border-gray-200">Expired</Badge>
                             )}
-                            <Badge className={`text-xs border flex-shrink-0 ${statusColors[hw.status] ?? ""}`}>
+                            <Badge className={`text-xs border ${statusColors[hw.status] ?? ""}`}>
                               {hw.status.charAt(0).toUpperCase() + hw.status.slice(1)}
                             </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+
+                        {/* Meta row */}
+                        <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
                           <Badge variant="outline" className="text-xs">{hw.subjectName}</Badge>
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
@@ -246,7 +252,13 @@ export default function HomeworkPage() {
                             </span>
                           ) : null}
                         </div>
-                        {hw.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{hw.description}</p>}
+
+                        {/* Description */}
+                        {hw.description && (
+                          <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">{hw.description}</p>
+                        )}
+
+                        {/* Drive link */}
                         {hw.driveLink && hw.homeworkType === "writing" && !isDone && (
                           <a
                             href={hw.driveLink}
@@ -258,10 +270,12 @@ export default function HomeworkPage() {
                             <ExternalLink className="w-3 h-3" /> View homework resource
                           </a>
                         )}
+
+                        {/* Score / status */}
                         {hw.marks !== null && hw.marks !== undefined && (
-                          <div className="mt-2 text-sm font-semibold text-green-600">
+                          <p className="mt-1.5 text-sm font-semibold text-green-600">
                             Score: {hw.marks}/{hw.maxMarks}
-                          </div>
+                          </p>
                         )}
                         {isExpired && (
                           <p className="text-xs text-gray-400 mt-1">Expired — submission closed</p>
@@ -271,17 +285,20 @@ export default function HomeworkPage() {
                             {hw.status === "graded" ? "Graded by teacher" : "Submitted — awaiting review"}
                           </p>
                         )}
+
+                        {/* Submit / Start Quiz button — below content, right-aligned */}
+                        {hw.status === "pending" && !isExpired && (
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              onClick={() => openSubmit(hw)}
+                              data-testid={`submit-hw-${hw.id}`}
+                              style={{ background: isMcqHw ? NAVY : ORANGE, color: "white" }}
+                            >
+                              {isMcqHw ? "📝 Start Quiz" : <><Send className="w-4 h-4 mr-1.5" />Submit Homework</>}
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      {hw.status === "pending" && !isExpired && (
-                        <Button
-                          onClick={() => openSubmit(hw)}
-                          className="flex-shrink-0"
-                          data-testid={`submit-hw-${hw.id}`}
-                          style={{ background: isMcqHw ? NAVY : ORANGE, color: "white" }}
-                        >
-                          {isMcqHw ? "📝 Start Quiz" : <><Send className="w-4 h-4 mr-1" />Submit</>}
-                        </Button>
-                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
