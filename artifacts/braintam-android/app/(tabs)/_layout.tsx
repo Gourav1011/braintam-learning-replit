@@ -1,4 +1,4 @@
-import { Platform, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Platform, View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { Tabs, router, useNavigation } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,9 +32,11 @@ function AppHeader() {
           </TouchableOpacity>
         ) : null}
         <View style={styles.headerBrand}>
-          <View style={styles.logoMark}>
-            <Text style={styles.logoMarkText}>B</Text>
-          </View>
+          <Image
+            source={require("../../../../attached_assets/transparent_braintam_logo_1779010882793.png")}
+            style={styles.logoImg}
+            resizeMode="contain"
+          />
           <Text style={styles.logoText}>
             <Text style={styles.logoNavy}>Brain</Text>
             <Text style={styles.logoOrange}>tam</Text>
@@ -154,17 +156,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerBrand: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoMark: {
-    width: 90,
-    height: 90,
-    borderRadius: 22,
-    backgroundColor: Colors.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoMarkText: { color: "#fff", fontSize: 48, fontFamily: "Poppins_700Bold" },
-  logoText: { fontSize: 54 },
+  headerBrand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  logoImg: { width: 36, height: 36 },
+  logoText: { fontSize: 22, lineHeight: 28 },
   logoNavy: { color: Colors.navy, fontFamily: "Poppins_700Bold" },
   logoOrange: { color: Colors.primary, fontFamily: "Poppins_700Bold" },
   bellBtn: {

@@ -166,8 +166,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex w-full bg-background">
         <Sidebar className="border-r bg-card">
           <SidebarHeader className="p-4 border-b">
-            <div className="flex items-center gap-3">
-              <img src={braintamLogo} alt="Braintam Logo" className="w-8 h-8 object-contain" />
+            <div className="flex items-center gap-2">
+              <img src={braintamLogo} alt="Braintam Logo" className="h-10 w-auto object-contain" />
               <span className="font-bold text-xl text-primary">Braintam</span>
             </div>
           </SidebarHeader>
@@ -251,9 +251,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1 hidden md:block" />
 
-            <Link href="/dashboard" className="flex items-center gap-2 text-sm font-semibold text-primary hover:opacity-80 transition-opacity">
-              <img src={braintamLogo} alt="Braintam" className="w-6 h-6 object-contain" />
-              <span className="hidden sm:inline">Braintam</span>
+            <Link href="/dashboard" className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:opacity-80 transition-opacity">
+              <img src={braintamLogo} alt="Braintam" className="h-9 w-auto object-contain" />
+              <span>Braintam</span>
             </Link>
           </header>
 
