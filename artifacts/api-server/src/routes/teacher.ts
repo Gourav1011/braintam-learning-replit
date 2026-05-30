@@ -555,6 +555,33 @@ router.delete("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Test detail & status ──────────────────────────────────────────
+router.get("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [test] = await db.select().from(testsTable).where(eq(testsTable.id, id));
+  if (!test) { res.status(404).json({ error: "Not found" }); return; }
+  if (test.teacherId !== req.authUser!.id && req.authUser!.role !== "admin") {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
+  const questions = await db.select().from(questionsTable)
+    .where(eq(questionsTable.testId, id))
+    .orderBy(questionsTable.order);
+  res.json({ ...test, scheduledAt: test.scheduledAt.toISOString(), createdAt: test.createdAt.toISOString(), questions });
+});
+
+router.patch("/teacher/tests/:id/status", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { status } = req.body;
+  if (!["upcoming", "active", "completed"].includes(status)) {
+    res.status(400).json({ error: "Invalid status" }); return;
+  }
+  const [updated] = await db.update(testsTable).set({ status }).where(eq(testsTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ...updated, scheduledAt: updated.scheduledAt.toISOString(), createdAt: updated.createdAt.toISOString() });
+});
+
 // ── Live class status & attendance ────────────────────────────────
 router.patch("/teacher/live-classes/:id/status", teacherOrAdmin, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
