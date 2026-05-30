@@ -1,33 +1,61 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useAuth, UserRole } from "./auth-provider";
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
-import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3, User } from "lucide-react";
+import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3, User, MessageCircle, Phone, Ticket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { motion, AnimatePresence } from "framer-motion";
 
 const NAVY = "#0A2342";
 const GOLD = "#D4AF37";
 
 const WA_NUMBER = "918492944473";
-const WA_LINK = `https://wa.me/${WA_NUMBER}?text=Hi%20Braintam%2C%20I%20need%20help!`;
 
-function WhatsAppFab() {
+function HelpFab() {
+  const [open, setOpen] = useState(false);
+
+  const options = [
+    { icon: MessageCircle, label: "WhatsApp",     color: "#25D366", action: () => window.open(`https://wa.me/${WA_NUMBER}?text=Hi%20Braintam%2C%20I%20need%20help!`, "_blank") },
+    { icon: Phone,         label: "Call Support", color: NAVY,      action: () => window.open("tel:+918492944473") },
+    { icon: Ticket,        label: "Raise Ticket", color: "#7c3aed", action: () => window.open(`https://wa.me/${WA_NUMBER}?text=I%20want%20to%20raise%20a%20support%20ticket`, "_blank") },
+  ];
+
   return (
-    <a
-      href={WA_LINK}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed z-50 flex items-center justify-center w-12 h-12 rounded-full shadow-lg hover:scale-110 transition-transform md:w-14 md:h-14"
-      style={{ background: "#25D366", bottom: "80px", right: "16px" }}
-      aria-label="Chat on WhatsApp"
-    >
-      <svg viewBox="0 0 32 32" width="24" height="24" fill="white" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16.003 2C8.28 2 2 8.28 2 16.003c0 2.478.651 4.9 1.885 7.02L2 30l7.174-1.858A13.95 13.95 0 0 0 16.003 30C23.72 30 30 23.72 30 16.003 30 8.28 23.72 2 16.003 2zm0 25.538a11.564 11.564 0 0 1-5.89-1.614l-.422-.251-4.258 1.103 1.13-4.134-.277-.44a11.537 11.537 0 0 1-1.746-6.2c0-6.373 5.19-11.563 11.563-11.563 6.374 0 11.563 5.19 11.563 11.563 0 6.374-5.19 11.536-11.663 11.536zm6.34-8.645c-.347-.174-2.058-1.015-2.376-1.13-.32-.115-.551-.174-.783.173-.231.347-.898 1.13-1.101 1.362-.202.231-.405.26-.752.086-.347-.173-1.464-.54-2.789-1.72-1.03-.918-1.725-2.052-1.928-2.399-.202-.347-.022-.534.152-.707.156-.155.347-.405.52-.607.174-.203.231-.347.347-.578.115-.231.058-.434-.029-.607-.087-.174-.783-1.883-1.072-2.58-.283-.678-.57-.585-.783-.596l-.665-.012c-.231 0-.607.087-.924.434-.318.347-1.215 1.188-1.215 2.897s1.244 3.36 1.418 3.592c.173.231 2.447 3.737 5.93 5.239.829.358 1.476.572 1.98.732.832.264 1.59.227 2.188.138.668-.1 2.058-.842 2.348-1.655.29-.812.29-1.508.202-1.655-.086-.145-.318-.231-.665-.405z"/>
-      </svg>
-    </a>
+    <div className="fixed z-50" style={{ bottom: "80px", right: "16px" }}>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0,  scale: 1 }}
+            exit={{   opacity: 0, y: 10,  scale: 0.9 }}
+            className="mb-3 flex flex-col gap-2 items-end"
+          >
+            {options.map(({ icon: Icon, label, color, action }) => (
+              <button
+                key={label}
+                onClick={() => { action(); setOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-full text-white text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
+                style={{ background: color }}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-4 py-3 rounded-full text-white text-xs font-bold shadow-xl hover:scale-105 transition-transform"
+        style={{ background: open ? "#64748b" : NAVY }}
+      >
+        {open ? <X className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
+        {open ? "Close" : "Need Help?"}
+      </button>
+    </div>
   );
 }
 
@@ -239,8 +267,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom nav — students only */}
       {isStudent && <MobileBottomNav location={location} />}
 
-      {/* WhatsApp FAB — sits above bottom nav on mobile */}
-      <WhatsAppFab />
+      {/* Help FAB — available on all student pages */}
+      {isStudent && <HelpFab />}
     </SidebarProvider>
   );
 }

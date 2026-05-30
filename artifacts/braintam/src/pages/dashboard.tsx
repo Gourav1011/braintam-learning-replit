@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth, STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
-import { Video, BookOpen, FileText, CheckSquare, Flame, PlayCircle, Bell, MessageCircle, Phone, Ticket, X, ChevronRight, Zap, Trophy, Megaphone } from "lucide-react";
+import { Video, BookOpen, FileText, CheckSquare, Flame, PlayCircle, Bell, X, ChevronRight, Zap, Trophy, Megaphone } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect, useRef } from "react";
 
@@ -286,54 +286,6 @@ function AnnouncementStrip() {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ── Help FAB ─────────────────────────────────────────────────────
-const WA_NUMBER = "918492944473";
-
-function HelpFab() {
-  const [open, setOpen] = useState(false);
-
-  const options = [
-    { icon: MessageCircle, label: "WhatsApp",     color: "#25D366", action: () => window.open(`https://wa.me/${WA_NUMBER}?text=Hi%20Braintam%2C%20I%20need%20help!`, "_blank") },
-    { icon: Phone,         label: "Call Support", color: NAVY2,     action: () => window.open("tel:+918492944473") },
-    { icon: Ticket,        label: "Raise Ticket", color: "#7c3aed", action: () => window.open(`https://wa.me/${WA_NUMBER}?text=I%20want%20to%20raise%20a%20support%20ticket`, "_blank") },
-  ];
-
-  return (
-    <div className="fixed z-50" style={{ bottom: "80px", right: "16px" }}>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0,  scale: 1 }}
-            exit={{   opacity: 0, y: 10,  scale: 0.9 }}
-            className="mb-3 flex flex-col gap-2 items-end"
-          >
-            {options.map(({ icon: Icon, label, color, action }) => (
-              <button
-                key={label}
-                onClick={() => { action(); setOpen(false); }}
-                className="flex items-center gap-2 px-3 py-2 rounded-full text-white text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
-                style={{ background: color }}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-4 py-3 rounded-full text-white text-xs font-bold shadow-xl hover:scale-105 transition-transform"
-        style={{ background: open ? "#64748b" : NAVY }}
-      >
-        {open ? <X className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
-        {open ? "Close" : "Need Help?"}
-      </button>
     </div>
   );
 }
@@ -777,8 +729,6 @@ export default function DashboardPage() {
         <div className="h-2" />
       </div>
 
-      {/* Premium Help FAB */}
-      <HelpFab />
     </AppLayout>
   );
 }
