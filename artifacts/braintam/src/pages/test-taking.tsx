@@ -162,25 +162,26 @@ export default function TestTakingPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      {/* Scrollable content — extra bottom padding so nav bar doesn't overlap */}
+      <div className="p-4 max-w-3xl mx-auto space-y-4 pb-24 md:pb-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-lg">{test.title}</h2>
-            <p className="text-sm text-muted-foreground">Question {currentQ + 1} of {questions.length}</p>
+            <h2 className="font-bold text-base">{test.title}</h2>
+            <p className="text-xs text-muted-foreground">Question {currentQ + 1} of {questions.length}</p>
           </div>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono font-bold text-lg ${timeLeft !== null && timeLeft < 300 ? "bg-red-100 text-red-600" : "bg-muted text-foreground"}`} data-testid="timer">
-            <Clock className="w-5 h-5" />
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-bold text-sm ${timeLeft !== null && timeLeft < 300 ? "bg-red-100 text-red-600" : "bg-muted text-foreground"}`} data-testid="timer">
+            <Clock className="w-4 h-4" />
             {timeLeft !== null ? formatTime(timeLeft) : "--:--"}
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{answered} answered</span>
             <span>{questions.length - answered} remaining</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-1.5" />
         </div>
 
         {/* Question */}
@@ -188,9 +189,9 @@ export default function TestTakingPage() {
           <AnimatePresence mode="wait">
             <motion.div key={currentQ} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <Card className="border-2">
-                <CardContent className="p-6 space-y-6">
-                  <p className="text-lg font-semibold leading-relaxed">{question.text}</p>
-                  <div className="space-y-3">
+                <CardContent className="p-4 space-y-4">
+                  <p className="text-sm font-semibold leading-relaxed">{question.text}</p>
+                  <div className="space-y-2">
                     {question.options.map((opt, oi) => {
                       const isSelected = answers[question.id] === oi;
                       return (
@@ -198,10 +199,10 @@ export default function TestTakingPage() {
                           key={oi}
                           onClick={() => handleSelectAnswer(question.id, oi)}
                           disabled={result !== null}
-                          className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all font-medium ${isSelected ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
+                          className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all font-medium text-sm ${isSelected ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
                           data-testid={`option-${oi}`}
                         >
-                          <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-sm mr-3 flex-shrink-0 ${isSelected ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+                          <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs mr-2.5 flex-shrink-0 ${isSelected ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
                             {String.fromCharCode(65 + oi)}
                           </span>
                           {opt}
@@ -214,34 +215,6 @@ export default function TestTakingPage() {
             </motion.div>
           </AnimatePresence>
         )}
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => setCurrentQ(q => Math.max(0, q - 1))} disabled={currentQ === 0}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-          </Button>
-          <div className="flex gap-1">
-            {questions.map((q, qi) => (
-              <button
-                key={qi}
-                onClick={() => setCurrentQ(qi)}
-                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${qi === currentQ ? "bg-primary text-white" : answers[q.id] !== undefined ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}
-                data-testid={`q-nav-${qi}`}
-              >
-                {qi + 1}
-              </button>
-            ))}
-          </div>
-          {currentQ < questions.length - 1 ? (
-            <Button onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))}>
-              Next <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={() => setShowConfirm(true)} className="bg-green-600 hover:bg-green-700" data-testid="submit-test-btn">
-              Submit Test
-            </Button>
-          )}
-        </div>
 
         <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
           <DialogContent>
@@ -259,6 +232,37 @@ export default function TestTakingPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Fixed navigation bar — sits above mobile bottom nav (bottom-14 = 56px = nav height) */}
+      <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-[60] border-t bg-white/95 backdrop-blur-sm px-4 py-2.5 flex items-center justify-between gap-2 max-w-3xl md:mx-auto">
+        <Button size="sm" variant="outline" onClick={() => setCurrentQ(q => Math.max(0, q - 1))} disabled={currentQ === 0} className="gap-1 text-xs h-9">
+          <ChevronLeft className="w-3.5 h-3.5" /> Prev
+        </Button>
+
+        {/* Question dot navigator */}
+        <div className="flex gap-1 overflow-x-auto flex-1 justify-center scrollbar-none">
+          {questions.map((q, qi) => (
+            <button
+              key={qi}
+              onClick={() => setCurrentQ(qi)}
+              className={`w-7 h-7 flex-shrink-0 rounded-md text-xs font-bold transition-all ${qi === currentQ ? "bg-primary text-white" : answers[q.id] !== undefined ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}
+              data-testid={`q-nav-${qi}`}
+            >
+              {qi + 1}
+            </button>
+          ))}
+        </div>
+
+        {currentQ < questions.length - 1 ? (
+          <Button size="sm" onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))} className="gap-1 text-xs h-9">
+            Next <ChevronRight className="w-3.5 h-3.5" />
+          </Button>
+        ) : (
+          <Button size="sm" onClick={() => setShowConfirm(true)} className="bg-green-600 hover:bg-green-700 text-xs h-9" data-testid="submit-test-btn">
+            Submit
+          </Button>
+        )}
       </div>
     </AppLayout>
   );

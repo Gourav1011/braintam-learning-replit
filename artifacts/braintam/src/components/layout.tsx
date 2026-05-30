@@ -251,9 +251,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1 hidden md:block" />
 
-            <Link href="/dashboard" className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:opacity-80 transition-opacity">
+            <Link href="/dashboard" className="flex items-center hover:opacity-80 transition-opacity">
               <img src={braintamLogo} alt="Braintam" className="h-9 w-auto object-contain" />
-              <span>Braintam</span>
             </Link>
           </header>
 

@@ -173,7 +173,7 @@ export default function HomeworkPage() {
             <p className="text-sm">No homework pending</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             {homework.map((hw, i) => {
               const days = daysUntil(hw.dueDate);
               const isUrgent = days <= 2 && days >= 0;
@@ -192,7 +192,7 @@ export default function HomeworkPage() {
                   data-testid={`homework-card-${hw.id}`}
                   className={isExpired || (isDone && !isMcqHw) ? "pointer-events-none select-none" : ""}
                 >
-                  <Card className={`border-2 transition-all ${
+                  <Card className={`border transition-all ${
                     isExpired
                       ? "border-gray-200 bg-gray-100 opacity-50"
                       : isDone
@@ -201,23 +201,23 @@ export default function HomeworkPage() {
                           ? "border-red-300 bg-red-50/30"
                           : "border-border"
                   }`}>
-                    <CardContent className="p-5 flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
                         isExpired || isDone ? "bg-gray-200" :
                         isUrgent ? "bg-red-100" : "bg-yellow-100"
                       }`}>
                         {isExpired
-                          ? <Lock className="w-6 h-6 text-gray-400" />
+                          ? <Lock className="w-4 h-4 text-gray-400" />
                           : isDone
-                            ? <CheckCircle className="w-6 h-6 text-gray-400" />
-                            : <FileText className={`w-6 h-6 ${isUrgent ? "text-red-600" : "text-yellow-600"}`} />
+                            ? <CheckCircle className="w-4 h-4 text-gray-400" />
+                            : <FileText className={`w-4 h-4 ${isUrgent ? "text-red-600" : "text-yellow-600"}`} />
                         }
                       </div>
 
                       <div className="flex-1 min-w-0">
                         {/* Title row with badges */}
-                        <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-                          <h3 className={`font-bold text-base leading-snug ${isExpired || isDone ? "text-gray-400" : ""}`}>
+                        <div className="flex flex-wrap items-start gap-x-2 gap-y-0.5">
+                          <h3 className={`font-semibold text-sm leading-snug ${isExpired || isDone ? "text-gray-400" : ""}`}>
                             {hw.title}
                           </h3>
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -237,31 +237,27 @@ export default function HomeworkPage() {
                         </div>
 
                         {/* Meta row */}
-                        <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
-                          <Badge variant="outline" className="text-xs">{hw.subjectName}</Badge>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            Due: {new Date(hw.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <Badge variant="outline" className="text-xs py-0">{hw.subjectName}</Badge>
+                          <span className="flex items-center gap-0.5">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(hw.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                           </span>
                           {isExpired ? (
-                            <span className="flex items-center gap-1 text-gray-400 text-xs">
-                              <Clock className="w-3.5 h-3.5" />Submission closed
-                            </span>
+                            <span className="text-gray-400 text-xs">Closed</span>
                           ) : days >= 0 && days <= 7 ? (
-                            <span className={`flex items-center gap-1 font-medium ${isUrgent ? "text-red-600" : "text-orange-500"}`}>
-                              {isUrgent && <AlertCircle className="w-3.5 h-3.5" />}
-                              {days === 0 ? "Due today!" : `${days}d left`}
+                            <span className={`flex items-center gap-0.5 font-medium ${isUrgent ? "text-red-600" : "text-orange-500"}`}>
+                              {isUrgent && <AlertCircle className="w-3 h-3" />}
+                              {days === 0 ? "Today!" : `${days}d left`}
                             </span>
                           ) : days < 0 && !isExpired ? (
-                            <span className="flex items-center gap-1 text-orange-500 text-xs font-medium">
-                              Overdue · {Math.abs(days)}d ago
-                            </span>
+                            <span className="text-orange-500 font-medium">Overdue</span>
                           ) : null}
                         </div>
 
                         {/* Description */}
                         {hw.description && (
-                          <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">{hw.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{hw.description}</p>
                         )}
 
                         {/* Drive link */}
@@ -329,7 +325,7 @@ export default function HomeworkPage() {
 
         {/* ── MCQ Quiz — full-screen overlay ── */}
         {submitting && isMcq && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-white" style={{ overscrollBehavior: "contain" }}>
+          <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ overscrollBehavior: "contain" }}>
             {submitted ? (
               <div className="flex flex-col items-center justify-center flex-1 gap-5 p-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
@@ -480,7 +476,7 @@ export default function HomeworkPage() {
           if (!rq) return null;
           const totalCorrect = rqs.filter((q, i) => rAnswers[i] === q.correctOption).length;
           return (
-            <div className="fixed inset-0 z-50 flex flex-col bg-white" style={{ overscrollBehavior: "contain" }}>
+            <div className="fixed inset-0 z-[200] flex flex-col bg-white" style={{ overscrollBehavior: "contain" }}>
               {/* Header */}
               <div className="flex-shrink-0 px-4 pt-4 pb-3" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
                 <div className="flex items-center justify-between mb-1">
