@@ -136,8 +136,9 @@ router.get("/teacher/courses", teacherOrAdmin, async (req, res) => {
 // ── Live Classes ─────────────────────────────────────────────────
 router.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const classes = await db.select().from(liveClassesTable)
-    .where(eq(liveClassesTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(liveClassesTable.teacherId, teacherId))
     .orderBy(desc(liveClassesTable.scheduledAt));
   res.json(classes.map(c => ({ ...c, scheduledAt: c.scheduledAt.toISOString(), createdAt: c.createdAt.toISOString() })));
 });
@@ -274,6 +275,7 @@ router.delete("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
 // ── Assignments ──────────────────────────────────────────────────
 router.get("/teacher/assignments", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const asgn = await db.select({
     id: assignmentsTable.id,
     title: assignmentsTable.title,
@@ -288,7 +290,7 @@ router.get("/teacher/assignments", teacherOrAdmin, async (req, res) => {
   })
     .from(assignmentsTable)
     .innerJoin(subjectsTable, eq(assignmentsTable.subjectId, subjectsTable.id))
-    .where(eq(assignmentsTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(assignmentsTable.teacherId, teacherId))
     .orderBy(desc(assignmentsTable.dueDate));
   res.json(asgn.map(a => ({
     ...a,
@@ -330,8 +332,9 @@ router.post("/teacher/assignments", teacherOrAdmin, async (req, res) => {
 // ── Recordings ───────────────────────────────────────────────────
 router.get("/teacher/recordings", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const recs = await db.select().from(recordingsTable)
-    .where(eq(recordingsTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(recordingsTable.teacherId, teacherId))
     .orderBy(desc(recordingsTable.recordedAt));
   res.json(recs.map(r => ({ ...r, recordedAt: r.recordedAt.toISOString(), createdAt: r.createdAt.toISOString() })));
 });
@@ -393,6 +396,7 @@ router.get("/teacher/students", teacherOrAdmin, async (req, res) => {
 // ── Submissions ──────────────────────────────────────────────────
 router.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const rows = await db.select({
     id: homeworkSubmissionsTable.id,
     homeworkId: homeworkSubmissionsTable.homeworkId,
@@ -408,13 +412,14 @@ router.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => 
     .from(homeworkSubmissionsTable)
     .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
     .innerJoin(usersTable, eq(homeworkSubmissionsTable.studentId, usersTable.id))
-    .where(eq(homeworkTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(homeworkTable.teacherId, teacherId))
     .orderBy(desc(homeworkSubmissionsTable.submittedAt));
   res.json(rows);
 });
 
 router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const rows = await db.select({
     id: assignmentSubmissionsTable.id,
     assignmentId: assignmentSubmissionsTable.assignmentId,
@@ -430,7 +435,7 @@ router.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) 
     .from(assignmentSubmissionsTable)
     .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
     .innerJoin(usersTable, eq(assignmentSubmissionsTable.studentId, usersTable.id))
-    .where(eq(assignmentsTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(assignmentsTable.teacherId, teacherId))
     .orderBy(desc(assignmentSubmissionsTable.submittedAt));
   res.json(rows);
 });
@@ -478,6 +483,7 @@ router.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, async
 // ── Tests ─────────────────────────────────────────────────────────
 router.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const rows = await db.select({
     id: testsTable.id,
     title: testsTable.title,
@@ -494,7 +500,7 @@ router.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
   })
   .from(testsTable)
   .leftJoin(subjectsTable, eq(testsTable.subjectId, subjectsTable.id))
-  .where(eq(testsTable.teacherId, teacherId))
+  .where(isAdmin ? undefined : eq(testsTable.teacherId, teacherId))
   .orderBy(desc(testsTable.scheduledAt));
   res.json(rows);
 });
@@ -595,8 +601,9 @@ router.post("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, 
 // ── Notes / Resources ──────────────────────────────────────────────
 router.get("/teacher/notes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const notes = await db.select().from(topicNotesTable)
-    .where(eq(topicNotesTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(topicNotesTable.teacherId, teacherId))
     .orderBy(desc(topicNotesTable.createdAt));
   res.json(notes);
 });
