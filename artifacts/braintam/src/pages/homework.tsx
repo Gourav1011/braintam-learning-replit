@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, Calendar, Clock, CheckCircle, AlertCircle, Send, Lock, ExternalLink, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
+import { FileText, Calendar, Clock, CheckCircle, AlertCircle, Send, Lock, ExternalLink, ChevronLeft, ChevronRight, Trophy, X } from "lucide-react";
 
 const EXPIRY_DAYS = 5;
 const NAVY = "#0B2B6B";
@@ -308,149 +308,148 @@ export default function HomeworkPage() {
           </div>
         )}
 
-        {/* ── MCQ Quiz Dialog ── */}
+        {/* ── MCQ Quiz — full-screen overlay ── */}
         {submitting && isMcq && (
-          <Dialog open={true} onOpenChange={v => !v && closeDialog()}>
-            <DialogContent className="max-w-2xl p-0 overflow-hidden">
-              {submitted ? (
-                <div className="p-8 text-center space-y-5">
-                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                    <Trophy className="w-10 h-10 text-green-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">Quiz Submitted!</h2>
-                    <p className="text-muted-foreground mt-1">{submitting.title}</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      You answered {answeredCount} of {questions.length} questions
-                    </p>
-                  </div>
-                  <Button onClick={closeDialog} style={{ background: NAVY, color: "white" }} className="px-8">
-                    Done
-                  </Button>
+          <div className="fixed inset-0 z-50 flex flex-col bg-white" style={{ overscrollBehavior: "contain" }}>
+            {submitted ? (
+              <div className="flex flex-col items-center justify-center flex-1 gap-5 p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <Trophy className="w-8 h-8 text-green-600" />
                 </div>
-              ) : (
-                <>
-                  {/* Header */}
-                  <div className="px-6 pt-5 pb-4 border-b" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
-                    <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-0.5">MCQ Quiz</p>
-                    <h2 className="text-white font-bold text-lg leading-tight">{submitting.title}</h2>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-white/80 text-sm">
-                        Question {currentQ + 1} <span className="text-white/50">/ {questions.length}</span>
-                      </span>
-                      <span className="text-white/80 text-sm">
-                        {answeredCount}/{questions.length} answered
-                      </span>
-                    </div>
-                    <Progress
-                      value={(answeredCount / questions.length) * 100}
-                      className="mt-2 h-1.5 bg-white/20"
-                    />
+                <div>
+                  <h2 className="text-xl font-bold">Quiz Submitted!</h2>
+                  <p className="text-muted-foreground text-sm mt-1">{submitting.title}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    You answered {answeredCount} of {questions.length} questions
+                  </p>
+                </div>
+                <Button onClick={closeDialog} style={{ background: NAVY, color: "white" }} className="px-8">
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Header — fixed height, gradient */}
+                <div className="flex-shrink-0 px-4 pt-4 pb-3" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-white/70 text-xs font-semibold uppercase tracking-wider">MCQ Quiz</p>
+                    <button onClick={closeDialog} className="text-white/60 hover:text-white p-1 -mr-1">
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
+                  <h2 className="text-white font-bold text-sm leading-snug line-clamp-2">{submitting.title}</h2>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-white/80 text-xs">
+                      Q {currentQ + 1}<span className="text-white/40"> / {questions.length}</span>
+                    </span>
+                    <span className="text-white/80 text-xs">{answeredCount}/{questions.length} answered</span>
+                  </div>
+                  <Progress value={(answeredCount / questions.length) * 100} className="mt-1.5 h-1 bg-white/20" />
+                </div>
 
-                  {/* Question */}
-                  <div className="px-6 py-5">
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentQ}
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -30 }}
-                        transition={{ duration: 0.2 }}
-                        className="space-y-4"
-                      >
-                        <p className="font-semibold text-base leading-relaxed">
-                          <span className="font-black mr-2" style={{ color: ORANGE }}>Q{currentQ + 1}.</span>
-                          {currentQuestion.text}
-                        </p>
+                {/* Scrollable question body */}
+                <div className="flex-1 overflow-y-auto px-4 py-4">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentQ}
+                      initial={{ opacity: 0, x: 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -30 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-3"
+                    >
+                      <p className="font-semibold text-sm leading-relaxed">
+                        <span className="font-black mr-1.5" style={{ color: ORANGE }}>Q{currentQ + 1}.</span>
+                        {currentQuestion.text}
+                      </p>
 
-                        <div className="space-y-2.5">
-                          {currentQuestion.options.map((opt: string, oi: number) => {
-                            const isSelected = mcqAnswers[currentQ] === oi;
-                            return (
-                              <button
-                                key={oi}
-                                onClick={() => selectOption(currentQ, oi)}
-                                className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all font-medium text-sm flex items-center gap-3 ${
-                                  isSelected
-                                    ? "border-orange-400 bg-orange-50"
-                                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                                }`}
-                              >
-                                <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black flex-shrink-0 transition-all ${
+                      <div className="space-y-2">
+                        {currentQuestion.options.map((opt: string, oi: number) => {
+                          const isSelected = mcqAnswers[currentQ] === oi;
+                          return (
+                            <button
+                              key={oi}
+                              onClick={() => selectOption(currentQ, oi)}
+                              className={`w-full text-left px-3 py-2.5 rounded-xl border-2 transition-all font-medium text-sm flex items-center gap-2.5 ${
+                                isSelected
+                                  ? "border-orange-400 bg-orange-50"
+                                  : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              <span
+                                className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-black flex-shrink-0 transition-all ${
                                   isSelected ? "text-white" : "bg-gray-100 text-gray-500"
                                 }`}
-                                  style={isSelected ? { background: ORANGE } : {}}
-                                >
-                                  {String.fromCharCode(65 + oi)}
-                                </span>
-                                <span className={isSelected ? "text-orange-800 font-semibold" : "text-gray-700"}>{opt}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
+                                style={isSelected ? { background: ORANGE } : {}}
+                              >
+                                {String.fromCharCode(65 + oi)}
+                              </span>
+                              <span className={`text-sm ${isSelected ? "text-orange-800 font-semibold" : "text-gray-700"}`}>{opt}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                {/* Sticky footer — always visible */}
+                <div className="flex-shrink-0 border-t bg-white px-4 py-3 flex items-center justify-between gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentQ(q => Math.max(0, q - 1))}
+                    disabled={currentQ === 0}
+                    className="gap-1 text-xs h-9 px-3"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                  </Button>
+
+                  {/* Question dot navigator — scrolls if many Qs */}
+                  <div className="flex gap-1 overflow-x-auto max-w-[40vw] scrollbar-none">
+                    {questions.map((_, qi) => (
+                      <button
+                        key={qi}
+                        onClick={() => setCurrentQ(qi)}
+                        className={`w-6 h-6 flex-shrink-0 rounded-md text-xs font-bold transition-all ${
+                          qi === currentQ
+                            ? "text-white"
+                            : mcqAnswers[qi] !== undefined
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-100 text-gray-400"
+                        }`}
+                        style={qi === currentQ ? { background: NAVY } : {}}
+                      >
+                        {qi + 1}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Navigation */}
-                  <div className="px-6 pb-5 flex items-center justify-between gap-3 border-t pt-4">
+                  {currentQ < questions.length - 1 ? (
                     <Button
-                      variant="outline"
-                      onClick={() => setCurrentQ(q => Math.max(0, q - 1))}
-                      disabled={currentQ === 0}
-                      className="gap-1"
+                      size="sm"
+                      onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))}
+                      style={{ background: NAVY, color: "white" }}
+                      className="gap-1 text-xs h-9 px-3"
                     >
-                      <ChevronLeft className="w-4 h-4" /> Previous
+                      Next <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
-
-                    <div className="flex gap-1.5">
-                      {questions.map((_, qi) => (
-                        <button
-                          key={qi}
-                          onClick={() => setCurrentQ(qi)}
-                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
-                            qi === currentQ
-                              ? "text-white"
-                              : mcqAnswers[qi] !== undefined
-                                ? "bg-green-500 text-white"
-                                : "bg-gray-100 text-gray-400"
-                          }`}
-                          style={qi === currentQ ? { background: NAVY } : {}}
-                        >
-                          {qi + 1}
-                        </button>
-                      ))}
-                    </div>
-
-                    {currentQ < questions.length - 1 ? (
-                      <Button
-                        onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))}
-                        style={{ background: NAVY, color: "white" }}
-                        className="gap-1"
-                      >
-                        Next <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleMcqSubmit}
-                        disabled={!mcqComplete || submitMutation.isPending}
-                        className="gap-1"
-                        style={mcqComplete ? { background: "#16a34a", color: "white" } : {}}
-                        data-testid="confirm-submit-hw"
-                      >
-                        {submitMutation.isPending
-                          ? "Submitting…"
-                          : mcqComplete
-                            ? "Submit Quiz ✓"
-                            : `${answeredCount}/${questions.length} answered`}
-                      </Button>
-                    )}
-                  </div>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleMcqSubmit}
+                      disabled={!mcqComplete || submitMutation.isPending}
+                      className="gap-1 text-xs h-9 px-3"
+                      style={mcqComplete ? { background: "#16a34a", color: "white" } : {}}
+                      data-testid="confirm-submit-hw"
+                    >
+                      {submitMutation.isPending ? "…" : mcqComplete ? "Submit ✓" : `${answeredCount}/${questions.length}`}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         )}
 
         {/* ── Writing Homework Dialog ── */}
