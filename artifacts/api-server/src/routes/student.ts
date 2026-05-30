@@ -134,12 +134,27 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     res.status(404).json({ error: "User not found" });
     return;
   }
-  const enrolled = await db
+  let enrolled = await db
     .select({ grade: coursesTable.grade, courseId: coursesTable.id, courseTitle: coursesTable.title })
     .from(enrollmentsTable)
     .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
     .where(eq(enrollmentsTable.studentId, studentId))
     .limit(6);
+
+  // Auto-enroll student in grade-matching course if they have no enrollments yet
+  if (enrolled.length === 0 && student.grade && student.grade > 0) {
+    const gradeCourses = await db
+      .select({ id: coursesTable.id, title: coursesTable.title, grade: coursesTable.grade })
+      .from(coursesTable)
+      .where(eq(coursesTable.grade, student.grade))
+      .limit(3);
+    if (gradeCourses.length > 0) {
+      await db.insert(enrollmentsTable).values(
+        gradeCourses.map(c => ({ studentId, courseId: c.id }))
+      ).onConflictDoNothing();
+      enrolled = gradeCourses.map(c => ({ grade: c.grade, courseId: c.id, courseTitle: c.title }));
+    }
+  }
   const effectiveGrade: number = enrolled[0]?.grade ?? student.grade ?? 6;
   const todayUTC = new Date().toISOString().slice(0, 10);
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
