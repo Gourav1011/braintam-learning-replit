@@ -4,12 +4,16 @@ import { Redirect } from "wouter";
 import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
-  LogOut, Link as LinkIcon, ExternalLink, Pencil,
+  LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -80,6 +84,9 @@ export default function TeacherPage() {
   const [hwType, setHwType] = useState<"mcq" | "writing">("writing");
   const [hwForm, setHwForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
   const [hwQuestions, setHwQuestions] = useState<HwQuestion[]>([newMcqQuestion()]);
+
+  // Delete confirmation dialog
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "homework" | "test"; id: number; title: string } | null>(null);
 
   // Assignment form
   const [showAsgnForm, setShowAsgnForm] = useState(false);
@@ -442,10 +449,9 @@ export default function TeacherPage() {
     setHwType("writing");
   }
 
-  async function deleteHomework(id: number) {
-    if (!confirm("Delete this homework? Students who already submitted will lose their submission data.")) return;
-    const r = await apiFetch(`/teacher/homework/${id}`, { method: "DELETE" });
-    if (r.ok) { flash("Homework deleted"); loadAll(); }
+  function deleteHomework(id: number) {
+    const hw = homework.find(h => h.id === id);
+    setDeleteConfirm({ type: "homework", id, title: hw?.title ?? "this homework" });
   }
 
   async function createTest() {
@@ -481,9 +487,23 @@ export default function TeacherPage() {
     setBusy(false);
   }
 
-  async function deleteTest(id: number) {
-    await apiFetch(`/teacher/tests/${id}`, { method: "DELETE" });
-    loadAll();
+  function deleteTest(id: number) {
+    const t = tests.find(t => t.id === id);
+    setDeleteConfirm({ type: "test", id, title: t?.title ?? "this test" });
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirm) return;
+    const { type, id } = deleteConfirm;
+    const url = type === "homework" ? `/teacher/homework/${id}` : `/teacher/tests/${id}`;
+    const r = await apiFetch(url, { method: "DELETE" });
+    if (r.ok) {
+      flash(type === "homework" ? "Homework deleted" : "Test deleted");
+      loadAll();
+    } else {
+      try { const d = await r.json(); flash(d.error ?? "Delete failed", false); } catch { flash("Delete failed", false); }
+    }
+    setDeleteConfirm(null);
   }
 
   // ── Notes / Resources ──────────────────────────────────────────
@@ -572,6 +592,35 @@ export default function TeacherPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={open => { if (!open) setDeleteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete {deleteConfirm?.type === "homework" ? "Homework" : "Test"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-gray-600">
+              You are about to permanently delete{" "}
+              <span className="font-semibold text-gray-800">"{deleteConfirm?.title}"</span>.
+              {deleteConfirm?.type === "homework"
+                ? " All student submissions for this homework will also be removed."
+                : " All questions and student attempts will be permanently removed."}
+              {" "}This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white">
+              Yes, delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Header */}
       <div className="px-6 py-4 flex items-center justify-between shadow-sm" style={{ background: NAVY }}>
         <div className="flex items-center gap-3">

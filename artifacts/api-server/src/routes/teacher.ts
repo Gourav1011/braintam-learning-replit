@@ -254,8 +254,15 @@ router.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
 
 router.delete("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "invalid id" }); return; }
+  const isAdmin = req.authUser!.role === "admin";
   const teacherId = req.authUser!.id;
-  await db.delete(homeworkTable).where(and(eq(homeworkTable.id, id), eq(homeworkTable.teacherId, teacherId)));
+  const condition = isAdmin
+    ? eq(homeworkTable.id, id)
+    : and(eq(homeworkTable.id, id), eq(homeworkTable.teacherId, teacherId));
+  const [hw] = await db.select({ id: homeworkTable.id }).from(homeworkTable).where(condition);
+  if (!hw) { res.status(404).json({ error: "Homework not found or access denied" }); return; }
+  await db.delete(homeworkTable).where(condition);
   res.json({ ok: true });
 });
 
@@ -525,9 +532,12 @@ router.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
 router.delete("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
   const testId = parseInt(String(req.params.id), 10);
   if (isNaN(testId)) { res.status(400).json({ error: "invalid id" }); return; }
-  const [test] = await db.select().from(testsTable)
-    .where(and(eq(testsTable.id, testId), eq(testsTable.teacherId, req.authUser!.id)));
-  if (!test) { res.status(404).json({ error: "Test not found" }); return; }
+  const isAdmin = req.authUser!.role === "admin";
+  const condition = isAdmin
+    ? eq(testsTable.id, testId)
+    : and(eq(testsTable.id, testId), eq(testsTable.teacherId, req.authUser!.id));
+  const [test] = await db.select().from(testsTable).where(condition);
+  if (!test) { res.status(404).json({ error: "Test not found or access denied" }); return; }
   await db.delete(questionsTable).where(eq(questionsTable.testId, testId));
   await db.delete(testsTable).where(eq(testsTable.id, testId));
   await logAudit(req.authUser!.id, req.authUser!.name, "test_deleted", "test", testId, test.title);
