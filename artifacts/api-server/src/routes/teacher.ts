@@ -236,12 +236,13 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
 router.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const teacherId = req.authUser!.id;
-  const { title, dueDate, description, maxMarks, driveLink, questionsJson } = req.body;
+  const { title, dueDate, description, maxMarks, homeworkType, driveLink, questionsJson } = req.body;
   const [hw] = await db.update(homeworkTable).set({
     ...(title        ? { title }                              : {}),
     ...(dueDate      ? { dueDate: new Date(dueDate) }         : {}),
     ...(description !== undefined ? { description }           : {}),
     ...(maxMarks    !== undefined ? { maxMarks: Number(maxMarks) } : {}),
+    ...(homeworkType !== undefined ? { homeworkType }          : {}),
     ...(driveLink   !== undefined ? { driveLink }             : {}),
     ...(questionsJson !== undefined ? { questionsJson: questionsJson ? JSON.stringify(questionsJson) : null } : {}),
   })

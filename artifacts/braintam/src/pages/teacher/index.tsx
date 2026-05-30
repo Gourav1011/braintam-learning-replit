@@ -245,6 +245,7 @@ export default function TeacherPage() {
       dueDate: hwForm.dueDate,
       description: hwForm.description || null,
       maxMarks: Number(hwForm.maxMarks),
+      homeworkType: hwType,
       driveLink: hwType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
       questionsJson: validQs.length > 0 ? validQs : null,
     } : {

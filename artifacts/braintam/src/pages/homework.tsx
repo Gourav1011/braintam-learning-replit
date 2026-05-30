@@ -86,7 +86,9 @@ export default function HomeworkPage() {
   });
 
   const questions: HwQuestion[] = submitting ? parsedQuestions(submitting.questionsJson) : [];
-  const isMcq = !!(submitting && submitting.homeworkType === "mcq" && questions.length > 0);
+  // Detect MCQ from questionsJson data (not homeworkType) — backward-compatible with
+  // old records where homework_type defaulted to "writing" before the column existed.
+  const isMcq = !!(submitting && questions.length > 0);
   const mcqComplete = questions.length > 0 && questions.every((_, i) => mcqAnswers[i] !== undefined);
   const answeredCount = Object.keys(mcqAnswers).length;
 
