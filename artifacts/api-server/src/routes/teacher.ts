@@ -175,6 +175,7 @@ router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
 // ── Homework ─────────────────────────────────────────────────────
 router.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const hw = await db.select({
     id: homeworkTable.id,
     title: homeworkTable.title,
@@ -194,7 +195,7 @@ router.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
   })
     .from(homeworkTable)
     .innerJoin(subjectsTable, eq(homeworkTable.subjectId, subjectsTable.id))
-    .where(eq(homeworkTable.teacherId, teacherId))
+    .where(isAdmin ? undefined : eq(homeworkTable.teacherId, teacherId))
     .orderBy(desc(homeworkTable.dueDate));
   res.json(hw.map(h => ({ ...h, dueDate: h.dueDate.toISOString(), description: h.description ?? null, questionsJson: h.questionsJson ?? null, driveLink: h.driveLink ?? null })));
 });
@@ -236,7 +237,11 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
 router.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
   const { title, dueDate, description, maxMarks, homeworkType, driveLink, questionsJson } = req.body;
+  const condition = isAdmin
+    ? eq(homeworkTable.id, id)
+    : and(eq(homeworkTable.id, id), eq(homeworkTable.teacherId, teacherId));
   const [hw] = await db.update(homeworkTable).set({
     ...(title        ? { title }                              : {}),
     ...(dueDate      ? { dueDate: new Date(dueDate) }         : {}),
@@ -246,9 +251,9 @@ router.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
     ...(driveLink   !== undefined ? { driveLink }             : {}),
     ...(questionsJson !== undefined ? { questionsJson: questionsJson ? JSON.stringify(questionsJson) : null } : {}),
   })
-    .where(and(eq(homeworkTable.id, id), eq(homeworkTable.teacherId, teacherId)))
+    .where(condition)
     .returning();
-  if (!hw) { res.status(404).json({ error: "Not found" }); return; }
+  if (!hw) { res.status(404).json({ error: "Not found or access denied" }); return; }
   res.json({ ...hw, dueDate: hw.dueDate.toISOString() });
 });
 

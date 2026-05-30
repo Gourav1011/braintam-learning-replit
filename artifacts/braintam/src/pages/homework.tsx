@@ -175,7 +175,8 @@ export default function HomeworkPage() {
               const isExpired = hw.status === "pending" && days < -EXPIRY_DAYS;
               const isDone = hw.status === "submitted" || hw.status === "graded";
               const hwQuestions = parsedQuestions(hw.questionsJson);
-              const isMcqHw = hw.homeworkType === "mcq" && hwQuestions.length > 0;
+              // Detect MCQ from questionsJson presence (backward-compat with rows stored as "writing")
+              const isMcqHw = hwQuestions.length > 0;
 
               return (
                 <motion.div
@@ -259,7 +260,7 @@ export default function HomeworkPage() {
                         )}
 
                         {/* Drive link */}
-                        {hw.driveLink && hw.homeworkType === "writing" && !isDone && (
+                        {hw.driveLink && !isMcqHw && !isDone && (
                           <a
                             href={hw.driveLink}
                             target="_blank"
