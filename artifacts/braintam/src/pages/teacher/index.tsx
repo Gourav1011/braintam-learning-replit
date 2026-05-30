@@ -253,9 +253,10 @@ export default function TeacherPage() {
     const validQs = effectiveType === "mcq" ? filledQs : [];
     const isEdit = editingHw !== null;
 
+    const dueDateISO = new Date(hwForm.dueDate + ":00+05:30").toISOString();
     const payload = isEdit ? {
       title: hwForm.title,
-      dueDate: hwForm.dueDate,
+      dueDate: dueDateISO,
       description: hwForm.description || null,
       maxMarks: Number(hwForm.maxMarks),
       homeworkType: effectiveType,
@@ -271,7 +272,7 @@ export default function TeacherPage() {
       liveClassId: hwForm.liveClassId ? Number(hwForm.liveClassId) : null,
       homeworkType: effectiveType,
       driveLink: effectiveType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
-      dueDate: hwForm.dueDate,
+      dueDate: dueDateISO,
       description: hwForm.description || null,
       maxMarks: Number(hwForm.maxMarks),
       questionsJson: validQs.length > 0 ? validQs : null,
@@ -300,7 +301,7 @@ export default function TeacherPage() {
         subjectId: Number(asgnForm.subjectId),
         grade: Number(asgnForm.grade),
         courseId: asgnForm.courseId ? Number(asgnForm.courseId) : null,
-        dueDate: asgnForm.dueDate,
+        dueDate: new Date(asgnForm.dueDate + ":00+05:30").toISOString(),
         description: asgnForm.description || null,
         maxMarks: Number(asgnForm.maxMarks),
         attachmentUrl: asgnForm.attachmentUrl || null,
@@ -375,7 +376,7 @@ export default function TeacherPage() {
     if (!lcId) { setTestForm(p => ({ ...p, liveClassId: "" })); return; }
     const lc = liveClasses.find(l => l.id === Number(lcId));
     if (lc) {
-      const d2 = new Date(lc.scheduledAt); const pp = (n: number) => String(n).padStart(2,"0"); const dt = `${d2.getFullYear()}-${pp(d2.getMonth()+1)}-${pp(d2.getDate())}T${pp(d2.getHours())}:${pp(d2.getMinutes())}`;
+      const d2 = new Date(lc.scheduledAt); const ist2 = new Date(d2.getTime() + 5.5*60*60*1000); const pp = (n: number) => String(n).padStart(2,"0"); const dt = `${ist2.getUTCFullYear()}-${pp(ist2.getUTCMonth()+1)}-${pp(ist2.getUTCDate())}T${pp(ist2.getUTCHours())}:${pp(ist2.getUTCMinutes())}`;
       setTestForm(p => ({
         ...p,
         liveClassId: lcId,
@@ -393,9 +394,12 @@ export default function TeacherPage() {
     if (!lcId) { setHwForm(p => ({ ...p, liveClassId: "" })); return; }
     const lc = liveClasses.find(l => l.id === Number(lcId));
     if (!lc) { setHwForm(p => ({ ...p, liveClassId: lcId })); return; }
-    // Suggest due date = next day after the live class
+    // Suggest due date = next day after the live class (in IST)
     const due = new Date(lc.scheduledAt);
-    due.setDate(due.getDate() + 1);
+    due.setUTCDate(due.getUTCDate() + 1);
+    const dueIST = new Date(due.getTime() + 5.5*60*60*1000);
+    const pp2 = (n: number) => String(n).padStart(2,"0");
+    const dueDt = `${dueIST.getUTCFullYear()}-${pp2(dueIST.getUTCMonth()+1)}-${pp2(dueIST.getUTCDate())}T${pp2(dueIST.getUTCHours())}:${pp2(dueIST.getUTCMinutes())}`;
     setHwForm(p => ({
       ...p,
       liveClassId: lcId,
@@ -404,7 +408,7 @@ export default function TeacherPage() {
       courseId: lc.courseId ? String(lc.courseId) : p.courseId,
       chapterId: lc.chapterId ? String(lc.chapterId) : "",
       topicId: lc.topicId ? String(lc.topicId) : "",
-      dueDate: due.toISOString().slice(0, 16),
+      dueDate: dueDt,
     }));
     if (lc.chapterId && lc.topicId) {
       const tR = await apiFetch(`/admin/topics?chapterId=${lc.chapterId}`);
@@ -429,7 +433,7 @@ export default function TeacherPage() {
       chapterId: h.chapterId ? String(h.chapterId) : "",
       topicId: h.topicId ? String(h.topicId) : "",
       liveClassId: h.liveClassId ? String(h.liveClassId) : "",
-      dueDate: h.dueDate ? new Date(h.dueDate).toISOString().slice(0, 16) : "",
+      dueDate: h.dueDate ? (() => { const d = new Date(h.dueDate); const ist = new Date(d.getTime() + 5.5*60*60*1000); const p = (n: number) => String(n).padStart(2,"0"); return `${ist.getUTCFullYear()}-${p(ist.getUTCMonth()+1)}-${p(ist.getUTCDate())}T${p(ist.getUTCHours())}:${p(ist.getUTCMinutes())}`; })() : "",
       description: h.description ?? "",
       maxMarks: String(h.maxMarks),
       driveLink: h.driveLink ?? "",

@@ -2160,7 +2160,7 @@ function AdminPageInner() {
                         <div className="font-semibold text-sm truncate" style={{ color: NAVY }}>{lc.title}</div>
                         <div className="text-xs text-gray-400 mt-0.5">{lc.subjectName} · Grade {lc.grade} · {lc.teacher}</div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(lc.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(lc.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{lc.duration} min</span>
                         </div>
                         {editingLc?.id === lc.id ? (
