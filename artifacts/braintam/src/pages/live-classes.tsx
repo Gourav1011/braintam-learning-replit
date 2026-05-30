@@ -28,6 +28,30 @@ function countdown(iso: string) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function ReminderButton({ classId, title, scheduledAt }: { classId: number; title: string; scheduledAt: string }) {
+  const [set, setSet] = useState(false);
+  if (set) {
+    return (
+      <div
+        className="w-full py-2.5 rounded-xl text-sm font-bold text-center"
+        style={{ background: "rgba(16,185,129,0.12)", color: "#059669" }}
+      >
+        ✓ Reminder Set
+      </div>
+    );
+  }
+  return (
+    <button
+      className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
+      style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}
+      onClick={() => setSet(true)}
+      data-testid={`set-reminder-${classId}`}
+    >
+      🔔 Set Reminder
+    </button>
+  );
+}
+
 const FEATURES = [
   { emoji: "🎥", title: "Crystal Clear HD Video", desc: "Zero lag. Full HD streaming. As if the teacher is right there in the room.", color: "#3B82F6" },
   { emoji: "👨‍🏫", title: "IIT & IIM Alumni Teachers", desc: "India's top educators, handpicked for subject mastery and student engagement.", color: "#10B981" },
@@ -417,15 +441,19 @@ function AuthLiveClassesView() {
           )}
         </div>
 
-        <button
-          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-          style={{ background: cls.status === "live" ? "#EF4444" : cls.status === "upcoming" ? `linear-gradient(135deg,${NAVY},#123D7A)` : "#94a3b8" }}
-          disabled={cls.status === "ended" || joinMutation.isPending}
-          onClick={() => joinMutation.mutate({ id: cls.id })}
-          data-testid={`join-class-${cls.id}`}
-        >
-          {cls.status === "live" ? "🚀 Join Now" : cls.status === "upcoming" ? "Set Reminder" : "Class Ended"}
-        </button>
+        {cls.status === "upcoming" ? (
+          <ReminderButton classId={cls.id} title={cls.title} scheduledAt={cls.scheduledAt} />
+        ) : (
+          <button
+            className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ background: cls.status === "live" ? "#EF4444" : "#94a3b8" }}
+            disabled={cls.status === "ended" || joinMutation.isPending}
+            onClick={() => joinMutation.mutate({ id: cls.id })}
+            data-testid={`join-class-${cls.id}`}
+          >
+            {cls.status === "live" ? "🚀 Join Now" : "Class Ended"}
+          </button>
+        )}
       </div>
     </motion.div>
   );

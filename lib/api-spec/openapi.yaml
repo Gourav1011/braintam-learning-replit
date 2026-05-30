@@ -929,6 +929,14 @@ components:
           type: string
         description:
           type: ["string", "null"]
+        homeworkType:
+          type: ["string", "null"]
+          description: "writing or mcq"
+        questionsJson:
+          type: ["string", "null"]
+          description: "JSON string of MCQ questions array"
+        driveLink:
+          type: ["string", "null"]
         status:
           type: string
           enum: [pending, submitted, graded]

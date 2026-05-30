@@ -135,11 +135,11 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     return;
   }
   const enrolled = await db
-    .select({ grade: coursesTable.grade })
+    .select({ grade: coursesTable.grade, courseId: coursesTable.id, courseTitle: coursesTable.title })
     .from(enrollmentsTable)
     .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
     .where(eq(enrollmentsTable.studentId, studentId))
-    .limit(1);
+    .limit(6);
   const effectiveGrade: number = enrolled[0]?.grade ?? student.grade ?? 6;
   const todayUTC = new Date().toISOString().slice(0, 10);
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
@@ -160,6 +160,7 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     board: student.board ?? null,
     streak: student.streakDays ?? 0,
     dailyLoginClaimed: lastLoginUTC === todayUTC,
+    enrolledCourses: enrolled.map(e => ({ id: e.courseId, title: e.courseTitle })),
   });
 });
 
@@ -211,6 +212,26 @@ router.get("/student/progress", requireAuth, async (req, res) => {
     ? Math.round(testResults.reduce((sum, t) => sum + (t.maxScore && t.maxScore > 0 ? (t.score! / t.maxScore) * 100 : 0), 0) / testResults.length)
     : 0;
 
+  const studentGrade = student?.grade ?? 6;
+  const subjectWise = await Promise.all(subjects.map(async (s, i) => {
+    const COLORS = ["#1d4ed8", "#7c3aed", "#059669", "#ea580c", "#0891b2", "#be185d"];
+    const [[hwTotal], [hwDone]] = await Promise.all([
+      db.select({ n: sql<number>`count(*)::int` }).from(homeworkTable)
+        .where(and(eq(homeworkTable.subjectId, s.id), eq(homeworkTable.grade, studentGrade))),
+      db.select({ n: sql<number>`count(*)::int` }).from(homeworkSubmissionsTable)
+        .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+        .where(and(eq(homeworkSubmissionsTable.studentId, studentId), eq(homeworkTable.subjectId, s.id))),
+    ]);
+    const total = Number(hwTotal?.n ?? 0);
+    const done = Number(hwDone?.n ?? 0);
+    return {
+      subjectId: s.id,
+      subjectName: s.name,
+      progress: total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0,
+      color: s.color ?? COLORS[i] ?? COLORS[0],
+    };
+  }));
+
   res.json({
     totalPoints: student?.points ?? 0,
     rank: student?.rank ?? null,
@@ -218,12 +239,7 @@ router.get("/student/progress", requireAuth, async (req, res) => {
     testsAttempted: Number(testCount.count),
     homeworkSubmitted: Number(hwCount.count),
     averageScore: avgScore,
-    subjectWise: subjects.map((s, i) => ({
-      subjectId: s.id,
-      subjectName: s.name,
-      progress: [72, 58, 89, 45, 63, 77][i] ?? 50,
-      color: s.color,
-    })),
+    subjectWise,
   });
 });
 

@@ -333,7 +333,7 @@ export default function HomeworkPage() {
                   {submitMutation.isPending
                     ? "Submitting…"
                     : mcqComplete
-                    ? "Submitting…"
+                    ? "Submit Quiz ✓"
                     : `${Object.keys(mcqAnswers).length}/${questions.length} answered`}
                 </Button>
               ) : (

@@ -337,6 +337,9 @@ export const ListHomeworkResponseItem = zod.object({
   "grade": zod.number(),
   "dueDate": zod.string(),
   "description": zod.string().nullish(),
+  "homeworkType": zod.string().nullish().describe('writing or mcq'),
+  "questionsJson": zod.string().nullish().describe('JSON string of MCQ questions array'),
+  "driveLink": zod.string().nullish(),
   "status": zod.enum(['pending', 'submitted', 'graded']),
   "marks": zod.number().nullish(),
   "maxMarks": zod.number().nullish()
@@ -359,6 +362,9 @@ export const GetHomeworkResponse = zod.object({
   "grade": zod.number(),
   "dueDate": zod.string(),
   "description": zod.string().nullish(),
+  "homeworkType": zod.string().nullish().describe('writing or mcq'),
+  "questionsJson": zod.string().nullish().describe('JSON string of MCQ questions array'),
+  "driveLink": zod.string().nullish(),
   "status": zod.enum(['pending', 'submitted', 'graded']),
   "marks": zod.number().nullish(),
   "maxMarks": zod.number().nullish()

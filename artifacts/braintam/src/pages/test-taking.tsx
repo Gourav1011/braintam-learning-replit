@@ -77,6 +77,36 @@ export default function TestTakingPage() {
   if (!test) return <AppLayout><div className="p-6 text-center text-muted-foreground">Test not found</div></AppLayout>;
 
   const questions = test.questions ?? [];
+  const driveLink = (test as any).driveLink as string | null | undefined;
+
+  if (questions.length === 0 && driveLink) {
+    return (
+      <AppLayout>
+        <div className="p-6 max-w-xl mx-auto">
+          <div className="text-center space-y-6 py-12">
+            <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
+              <Trophy className="w-10 h-10 text-blue-500" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">{test.title}</h2>
+              <p className="text-muted-foreground mt-2">{test.duration} min · {questions.length || (test as any).totalQuestions} questions</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 space-y-4">
+              <p className="text-sm font-medium text-blue-800">This test is hosted on Google Drive. Click below to open the test paper.</p>
+              <a href={driveLink} target="_blank" rel="noopener noreferrer">
+                <button className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "#1d4ed8" }}>
+                  📄 Open Test Paper
+                </button>
+              </a>
+            </div>
+            <button onClick={() => setLocation("/tests")} className="text-sm text-muted-foreground hover:text-foreground">
+              ← Back to Tests
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
   const question = questions[currentQ];
   const answered = Object.keys(answers).length;
   const progress = questions.length > 0 ? (answered / questions.length) * 100 : 0;

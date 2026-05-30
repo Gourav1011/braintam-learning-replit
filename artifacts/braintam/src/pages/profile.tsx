@@ -279,17 +279,27 @@ export default function ProfilePage() {
         )}
 
         {/* Subscription plan */}
-        <div
-          className="rounded-2xl p-4 flex items-center gap-3"
-          style={{ background: "linear-gradient(135deg,#0A2342,#123D7A)" }}
-        >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "rgba(212,175,55,0.2)" }}>👑</div>
-          <div className="flex-1">
-            <p className="text-white font-bold text-sm">Premium Plan</p>
-            <p className="text-white/50 text-xs">Full syllabus · Live classes · Tests</p>
-          </div>
-          <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "#D4AF37", color: "#0A2342" }}>Active</span>
-        </div>
+        {(() => {
+          const courses: { id: number; title: string }[] = (p as any)?.enrolledCourses ?? [];
+          const subtitle = courses.length > 0
+            ? courses.map(c => c.title).join(" · ")
+            : "No courses enrolled yet";
+          return (
+            <div
+              className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: "linear-gradient(135deg,#0A2342,#123D7A)" }}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "rgba(212,175,55,0.2)" }}>👑</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-sm">Enrolled Courses</p>
+                <p className="text-white/60 text-xs truncate">{subtitle}</p>
+              </div>
+              {courses.length > 0 && (
+                <span className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0" style={{ background: "#D4AF37", color: "#0A2342" }}>Active</span>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Profile Card */}

@@ -16,6 +16,18 @@ export interface Homework {
   dueDate: string;
   /** @nullable */
   description?: string | null;
+  /**
+     * writing or mcq
+     * @nullable
+     */
+  homeworkType?: string | null;
+  /**
+     * JSON string of MCQ questions array
+     * @nullable
+     */
+  questionsJson?: string | null;
+  /** @nullable */
+  driveLink?: string | null;
   status: HomeworkStatus;
   /** @nullable */
   marks?: number | null;
