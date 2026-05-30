@@ -613,8 +613,25 @@ function HomeworkTab() {
   );
 }
 
+const TEST_STATUS_ORDER: Record<string, number> = { ongoing: 0, active: 0, upcoming: 1, completed: 2 };
+const TEST_STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  upcoming:  { bg: "#EFF6FF", text: Colors.navy,           label: "Upcoming" },
+  ongoing:   { bg: "#DCFCE7", text: Colors.success,        label: "Ongoing" },
+  active:    { bg: "#DCFCE7", text: Colors.success,        label: "Live Now" },
+  completed: { bg: "#F3F4F6", text: Colors.mutedForeground, label: "Completed" },
+};
+
 function TestsTab() {
-  const { data: tests, isLoading, isError, refetch } = useListTests();
+  const { data: rawTests, isLoading, isError, refetch } = useListTests();
+
+  // Sort: ongoing first → upcoming ascending by time → completed
+  const tests = [...(rawTests ?? [])].sort((a, b) => {
+    const ao = TEST_STATUS_ORDER[a.status] ?? 1;
+    const bo = TEST_STATUS_ORDER[b.status] ?? 1;
+    if (ao !== bo) return ao - bo;
+    return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+  }) as Test[];
+
   if (isLoading) return <View style={styles.centered}><ActivityIndicator color={Colors.primary} size="large" /></View>;
   if (isError) return (
     <View style={styles.centered}>
@@ -623,7 +640,7 @@ function TestsTab() {
       <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}><Text style={styles.retryText}>Retry</Text></TouchableOpacity>
     </View>
   );
-  if ((tests ?? []).length === 0) return (
+  if (tests.length === 0) return (
     <View style={styles.centered}>
       <Feather name="check-square" size={36} color={Colors.border} />
       <Text style={styles.emptyTitle}>No tests yet</Text>
@@ -632,62 +649,65 @@ function TestsTab() {
 
   return (
     <FlatList
-      data={tests as Test[]}
+      data={tests}
       keyExtractor={(t) => String(t.id)}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.tabList}
       onRefresh={refetch}
       refreshing={isLoading}
       renderItem={({ item }) => {
-        const statusColors: Record<string, { bg: string; text: string }> = {
-          upcoming: { bg: "#EFF6FF", text: Colors.navy },
-          ongoing: { bg: "#DCFCE7", text: Colors.success },
-          completed: { bg: "#F3F4F6", text: Colors.mutedForeground },
-        };
-        const sc = statusColors[item.status] ?? statusColors.upcoming;
+        const sc = TEST_STATUS_COLORS[item.status] ?? TEST_STATUS_COLORS.upcoming;
+        const isOngoing = item.status === "ongoing" || item.status === "active";
+        const isCompleted = item.status === "completed";
         return (
-          <View style={styles.card}>
-            <View style={styles.cardRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardSubject}>{item.subjectName}</Text>
-                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={styles.metaRowWrap}>
-                  <View style={styles.cardMeta}>
-                    <Feather name="help-circle" size={12} color={Colors.mutedForeground} />
-                    <Text style={styles.cardMetaText}>{item.totalQuestions} questions</Text>
-                  </View>
-                  <View style={styles.cardMeta}>
-                    <Feather name="clock" size={12} color={Colors.mutedForeground} />
-                    <Text style={styles.cardMetaText}>{item.duration} min</Text>
-                  </View>
+          <View style={[styles.testRow, isOngoing && styles.testRowOngoing]}>
+            {/* Status dot */}
+            <View style={[styles.testDot, { backgroundColor: sc.text }]} />
+
+            {/* Info */}
+            <View style={{ flex: 1, gap: 3 }}>
+              <View style={styles.testTitleRow}>
+                <Text style={styles.testTitle} numberOfLines={2}>{item.title}</Text>
+                <View style={[styles.badge, { backgroundColor: sc.bg }]}>
+                  <Text style={[styles.badgeText, { color: sc.text }]}>{sc.label}</Text>
                 </View>
               </View>
-              <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                <Text style={[styles.badgeText, { color: sc.text }]}>{item.status}</Text>
+              <Text style={styles.cardSubject}>{item.subjectName}</Text>
+              <View style={styles.metaRowWrap}>
+                <View style={styles.cardMeta}>
+                  <Feather name="calendar" size={11} color={Colors.mutedForeground} />
+                  <Text style={styles.cardMetaText}>{formatTime(item.scheduledAt)}</Text>
+                </View>
+                <View style={styles.cardMeta}>
+                  <Feather name="clock" size={11} color={Colors.mutedForeground} />
+                  <Text style={styles.cardMetaText}>{item.duration} min</Text>
+                </View>
+                <View style={styles.cardMeta}>
+                  <Feather name="help-circle" size={11} color={Colors.mutedForeground} />
+                  <Text style={styles.cardMetaText}>{item.totalQuestions} Qs</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.cardDivider} />
-            <View style={styles.testCardBottom}>
-              <View style={styles.cardMeta}>
-                <Feather name="calendar" size={12} color={Colors.mutedForeground} />
-                <Text style={styles.cardMetaText}>{formatTime(item.scheduledAt)}</Text>
-              </View>
-              {item.status === "completed" && item.score != null ? (
-                <View style={[styles.badge, { backgroundColor: "#EFF6FF" }]}>
-                  <Text style={[styles.badgeText, { color: Colors.navy }]}>
-                    {item.score}/{item.maxScore ?? "?"}
+              {/* Score row for completed */}
+              {isCompleted && item.score != null && item.maxScore != null && (
+                <View style={styles.cardMeta}>
+                  <Feather name="award" size={11} color="#F59E0B" />
+                  <Text style={[styles.cardMetaText, { color: "#B45309", fontFamily: "Poppins_600SemiBold" }]}>
+                    {item.score}/{item.maxScore} ({Math.round((item.score / item.maxScore) * 100)}%)
                   </Text>
                 </View>
-              ) : item.status !== "completed" ? (
-                <TouchableOpacity
-                  style={styles.takeTestBtn}
-                  onPress={() => router.push(`/test/${item.id}` as any)}
-                >
-                  <Feather name="play" size={12} color="#fff" />
-                  <Text style={styles.takeTestText}>Start Test</Text>
-                </TouchableOpacity>
-              ) : null}
+              )}
             </View>
+
+            {/* Action button — only for ongoing */}
+            {isOngoing && (
+              <TouchableOpacity
+                style={styles.takeTestBtn}
+                onPress={() => router.push(`/test/${item.id}` as any)}
+              >
+                <Feather name="play" size={12} color="#fff" />
+                <Text style={styles.takeTestText}>Start</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       }}
@@ -815,15 +835,39 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   submitBtnText: { color: "#fff", fontSize: 13, fontFamily: "Poppins_700Bold" },
-  testCardBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  testRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  testRowOngoing: {
+    borderWidth: 1.5,
+    borderColor: Colors.success,
+  },
+  testDot: {
+    width: 8, height: 8, borderRadius: 4, marginTop: 6, flexShrink: 0,
+  },
+  testTitleRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  testTitle: { flex: 1, fontSize: 14, fontFamily: "Poppins_600SemiBold", color: Colors.navy, lineHeight: 20 },
   takeTestBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: Colors.navy,
-    paddingHorizontal: 14,
+    backgroundColor: Colors.success,
+    paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
+    alignSelf: "center",
+    flexShrink: 0,
   },
   takeTestText: { color: "#fff", fontSize: 12, fontFamily: "Poppins_700Bold" },
   videoCard: {
