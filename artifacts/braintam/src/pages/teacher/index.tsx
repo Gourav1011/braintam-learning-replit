@@ -122,6 +122,8 @@ export default function TeacherPage() {
 
   // Grading
   const [grading, setGrading] = useState<{ id: number; marks: string; feedback: string; type: "homework" | "assignment" } | null>(null);
+  const [submSearch, setSubmSearch] = useState("");
+  const [submTypeFilter, setSubmTypeFilter] = useState<"all" | "pending" | "graded">("all");
 
   // Attendance
   const [attendanceClassId, setAttendanceClassId] = useState<number | null>(null);
@@ -326,7 +328,7 @@ export default function TeacherPage() {
         grade: Number(lcForm.grade),
         courseId: lcForm.courseId ? Number(lcForm.courseId) : null,
         duration: Number(lcForm.duration),
-        scheduledAt: new Date(lcForm.scheduledAt).toISOString(),
+        scheduledAt: new Date(lcForm.scheduledAt + ":00+05:30").toISOString(),
       }),
     });
     if (r.ok) {
@@ -1041,7 +1043,7 @@ export default function TeacherPage() {
                       <div>
                         <div className="font-semibold text-sm" style={{ color: NAVY }}>{lc.title}</div>
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {new Date(lc.scheduledAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} · {lc.duration} min · Grade {lc.grade}
+                          {new Date(lc.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} · {lc.duration} min · Grade {lc.grade}
                         </div>
                       </div>
                     </div>
@@ -1424,48 +1426,111 @@ export default function TeacherPage() {
         )}
 
         {/* ── Grade Submissions ── */}
-        {tab === "submissions" && (
-          <div className="space-y-4">
-            <h3 className="font-bold" style={{ color: NAVY }}>Submissions to Grade</h3>
-            {grading && (
-              <div className="bg-white rounded-2xl p-4 border border-orange-200 shadow-sm space-y-3">
-                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Grade Submission</h4>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Input type="number" placeholder="Marks *" value={grading.marks} onChange={e => setGrading(p => p ? { ...p, marks: e.target.value } : null)} />
-                  <Input placeholder="Feedback (optional)" value={grading.feedback} onChange={e => setGrading(p => p ? { ...p, feedback: e.target.value } : null)} />
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={gradeSubmission} disabled={busy || !grading.marks} className="text-white" style={{ background: ORANGE }}>Save Grade</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setGrading(null)}>Cancel</Button>
+        {tab === "submissions" && (() => {
+          // Parse MCQ answer JSON into readable format
+          function formatAnswer(answer: string): { isMcq: boolean; text: string } {
+            try {
+              const parsed = JSON.parse(answer);
+              if (Array.isArray(parsed)) {
+                const letters = ["A", "B", "C", "D", "E"];
+                const readable = parsed.map((v: number, i: number) => `Q${i+1}: ${letters[v] ?? v}`).join("  ·  ");
+                return { isMcq: true, text: readable };
+              }
+            } catch { /* not JSON */ }
+            return { isMcq: false, text: answer };
+          }
+
+          const filtered = submissions.filter(s => {
+            const matchSearch = !submSearch.trim() ||
+              s.studentName.toLowerCase().includes(submSearch.toLowerCase()) ||
+              (s.homeworkTitle ?? s.assignmentTitle ?? "").toLowerCase().includes(submSearch.toLowerCase());
+            const matchStatus = submTypeFilter === "all" || s.status === submTypeFilter;
+            return matchSearch && matchStatus;
+          });
+
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold" style={{ color: NAVY }}>Grade Work</h3>
+                <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-600 font-semibold">{submissions.filter(s => s.status !== "graded").length} pending</span>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input
+                  placeholder="🔍 Search student or homework name…"
+                  value={submSearch}
+                  onChange={e => setSubmSearch(e.target.value)}
+                  className="flex-1"
+                />
+                <div className="flex gap-1">
+                  {(["all", "pending", "graded"] as const).map(f => (
+                    <button key={f}
+                      onClick={() => setSubmTypeFilter(f)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all capitalize ${submTypeFilter === f ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
+                      style={submTypeFilter === f ? { background: NAVY, borderColor: NAVY } : {}}>
+                      {f}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
-            <div className="space-y-3">
-              {submissions.map(s => (
-                <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}`}>{s.status}</span>
-                        {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks} marks</span>}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">{s.homeworkTitle ?? s.assignmentTitle} · {new Date(s.submittedAt).toLocaleDateString("en-IN")}</div>
-                      <div className="text-sm text-gray-600 mt-1.5 line-clamp-2 bg-gray-50 rounded-lg px-3 py-2">{s.answer}</div>
-                      {s.feedback && <div className="text-xs text-blue-600 mt-1 italic">Feedback: {s.feedback}</div>}
-                    </div>
-                    {s.status !== "graded" && (
-                      <Button size="sm" onClick={() => setGrading({ id: s.id, marks: "", feedback: "", type: "homework" })} className="text-white flex-shrink-0" style={{ background: ORANGE }}>Grade</Button>
-                    )}
+
+              {/* Grade form */}
+              {grading && (
+                <div className="bg-white rounded-2xl p-4 border border-orange-200 shadow-sm space-y-3">
+                  <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Grade Submission</h4>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <Input type="number" placeholder="Marks *" value={grading.marks} onChange={e => setGrading(p => p ? { ...p, marks: e.target.value } : null)} />
+                    <Input placeholder="Feedback (optional)" value={grading.feedback} onChange={e => setGrading(p => p ? { ...p, feedback: e.target.value } : null)} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={gradeSubmission} disabled={busy || !grading.marks} className="text-white" style={{ background: ORANGE }}>Save Grade</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setGrading(null)}>Cancel</Button>
                   </div>
                 </div>
-              ))}
-              {submissions.length === 0 && (
-                <div className="py-12 text-center"><CheckCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" /><p className="text-gray-400 text-sm">No submissions yet</p></div>
               )}
+
+              <div className="space-y-3">
+                {filtered.map(s => {
+                  const fmt = formatAnswer(s.answer);
+                  return (
+                    <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}`}>{s.status}</span>
+                            {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks} marks</span>}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">{s.homeworkTitle ?? s.assignmentTitle} · {new Date(s.submittedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</div>
+                          {/* Answer display */}
+                          {fmt.isMcq ? (
+                            <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
+                              <div className="text-xs font-semibold text-blue-600 mb-1">📝 MCQ Answers</div>
+                              <div className="text-xs text-blue-800 font-mono">{fmt.text}</div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-600 mt-1.5 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap">{fmt.text}</div>
+                          )}
+                          {s.feedback && <div className="text-xs text-blue-600 mt-1 italic">Feedback: {s.feedback}</div>}
+                        </div>
+                        {s.status !== "graded" && (
+                          <Button size="sm" onClick={() => setGrading({ id: s.id, marks: "", feedback: "", type: "homework" })} className="text-white flex-shrink-0" style={{ background: ORANGE }}>Grade</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <div className="py-12 text-center">
+                    <CheckCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm">{submissions.length === 0 ? "No submissions yet" : "No results match your filters"}</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Attendance ── */}
         {tab === "attendance" && (

@@ -5,9 +5,8 @@ import { useGetLeaderboard, getGetLeaderboardQueryKey } from "@workspace/api-cli
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Star, School, Crown, Sparkles, ArrowRight, Flame, MapPin } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
@@ -94,7 +93,6 @@ function PublicLeaderboardView() {
           <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full opacity-10 blur-3xl" style={{ background: ORANGE }} />
         </div>
 
-        {/* Trophy */}
         <div className="bt-float-sm relative z-10 inline-block mb-6">
           <div className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl mx-auto"
             style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)" }}>
@@ -125,69 +123,68 @@ function PublicLeaderboardView() {
       </section>
 
       {/* ── Podium ── */}
-      <section className="max-w-4xl mx-auto px-6 py-12">
+      <section className="max-w-3xl mx-auto px-6 py-10">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-          className="text-center mb-8">
-          <h2 className="text-2xl font-black" style={{ color: NAVY }}>🏆 Top 3 Champions</h2>
+          className="text-center mb-6">
+          <h2 className="text-xl font-black" style={{ color: NAVY }}>🏆 Top 3 Champions</h2>
         </motion.div>
 
-        {/* Podium display */}
-        <div className="flex items-end justify-center gap-4 mb-10">
+        <div className="flex items-end justify-center gap-3 mb-8">
           {/* 2nd place */}
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-            className="flex-1 max-w-[180px] text-center">
-            <div className="relative mb-3">
-              <div className="w-16 h-16 rounded-full mx-auto bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-white text-xl font-black shadow-lg">
+            className="flex-1 max-w-[140px] text-center">
+            <div className="relative mb-2">
+              <div className="w-12 h-12 rounded-full mx-auto bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-white text-base font-black shadow-lg">
                 {top3[1].name.charAt(0)}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-sm">🥈</div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow text-xs">🥈</div>
             </div>
-            <p className="font-bold text-sm truncate" style={{ color: NAVY }}>{top3[1].name}</p>
-            <p className="text-xs text-gray-500 truncate">{top3[1].school}</p>
-            <p className="text-xs font-bold text-amber-600 mt-1">{top3[1].points.toLocaleString()} pts</p>
-            <div className="mt-3 rounded-t-2xl h-24 flex items-center justify-center"
+            <p className="font-bold text-xs truncate" style={{ color: NAVY }}>{top3[1].name}</p>
+            <p className="text-xs text-gray-500 truncate hidden sm:block">{top3[1].school}</p>
+            <p className="text-xs font-bold text-amber-600 mt-0.5">{top3[1].points.toLocaleString()} pts</p>
+            <div className="mt-2 rounded-t-xl h-16 flex items-center justify-center"
               style={{ background: `linear-gradient(to bottom, rgba(11,43,107,0.12), rgba(11,43,107,0.06))` }}>
-              <span className="text-3xl font-black text-gray-400">2</span>
+              <span className="text-2xl font-black text-gray-400">2</span>
             </div>
           </motion.div>
 
           {/* 1st place */}
           <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="flex-1 max-w-[200px] text-center">
+            className="flex-1 max-w-[160px] text-center">
             <div className="bt-float-sm">
-              <Crown className="w-6 h-6 text-amber-400 mx-auto mb-1" />
-              <div className="relative mb-3">
-                <div className="w-20 h-20 rounded-full mx-auto bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-white text-2xl font-black shadow-xl border-4 border-amber-300">
+              <Crown className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+              <div className="relative mb-2">
+                <div className="w-16 h-16 rounded-full mx-auto bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-white text-xl font-black shadow-xl border-3 border-amber-300">
                   {top3[0].name.charAt(0)}
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow text-base">🥇</div>
-                <div className="bt-pulse-scale absolute -top-1 -left-1 w-4 h-4 bg-yellow-300 rounded-full" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-sm">🥇</div>
+                <div className="bt-pulse-scale absolute -top-1 -left-1 w-3 h-3 bg-yellow-300 rounded-full" />
               </div>
             </div>
-            <p className="font-black text-base truncate" style={{ color: NAVY }}>{top3[0].name}</p>
-            <p className="text-xs text-gray-500 truncate">{top3[0].school}</p>
-            <p className="text-sm font-black mt-1" style={{ color: ORANGE }}>{top3[0].points.toLocaleString()} pts</p>
-            <div className="mt-3 rounded-t-2xl h-36 flex items-center justify-center"
+            <p className="font-black text-sm truncate" style={{ color: NAVY }}>{top3[0].name}</p>
+            <p className="text-xs text-gray-500 truncate hidden sm:block">{top3[0].school}</p>
+            <p className="text-sm font-black mt-0.5" style={{ color: ORANGE }}>{top3[0].points.toLocaleString()} pts</p>
+            <div className="mt-2 rounded-t-xl h-24 flex items-center justify-center"
               style={{ background: `linear-gradient(to bottom, rgba(245,158,11,0.2), rgba(245,158,11,0.08))` }}>
-              <span className="text-4xl font-black text-amber-400">1</span>
+              <span className="text-3xl font-black text-amber-400">1</span>
             </div>
           </motion.div>
 
           {/* 3rd place */}
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-            className="flex-1 max-w-[180px] text-center">
-            <div className="relative mb-3">
-              <div className="w-16 h-16 rounded-full mx-auto bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-white text-xl font-black shadow-lg">
+            className="flex-1 max-w-[140px] text-center">
+            <div className="relative mb-2">
+              <div className="w-12 h-12 rounded-full mx-auto bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center text-white text-base font-black shadow-lg">
                 {top3[2].name.charAt(0)}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow text-sm">🥉</div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow text-xs">🥉</div>
             </div>
-            <p className="font-bold text-sm truncate" style={{ color: NAVY }}>{top3[2].name}</p>
-            <p className="text-xs text-gray-500 truncate">{top3[2].school}</p>
-            <p className="text-xs font-bold text-amber-700 mt-1">{top3[2].points.toLocaleString()} pts</p>
-            <div className="mt-3 rounded-t-2xl h-16 flex items-center justify-center"
+            <p className="font-bold text-xs truncate" style={{ color: NAVY }}>{top3[2].name}</p>
+            <p className="text-xs text-gray-500 truncate hidden sm:block">{top3[2].school}</p>
+            <p className="text-xs font-bold text-amber-700 mt-0.5">{top3[2].points.toLocaleString()} pts</p>
+            <div className="mt-2 rounded-t-xl h-10 flex items-center justify-center"
               style={{ background: `linear-gradient(to bottom, rgba(180,83,9,0.12), rgba(180,83,9,0.06))` }}>
-              <span className="text-3xl font-black text-amber-700/50">3</span>
+              <span className="text-2xl font-black text-amber-700/50">3</span>
             </div>
           </motion.div>
         </div>
@@ -203,15 +200,12 @@ function PublicLeaderboardView() {
               transition={{ delay: 0.05 * i + 0.4 }}
               className="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all hover:shadow-md"
               style={{ background: i < 3 ? (i === 0 ? "linear-gradient(to right, rgba(245,158,11,0.08), rgba(255,255,255,0))" : i === 1 ? "linear-gradient(to right, rgba(148,163,184,0.08), rgba(255,255,255,0))" : "linear-gradient(to right, rgba(180,83,9,0.06), rgba(255,255,255,0))") : "white", borderColor: i < 3 ? (i === 0 ? "rgba(245,158,11,0.3)" : i === 1 ? "rgba(148,163,184,0.3)" : "rgba(180,83,9,0.2)") : "#F3F4F6" }}>
-              {/* Rank badge */}
               <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0 ${i === 0 ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white" : i === 1 ? "bg-gradient-to-br from-slate-300 to-slate-400 text-white" : i === 2 ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white" : "bg-gray-100 text-gray-500"}`}>
                 {i < 3 ? medals[i] : entry.rank}
               </div>
-              {/* Avatar */}
               <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white font-black text-sm flex-shrink-0`}>
                 {entry.name.charAt(0)}
               </div>
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm" style={{ color: NAVY }}>{entry.name}</div>
                 <div className="text-xs text-gray-500 flex items-center gap-3 mt-0.5">
@@ -219,14 +213,11 @@ function PublicLeaderboardView() {
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{entry.city}</span>
                 </div>
               </div>
-              {/* Grade */}
               <span className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0"
                 style={{ background: "rgba(11,43,107,0.07)", color: NAVY }}>Gr {entry.grade}</span>
-              {/* Streak */}
               <div className="text-xs flex items-center gap-1 text-orange-500 font-semibold flex-shrink-0">
                 <Flame className="w-3.5 h-3.5" />{entry.streak}d
               </div>
-              {/* Points */}
               <div className="flex items-center gap-1 font-black text-sm flex-shrink-0" style={{ color: i < 3 ? ORANGE : NAVY }}>
                 <Star className="w-3.5 h-3.5 fill-current" />{entry.points.toLocaleString()}
               </div>
@@ -234,7 +225,6 @@ function PublicLeaderboardView() {
           ))}
         </div>
 
-        {/* Blur CTA — more students below */}
         <div className="relative mt-2">
           <div className="pointer-events-none h-16 rounded-2xl" style={{ background: "linear-gradient(to bottom, transparent, #F8FAFF)" }} />
           <div className="text-center py-6">
@@ -259,10 +249,11 @@ function PublicLeaderboardView() {
 
 // ── Authenticated view ──────────────────────────────────────────────────
 function AuthLeaderboardView() {
-  const [grade, setGrade] = useState<string>("all");
   const { student } = useAuth();
 
-  const params = { grade: grade !== "all" ? Number(grade) : undefined };
+  // Always show leaderboard for the student's own grade — no manual dropdown
+  const studentGrade = student?.grade;
+  const params = { grade: studentGrade !== undefined ? studentGrade : undefined };
   const { data: leaderboard, isLoading } = useGetLeaderboard(params, {
     query: { queryKey: getGetLeaderboardQueryKey(params) }
   });
@@ -273,61 +264,70 @@ function AuthLeaderboardView() {
     <AppLayout>
       <div className="p-6 space-y-6 max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-yellow-600" />
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
+                  <Trophy className="w-6 h-6 text-yellow-600" />
+                </div>
+                Leaderboard
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                {studentGrade ? `Grade ${studentGrade} rankings` : "See how you rank against other students"}
+              </p>
             </div>
-            Leaderboard
-          </h1>
-          <p className="text-muted-foreground mt-1">See how you rank against other students</p>
+            {studentGrade && (
+              <span className="text-sm px-3 py-1.5 rounded-full font-semibold"
+                style={{ background: "rgba(11,43,107,0.08)", color: NAVY }}>
+                Grade {studentGrade}
+              </span>
+            )}
+          </div>
         </motion.div>
 
-        <Select value={grade} onValueChange={setGrade}>
-          <SelectTrigger className="w-40" data-testid="grade-filter"><SelectValue placeholder="All Grades" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Grades</SelectItem>
-            {[1,2,3,4,5,6,7,8,9,10].map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
-          </SelectContent>
-        </Select>
-
+        {/* ── Top 3 Podium ── */}
         {!isLoading && top3.length >= 3 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="bg-gradient-to-br from-secondary to-secondary/80 text-white border-0 overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-end justify-center gap-4">
-                  <div className="text-center flex-1">
-                    <Avatar className="w-16 h-16 mx-auto border-4 border-white/30">
-                      <AvatarFallback className={`${medalColors[1]} text-lg font-bold`}>{top3[1]?.studentName?.charAt(0) ?? "?"}</AvatarFallback>
-                    </Avatar>
-                    <div className="mt-2 font-bold text-sm truncate">{top3[1]?.studentName}</div>
-                    <div className="text-xs text-white/70">{top3[1]?.points} pts</div>
-                    <div className="mt-2 bg-white/20 rounded-t-xl h-16 flex items-center justify-center text-2xl">{medals[1]}</div>
-                  </div>
-                  <div className="text-center flex-1">
-                    <div className="relative">
-                      <Crown className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
-                      <Avatar className="w-20 h-20 mx-auto border-4 border-yellow-400">
-                        <AvatarFallback className={`${medalColors[0]} text-2xl font-bold`}>{top3[0]?.studentName?.charAt(0) ?? "?"}</AvatarFallback>
-                      </Avatar>
-                    </div>
-                    <div className="mt-2 font-bold text-base truncate">{top3[0]?.studentName}</div>
-                    <div className="text-xs text-white/70">{top3[0]?.points} pts</div>
-                    <div className="mt-2 bg-white/20 rounded-t-xl h-24 flex items-center justify-center text-2xl">{medals[0]}</div>
-                  </div>
-                  <div className="text-center flex-1">
-                    <Avatar className="w-16 h-16 mx-auto border-4 border-white/30">
-                      <AvatarFallback className={`${medalColors[2]} text-lg font-bold`}>{top3[2]?.studentName?.charAt(0) ?? "?"}</AvatarFallback>
-                    </Avatar>
-                    <div className="mt-2 font-bold text-sm truncate">{top3[2]?.studentName}</div>
-                    <div className="text-xs text-white/70">{top3[2]?.points} pts</div>
-                    <div className="mt-2 bg-white/20 rounded-t-xl h-10 flex items-center justify-center text-2xl">{medals[2]}</div>
-                  </div>
+            <div className="rounded-2xl overflow-hidden p-5" style={{ background: `linear-gradient(135deg, ${NAVY}, #1a4a9b)` }}>
+              <p className="text-center text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">🏆 Top 3</p>
+              <div className="flex items-end justify-center gap-3">
+                {/* 2nd */}
+                <div className="text-center flex-1">
+                  <Avatar className="w-12 h-12 mx-auto border-2 border-white/30 mb-1">
+                    {top3[1]?.avatarUrl && <AvatarImage src={top3[1].avatarUrl} alt={top3[1].studentName ?? ""} />}
+                    <AvatarFallback className="bg-gradient-to-br from-slate-300 to-slate-400 text-white text-sm font-bold">{top3[1]?.studentName?.charAt(0) ?? "?"}</AvatarFallback>
+                  </Avatar>
+                  <div className="font-bold text-xs text-white truncate">{top3[1]?.studentName}</div>
+                  <div className="text-xs text-white/60">{top3[1]?.points} pts</div>
+                  <div className="mt-2 bg-white/10 rounded-t-xl h-12 flex items-center justify-center text-xl">🥈</div>
                 </div>
-              </CardContent>
-            </Card>
+                {/* 1st */}
+                <div className="text-center flex-1">
+                  <Crown className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
+                  <Avatar className="w-16 h-16 mx-auto border-2 border-yellow-400 mb-1">
+                    {top3[0]?.avatarUrl && <AvatarImage src={top3[0].avatarUrl} alt={top3[0].studentName ?? ""} />}
+                    <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-amber-500 text-white text-lg font-bold">{top3[0]?.studentName?.charAt(0) ?? "?"}</AvatarFallback>
+                  </Avatar>
+                  <div className="font-bold text-sm text-white truncate">{top3[0]?.studentName}</div>
+                  <div className="text-xs text-yellow-300">{top3[0]?.points} pts</div>
+                  <div className="mt-2 bg-yellow-400/20 rounded-t-xl h-16 flex items-center justify-center text-xl">🥇</div>
+                </div>
+                {/* 3rd */}
+                <div className="text-center flex-1">
+                  <Avatar className="w-12 h-12 mx-auto border-2 border-white/30 mb-1">
+                    {top3[2]?.avatarUrl && <AvatarImage src={top3[2].avatarUrl} alt={top3[2].studentName ?? ""} />}
+                    <AvatarFallback className="bg-gradient-to-br from-amber-600 to-amber-700 text-white text-sm font-bold">{top3[2]?.studentName?.charAt(0) ?? "?"}</AvatarFallback>
+                  </Avatar>
+                  <div className="font-bold text-xs text-white truncate">{top3[2]?.studentName}</div>
+                  <div className="text-xs text-white/60">{top3[2]?.points} pts</div>
+                  <div className="mt-2 bg-white/10 rounded-t-xl h-8 flex items-center justify-center text-xl">🥉</div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
 
+        {/* ── Full List ── */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Rankings</CardTitle></CardHeader>
           <CardContent className="space-y-2">
@@ -339,11 +339,14 @@ function AuthLeaderboardView() {
                 return (
                   <motion.div key={entry.rank} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className={`flex items-center gap-4 p-3 rounded-xl border-2 transition-colors ${isCurrentUser ? "border-primary bg-primary/5" : i < 3 ? "bg-yellow-50 border-yellow-200" : "border-transparent hover:bg-muted/40"}`}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${isCurrentUser ? "border-primary bg-primary/5" : i < 3 ? "bg-yellow-50 border-yellow-200" : "border-transparent hover:bg-muted/40"}`}
                     data-testid={`leaderboard-row-${entry.rank}`}>
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${i === 0 ? medalColors[0] : i === 1 ? medalColors[1] : i === 2 ? medalColors[2] : "bg-muted text-muted-foreground"}`}>{entry.rank}</div>
-                    <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarFallback className="bg-secondary/10 text-secondary font-bold">{entry.studentName?.charAt(0)}</AvatarFallback>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${i === 0 ? medalColors[0] : i === 1 ? medalColors[1] : i === 2 ? medalColors[2] : "bg-muted text-muted-foreground"}`}>
+                      {i < 3 ? medals[i] : entry.rank}
+                    </div>
+                    <Avatar className="w-9 h-9 flex-shrink-0">
+                      {entry.avatarUrl && <AvatarImage src={entry.avatarUrl} alt={entry.studentName ?? ""} />}
+                      <AvatarFallback className="bg-secondary/10 text-secondary font-bold text-xs">{entry.studentName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm flex items-center gap-2">{entry.studentName}{isCurrentUser && <Badge className="text-xs py-0">You</Badge>}</div>

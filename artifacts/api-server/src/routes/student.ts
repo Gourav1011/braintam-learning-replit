@@ -320,7 +320,7 @@ router.get("/student/leaderboard", async (req, res) => {
         : eq(usersTable.role, "student")
     )
     .orderBy(desc(usersTable.points))
-    .limit(30);
+    .limit(20);
 
   const ranked = students.map((s, i) => ({
     rank: i + 1,

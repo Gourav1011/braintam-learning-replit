@@ -573,8 +573,26 @@ function HomeworkTab() {
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalWrap}>
           <View style={styles.modalCard}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Submit {submitting?.type === "hw" ? "Homework" : "Assignment"}</Text>
-            <Text style={styles.modalSubtitle} numberOfLines={2}>{submitting?.title}</Text>
+            {/* Header: title on left, submit button on top-right — always visible above keyboard */}
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={styles.modalTitle}>
+                  {submitting?.type === "hw" ? "Homework" : "Assignment"}
+                </Text>
+                <Text style={styles.modalSubtitle} numberOfLines={2}>{submitting?.title}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.modalSubmitTop, (hwMutation.isPending || assignMutation.isPending) && styles.btnDisabled]}
+                onPress={handleSubmit}
+                disabled={hwMutation.isPending || assignMutation.isPending}
+              >
+                {hwMutation.isPending || assignMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitTopText}>Submit ✓</Text>
+                )}
+              </TouchableOpacity>
+            </View>
             <TextInput
               style={styles.answerInput}
               placeholder="Write your answer here…"
@@ -585,22 +603,9 @@ function HomeworkTab() {
               numberOfLines={5}
               textAlignVertical="top"
             />
-            <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setSubmitting(null)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalSubmit, (hwMutation.isPending || assignMutation.isPending) && styles.btnDisabled]}
-                onPress={handleSubmit}
-                disabled={hwMutation.isPending || assignMutation.isPending}
-              >
-                {hwMutation.isPending || assignMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalSubmitText}>Submit</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setSubmitting(null)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -869,8 +874,19 @@ const styles = StyleSheet.create({
     color: Colors.text,
     minHeight: 120,
   },
+  modalHeaderRow: { flexDirection: "row", alignItems: "center" },
+  modalSubmitTop: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  modalSubmitTopText: { fontSize: 13, fontFamily: "Poppins_700Bold", color: "#fff" },
   modalBtns: { flexDirection: "row", gap: 10 },
-  modalCancel: { flex: 1, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14, paddingVertical: 13, alignItems: "center" },
+  modalCancel: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14, paddingVertical: 13, alignItems: "center" },
   modalCancelText: { fontSize: 15, fontFamily: "Poppins_600SemiBold", color: Colors.muted },
   modalSubmit: { flex: 1, backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 13, alignItems: "center" },
   modalSubmitText: { fontSize: 15, fontFamily: "Poppins_700Bold", color: "#fff" },
