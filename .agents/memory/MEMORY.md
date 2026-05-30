@@ -1,0 +1,1 @@
+- [Homework MCQ type detection](homework-mcq-type.md) — DB default 'writing' vs questionsJson presence; always detect MCQ from questionsJson, not homework_type column.

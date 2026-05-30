@@ -237,7 +237,11 @@ export default function TeacherPage() {
 
   async function createHomework() {
     setBusy(true);
-    const validQs = hwType === "mcq" ? hwQuestions.filter(q => q.text.trim()) : [];
+    // Auto-detect effective type: if any questions have text filled, treat as MCQ
+    // regardless of toggle state — prevents writing/mcq mismatch if toggle is forgotten.
+    const filledQs = hwQuestions.filter(q => q.text.trim());
+    const effectiveType: "mcq" | "writing" = filledQs.length > 0 ? "mcq" : hwType;
+    const validQs = effectiveType === "mcq" ? filledQs : [];
     const isEdit = editingHw !== null;
 
     const payload = isEdit ? {
@@ -245,8 +249,8 @@ export default function TeacherPage() {
       dueDate: hwForm.dueDate,
       description: hwForm.description || null,
       maxMarks: Number(hwForm.maxMarks),
-      homeworkType: hwType,
-      driveLink: hwType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
+      homeworkType: effectiveType,
+      driveLink: effectiveType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
       questionsJson: validQs.length > 0 ? validQs : null,
     } : {
       title: hwForm.title,
@@ -256,8 +260,8 @@ export default function TeacherPage() {
       chapterId: hwForm.chapterId ? Number(hwForm.chapterId) : null,
       topicId: hwForm.topicId ? Number(hwForm.topicId) : null,
       liveClassId: hwForm.liveClassId ? Number(hwForm.liveClassId) : null,
-      homeworkType: hwType,
-      driveLink: hwType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
+      homeworkType: effectiveType,
+      driveLink: effectiveType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
       dueDate: hwForm.dueDate,
       description: hwForm.description || null,
       maxMarks: Number(hwForm.maxMarks),
@@ -400,7 +404,13 @@ export default function TeacherPage() {
 
   function openEditHw(h: Homework) {
     setEditingHw(h.id);
-    setHwType((h.homeworkType as "mcq" | "writing") ?? "writing");
+    // Detect type from questionsJson if present (backward-compat with rows that
+    // defaulted homework_type='writing' before the column existed).
+    let detectedType: "mcq" | "writing" = (h.homeworkType as "mcq" | "writing") ?? "writing";
+    if (h.questionsJson) {
+      try { if (JSON.parse(h.questionsJson).length > 0) detectedType = "mcq"; } catch { /* keep */ }
+    }
+    setHwType(detectedType);
     setHwForm({
       title: h.title,
       subjectId: String(h.subjectId),
@@ -698,18 +708,16 @@ export default function TeacherPage() {
                   {editingHw ? "✏️ Edit Homework" : "New Homework"}
                 </h3>
 
-                {/* Type Toggle — only for new homework */}
-                {!editingHw && (
-                  <div className="flex gap-2">
-                    {(["writing", "mcq"] as const).map(t => (
-                      <button key={t} onClick={() => setHwType(t)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${hwType === t ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
-                        style={hwType === t ? { background: ORANGE, borderColor: ORANGE } : {}}>
-                        {t === "writing" ? "✍ Writing Work" : "📝 MCQ Quiz"}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* Type Toggle — shown for both new and edit homework */}
+                <div className="flex gap-2">
+                  {(["writing", "mcq"] as const).map(t => (
+                    <button key={t} onClick={() => setHwType(t)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${hwType === t ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
+                      style={hwType === t ? { background: ORANGE, borderColor: ORANGE } : {}}>
+                      {t === "writing" ? "✍ Writing Work" : "📝 MCQ Quiz"}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Step 1: Pick Live Class (primary selector for new homework) */}
                 {!editingHw && (
