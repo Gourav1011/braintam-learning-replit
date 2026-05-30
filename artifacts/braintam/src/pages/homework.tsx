@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useListHomework, useSubmitHomework, getListHomeworkQueryKey } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,11 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, Calendar, Clock, CheckCircle, AlertCircle, Send, Lock, ExternalLink } from "lucide-react";
+import { FileText, Calendar, Clock, CheckCircle, AlertCircle, Send, Lock, ExternalLink, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 
 const EXPIRY_DAYS = 5;
+const NAVY = "#0B2B6B";
+const ORANGE = "#FF6B1A";
 
 function daysUntil(dateStr: string) {
   const diff = new Date(dateStr).getTime() - Date.now();
@@ -43,7 +46,9 @@ type ExtendedHw = {
   questionsJson?: string | null;
 };
 
-function parsedQuestions(json: string | null | undefined): Array<{ type: string; text: string; options: string[]; correctOption: number }> {
+type HwQuestion = { text: string; options: string[]; correctOption: number };
+
+function parsedQuestions(json: string | null | undefined): HwQuestion[] {
   if (!json) return [];
   try {
     const q = JSON.parse(json);
@@ -54,11 +59,15 @@ function parsedQuestions(json: string | null | undefined): Array<{ type: string;
 export default function HomeworkPage() {
   const [subject, setSubject] = useState<string>("all");
   const [submitting, setSubmitting] = useState<ExtendedHw | null>(null);
+
   const [answer, setAnswer] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
-  const [mcqAnswers, setMcqAnswers] = useState<Record<number, number>>({});
-  const queryClient = useQueryClient();
 
+  const [mcqAnswers, setMcqAnswers] = useState<Record<number, number>>({});
+  const [currentQ, setCurrentQ] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+
+  const queryClient = useQueryClient();
   const params = { subjectId: subject !== "all" ? Number(subject) : undefined };
 
   const { data: rawHomework, isLoading } = useListHomework(params, {
@@ -71,42 +80,53 @@ export default function HomeworkPage() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListHomeworkQueryKey(params) });
-        setSubmitting(null);
-        setAnswer("");
-        setAttachmentUrl("");
-        setMcqAnswers({});
+        setSubmitted(true);
       }
     }
   });
 
-  const isMcq = submitting && (submitting.homeworkType === "mcq") && parsedQuestions(submitting.questionsJson).length > 0;
-  const questions = submitting ? parsedQuestions(submitting.questionsJson) : [];
+  const questions: HwQuestion[] = submitting ? parsedQuestions(submitting.questionsJson) : [];
+  const isMcq = !!(submitting && submitting.homeworkType === "mcq" && questions.length > 0);
+  const mcqComplete = questions.length > 0 && questions.every((_, i) => mcqAnswers[i] !== undefined);
+  const answeredCount = Object.keys(mcqAnswers).length;
 
-  const handleSubmit = () => {
-    if (!submitting) return;
-    if (isMcq) {
-      const answerStr = JSON.stringify(questions.map((_, i) => mcqAnswers[i] ?? -1));
-      submitMutation.mutate({ id: submitting.id, data: { answer: answerStr, attachmentUrl: null } });
-    } else {
-      if (!answer.trim()) return;
-      submitMutation.mutate({ id: submitting.id, data: { answer, attachmentUrl: attachmentUrl.trim() || null } });
+  function openSubmit(hw: ExtendedHw) {
+    setSubmitting(hw);
+    setAnswer("");
+    setAttachmentUrl("");
+    setMcqAnswers({});
+    setCurrentQ(0);
+    setSubmitted(false);
+  }
+
+  function closeDialog() {
+    if (submitMutation.isPending) return;
+    setSubmitting(null);
+    setSubmitted(false);
+    setMcqAnswers({});
+    setCurrentQ(0);
+  }
+
+  function selectOption(qi: number, oi: number) {
+    if (submitted) return;
+    setMcqAnswers(prev => ({ ...prev, [qi]: oi }));
+    if (qi < questions.length - 1) {
+      setTimeout(() => setCurrentQ(q => Math.min(questions.length - 1, q + 1)), 500);
     }
-  };
+  }
 
-  const mcqComplete = isMcq && questions.every((_, i) => mcqAnswers[i] !== undefined);
+  function handleWritingSubmit() {
+    if (!submitting || !answer.trim()) return;
+    submitMutation.mutate({ id: submitting.id, data: { answer, attachmentUrl: attachmentUrl.trim() || null } });
+  }
 
-  const handleSelectMcq = (qi: number, oi: number) => {
-    const newAnswers = { ...mcqAnswers, [qi]: oi };
-    setMcqAnswers(newAnswers);
-    if (!submitting) return;
-    const allDone = questions.every((_, i) => newAnswers[i] !== undefined);
-    if (allDone) {
-      const answerStr = JSON.stringify(questions.map((_, i) => newAnswers[i] ?? -1));
-      setTimeout(() => {
-        submitMutation.mutate({ id: submitting.id, data: { answer: answerStr, attachmentUrl: null } });
-      }, 400);
-    }
-  };
+  function handleMcqSubmit() {
+    if (!submitting || !mcqComplete) return;
+    const answerStr = JSON.stringify(questions.map((_, i) => mcqAnswers[i] ?? -1));
+    submitMutation.mutate({ id: submitting.id, data: { answer: answerStr, attachmentUrl: null } });
+  }
+
+  const currentQuestion = questions[currentQ];
 
   return (
     <AppLayout>
@@ -151,8 +171,10 @@ export default function HomeworkPage() {
               const days = daysUntil(hw.dueDate);
               const isUrgent = days <= 2 && days >= 0;
               const isExpired = hw.status === "pending" && days < -EXPIRY_DAYS;
+              const isDone = hw.status === "submitted" || hw.status === "graded";
               const hwQuestions = parsedQuestions(hw.questionsJson);
               const isMcqHw = hw.homeworkType === "mcq" && hwQuestions.length > 0;
+
               return (
                 <motion.div
                   key={hw.id}
@@ -160,32 +182,35 @@ export default function HomeworkPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
                   data-testid={`homework-card-${hw.id}`}
+                  className={isExpired || isDone ? "pointer-events-none select-none" : ""}
                 >
                   <Card className={`border-2 transition-all ${
                     isExpired
-                      ? "border-gray-200 bg-gray-50 opacity-60"
-                      : isUrgent && hw.status === "pending"
-                        ? "border-red-300 bg-red-50/30"
-                        : "border-border"
+                      ? "border-gray-200 bg-gray-100 opacity-50"
+                      : isDone
+                        ? "border-gray-200 bg-gray-50 opacity-70"
+                        : isUrgent
+                          ? "border-red-300 bg-red-50/30"
+                          : "border-border"
                   }`}>
                     <CardContent className="p-5 flex items-start gap-5">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        isExpired ? "bg-gray-200" :
-                        hw.status === "graded" ? "bg-green-100" :
-                        hw.status === "submitted" ? "bg-blue-100" :
+                        isExpired || isDone ? "bg-gray-200" :
                         isUrgent ? "bg-red-100" : "bg-yellow-100"
                       }`}>
                         {isExpired
                           ? <Lock className="w-6 h-6 text-gray-400" />
-                          : <FileText className={`w-6 h-6 ${hw.status === "graded" ? "text-green-600" : hw.status === "submitted" ? "text-blue-600" : isUrgent ? "text-red-600" : "text-yellow-600"}`} />
+                          : isDone
+                            ? <CheckCircle className="w-6 h-6 text-gray-400" />
+                            : <FileText className={`w-6 h-6 ${isUrgent ? "text-red-600" : "text-yellow-600"}`} />
                         }
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className={`font-bold text-base ${isExpired ? "text-gray-400" : ""}`}>{hw.title}</h3>
+                          <h3 className={`font-bold text-base ${isExpired || isDone ? "text-gray-400" : ""}`}>{hw.title}</h3>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {isMcqHw && (
-                              <Badge className="text-xs border bg-blue-50 text-blue-600 border-blue-200">📝 {hwQuestions.length} Qs</Badge>
+                              <Badge className="text-xs border bg-blue-50 text-blue-600 border-blue-200">📝 {hwQuestions.length} MCQs</Badge>
                             )}
                             {hw.homeworkType === "writing" && (
                               <Badge className="text-xs border bg-orange-50 text-orange-600 border-orange-200">✍ Writing</Badge>
@@ -198,18 +223,15 @@ export default function HomeworkPage() {
                             </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Badge variant="outline" className="text-xs">{hw.subjectName}</Badge>
-                          </span>
+                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+                          <Badge variant="outline" className="text-xs">{hw.subjectName}</Badge>
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
                             Due: {new Date(hw.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                           </span>
                           {isExpired ? (
                             <span className="flex items-center gap-1 text-gray-400 text-xs">
-                              <Clock className="w-3.5 h-3.5" />
-                              Submission closed
+                              <Clock className="w-3.5 h-3.5" />Submission closed
                             </span>
                           ) : days >= 0 && days <= 7 ? (
                             <span className={`flex items-center gap-1 font-medium ${isUrgent ? "text-red-600" : "text-orange-500"}`}>
@@ -223,8 +245,14 @@ export default function HomeworkPage() {
                           ) : null}
                         </div>
                         {hw.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{hw.description}</p>}
-                        {hw.driveLink && hw.homeworkType === "writing" && (
-                          <a href={hw.driveLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline font-medium">
+                        {hw.driveLink && hw.homeworkType === "writing" && !isDone && (
+                          <a
+                            href={hw.driveLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline font-medium pointer-events-auto"
+                            onClick={e => e.stopPropagation()}
+                          >
                             <ExternalLink className="w-3 h-3" /> View homework resource
                           </a>
                         )}
@@ -234,14 +262,22 @@ export default function HomeworkPage() {
                           </div>
                         )}
                         {isExpired && (
-                          <p className="text-xs text-gray-400 mt-2">
-                            This homework expired {EXPIRY_DAYS} days after the due date and can no longer be submitted.
+                          <p className="text-xs text-gray-400 mt-1">Expired — submission closed</p>
+                        )}
+                        {isDone && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {hw.status === "graded" ? "Graded by teacher" : "Submitted — awaiting review"}
                           </p>
                         )}
                       </div>
                       {hw.status === "pending" && !isExpired && (
-                        <Button onClick={() => { setSubmitting(hw); setAnswer(""); setAttachmentUrl(""); setMcqAnswers({}); }} className="flex-shrink-0" data-testid={`submit-hw-${hw.id}`}>
-                          <Send className="w-4 h-4 mr-1" /> Submit
+                        <Button
+                          onClick={() => openSubmit(hw)}
+                          className="flex-shrink-0"
+                          data-testid={`submit-hw-${hw.id}`}
+                          style={{ background: isMcqHw ? NAVY : ORANGE, color: "white" }}
+                        >
+                          {isMcqHw ? "📝 Start Quiz" : <><Send className="w-4 h-4 mr-1" />Submit</>}
                         </Button>
                       )}
                     </CardContent>
@@ -252,102 +288,227 @@ export default function HomeworkPage() {
           </div>
         )}
 
-        {/* Submit Dialog */}
-        <Dialog open={!!submitting} onOpenChange={v => !v && setSubmitting(null)}>
-          <DialogContent className={isMcq ? "max-w-2xl" : "max-w-lg"}>
-            <DialogHeader>
-              <DialogTitle>{submitting?.title}</DialogTitle>
-            </DialogHeader>
-
-            {/* MCQ Quiz */}
-            {isMcq && (
-              <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
-                <p className="text-xs text-muted-foreground">Select the correct answer for each question</p>
-                {questions.map((q, qi) => (
-                  <div key={qi} className="rounded-xl border border-gray-200 p-4 space-y-3 bg-gray-50">
-                    <p className="font-semibold text-sm">
-                      <span className="text-orange-500 font-black mr-2">Q{qi + 1}.</span>{q.text}
+        {/* ── MCQ Quiz Dialog ── */}
+        {submitting && isMcq && (
+          <Dialog open={true} onOpenChange={v => !v && closeDialog()}>
+            <DialogContent className="max-w-2xl p-0 overflow-hidden">
+              {submitted ? (
+                <div className="p-8 text-center space-y-5">
+                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                    <Trophy className="w-10 h-10 text-green-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">Quiz Submitted!</h2>
+                    <p className="text-muted-foreground mt-1">{submitting.title}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      You answered {answeredCount} of {questions.length} questions
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-6">
-                      {q.options.map((opt: string, oi: number) => (
-                        <label key={oi} className={`flex items-center gap-2 cursor-pointer rounded-lg px-3 py-2 border-2 transition-all text-sm ${
-                          mcqAnswers[qi] === oi
-                            ? "border-orange-400 bg-orange-50 font-semibold"
-                            : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}>
-                          <input
-                            type="radio"
-                            name={`q${qi}`}
-                            checked={mcqAnswers[qi] === oi}
-                            onChange={() => handleSelectMcq(qi, oi)}
-                            className="accent-orange-500"
-                          />
-                          <span>{String.fromCharCode(65 + oi)}. {opt}</span>
-                        </label>
+                  </div>
+                  <Button onClick={closeDialog} style={{ background: NAVY, color: "white" }} className="px-8">
+                    Done
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Header */}
+                  <div className="px-6 pt-5 pb-4 border-b" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
+                    <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-0.5">MCQ Quiz</p>
+                    <h2 className="text-white font-bold text-lg leading-tight">{submitting.title}</h2>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-white/80 text-sm">
+                        Question {currentQ + 1} <span className="text-white/50">/ {questions.length}</span>
+                      </span>
+                      <span className="text-white/80 text-sm">
+                        {answeredCount}/{questions.length} answered
+                      </span>
+                    </div>
+                    <Progress
+                      value={(answeredCount / questions.length) * 100}
+                      className="mt-2 h-1.5 bg-white/20"
+                    />
+                  </div>
+
+                  {/* Question */}
+                  <div className="px-6 py-5">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentQ}
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-4"
+                      >
+                        <p className="font-semibold text-base leading-relaxed">
+                          <span className="font-black mr-2" style={{ color: ORANGE }}>Q{currentQ + 1}.</span>
+                          {currentQuestion.text}
+                        </p>
+
+                        <div className="space-y-2.5">
+                          {currentQuestion.options.map((opt: string, oi: number) => {
+                            const isSelected = mcqAnswers[currentQ] === oi;
+                            return (
+                              <button
+                                key={oi}
+                                onClick={() => selectOption(currentQ, oi)}
+                                className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all font-medium text-sm flex items-center gap-3 ${
+                                  isSelected
+                                    ? "border-orange-400 bg-orange-50"
+                                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                                }`}
+                              >
+                                <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black flex-shrink-0 transition-all ${
+                                  isSelected ? "text-white" : "bg-gray-100 text-gray-500"
+                                }`}
+                                  style={isSelected ? { background: ORANGE } : {}}
+                                >
+                                  {String.fromCharCode(65 + oi)}
+                                </span>
+                                <span className={isSelected ? "text-orange-800 font-semibold" : "text-gray-700"}>{opt}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="px-6 pb-5 flex items-center justify-between gap-3 border-t pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentQ(q => Math.max(0, q - 1))}
+                      disabled={currentQ === 0}
+                      className="gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Previous
+                    </Button>
+
+                    <div className="flex gap-1.5">
+                      {questions.map((_, qi) => (
+                        <button
+                          key={qi}
+                          onClick={() => setCurrentQ(qi)}
+                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                            qi === currentQ
+                              ? "text-white"
+                              : mcqAnswers[qi] !== undefined
+                                ? "bg-green-500 text-white"
+                                : "bg-gray-100 text-gray-400"
+                          }`}
+                          style={qi === currentQ ? { background: NAVY } : {}}
+                        >
+                          {qi + 1}
+                        </button>
                       ))}
                     </div>
+
+                    {currentQ < questions.length - 1 ? (
+                      <Button
+                        onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))}
+                        style={{ background: NAVY, color: "white" }}
+                        className="gap-1"
+                      >
+                        Next <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleMcqSubmit}
+                        disabled={!mcqComplete || submitMutation.isPending}
+                        className="gap-1"
+                        style={mcqComplete ? { background: "#16a34a", color: "white" } : {}}
+                        data-testid="confirm-submit-hw"
+                      >
+                        {submitMutation.isPending
+                          ? "Submitting…"
+                          : mcqComplete
+                            ? "Submit Quiz ✓"
+                            : `${answeredCount}/${questions.length} answered`}
+                      </Button>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Writing Homework */}
-            {!isMcq && (
-              <div className="space-y-3">
-                {submitting?.driveLink && (
-                  <a href={submitting.driveLink} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 p-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors">
-                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                    Open homework resource / Google Drive
-                  </a>
-                )}
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1.5">Your answer:</p>
-                  <Textarea
-                    placeholder="Type your homework answer here..."
-                    value={answer}
-                    onChange={e => setAnswer(e.target.value)}
-                    rows={5}
-                    data-testid="homework-answer"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Upload image (optional — paste a Google Drive / image link):</p>
-                  <Input
-                    placeholder="https://drive.google.com/... or image URL"
-                    value={attachmentUrl}
-                    onChange={e => setAttachmentUrl(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSubmitting(null)} disabled={submitMutation.isPending}>Cancel</Button>
-              {isMcq ? (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!mcqComplete || submitMutation.isPending}
-                  data-testid="confirm-submit-hw"
-                >
-                  {submitMutation.isPending
-                    ? "Submitting…"
-                    : mcqComplete
-                    ? "Submit Quiz ✓"
-                    : `${Object.keys(mcqAnswers).length}/${questions.length} answered`}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!answer.trim() || submitMutation.isPending}
-                  data-testid="confirm-submit-hw"
-                >
-                  {submitMutation.isPending ? "Submitting…" : "Submit Homework"}
-                </Button>
+                </>
               )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* ── Writing Homework Dialog ── */}
+        {submitting && !isMcq && (
+          <Dialog open={true} onOpenChange={v => !v && closeDialog()}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{submitting.title}</DialogTitle>
+              </DialogHeader>
+
+              {submitted ? (
+                <div className="py-6 text-center space-y-3">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                  <p className="font-semibold text-lg">Homework Submitted!</p>
+                  <Button onClick={closeDialog} className="mt-2">Done</Button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {submitting.driveLink && (
+                      <a
+                        href={submitting.driveLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 p-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                        Open homework resource / Google Drive
+                      </a>
+                    )}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1.5">Your answer:</p>
+                      <Textarea
+                        placeholder="Type your homework answer here..."
+                        value={answer}
+                        onChange={e => setAnswer(e.target.value)}
+                        rows={5}
+                        data-testid="homework-answer"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Attachment (optional — paste a Google Drive / image link):</p>
+                      <Input
+                        placeholder="https://drive.google.com/... or image URL"
+                        value={attachmentUrl}
+                        onChange={e => setAttachmentUrl(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={closeDialog} disabled={submitMutation.isPending}>Cancel</Button>
+                    <Button
+                      onClick={handleWritingSubmit}
+                      disabled={!answer.trim() || submitMutation.isPending}
+                      data-testid="confirm-submit-hw"
+                    >
+                      {submitMutation.isPending ? "Submitting…" : "Submit Homework"}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* ── MCQ homework with no questions (fallback) ── */}
+        {submitting && submitting.homeworkType === "mcq" && questions.length === 0 && (
+          <Dialog open={true} onOpenChange={v => !v && closeDialog()}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>{submitting.title}</DialogTitle></DialogHeader>
+              <div className="py-4 text-center text-muted-foreground">
+                <AlertCircle className="w-10 h-10 mx-auto mb-2 text-orange-400" />
+                <p className="text-sm">This MCQ homework has no questions set up yet. Please check back later.</p>
+              </div>
+              <DialogFooter><Button variant="outline" onClick={closeDialog}>Close</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </AppLayout>
   );
