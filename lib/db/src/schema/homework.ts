@@ -8,6 +8,7 @@ export const homeworkTable = pgTable("homework", {
   subjectId: integer("subject_id").notNull(),
   grade: integer("grade").notNull(),
   courseId: integer("course_id"),
+  chapterId: integer("chapter_id"),
   topicId: integer("topic_id"),
   teacherId: integer("teacher_id"),
   liveClassId: integer("live_class_id"),

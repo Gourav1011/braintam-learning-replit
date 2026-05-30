@@ -4,7 +4,7 @@ import { Redirect } from "wouter";
 import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
-  LogOut, Link as LinkIcon, ExternalLink,
+  LogOut, Link as LinkIcon, ExternalLink, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,8 @@ const ORANGE = "#FF6B1A";
 type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
-interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; }
-interface Homework { id: number; title: string; subjectName: string; grade: number; dueDate: string; maxMarks: number; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
+interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; chapterId: number | null; topicId: number | null; }
+interface Homework { id: number; title: string; subjectId: number; subjectName: string; grade: number; courseId: number | null; liveClassId: number | null; chapterId: number | null; topicId: number | null; dueDate: string; maxMarks: number; description: string | null; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
 interface Assignment { id: number; title: string; subjectName: string; grade: number; dueDate: string; description: string | null; maxMarks: number; attachmentUrl: string | null; }
 interface Submission { id: number; homeworkTitle?: string; assignmentTitle?: string; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
 interface Subject { id: number; name: string; }
@@ -76,6 +76,7 @@ export default function TeacherPage() {
 
   // Homework form
   const [showHwForm, setShowHwForm] = useState(false);
+  const [editingHw, setEditingHw] = useState<number | null>(null);
   const [hwType, setHwType] = useState<"mcq" | "writing">("writing");
   const [hwForm, setHwForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
   const [hwQuestions, setHwQuestions] = useState<HwQuestion[]>([newMcqQuestion()]);
@@ -237,7 +238,16 @@ export default function TeacherPage() {
   async function createHomework() {
     setBusy(true);
     const validQs = hwType === "mcq" ? hwQuestions.filter(q => q.text.trim()) : [];
-    const payload = {
+    const isEdit = editingHw !== null;
+
+    const payload = isEdit ? {
+      title: hwForm.title,
+      dueDate: hwForm.dueDate,
+      description: hwForm.description || null,
+      maxMarks: Number(hwForm.maxMarks),
+      driveLink: hwType === "writing" && hwForm.driveLink ? hwForm.driveLink : null,
+      questionsJson: validQs.length > 0 ? validQs : null,
+    } : {
       title: hwForm.title,
       subjectId: Number(hwForm.subjectId),
       grade: Number(hwForm.grade),
@@ -252,17 +262,17 @@ export default function TeacherPage() {
       maxMarks: Number(hwForm.maxMarks),
       questionsJson: validQs.length > 0 ? validQs : null,
     };
-    const r = await apiFetch("/teacher/homework", { method: "POST", body: JSON.stringify(payload) });
+
+    const r = await apiFetch(
+      isEdit ? `/teacher/homework/${editingHw}` : "/teacher/homework",
+      { method: isEdit ? "PATCH" : "POST", body: JSON.stringify(payload) }
+    );
     if (r.ok) {
-      flash("Homework posted!");
-      setShowHwForm(false);
-      setHwForm({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
-      setHwChapters([]); setHwTopics([]);
-      setHwQuestions([newMcqQuestion()]);
-      setHwType("writing");
+      flash(isEdit ? "Homework updated!" : "Homework posted!");
+      cancelHwForm();
       loadAll();
     } else {
-      try { const d = await r.json(); flash(d.error ?? "Error posting homework", false); } catch { flash("Error posting homework", false); }
+      try { const d = await r.json(); flash(d.error ?? "Error saving homework", false); } catch { flash("Error saving homework", false); }
     }
     setBusy(false);
   }
@@ -347,20 +357,84 @@ export default function TeacherPage() {
 
   // When a live class is selected for test, pre-fill subject/grade/date
   function pickLiveClassForTest(lcId: string) {
-    setTestForm(p => ({ ...p, liveClassId: lcId }));
-    if (lcId) {
-      const lc = liveClasses.find(l => l.id === Number(lcId));
-      if (lc) {
-        const dt = new Date(lc.scheduledAt).toISOString().slice(0, 16);
-        setTestForm(p => ({
-          ...p,
-          liveClassId: lcId,
-          subjectId: String(lc.subjectId),
-          grade: String(lc.grade),
-          scheduledAt: dt,
-        }));
-      }
+    if (!lcId) { setTestForm(p => ({ ...p, liveClassId: "" })); return; }
+    const lc = liveClasses.find(l => l.id === Number(lcId));
+    if (lc) {
+      const dt = new Date(lc.scheduledAt).toISOString().slice(0, 16);
+      setTestForm(p => ({
+        ...p,
+        liveClassId: lcId,
+        subjectId: String(lc.subjectId),
+        grade: String(lc.grade),
+        scheduledAt: dt,
+        courseId: lc.courseId ? String(lc.courseId) : p.courseId,
+        chapterId: lc.chapterId ? String(lc.chapterId) : p.chapterId,
+        topicId: lc.topicId ? String(lc.topicId) : p.topicId,
+      }));
     }
+  }
+
+  async function pickLiveClassForHw(lcId: string) {
+    if (!lcId) { setHwForm(p => ({ ...p, liveClassId: "" })); return; }
+    const lc = liveClasses.find(l => l.id === Number(lcId));
+    if (!lc) { setHwForm(p => ({ ...p, liveClassId: lcId })); return; }
+    // Suggest due date = next day after the live class
+    const due = new Date(lc.scheduledAt);
+    due.setDate(due.getDate() + 1);
+    setHwForm(p => ({
+      ...p,
+      liveClassId: lcId,
+      subjectId: String(lc.subjectId),
+      grade: String(lc.grade),
+      courseId: lc.courseId ? String(lc.courseId) : p.courseId,
+      chapterId: lc.chapterId ? String(lc.chapterId) : "",
+      topicId: lc.topicId ? String(lc.topicId) : "",
+      dueDate: due.toISOString().slice(0, 16),
+    }));
+    if (lc.chapterId && lc.topicId) {
+      const tR = await apiFetch(`/admin/topics?chapterId=${lc.chapterId}`);
+      if (tR.ok) setHwTopics(await tR.json());
+    }
+  }
+
+  function openEditHw(h: Homework) {
+    setEditingHw(h.id);
+    setHwType((h.homeworkType as "mcq" | "writing") ?? "writing");
+    setHwForm({
+      title: h.title,
+      subjectId: String(h.subjectId),
+      grade: String(h.grade),
+      courseId: h.courseId ? String(h.courseId) : "",
+      chapterId: h.chapterId ? String(h.chapterId) : "",
+      topicId: h.topicId ? String(h.topicId) : "",
+      liveClassId: h.liveClassId ? String(h.liveClassId) : "",
+      dueDate: h.dueDate ? new Date(h.dueDate).toISOString().slice(0, 16) : "",
+      description: h.description ?? "",
+      maxMarks: String(h.maxMarks),
+      driveLink: h.driveLink ?? "",
+    });
+    if (h.questionsJson) {
+      try { setHwQuestions(JSON.parse(h.questionsJson)); } catch { setHwQuestions([newMcqQuestion()]); }
+    } else {
+      setHwQuestions([newMcqQuestion()]);
+    }
+    setShowHwForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelHwForm() {
+    setShowHwForm(false);
+    setEditingHw(null);
+    setHwForm({ title: "", subjectId: "", grade: "", courseId: "", chapterId: "", topicId: "", liveClassId: "", dueDate: "", description: "", maxMarks: "10", driveLink: "" });
+    setHwChapters([]); setHwTopics([]);
+    setHwQuestions([newMcqQuestion()]);
+    setHwType("writing");
+  }
+
+  async function deleteHomework(id: number) {
+    if (!confirm("Delete this homework? Students who already submitted will lose their submission data.")) return;
+    const r = await apiFetch(`/teacher/homework/${id}`, { method: "DELETE" });
+    if (r.ok) { flash("Homework deleted"); loadAll(); }
   }
 
   async function createTest() {
@@ -619,62 +693,95 @@ export default function TeacherPage() {
 
             {showHwForm && (
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
-                <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Homework</h3>
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>
+                  {editingHw ? "✏️ Edit Homework" : "New Homework"}
+                </h3>
 
-                {/* Type Toggle */}
-                <div className="flex gap-2">
-                  {(["writing", "mcq"] as const).map(t => (
-                    <button key={t} onClick={() => setHwType(t)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${hwType === t ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
-                      style={hwType === t ? { background: ORANGE, borderColor: ORANGE } : {}}>
-                      {t === "writing" ? "✍ Writing Work" : "📝 MCQ Quiz"}
-                    </button>
-                  ))}
-                </div>
+                {/* Type Toggle — only for new homework */}
+                {!editingHw && (
+                  <div className="flex gap-2">
+                    {(["writing", "mcq"] as const).map(t => (
+                      <button key={t} onClick={() => setHwType(t)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${hwType === t ? "text-white border-transparent" : "text-gray-500 border-gray-200 bg-white"}`}
+                        style={hwType === t ? { background: ORANGE, borderColor: ORANGE } : {}}>
+                        {t === "writing" ? "✍ Writing Work" : "📝 MCQ Quiz"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Step 1: Pick Live Class (primary selector for new homework) */}
+                {!editingHw && (
+                  <div className="rounded-xl p-3 space-y-2 sm:col-span-2" style={{ background: "#EEF3FB" }}>
+                    <p className="text-xs font-bold" style={{ color: NAVY }}>📚 Based on which live class?</p>
+                    <p className="text-xs text-gray-500">Select today's class — subject, grade, chapter &amp; topic will auto-fill</p>
+                    <Select value={hwForm.liveClassId || "__none__"} onValueChange={v => pickLiveClassForHw(v === "__none__" ? "" : v)}>
+                      <SelectTrigger className="bg-white text-xs"><SelectValue placeholder="Select live class…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No specific class</SelectItem>
+                        {liveClasses.map(lc => (
+                          <SelectItem key={lc.id} value={String(lc.id)}>
+                            {lc.title} · {new Date(lc.scheduledAt).toLocaleDateString("en-IN")} · Grade {lc.grade}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {hwForm.liveClassId && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {hwForm.subjectId && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">📖 {subjects.find(s => s.id === Number(hwForm.subjectId))?.name ?? "Subject"}</span>}
+                        {hwForm.grade && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">🎓 Grade {hwForm.grade}</span>}
+                        {hwForm.courseId && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">📘 {courses.find(c => c.id === Number(hwForm.courseId))?.title ?? "Course"}</span>}
+                        {hwForm.chapterId && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">📂 Chapter linked</span>}
+                        {hwForm.topicId && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">🏷 Topic linked</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Title *" value={hwForm.title} onChange={e => setHwForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-                  <Select value={hwForm.subjectId} onValueChange={v => setHwForm(p => ({ ...p, subjectId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
-                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Input placeholder="Grade *" type="number" min="1" max="10" value={hwForm.grade} onChange={e => setHwForm(p => ({ ...p, grade: e.target.value }))} />
 
-                  {/* Course → Chapter → Topic → Live Class cascade */}
-                  <Select value={hwForm.courseId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setHwForm(p => ({ ...p, courseId: id, chapterId: "", topicId: "", liveClassId: "" })); loadHwChapters(id); }}>
-                    <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No course</SelectItem>
-                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {hwChapters.length > 0 && (
-                    <Select value={hwForm.chapterId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setHwForm(p => ({ ...p, chapterId: id, topicId: "" })); loadHwTopics(id); }}>
-                      <SelectTrigger><SelectValue placeholder="Chapter (optional)" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No chapter</SelectItem>
-                        {hwChapters.map(ch => <SelectItem key={ch.id} value={String(ch.id)}>{ch.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                  {/* Subject + Grade — shown when no live class selected (manual), or always for edit */}
+                  {(!hwForm.liveClassId || editingHw) && (
+                    <>
+                      <Select value={hwForm.subjectId} onValueChange={v => setHwForm(p => ({ ...p, subjectId: v }))} disabled={!!editingHw}>
+                        <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
+                        <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Input placeholder="Grade *" type="number" min="1" max="10" value={hwForm.grade} onChange={e => setHwForm(p => ({ ...p, grade: e.target.value }))} disabled={!!editingHw} />
+                    </>
                   )}
-                  {hwTopics.length > 0 && (
-                    <Select value={hwForm.topicId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
-                      <SelectTrigger><SelectValue placeholder="Topic (optional)" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No topic</SelectItem>
-                        {hwTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+
+                  {/* Manual Course → Chapter → Topic cascade (only when no live class auto-filled) */}
+                  {!hwForm.liveClassId && !editingHw && (
+                    <>
+                      <Select value={hwForm.courseId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setHwForm(p => ({ ...p, courseId: id, chapterId: "", topicId: "" })); loadHwChapters(id); }}>
+                        <SelectTrigger><SelectValue placeholder="Course (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No course</SelectItem>
+                          {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {hwChapters.length > 0 && (
+                        <Select value={hwForm.chapterId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setHwForm(p => ({ ...p, chapterId: id, topicId: "" })); loadHwTopics(id); }}>
+                          <SelectTrigger><SelectValue placeholder="Chapter (optional)" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">No chapter</SelectItem>
+                            {hwChapters.map(ch => <SelectItem key={ch.id} value={String(ch.id)}>{ch.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {hwTopics.length > 0 && (
+                        <Select value={hwForm.topicId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
+                          <SelectTrigger><SelectValue placeholder="Topic (optional)" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">No topic</SelectItem>
+                            {hwTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </>
                   )}
-                  <Select value={hwForm.liveClassId || "__none__"} onValueChange={v => setHwForm(p => ({ ...p, liveClassId: v === "__none__" ? "" : v }))} disabled={!hwForm.courseId}>
-                    <SelectTrigger><SelectValue placeholder="Live Class (optional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {liveClasses.filter(lc => !hwForm.courseId || lc.courseId === Number(hwForm.courseId)).map(lc => (
-                        <SelectItem key={lc.id} value={String(lc.id)}>{lc.title} · {new Date(lc.scheduledAt).toLocaleDateString("en-IN")}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
 
                   <Input type="datetime-local" value={hwForm.dueDate} onChange={e => setHwForm(p => ({ ...p, dueDate: e.target.value }))} />
                   <Input placeholder="Max marks" type="number" value={hwForm.maxMarks} onChange={e => setHwForm(p => ({ ...p, maxMarks: e.target.value }))} />
@@ -744,10 +851,10 @@ export default function TeacherPage() {
                 )}
 
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={createHomework} disabled={busy || !hwForm.title || !hwForm.subjectId || !hwForm.grade || !hwForm.dueDate} className="text-white" style={{ background: ORANGE }}>
-                    {busy ? "Posting…" : "Post Homework"}
+                  <Button size="sm" onClick={createHomework} disabled={busy || !hwForm.title || (!editingHw && (!hwForm.subjectId || !hwForm.grade)) || !hwForm.dueDate} className="text-white" style={{ background: ORANGE }}>
+                    {busy ? (editingHw ? "Saving…" : "Posting…") : (editingHw ? "Save Changes" : "Post Homework")}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowHwForm(false)}>Cancel</Button>
+                  <Button size="sm" variant="ghost" onClick={cancelHwForm}>Cancel</Button>
                 </div>
               </div>
             )}
@@ -756,16 +863,33 @@ export default function TeacherPage() {
               {homework.map(h => {
                 let qCount = 0;
                 try { if (h.questionsJson) qCount = JSON.parse(h.questionsJson).length; } catch { /**/ }
+                const linkedLc = h.liveClassId ? liveClasses.find(lc => lc.id === h.liveClassId) : null;
                 return (
-                  <div key={h.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm" style={{ color: NAVY }}>{h.title}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        {h.subjectName} · Grade {h.grade} · Due {new Date(h.dueDate).toLocaleDateString("en-IN")}
-                        {qCount > 0 && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold">{qCount} Qs</span>}
+                  <div key={h.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm" style={{ color: NAVY }}>{h.title}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {h.subjectName} · Grade {h.grade} · Due {new Date(h.dueDate).toLocaleDateString("en-IN")}
+                          {qCount > 0 && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold">{qCount} Qs</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {h.homeworkType === "mcq" && <span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-medium">📝 MCQ</span>}
+                          {linkedLc && <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">🎥 {linkedLc.title}</span>}
+                          {h.chapterId && <span className="text-xs bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded font-medium">📂 Chapter</span>}
+                          {h.topicId && <span className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded font-medium">🏷 Topic</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-semibold">{h.maxMarks} marks</span>
+                        <button onClick={() => openEditHw(h)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteHomework(h.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-semibold">{h.maxMarks} marks</span>
                   </div>
                 );
               })}

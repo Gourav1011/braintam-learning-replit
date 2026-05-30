@@ -183,6 +183,8 @@ router.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
     grade: homeworkTable.grade,
     courseId: homeworkTable.courseId,
     liveClassId: homeworkTable.liveClassId,
+    chapterId: homeworkTable.chapterId,
+    topicId: homeworkTable.topicId,
     homeworkType: homeworkTable.homeworkType,
     driveLink: homeworkTable.driveLink,
     dueDate: homeworkTable.dueDate,
@@ -229,6 +231,31 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
   );
 
   res.status(201).json({ ...hw, dueDate: hw.dueDate.toISOString(), createdAt: hw.createdAt.toISOString() });
+});
+
+router.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const teacherId = req.authUser!.id;
+  const { title, dueDate, description, maxMarks, driveLink, questionsJson } = req.body;
+  const [hw] = await db.update(homeworkTable).set({
+    ...(title        ? { title }                              : {}),
+    ...(dueDate      ? { dueDate: new Date(dueDate) }         : {}),
+    ...(description !== undefined ? { description }           : {}),
+    ...(maxMarks    !== undefined ? { maxMarks: Number(maxMarks) } : {}),
+    ...(driveLink   !== undefined ? { driveLink }             : {}),
+    ...(questionsJson !== undefined ? { questionsJson: questionsJson ? JSON.stringify(questionsJson) : null } : {}),
+  })
+    .where(and(eq(homeworkTable.id, id), eq(homeworkTable.teacherId, teacherId)))
+    .returning();
+  if (!hw) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ...hw, dueDate: hw.dueDate.toISOString() });
+});
+
+router.delete("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const teacherId = req.authUser!.id;
+  await db.delete(homeworkTable).where(and(eq(homeworkTable.id, id), eq(homeworkTable.teacherId, teacherId)));
+  res.json({ ok: true });
 });
 
 // ── Assignments ──────────────────────────────────────────────────
