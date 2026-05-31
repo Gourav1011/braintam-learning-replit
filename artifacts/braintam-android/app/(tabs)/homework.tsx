@@ -400,18 +400,19 @@ export default function HomeworkScreen() {
     const hours = hoursUntilDue(item.dueDate);
     const isMcq = !!(item.questionsJson && parseQuestions(item.questionsJson).length > 0);
     const questionCount = isMcq ? parseQuestions(item.questionsJson).length : 0;
+    const isOverdue = item.status === "pending" && hours < 0;
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, isOverdue && styles.cardOverdue]}>
         <View style={styles.cardTop}>
           <View style={styles.cardInfo}>
-            <Text style={styles.subject}>{item.subjectName}</Text>
-            <Text style={styles.hwTitle} numberOfLines={2}>{item.title}</Text>
+            <Text style={[styles.subject, isOverdue && styles.textMuted]}>{item.subjectName}</Text>
+            <Text style={[styles.hwTitle, isOverdue && styles.textMuted]} numberOfLines={2}>{item.title}</Text>
             <View style={styles.metaRow}>
-              <Text style={styles.marks}>
-                <Feather name="award" size={12} color={Colors.muted} /> {item.maxMarks ?? "—"} marks
+              <Text style={[styles.marks, isOverdue && styles.textMuted]}>
+                <Feather name="award" size={12} color={isOverdue ? Colors.border : Colors.muted} /> {item.maxMarks ?? "—"} marks
               </Text>
-              {isMcq && (
+              {isMcq && !isOverdue && (
                 <View style={styles.mcqBadge}>
                   <Feather name="list" size={10} color={Colors.primary} />
                   <Text style={styles.mcqBadgeText}>{questionCount} MCQ</Text>
@@ -419,15 +420,22 @@ export default function HomeworkScreen() {
               )}
             </View>
           </View>
-          <UrgencyBadge hours={hours} />
+          {isOverdue ? (
+            <View style={[styles.badge, { backgroundColor: "#F3F4F6" }]}>
+              <Feather name="lock" size={10} color={Colors.border} />
+              <Text style={[styles.badgeText, { color: Colors.mutedForeground }]}>Closed</Text>
+            </View>
+          ) : (
+            <UrgencyBadge hours={hours} />
+          )}
         </View>
 
         <View style={styles.cardMid}>
-          <Feather name="calendar" size={13} color={Colors.mutedForeground} />
-          <Text style={styles.dueText}>Due: {formatDue(item.dueDate)}</Text>
+          <Feather name="calendar" size={13} color={isOverdue ? Colors.border : Colors.mutedForeground} />
+          <Text style={[styles.dueText, isOverdue && styles.textMuted]}>Due: {formatDue(item.dueDate)}</Text>
         </View>
 
-        {item.status === "pending" && (
+        {item.status === "pending" && !isOverdue && (
           <TouchableOpacity
             style={styles.submitCardBtn}
             onPress={async () => {
@@ -441,6 +449,13 @@ export default function HomeworkScreen() {
               {isMcq ? `Start Quiz (${questionCount} questions)` : "Submit Answer"}
             </Text>
           </TouchableOpacity>
+        )}
+
+        {isOverdue && (
+          <View style={styles.closedRow}>
+            <Feather name="lock" size={13} color={Colors.border} />
+            <Text style={styles.closedText}>Due date passed — submission closed</Text>
+          </View>
         )}
 
         {item.status !== "pending" && (
@@ -594,6 +609,10 @@ const styles = StyleSheet.create({
   submitCardBtnText: { fontSize: 15, fontFamily: "Poppins_700Bold", color: "#fff" },
   submittedRow: { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center" },
   submittedText: { fontSize: 14, fontFamily: "Poppins_600SemiBold", color: Colors.success },
+  cardOverdue: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", opacity: 0.75 },
+  textMuted: { color: Colors.mutedForeground },
+  closedRow: { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 4 },
+  closedText: { fontSize: 12, fontFamily: "Poppins_400Regular", color: Colors.mutedForeground },
   notifRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   notifLabel: { flex: 1, fontSize: 13, fontFamily: "Poppins_400Regular", color: Colors.mutedForeground },
   notifLabelActive: { color: Colors.navy, fontFamily: "Poppins_600SemiBold" },

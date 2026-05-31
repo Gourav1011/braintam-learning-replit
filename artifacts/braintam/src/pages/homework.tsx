@@ -177,7 +177,7 @@ export default function HomeworkPage() {
             {homework.map((hw, i) => {
               const days = daysUntil(hw.dueDate);
               const isUrgent = days <= 2 && days >= 0;
-              const isExpired = hw.status === "pending" && days < -EXPIRY_DAYS;
+              const isExpired = hw.status === "pending" && days < 0;
               const isDone = hw.status === "submitted" || hw.status === "graded";
               const hwQuestions = parsedQuestions(hw.questionsJson);
               // Detect MCQ from questionsJson presence (backward-compat with rows stored as "writing")
@@ -250,8 +250,6 @@ export default function HomeworkPage() {
                               {isUrgent && <AlertCircle className="w-3 h-3" />}
                               {days === 0 ? "Today!" : `${days}d left`}
                             </span>
-                          ) : days < 0 && !isExpired ? (
-                            <span className="text-orange-500 font-medium">Overdue</span>
                           ) : null}
                         </div>
 

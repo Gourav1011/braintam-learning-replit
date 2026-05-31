@@ -78,7 +78,7 @@ export default function AssignmentsPage() {
             {(assignments ?? []).map((asgn, i) => {
               const days = daysUntil(asgn.dueDate);
               const isUrgent = days <= 2 && days >= 0;
-              const isExpired = asgn.status === "pending" && days < -EXPIRY_DAYS;
+              const isExpired = asgn.status === "pending" && days < 0;
               return (
                 <motion.div key={asgn.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }} data-testid={`assignment-card-${asgn.id}`}>
                   <Card className={`border-2 transition-all ${
@@ -124,10 +124,6 @@ export default function AssignmentsPage() {
                               <span className={`flex items-center gap-1 font-medium ${isUrgent ? "text-red-600" : "text-orange-500"}`}>
                                 {isUrgent && <AlertCircle className="w-3.5 h-3.5" />}
                                 {days === 0 ? "Due today!" : `${days}d left`}
-                              </span>
-                            ) : days < 0 && !isExpired ? (
-                              <span className="flex items-center gap-1 text-orange-500 text-xs font-medium">
-                                Overdue · {Math.abs(days)}d ago
                               </span>
                             ) : null}
                           </div>

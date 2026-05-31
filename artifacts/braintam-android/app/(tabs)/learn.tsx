@@ -454,20 +454,25 @@ function HomeworkTab() {
               refreshing={hwLoading}
               renderItem={({ item }) => {
                 const hours = hoursUntilDue(item.dueDate);
+                const isOverdue = item.status === "pending" && hours < 0;
                 return (
-                  <View style={styles.card}>
+                  <View style={[styles.card, isOverdue && styles.cardOverdue]}>
                     <View style={styles.cardRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardSubject}>{item.subjectName}</Text>
-                        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={[styles.cardSubject, isOverdue && styles.textMuted]}>{item.subjectName}</Text>
+                        <Text style={[styles.cardTitle, isOverdue && styles.textMuted]} numberOfLines={2}>{item.title}</Text>
                         {item.maxMarks != null && (
                           <View style={styles.cardMeta}>
                             <Feather name="award" size={12} color={Colors.mutedForeground} />
-                            <Text style={styles.cardMetaText}>{item.maxMarks} marks</Text>
+                            <Text style={[styles.cardMetaText, isOverdue && styles.textMuted]}>{item.maxMarks} marks</Text>
                           </View>
                         )}
                       </View>
-                      {item.status === "pending" ? <UrgencyBadge hours={hours} /> : (
+                      {isOverdue ? (
+                        <View style={[styles.badge, { backgroundColor: "#F3F4F6" }]}>
+                          <Text style={[styles.badgeText, { color: Colors.mutedForeground }]}>Closed</Text>
+                        </View>
+                      ) : item.status === "pending" ? <UrgencyBadge hours={hours} /> : (
                         <View style={[styles.badge, { backgroundColor: "#DCFCE7" }]}>
                           <Text style={[styles.badgeText, { color: Colors.success }]}>{item.status}</Text>
                         </View>
@@ -475,10 +480,10 @@ function HomeworkTab() {
                     </View>
                     <View style={styles.cardDivider} />
                     <View style={styles.cardMeta}>
-                      <Feather name="calendar" size={12} color={Colors.mutedForeground} />
-                      <Text style={styles.cardMetaText}>Due: {formatDue(item.dueDate)}</Text>
+                      <Feather name="calendar" size={12} color={isOverdue ? Colors.border : Colors.mutedForeground} />
+                      <Text style={[styles.cardMetaText, isOverdue && styles.textMuted]}>Due: {formatDue(item.dueDate)}</Text>
                     </View>
-                    {item.status === "pending" && (
+                    {item.status === "pending" && !isOverdue && (
                       <TouchableOpacity
                         style={styles.submitBtn}
                         onPress={() => { setSubmitting({ type: "hw", id: item.id, title: item.title }); setAnswer(""); }}
@@ -486,6 +491,12 @@ function HomeworkTab() {
                         <Feather name="send" size={13} color="#fff" />
                         <Text style={styles.submitBtnText}>Submit</Text>
                       </TouchableOpacity>
+                    )}
+                    {isOverdue && (
+                      <View style={styles.closedRow}>
+                        <Feather name="lock" size={11} color={Colors.border} />
+                        <Text style={styles.closedText}>Due date passed — submission closed</Text>
+                      </View>
                     )}
                   </View>
                 );
@@ -526,18 +537,23 @@ function HomeworkTab() {
               refreshing={assignLoading}
               renderItem={({ item }) => {
                 const hours = hoursUntilDue(item.dueDate);
+                const isOverdue = item.status === "pending" && hours < 0;
                 return (
-                  <View style={styles.card}>
+                  <View style={[styles.card, isOverdue && styles.cardOverdue]}>
                     <View style={styles.cardRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardSubject}>{item.subjectName}</Text>
-                        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={[styles.cardSubject, isOverdue && styles.textMuted]}>{item.subjectName}</Text>
+                        <Text style={[styles.cardTitle, isOverdue && styles.textMuted]} numberOfLines={2}>{item.title}</Text>
                         <View style={styles.cardMeta}>
                           <Feather name="award" size={12} color={Colors.mutedForeground} />
-                          <Text style={styles.cardMetaText}>{item.maxMarks} marks</Text>
+                          <Text style={[styles.cardMetaText, isOverdue && styles.textMuted]}>{item.maxMarks} marks</Text>
                         </View>
                       </View>
-                      {item.status === "pending" ? <UrgencyBadge hours={hours} /> : (
+                      {isOverdue ? (
+                        <View style={[styles.badge, { backgroundColor: "#F3F4F6" }]}>
+                          <Text style={[styles.badgeText, { color: Colors.mutedForeground }]}>Closed</Text>
+                        </View>
+                      ) : item.status === "pending" ? <UrgencyBadge hours={hours} /> : (
                         <View style={[styles.badge, { backgroundColor: "#DCFCE7" }]}>
                           <Text style={[styles.badgeText, { color: Colors.success }]}>{item.status}</Text>
                         </View>
@@ -545,13 +561,13 @@ function HomeworkTab() {
                     </View>
                     <View style={styles.cardDivider} />
                     <View style={styles.cardMeta}>
-                      <Feather name="calendar" size={12} color={Colors.mutedForeground} />
-                      <Text style={styles.cardMetaText}>Due: {formatDue(item.dueDate)}</Text>
+                      <Feather name="calendar" size={12} color={isOverdue ? Colors.border : Colors.mutedForeground} />
+                      <Text style={[styles.cardMetaText, isOverdue && styles.textMuted]}>Due: {formatDue(item.dueDate)}</Text>
                     </View>
                     {item.description ? (
-                      <Text style={styles.descText} numberOfLines={2}>{item.description}</Text>
+                      <Text style={[styles.descText, isOverdue && styles.textMuted]} numberOfLines={2}>{item.description}</Text>
                     ) : null}
-                    {item.status === "pending" && (
+                    {item.status === "pending" && !isOverdue && (
                       <TouchableOpacity
                         style={styles.submitBtn}
                         onPress={() => { setSubmitting({ type: "assign", id: item.id, title: item.title }); setAnswer(""); }}
@@ -559,6 +575,12 @@ function HomeworkTab() {
                         <Feather name="send" size={13} color="#fff" />
                         <Text style={styles.submitBtnText}>Submit</Text>
                       </TouchableOpacity>
+                    )}
+                    {isOverdue && (
+                      <View style={styles.closedRow}>
+                        <Feather name="lock" size={11} color={Colors.border} />
+                        <Text style={styles.closedText}>Due date passed — submission closed</Text>
+                      </View>
                     )}
                   </View>
                 );
@@ -659,20 +681,27 @@ function TestsTab() {
         const sc = TEST_STATUS_COLORS[item.status] ?? TEST_STATUS_COLORS.upcoming;
         const isOngoing = item.status === "ongoing" || item.status === "active";
         const isCompleted = item.status === "completed";
+        const isMissed = item.status === "upcoming" && new Date(item.scheduledAt).getTime() < Date.now();
         return (
-          <View style={[styles.testRow, isOngoing && styles.testRowOngoing]}>
+          <View style={[styles.testRow, isOngoing && styles.testRowOngoing, isMissed && styles.testRowMissed]}>
             {/* Status dot */}
-            <View style={[styles.testDot, { backgroundColor: sc.text }]} />
+            <View style={[styles.testDot, { backgroundColor: isMissed ? Colors.border : sc.text }]} />
 
             {/* Info */}
             <View style={{ flex: 1, gap: 3 }}>
               <View style={styles.testTitleRow}>
-                <Text style={styles.testTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                  <Text style={[styles.badgeText, { color: sc.text }]}>{sc.label}</Text>
-                </View>
+                <Text style={[styles.testTitle, isMissed && styles.textMuted]} numberOfLines={2}>{item.title}</Text>
+                {isMissed ? (
+                  <View style={[styles.badge, { backgroundColor: "#F3F4F6" }]}>
+                    <Text style={[styles.badgeText, { color: Colors.mutedForeground }]}>Missed</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.badge, { backgroundColor: sc.bg }]}>
+                    <Text style={[styles.badgeText, { color: sc.text }]}>{sc.label}</Text>
+                  </View>
+                )}
               </View>
-              <Text style={styles.cardSubject}>{item.subjectName}</Text>
+              <Text style={[styles.cardSubject, isMissed && styles.textMuted]}>{item.subjectName}</Text>
               <View style={styles.metaRowWrap}>
                 <View style={styles.cardMeta}>
                   <Feather name="calendar" size={11} color={Colors.mutedForeground} />
@@ -853,6 +882,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.success,
   },
+  testRowMissed: {
+    backgroundColor: "#F9FAFB",
+    opacity: 0.7,
+  },
+  cardOverdue: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", opacity: 0.75 },
+  textMuted: { color: Colors.mutedForeground },
+  closedRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, marginTop: 6, justifyContent: "center" as const },
+  closedText: { fontSize: 12, fontFamily: "Poppins_400Regular", color: Colors.mutedForeground },
   testDot: {
     width: 8, height: 8, borderRadius: 4, marginTop: 6, flexShrink: 0,
   },

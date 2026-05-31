@@ -106,7 +106,8 @@ export default function TestsPage() {
               const isOngoing = test.status === "ongoing" || (test.status as string) === "active";
               const isUpcoming = test.status === "upcoming";
               const isCompleted = test.status === "completed";
-              const timer = isUpcoming ? countdown(test.scheduledAt) : null;
+              const isMissed = isUpcoming && new Date(test.scheduledAt).getTime() < Date.now();
+              const timer = isUpcoming && !isMissed ? countdown(test.scheduledAt) : null;
 
               return (
                 <motion.div
@@ -115,16 +116,19 @@ export default function TestsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
                   data-testid={`test-card-${test.id}`}
-                  className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors"
+                  className={`flex items-center gap-4 px-4 py-3 transition-colors ${isMissed ? "bg-gray-50 opacity-60 pointer-events-none select-none" : "hover:bg-gray-50"}`}
                 >
                   {/* Status dot */}
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${st.dot}`} />
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isMissed ? "bg-gray-300" : st.dot}`} />
 
                   {/* Main info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-gray-900 truncate">{test.title}</span>
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${st.badge}`}>{st.label}</span>
+                      <span className={`font-semibold text-sm truncate ${isMissed ? "text-gray-400" : "text-gray-900"}`}>{test.title}</span>
+                      {isMissed
+                        ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Missed</span>
+                        : <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${st.badge}`}>{st.label}</span>
+                      }
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
                       <Badge variant="outline" className="text-[10px] py-0">{test.subjectName}</Badge>
