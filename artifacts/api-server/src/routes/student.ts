@@ -222,33 +222,52 @@ router.get("/student/progress", requireAuth, async (req, res) => {
 
   const studentGrade = student?.grade ?? 6;
 
+  // Only count content from courses the student is actually enrolled in.
+  // If they have no enrollments, all totals are 0 — nothing to do.
+  const enrolledRows = await db
+    .select({ courseId: enrollmentsTable.courseId })
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.studentId, studentId));
+  const courseIds = enrolledRows.map(e => e.courseId);
+
   const [
     [hwSubmitted], [hwTotal],
     [asgnSubmitted], [asgnTotal],
     [testSubmittedRow], [testsTotal],
   ] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` }).from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.studentId, studentId)),
-    db.select({ count: sql<number>`count(*)::int` }).from(homeworkTable).where(eq(homeworkTable.grade, studentGrade)),
+    courseIds.length > 0
+      ? db.select({ count: sql<number>`count(*)::int` }).from(homeworkTable).where(inArray(homeworkTable.courseId, courseIds))
+      : Promise.resolve([{ count: 0 }]),
     db.select({ count: sql<number>`count(*)::int` }).from(assignmentSubmissionsTable).where(eq(assignmentSubmissionsTable.studentId, studentId)),
-    db.select({ count: sql<number>`count(*)::int` }).from(assignmentsTable).where(eq(assignmentsTable.grade, studentGrade)),
+    courseIds.length > 0
+      ? db.select({ count: sql<number>`count(*)::int` }).from(assignmentsTable).where(inArray(assignmentsTable.courseId, courseIds))
+      : Promise.resolve([{ count: 0 }]),
     db.select({ count: sql<number>`count(*)::int` }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId)),
-    db.select({ count: sql<number>`count(*)::int` }).from(testsTable).where(eq(testsTable.grade, studentGrade)),
+    courseIds.length > 0
+      ? db.select({ count: sql<number>`count(*)::int` }).from(testsTable).where(eq(testsTable.grade, studentGrade))
+      : Promise.resolve([{ count: 0 }]),
   ]);
 
   const testResults = await db.select({ score: testSubmissionsTable.score, maxScore: testSubmissionsTable.maxScore }).from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId));
   const avgScore = testResults.length > 0
     ? Math.round(testResults.reduce((sum, t) => sum + (t.maxScore && t.maxScore > 0 ? (t.score! / t.maxScore) * 100 : 0), 0) / testResults.length)
     : 0;
+
+  // Subject-wise progress: only count homework in enrolled courses
   const subjectWise = await Promise.all(subjects.map(async (s, i) => {
     const COLORS = ["#1d4ed8", "#7c3aed", "#059669", "#ea580c", "#0891b2", "#be185d"];
-    const [[hwTotal], [hwDone]] = await Promise.all([
+    if (courseIds.length === 0) {
+      return { subjectId: s.id, subjectName: s.name, progress: 0, color: s.color ?? COLORS[i] ?? COLORS[0] };
+    }
+    const [[hwSubjTotal], [hwDone]] = await Promise.all([
       db.select({ n: sql<number>`count(*)::int` }).from(homeworkTable)
-        .where(and(eq(homeworkTable.subjectId, s.id), eq(homeworkTable.grade, studentGrade))),
+        .where(and(eq(homeworkTable.subjectId, s.id), inArray(homeworkTable.courseId, courseIds))),
       db.select({ n: sql<number>`count(*)::int` }).from(homeworkSubmissionsTable)
         .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
-        .where(and(eq(homeworkSubmissionsTable.studentId, studentId), eq(homeworkTable.subjectId, s.id))),
+        .where(and(eq(homeworkSubmissionsTable.studentId, studentId), eq(homeworkTable.subjectId, s.id), inArray(homeworkTable.courseId, courseIds))),
     ]);
-    const total = Number(hwTotal?.n ?? 0);
+    const total = Number(hwSubjTotal?.n ?? 0);
     const done = Number(hwDone?.n ?? 0);
     return {
       subjectId: s.id,
