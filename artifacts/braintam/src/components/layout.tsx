@@ -166,9 +166,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex w-full bg-background">
         <Sidebar className="border-r bg-card">
           <SidebarHeader className="p-4 border-b">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               <img src={braintamLogo} alt="Braintam Logo" className="h-10 w-auto object-contain" />
-              <span className="font-bold text-xl text-primary">Braintam</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="p-2">
