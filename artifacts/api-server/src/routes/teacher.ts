@@ -225,7 +225,10 @@ router.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
     teacherId,
     dueDate: new Date(dueDate),
     description: description ?? null,
-    maxMarks: maxMarks ?? 10,
+    // For MCQ homework: 1 mark per question, so maxMarks = question count
+    maxMarks: (homeworkType === "mcq" && Array.isArray(questionsJson) && questionsJson.length > 0)
+      ? questionsJson.length
+      : (maxMarks ?? 10),
     questionsJson: questionsJson ? JSON.stringify(questionsJson) : null,
   }).returning();
 

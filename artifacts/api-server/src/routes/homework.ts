@@ -52,32 +52,43 @@ router.get("/homework", attachUser, async (req, res) => {
       params.subjectId ? eq(homeworkTable.subjectId, params.subjectId) : undefined,
     ));
 
-  let submissionMap: Record<number, { status: string; marks: number | null; feedback: string | null; answer: string | null }> = {};
+  let submissionMap: Record<number, { status: string; marks: number | null; feedback: string | null; submittedAnswer: string | null; attachmentUrl: string | null }> = {};
   if (user) {
     const subs = await db
-      .select({ homeworkId: homeworkSubmissionsTable.homeworkId, status: homeworkSubmissionsTable.status, marks: homeworkSubmissionsTable.marks, feedback: homeworkSubmissionsTable.feedback, answer: homeworkSubmissionsTable.answer })
+      .select({ homeworkId: homeworkSubmissionsTable.homeworkId, status: homeworkSubmissionsTable.status, marks: homeworkSubmissionsTable.marks, feedback: homeworkSubmissionsTable.feedback, answer: homeworkSubmissionsTable.answer, attachmentUrl: homeworkSubmissionsTable.attachmentUrl })
       .from(homeworkSubmissionsTable)
       .where(eq(homeworkSubmissionsTable.studentId, user.id));
     for (const s of subs) {
-      submissionMap[s.homeworkId] = { status: s.status, marks: s.marks ?? null, feedback: s.feedback ?? null, answer: s.answer };
+      submissionMap[s.homeworkId] = { status: s.status, marks: s.marks ?? null, feedback: s.feedback ?? null, submittedAnswer: s.answer, attachmentUrl: s.attachmentUrl ?? null };
     }
   }
 
-  res.json(hw.map(h => ({
-    ...h,
-    dueDate: h.dueDate.toISOString(),
-    description: h.description ?? null,
-    courseId: h.courseId ?? null,
-    liveClassId: h.liveClassId ?? null,
-    homeworkType: h.homeworkType ?? "writing",
-    driveLink: h.driveLink ?? null,
-    questionsJson: h.questionsJson ?? null,
-    status: submissionMap[h.id]?.status ?? "pending",
-    marks: submissionMap[h.id]?.marks ?? null,
-    feedback: submissionMap[h.id]?.feedback ?? null,
-    submittedAnswer: submissionMap[h.id]?.answer ?? null,
-    maxMarks: h.maxMarks,
-  })));
+  res.json(hw.map(h => {
+    // For MCQ homework, maxMarks must equal the number of questions (1 mark each).
+    // Use the question count as the authoritative value; fall back to stored maxMarks
+    // for writing-type homework.
+    const type = h.homeworkType ?? "writing";
+    let effectiveMaxMarks = h.maxMarks;
+    if (type === "mcq" && h.questionsJson) {
+      try { effectiveMaxMarks = (JSON.parse(h.questionsJson) as unknown[]).length; } catch { /* keep stored value */ }
+    }
+    return {
+      ...h,
+      dueDate: h.dueDate.toISOString(),
+      description: h.description ?? null,
+      courseId: h.courseId ?? null,
+      liveClassId: h.liveClassId ?? null,
+      homeworkType: type,
+      driveLink: h.driveLink ?? null,
+      questionsJson: h.questionsJson ?? null,
+      status: submissionMap[h.id]?.status ?? "pending",
+      marks: submissionMap[h.id]?.marks ?? null,
+      feedback: submissionMap[h.id]?.feedback ?? null,
+      submittedAnswer: submissionMap[h.id]?.submittedAnswer ?? null,
+      attachmentUrl: submissionMap[h.id]?.attachmentUrl ?? null,
+      maxMarks: effectiveMaxMarks,
+    };
+  }));
 });
 
 router.get("/homework/:id", attachUser, async (req, res) => {
@@ -136,9 +147,11 @@ router.post("/homework/:id/submit", requireAuth, async (req, res) => {
 
   let autoMarks: number | null = null;
   let autoStatus = "submitted";
+  let numQuestions: number | null = null;
   if (hw?.homeworkType === "mcq" && hw.questionsJson) {
     try {
       const questions = JSON.parse(hw.questionsJson) as Array<{ correctOption: number }>;
+      numQuestions = questions.length;
       const selectedAnswers = JSON.parse(bodyParsed.data.answer) as number[];
       let correct = 0;
       for (let i = 0; i < questions.length; i++) {
@@ -146,6 +159,8 @@ router.post("/homework/:id/submit", requireAuth, async (req, res) => {
       }
       autoMarks = correct;
       autoStatus = "graded";
+      // Ensure the stored maxMarks matches the actual question count (1 mark per question)
+      await db.update(homeworkTable).set({ maxMarks: numQuestions }).where(eq(homeworkTable.id, idParsed.data.id));
     } catch { /* not parseable — leave as submitted */ }
   }
 
@@ -160,7 +175,7 @@ router.post("/homework/:id/submit", requireAuth, async (req, res) => {
 
   await recomputeAndSavePoints(studentId);
 
-  res.json({ success: true, message: "Homework submitted successfully!", autoGraded: autoStatus === "graded", marks: autoMarks });
+  res.json({ success: true, message: "Homework submitted successfully!", autoGraded: autoStatus === "graded", marks: autoMarks, maxMarks: numQuestions });
 });
 
 export default router;

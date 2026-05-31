@@ -45,6 +45,7 @@ type ExtendedHw = {
   driveLink?: string | null;
   questionsJson?: string | null;
   submittedAnswer?: string | null;
+  attachmentUrl?: string | null;
 };
 
 type HwQuestion = { text: string; options: string[]; correctOption: number };
@@ -258,8 +259,8 @@ export default function HomeworkPage() {
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{hw.description}</p>
                         )}
 
-                        {/* Drive link */}
-                        {hw.driveLink && !isMcqHw && !isDone && (
+                        {/* Drive link — always visible for written homework (question sheet) */}
+                        {hw.driveLink && !isMcqHw && (
                           <a
                             href={hw.driveLink}
                             target="_blank"
@@ -267,7 +268,7 @@ export default function HomeworkPage() {
                             className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline font-medium pointer-events-auto"
                             onClick={e => e.stopPropagation()}
                           >
-                            <ExternalLink className="w-3 h-3" /> View homework resource
+                            <ExternalLink className="w-3 h-3" /> View homework sheet
                           </a>
                         )}
 
@@ -276,6 +277,22 @@ export default function HomeworkPage() {
                           <p className="mt-1.5 text-sm font-semibold text-green-600">
                             Score: {hw.marks}/{hw.maxMarks}
                           </p>
+                        )}
+                        {/* Submitted answer sheet download (written homework only) */}
+                        {hw.status === "graded" && hw.attachmentUrl && !isMcqHw && (
+                          <a
+                            href={hw.attachmentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 mt-1 text-xs text-green-700 hover:underline font-medium pointer-events-auto"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-3 h-3" /> Download submitted answer
+                          </a>
+                        )}
+                        {/* Feedback from teacher */}
+                        {hw.feedback && (
+                          <p className="mt-1 text-xs text-purple-700 italic pointer-events-auto">Teacher: {hw.feedback}</p>
                         )}
                         {isExpired && (
                           <p className="text-xs text-gray-400 mt-1">Expired — submission closed</p>
