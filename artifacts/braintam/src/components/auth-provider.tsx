@@ -129,14 +129,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (studentToken) {
-      // Skip re-fetch if same token + same Clerk user, profile is loaded, and still fresh
-      if (
-        profileFresh &&
+      const identityUnchanged =
         lastResolvedRef.current?.studentToken === studentToken &&
-        lastResolvedRef.current?.userId === clerkUserId &&
-        student !== null
-      ) return;
+        lastResolvedRef.current?.userId === clerkUserId;
 
+      // Same identity + student already loaded:
+      // • Within TTL → skip entirely (no request).
+      // • TTL expired → silent background refresh (no spinner, no blink).
+      if (identityUnchanged && student !== null) {
+        if (profileFresh) return;
+        // Refresh silently — do NOT call setStudentLoading so the UI never flickers.
+        fetchProfileWithToken(studentToken).then((data) => {
+          if (data) {
+            setStudent(normalize(data));
+            lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken, at: Date.now() };
+          } else {
+            localStorage.removeItem(STUDENT_TOKEN_KEY);
+            setStudent(null);
+            setStudentLoading(false);
+            lastResolvedRef.current = null;
+          }
+        });
+        return;
+      }
+
+      // New identity or no student yet — show spinner for the full fetch.
       setStudentLoading(true);
       fetchProfileWithToken(studentToken)
         .then((data) => {
