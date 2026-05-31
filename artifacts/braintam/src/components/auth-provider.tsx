@@ -145,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken, at: Date.now() };
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
+            window.dispatchEvent(new CustomEvent("braintam:auth_change"));
             setStudent(null);
             setStudentLoading(false);
             lastResolvedRef.current = null;
@@ -162,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken, at: Date.now() };
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
+            window.dispatchEvent(new CustomEvent("braintam:auth_change"));
             setStudent(null);
             lastResolvedRef.current = null;
           }
@@ -195,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (result) {
           localStorage.removeItem(STAFF_TOKEN_KEY);
           localStorage.setItem(STUDENT_TOKEN_KEY, result.token);
+          window.dispatchEvent(new CustomEvent("braintam:auth_change"));
           setStudent(normalize(result.student));
           lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken: result.token, at: Date.now() };
         } else {
@@ -209,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStudentLoading(true);
     localStorage.removeItem(STAFF_TOKEN_KEY);
     localStorage.removeItem(STUDENT_TOKEN_KEY);
+    window.dispatchEvent(new CustomEvent("braintam:auth_change"));
     lastResolvedRef.current = null;
     setStudent(null);
     if (user) {

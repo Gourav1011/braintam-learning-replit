@@ -288,10 +288,18 @@ function GuestRoute({ component: Component }: { component: React.ComponentType }
 }
 
 // ── Cache invalidation on auth change ────────────────────────
+// Clears React Query cache whenever EITHER the Clerk user OR the custom
+// braintam_student_token/braintam_staff_token changes — prevents stale data
+// from a previous user bleeding into the new session.
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  const prevTokenRef  = useRef<string | null>(
+    localStorage.getItem("braintam_student_token") ?? localStorage.getItem("braintam_staff_token")
+  );
+
+  // Watch Clerk user changes
   useEffect(() => {
     const unsub = addListener(({ user }) => {
       const uid = user?.id ?? null;
@@ -302,6 +310,16 @@ function ClerkQueryClientCacheInvalidator() {
     });
     return unsub;
   }, [addListener, qc]);
+
+  // Watch custom token changes (email/password students & staff).
+  // Uses a custom "braintam:auth_change" event because the native "storage"
+  // event only fires in OTHER tabs, not the same tab where the write happens.
+  useEffect(() => {
+    function onAuthChange() { qc.clear(); }
+    window.addEventListener("braintam:auth_change", onAuthChange);
+    return () => window.removeEventListener("braintam:auth_change", onAuthChange);
+  }, [qc]);
+
   return null;
 }
 
