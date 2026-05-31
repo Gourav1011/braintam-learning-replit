@@ -30,23 +30,38 @@ router.get("/student/dashboard", requireAuth, async (req, res) => {
         .limit(6)
     : [];
 
-  const upcoming = await db.select().from(liveClassesTable)
-    .where(eq(liveClassesTable.status, "upcoming")).limit(5);
+  const studentGrade = student?.grade ?? 0;
 
-  const hw = await db.select().from(homeworkTable).where(
-    courseIds.length
-      ? or(inArray(homeworkTable.courseId, courseIds), isNull(homeworkTable.courseId))
-      : isNull(homeworkTable.courseId)
-  ).limit(10);
+  // All four stat queries return 0 when the student has no course enrollments.
+  // Live classes and tests are further filtered by the student's grade so
+  // unrelated content from other grades never leaks through.
+  const upcoming = courseIds.length > 0
+    ? await db.select().from(liveClassesTable)
+        .where(and(
+          eq(liveClassesTable.status, "upcoming"),
+          eq(liveClassesTable.grade, studentGrade)
+        )).limit(5)
+    : [];
 
-  const asgn = await db.select().from(assignmentsTable).where(
-    courseIds.length
-      ? or(inArray(assignmentsTable.courseId, courseIds), isNull(assignmentsTable.courseId))
-      : isNull(assignmentsTable.courseId)
-  ).limit(10);
+  const hw = courseIds.length > 0
+    ? await db.select().from(homeworkTable)
+        .where(inArray(homeworkTable.courseId, courseIds))
+        .limit(10)
+    : [];
 
-  const tests = await db.select().from(testsTable)
-    .where(eq(testsTable.status, "upcoming")).limit(5);
+  const asgn = courseIds.length > 0
+    ? await db.select().from(assignmentsTable)
+        .where(inArray(assignmentsTable.courseId, courseIds))
+        .limit(10)
+    : [];
+
+  const tests = courseIds.length > 0
+    ? await db.select().from(testsTable)
+        .where(and(
+          eq(testsTable.status, "upcoming"),
+          eq(testsTable.grade, studentGrade)
+        )).limit(5)
+    : [];
 
   const recentHw = await db
     .select({ id: homeworkSubmissionsTable.id, title: homeworkTable.title, submittedAt: homeworkSubmissionsTable.submittedAt })
