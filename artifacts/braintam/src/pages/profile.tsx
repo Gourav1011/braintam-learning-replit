@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Pencil,
   Camera, Phone, MapPin, FileText, ClipboardList, Lock, X, Check,
-  UserCheck, ChevronDown, ChevronUp,
+  UserCheck, ChevronDown, ChevronUp, Zap, ChevronRight,
 } from "lucide-react";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { PointsHub } from "@/components/points-hub";
@@ -115,6 +115,7 @@ export default function ProfilePage() {
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [selectedBadgeIdx, setSelectedBadgeIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile, isLoading: profileLoading } = useGetStudentProfile({
@@ -207,14 +208,114 @@ export default function ProfilePage() {
   ];
 
   const allAchievements = [
-    { icon: "🔥", label: "3-Day Streak",         unlocked: streak >= 3,                                  bg: "#fff7ed", border: "#fed7aa" },
-    { icon: "🔥", label: "7-Day Streak",          unlocked: streak >= 7,                                  bg: "#fff7ed", border: "#fed7aa" },
-    { icon: "⭐", label: "Points Collector",      unlocked: totalPoints >= 50,                             bg: "#fefce8", border: "#fde68a" },
-    { icon: "💎", label: "XP Pro (200+)",         unlocked: totalPoints >= 200,                            bg: "#f0f9ff", border: "#bae6fd" },
-    { icon: "🏅", label: "First Quiz Done",       unlocked: (progress?.testsAttempted ?? 0) > 0,           bg: "#f0fdf4", border: "#bbf7d0" },
-    { icon: "🚀", label: "Course Explorer",       unlocked: (progress?.coursesCompleted ?? 0) > 0,         bg: "#eff6ff", border: "#bfdbfe" },
-    { icon: "🧪", label: "Multi-Subject Learner", unlocked: (progress?.subjectWise?.length ?? 0) >= 2,     bg: "#faf5ff", border: "#e9d5ff" },
-    { icon: "🏆", label: "Top 5 Learner",         unlocked: !!rankNum && rankNum <= 5,                     bg: "#fefce8", border: "#fde68a" },
+    {
+      icon: "🔥", label: "3-Day Streak", unlocked: streak >= 3,
+      bg: "#fff7ed", border: "#fed7aa", glowColor: "#fb923c",
+      description: "Login and learn for 3 days in a row without breaking your streak.",
+      requirement: `Maintain a 3-day learning streak (current: ${streak} days)`,
+      reward: "+15 Bonus XP", rewardXP: 15,
+      progress: Math.min(100, Math.round((streak / 3) * 100)),
+      progressText: `${Math.min(streak, 3)}/3 days`,
+    },
+    {
+      icon: "🔥", label: "7-Day Streak", unlocked: streak >= 7,
+      bg: "#fff7ed", border: "#fed7aa", glowColor: "#ef4444",
+      description: "A whole week of consistent learning — you're on fire!",
+      requirement: `Maintain a 7-day learning streak (current: ${streak} days)`,
+      reward: "+20 Bonus XP", rewardXP: 20,
+      progress: Math.min(100, Math.round((streak / 7) * 100)),
+      progressText: `${Math.min(streak, 7)}/7 days`,
+    },
+    {
+      icon: "⭐", label: "Points Collector", unlocked: totalPoints >= 50,
+      bg: "#fefce8", border: "#fde68a", glowColor: "#eab308",
+      description: "You've collected your first real XP by completing activities on Braintam.",
+      requirement: `Earn 50 total XP (current: ${totalPoints} XP)`,
+      reward: "+10 Bonus XP", rewardXP: 10,
+      progress: Math.min(100, Math.round((totalPoints / 50) * 100)),
+      progressText: `${Math.min(totalPoints, 50)}/50 XP`,
+    },
+    {
+      icon: "💎", label: "XP Pro (200+)", unlocked: totalPoints >= 200,
+      bg: "#f0f9ff", border: "#bae6fd", glowColor: "#3b82f6",
+      description: "You've proven yourself as a dedicated learner with 200+ XP earned.",
+      requirement: `Earn 200 total XP (current: ${totalPoints} XP)`,
+      reward: "+25 Bonus XP", rewardXP: 25,
+      progress: Math.min(100, Math.round((totalPoints / 200) * 100)),
+      progressText: `${Math.min(totalPoints, 200)}/200 XP`,
+    },
+    {
+      icon: "🏅", label: "First Quiz Done", unlocked: (progress?.testsAttempted ?? 0) > 0,
+      bg: "#f0fdf4", border: "#bbf7d0", glowColor: "#22c55e",
+      description: "You took the leap! Completing your first test shows real courage.",
+      requirement: `Attempt at least 1 test (completed: ${progress?.testsAttempted ?? 0})`,
+      reward: "+15 Bonus XP", rewardXP: 15,
+      progress: (progress?.testsAttempted ?? 0) > 0 ? 100 : 0,
+      progressText: `${progress?.testsAttempted ?? 0}/1 tests`,
+    },
+    {
+      icon: "🚀", label: "Course Explorer", unlocked: (progress?.coursesCompleted ?? 0) > 0,
+      bg: "#eff6ff", border: "#bfdbfe", glowColor: "#6366f1",
+      description: "You've completed your first full course — the universe is your playground!",
+      requirement: `Complete at least 1 course (completed: ${progress?.coursesCompleted ?? 0})`,
+      reward: "+50 Bonus XP", rewardXP: 50,
+      progress: (progress?.coursesCompleted ?? 0) > 0 ? 100 : 0,
+      progressText: `${progress?.coursesCompleted ?? 0}/1 courses`,
+    },
+    {
+      icon: "🧪", label: "Multi-Subject Learner", unlocked: (progress?.subjectWise?.length ?? 0) >= 2,
+      bg: "#faf5ff", border: "#e9d5ff", glowColor: "#8b5cf6",
+      description: "Learning across multiple subjects shows true academic curiosity!",
+      requirement: `Study at least 2 subjects (current: ${progress?.subjectWise?.length ?? 0})`,
+      reward: "+20 Bonus XP", rewardXP: 20,
+      progress: Math.min(100, Math.round(((progress?.subjectWise?.length ?? 0) / 2) * 100)),
+      progressText: `${progress?.subjectWise?.length ?? 0}/2 subjects`,
+    },
+    {
+      icon: "🏆", label: "Top 5 Learner", unlocked: !!rankNum && rankNum <= 5,
+      bg: "#fefce8", border: "#fde68a", glowColor: "#f59e0b",
+      description: "You're in the top 5 on your grade's leaderboard — absolutely elite!",
+      requirement: `Reach rank #5 or higher (current rank: ${rankNum ? `#${rankNum}` : "unranked"})`,
+      reward: "+100 Bonus XP", rewardXP: 100,
+      progress: rankNum ? Math.min(100, Math.round(((10 - Math.min(rankNum, 10)) / 5) * 100)) : 0,
+      progressText: rankNum ? `Rank #${rankNum}` : "Not yet ranked",
+    },
+    {
+      icon: "🌍", label: "Earth Explorer", unlocked: totalPoints >= 0,
+      bg: "#f0fdf4", border: "#86efac", glowColor: "#22c55e",
+      description: "You began your Braintam Space Journey! Every champion starts on Earth.",
+      requirement: "Create your account and start learning",
+      reward: "🎖 Explorer Badge", rewardXP: 0,
+      progress: 100,
+      progressText: "Completed!",
+    },
+    {
+      icon: "🌙", label: "Moon Explorer", unlocked: totalPoints >= 100,
+      bg: "#f8fafc", border: "#cbd5e1", glowColor: "#94a3b8",
+      description: "Reach 100 XP to launch from Earth and land on the Moon!",
+      requirement: `Earn 100 XP (current: ${totalPoints} XP)`,
+      reward: "🌙 Moon Badge", rewardXP: 30,
+      progress: Math.min(100, Math.round((totalPoints / 100) * 100)),
+      progressText: `${Math.min(totalPoints, 100)}/100 XP`,
+    },
+    {
+      icon: "🔴", label: "Mars Explorer", unlocked: totalPoints >= 300,
+      bg: "#fff1f2", border: "#fecdd3", glowColor: "#ef4444",
+      description: "Conquer Mars by earning 300 XP — you're a true space explorer!",
+      requirement: `Earn 300 XP (current: ${totalPoints} XP)`,
+      reward: "🔴 Mars Badge", rewardXP: 50,
+      progress: Math.min(100, Math.round((totalPoints / 300) * 100)),
+      progressText: `${Math.min(totalPoints, 300)}/300 XP`,
+    },
+    {
+      icon: "🪐", label: "Saturn Explorer", unlocked: totalPoints >= 600,
+      bg: "#fffbeb", border: "#fde68a", glowColor: "#f59e0b",
+      description: "Reach Saturn's rings at 600 XP — you're among the greats!",
+      requirement: `Earn 600 XP (current: ${totalPoints} XP)`,
+      reward: "🪐 Saturn Ring", rewardXP: 100,
+      progress: Math.min(100, Math.round((totalPoints / 600) * 100)),
+      progressText: `${Math.min(totalPoints, 600)}/600 XP`,
+    },
   ];
 
   return (
@@ -536,35 +637,122 @@ export default function ProfilePage() {
 
           {/* Right column: achievements + teacher + points hub */}
           <div className="space-y-5">
-            {/* Achievements — locked/unlocked */}
+            {/* Achievement Gallery */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements</h2>
-                <span className="text-xs text-gray-400 font-medium">
+                <div>
+                  <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">🏅 Achievement Gallery</h2>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Tap a badge to learn more</p>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full font-bold"
+                  style={{ background: "rgba(11,43,107,0.08)", color: NAVY }}>
                   {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-2">
-                {allAchievements.map(ach => (
-                  <div
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                {allAchievements.map((ach, idx) => (
+                  <motion.button
                     key={ach.label}
-                    className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border overflow-hidden"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedBadgeIdx(selectedBadgeIdx === idx ? null : idx)}
+                    className="relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl border text-center cursor-pointer transition-all"
                     style={{
-                      background:  ach.unlocked ? ach.bg     : "#f5f5f5",
-                      borderColor: ach.unlocked ? ach.border : "#e5e5e5",
-                      opacity:     ach.unlocked ? 1 : 0.6,
+                      background: ach.unlocked ? ach.bg : "#f9f9f9",
+                      borderColor: selectedBadgeIdx === idx ? ach.glowColor : ach.unlocked ? ach.border : "#e5e7eb",
+                      boxShadow: selectedBadgeIdx === idx ? `0 0 12px ${ach.glowColor}55` : ach.unlocked ? `0 2px 8px ${ach.glowColor}22` : "none",
                     }}
+                    data-testid={`badge-${ach.label.replace(/\s+/g, "-").toLowerCase()}`}
                   >
-                    <span className="text-xl leading-none">{ach.unlocked ? ach.icon : "🔒"}</span>
-                    <span className={`text-xs font-semibold leading-tight flex-1 ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
+                    <span className={`text-2xl leading-none ${ach.unlocked ? "" : "grayscale opacity-40"}`}>
+                      {ach.icon}
+                    </span>
+                    <span className={`text-[10px] font-bold leading-tight ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
                       {ach.label}
                     </span>
-                    {ach.unlocked && (
-                      <span className="absolute top-1 right-1.5 text-[8px] font-bold text-green-600">✓</span>
+                    {ach.unlocked ? (
+                      <span className="absolute top-1 right-1.5 text-[8px] font-black text-green-600 bg-green-100 rounded-full px-1">✓</span>
+                    ) : (
+                      <div className="w-full px-1">
+                        <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-orange-400" style={{ width: `${ach.progress}%` }} />
+                        </div>
+                      </div>
                     )}
-                  </div>
+                  </motion.button>
                 ))}
               </div>
+
+              {/* Badge detail panel */}
+              <AnimatePresence>
+                {selectedBadgeIdx !== null && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                    transition={{ duration: 0.2 }}
+                    className="mt-3 rounded-3xl border p-4 relative"
+                    style={{
+                      background: allAchievements[selectedBadgeIdx].unlocked
+                        ? allAchievements[selectedBadgeIdx].bg
+                        : "#f9f9f9",
+                      borderColor: allAchievements[selectedBadgeIdx].glowColor + "66",
+                      boxShadow: `0 4px 20px ${allAchievements[selectedBadgeIdx].glowColor}22`,
+                    }}
+                  >
+                    <button
+                      onClick={() => setSelectedBadgeIdx(null)}
+                      className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-3 h-3 text-gray-600" />
+                    </button>
+                    <div className="flex items-start gap-3">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+                        style={{ background: allAchievements[selectedBadgeIdx].border + "66" }}>
+                        {allAchievements[selectedBadgeIdx].unlocked
+                          ? allAchievements[selectedBadgeIdx].icon
+                          : <span className="grayscale opacity-50">{allAchievements[selectedBadgeIdx].icon}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-black text-gray-800">{allAchievements[selectedBadgeIdx].label}</h3>
+                          {allAchievements[selectedBadgeIdx].unlocked ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">✓ Earned</span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">🔒 Locked</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">{allAchievements[selectedBadgeIdx].description}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-start gap-2 text-xs text-gray-600">
+                        <span className="font-bold text-gray-400 flex-shrink-0">Requirement:</span>
+                        <span>{allAchievements[selectedBadgeIdx].requirement}</span>
+                      </div>
+                      {!allAchievements[selectedBadgeIdx].unlocked && (
+                        <div>
+                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                            <span>Progress</span>
+                            <span className="font-bold">{allAchievements[selectedBadgeIdx].progressText}</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <motion.div className="h-full rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${allAchievements[selectedBadgeIdx].progress}%` }}
+                              transition={{ duration: 0.6 }}
+                              style={{ background: `linear-gradient(90deg, ${allAchievements[selectedBadgeIdx].glowColor}, ${allAchievements[selectedBadgeIdx].glowColor}99)` }} />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <Zap className="w-3.5 h-3.5 text-yellow-500" />
+                        <span className="text-xs font-bold" style={{ color: "#ca8a04" }}>Reward: {allAchievements[selectedBadgeIdx].reward}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Know Your Personal Teacher */}

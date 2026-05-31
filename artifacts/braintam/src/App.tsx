@@ -50,6 +50,7 @@ import AdminLoginPage from "@/pages/admin-login";
 import LoginPage from "@/pages/login";
 import EnrollPage from "@/pages/enroll";
 import DownloadAppPage from "@/pages/download-app";
+import SpaceJourneyPage from "@/pages/space-journey";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -397,6 +398,7 @@ function Router() {
       <Route path="/leaderboard" component={LeaderboardPage} />
       <Route path="/demo-batches"><ProtectedRoute component={DemoBatchesPage} /></Route>
       <Route path="/demo-batches/:id"><ProtectedRoute component={DemoBatchPage} /></Route>
+      <Route path="/space-journey"><ProtectedRoute component={SpaceJourneyPage} /></Route>
 
       <Route component={NotFound} />
     </Switch>

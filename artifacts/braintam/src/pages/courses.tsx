@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Search, Star, Users, Trophy, Sparkles, ArrowRight, GraduationCap, Zap, Award, CheckCircle, MessageCircle, Clock } from "lucide-react";
+import { BookOpen, Search, Star, Users, Trophy, Sparkles, ArrowRight, GraduationCap, Zap, Award, CheckCircle, MessageCircle, Clock, Lock, Flame, ChevronRight } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
@@ -681,6 +681,130 @@ function PublicCoursesView() {
 const SUBJ_EMOJIS = ["📘", "🧪", "📖", "🗺️", "🎨", "🏃", "🔢", "🌍"];
 const SUBJ_COLORS = ["#1d4ed8", "#059669", "#7c3aed", "#b45309", "#0891b2", "#dc2626", "#d97706", "#0f766e"];
 
+function WeekRoadmap({ progress }: { progress: number }) {
+  const weeks = [
+    { label: "Week 1", threshold: 25 },
+    { label: "Week 2", threshold: 50 },
+    { label: "Week 3", threshold: 75 },
+    { label: "Week 4", threshold: 100 },
+  ];
+  return (
+    <div className="flex gap-1.5">
+      {weeks.map((w, i) => {
+        const done = progress >= w.threshold;
+        const current = progress >= (w.threshold - 25) && progress < w.threshold;
+        const locked = progress < (w.threshold - 25) && !done;
+        return (
+          <div key={w.label} className="flex-1 text-center">
+            <div className={`h-1.5 rounded-full mb-1 ${done ? "bg-green-500" : current ? "bg-orange-400" : "bg-gray-200"}`} />
+            <span className="text-[9px] font-bold" style={{ color: done ? "#16a34a" : current ? ORANGE : "#9ca3af" }}>
+              {done ? "✅" : current ? "🔵" : "🔒"} W{i + 1}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AdventureCourseCard({ course, idx }: { course: any; idx: number }) {
+  const accentColor = SUBJ_COLORS[idx % SUBJ_COLORS.length];
+  const emoji = SUBJ_EMOJIS[idx % SUBJ_EMOJIS.length];
+  const pct = (course.totalLessons && course.completedLessons != null)
+    ? Math.min(100, Math.round((course.completedLessons / course.totalLessons) * 100))
+    : 0;
+  const completedLessons = course.completedLessons ?? 0;
+  const totalLessons = course.totalLessons ?? 0;
+  const xpEarned = Math.round(pct * 2);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.08 }}>
+      <Link href={`/courses/${course.id}`}>
+        <div className="rounded-3xl overflow-hidden cursor-pointer hover:shadow-xl transition-all"
+          style={{ background: "white", boxShadow: "0 2px 16px rgba(0,0,0,0.08)" }}
+          data-testid={`adventure-card-${course.id}`}>
+
+          {/* Header strip */}
+          <div className="relative h-32 md:h-36 overflow-hidden"
+            style={{ background: `linear-gradient(135deg, ${accentColor}ee, ${accentColor}aa)` }}>
+            {course.thumbnailUrl && (
+              <img src={course.thumbnailUrl} alt={course.title}
+                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30" />
+            )}
+            <div className="absolute inset-0 p-4 flex flex-col justify-between">
+              <div className="flex items-start justify-between">
+                <span className="text-3xl">{emoji}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-xs font-bold px-2 py-1 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
+                    {course.subjectName}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(255,215,0,0.3)", color: "#fde68a" }}>
+                    ⚡ {xpEarned} XP earned
+                  </span>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-white font-black text-sm md:text-base line-clamp-2 leading-snug">{course.title}</h3>
+                <p className="text-white/70 text-xs mt-0.5">{completedLessons}/{totalLessons} lessons</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-4 space-y-3">
+            {/* Progress */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-semibold text-gray-600">Progress</span>
+                <span className="font-black" style={{ color: accentColor }}>{pct}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <motion.div className="h-full rounded-full"
+                  initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                  transition={{ duration: 1, delay: idx * 0.1 }}
+                  style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88)` }} />
+              </div>
+            </div>
+
+            {/* Week roadmap */}
+            <div>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1.5">Weekly Roadmap</p>
+              <WeekRoadmap progress={pct} />
+            </div>
+
+            {/* Next mission */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl"
+              style={{ background: `${accentColor}0f` }}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🎯</span>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-medium">Next Mission</p>
+                  <p className="text-xs font-bold" style={{ color: accentColor }}>
+                    {pct === 0 ? "Start your first lesson!"
+                     : pct < 25 ? "Complete Week 1 lessons"
+                     : pct < 50 ? "Finish Week 2 content"
+                     : pct < 75 ? "Tackle Week 3 challenges"
+                     : pct < 100 ? "Complete the final week!"
+                     : "🏆 Course completed!"}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4" style={{ color: accentColor }} />
+            </div>
+
+            <button className="w-full py-2.5 rounded-xl text-sm font-black text-white transition-all hover:opacity-90"
+              style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
+              {pct === 0 ? "🚀 Start Adventure" : pct === 100 ? "✅ Review Course" : "▶ Continue Learning"}
+            </button>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
 function AuthCoursesView() {
   const [subject, setSubject] = useState<string>("all");
   const [search, setSearch]   = useState("");
@@ -792,12 +916,13 @@ function AuthCoursesView() {
 
         {/* Course cards */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 rounded-2xl" />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-72 rounded-3xl" />)}
           </div>
         ) : (courses ?? []).length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-3">📚</div>
+          <motion.div className="text-center py-20 rounded-3xl border-2 border-dashed border-gray-200"
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="text-5xl mb-4">🚀</div>
             {(search || subject !== "all") ? (
               <>
                 <p className="text-base font-bold text-gray-700">No courses found</p>
@@ -805,68 +930,101 @@ function AuthCoursesView() {
               </>
             ) : (
               <>
-                <p className="text-base font-bold text-gray-700">No courses yet</p>
-                <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
-                  Your admin hasn't enrolled you in a course yet. Contact your teacher or admin to get started.
+                <p className="text-base font-bold text-gray-700">Your learning adventure is about to begin</p>
+                <p className="text-sm text-gray-400 mt-2 max-w-xs mx-auto">
+                  You'll see your courses here once your teacher enrolls you. Contact your admin to get started!
                 </p>
               </>
             )}
-          </div>
+          </motion.div>
         ) : (
-          <div>
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-              All Courses ({courses?.length ?? 0})
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {(courses ?? []).map((course, i) => {
-                const pct = (course.totalLessons && course.completedLessons != null)
-                  ? Math.round((course.completedLessons / course.totalLessons) * 100) : null;
-                const subjIdx = subjectProgress.findIndex(s => s.id === course.subjectId);
-                const accentColor = SUBJ_COLORS[subjIdx >= 0 ? subjIdx % SUBJ_COLORS.length : i % SUBJ_COLORS.length];
-                return (
-                  <motion.div key={course.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                    <Link href={`/courses/${course.id}`}>
-                      <div
-                        className="rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-all bg-white"
-                        style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}
-                        data-testid={`course-card-${course.id}`}
-                      >
-                        <div className="relative h-28">
-                          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                          <div className="absolute bottom-2 left-2">
-                            <span className="text-[10px] font-bold text-white/90 bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                              {course.subjectName}
-                            </span>
-                          </div>
-                          {course.rating && (
-                            <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/30 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
-                              <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-                              <span className="text-[10px] font-bold text-white">{course.rating}</span>
+          <div className="space-y-5">
+            {/* ── Enrolled courses as adventure cards ── */}
+            {(courses ?? []).filter(c => c.completedLessons != null).length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">🚀</span>
+                  <h2 className="text-sm font-black uppercase tracking-wide" style={{ color: NAVY }}>
+                    Your Learning Adventures
+                  </h2>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-bold ml-1"
+                    style={{ background: `rgba(255,107,26,0.1)`, color: ORANGE }}>
+                    {(courses ?? []).filter(c => c.completedLessons != null).length} Active
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(courses ?? [])
+                    .filter(c => c.completedLessons != null)
+                    .map((course, i) => <AdventureCourseCard key={course.id} course={course} idx={i} />)}
+                </div>
+              </div>
+            )}
+
+            {/* ── All courses (non-enrolled shown as compact cards) ── */}
+            <div>
+              {(courses ?? []).filter(c => c.completedLessons != null).length > 0 && (
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                  Browse All Courses ({courses?.length ?? 0})
+                </h2>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {(courses ?? []).map((course, i) => {
+                  const pct = (course.totalLessons && course.completedLessons != null)
+                    ? Math.round((course.completedLessons / course.totalLessons) * 100) : null;
+                  const subjIdx = subjectProgress.findIndex(s => s.id === course.subjectId);
+                  const accentColor = SUBJ_COLORS[subjIdx >= 0 ? subjIdx % SUBJ_COLORS.length : i % SUBJ_COLORS.length];
+                  const isEnrolled = course.completedLessons != null;
+                  return (
+                    <motion.div key={course.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                      <Link href={`/courses/${course.id}`}>
+                        <div
+                          className="rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-all bg-white"
+                          style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}
+                          data-testid={`course-card-${course.id}`}
+                        >
+                          <div className="relative h-28">
+                            <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                            <div className="absolute bottom-2 left-2">
+                              <span className="text-[10px] font-bold text-white/90 bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                {course.subjectName}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                        <div className="p-2.5">
-                          <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-1.5">{course.title}</h3>
-                          {pct !== null ? (
-                            <>
-                              <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                                <span>Progress</span>
-                                <span className="font-bold" style={{ color: accentColor }}>{pct}%</span>
+                            {isEnrolled && (
+                              <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                                style={{ background: "#22c55e", color: "white" }}>
+                                ✓ Enrolled
                               </div>
-                              <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: accentColor }} />
+                            )}
+                            {course.rating && (
+                              <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/30 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+                                <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+                                <span className="text-[10px] font-bold text-white">{course.rating}</span>
                               </div>
-                            </>
-                          ) : (
-                            <p className="text-[10px] text-gray-400">{course.totalLessons} lessons</p>
-                          )}
+                            )}
+                          </div>
+                          <div className="p-2.5">
+                            <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-1.5">{course.title}</h3>
+                            {pct !== null ? (
+                              <>
+                                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                                  <span>Progress</span>
+                                  <span className="font-bold" style={{ color: accentColor }}>{pct}%</span>
+                                </div>
+                                <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: accentColor }} />
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-[10px] text-gray-400">{course.totalLessons} lessons</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

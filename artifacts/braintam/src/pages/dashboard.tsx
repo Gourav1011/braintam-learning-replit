@@ -38,7 +38,8 @@ function SpaceLearningJourney({ points, rank }: { points: number; rank: number |
   const xpNeeded = next ? Math.max(0, current.maxXP - points) : 0;
 
   return (
-    <div className="rounded-2xl p-4 relative overflow-hidden"
+    <Link href="/space-journey">
+    <div className="rounded-2xl p-4 relative overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
       style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)` }}>
       <div className="absolute inset-0 pointer-events-none opacity-10"
         style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
@@ -85,9 +86,11 @@ function SpaceLearningJourney({ points, rank }: { points: number; rank: number |
           style={{ background: "rgba(255,255,255,0.08)" }}>
           <span className="text-white/50 text-[11px]">Next Reward:</span>
           <span className="text-yellow-300 text-[11px] font-bold">{next?.reward ?? "🏆 Universe Crown"}</span>
+          <ChevronRight className="w-3 h-3 text-white/30 ml-auto" />
         </div>
       </div>
     </div>
+    </Link>
   );
 }
 
