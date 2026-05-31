@@ -17,6 +17,131 @@ const NAVY2  = "#123D7A";
 const GOLD   = "#D4AF37";
 const BG     = "#F8FAFC";
 
+// ── Space Journey XP Levels ───────────────────────────────────────
+const JOURNEY_LEVELS = [
+  { planet: "🌍", name: "Earth Explorer",    minXP: 0,    maxXP: 100,   reward: "🎖 Explorer Badge"  },
+  { planet: "🌙", name: "Moon Explorer",     minXP: 100,  maxXP: 300,   reward: "🌙 Moon Badge"      },
+  { planet: "🔴", name: "Mars Explorer",     minXP: 300,  maxXP: 600,   reward: "🔴 Mars Badge"      },
+  { planet: "🪐", name: "Saturn Explorer",   minXP: 600,  maxXP: 1000,  reward: "🪐 Saturn Ring"     },
+  { planet: "🌌", name: "Galaxy Master",     minXP: 1000, maxXP: 2000,  reward: "🌌 Galaxy Medal"    },
+  { planet: "🚀", name: "Universe Champion", minXP: 2000, maxXP: Infinity, reward: "🚀 Champion Crown" },
+];
+
+function SpaceLearningJourney({ points, rank }: { points: number; rank: number | null | undefined }) {
+  const rawIdx = JOURNEY_LEVELS.findIndex(l => points < l.maxXP);
+  const idx     = rawIdx === -1 ? JOURNEY_LEVELS.length - 1 : rawIdx;
+  const current = JOURNEY_LEVELS[idx];
+  const next    = JOURNEY_LEVELS[idx + 1] ?? null;
+  const pct     = next
+    ? Math.min(100, Math.round(((points - current.minXP) / (current.maxXP - current.minXP)) * 100))
+    : 100;
+  const xpNeeded = next ? Math.max(0, current.maxXP - points) : 0;
+
+  return (
+    <div className="rounded-2xl p-4 relative overflow-hidden"
+      style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)` }}>
+      <div className="absolute inset-0 pointer-events-none opacity-10"
+        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm">🚀</span>
+          <h2 className="text-white/70 text-[11px] font-bold uppercase tracking-widest">Braintam Space Learning Journey</h2>
+        </div>
+        <div className="flex items-center gap-4 mb-3">
+          <div>
+            <p className="text-4xl leading-none">{current.planet}</p>
+            <p className="text-white font-extrabold text-base mt-1">{current.name}</p>
+            <p className="text-white/50 text-xs mt-0.5">{points} XP{rank ? ` · Rank #${rank}` : ""}</p>
+          </div>
+          {next && (
+            <div className="ml-auto text-right">
+              <p className="text-white/40 text-[10px] font-medium uppercase tracking-wide mb-1">Next Planet</p>
+              <p className="text-3xl leading-none">{next.planet}</p>
+              <p className="text-white/60 text-xs font-semibold mt-0.5">{next.name}</p>
+            </div>
+          )}
+        </div>
+        <div className="mb-1.5">
+          <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
+              className="h-full rounded-full"
+              style={{ background: `linear-gradient(90deg, #FF6B1A, ${GOLD})` }}
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-white/40 text-[10px]">{current.minXP} XP</span>
+            {next && <span className="text-white/40 text-[10px]">{current.maxXP} XP</span>}
+          </div>
+        </div>
+        {next
+          ? <p className="text-white/60 text-xs">
+              <span className="text-orange-400 font-bold">{xpNeeded} XP</span> needed to reach {next.name}
+            </p>
+          : <p className="text-yellow-300 text-xs font-bold">🏆 Maximum Level — Universe Champion!</p>}
+        <div className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: "rgba(255,255,255,0.08)" }}>
+          <span className="text-white/50 text-[11px]">Next Reward:</span>
+          <span className="text-yellow-300 text-[11px] font-bold">{next?.reward ?? "🏆 Universe Crown"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TodaysMissions({
+  streak, pendingHw, upcomingTests, isLoading,
+}: { streak: number; pendingHw: number; upcomingTests: number; isLoading: boolean }) {
+  const missions = [
+    { icon: "🎥", label: "Attend Live Class",  done: false,                            href: "/live-classes", pts: "+10 XP" },
+    { icon: "📚", label: "Complete Homework",  done: !isLoading && pendingHw === 0,    href: "/homework",     pts: "+5 XP"  },
+    { icon: "📝", label: "Complete a Test",    done: !isLoading && upcomingTests === 0, href: "/tests",       pts: "+10 XP" },
+    { icon: "🔥", label: "Maintain Streak",    done: streak > 0,                       href: "/profile",      pts: "+5 XP"  },
+  ];
+  const completed = missions.filter(m => m.done).length;
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-orange-100 bg-white"
+      style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}>
+      <div className="px-4 pt-3.5 pb-3"
+        style={{ background: "linear-gradient(135deg, #FF6B1A, #e05510)" }}>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <span>🎯</span>
+            <h2 className="text-white font-extrabold text-sm">Today's Missions</h2>
+          </div>
+          <span className="text-white/80 text-xs font-bold bg-white/20 px-2.5 py-0.5 rounded-full">
+            {completed}/{missions.length}
+          </span>
+        </div>
+        <p className="text-white/70 text-xs">Complete all missions · earn +20 XP bonus</p>
+        <div className="mt-2 h-1.5 rounded-full bg-white/20 overflow-hidden">
+          <div className="h-full rounded-full bg-white transition-all duration-700"
+            style={{ width: `${(completed / missions.length) * 100}%` }} />
+        </div>
+      </div>
+      <div className="p-3 space-y-1.5">
+        {missions.map(m => (
+          <Link key={m.label} href={m.href}>
+            <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all
+              ${m.done ? "bg-green-50 border border-green-100" : "bg-gray-50 border border-transparent hover:border-orange-100 hover:bg-orange-50/40"}`}>
+              <span className="text-lg leading-none">{m.icon}</span>
+              <span className={`flex-1 text-sm font-semibold ${m.done ? "text-green-700 line-through decoration-green-400/60" : "text-gray-700"}`}>
+                {m.label}
+              </span>
+              {m.done
+                ? <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-black flex-shrink-0">✓</span>
+                : <span className="text-xs font-bold text-orange-500 flex-shrink-0">{m.pts}</span>}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.08, duration: 0.4 } }),
@@ -402,13 +527,17 @@ export default function DashboardPage() {
     },
   ];
 
-  // Derived achievements
-  const achievements = [
-    ...(streak >= 1  ? [{ icon: "🔥", label: streak >= 7 ? `${streak} Day Streak!` : `${streak} Day Streak`,  color: "#fff7ed", border: "#fed7aa" }] : []),
-    ...(points >= 50 ? [{ icon: "⭐", label: "Points Collector",  color: "#fefce8", border: "#fde68a" }] : []),
-    ...((dashboard?.upcomingTests ?? 0) === 0 && !isLoading ? [{ icon: "✅", label: "All Tests Clear",    color: "#f0fdf4", border: "#bbf7d0" }] : []),
-    ...((dashboard?.pendingHomework ?? 0) === 0 && !isLoading ? [{ icon: "📚", label: "Homework Champion",  color: "#eff6ff", border: "#bfdbfe" }] : []),
-  ].slice(0, 4);
+  // Achievements — always shown with locked/unlocked states (Part 8)
+  const allAchievements = [
+    { icon: "🔥", label: "3-Day Streak",       unlocked: streak >= 3,   color: "#fff7ed", border: "#fed7aa" },
+    { icon: "🔥", label: "7-Day Streak",       unlocked: streak >= 7,   color: "#fff7ed", border: "#fed7aa" },
+    { icon: "⭐", label: "Points Collector",   unlocked: points >= 50,  color: "#fefce8", border: "#fde68a" },
+    { icon: "💎", label: "XP Pro (200+)",      unlocked: points >= 200, color: "#f0f9ff", border: "#bae6fd" },
+    { icon: "📚", label: "Homework Hero",      unlocked: !isLoading && (dashboard?.pendingHomework ?? 1) === 0, color: "#eff6ff", border: "#bfdbfe" },
+    { icon: "✅", label: "Test Ace",           unlocked: !isLoading && (dashboard?.upcomingTests ?? 1) === 0,   color: "#f0fdf4", border: "#bbf7d0" },
+    { icon: "🚀", label: "Space Explorer",     unlocked: points >= 100, color: "#faf5ff", border: "#e9d5ff" },
+    { icon: "🌟", label: "Top 5 Learner",      unlocked: !!rankNum && rankNum <= 5,                             color: "#fefce8", border: "#fde68a" },
+  ];
 
   const hasNoCourse = !isLoading && !authLoading && !!dashboard &&
     (dashboard as any).enrolledCourseCount === 0;
@@ -494,28 +623,41 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Page Body ─────────────────────────────────────────────── */}
-      <div className="space-y-5 p-4 max-w-2xl mx-auto" style={{ background: BG }}>
+      <div className="space-y-5 p-4 md:p-6 md:max-w-5xl md:mx-auto" style={{ background: BG }}>
 
         {/* Hero Banner */}
         <HeroBanner />
 
+        {/* Space Learning Journey */}
+        <SpaceLearningJourney points={points} rank={rankNum} />
+
+        {/* Today's Missions */}
+        <TodaysMissions
+          streak={streak}
+          pendingHw={dashboard?.pendingHomework ?? 0}
+          upcomingTests={dashboard?.upcomingTests ?? 0}
+          isLoading={isLoading}
+        />
+
         {/* Announcements from admin */}
         <AnnouncementStrip />
 
-        {/* No course banner */}
+        {/* No course banner — improved empty state */}
         {hasNoCourse && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/40 p-6 flex flex-col items-center text-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
-                <BookOpen className="w-7 h-7 text-orange-400" />
-              </div>
+            <div className="rounded-2xl border-2 border-dashed border-orange-200 p-6 flex flex-col items-center text-center gap-3"
+              style={{ background: "linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)" }}>
+              <div className="text-5xl">📚</div>
               <div>
-                <h2 className="text-lg font-bold text-gray-800">No course enrolled yet</h2>
-                <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-                  Your admin hasn't enrolled you in a course yet. Once enrolled, live classes, homework, tests, and progress will appear here.
+                <h2 className="text-lg font-bold text-gray-800">Your journey starts soon!</h2>
+                <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto leading-relaxed">
+                  You haven't been enrolled in a course yet. Once your admin adds you, your live classes, homework, tests and progress will all appear here.
                 </p>
               </div>
-              <p className="text-xs text-gray-400">Contact your teacher or admin to get enrolled in your course.</p>
+              <div className="flex items-center gap-2 bg-orange-100 text-orange-700 text-xs font-semibold px-4 py-2 rounded-full">
+                <span>📞</span>
+                <span>Contact your teacher or admin to get started</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -523,7 +665,7 @@ export default function DashboardPage() {
         {/* Quick Stats */}
         <div>
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Quick Stats</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {statCards.map((card, i) => (
               <StatCard key={card.label} {...card} index={i} isLoading={isLoading} />
             ))}
@@ -656,28 +798,42 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Achievements */}
-        {achievements.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Achievements</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {achievements.map((ach, i) => (
-                <motion.div
-                  key={ach.label}
-                  custom={i}
-                  initial="hidden"
-                  animate="visible"
-                  variants={cardVariants}
-                  className="flex items-center gap-3 px-3 py-3 rounded-2xl border"
-                  style={{ background: ach.color, borderColor: ach.border }}
-                >
-                  <span className="text-2xl">{ach.icon}</span>
-                  <span className="text-xs font-semibold text-gray-700 leading-tight">{ach.label}</span>
-                </motion.div>
-              ))}
-            </div>
+        {/* Achievements — all 8 with locked/unlocked states */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Achievements</h2>
+            <span className="text-xs text-gray-400 font-medium">
+              {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
+            </span>
           </div>
-        )}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {allAchievements.map((ach, i) => (
+              <motion.div
+                key={ach.label}
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                variants={cardVariants}
+                className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border overflow-hidden"
+                style={{
+                  background:   ach.unlocked ? ach.color  : "#f5f5f5",
+                  borderColor:  ach.unlocked ? ach.border : "#e5e5e5",
+                  opacity:      ach.unlocked ? 1 : 0.65,
+                }}
+              >
+                <span className="text-xl leading-none">{ach.unlocked ? ach.icon : "🔒"}</span>
+                <span className={`text-xs font-semibold leading-tight flex-1 ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
+                  {ach.label}
+                </span>
+                {ach.unlocked && (
+                  <span className="absolute top-1 right-1.5 text-[8px] font-bold text-green-600 uppercase tracking-wide">
+                    ✓
+                  </span>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
 
         {/* Recent Activity */}
         {(dashboard?.recentActivity?.length ?? 0) > 0 && (

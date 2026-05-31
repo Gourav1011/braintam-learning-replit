@@ -225,10 +225,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
           <header
-            className="h-14 border-b flex items-center gap-2 px-4"
+            className="h-14 border-b flex items-center gap-2 px-3 md:px-4"
             style={{ background: "white" }}
           >
-            <SidebarTrigger />
+            <SidebarTrigger
+              className="h-10 w-10 rounded-xl text-white shadow-md hover:opacity-90 transition-opacity"
+              style={{ background: NAVY, color: "white" }}
+            />
             <div className="w-px h-5 bg-border mx-1" />
             <Button
               variant="ghost"
@@ -257,7 +260,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </header>
 
           {/* Main content — extra bottom padding on mobile for the bottom nav */}
-          <div className={`flex-1 overflow-y-auto ${isStudent ? "pb-16 md:pb-0" : ""}`}>
+          <div className={`flex-1 overflow-y-auto ${isStudent ? "pb-16 md:pb-4" : ""}`}>
             {children}
           </div>
         </main>

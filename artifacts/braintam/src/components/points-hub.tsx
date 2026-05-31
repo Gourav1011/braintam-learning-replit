@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star, Flame, Gift, Zap, CheckSquare, BookOpen, FileText, Trophy } from "lucide-react";
+import { Star, Flame, Gift, Zap, CheckSquare, BookOpen, FileText, Trophy, ChevronDown } from "lucide-react";
 import { STAFF_TOKEN_KEY, STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 import { getGetStudentProfileQueryKey, getGetStudentProgressQueryKey } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const NAVY = "#0B2B6B";
+const ORANGE = "#FF6B1A";
 
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem(STAFF_TOKEN_KEY) ?? localStorage.getItem(STUDENT_TOKEN_KEY);
@@ -27,16 +28,27 @@ interface PointsHubProps {
   data?: PointsHubData;
   isLoading?: boolean;
   onPointsClaimed?: (newTotal: number) => void;
+  showHistory?: boolean;
 }
 
-const ACTION_CONFIG: Record<string, { label: string; pts: string; color: string; icon: React.ElementType }> = {
-  "Correct Answer":    { label: "Correct Answer",    pts: "+10", color: "bg-green-50 text-green-700 border-green-200",  icon: CheckSquare },
-  "Wrong Answer":      { label: "Wrong Answer",      pts: "−2",  color: "bg-red-50 text-red-700 border-red-200",        icon: Zap },
-  "Homework Done":     { label: "Homework Done",     pts: "+5",  color: "bg-purple-50 text-purple-700 border-purple-200", icon: FileText },
-  "Test Completed":    { label: "Test Completed",    pts: "+15", color: "bg-blue-50 text-blue-700 border-blue-200",     icon: CheckSquare },
-  "Test Passed":       { label: "Test Passed (≥60%)",pts: "+25", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: Trophy },
-  "Assignment Done":   { label: "Assignment Done",   pts: "+5",  color: "bg-orange-50 text-orange-700 border-orange-200", icon: BookOpen },
-  "7-Day Streak":      { label: "7-Day Streak Bonus",pts: "+20", color: "bg-amber-50 text-amber-700 border-amber-200",  icon: Flame },
+// Real point values from the actual points system
+const HOW_TO_EARN = [
+  { icon: Zap,         label: "Daily Login",        pts: "+5",   color: "bg-blue-50   text-blue-700   border-blue-200"   },
+  { icon: FileText,    label: "Complete Homework",   pts: "+5",   color: "bg-purple-50 text-purple-700 border-purple-200" },
+  { icon: BookOpen,    label: "Complete Assignment", pts: "+8",   color: "bg-orange-50 text-orange-700 border-orange-200" },
+  { icon: CheckSquare, label: "Complete a Test",     pts: "+10",  color: "bg-blue-50   text-blue-700   border-blue-200"   },
+  { icon: Trophy,      label: "High Score Bonus",    pts: "+var", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { icon: Flame,       label: "7-Day Streak Bonus",  pts: "+20",  color: "bg-amber-50  text-amber-700  border-amber-200"  },
+  { icon: Star,        label: "Daily Coin Bonus",    pts: "+10",  color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+];
+
+const ACTION_TYPE_LABELS: Record<string, string> = {
+  LOGIN:        "Daily Login",
+  STREAK_BONUS: "Streak Bonus",
+  TEST:         "Test Completed",
+  HOMEWORK:     "Homework Done",
+  ASSIGNMENT:   "Assignment Done",
+  COIN:         "Daily Coin",
 };
 
 interface ClaimResult {
@@ -47,42 +59,75 @@ interface ClaimResult {
   totalPoints: number;
 }
 
-export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) {
-  const [claiming, setClaiming] = useState(false);
+interface HistoryEntry {
+  id: number;
+  amount: number;
+  actionType: string;
+  note: string | null;
+  createdAt: string;
+}
+
+interface HistoryData {
+  history: HistoryEntry[];
+  weekPoints: number;
+  monthPoints: number;
+}
+
+export function PointsHub({ data, isLoading, onPointsClaimed, showHistory = true }: PointsHubProps) {
+  const [claiming, setClaiming]     = useState(false);
+  const [claimError, setClaimError] = useState("");
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
   const [alreadyClaimed, setAlreadyClaimed] = useState(data?.dailyLoginClaimed ?? false);
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showBreakdown, setShowBreakdown]   = useState(false);
+  const [historyData, setHistoryData]       = useState<HistoryData | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const queryClient = useQueryClient();
 
   const totalPoints = claimResult?.totalPoints ?? data?.totalPoints ?? 0;
   const streakDays  = claimResult?.streakDays  ?? data?.streakDays  ?? 0;
 
-  // Sync alreadyClaimed when the profile query finishes loading
-  // (useState initial value is stale when data arrives asynchronously)
   useEffect(() => {
     if (data?.dailyLoginClaimed) setAlreadyClaimed(true);
   }, [data?.dailyLoginClaimed]);
 
+  // Fetch points history when section opens
+  useEffect(() => {
+    if (!showHistory || !showBreakdown || historyData) return;
+    setHistoryLoading(true);
+    fetch(`${BASE}/api/student/points-history`, {
+      credentials: "include",
+      headers: getAuthHeaders(),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: HistoryData | null) => { if (d) setHistoryData(d); })
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false));
+  }, [showBreakdown, showHistory, historyData]);
+
   async function claimDailyLogin() {
+    if (claiming) return;
     setClaiming(true);
+    setClaimError("");
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
       const r = await fetch(`${BASE}/api/student/daily-login`, {
         method: "POST",
         credentials: "include",
         headers: { ...getAuthHeaders() },
+        signal: controller.signal,
       });
-      if (!r.ok) throw new Error("Failed");
+      clearTimeout(timeout);
+      if (!r.ok) throw new Error("Failed to claim");
       const result: ClaimResult = await r.json();
       setClaimResult(result);
       setAlreadyClaimed(true);
-      if (result.claimed) {
-        onPointsClaimed?.(result.totalPoints);
-      }
-      // Refresh profile + progress so dailyLoginClaimed stays true on re-mount
+      if (result.claimed) onPointsClaimed?.(result.totalPoints);
       void queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey() });
       void queryClient.invalidateQueries({ queryKey: getGetStudentProgressQueryKey() });
-    } catch {
-      setAlreadyClaimed(true);
+    } catch (e: any) {
+      setClaimError(e.name === "AbortError" ? "Request timed out. Try again." : "Could not claim points. Please try again.");
+      setAlreadyClaimed(false);
     } finally {
       setClaiming(false);
     }
@@ -93,7 +138,7 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
-            <Star className="w-4.5 h-4.5 text-amber-500" />
+            <Star className="w-4 h-4 text-amber-500" />
           </div>
           Points Hub
         </CardTitle>
@@ -109,7 +154,7 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
               <motion.div
                 key={totalPoints}
                 initial={{ scale: 1.15, color: "#f59e0b" }}
-                animate={{ scale: 1, color: "inherit" }}
+                animate={{ scale: 1, color: "#111827" }}
                 transition={{ duration: 0.35 }}
                 className="text-3xl font-bold text-gray-900"
               >
@@ -121,7 +166,6 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
               <p className="text-xs text-muted-foreground mt-0.5">Rank #{data.rank} on leaderboard</p>
             )}
           </div>
-
           <div className="flex flex-col items-center gap-0.5 bg-orange-100 rounded-xl px-3 py-2">
             <Flame className="w-5 h-5 text-orange-500" />
             {isLoading ? <Skeleton className="w-8 h-5" /> : (
@@ -130,6 +174,20 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
             <span className="text-[10px] text-orange-500 font-medium">day streak</span>
           </div>
         </div>
+
+        {/* Weekly / Monthly summary — shown once history loads */}
+        {historyData && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-center">
+              <p className="text-xl font-extrabold text-blue-700">+{historyData.weekPoints}</p>
+              <p className="text-[10px] text-blue-500 font-medium">This Week</p>
+            </div>
+            <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2 text-center">
+              <p className="text-xl font-extrabold text-purple-700">+{historyData.monthPoints}</p>
+              <p className="text-[10px] text-purple-500 font-medium">This Month</p>
+            </div>
+          </div>
+        )}
 
         {/* Daily Login Claim Banner */}
         <AnimatePresence mode="wait">
@@ -147,6 +205,7 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">Claim Daily Login</p>
                 <p className="text-xs text-white/70">+5 points · keep your streak alive!</p>
+                {claimError && <p className="text-xs text-red-300 mt-0.5">{claimError}</p>}
               </div>
               <Button
                 size="sm"
@@ -185,49 +244,68 @@ export function PointsHub({ data, isLoading, onPointsClaimed }: PointsHubProps) 
               className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100"
             >
               <CheckSquare className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <p className="text-xs text-gray-600">Daily login already claimed. Come back tomorrow!</p>
+              <p className="text-xs text-gray-600">Daily login claimed. Come back tomorrow!</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Points Breakdown */}
+        {/* How to earn points toggle */}
         <div>
           <button
             onClick={() => setShowBreakdown(p => !p)}
-            className="text-xs text-muted-foreground hover:text-gray-900 transition-colors flex items-center gap-1 font-medium"
+            className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-gray-900 transition-colors font-medium py-1"
           >
-            {showBreakdown ? "▾" : "▸"} How to earn points
+            <span>💡 How to earn points</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showBreakdown ? "rotate-180" : ""}`} />
           </button>
 
-          <AnimatePresence>
-            {showBreakdown && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden mt-2"
-              >
-                <div className="grid grid-cols-2 gap-1.5">
-                  {Object.values(ACTION_CONFIG).map(cfg => (
-                    <div
-                      key={cfg.label}
-                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs ${cfg.color}`}
-                    >
-                      <cfg.icon className="w-3 h-3 flex-shrink-0" />
-                      <span className="flex-1 min-w-0 truncate">{cfg.label}</span>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] h-4 px-1 border-current font-bold flex-shrink-0 ${cfg.color}`}
-                      >
-                        {cfg.pts}
-                      </Badge>
+          {showBreakdown && (
+            <div className="mt-2 space-y-3">
+              <div className="grid grid-cols-2 gap-1.5">
+                {HOW_TO_EARN.map(cfg => (
+                  <div
+                    key={cfg.label}
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs ${cfg.color}`}
+                  >
+                    <cfg.icon className="w-3 h-3 flex-shrink-0" />
+                    <span className="flex-1 min-w-0 truncate">{cfg.label}</span>
+                    <span className="font-bold flex-shrink-0 ml-1">{cfg.pts}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recent activity */}
+              {showHistory && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Recent Points</p>
+                  {historyLoading ? (
+                    <div className="space-y-1.5">
+                      {[0,1,2].map(i => <Skeleton key={i} className="w-full h-8 rounded-lg" />)}
                     </div>
-                  ))}
+                  ) : historyData && historyData.history.length > 0 ? (
+                    <div className="space-y-1">
+                      {historyData.history.slice(0, 8).map(h => (
+                        <div key={h.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white border border-gray-100">
+                          <span className={`text-xs font-bold ${h.amount >= 0 ? "text-green-600" : "text-red-500"}`}>
+                            {h.amount >= 0 ? "+" : ""}{h.amount}
+                          </span>
+                          <span className="flex-1 text-xs text-gray-600 truncate">
+                            {ACTION_TYPE_LABELS[h.actionType] ?? h.actionType}
+                            {h.note ? ` — ${h.note}` : ""}
+                          </span>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">
+                            {new Date(h.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !historyLoading ? (
+                    <p className="text-xs text-gray-400 text-center py-2">No points activity yet</p>
+                  ) : null}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

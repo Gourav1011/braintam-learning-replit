@@ -4,7 +4,7 @@ import {
   usersTable, subjectsTable, homeworkTable, assignmentsTable,
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
-  coursesTable, announcementsTable,
+  coursesTable, announcementsTable, pointsLedgerTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -423,6 +423,35 @@ router.post("/student/claim-daily-coins", requireAuth, async (req, res) => {
     .from(usersTable).where(eq(usersTable.id, studentId));
 
   res.json({ success: true, coins: coinsToAward, totalPoints: updated?.points ?? 0 });
+});
+
+router.get("/student/points-history", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+  const history = await db
+    .select({
+      id:         pointsLedgerTable.id,
+      amount:     pointsLedgerTable.amount,
+      actionType: pointsLedgerTable.actionType,
+      note:       pointsLedgerTable.note,
+      createdAt:  pointsLedgerTable.createdAt,
+    })
+    .from(pointsLedgerTable)
+    .where(eq(pointsLedgerTable.userId, studentId))
+    .orderBy(desc(pointsLedgerTable.createdAt))
+    .limit(25);
+
+  const now      = new Date();
+  const weekAgo  = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const weekPoints  = history.filter(h => h.createdAt >= weekAgo).reduce((s, h) => s + h.amount, 0);
+  const monthPoints = history.filter(h => h.createdAt >= monthAgo).reduce((s, h) => s + h.amount, 0);
+
+  res.json({
+    history:     history.map(h => ({ ...h, createdAt: h.createdAt.toISOString() })),
+    weekPoints,
+    monthPoints,
+  });
 });
 
 export default router;

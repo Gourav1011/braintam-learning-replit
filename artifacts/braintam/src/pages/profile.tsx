@@ -206,13 +206,16 @@ export default function ProfilePage() {
     { icon: BookOpen,      label: "Avg Score",          value: progress?.averageScore !== undefined ? `${Math.round(progress.averageScore)}%` : "—",  color: "text-green-500 bg-green-50" },
   ];
 
-  const achievements = [
-    ...(streak >= 1    ? [{ icon: "🔥", label: streak >= 7 ? `${streak} Day Streak!` : `${streak} Day Streak`, bg: "#fff7ed", border: "#fed7aa" }] : []),
-    ...(totalPoints >= 50  ? [{ icon: "⭐", label: "Points Collector",    bg: "#fefce8", border: "#fde68a" }] : []),
-    ...((progress?.testsAttempted ?? 0) > 0  ? [{ icon: "🏅", label: "First Quiz Done",     bg: "#f0fdf4", border: "#bbf7d0" }] : []),
-    ...((progress?.coursesCompleted ?? 0) > 0 ? [{ icon: "🚀", label: "Course Explorer",     bg: "#eff6ff", border: "#bfdbfe" }] : []),
-    ...((progress?.subjectWise?.length ?? 0) >= 2 ? [{ icon: "🧪", label: "Multi-Subject Learner", bg: "#faf5ff", border: "#e9d5ff" }] : []),
-  ].slice(0, 6);
+  const allAchievements = [
+    { icon: "🔥", label: "3-Day Streak",         unlocked: streak >= 3,                                  bg: "#fff7ed", border: "#fed7aa" },
+    { icon: "🔥", label: "7-Day Streak",          unlocked: streak >= 7,                                  bg: "#fff7ed", border: "#fed7aa" },
+    { icon: "⭐", label: "Points Collector",      unlocked: totalPoints >= 50,                             bg: "#fefce8", border: "#fde68a" },
+    { icon: "💎", label: "XP Pro (200+)",         unlocked: totalPoints >= 200,                            bg: "#f0f9ff", border: "#bae6fd" },
+    { icon: "🏅", label: "First Quiz Done",       unlocked: (progress?.testsAttempted ?? 0) > 0,           bg: "#f0fdf4", border: "#bbf7d0" },
+    { icon: "🚀", label: "Course Explorer",       unlocked: (progress?.coursesCompleted ?? 0) > 0,         bg: "#eff6ff", border: "#bfdbfe" },
+    { icon: "🧪", label: "Multi-Subject Learner", unlocked: (progress?.subjectWise?.length ?? 0) >= 2,     bg: "#faf5ff", border: "#e9d5ff" },
+    { icon: "🏆", label: "Top 5 Learner",         unlocked: !!rankNum && rankNum <= 5,                     bg: "#fefce8", border: "#fde68a" },
+  ];
 
   return (
     <AppLayout>
@@ -440,7 +443,7 @@ export default function ProfilePage() {
       </AnimatePresence>
 
       {/* ── Content ── */}
-      <div className="p-4 max-w-2xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+      <div className="p-4 md:p-6 md:max-w-5xl md:mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
 
         {/* Enrolled Courses */}
         <div
@@ -469,7 +472,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           {statsCards.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 * i }}>
               <Card>
@@ -526,21 +529,36 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Achievements */}
-        {achievements.length > 0 && (
-          <div>
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Achievements</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {achievements.map(ach => (
-                <div key={ach.label} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl border"
-                  style={{ background: ach.bg, borderColor: ach.border }}>
-                  <span className="text-xl">{ach.icon}</span>
-                  <span className="text-xs font-semibold text-gray-700 leading-tight">{ach.label}</span>
-                </div>
-              ))}
-            </div>
+        {/* Achievements — locked/unlocked */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements</h2>
+            <span className="text-xs text-gray-400 font-medium">
+              {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
+            </span>
           </div>
-        )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {allAchievements.map(ach => (
+              <div
+                key={ach.label}
+                className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border overflow-hidden"
+                style={{
+                  background:  ach.unlocked ? ach.bg     : "#f5f5f5",
+                  borderColor: ach.unlocked ? ach.border : "#e5e5e5",
+                  opacity:     ach.unlocked ? 1 : 0.6,
+                }}
+              >
+                <span className="text-xl leading-none">{ach.unlocked ? ach.icon : "🔒"}</span>
+                <span className={`text-xs font-semibold leading-tight flex-1 ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
+                  {ach.label}
+                </span>
+                {ach.unlocked && (
+                  <span className="absolute top-1 right-1.5 text-[8px] font-bold text-green-600">✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Know Your Personal Teacher */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>

@@ -1,0 +1,235 @@
+The current Braintam student app is already good. Do NOT redesign the app from scratch.
+
+Keep:
+
+* Current color theme
+* Dashboard structure
+* Bottom navigation
+* Profile page structure
+* Leaderboard
+* Existing routes and APIs
+
+Goal:
+Transform the app into a premium gamified EdTech experience while fixing existing UX issues.
+
+=================================================
+PART 1 – SPACE LEARNING JOURNEY SYSTEM
+======================================
+
+Add a new dashboard section directly below the hero card.
+
+Title:
+🚀 Braintam Space Learning Journey
+
+Levels:
+
+🌍 Earth Explorer
+🌙 Moon Explorer
+🔴 Mars Explorer
+🪐 Saturn Explorer
+🌌 Galaxy Master
+🚀 Universe Champion
+
+Display:
+
+* Current Level
+* XP Progress Bar
+* XP Needed for Next Planet
+* Current Rank
+* Next Reward
+
+Example:
+
+Earth Explorer
+████████░░ 80%
+
+50 XP Needed To Reach Moon Explorer
+
+Reward:
+🎖 Explorer Badge
+
+Use smooth animations and premium card design.
+
+Do not create a separate page.
+Keep this directly on the dashboard.
+
+=================================================
+PART 2 – TODAY'S MISSIONS
+=========================
+
+Add a card:
+
+🎯 Today's Mission
+
+✓ Attend Live Class
+□ Complete Homework
+□ Complete Test
+□ Maintain Streak
+
+Reward:
++20 XP
+
+Students should instantly know what actions they should complete today.
+
+=================================================
+PART 3 – FIX POINTS SYSTEM
+==========================
+
+The Points Hub currently freezes when clicked.
+
+Investigate and fix completely.
+
+Requirements:
+
+1. Clicking Points Hub must never freeze the UI.
+2. Loading state must be shown.
+3. Errors must be handled gracefully.
+
+Create a proper "How to Earn Points" section.
+
+Show exactly how points are earned.
+
+Example:
+
+🎥 Attend Live Class → +10 Points
+📚 Complete Homework → +15 Points
+📝 Complete Test → +20 Points
+🔥 Maintain Daily Streak → +5 Points
+🏆 Win Competition → +100 Points
+⭐ Teacher Bonus → Variable
+
+These values must come from the actual points system used by Braintam.
+
+Do NOT hardcode incorrect values.
+
+Read current point assignment logic and display the real earning rules.
+
+=================================================
+PART 4 – PROFILE PAGE IMPROVEMENTS
+==================================
+
+Improve the Points Hub section.
+
+Add:
+
+* Total Points
+* Points Earned This Week
+* Points Earned This Month
+* Recent Point Activity
+
+Example:
+
++10 Homework Completed
++20 Test Completed
++5 Daily Streak
+
+Students should understand where points came from.
+
+=================================================
+PART 5 – DESKTOP RESPONSIVENESS
+===============================
+
+Current desktop version feels like a stretched mobile screen.
+
+Improve desktop layout while keeping the same design language.
+
+Requirements:
+
+1. Proper desktop spacing
+2. Proper content width
+3. Better alignment
+4. Better use of screen space
+
+Do NOT simply center a narrow mobile container.
+
+Create responsive layouts for:
+
+* Dashboard
+* Courses
+* Live Classes
+* Leaderboard
+* Profile
+
+Desktop should feel intentionally designed.
+
+=================================================
+PART 6 – SIDEBAR / DRAWER BUTTON
+================================
+
+Current drawer button is too small and difficult to notice.
+
+Improve visibility.
+
+Requirements:
+
+* Larger button
+* Better positioning
+* Better contrast
+* Clear hover state
+* Desktop-friendly
+
+It should be immediately obvious how to open the menu.
+
+Apply to:
+
+* Web
+* Desktop
+* Tablet
+
+=================================================
+PART 7 – BETTER EMPTY STATES
+============================
+
+For students with:
+
+* No courses
+* No live classes
+* No homework
+* No tests
+
+Show premium illustrations and messages.
+
+Example:
+
+🚀 Your learning adventure is about to begin.
+
+You will see your courses here once your teacher enrolls you.
+
+Avoid plain empty screens.
+
+=================================================
+PART 8 – ACHIEVEMENTS
+=====================
+
+Improve achievement display.
+
+Examples:
+
+🏆 Homework Hero
+🔥 7 Day Streak
+⭐ Top Performer
+🚀 Fast Learner
+📚 Study Master
+
+Show locked and unlocked states.
+
+=================================================
+IMPORTANT
+=========
+
+Do NOT:
+
+* Change backend APIs
+* Change database schema
+* Break existing functionality
+* Redesign the entire app
+
+Focus on:
+
+* Gamification
+* Engagement
+* Desktop responsiveness
+* Points system clarity
+* Better UX
+
+Before making changes, audit the existing points logic and ensure the UI reflects actual system behavior.
