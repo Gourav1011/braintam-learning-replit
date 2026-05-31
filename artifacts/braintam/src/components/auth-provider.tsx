@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Track last resolved identity so we don't re-fetch on every navigation.
   // Include a timestamp so we force a re-fetch every 3 minutes even if nothing else changed.
   const lastResolvedRef = useRef<{ userId: string | null; staffToken: string | null; studentToken: string | null; at: number } | null>(null);
-  const PROFILE_TTL_MS = 3 * 60 * 1000; // re-fetch profile every 3 minutes
+  const PROFILE_TTL_MS = 0; // caching disabled — always fetch fresh profile
 
   useEffect(() => {
     if (!isLoaded) return;
