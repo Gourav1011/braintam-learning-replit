@@ -557,7 +557,7 @@ export default function DashboardPage() {
         <div className="absolute inset-0 pointer-events-none opacity-5"
           style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
 
-        <div className="relative flex items-start justify-between gap-3">
+        <div className="relative max-w-6xl mx-auto flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             {isLoading ? (
               <div className="space-y-1.5">
@@ -623,21 +623,21 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Page Body ─────────────────────────────────────────────── */}
-      <div className="space-y-5 p-4 md:p-6 md:max-w-5xl md:mx-auto" style={{ background: BG }}>
+      <div className="space-y-5 p-4 md:p-6 md:max-w-6xl md:mx-auto" style={{ background: BG }}>
 
         {/* Hero Banner */}
         <HeroBanner />
 
-        {/* Space Learning Journey */}
-        <SpaceLearningJourney points={points} rank={rankNum} />
-
-        {/* Today's Missions */}
-        <TodaysMissions
-          streak={streak}
-          pendingHw={dashboard?.pendingHomework ?? 0}
-          upcomingTests={dashboard?.upcomingTests ?? 0}
-          isLoading={isLoading}
-        />
+        {/* Space Learning Journey + Today's Missions — side-by-side on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <SpaceLearningJourney points={points} rank={rankNum} />
+          <TodaysMissions
+            streak={streak}
+            pendingHw={dashboard?.pendingHomework ?? 0}
+            upcomingTests={dashboard?.upcomingTests ?? 0}
+            isLoading={isLoading}
+          />
+        </div>
 
         {/* Announcements from admin */}
         <AnnouncementStrip />
@@ -683,7 +683,7 @@ export default function DashboardPage() {
                 </span>
               </Link>
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
               {dashboard!.subjectProgress!.map((sp, i) => (
                 <motion.div
                   key={sp.subjectId}
@@ -691,7 +691,7 @@ export default function DashboardPage() {
                   initial="hidden"
                   animate="visible"
                   variants={cardVariants}
-                  className="flex-shrink-0 w-36"
+                  className="w-full"
                 >
                   <Link href="/courses">
                     <div
@@ -806,7 +806,7 @@ export default function DashboardPage() {
               {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
             </span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
             {allAchievements.map((ach, i) => (
               <motion.div
                 key={ach.label}

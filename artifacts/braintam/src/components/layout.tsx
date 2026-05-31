@@ -24,7 +24,7 @@ function HelpFab() {
   ];
 
   return (
-    <div className="fixed z-50" style={{ bottom: "80px", right: "16px" }}>
+    <div className="fixed z-50 bottom-20 right-4 md:bottom-6 md:right-6">
       <AnimatePresence>
         {open && (
           <motion.div

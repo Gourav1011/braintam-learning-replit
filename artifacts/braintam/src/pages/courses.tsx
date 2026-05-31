@@ -727,13 +727,13 @@ function AuthCoursesView() {
         </div>
       </div>
 
-      <div className="p-4 max-w-2xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
 
         {/* Continue Learning — subject progress cards */}
         {subjectProgress.length > 0 && (
           <div>
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Continue Learning</h2>
-            <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {subjectProgress.map(sp => {
                 const pct   = sp.total > 0 ? Math.round((sp.done / sp.total) * 100) : 0;
                 const color = SUBJ_COLORS[sp.idx % SUBJ_COLORS.length];
@@ -741,7 +741,7 @@ function AuthCoursesView() {
                 return (
                   <div
                     key={sp.id}
-                    className="flex-shrink-0 w-40 rounded-2xl p-3.5"
+                    className="rounded-2xl p-3.5"
                     style={{ background: "white", boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}
                   >
                     <div
@@ -792,7 +792,7 @@ function AuthCoursesView() {
 
         {/* Course cards */}
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 rounded-2xl" />)}
           </div>
         ) : (courses ?? []).length === 0 ? (
@@ -817,7 +817,7 @@ function AuthCoursesView() {
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
               All Courses ({courses?.length ?? 0})
             </h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {(courses ?? []).map((course, i) => {
                 const pct = (course.totalLessons && course.completedLessons != null)
                   ? Math.round((course.completedLessons / course.totalLessons) * 100) : null;

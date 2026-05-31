@@ -488,7 +488,7 @@ function AuthLiveClassesView() {
         </div>
       </div>
 
-      <div className="p-4 max-w-2xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
         <Select value={subject} onValueChange={setSubject}>
           <SelectTrigger className="w-44 h-9 text-sm rounded-xl" data-testid="subject-filter">
             <SelectValue placeholder="All Subjects" />
@@ -539,19 +539,19 @@ function AuthLiveClassesView() {
             {liveNow.length > 0 && (
               <div>
                 <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">🔴 Live Now</h2>
-                <div className="space-y-3">{liveNow.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{liveNow.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
               </div>
             )}
             {upcoming.length > 0 && (
               <div>
                 <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">⏰ Upcoming Classes</h2>
-                <div className="space-y-3">{upcoming.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{upcoming.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
               </div>
             )}
             {ended.length > 0 && (
               <div>
                 <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">✓ Past Classes</h2>
-                <div className="space-y-3">{ended.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{ended.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
               </div>
             )}
           </>

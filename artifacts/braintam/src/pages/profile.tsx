@@ -493,110 +493,119 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* Average score */}
-        {!progressLoading && progress?.averageScore !== undefined && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="font-semibold">Average Test Score</span>
-                <span className="font-bold text-primary">{Math.round(progress.averageScore)}%</span>
-              </div>
-              <Progress value={progress.averageScore} className="h-3" />
-            </CardContent>
-          </Card>
-        )}
+        {/* Two-column layout on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Left column: score + subject progress */}
+          <div className="space-y-5">
+            {/* Average score */}
+            {!progressLoading && progress?.averageScore !== undefined && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="font-semibold">Average Test Score</span>
+                    <span className="font-bold text-primary">{Math.round(progress.averageScore)}%</span>
+                  </div>
+                  <Progress value={progress.averageScore} className="h-3" />
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Subject Progress */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Subject Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {progressLoading
-              ? [...Array(4)].map((_, i) => <Skeleton key={i} className="w-full h-6" />)
-              : (progress?.subjectWise ?? []).length === 0
-                ? <p className="text-sm text-muted-foreground text-center py-3">No subject data yet</p>
-                : (progress?.subjectWise ?? []).map(sp => (
-                    <div key={sp.subjectId} data-testid={`progress-${sp.subjectId}`}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">{sp.subjectName}</span>
-                        <span className="text-muted-foreground">{Math.round(sp.progress)}%</span>
-                      </div>
-                      <Progress value={sp.progress} className="h-2" />
-                    </div>
-                  ))
-            }
-          </CardContent>
-        </Card>
-
-        {/* Achievements — locked/unlocked */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements</h2>
-            <span className="text-xs text-gray-400 font-medium">
-              {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
-            </span>
+            {/* Subject Progress */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Subject Progress</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {progressLoading
+                  ? [...Array(4)].map((_, i) => <Skeleton key={i} className="w-full h-6" />)
+                  : (progress?.subjectWise ?? []).length === 0
+                    ? <p className="text-sm text-muted-foreground text-center py-3">No subject data yet</p>
+                    : (progress?.subjectWise ?? []).map(sp => (
+                        <div key={sp.subjectId} data-testid={`progress-${sp.subjectId}`}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium">{sp.subjectName}</span>
+                            <span className="text-muted-foreground">{Math.round(sp.progress)}%</span>
+                          </div>
+                          <Progress value={sp.progress} className="h-2" />
+                        </div>
+                      ))
+                }
+              </CardContent>
+            </Card>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {allAchievements.map(ach => (
-              <div
-                key={ach.label}
-                className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border overflow-hidden"
-                style={{
-                  background:  ach.unlocked ? ach.bg     : "#f5f5f5",
-                  borderColor: ach.unlocked ? ach.border : "#e5e5e5",
-                  opacity:     ach.unlocked ? 1 : 0.6,
-                }}
-              >
-                <span className="text-xl leading-none">{ach.unlocked ? ach.icon : "🔒"}</span>
-                <span className={`text-xs font-semibold leading-tight flex-1 ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
-                  {ach.label}
+
+          {/* Right column: achievements + teacher + points hub */}
+          <div className="space-y-5">
+            {/* Achievements — locked/unlocked */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements</h2>
+                <span className="text-xs text-gray-400 font-medium">
+                  {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
                 </span>
-                {ach.unlocked && (
-                  <span className="absolute top-1 right-1.5 text-[8px] font-bold text-green-600">✓</span>
-                )}
               </div>
-            ))}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-2">
+                {allAchievements.map(ach => (
+                  <div
+                    key={ach.label}
+                    className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border overflow-hidden"
+                    style={{
+                      background:  ach.unlocked ? ach.bg     : "#f5f5f5",
+                      borderColor: ach.unlocked ? ach.border : "#e5e5e5",
+                      opacity:     ach.unlocked ? 1 : 0.6,
+                    }}
+                  >
+                    <span className="text-xl leading-none">{ach.unlocked ? ach.icon : "🔒"}</span>
+                    <span className={`text-xs font-semibold leading-tight flex-1 ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
+                      {ach.label}
+                    </span>
+                    {ach.unlocked && (
+                      <span className="absolute top-1 right-1.5 text-[8px] font-bold text-green-600">✓</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Know Your Personal Teacher */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+              <Card className="border-2 border-dashed border-blue-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
+                      <UserCheck className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-gray-800">Know Your Personal Teacher</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Your dedicated mentor &amp; guide</p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+                      style={{ background: "#FFF3E0", color: ORANGE }}>
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-3 leading-relaxed">
+                    Your assigned mentor teacher details will appear here once configured by the admin.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Points Hub */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <PointsHub
+                data={{
+                  totalPoints:       progress?.totalPoints ?? student?.points ?? 0,
+                  rank:              progress?.rank        ?? student?.rank  ?? null,
+                  streakDays:        student?.streak       ?? 0,
+                  dailyLoginClaimed: (p as any)?.dailyLoginClaimed ?? false,
+                }}
+                isLoading={progressLoading}
+              />
+            </motion.div>
           </div>
         </div>
-
-        {/* Know Your Personal Teacher */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <Card className="border-2 border-dashed border-blue-100">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
-                  <UserCheck className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-gray-800">Know Your Personal Teacher</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Your dedicated mentor &amp; guide</p>
-                </div>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-                  style={{ background: "#FFF3E0", color: ORANGE }}>
-                  Coming Soon
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-                Your assigned mentor teacher details will appear here once configured by the admin.
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Points Hub */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <PointsHub
-            data={{
-              totalPoints:       progress?.totalPoints ?? student?.points ?? 0,
-              rank:              progress?.rank        ?? student?.rank  ?? null,
-              streakDays:        student?.streak       ?? 0,
-              dailyLoginClaimed: (p as any)?.dailyLoginClaimed ?? false,
-            }}
-            isLoading={progressLoading}
-          />
-        </motion.div>
       </div>
     </AppLayout>
   );
