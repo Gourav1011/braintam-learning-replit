@@ -91,6 +91,20 @@ function AuthGate() {
   return null;
 }
 
+function CacheClearer() {
+  const { token } = useAuth();
+  const prevToken = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (prevToken.current !== undefined && prevToken.current !== token) {
+      queryClient.clear();
+    }
+    prevToken.current = token;
+  }, [token]);
+
+  return null;
+}
+
 function NotificationManager() {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
@@ -183,6 +197,7 @@ function RootLayoutInner() {
   return (
     <>
       <AuthGate />
+      <CacheClearer />
       <NotificationManager />
       <ReconnectManager />
       <Stack screenOptions={{ headerShown: false }}>
