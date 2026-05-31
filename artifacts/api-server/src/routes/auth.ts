@@ -93,11 +93,17 @@ router.post("/auth/clerk-sync", async (req, res) => {
   }
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing) {
-    const [updated] = await db.update(usersTable)
-      .set({ name })
-      .where(eq(usersTable.id, existing.id))
-      .returning();
-    res.json({ token: generateToken(existing.id), student: userToProfile(updated) });
+    // Never overwrite a name the student has already set — only fill it in
+    // if the DB name is empty (e.g. a very first sync with no name yet).
+    if (!existing.name) {
+      const [updated] = await db.update(usersTable)
+        .set({ name })
+        .where(eq(usersTable.id, existing.id))
+        .returning();
+      res.json({ token: generateToken(existing.id), student: userToProfile(updated) });
+      return;
+    }
+    res.json({ token: generateToken(existing.id), student: userToProfile(existing) });
     return;
   }
   const [user] = await db.insert(usersTable).values({
