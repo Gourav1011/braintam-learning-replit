@@ -19,12 +19,14 @@ router.get("/homework", attachUser, async (req, res) => {
       .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map(e => e.courseId);
     if (enrolledIds.length > 0) {
-      // Show homework linked to enrolled courses OR grade-level homework (no course)
-      studentFilter = or(inArray(homeworkTable.courseId, enrolledIds), isNull(homeworkTable.courseId));
+      studentFilter = inArray(homeworkTable.courseId, enrolledIds);
     } else {
-      // Not enrolled in any course — show only grade-level homework (no course assigned)
-      studentFilter = isNull(homeworkTable.courseId);
+      res.json([]);
+      return;
     }
+  } else if (!user) {
+    res.json([]);
+    return;
   }
 
   const hw = await db.select({

@@ -19,12 +19,14 @@ router.get("/tests", attachUser, async (req, res) => {
       .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map(e => e.courseId);
     if (enrolledIds.length > 0) {
-      // Show tests linked to enrolled courses OR grade-level tests (no course)
-      studentFilter = or(inArray(testsTable.courseId, enrolledIds), isNull(testsTable.courseId));
+      studentFilter = inArray(testsTable.courseId, enrolledIds);
     } else {
-      // Not enrolled in any course — show only grade-level tests (no course assigned)
-      studentFilter = isNull(testsTable.courseId);
+      res.json([]);
+      return;
     }
+  } else if (!user) {
+    res.json([]);
+    return;
   }
 
   const tests = await db.select({

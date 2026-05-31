@@ -23,6 +23,9 @@ router.get("/live-classes", attachUser, async (req, res) => {
       res.json([]);
       return;
     }
+  } else if (!user) {
+    res.json([]);
+    return;
   }
 
   const classes = await db.select({
