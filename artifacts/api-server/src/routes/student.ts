@@ -15,6 +15,9 @@ const router = Router();
 
 router.get("/student/dashboard", requireAuth, async (req, res) => {
   const studentId = req.authUser!.id;
+  // Fire-and-forget — updates lastLoginDate + streak every unique calendar day.
+  // checkDailyLogin is idempotent: same-day calls are a no-op.
+  checkDailyLogin(studentId).catch(() => {});
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
 
   const enrolledRows = await db

@@ -4,6 +4,7 @@ import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import crypto from "crypto";
+import { checkDailyLogin } from "../services/pointsService.js";
 
 const router = Router();
 
@@ -95,15 +96,17 @@ router.post("/auth/clerk-sync", async (req, res) => {
   if (existing) {
     // Never overwrite a name the student has already set — only fill it in
     // if the DB name is empty (e.g. a very first sync with no name yet).
+    let profile = existing;
     if (!existing.name) {
       const [updated] = await db.update(usersTable)
         .set({ name })
         .where(eq(usersTable.id, existing.id))
         .returning();
-      res.json({ token: generateToken(existing.id), student: userToProfile(updated) });
-      return;
+      profile = updated;
     }
-    res.json({ token: generateToken(existing.id), student: userToProfile(existing) });
+    // Track this login — idempotent, no-op if already claimed today
+    checkDailyLogin(profile.id).catch(() => {});
+    res.json({ token: generateToken(profile.id), student: userToProfile(profile) });
     return;
   }
   const [user] = await db.insert(usersTable).values({
@@ -116,6 +119,8 @@ router.post("/auth/clerk-sync", async (req, res) => {
     points: 0,
     streakDays: 1,
   }).returning();
+  // Track first login
+  checkDailyLogin(user.id).catch(() => {});
   res.status(201).json({ token: generateToken(user.id), student: userToProfile(user) });
 });
 
