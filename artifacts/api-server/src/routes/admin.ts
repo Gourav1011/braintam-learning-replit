@@ -128,6 +128,7 @@ router.get("/admin/users", adminOnly, async (req, res) => {
     isActive: usersTable.isActive,
     createdAt: usersTable.createdAt,
     points: usersTable.points,
+    lastLoginAt: usersTable.lastLoginDate,
   })
     .from(usersTable)
     .where(role ? eq(usersTable.role, String(role)) : undefined)
