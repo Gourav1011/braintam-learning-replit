@@ -11,3 +11,9 @@ id = "dKHevu9D0Myd5WS-HyiR9"
 uri = "file://braintam-android.tar.gz"
 type = "unspecified"
 title = "Braintam Android App (source)"
+
+[[outputs]]
+id = "AsLgDikorxGhEB-RJtxx3"
+uri = "file://braintam-android-studio.tar.gz"
+type = "unspecified"
+title = "Braintam — Complete Android Studio Project"
