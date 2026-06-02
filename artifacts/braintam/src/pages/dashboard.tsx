@@ -579,16 +579,14 @@ export default function DashboardPage() {
 
             {/* Streak + Points + Rank row */}
             <div className="flex flex-wrap gap-2 mt-3">
-              <button
-                onClick={() => setShowCoinPopup(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold hover:opacity-90 transition-opacity"
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
                 style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
-                title="Daily coin reward"
                 data-testid="points-display"
               >
                 <span style={{ color: GOLD }}>🪙</span>
                 <span>{points} pts</span>
-              </button>
+              </div>
               {streak > 0 && (
                 <div
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
