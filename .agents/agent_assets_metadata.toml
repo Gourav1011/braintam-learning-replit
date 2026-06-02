@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "56bmvWO4tU6DF0xqSJYAC"
 uri = "file://artifacts/braintam-android/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "dKHevu9D0Myd5WS-HyiR9"
+uri = "file://braintam-android.tar.gz"
+type = "unspecified"
+title = "Braintam Android App (source)"
