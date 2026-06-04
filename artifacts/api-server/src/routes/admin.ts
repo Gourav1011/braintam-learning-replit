@@ -7,9 +7,9 @@ import {
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
   auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
-  academicYearsTable, announcementsTable, bannersTable,
+  academicYearsTable, announcementsTable, bannersTable, pointsLedgerTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lt, isNull, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import { logAction } from "../utils/audit.js";
 import crypto from "crypto";
@@ -963,6 +963,279 @@ router.get("/admin/topic-content/:id", adminOnly, async (req, res) => {
     assignments: Number(asnCount[0]?.count ?? 0),
     tests: Number(tstCount[0]?.count ?? 0),
     recordings: Number(recCount[0]?.count ?? 0),
+  });
+});
+
+// ── In-memory Gamification Settings ──────────────────────────
+const gamificationSettings = {
+  xpEnabled: true,
+  leaderboardEnabled: true,
+  dailyMissionsEnabled: true,
+  spaceJourneyEnabled: true,
+  xpValues: { login: 10, homework: 15, test: 20, recording: 5, liveClass: 10, competition: 50, referral: 25 },
+};
+
+router.get("/admin/gamification/settings", adminOnly, (_req, res) => {
+  res.json(gamificationSettings);
+});
+
+router.put("/admin/gamification/settings", adminOnly, (req, res) => {
+  const { xpEnabled, leaderboardEnabled, dailyMissionsEnabled, spaceJourneyEnabled, xpValues } = req.body;
+  if (xpEnabled !== undefined) gamificationSettings.xpEnabled = Boolean(xpEnabled);
+  if (leaderboardEnabled !== undefined) gamificationSettings.leaderboardEnabled = Boolean(leaderboardEnabled);
+  if (dailyMissionsEnabled !== undefined) gamificationSettings.dailyMissionsEnabled = Boolean(dailyMissionsEnabled);
+  if (spaceJourneyEnabled !== undefined) gamificationSettings.spaceJourneyEnabled = Boolean(spaceJourneyEnabled);
+  if (xpValues && typeof xpValues === "object") {
+    gamificationSettings.xpValues = { ...gamificationSettings.xpValues, ...xpValues };
+  }
+  res.json(gamificationSettings);
+});
+
+// ── Premium Dashboard KPIs ────────────────────────────────────
+router.get("/admin/dashboard", adminOnly, async (_req, res) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    [students], [teachers], [courses_], [lcWeek],
+    [hwWeek], [testWeek], [activeToday], [xpToday], [enrolls],
+  ] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "student")),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher")),
+    db.select({ count: sql<number>`count(*)` }).from(coursesTable),
+    db.select({ count: sql<number>`count(*)` }).from(liveClassesTable).where(gte(liveClassesTable.scheduledAt, thisWeek)),
+    db.select({ count: sql<number>`count(*)` }).from(homeworkSubmissionsTable).where(gte(homeworkSubmissionsTable.submittedAt, thisWeek)),
+    db.select({ count: sql<number>`count(*)` }).from(testSubmissionsTable).where(gte(testSubmissionsTable.submittedAt, thisWeek)),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), gte(usersTable.lastLoginDate, today))),
+    db.select({ count: sql<number>`count(distinct user_id)` }).from(pointsLedgerTable).where(gte(pointsLedgerTable.createdAt, today)),
+    db.select({ count: sql<number>`count(*)` }).from(enrollmentsTable),
+  ]);
+
+  res.json({
+    totalStudents: Number(students.count),
+    totalTeachers: Number(teachers.count),
+    activeCourses: Number(courses_.count),
+    liveClassesThisWeek: Number(lcWeek.count),
+    hwSubmittedThisWeek: Number(hwWeek.count),
+    testsCompletedThisWeek: Number(testWeek.count),
+    activeStudentsToday: Number(activeToday.count),
+    studentsEarningXPToday: Number(xpToday.count),
+    totalEnrollments: Number(enrolls.count),
+  });
+});
+
+// ── Student 360 Profile ───────────────────────────────────────
+router.get("/admin/students/:id/360", adminOnly, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [profile] = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    phone: usersTable.phone, grade: usersTable.grade, school: usersTable.school,
+    board: usersTable.board, state: usersTable.state, city: usersTable.city,
+    points: usersTable.points, rank: usersTable.rank, streakDays: usersTable.streakDays,
+    isActive: usersTable.isActive, createdAt: usersTable.createdAt,
+    lastLoginAt: usersTable.lastLoginDate,
+  }).from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+
+  if (!profile) { res.status(404).json({ error: "Student not found" }); return; }
+
+  const [enrolledCourses, recentHw, recentTests, recentAssignments, xpHistory] = await Promise.all([
+    db.select({
+      courseId: coursesTable.id, title: coursesTable.title,
+      grade: coursesTable.grade, teacher: coursesTable.teacher,
+      enrolledAt: enrollmentsTable.enrolledAt,
+    }).from(enrollmentsTable)
+      .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+      .where(eq(enrollmentsTable.studentId, studentId))
+      .orderBy(desc(enrollmentsTable.enrolledAt)),
+
+    db.select({
+      id: homeworkSubmissionsTable.id, title: homeworkTable.title,
+      status: homeworkSubmissionsTable.status, marks: homeworkSubmissionsTable.marks,
+      submittedAt: homeworkSubmissionsTable.submittedAt,
+    }).from(homeworkSubmissionsTable)
+      .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(eq(homeworkSubmissionsTable.studentId, studentId))
+      .orderBy(desc(homeworkSubmissionsTable.submittedAt)).limit(8),
+
+    db.select({
+      id: testSubmissionsTable.id, title: testsTable.title,
+      score: testSubmissionsTable.score, maxScore: testSubmissionsTable.maxScore,
+      submittedAt: testSubmissionsTable.submittedAt,
+    }).from(testSubmissionsTable)
+      .innerJoin(testsTable, eq(testSubmissionsTable.testId, testsTable.id))
+      .where(eq(testSubmissionsTable.studentId, studentId))
+      .orderBy(desc(testSubmissionsTable.submittedAt)).limit(8),
+
+    db.select({
+      id: assignmentSubmissionsTable.id, title: assignmentsTable.title,
+      status: assignmentSubmissionsTable.status, marks: assignmentSubmissionsTable.marks,
+      submittedAt: assignmentSubmissionsTable.submittedAt,
+    }).from(assignmentSubmissionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+      .where(eq(assignmentSubmissionsTable.studentId, studentId))
+      .orderBy(desc(assignmentSubmissionsTable.submittedAt)).limit(8),
+
+    db.select({
+      amount: pointsLedgerTable.amount, actionType: pointsLedgerTable.actionType,
+      note: pointsLedgerTable.note, createdAt: pointsLedgerTable.createdAt,
+    }).from(pointsLedgerTable)
+      .where(eq(pointsLedgerTable.userId, studentId))
+      .orderBy(desc(pointsLedgerTable.createdAt)).limit(12),
+  ]);
+
+  const pts = profile.points ?? 0;
+  const spaceLevel = pts >= 5000 ? "Universe Champion"
+    : pts >= 2500 ? "Galaxy Master"
+    : pts >= 1000 ? "Saturn Explorer"
+    : pts >= 500 ? "Mars Explorer"
+    : pts >= 100 ? "Moon Explorer"
+    : "Earth Explorer";
+
+  res.json({ profile, enrolledCourses, recentHw, recentTests, recentAssignments, xpHistory, spaceLevel });
+});
+
+// ── Course Analytics ──────────────────────────────────────────
+router.get("/admin/analytics/courses", adminOnly, async (_req, res) => {
+  const courses = await db.select({
+    id: coursesTable.id, title: coursesTable.title,
+    grade: coursesTable.grade, teacher: coursesTable.teacher,
+  }).from(coursesTable).orderBy(coursesTable.grade, coursesTable.title);
+
+  if (courses.length === 0) { res.json([]); return; }
+
+  const [enrollRows, testRows, hwRows] = await Promise.all([
+    db.select({ courseId: enrollmentsTable.courseId, count: sql<number>`count(*)` })
+      .from(enrollmentsTable).groupBy(enrollmentsTable.courseId),
+
+    db.select({
+      courseId: sql<number>`${testsTable.courseId}`,
+      total: sql<number>`count(distinct ${testsTable.id})`,
+      submitted: sql<number>`count(distinct ${testSubmissionsTable.id})`,
+      avgScore: sql<number | null>`round(avg(${testSubmissionsTable.score})::numeric, 1)`,
+    }).from(testsTable)
+      .leftJoin(testSubmissionsTable, eq(testSubmissionsTable.testId, testsTable.id))
+      .where(sql`${testsTable.courseId} IS NOT NULL`)
+      .groupBy(sql`${testsTable.courseId}`),
+
+    db.select({
+      courseId: sql<number>`${homeworkTable.courseId}`,
+      total: sql<number>`count(distinct ${homeworkTable.id})`,
+      submitted: sql<number>`count(distinct ${homeworkSubmissionsTable.id})`,
+    }).from(homeworkTable)
+      .leftJoin(homeworkSubmissionsTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(sql`${homeworkTable.courseId} IS NOT NULL`)
+      .groupBy(sql`${homeworkTable.courseId}`),
+  ]);
+
+  const enrollMap = Object.fromEntries(enrollRows.map(r => [r.courseId, Number(r.count)]));
+  const testMap = Object.fromEntries(testRows.map(r => [r.courseId, {
+    total: Number(r.total), submitted: Number(r.submitted),
+    avgScore: r.avgScore != null ? Number(r.avgScore) : null,
+  }]));
+  const hwMap = Object.fromEntries(hwRows.map(r => [r.courseId, {
+    total: Number(r.total), submitted: Number(r.submitted),
+  }]));
+
+  res.json(courses.map(c => {
+    const hw = hwMap[c.id] ?? { total: 0, submitted: 0 };
+    const ts = testMap[c.id] ?? { total: 0, submitted: 0, avgScore: null };
+    return {
+      ...c,
+      enrolled: enrollMap[c.id] ?? 0,
+      hwTotal: hw.total, hwSubmitted: hw.submitted,
+      hwRate: hw.total ? Math.round((hw.submitted / hw.total) * 100) : 0,
+      testTotal: ts.total, testSubmitted: ts.submitted,
+      testRate: ts.total ? Math.round((ts.submitted / ts.total) * 100) : 0,
+      avgScore: ts.avgScore,
+    };
+  }));
+});
+
+// ── Teacher Analytics ─────────────────────────────────────────
+router.get("/admin/analytics/teachers", adminOnly, async (_req, res) => {
+  const teachers = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+  }).from(usersTable).where(eq(usersTable.role, "teacher")).orderBy(usersTable.name);
+
+  if (teachers.length === 0) { res.json([]); return; }
+  const teacherIds = teachers.map(t => t.id);
+
+  const [courseRows, lcRows, hwRows] = await Promise.all([
+    db.select({ teacherId: teacherCoursesTable.teacherId, count: sql<number>`count(*)` })
+      .from(teacherCoursesTable).where(inArray(teacherCoursesTable.teacherId, teacherIds))
+      .groupBy(teacherCoursesTable.teacherId),
+
+    db.select({ teacherId: sql<number>`teacher_id`, count: sql<number>`count(*)` })
+      .from(liveClassesTable)
+      .where(sql`teacher_id IS NOT NULL AND teacher_id = ANY(ARRAY[${sql.raw(teacherIds.join(","))}]::int[])`)
+      .groupBy(sql`teacher_id`),
+
+    db.select({ teacherId: sql<number>`${homeworkTable.teacherId}`, count: sql<number>`count(*)` })
+      .from(homeworkSubmissionsTable)
+      .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(and(
+        eq(homeworkSubmissionsTable.status, "graded"),
+        sql`${homeworkTable.teacherId} = ANY(ARRAY[${sql.raw(teacherIds.join(","))}]::int[])`,
+      ))
+      .groupBy(sql`${homeworkTable.teacherId}`),
+  ]);
+
+  const cMap = Object.fromEntries(courseRows.map(r => [r.teacherId, Number(r.count)]));
+  const lcMap = Object.fromEntries(lcRows.map(r => [r.teacherId, Number(r.count)]));
+  const hwMap = Object.fromEntries(hwRows.map(r => [r.teacherId, Number(r.count)]));
+
+  res.json(teachers.map(t => ({
+    ...t,
+    coursesAssigned: cMap[t.id] ?? 0,
+    classesTotal: lcMap[t.id] ?? 0,
+    hwGraded: hwMap[t.id] ?? 0,
+  })));
+});
+
+// ── Learning Health ───────────────────────────────────────────
+router.get("/admin/health", adminOnly, async (_req, res) => {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const baseWhere = and(eq(usersTable.role, "student"), eq(usersTable.isActive, true));
+
+  const [neverLoggedIn, inactiveStudents, noTestStudents] = await Promise.all([
+    db.select({
+      id: usersTable.id, name: usersTable.name,
+      email: usersTable.email, phone: usersTable.phone,
+      grade: usersTable.grade, createdAt: usersTable.createdAt,
+    }).from(usersTable)
+      .where(and(baseWhere!, isNull(usersTable.lastLoginDate)))
+      .orderBy(desc(usersTable.createdAt)).limit(25),
+
+    db.select({
+      id: usersTable.id, name: usersTable.name,
+      email: usersTable.email, phone: usersTable.phone,
+      grade: usersTable.grade, lastLoginAt: usersTable.lastLoginDate,
+    }).from(usersTable)
+      .where(and(baseWhere!, sql`${usersTable.lastLoginDate} IS NOT NULL`, lt(usersTable.lastLoginDate, sevenDaysAgo)))
+      .orderBy(usersTable.lastLoginDate).limit(25),
+
+    db.select({
+      id: usersTable.id, name: usersTable.name,
+      email: usersTable.email, grade: usersTable.grade,
+    }).from(usersTable)
+      .where(and(
+        baseWhere!,
+        sql`${usersTable.id} NOT IN (SELECT DISTINCT student_id FROM test_submissions)`,
+      ))
+      .limit(25),
+  ]);
+
+  res.json({
+    neverLoggedIn,
+    inactiveStudents,
+    noTestStudents,
+    counts: {
+      neverLoggedIn: neverLoggedIn.length,
+      inactiveStudents: inactiveStudents.length,
+      noTestStudents: noTestStudents.length,
+    },
   });
 });
 

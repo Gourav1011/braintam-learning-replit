@@ -44,7 +44,7 @@ import {
   CheckSquare, Square, AlertTriangle, UserX, UserCheck2, Key, FileText,
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
-  ShieldCheck,
+  ShieldCheck, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CourseManagementTab } from "./courses-tab";
 import { DemoBatchesTab } from "./demo-batches-tab";
+import { DashboardTab } from "./dashboard-tab";
+import { Student360Modal } from "./student360-modal";
+import { CourseAnalyticsTab } from "./course-analytics-tab";
+import { TeacherAnalyticsTab } from "./teacher-analytics-tab";
+import { HealthTab } from "./health-tab";
+import { GamificationTab } from "./gamification-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -60,6 +66,7 @@ const ORANGE = "#FF6B1A";
 
 type Role = "admin" | "teacher" | "student";
 type Tab =
+  | "dashboard"
   | "analytics"
   | "overview"
   | "courses"
@@ -75,6 +82,10 @@ type Tab =
   | "payments"
   | "crm"
   | "certificates"
+  | "course-analytics"
+  | "teacher-analytics"
+  | "health"
+  | "gamification"
   | "settings";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -632,7 +643,7 @@ function AccessModal({ user, onClose, flash }: {
 // ── Main Component ───────────────────────────────────────────────────────────
 function AdminPageInner() {
   const { student, role, isLoading, logout } = useAuth();
-  const [tab, setTab] = useState<Tab>("analytics");
+  const [tab, setTab] = useState<Tab>("dashboard");
 
   // Data
   const [stats, setStats] = useState<Stats | null>(null);
@@ -667,6 +678,7 @@ function AdminPageInner() {
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [accessUser, setAccessUser] = useState<User | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [student360Id, setStudent360Id] = useState<number | null>(null);
 
   // Forms
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -1044,19 +1056,24 @@ function AdminPageInner() {
 
   async function deleteLiveClass(id: number) { await apiFetch(`/admin/live-classes/${id}`, { method: "DELETE" }); loadAll(); }
 
-  const TABS: { id: Tab; label: string; icon: React.ElementType; placeholder?: boolean }[] = [
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "overview", label: "Overview", icon: Activity },
-    { id: "courses", label: "Courses", icon: BookOpen },
-    { id: "demo-batches", label: "Demo Batches", icon: Layers },
-    { id: "users", label: "Users", icon: Users },
-    { id: "liveclasses", label: "Live Classes", icon: Video },
-    { id: "assignments", label: "Teachers", icon: LinkIcon },
-    { id: "enrollments", label: "Enrollments", icon: UserCheck },
-    { id: "announcements", label: "Announcements", icon: Bell },
-    { id: "banners", label: "Banners", icon: Image },
-    { id: "audit", label: "Audit Logs", icon: FileText },
-    { id: "settings", label: "Settings", icon: Lock },
+  const TABS: { id: Tab; label: string; icon: React.ElementType; group?: string }[] = [
+    { id: "dashboard", label: "Dashboard", icon: Activity, group: "home" },
+    { id: "analytics", label: "Analytics", icon: BarChart3, group: "home" },
+    { id: "course-analytics", label: "Course Analytics", icon: TrendingUp, group: "insights" },
+    { id: "teacher-analytics", label: "Teacher Analytics", icon: GradCap, group: "insights" },
+    { id: "health", label: "Learning Health", icon: AlertTriangle, group: "insights" },
+    { id: "gamification", label: "Gamification", icon: Zap, group: "insights" },
+    { id: "courses", label: "Courses", icon: BookOpen, group: "content" },
+    { id: "demo-batches", label: "Demo Batches", icon: Layers, group: "content" },
+    { id: "liveclasses", label: "Live Classes", icon: Video, group: "content" },
+    { id: "users", label: "Users", icon: Users, group: "manage" },
+    { id: "assignments", label: "Teachers", icon: LinkIcon, group: "manage" },
+    { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "manage" },
+    { id: "announcements", label: "Announcements", icon: Bell, group: "manage" },
+    { id: "banners", label: "Banners", icon: Image, group: "manage" },
+    { id: "audit", label: "Audit Logs", icon: FileText, group: "system" },
+    { id: "settings", label: "Settings", icon: Lock, group: "system" },
+    { id: "overview", label: "Overview", icon: Activity, group: "system" },
   ];
 
   return (
@@ -1079,6 +1096,8 @@ function AdminPageInner() {
       {resetPasswordUser && <PasswordResetModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} flash={flash} />}
       {/* Access Management Modal */}
       {accessUser && <AccessModal user={accessUser} onClose={() => setAccessUser(null)} flash={flash} />}
+      {/* Student 360 Modal */}
+      {student360Id && <Student360Modal userId={student360Id} onClose={() => setStudent360Id(null)} />}
 
       {/* Left Sidebar */}
       <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
@@ -1625,7 +1644,11 @@ function AdminPageInner() {
                             <button onClick={() => toggleUserExpand(u.id)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Expand details">
                               {expandedUserId === u.id ? <ChevronUp className="w-4 h-4 text-blue-500" /> : <ChevronDown className="w-4 h-4" />}
                             </button>
-                            <button onClick={() => setProfileUser(u)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="View Profile">
+                            <button
+                              onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
+                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                              title={u.role === "student" ? "Student 360 Profile" : "View Profile"}
+                            >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button onClick={() => setResetPasswordUser(u)} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Reset Password">
@@ -2491,6 +2514,21 @@ function AdminPageInner() {
             ]}
           />
         )}
+
+        {/* ── Dashboard ────────────────────────────────────────────────── */}
+        {tab === "dashboard" && <DashboardTab />}
+
+        {/* ── Course Analytics ─────────────────────────────────────────── */}
+        {tab === "course-analytics" && <CourseAnalyticsTab />}
+
+        {/* ── Teacher Analytics ────────────────────────────────────────── */}
+        {tab === "teacher-analytics" && <TeacherAnalyticsTab />}
+
+        {/* ── Learning Health ───────────────────────────────────────────── */}
+        {tab === "health" && <HealthTab />}
+
+        {/* ── Gamification ─────────────────────────────────────────────── */}
+        {tab === "gamification" && <GamificationTab />}
 
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === "settings" && (
