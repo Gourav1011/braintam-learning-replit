@@ -50,19 +50,27 @@ const SPACE_COLORS: Record<string, string> = {
 
 type InnerTab = "overview" | "courses" | "activity" | "xp";
 
-export function Student360Modal({ userId, onClose }: { userId: number; onClose: () => void }) {
+export function Student360Modal({ userId, userName, userEmail, onClose }: { userId: number; userName: string; userEmail: string | null; onClose: () => void }) {
   const [data, setData] = useState<Student360Data | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [innerTab, setInnerTab] = useState<InnerTab>("overview");
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
+    setFetchError(null);
     apiFetch(`/admin/students/${userId}/360`)
-      .then(r => r.ok ? r.json() : null)
-      .then((d: Student360Data | null) => { if (d) setData(d); })
-      .catch(() => {})
+      .then(async r => {
+        if (r.ok) return r.json() as Promise<Student360Data>;
+        const body = await r.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Error ${r.status}`);
+      })
+      .then((d: Student360Data) => { setData(d); })
+      .catch((e: unknown) => { setFetchError(e instanceof Error ? e.message : "Failed to load"); })
       .finally(() => setLoading(false));
-  }, [userId]);
+  }
+
+  useEffect(() => { load(); }, [userId]);
 
   const p = data?.profile;
   const levelColor = data ? (SPACE_COLORS[data.spaceLevel] ?? NAVY) : NAVY;
@@ -77,7 +85,7 @@ export function Student360Modal({ userId, onClose }: { userId: number; onClose: 
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-black shrink-0"
                 style={{ background: NAVY }}>
-                {p?.name?.[0]?.toUpperCase() ?? "?"}
+                {(p?.name ?? userName)?.[0]?.toUpperCase() ?? "?"}
               </div>
               {loading ? (
                 <div className="space-y-1.5 animate-pulse">
@@ -100,7 +108,10 @@ export function Student360Modal({ userId, onClose }: { userId: number; onClose: 
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-400">Student not found</div>
+                <div>
+                  <div className="font-black text-base" style={{ color: NAVY }}>{userName || "Student"}</div>
+                  {userEmail && <div className="text-xs text-gray-500 mt-0.5">{userEmail}</div>}
+                </div>
               )}
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -150,7 +161,13 @@ export function Student360Modal({ userId, onClose }: { userId: number; onClose: 
               {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}
             </div>
           ) : !data ? (
-            <div className="text-center py-12 text-gray-400 text-sm">Could not load student data.</div>
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="text-sm font-semibold text-gray-700">Could not load student data</div>
+              {fetchError && <div className="text-xs text-red-500 text-center max-w-xs">{fetchError}</div>}
+              <button onClick={load} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mt-1">
+                <AlertCircle className="w-3.5 h-3.5" /> Retry
+              </button>
+            </div>
           ) : (
             <>
               {/* Overview Tab */}

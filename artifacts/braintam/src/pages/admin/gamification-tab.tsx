@@ -72,14 +72,23 @@ function XPInput({ label, value, onChange }: { label: string; value: number; onC
 export function GamificationTab() {
   const [settings, setSettings] = useState<GamificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const r = await apiFetch("/admin/gamification/settings");
-      if (r.ok) setSettings(await r.json());
+      if (r.ok) {
+        setSettings(await r.json());
+      } else {
+        const body = await r.json().catch(() => ({})) as { error?: string };
+        setError(body.error ?? `Server error ${r.status}`);
+      }
+    } catch (e) {
+      setError("Network error — could not reach server");
     } finally { setLoading(false); }
   }
 
@@ -113,10 +122,27 @@ export function GamificationTab() {
     setSettings(prev => prev ? { ...prev, xpValues: { ...prev.xpValues, [key]: val } } : null);
   }
 
-  if (loading || !settings) {
+  if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
         {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl" />)}
+      </div>
+    );
+  }
+
+  if (error || !settings) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-red-50">
+          <Zap className="w-6 h-6 text-red-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-700">Failed to load gamification settings</p>
+          <p className="text-xs text-gray-400 mt-1">{error ?? "Unknown error"}</p>
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 transition-colors">
+          <RefreshCw className="w-3.5 h-3.5" /> Retry
+        </button>
       </div>
     );
   }

@@ -1098,7 +1098,7 @@ function AdminPageInner() {
       {/* Access Management Modal */}
       {accessUser && <AccessModal user={accessUser} onClose={() => setAccessUser(null)} flash={flash} />}
       {/* Student 360 Modal */}
-      {student360Id && <Student360Modal userId={student360Id} onClose={() => setStudent360Id(null)} />}
+      {student360Id && <Student360Modal userId={student360Id} userName={users.find(u => u.id === student360Id)?.name ?? ""} userEmail={users.find(u => u.id === student360Id)?.email ?? null} onClose={() => setStudent360Id(null)} />}
 
       {/* Left Sidebar */}
       <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
