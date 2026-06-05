@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Edit3, Video, BookOpen, Calendar, Clock } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Video, BookOpen, Calendar, Clock, Eye, EyeOff, Globe, GlobeLock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,7 +25,7 @@ interface DemoBatch {
   id: number; title: string; description: string | null;
   teacherName: string | null; bannerUrl: string | null; joinLink: string | null;
   startDate: string | null; endDate: string | null; status: string;
-  isActive: boolean; grade: number | null; subject: string | null; totalDays: number;
+  isActive: boolean; isPublic: boolean; grade: number | null; subject: string | null; totalDays: number;
 }
 
 interface DemoSession {
@@ -108,6 +108,24 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       body: JSON.stringify({ isActive: !batch.isActive }),
     });
     loadBatches();
+  }
+
+  async function toggleBatchPublish(batch: DemoBatch) {
+    await apiFetch(`/admin/demo-batches/${batch.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ isPublic: !batch.isPublic }),
+    });
+    loadBatches();
+    flash(batch.isPublic ? "Batch hidden from public" : "Batch published publicly");
+  }
+
+  async function toggleSessionPublish(session: DemoSession) {
+    if (!selectedBatch) return;
+    await apiFetch(`/admin/demo-batches/${selectedBatch.id}/sessions/${session.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ isPublished: !session.isPublished }),
+    });
+    loadSessions(selectedBatch.id);
   }
 
   function openSessions(batch: DemoBatch) {
@@ -251,6 +269,13 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                       onClick={() => openSessions(batch)}>
                       Sessions <ChevronRight className="w-3 h-3" />
                     </Button>
+                    <Button size="sm" variant="ghost"
+                      className={`text-xs gap-1 ${batch.isPublic ? "text-green-600 hover:text-green-800" : "text-gray-400 hover:text-green-600"}`}
+                      title={batch.isPublic ? "Published publicly — click to unpublish" : "Draft — click to publish"}
+                      onClick={() => toggleBatchPublish(batch)}>
+                      {batch.isPublic ? <Globe className="w-3.5 h-3.5" /> : <GlobeLock className="w-3.5 h-3.5" />}
+                      {batch.isPublic ? "Published" : "Publish"}
+                    </Button>
                     <Button size="sm" variant="ghost" className="text-xs" onClick={() => toggleBatchStatus(batch)}>
                       {batch.isActive ? "Deactivate" : "Activate"}
                     </Button>
@@ -364,11 +389,19 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                       </button>
                     </div>
                   </div>
-                  {/* Delete */}
-                  <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 flex-shrink-0"
-                    onClick={() => deleteSession(session.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => toggleSessionPublish(session)}
+                      title={session.isPublished ? "Published — click to hide" : "Hidden — click to publish"}
+                      className={`p-1.5 rounded-lg transition-colors ${session.isPublished ? "text-green-600 hover:bg-green-50" : "text-gray-300 hover:text-green-500 hover:bg-green-50"}`}>
+                      {session.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5"
+                      onClick={() => deleteSession(session.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

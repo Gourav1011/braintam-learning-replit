@@ -1056,25 +1056,26 @@ function AdminPageInner() {
 
   async function deleteLiveClass(id: number) { await apiFetch(`/admin/live-classes/${id}`, { method: "DELETE" }); loadAll(); }
 
-  const TABS: { id: Tab; label: string; icon: React.ElementType; group?: string }[] = [
-    { id: "dashboard", label: "Dashboard", icon: Activity, group: "home" },
-    { id: "analytics", label: "Analytics", icon: BarChart3, group: "home" },
-    { id: "course-analytics", label: "Course Analytics", icon: TrendingUp, group: "insights" },
-    { id: "teacher-analytics", label: "Teacher Analytics", icon: GradCap, group: "insights" },
-    { id: "health", label: "Learning Health", icon: AlertTriangle, group: "insights" },
-    { id: "gamification", label: "Gamification", icon: Zap, group: "insights" },
-    { id: "courses", label: "Courses", icon: BookOpen, group: "content" },
-    { id: "demo-batches", label: "Demo Batches", icon: Layers, group: "content" },
-    { id: "liveclasses", label: "Live Classes", icon: Video, group: "content" },
-    { id: "users", label: "Users", icon: Users, group: "manage" },
-    { id: "assignments", label: "Teachers", icon: LinkIcon, group: "manage" },
-    { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "manage" },
-    { id: "announcements", label: "Announcements", icon: Bell, group: "manage" },
-    { id: "banners", label: "Banners", icon: Image, group: "manage" },
-    { id: "audit", label: "Audit Logs", icon: FileText, group: "system" },
-    { id: "settings", label: "Settings", icon: Lock, group: "system" },
-    { id: "overview", label: "Overview", icon: Activity, group: "system" },
+  const TABS: { id: Tab; label: string; icon: React.ElementType; group: string }[] = [
+    { id: "dashboard", label: "Dashboard", icon: Activity, group: "Home" },
+    { id: "analytics", label: "Analytics", icon: BarChart3, group: "Home" },
+    { id: "course-analytics", label: "Course Analytics", icon: TrendingUp, group: "Insights" },
+    { id: "teacher-analytics", label: "Teacher Analytics", icon: GradCap, group: "Insights" },
+    { id: "health", label: "Learning Health", icon: AlertTriangle, group: "Insights" },
+    { id: "gamification", label: "Gamification", icon: Zap, group: "Insights" },
+    { id: "courses", label: "Courses", icon: BookOpen, group: "Content" },
+    { id: "demo-batches", label: "Demo Batches", icon: Layers, group: "Content" },
+    { id: "liveclasses", label: "Live Classes", icon: Video, group: "Content" },
+    { id: "users", label: "Users", icon: Users, group: "Manage" },
+    { id: "assignments", label: "Teachers", icon: LinkIcon, group: "Manage" },
+    { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "Manage" },
+    { id: "announcements", label: "Announcements", icon: Bell, group: "Manage" },
+    { id: "banners", label: "Banners", icon: Image, group: "Manage" },
+    { id: "audit", label: "Audit Logs", icon: FileText, group: "System" },
+    { id: "settings", label: "Settings", icon: Lock, group: "System" },
+    { id: "overview", label: "Overview", icon: Activity, group: "System" },
   ];
+  const TAB_GROUPS = ["Home", "Insights", "Content", "Manage", "System"];
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
@@ -1112,24 +1113,34 @@ function AdminPageInner() {
 
         {/* Nav list */}
         <nav className="flex-1 py-2 overflow-y-auto">
-          {TABS.map(t => {
-            const Icon = t.icon;
-            const isActive = tab === t.id;
+          {TAB_GROUPS.map(group => {
+            const groupTabs = TABS.filter(t => t.group === group);
             return (
-              <button
-                key={t.id}
-                onClick={() => { setTab(t.id); setMsg(null); }}
-                className="w-full flex items-center gap-3 px-5 py-2.5 text-sm text-left transition-colors"
-                style={{
-                  color: isActive ? ORANGE : "#6B7280",
-                  background: isActive ? "#FFF4EE" : "transparent",
-                  fontWeight: isActive ? 600 : 400,
-                  borderRight: isActive ? `3px solid ${ORANGE}` : "3px solid transparent",
-                }}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {t.label}
-              </button>
+              <div key={group}>
+                <div className="px-5 pt-3 pb-1">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-300">{group}</span>
+                </div>
+                {groupTabs.map(t => {
+                  const Icon = t.icon;
+                  const isActive = tab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => { setTab(t.id); setMsg(null); }}
+                      className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
+                      style={{
+                        color: isActive ? ORANGE : "#6B7280",
+                        background: isActive ? "#FFF4EE" : "transparent",
+                        fontWeight: isActive ? 600 : 400,
+                        borderRight: isActive ? `3px solid ${ORANGE}` : "3px solid transparent",
+                      }}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-xs">{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>

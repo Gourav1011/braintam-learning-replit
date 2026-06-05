@@ -56,13 +56,22 @@ function KPICard({
 export function DashboardTab() {
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   async function load() {
     setLoading(true);
+    setErr(null);
     try {
       const r = await apiFetch("/admin/dashboard");
-      if (r.ok) setKpis(await r.json());
+      if (r.ok) {
+        setKpis(await r.json());
+      } else {
+        const body = await r.json().catch(() => ({}));
+        setErr(body.error ?? `Server error ${r.status}`);
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Network error");
     } finally {
       setLoading(false);
       setLastRefresh(new Date());
@@ -139,7 +148,11 @@ export function DashboardTab() {
           </p>
         </>
       ) : (
-        <div className="py-20 text-center text-gray-400 text-sm">Failed to load dashboard metrics. <button onClick={load} className="underline text-orange-500">Retry</button></div>
+        <div className="py-20 text-center">
+          <p className="text-red-500 text-sm font-medium mb-1">Failed to load dashboard metrics</p>
+          {err && <p className="text-xs text-gray-400 mb-3">{err}</p>}
+          <button onClick={load} className="text-sm underline text-orange-500">Retry</button>
+        </div>
       )}
     </div>
   );
