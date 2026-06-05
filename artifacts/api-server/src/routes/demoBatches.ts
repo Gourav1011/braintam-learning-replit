@@ -3,6 +3,11 @@ import { db } from "@workspace/db";
 import { demoBatchesTable, demoSessionsTable, demoBatchEnrollmentsTable, usersTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireRole, requireAuth } from "../middlewares/auth.js";
+import crypto from "crypto";
+
+function hashPassword(pw: string): string {
+  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+}
 
 const router = Router();
 const adminOnly = requireRole("admin");
@@ -182,6 +187,70 @@ router.get("/admin/demo-batches/:batchId/enrollments", adminOnly, async (req, re
     .where(eq(demoBatchEnrollmentsTable.batchId, batchId))
     .orderBy(desc(demoBatchEnrollmentsTable.enrolledAt));
   res.json(rows);
+});
+
+router.post("/admin/demo-batches/:batchId/enrollments/bulk", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+
+  const { rows } = req.body as {
+    rows: { name: string; email?: string; phone?: string; grade?: number }[];
+  };
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: "rows[] required" }); return;
+  }
+
+  const results = { created: 0, skipped: 0, enrolled: 0, errors: [] as string[] };
+
+  for (const row of rows) {
+    if (!row.name?.trim()) { results.errors.push(`Row missing name: ${JSON.stringify(row)}`); continue; }
+    if (!row.email?.trim() && !row.phone?.trim()) {
+      results.errors.push(`${row.name}: needs email or phone`); continue;
+    }
+
+    let userId: number | null = null;
+
+    if (row.email?.trim()) {
+      const [ex] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.email, row.email.trim())).limit(1);
+      if (ex) { userId = ex.id; results.skipped++; }
+    }
+    if (userId === null && row.phone?.trim()) {
+      const [ex] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.phone, row.phone.trim())).limit(1);
+      if (ex) { userId = ex.id; results.skipped++; }
+    }
+
+    if (userId === null) {
+      const pwd = (row.phone ?? row.email ?? row.name).slice(-6);
+      try {
+        const [user] = await db.insert(usersTable).values({
+          name: row.name.trim(),
+          email: row.email?.trim() || null,
+          phone: row.phone?.trim() || null,
+          passwordHash: hashPassword(pwd),
+          role: "student",
+          accountType: "demo_student",
+          grade: row.grade ?? 0,
+        }).returning({ id: usersTable.id });
+        userId = user.id;
+        results.created++;
+      } catch {
+        results.errors.push(`${row.name}: account creation failed (duplicate?)`); continue;
+      }
+    }
+
+    const [existing] = await db.select({ id: demoBatchEnrollmentsTable.id })
+      .from(demoBatchEnrollmentsTable)
+      .where(and(eq(demoBatchEnrollmentsTable.batchId, batchId), eq(demoBatchEnrollmentsTable.studentId, userId)))
+      .limit(1);
+    if (!existing) {
+      await db.insert(demoBatchEnrollmentsTable).values({ batchId, studentId: userId });
+      results.enrolled++;
+    }
+  }
+
+  res.json(results);
 });
 
 router.post("/admin/demo-batches/:batchId/enrollments", adminOnly, async (req, res) => {

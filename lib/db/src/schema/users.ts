@@ -5,6 +5,9 @@ import { z } from "zod/v4";
 export const userRoles = ["admin", "teacher", "student"] as const;
 export type UserRole = (typeof userRoles)[number];
 
+export const accountTypes = ["lead", "demo_student", "paid_student", "teacher", "admin"] as const;
+export type AccountType = (typeof accountTypes)[number];
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -12,6 +15,7 @@ export const usersTable = pgTable("users", {
   phone: text("phone").unique(),
   passwordHash: text("password_hash"),
   role: text("role").notNull().default("student"),
+  accountType: text("account_type").notNull().default("student"),
   grade: integer("grade").notNull().default(0),
   avatarUrl: text("avatar_url"),
   school: text("school"),

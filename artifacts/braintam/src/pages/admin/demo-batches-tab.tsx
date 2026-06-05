@@ -66,6 +66,11 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   const [batchForm, setBatchForm] = useState(emptyBatch);
   const [sessionForm, setSessionForm] = useState(emptySession);
   const [studentSearch, setStudentSearch] = useState("");
+  const [addMode, setAddMode] = useState<"search" | "csv" | "paste">("search");
+  const [csvRows, setCsvRows] = useState<{ name: string; email: string; phone: string; grade: string }[]>([]);
+  const [pasteText, setPasteText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number; enrolled: number; errors: string[] } | null>(null);
 
   const loadBatches = useCallback(async () => {
     setLoading(true);
@@ -193,6 +198,74 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     await apiFetch(`/admin/demo-batches/${selectedBatch.id}/enrollments/${enrollmentId}`, { method: "DELETE" });
     flash("Student removed from batch");
     loadEnrollments(selectedBatch.id);
+  }
+
+  async function convertToPaid(studentId: number, name: string) {
+    if (!confirm(`Convert ${name} to Paid Student? This unlocks all full courses.`)) return;
+    const r = await apiFetch(`/admin/users/${studentId}/convert-to-paid`, { method: "POST" });
+    if (r.ok) {
+      flash(`${name} converted to Paid Student ✓`);
+      if (selectedBatch) loadEnrollments(selectedBatch.id);
+    } else {
+      flash("Conversion failed", false);
+    }
+  }
+
+  function parseCSV(text: string): { name: string; email: string; phone: string; grade: string }[] {
+    return text.trim().split("\n")
+      .map(line => line.trim()).filter(Boolean)
+      .filter(line => !/^(name|names)/i.test(line))
+      .map(line => {
+        const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
+        return { name: cols[0] ?? "", email: cols[1] ?? "", phone: cols[2] ?? "", grade: cols[3] ?? "" };
+      })
+      .filter(r => r.name);
+  }
+
+  function handleCSVFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = String(ev.target?.result ?? "");
+      setCsvRows(parseCSV(text));
+      setBulkResult(null);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  function parsePaste() {
+    setCsvRows(parseCSV(pasteText));
+    setBulkResult(null);
+  }
+
+  async function runBulkUpload() {
+    if (!selectedBatch || csvRows.length === 0) return;
+    setBulkBusy(true);
+    setBulkResult(null);
+    try {
+      const rows = csvRows.map(r => ({
+        name: r.name,
+        email: r.email || undefined,
+        phone: r.phone || undefined,
+        grade: r.grade ? parseInt(r.grade.replace(/\D/g, ""), 10) || 0 : 0,
+      }));
+      const res = await apiFetch(`/admin/demo-batches/${selectedBatch.id}/enrollments/bulk`, {
+        method: "POST",
+        body: JSON.stringify({ rows }),
+      });
+      if (res.ok) {
+        const result = await res.json() as { created: number; skipped: number; enrolled: number; errors: string[] };
+        setBulkResult(result);
+        setCsvRows([]);
+        setPasteText("");
+        flash(`Done — ${result.created} new accounts, ${result.enrolled} enrolled`);
+        loadEnrollments(selectedBatch.id);
+      } else {
+        flash("Bulk upload failed", false);
+      }
+    } finally { setBulkBusy(false); }
   }
 
   async function createSession() {
@@ -381,54 +454,161 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
             </div>
           </div>
 
-          {/* Search & Add Students */}
+          {/* Add Students Panel — tabbed */}
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-5">
-            <p className="text-xs font-semibold text-blue-700 mb-2.5 flex items-center gap-1.5">
-              <UserPlus className="w-3.5 h-3.5" /> Add Students to This Batch
-            </p>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <Input
-                placeholder="Search by name, email or phone..."
-                value={studentSearch}
-                onChange={e => setStudentSearch(e.target.value)}
-                className="pl-8 h-9 text-sm bg-white"
-              />
+            {/* Tab switcher */}
+            <div className="flex gap-1.5 mb-4">
+              {(["search", "csv", "paste"] as const).map(mode => (
+                <button key={mode}
+                  onClick={() => { setAddMode(mode); setCsvRows([]); setBulkResult(null); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={addMode === mode
+                    ? { background: NAVY, color: "white" }
+                    : { background: "white", color: "#6b7280", border: "1px solid #e5e7eb" }}>
+                  {mode === "search" ? "🔍 Search Existing" : mode === "csv" ? "📄 Upload CSV" : "📋 Paste List"}
+                </button>
+              ))}
             </div>
-            {(() => {
-              const q = studentSearch.toLowerCase().trim();
-              const enrolledIds = new Set(enrollments.map(e => e.studentId));
-              const filtered = allStudents.filter(u =>
-                !enrolledIds.has(u.id) &&
-                (!q || u.name.toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q) || (u.phone ?? "").includes(q))
-              );
-              if (filtered.length === 0) return (
-                <p className="text-xs text-gray-400 text-center py-3">
-                  {q ? "No matching students found" : "All registered students are already enrolled"}
-                </p>
-              );
-              return (
-                <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                  {filtered.map(u => (
-                    <div key={u.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-gray-100">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-800 truncate">{u.name}</span>
-                          {u.grade && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold shrink-0">G{u.grade}</span>}
-                        </div>
-                        <p className="text-xs text-gray-400 truncate">{u.email ?? u.phone ?? "—"}</p>
-                      </div>
-                      <Button size="sm" disabled={busy}
-                        onClick={() => enrollStudent(u.id)}
-                        className="text-xs ml-2 shrink-0 gap-1"
-                        style={{ background: NAVY, color: "white" }}>
-                        <UserPlus className="w-3 h-3" /> Add
-                      </Button>
-                    </div>
-                  ))}
+
+            {/* Search mode */}
+            {addMode === "search" && (
+              <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <Input placeholder="Search by name, email or phone..." value={studentSearch}
+                    onChange={e => setStudentSearch(e.target.value)} className="pl-8 h-9 text-sm bg-white" />
                 </div>
-              );
-            })()}
+                {(() => {
+                  const q = studentSearch.toLowerCase().trim();
+                  const enrolledIds = new Set(enrollments.map(e => e.studentId));
+                  const filtered = allStudents.filter(u =>
+                    !enrolledIds.has(u.id) &&
+                    (!q || u.name.toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q) || (u.phone ?? "").includes(q))
+                  );
+                  if (filtered.length === 0) return (
+                    <p className="text-xs text-gray-400 text-center py-3">
+                      {q ? "No matching students found" : "All registered students are already enrolled"}
+                    </p>
+                  );
+                  return (
+                    <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                      {filtered.map(u => (
+                        <div key={u.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-gray-100">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-800 truncate">{u.name}</span>
+                              {u.grade ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold shrink-0">G{u.grade}</span> : null}
+                            </div>
+                            <p className="text-xs text-gray-400 truncate">{u.email ?? u.phone ?? "—"}</p>
+                          </div>
+                          <Button size="sm" disabled={busy} onClick={() => enrollStudent(u.id)}
+                            className="text-xs ml-2 shrink-0 gap-1" style={{ background: NAVY, color: "white" }}>
+                            <UserPlus className="w-3 h-3" /> Add
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+
+            {/* CSV upload mode */}
+            {addMode === "csv" && (
+              <>
+                <div className="border-2 border-dashed border-blue-200 rounded-xl p-4 text-center bg-white mb-3">
+                  <div className="text-2xl mb-1">📄</div>
+                  <p className="text-sm font-semibold text-gray-700 mb-0.5">Drop a CSV file or click to upload</p>
+                  <p className="text-xs text-gray-400 mb-2">Format: <span className="font-mono bg-gray-100 px-1 rounded">Name, Email, Phone, Grade</span></p>
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: NAVY }}>
+                      Choose CSV File
+                    </span>
+                    <input type="file" accept=".csv,.txt" className="hidden" onChange={handleCSVFile} />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400 mb-2">
+                  Example row: <span className="font-mono bg-gray-100 px-1 rounded">Riya Sharma, riya@gmail.com, 9876543210, Grade 5</span>
+                </p>
+              </>
+            )}
+
+            {/* Paste mode */}
+            {addMode === "paste" && (
+              <>
+                <p className="text-xs text-gray-500 mb-2">
+                  Paste rows in format: <span className="font-mono bg-gray-100 px-1 rounded">Name, Email, Phone, Grade</span> — one per line
+                </p>
+                <textarea
+                  className="w-full h-28 text-xs rounded-xl border border-gray-200 bg-white p-3 font-mono resize-none focus:outline-none focus:border-blue-300"
+                  placeholder={"Riya Sharma, riya@gmail.com, 9876543210, Grade 5\nAman Kumar, aman@gmail.com, 9876543211, Grade 4"}
+                  value={pasteText}
+                  onChange={e => setPasteText(e.target.value)}
+                />
+                <Button size="sm" onClick={parsePaste} disabled={!pasteText.trim()}
+                  className="mt-2 text-xs gap-1" style={{ background: NAVY, color: "white" }}>
+                  Parse {pasteText.trim().split("\n").filter(Boolean).length} rows
+                </Button>
+              </>
+            )}
+
+            {/* CSV Preview table */}
+            {csvRows.length > 0 && (
+              <div className="mt-4 border border-blue-200 rounded-xl overflow-hidden bg-white">
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border-b border-blue-100">
+                  <span className="text-xs font-bold text-blue-700">{csvRows.length} rows ready to upload</span>
+                  <button onClick={() => setCsvRows([])} className="text-xs text-gray-400 hover:text-red-500">✕ Clear</button>
+                </div>
+                <div className="overflow-auto max-h-44">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        {["Name", "Email", "Phone", "Grade"].map(h => (
+                          <th key={h} className="text-left px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvRows.map((r, i) => (
+                        <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                          <td className="px-3 py-1.5 font-medium text-gray-800">{r.name}</td>
+                          <td className="px-3 py-1.5 text-gray-500">{r.email || "—"}</td>
+                          <td className="px-3 py-1.5 text-gray-500">{r.phone || "—"}</td>
+                          <td className="px-3 py-1.5 text-gray-500">{r.grade || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-3 border-t border-blue-100">
+                  <Button onClick={runBulkUpload} disabled={bulkBusy}
+                    className="w-full text-sm font-black gap-2 py-2"
+                    style={{ background: "#059669", color: "white" }}>
+                    {bulkBusy ? "Uploading…" : `🚀 Create Accounts & Enroll ${csvRows.length} Students`}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Bulk result */}
+            {bulkResult && (
+              <div className="mt-3 rounded-xl border p-3" style={{ background: "#f0fdf4", borderColor: "#86efac" }}>
+                <p className="text-sm font-bold text-green-800 mb-1">✅ Upload Complete</p>
+                <div className="flex gap-4 text-xs text-green-700">
+                  <span>🆕 {bulkResult.created} accounts created</span>
+                  <span>↩ {bulkResult.skipped} already existed</span>
+                  <span>✓ {bulkResult.enrolled} enrolled</span>
+                </div>
+                {bulkResult.errors.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-red-600 mb-1">⚠ {bulkResult.errors.length} errors:</p>
+                    <div className="max-h-20 overflow-y-auto space-y-0.5">
+                      {bulkResult.errors.map((e, i) => <p key={i} className="text-[10px] text-red-500">{e}</p>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Enrolled list */}
@@ -438,13 +618,13 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
             <div className="text-center py-12 text-gray-400">
               <Users className="w-10 h-10 mx-auto mb-2 opacity-20" />
               <p className="text-sm font-medium">No students enrolled yet</p>
-              <p className="text-xs mt-1">Use the search above to add leads from your ads</p>
+              <p className="text-xs mt-1">Use the panel above to add leads</p>
             </div>
           ) : (
             <div className="space-y-2">
               {enrollments.map(enr => (
                 <div key={enr.enrollmentId}
-                  className="flex items-center gap-3 bg-white rounded-2xl border border-gray-200 px-4 py-3">
+                  className="flex items-start gap-3 bg-white rounded-2xl border border-gray-200 px-4 py-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-black shrink-0"
                     style={{ background: NAVY }}>
                     {enr.name[0]?.toUpperCase() ?? "?"}
@@ -452,12 +632,20 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-gray-800">{enr.name}</span>
-                      {enr.grade && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">G{enr.grade}</span>}
-                      {enr.school && <span className="text-[10px] text-gray-400">{enr.school}</span>}
+                      {enr.grade ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">G{enr.grade}</span> : null}
+                      {enr.school ? <span className="text-[10px] text-gray-400">{enr.school}</span> : null}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5 flex-wrap">
                       <span>{enr.email ?? enr.phone ?? "—"}</span>
                       <span>Enrolled {new Date(enr.enrolledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                    </div>
+                    <div className="flex gap-1.5 mt-2">
+                      <button
+                        onClick={() => convertToPaid(enr.studentId, enr.name)}
+                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all hover:bg-green-50"
+                        style={{ borderColor: "#059669", color: "#059669" }}>
+                        💳 Convert to Paid
+                      </button>
                     </div>
                   </div>
                   <Button size="sm" variant="ghost"

@@ -116,13 +116,14 @@ router.get("/admin/stats", adminOnly, async (req, res) => {
 
 // ── User Management ──────────────────────────────────────────────
 router.get("/admin/users", adminOnly, async (req, res) => {
-  const { role } = req.query;
+  const { role, accountType } = req.query;
   const users = await db.select({
     id: usersTable.id,
     name: usersTable.name,
     email: usersTable.email,
     phone: usersTable.phone,
     role: usersTable.role,
+    accountType: usersTable.accountType,
     grade: usersTable.grade,
     school: usersTable.school,
     isActive: usersTable.isActive,
@@ -131,9 +132,25 @@ router.get("/admin/users", adminOnly, async (req, res) => {
     lastLoginAt: usersTable.lastLoginDate,
   })
     .from(usersTable)
-    .where(role ? eq(usersTable.role, String(role)) : undefined)
+    .where(
+      role ? eq(usersTable.role, String(role)) :
+      accountType ? eq(usersTable.accountType, String(accountType)) :
+      undefined
+    )
     .orderBy(desc(usersTable.createdAt));
   res.json(users);
+});
+
+router.post("/admin/users/:id/convert-to-paid", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [updated] = await db.update(usersTable)
+    .set({ accountType: "paid_student", updatedAt: new Date() })
+    .where(eq(usersTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+  await logAction({ actorId: req.authUser!.id, actorName: req.authUser!.name, action: "convert_to_paid", targetType: "user", targetId: id, targetName: updated.name });
+  res.json(updated);
 });
 
 router.post("/admin/users", adminOnly, async (req, res) => {
