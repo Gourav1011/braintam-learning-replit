@@ -228,7 +228,7 @@ function PublicLeaderboardView() {
         <div className="relative mt-2">
           <div className="pointer-events-none h-16 rounded-2xl" style={{ background: "linear-gradient(to bottom, transparent, #F8FAFF)" }} />
           <div className="text-center py-6">
-            <p className="text-gray-500 text-sm mb-4">+ 9,990 more students competing right now</p>
+            <p className="text-gray-500 text-sm mb-4">Sign up to track your own rank and compete with students in your grade</p>
             <Link href="/sign-up">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                 className="px-8 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2 mx-auto"
@@ -237,6 +237,65 @@ function PublicLeaderboardView() {
               </motion.button>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* ── How to Earn Points ── */}
+      <section className="py-14 px-6" style={{ background: "white" }}>
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-8">
+            <div className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: ORANGE }}>Gamified Learning</div>
+            <h2 className="text-2xl font-black" style={{ color: NAVY }}>How do students earn points?</h2>
+            <p className="text-gray-500 mt-1 text-sm">Every action in Braintam builds your score. Consistent learners rise fastest.</p>
+          </motion.div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              { emoji: "🎥", action: "Attend a Live Class", pts: "+50 pts", desc: "Show up on time and stay till the end." },
+              { emoji: "📝", action: "Submit Homework", pts: "+30 pts", desc: "Complete and submit daily practice sets." },
+              { emoji: "🧪", action: "Pass a Chapter Test", pts: "+100 pts", desc: "Score 70%+ in any weekly test." },
+              { emoji: "🔥", action: "Daily Streak", pts: "+20 pts/day", desc: "Log in and learn every day — streaks multiply rewards." },
+              { emoji: "❓", action: "Solve a Doubt", pts: "+15 pts", desc: "Help a peer in the doubt community." },
+              { emoji: "🏅", action: "Earn a Badge", pts: "+200 pts", desc: "Unlock achievement badges through consistent performance." },
+            ].map((item, i) => (
+              <motion.div key={item.action} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                className="rounded-2xl p-4 flex gap-3 items-start"
+                style={{ background: "#F8FAFF", border: "1.5px solid rgba(11,43,107,0.08)" }}>
+                <div className="text-2xl flex-shrink-0">{item.emoji}</div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm" style={{ color: NAVY }}>{item.action}</span>
+                    <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: "rgba(255,107,26,0.12)", color: ORANGE }}>{item.pts}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          {/* Badges preview */}
+          <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="mt-8 rounded-2xl p-5 text-center"
+            style={{ background: `linear-gradient(135deg, ${NAVY}08, rgba(245,158,11,0.06))`, border: "1px solid rgba(11,43,107,0.1)" }}>
+            <p className="text-sm font-bold mb-3" style={{ color: NAVY }}>🏆 Earn these badges as you grow</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {[
+                { icon: "⚡", name: "Speed Learner" }, { icon: "🔥", name: "7-Day Streak" }, { icon: "🎯", name: "Perfect Score" },
+                { icon: "📚", name: "Homework Hero" }, { icon: "🌟", name: "Class Champion" }, { icon: "🚀", name: "Grade Topper" },
+              ].map(b => (
+                <div key={b.name} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ background: "white", border: "1px solid rgba(11,43,107,0.12)", color: NAVY }}>
+                  {b.icon} {b.name}
+                </div>
+              ))}
+            </div>
+            <Link href="/sign-up">
+              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                className="mt-5 px-7 py-3 rounded-full font-bold text-white text-sm flex items-center gap-2 mx-auto"
+                style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 4px 20px rgba(255,107,26,0.35)" }}>
+                Start earning points today <ArrowRight className="w-4 h-4" />
+              </motion.button>
+            </Link>
+          </motion.div>
         </div>
       </section>
 

@@ -66,10 +66,10 @@ const DEMO_CLASSES = [
 ];
 
 const STATS = [
-  { value: "500+", label: "Live Classes monthly" },
-  { value: "98%", label: "Student satisfaction" },
-  { value: "50+", label: "Expert teachers" },
-  { value: "10,000+", label: "Students taught" },
+  { value: "430+",   label: "Live sessions per grade / year" },
+  { value: "5 days", label: "Classes every week" },
+  { value: "24×7",   label: "Doubt support" },
+  { value: "4.9★",   label: "Parent rating" },
 ];
 
 function PublicNav() {
@@ -202,7 +202,7 @@ function PublicLiveClassesView() {
             className="pt-8 pb-12">
             <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-6"
               style={{ background: "rgba(255,107,26,0.2)", border: "1px solid rgba(255,107,26,0.4)", color: ORANGE }}>
-              <Sparkles className="w-3.5 h-3.5" /> 500+ Live Classes Every Month
+              <Sparkles className="w-3.5 h-3.5" /> 430+ Live Sessions per Grade, Every Year
             </span>
             <h1 className="text-4xl md:text-5xl font-black text-white leading-tight mb-5">
               Live Classes That <br />
@@ -327,13 +327,74 @@ function PublicLiveClassesView() {
         </div>
       </section>
 
+      {/* ── How a Live Class Works ── */}
+      <section className="py-14 px-6" style={{ background: "#F8FAFF" }}>
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
+            <div className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: ORANGE }}>The Experience</div>
+            <h2 className="text-3xl font-black" style={{ color: NAVY }}>What happens in a Braintam live class?</h2>
+            <p className="text-gray-500 mt-2 text-sm">Every session is structured, interactive, and purposeful.</p>
+          </motion.div>
+          <div className="grid md:grid-cols-5 gap-2 items-start">
+            {[
+              { step: "1", emoji: "📅", title: "Schedule Shared", desc: "Weekly timetable sent to parents every Sunday night." },
+              { step: "2", emoji: "🔔", title: "Class Reminder", desc: "Push + WhatsApp notification 10 mins before class starts." },
+              { step: "3", emoji: "🎥", title: "Live Teaching", desc: "Expert teacher teaches with slides, board, and real examples." },
+              { step: "4", emoji: "🙋", title: "Doubts Cleared", desc: "Students ask questions live — answered instantly, no confusion left." },
+              { step: "5", emoji: "📊", title: "Progress Update", desc: "Attendance & learning report sent to parents after every class." },
+            ].map((s, i) => (
+              <motion.div key={s.step} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className="flex flex-col items-center text-center gap-2 relative">
+                {i < 4 && (
+                  <div className="hidden md:block absolute top-5 left-[60%] right-0 h-0.5 border-t-2 border-dashed" style={{ borderColor: "rgba(255,107,26,0.3)" }} />
+                )}
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl font-black text-white relative z-10"
+                  style={{ background: `linear-gradient(135deg, ${NAVY}, #1a4a9b)`, boxShadow: "0 4px 14px rgba(11,43,107,0.25)" }}>
+                  {s.step}
+                </div>
+                <div className="text-2xl">{s.emoji}</div>
+                <div className="font-bold text-xs" style={{ color: NAVY }}>{s.title}</div>
+                <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+          {/* Weekly schedule preview */}
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="mt-10 rounded-2xl p-5 border"
+            style={{ background: "white", borderColor: "rgba(11,43,107,0.12)", boxShadow: "0 4px 20px rgba(11,43,107,0.06)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-4 h-4" style={{ color: ORANGE }} />
+              <span className="font-black text-sm" style={{ color: NAVY }}>Sample Weekly Schedule</span>
+              <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: "rgba(255,107,26,0.1)", color: ORANGE }}>Grade 6 · Maths & Science</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {[
+                { day: "Mon", sub: "Maths", topic: "Integers", color: "#3B82F6" },
+                { day: "Tue", sub: "Science", topic: "Cell Biology", color: "#10B981" },
+                { day: "Wed", sub: "Maths", topic: "Fractions", color: "#3B82F6" },
+                { day: "Thu", sub: "Science", topic: "Human Body", color: "#10B981" },
+                { day: "Fri", sub: "Doubt", topic: "Q&A + Test", color: ORANGE },
+              ].map(d => (
+                <div key={d.day} className="rounded-xl p-2.5 text-center"
+                  style={{ background: `${d.color}10`, border: `1px solid ${d.color}25` }}>
+                  <div className="text-xs font-black mb-1" style={{ color: d.color }}>{d.day}</div>
+                  <div className="text-[10px] font-semibold" style={{ color: NAVY }}>{d.sub}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{d.topic}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── CTA ── */}
       <section className="py-16 px-6 text-center" style={{ background: NAVY }}>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <div className="bt-sway text-5xl mb-6">🎓</div>
           <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Your first class is FREE</h2>
           <p className="text-white/60 mb-8 text-lg max-w-xl mx-auto">
-            Join 10,000+ students already attending live classes. No risk, no payment needed.
+            430+ structured sessions per grade, every year. No risk, no payment needed.
           </p>
           <Link href="/sign-up">
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}

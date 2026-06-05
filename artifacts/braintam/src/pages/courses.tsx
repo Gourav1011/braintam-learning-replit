@@ -77,10 +77,10 @@ const TOPPERS = [
 ];
 
 const STATS = [
-  { value: "200+",    label: "Courses",         icon: BookOpen    },
-  { value: "50+",     label: "Expert Teachers", icon: GraduationCap },
-  { value: "10,000+", label: "Happy Students",  icon: Users       },
-  { value: "4.9★",   label: "Avg Rating",      icon: Star        },
+  { value: "430+",        label: "Sessions per Grade / Year", icon: BookOpen     },
+  { value: "Grades 1–10", label: "All Classes Covered",       icon: GraduationCap },
+  { value: "CBSE·ICSE·IB",label: "Hybrid Curriculum",         icon: Award        },
+  { value: "4.9★",        label: "Parent Rating",             icon: Star         },
 ];
 
 // ── Nav ────────────────────────────────────────────────────────
@@ -423,7 +423,7 @@ function PublicCoursesView() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-6"
               style={{ background: "rgba(255,107,26,0.2)", border: "1px solid rgba(255,107,26,0.4)", color: ORANGE }}>
-              <Sparkles className="w-3.5 h-3.5" /> India's #1 EdTech Platform for Grades 1–10
+              <Sparkles className="w-3.5 h-3.5" /> Premium EdTech Platform for Grades 1–10
             </span>
             <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-5">
               Explore India's <br />
@@ -657,7 +657,7 @@ function PublicCoursesView() {
       <section className="py-16 px-6 text-center" style={{ background: NAVY }}>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Ready to become a topper?</h2>
-          <p className="text-white/60 mb-8 text-lg">Join 10,000+ students already learning on Braintam</p>
+          <p className="text-white/60 mb-8 text-lg">430+ guided sessions per grade · CBSE · ICSE · IB hybrid curriculum</p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link href="/sign-up">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
