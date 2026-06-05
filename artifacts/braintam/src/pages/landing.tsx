@@ -1388,9 +1388,9 @@ export default function LandingPage() {
               <div className="flex gap-2 pt-1">
                 {[
                   { Icon: WaIcon, href: "https://wa.me/918492944473" },
-                  { Icon: IgIcon, href: "https://instagram.com/braintamofficoal" },
+                  { Icon: IgIcon, href: "https://www.instagram.com/braintamofficial/" },
                   { Icon: FbIcon, href: "https://facebook.com/braintam" },
-                  { Icon: YtIcon, href: "https://youtube.com/@braintam" },
+                  { Icon: YtIcon, href: "https://www.youtube.com/@BraintamOfficial" },
                 ].map(({ Icon, href }, i) => (
                   <a key={i} href={href} target="_blank" rel="noopener noreferrer"
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
