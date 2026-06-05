@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookOpen, Search, Star, Users, Trophy, Sparkles, ArrowRight, GraduationCap, Zap, Award, CheckCircle, MessageCircle, Clock, Lock, Flame, ChevronRight } from "lucide-react";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth, STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
@@ -805,10 +805,37 @@ function AdventureCourseCard({ course, idx }: { course: any; idx: number }) {
   );
 }
 
+interface DemoBatchItem {
+  batch: {
+    id: number; title: string; description: string | null; teacherName: string | null;
+    bannerUrl: string | null; joinLink: string | null; startDate: string | null;
+    endDate: string | null; status: string; grade: number | null; subject: string | null; totalDays: number;
+  };
+  sessions: Array<{
+    id: number; title: string; dayNumber: number; scheduledAt: string;
+    duration: number; joinUrl: string | null; status: string; isPublished: boolean;
+  }>;
+}
+
 function AuthCoursesView() {
   const [subject, setSubject] = useState<string>("all");
   const [search, setSearch]   = useState("");
   const { student } = useAuth();
+
+  const [demoBatches, setDemoBatches] = useState<DemoBatchItem[]>([]);
+  const [demoLoading, setDemoLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem(STUDENT_TOKEN_KEY);
+    if (!token) { setDemoLoading(false); return; }
+    fetch("/api/student/my-demo-batches", {
+      headers: { "Authorization": `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: DemoBatchItem[]) => setDemoBatches(data))
+      .catch(() => {})
+      .finally(() => setDemoLoading(false));
+  }, []);
 
   const params = {
     subjectId: subject !== "all" ? Number(subject) : undefined,
@@ -852,6 +879,110 @@ function AuthCoursesView() {
       </div>
 
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+
+        {/* ── Demo Batch Section ── */}
+        {(demoLoading || demoBatches.length > 0) && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">🎯</span>
+              <h2 className="text-sm font-black uppercase tracking-wide" style={{ color: NAVY }}>Your Demo Course</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-black ml-1 animate-pulse"
+                style={{ background: ORANGE, color: "white" }}>DEMO</span>
+            </div>
+            {demoLoading ? (
+              <Skeleton className="h-36 rounded-2xl" />
+            ) : (
+              <div className="space-y-3">
+                {demoBatches.map(({ batch, sessions }) => {
+                  const nextSession = sessions.find(s => s.status === "upcoming" || s.status === "live");
+                  const completedCount = sessions.filter(s => s.status === "completed").length;
+                  return (
+                    <motion.div key={batch.id}
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border-2 overflow-hidden"
+                      style={{ background: "white", borderColor: `${ORANGE}30`, boxShadow: "0 4px 20px rgba(255,107,26,0.08)" }}>
+                      {/* Orange top bar */}
+                      <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${ORANGE}, #FFA040)` }} />
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-black px-2 py-0.5 rounded-full"
+                                style={{ background: `${ORANGE}18`, color: ORANGE }}>⚡ {batch.totalDays}-Day Demo</span>
+                              {batch.grade && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700">Grade {batch.grade}</span>}
+                              {batch.subject && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-50 text-purple-700">{batch.subject}</span>}
+                            </div>
+                            <h3 className="text-base font-black mt-1.5 leading-tight" style={{ color: NAVY }}>{batch.title}</h3>
+                            {batch.teacherName && (
+                              <p className="text-xs text-gray-400 mt-0.5">👩‍🏫 {batch.teacherName}</p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-lg font-black" style={{ color: ORANGE }}>{completedCount}/{batch.totalDays}</div>
+                            <div className="text-[10px] text-gray-400">Days done</div>
+                          </div>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="mt-3 w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${batch.totalDays > 0 ? Math.round((completedCount / batch.totalDays) * 100) : 0}%`, background: ORANGE }} />
+                        </div>
+
+                        {/* Sessions mini list */}
+                        {sessions.length > 0 && (
+                          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                            {sessions.map(s => {
+                              const isLive = s.status === "live";
+                              const isDone = s.status === "completed";
+                              return (
+                                <div key={s.id}
+                                  className="shrink-0 text-center rounded-xl px-2 py-1.5 border"
+                                  style={{
+                                    minWidth: "52px",
+                                    background: isLive ? `${ORANGE}15` : isDone ? "#f0fdf4" : "white",
+                                    borderColor: isLive ? ORANGE : isDone ? "#86efac" : "#e5e7eb",
+                                  }}>
+                                  <div className="text-[10px] font-black"
+                                    style={{ color: isLive ? ORANGE : isDone ? "#16a34a" : "#9ca3af" }}>
+                                    {isLive ? "🔴 LIVE" : isDone ? "✅" : `Day ${s.dayNumber}`}
+                                  </div>
+                                  <div className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[52px]">{s.title}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* CTA */}
+                        <div className="mt-3 flex gap-2">
+                          {nextSession?.joinUrl ? (
+                            <a href={nextSession.joinUrl} target="_blank" rel="noopener noreferrer"
+                              className="flex-1 text-center text-xs font-black py-2 rounded-xl text-white transition-all hover:opacity-90"
+                              style={{ background: ORANGE }}>
+                              {nextSession.status === "live" ? "🔴 Join Live Now" : "📅 Join Next Session"}
+                            </a>
+                          ) : (
+                            <div className="flex-1 text-center text-xs font-semibold py-2 rounded-xl text-gray-400 bg-gray-50">
+                              No upcoming session
+                            </div>
+                          )}
+                          {batch.joinLink && (
+                            <a href={batch.joinLink} target="_blank" rel="noopener noreferrer"
+                              className="px-3 text-xs font-bold py-2 rounded-xl border flex items-center gap-1"
+                              style={{ borderColor: `${NAVY}30`, color: NAVY }}>
+                              Class Link
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Continue Learning — subject progress cards */}
         {subjectProgress.length > 0 && (

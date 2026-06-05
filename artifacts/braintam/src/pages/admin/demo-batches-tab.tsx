@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Video, BookOpen, Calendar, Clock, Eye, EyeOff, Globe, GlobeLock } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Video, BookOpen, Calendar, Clock, Eye, EyeOff, Globe, GlobeLock, Users, Search, UserPlus, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,17 @@ interface DemoSession {
   status: string; isPublished: boolean;
 }
 
+interface DemoEnrollment {
+  enrollmentId: number; studentId: number; enrolledAt: string;
+  name: string; email: string | null; phone: string | null;
+  grade: number | null; school: string | null;
+}
+
+interface AdminUser {
+  id: number; name: string; email: string | null; phone: string | null;
+  role: string; grade: number | null; school: string | null;
+}
+
 const GRADES = Array.from({ length: 10 }, (_, i) => i + 1);
 const STATUSES = ["upcoming", "active", "completed"];
 
@@ -44,14 +55,17 @@ const emptySession = { title: "", description: "", dayNumber: "1", scheduledAt: 
 export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
   const [batches, setBatches] = useState<DemoBatch[]>([]);
   const [sessions, setSessions] = useState<DemoSession[]>([]);
+  const [enrollments, setEnrollments] = useState<DemoEnrollment[]>([]);
+  const [allStudents, setAllStudents] = useState<AdminUser[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<DemoBatch | null>(null);
-  const [view, setView] = useState<"batches" | "sessions">("batches");
+  const [view, setView] = useState<"batches" | "sessions" | "enrollments">("batches");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showAddBatch, setShowAddBatch] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
   const [batchForm, setBatchForm] = useState(emptyBatch);
   const [sessionForm, setSessionForm] = useState(emptySession);
+  const [studentSearch, setStudentSearch] = useState("");
 
   const loadBatches = useCallback(async () => {
     setLoading(true);
@@ -66,6 +80,21 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     try {
       const r = await apiFetch(`/admin/demo-batches/${batchId}/sessions`);
       if (r.ok) setSessions(await r.json());
+    } finally { setLoading(false); }
+  }, []);
+
+  const loadEnrollments = useCallback(async (batchId: number) => {
+    setLoading(true);
+    try {
+      const [enrRes, usersRes] = await Promise.all([
+        apiFetch(`/admin/demo-batches/${batchId}/enrollments`),
+        apiFetch("/admin/users"),
+      ]);
+      if (enrRes.ok) setEnrollments(await enrRes.json());
+      if (usersRes.ok) {
+        const all: AdminUser[] = await usersRes.json();
+        setAllStudents(all.filter(u => u.role === "student"));
+      }
     } finally { setLoading(false); }
   }, []);
 
@@ -132,6 +161,38 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     setSelectedBatch(batch);
     setView("sessions");
     loadSessions(batch.id);
+  }
+
+  function openEnrollments(batch: DemoBatch) {
+    setSelectedBatch(batch);
+    setView("enrollments");
+    setStudentSearch("");
+    loadEnrollments(batch.id);
+  }
+
+  async function enrollStudent(studentId: number) {
+    if (!selectedBatch) return;
+    setBusy(true);
+    try {
+      const r = await apiFetch(`/admin/demo-batches/${selectedBatch.id}/enrollments`, {
+        method: "POST",
+        body: JSON.stringify({ studentId }),
+      });
+      if (r.ok) {
+        flash("Student enrolled in demo batch");
+        loadEnrollments(selectedBatch.id);
+      } else {
+        const body = await r.json().catch(() => ({})) as { error?: string };
+        flash(body.error ?? "Failed to enroll", false);
+      }
+    } finally { setBusy(false); }
+  }
+
+  async function removeEnrollment(enrollmentId: number) {
+    if (!selectedBatch) return;
+    await apiFetch(`/admin/demo-batches/${selectedBatch.id}/enrollments/${enrollmentId}`, { method: "DELETE" });
+    flash("Student removed from batch");
+    loadEnrollments(selectedBatch.id);
   }
 
   async function createSession() {
@@ -266,6 +327,10 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Button size="sm" variant="outline" className="text-xs gap-1"
+                      onClick={() => openEnrollments(batch)}>
+                      <Users className="w-3 h-3" /> Students
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs gap-1"
                       onClick={() => openSessions(batch)}>
                       Sessions <ChevronRight className="w-3 h-3" />
                     </Button>
@@ -284,6 +349,123 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Enrollments View ── */}
+      {view === "enrollments" && selectedBatch && (
+        <>
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
+            <button onClick={() => { setView("batches"); setSelectedBatch(null); setEnrollments([]); }}
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900">
+              <ChevronLeft className="w-4 h-4" />Demo Batches
+            </button>
+            <ChevronRight className="w-4 h-4 text-gray-300" />
+            <span className="text-sm font-semibold" style={{ color: NAVY }}>{selectedBatch.title}</span>
+            <ChevronRight className="w-4 h-4 text-gray-300" />
+            <span className="text-sm font-semibold" style={{ color: ORANGE }}>Students</span>
+          </div>
+
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-xl font-bold" style={{ color: NAVY }}>
+                Enrolled Students
+                <span className="ml-2 text-base font-normal text-gray-400">({enrollments.length})</span>
+              </h2>
+              <p className="text-sm text-gray-500">These students will see this demo batch in their Courses section</p>
+            </div>
+          </div>
+
+          {/* Search & Add Students */}
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-5">
+            <p className="text-xs font-semibold text-blue-700 mb-2.5 flex items-center gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" /> Add Students to This Batch
+            </p>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <Input
+                placeholder="Search by name, email or phone..."
+                value={studentSearch}
+                onChange={e => setStudentSearch(e.target.value)}
+                className="pl-8 h-9 text-sm bg-white"
+              />
+            </div>
+            {(() => {
+              const q = studentSearch.toLowerCase().trim();
+              const enrolledIds = new Set(enrollments.map(e => e.studentId));
+              const filtered = allStudents.filter(u =>
+                !enrolledIds.has(u.id) &&
+                (!q || u.name.toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q) || (u.phone ?? "").includes(q))
+              );
+              if (filtered.length === 0) return (
+                <p className="text-xs text-gray-400 text-center py-3">
+                  {q ? "No matching students found" : "All registered students are already enrolled"}
+                </p>
+              );
+              return (
+                <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                  {filtered.map(u => (
+                    <div key={u.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-gray-100">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-800 truncate">{u.name}</span>
+                          {u.grade && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold shrink-0">G{u.grade}</span>}
+                        </div>
+                        <p className="text-xs text-gray-400 truncate">{u.email ?? u.phone ?? "—"}</p>
+                      </div>
+                      <Button size="sm" disabled={busy}
+                        onClick={() => enrollStudent(u.id)}
+                        className="text-xs ml-2 shrink-0 gap-1"
+                        style={{ background: NAVY, color: "white" }}>
+                        <UserPlus className="w-3 h-3" /> Add
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Enrolled list */}
+          {loading ? (
+            <div className="text-gray-400 text-sm text-center py-8">Loading...</div>
+          ) : enrollments.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-20" />
+              <p className="text-sm font-medium">No students enrolled yet</p>
+              <p className="text-xs mt-1">Use the search above to add leads from your ads</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {enrollments.map(enr => (
+                <div key={enr.enrollmentId}
+                  className="flex items-center gap-3 bg-white rounded-2xl border border-gray-200 px-4 py-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-black shrink-0"
+                    style={{ background: NAVY }}>
+                    {enr.name[0]?.toUpperCase() ?? "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-800">{enr.name}</span>
+                      {enr.grade && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">G{enr.grade}</span>}
+                      {enr.school && <span className="text-[10px] text-gray-400">{enr.school}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5 flex-wrap">
+                      <span>{enr.email ?? enr.phone ?? "—"}</span>
+                      <span>Enrolled {new Date(enr.enrolledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="ghost"
+                    onClick={() => removeEnrollment(enr.enrollmentId)}
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 shrink-0"
+                    title="Remove from batch">
+                    <UserMinus className="w-4 h-4" />
+                  </Button>
                 </div>
               ))}
             </div>

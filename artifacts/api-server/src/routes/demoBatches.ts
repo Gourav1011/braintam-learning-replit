@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { demoBatchesTable, demoSessionsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
-import { requireRole } from "../middlewares/auth.js";
+import { demoBatchesTable, demoSessionsTable, demoBatchEnrollmentsTable, usersTable } from "@workspace/db";
+import { eq, desc, and } from "drizzle-orm";
+import { requireRole, requireAuth } from "../middlewares/auth.js";
 
 const router = Router();
 const adminOnly = requireRole("admin");
@@ -159,6 +159,76 @@ router.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly, asy
   if (!sessionId) { res.status(400).json({ error: "Invalid sessionId" }); return; }
   await db.delete(demoSessionsTable).where(eq(demoSessionsTable.id, sessionId));
   res.json({ success: true });
+});
+
+// ── Admin: Enrollment CRUD ────────────────────────────────────
+
+router.get("/admin/demo-batches/:batchId/enrollments", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+  const rows = await db
+    .select({
+      enrollmentId: demoBatchEnrollmentsTable.id,
+      studentId: demoBatchEnrollmentsTable.studentId,
+      enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+      name: usersTable.name,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      grade: usersTable.grade,
+      school: usersTable.school,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))
+    .where(eq(demoBatchEnrollmentsTable.batchId, batchId))
+    .orderBy(desc(demoBatchEnrollmentsTable.enrolledAt));
+  res.json(rows);
+});
+
+router.post("/admin/demo-batches/:batchId/enrollments", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+  const { studentId } = req.body as { studentId?: number };
+  if (!studentId) { res.status(400).json({ error: "studentId required" }); return; }
+  const [student] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+  if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+  const existing = await db.select().from(demoBatchEnrollmentsTable)
+    .where(and(eq(demoBatchEnrollmentsTable.batchId, batchId), eq(demoBatchEnrollmentsTable.studentId, studentId)))
+    .limit(1);
+  if (existing.length > 0) { res.status(409).json({ error: "Already enrolled" }); return; }
+  const [row] = await db.insert(demoBatchEnrollmentsTable).values({ batchId, studentId }).returning();
+  res.json(row);
+});
+
+router.delete("/admin/demo-batches/:batchId/enrollments/:enrollmentId", adminOnly, async (req, res) => {
+  const enrollmentId = Number(req.params.enrollmentId);
+  if (!enrollmentId) { res.status(400).json({ error: "Invalid enrollmentId" }); return; }
+  await db.delete(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.id, enrollmentId));
+  res.json({ success: true });
+});
+
+// ── Student: My Demo Batches ─────────────────────────────────
+
+router.get("/student/my-demo-batches", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+  const enrollments = await db
+    .select({ batchId: demoBatchEnrollmentsTable.batchId })
+    .from(demoBatchEnrollmentsTable)
+    .where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+
+  if (enrollments.length === 0) { res.json([]); return; }
+
+  const batchIds = enrollments.map(e => e.batchId);
+  const result: { batch: typeof demoBatchesTable.$inferSelect; sessions: typeof demoSessionsTable.$inferSelect[] }[] = [];
+
+  for (const batchId of batchIds) {
+    const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
+    if (!batch) continue;
+    const sessions = await db.select().from(demoSessionsTable)
+      .where(and(eq(demoSessionsTable.batchId, batchId), eq(demoSessionsTable.isPublished, true)))
+      .orderBy(demoSessionsTable.dayNumber);
+    result.push({ batch, sessions });
+  }
+  res.json(result);
 });
 
 export default router;
