@@ -189,7 +189,7 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
 
         {/* Bottom */}
         <div className="text-white/30 text-xs relative z-10">
-          © 2025 Braintam Learning. All Rights Reserved.
+          © 2026 Braintam Learning LLP. All Rights Reserved.
         </div>
       </div>
 

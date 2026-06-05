@@ -33,7 +33,7 @@ const sections = [
   },
   {
     title: "7. Intellectual Property",
-    content: "All content on the Braintam platform — including course videos, animated lessons, worksheets, test questions, written materials, logos, and software — is the exclusive intellectual property of Braintam Learning Private Limited or its licensed content partners. You are granted a limited, non-exclusive, non-transferable licence to access and use course content solely for personal, non-commercial educational purposes. Reproduction, redistribution, sale, or public display of any Braintam content is strictly prohibited without prior written consent.",
+    content: "All content on the Braintam platform — including course videos, animated lessons, worksheets, test questions, written materials, logos, and software — is the exclusive intellectual property of Braintam Learning LLP or its licensed content partners. You are granted a limited, non-exclusive, non-transferable licence to access and use course content solely for personal, non-commercial educational purposes. Reproduction, redistribution, sale, or public display of any Braintam content is strictly prohibited without prior written consent.",
   },
   {
     title: "8. Acceptable Use",

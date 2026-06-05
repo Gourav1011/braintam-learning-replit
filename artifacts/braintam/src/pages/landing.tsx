@@ -1441,7 +1441,7 @@ export default function LandingPage() {
 
         {/* Bottom bar */}
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam Learning. All Rights Reserved.</span>
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>© {new Date().getFullYear()} Braintam Learning LLP. All Rights Reserved.</span>
           <div className="flex gap-5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
             <Link href="/terms"   className="hover:text-white transition-colors">Terms & Conditions</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>

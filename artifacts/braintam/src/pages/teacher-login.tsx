@@ -123,7 +123,7 @@ export default function TeacherLoginPage() {
           </div>
         </div>
 
-        <div className="text-white/25 text-xs relative z-10">© 2025 Braintam Learning. All Rights Reserved.</div>
+        <div className="text-white/25 text-xs relative z-10">© 2026 Braintam Learning LLP. All Rights Reserved.</div>
       </div>
 
       {/* ── Right form panel ── */}
