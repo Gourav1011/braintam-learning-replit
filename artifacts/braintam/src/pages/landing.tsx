@@ -126,12 +126,12 @@ const features = [
 ];
 
 const tickerStats = [
-  { icon: Users,    value: "50+",    label: "Expert Teachers" },
-  { icon: BookOpen, value: "1,000+", label: "Active Students" },
-  { icon: Star,     value: "4.9 ★",  label: "Rating" },
-  { icon: CheckCircle, value: "98%", label: "Retention" },
-  { icon: Award,    value: "200+",   label: "Courses" },
-  { icon: Brain,    value: "5L+",    label: "Students Served" },
+  { icon: Video,       value: "430+",         label: "Classes per Grade / Year" },
+  { icon: BookOpen,    value: "4,200+",        label: "Total Live Classes / Year" },
+  { icon: CheckCircle, value: "CBSE·ICSE·IB",  label: "Hybrid Syllabus" },
+  { icon: Star,        value: "4.9 ★",         label: "Parent Rating" },
+  { icon: Users,       value: "Grades 1–10",   label: "All Classes Covered" },
+  { icon: Brain,       value: "24×7",          label: "Doubt Support" },
 ];
 
 const programs = [
@@ -177,7 +177,7 @@ const programs = [
 const team = [
   { name: "Gourav Manhas",      role: "Co-Founder & CEO",            bio: "IIT Kanpur · 5 yrs in learning tech. Drives the vision to make quality education accessible for every Indian student.", photo: "https://images.unsplash.com/photo-1779267102994-5fd194d300fc", tags: ["Strategy","Vision"] },
   { name: "Poonam", role: "Co-Founder & COO", bio: "MBA from ICFAI · 20+ yrs teaching. Architect of Braintam's CBSE/ICSE/IB curriculum framework.", photo: poonamPhoto, tags: ["Curriculum","Pedagogy"] },
-  { name: "Rohit",    role: "Master Teachers",            bio: "Ex-Google engineer · AI specialist. Built the platform infrastructure used by 5 lakh+ students daily.", photo: "https://unsplash.com/photos/a-man-with-a-beard-wearing-sunglasses-and-a-t-shirt-Qq37SLi34Dg", tags: ["AI/ML","Engineering"] },
+  { name: "Rohit",    role: "Master Teachers",            bio: "Ex-Google engineer · AI specialist. Built the platform infrastructure powering 4,200+ live classes annually.", photo: "https://unsplash.com/photos/a-man-with-a-beard-wearing-sunglasses-and-a-t-shirt-Qq37SLi34Dg", tags: ["AI/ML","Engineering"] },
   { name: "Anita Menon",      role: "Head of Teacher Relations",   bio: "Former KV principal · 20 yrs leadership. Recruits and mentors Braintam's nationwide star-teacher network.", photo: "https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=500&auto=format&fit=crop&q=80", tags: ["Teachers","Quality"] },
   { name: "Deepak Singh",     role: "Head of Animated Content",    bio: "Award-winning animator · ex-Toppr. Created 1,000+ animated explainer videos loved across India.", photo: "", tags: ["Animation","Design"] },
   { name: "Sneha Kapoor",     role: "VP – Student Success",        bio: "Child psychologist & learning coach. Designs gamification and engagement loops that keep kids motivated.", photo: "https://unsplash.com/photos/a-plastic-head-of-a-person-wearing-a-hat-n5B7nnlZNRY", tags: ["Psychology","UX"] },
@@ -297,7 +297,7 @@ function HeroVisual() {
       <div className="bt-float absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full"
         style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
         <span className="text-xs sm:text-sm">🏆</span>
-        <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">10,000+ Toppers across India</span>
+        <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
       </div>
 
       {/* ── Three student cards ── */}
@@ -401,7 +401,7 @@ function HeroVisual() {
           ))}
         </div>
         <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 10 }}>
-          <span className="font-black" style={{ color: ORANGE }}>5,00,000+</span> Happy Students
+          <span className="font-black" style={{ color: ORANGE }}>4,200+</span> Classes Every Year
         </div>
       </div>
     </div>
@@ -455,7 +455,7 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
             </div>
             <h2 className="text-2xl font-bold mb-1 text-center" style={{ color: TEXT }}>Start learning today</h2>
-            <p className="text-sm mb-7 text-center" style={{ color: MUTED }}>Join 5 lakh+ students across India.</p>
+            <p className="text-sm mb-7 text-center" style={{ color: MUTED }}>Hybrid CBSE · ICSE · IB syllabus. Grades 1–10.</p>
             <div className="space-y-3 mb-5">
               <input
                 type="text" placeholder="Your full name" value={name}
@@ -774,7 +774,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <span className="text-xs" style={{ color: MUTED }}>
-                <span className="font-semibold" style={{ color: TEXT }}>5,00,0+</span> Happy students
+                <span className="font-semibold" style={{ color: TEXT }}>430+</span> classes per grade/year
               </span>
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />)}
@@ -1034,7 +1034,7 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="text-sm mt-4" style={{ color: MUTED }}>
-              Trusted by 5 lakh+ Indian students across CBSE · ICSE · IB · All State Boards.
+              430+ live classes per grade · 4,200+ classes per year · Hybrid CBSE · ICSE · IB syllabus.
             </p>
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={1}
