@@ -20,12 +20,29 @@ export default function OurStoryPage() {
       </nav>
 
       {/* Hero */}
-      <div className="py-16 px-4 text-center text-white" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4494 100%)` }}>
-        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
-          <Heart className="w-4 h-4" style={{ color: ORANGE }} /> Made in India, Built for Every Child
+      <div className="py-16 px-4 text-center text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4494 100%)` }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-8 left-1/4 w-64 h-64 rounded-full opacity-10 blur-3xl" style={{ background: ORANGE }} />
+          <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full opacity-10 blur-3xl" style={{ background: "#3B82F6" }} />
         </div>
-        <h1 className="text-4xl md:text-5xl font-black mb-4">Our Story</h1>
-        <p className="text-lg text-blue-200 max-w-xl mx-auto">Two friends. One mission. Transform the way India's students learn.</p>
+        <div className="relative z-10 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+            <Heart className="w-4 h-4" style={{ color: ORANGE }} /> Made in India, Built for Every Child
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black mb-3">Our Story</h1>
+
+          {/* TAM callout */}
+          <div className="inline-block mb-5 px-5 py-3 rounded-2xl" style={{ background: "rgba(255,107,26,0.15)", border: "1px solid rgba(255,107,26,0.35)" }}>
+            <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: ORANGE }}>What "Braintam" means</p>
+            <p className="text-white font-black text-lg leading-snug">
+              <span style={{ color: ORANGE }}>Brain</span> + <span style={{ color: ORANGE }}>T</span>alent <span style={{ color: ORANGE }}>A</span>dvancement <span style={{ color: ORANGE }}>M</span>ission
+            </p>
+          </div>
+
+          <p className="text-lg text-blue-200 max-w-xl mx-auto">
+            An educational organisation dedicated to advancing young minds by developing their <strong className="text-white">Talent</strong>, <strong className="text-white">Attitude</strong>, and <strong className="text-white">Mindset</strong> through innovative learning, mentorship, and skill-building programs.
+          </p>
+        </div>
       </div>
 
       <div className="container mx-auto px-4 py-14 max-w-3xl space-y-12">

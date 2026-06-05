@@ -1375,7 +1375,8 @@ export default function LandingPage() {
               {/* Logo */}
               <img src={braintamLogo} alt="Braintam" className="w-12 h-12 object-contain" />
               <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
-                India's premium EdTech for grades 1–10.
+                <span style={{ color: "rgba(255,107,26,0.8)" }}>Brain + Talent Advancement Mission</span><br />
+                Advancing young minds through innovative learning, mentorship & skill-building for Grades 1–10.
               </p>
               <div className="space-y-1 text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
                 <div className="flex items-center gap-1.5"><Mail className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />support@braintam.com</div>
