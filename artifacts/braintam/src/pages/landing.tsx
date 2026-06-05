@@ -764,23 +764,23 @@ export default function LandingPage() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
               </a>
             </motion.div>
-            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4} className="flex items-center gap-4 md:gap-5 flex-wrap">
-              <div className="flex -space-x-2.5">
-                {[ORANGE, NAVY, "#c94e00", "#1a4a99"].map((c, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white"
-                    style={{ background: c, borderColor: BG }}>
-                    {["P","R","A","S"][i]}
-                  </div>
-                ))}
-              </div>
-              <span className="text-xs" style={{ color: MUTED }}>
-                <span className="font-semibold" style={{ color: TEXT }}>430+</span> classes per grade/year
-              </span>
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />)}
-                <span className="text-xs ml-1" style={{ color: MUTED }}>4.9</span>
-              </div>
-            </motion.div>
+            {/* ── Hero Stat Cards ── */}
+            <div className="grid grid-cols-2 gap-2.5 max-w-sm">
+              {[
+                { emoji: "📚", value: "430+", label: "Sessions per Grade / Year", accent: ORANGE },
+                { emoji: "🚀", value: "4,200+", label: "Total Sessions Across Grades", accent: "#7C3AED" },
+                { emoji: "📅", value: "52 Weeks", label: "Structured Year-Round Learning", accent: "#0EA5E9" },
+                { emoji: "🎯", value: "CBSE·ICSE·IB", label: "Hybrid Curriculum", accent: "#10B981" },
+              ].map((s, i) => (
+                <motion.div key={s.label} variants={fadeUp} initial="hidden" animate="show" custom={4 + i * 0.3}
+                  className="rounded-xl p-3 flex flex-col gap-1"
+                  style={{ background: SURFACE, border: `1px solid rgba(11,43,107,0.1)`, boxShadow: "0 2px 12px rgba(11,43,107,0.06)" }}>
+                  <div className="text-base leading-none">{s.emoji}</div>
+                  <div className="text-sm font-black leading-tight" style={{ color: s.accent }}>{s.value}</div>
+                  <div className="leading-snug" style={{ color: MUTED, fontSize: 10 }}>{s.label}</div>
+                </motion.div>
+              ))}
+            </div>
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[260px] sm:h-[380px] lg:h-[440px] block">
@@ -832,6 +832,40 @@ export default function LandingPage() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── ACADEMIC EXCELLENCE ── */}
+      <section className="py-8 md:py-14 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6 space-y-2">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Academic Excellence</div>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
+              Everything covered. <span style={{ color: ORANGE }}>Every grade.</span>
+            </h2>
+            <p className="text-sm max-w-lg mx-auto" style={{ color: MUTED }}>
+              A complete academic ecosystem built around structured growth — not just content delivery.
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              { emoji: "🎓", title: "Grades 1–10 Covered", desc: "Full curriculum from foundational to board-level across all grades." },
+              { emoji: "📖", title: "6 Core Academic Subjects", desc: "Maths, Science, English, Social Studies, Hindi & more — all NCERT-aligned." },
+              { emoji: "📝", title: "Weekly Homework & Assessments", desc: "Structured practice sets after every concept, with graded results." },
+              { emoji: "🎥", title: "Live Classes + Recordings", desc: "Attend live or watch anytime — every session is recorded and searchable." },
+              { emoji: "📊", title: "Progress Tracking & Reports", desc: "Chapter-wise mastery heatmaps shared with parents every week." },
+              { emoji: "🏆", title: "Olympiad & Foundation Prep", desc: "Dedicated tracks for NSO, IMO, NTSE, and other competitive exams." },
+            ].map((item, i) => (
+              <motion.div key={item.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}
+                className="rounded-2xl p-4 md:p-5 flex flex-col gap-2 transition-all duration-300"
+                style={{ background: SURFACE, border: `1px solid ${BORDER2}` }}
+                whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(11,43,107,0.1)", borderColor: "rgba(255,107,26,0.25)" }}>
+                <div className="text-2xl">{item.emoji}</div>
+                <div className="font-bold text-sm leading-snug" style={{ color: TEXT }}>{item.title}</div>
+                <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{item.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -910,8 +944,64 @@ export default function LandingPage() {
           {/* Bottom note */}
           <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="text-center text-xs mt-5 font-semibold" style={{ color: MUTED }}>
-            🏆 Combined, this is why Braintam students consistently score <span style={{ color: TEXT, fontWeight: 800 }}>15–30% higher</span> than the national average.
+            🏆 Combined, this is the structure behind every Braintam student's consistent academic progress.
           </motion.p>
+        </div>
+      </section>
+
+      {/* ── WHY BRAINTAM ── */}
+      <section className="py-8 md:py-14 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-8 space-y-2">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Why Braintam</div>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
+              Learning outcomes,{" "}
+              <span style={{ background: `linear-gradient(135deg, ${ORANGE}, #FFA040)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                not just content.
+              </span>
+            </h2>
+            <p className="text-sm max-w-lg mx-auto" style={{ color: MUTED }}>
+              Transparent learning. No inflated claims. Built around consistent academic growth.
+            </p>
+          </motion.div>
+          <div className="grid md:grid-cols-2 gap-3 max-w-3xl mx-auto">
+            {[
+              { icon: "✅", title: "Concept-Based Learning", desc: "Every topic taught from first principles — not just exam shortcuts." },
+              { icon: "✅", title: "Weekly Assessments", desc: "Regular chapter tests to identify gaps before they become problems." },
+              { icon: "✅", title: "Structured Learning Plans", desc: "A clear academic roadmap for every grade, every subject, every week." },
+              { icon: "✅", title: "Teacher-Guided Progress", desc: "Expert teachers + personal mentors track each student individually." },
+              { icon: "✅", title: "Homework & Practice Worksheets", desc: "Daily reinforcement sets graded within 24 hours with step-by-step feedback." },
+              { icon: "✅", title: "Live + Recorded Learning", desc: "Never miss a class — every session recorded and accessible anytime." },
+              { icon: "✅", title: "Performance Tracking", desc: "Concept mastery heatmaps and weekly progress reports sent to parents." },
+              { icon: "✅", title: "Academic Foundation Building", desc: "Designed to build lasting understanding, not just exam-day recall." },
+            ].map((item, i) => (
+              <motion.div key={item.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}
+                className="flex items-start gap-3 rounded-2xl p-4"
+                style={{ background: SURFACE, border: `1px solid ${BORDER2}` }}>
+                <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
+                <div>
+                  <div className="font-bold text-sm leading-snug mb-0.5" style={{ color: TEXT }}>{item.title}</div>
+                  <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{item.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          {/* Trust strip */}
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="mt-8 rounded-2xl p-5 text-center"
+            style={{ background: `linear-gradient(135deg, rgba(11,43,107,0.04), rgba(255,107,26,0.04))`, border: `1px solid rgba(11,43,107,0.1)` }}>
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-semibold" style={{ color: MUTED }}>
+              {[
+                "Transparent Learning. No Inflated Claims.",
+                "Every Student Learns Through Structured Guidance.",
+                "Live Classes · Recordings · Homework · Tests · Progress Tracking — All in One Platform.",
+              ].map(t => (
+                <span key={t} className="flex items-center gap-1.5">
+                  <Shield className="w-3 h-3 flex-shrink-0" style={{ color: ORANGE }} />{t}
+                </span>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -1015,6 +1105,46 @@ export default function LandingPage() {
             <p className="text-sm" style={{ color: MUTED }}>Real experiences from our learning community</p>
           </motion.div>
           <TestimonialsLoop />
+        </div>
+      </section>
+
+      {/* ── OUR VISION ── */}
+      <section className="py-8 md:py-14 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-8 space-y-2">
+            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Our Vision</div>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>
+              Building India's most{" "}
+              <span style={{ color: ORANGE }}>trusted</span> learning ecosystem.
+            </h2>
+            <p className="text-sm max-w-lg mx-auto leading-relaxed" style={{ color: MUTED }}>
+              These are our goals — ambitious targets we are actively working towards. We believe in sharing our vision openly.
+            </p>
+            {/* "Future goals" label */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold mx-auto mt-2"
+              style={{ background: "rgba(255,107,26,0.08)", border: "1.5px dashed rgba(255,107,26,0.4)", color: ORANGE }}>
+              🎯 These are future goals — not current achievements
+            </div>
+          </motion.div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { emoji: "🎯", goal: "10,000", unit: "Students", desc: "Learning through Braintam across India" },
+              { emoji: "📚", goal: "100,000+", unit: "Learning Hours", desc: "Delivered to students every year" },
+              { emoji: "📝", goal: "1 Million", unit: "Questions Solved", desc: "Through practice, tests & homework" },
+              { emoji: "🚀", goal: "Most Trusted", unit: "EdTech", desc: "Built on transparency, not hype" },
+            ].map((item, i) => (
+              <motion.div key={item.unit} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}
+                className="rounded-2xl p-5 text-center flex flex-col items-center gap-2 relative overflow-hidden"
+                style={{ background: `linear-gradient(135deg, ${NAVY}08, ${ORANGE}06)`, border: `1.5px dashed rgba(11,43,107,0.18)` }}>
+                <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(255,107,26,0.1)", color: ORANGE }}>GOAL</div>
+                <div className="text-2xl">{item.emoji}</div>
+                <div className="font-black text-lg leading-tight" style={{ color: TEXT }}>{item.goal}</div>
+                <div className="text-xs font-bold" style={{ color: ORANGE }}>{item.unit}</div>
+                <p className="text-xs leading-snug" style={{ color: MUTED }}>{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
