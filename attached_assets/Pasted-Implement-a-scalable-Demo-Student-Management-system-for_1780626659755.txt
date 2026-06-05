@@ -1,0 +1,168 @@
+Implement a scalable Demo Student Management system for Braintam.
+
+OBJECTIVE:
+Allow admins to upload and assign hundreds of demo students at once without manually clicking "Add" for every student.
+
+========================================
+USER ACCOUNT TYPES
+========================================
+
+Add a new accountType field:
+
+- lead
+- demo_student
+- paid_student
+- teacher
+- admin
+
+This must be visible in the Users section and filterable.
+
+========================================
+DEMO BATCH BULK ENROLLMENT
+========================================
+
+Inside Admin → Demo Batches → Students:
+
+Add new buttons:
+
+1. Bulk Upload CSV
+2. Bulk Add Students
+3. Paste Emails/Phones
+4. Import Existing Users
+
+========================================
+CSV IMPORT FORMAT
+========================================
+
+Name, Email, Phone, Grade
+
+Example:
+
+Riya, riya@gmail.com, 9876543210, Grade 3
+Aman, aman@gmail.com, 9876543211, Grade 4
+
+========================================
+AUTO ACCOUNT CREATION
+========================================
+
+When CSV is uploaded:
+
+1. Create student account automatically.
+2. Add record to Users table.
+3. Set accountType = demo_student.
+4. Assign selected Demo Batch automatically.
+5. Generate login credentials automatically.
+6. Send welcome email if email exists.
+7. Prevent duplicate accounts.
+
+========================================
+DEMO STUDENT ACCESS RULES
+========================================
+
+Demo students should only see:
+
+✓ Demo Courses
+✓ Demo Recordings
+✓ Demo Homework
+✓ Demo Tests
+✓ Demo Live Classes
+
+Demo students must NOT see:
+
+✗ Paid Courses
+✗ Paid Recordings
+✗ Premium Content
+✗ Full Course Library
+
+========================================
+CONVERT TO PAID STUDENT
+========================================
+
+Add "Convert to Paid Student" action.
+
+When clicked:
+
+1. Change accountType from demo_student to paid_student.
+2. Keep all profile data.
+3. Keep points and badges.
+4. Keep attendance history.
+5. Keep homework and test history.
+6. Unlock purchased course access.
+
+========================================
+USERS PAGE IMPROVEMENTS
+========================================
+
+Add filters:
+
+- All Users
+- Leads
+- Demo Students
+- Paid Students
+- Teachers
+- Admins
+
+Show counts for each category.
+
+========================================
+DEMO BATCH IMPROVEMENTS
+========================================
+
+Show:
+
+- Total Demo Students
+- Attendance %
+- Classes Attended
+- Homework Submitted
+- Test Attempts
+- Conversion Count
+- Conversion Rate %
+
+========================================
+AUDIT LOGS
+========================================
+
+Log all actions:
+
+- Bulk Upload
+- Demo Enrollment
+- Demo Removal
+- Conversion to Paid Student
+
+========================================
+VALIDATION
+========================================
+
+- Prevent duplicate email accounts.
+- Prevent duplicate phone accounts.
+- Validate CSV format.
+- Show success and failure summary after upload.
+
+========================================
+SCALABILITY
+========================================
+
+System must support:
+
+- 500+ demo students uploaded at once.
+- Bulk assignment to demo batches.
+- Fast search and filtering.
+- No UI freezing.
+
+========================================
+IMPORTANT
+========================================
+
+This must be fully functional.
+
+No mock data.
+No placeholder buttons.
+All APIs, database models, admin screens, teacher screens, and student portal permissions must work correctly end-to-end.
+
+After implementation, verify:
+1. Demo student creation works.
+2. Demo student login works.
+3. Demo batch assignment works.
+4. Demo-only access restrictions work.
+5. Conversion to paid student works.
+6. Audit logs are generated correctly.
