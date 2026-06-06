@@ -52,7 +52,7 @@ export default function TeacherLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row" style={{ fontFamily: "Poppins, sans-serif" }}>
+    <div className="h-screen flex flex-col lg:flex-row overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* ── Left branding panel ── */}
       <div
         className="hidden lg:flex flex-col justify-between flex-1 p-12 relative overflow-hidden"
@@ -127,7 +127,7 @@ export default function TeacherLoginPage() {
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 bg-gray-50 min-h-screen lg:min-h-0 relative">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:px-12 lg:py-8 bg-gray-50 overflow-y-auto relative">
         <Link href="/">
           <div
             className="absolute top-5 left-5 flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer"
