@@ -25,3 +25,5 @@ export * from "./content";
 export * from "./pointsLedger";
 export * from "./dailyCoinClaims";
 export * from "./notes";
+export * from "./mentorAssignments";
+export * from "./mentorFollowUps";

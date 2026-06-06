@@ -86,6 +86,7 @@ type Tab =
   | "teacher-analytics"
   | "health"
   | "gamification"
+  | "mentors"
   | "settings";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1067,6 +1068,7 @@ function AdminPageInner() {
     { id: "demo-batches", label: "Demo Batches", icon: Layers, group: "Content" },
     { id: "liveclasses", label: "Live Classes", icon: Video, group: "Content" },
     { id: "users", label: "Users", icon: Users, group: "Manage" },
+    { id: "mentors", label: "Mentors", icon: UserCheck2, group: "Manage" },
     { id: "assignments", label: "Teachers", icon: LinkIcon, group: "Manage" },
     { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "Manage" },
     { id: "announcements", label: "Announcements", icon: Bell, group: "Manage" },
@@ -2526,6 +2528,9 @@ function AdminPageInner() {
           />
         )}
 
+        {/* ── Mentors ──────────────────────────────────────────────────── */}
+        {tab === "mentors" && <MentorsTab flash={flash} users={users} />}
+
         {/* ── Dashboard ────────────────────────────────────────────────── */}
         {tab === "dashboard" && <DashboardTab />}
 
@@ -2574,6 +2579,292 @@ function AdminPageInner() {
         )}
       </div>
       </div>
+    </div>
+  );
+}
+
+// ── Admin: Mentors Tab ──────────────────────────────────────────────────────
+interface Mentor {
+  id: number; name: string; email: string | null; phone: string | null;
+  isActive: boolean; createdAt: string; studentCount: number;
+}
+interface MentorAssignment {
+  id: number; studentId: number; studentName: string | null; studentGrade: number | null;
+  studentEmail: string | null; assignedAt: string; isActive: boolean;
+}
+
+function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => void; users: User[] }) {
+  const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subTab, setSubTab] = useState<"list" | "create" | "assign">("list");
+  const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
+  const [assignments, setAssignments] = useState<MentorAssignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+
+  // Create form
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  // Assign form
+  const [assignMentorId, setAssignMentorId] = useState("");
+  const [assignStudentId, setAssignStudentId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
+  const students = useMemo(() => users.filter(u => u.role === "student"), [users]);
+
+  const loadMentors = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch("/admin/mentors");
+    if (r.ok) setMentors(await r.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadMentors(); }, [loadMentors]);
+
+  async function loadAssignments(mentorId: number) {
+    setLoadingAssignments(true);
+    const r = await apiFetch(`/admin/mentors/${mentorId}/assignments`);
+    if (r.ok) setAssignments(await r.json());
+    setLoadingAssignments(false);
+  }
+
+  async function createMentor(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !email || !password) return;
+    setCreating(true);
+    const r = await apiFetch("/admin/mentors", {
+      method: "POST",
+      body: JSON.stringify({ name, email, phone: phone || undefined, password }),
+    });
+    setCreating(false);
+    if (r.ok) {
+      flash(`Mentor ${name} created!`);
+      setName(""); setEmail(""); setPhone(""); setPassword("");
+      setSubTab("list");
+      loadMentors();
+    } else {
+      const d = await r.json();
+      flash(d.error ?? "Failed to create mentor", false);
+    }
+  }
+
+  async function toggleMentorActive(mentor: Mentor) {
+    const r = await apiFetch(`/admin/mentors/${mentor.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ isActive: !mentor.isActive }),
+    });
+    if (r.ok) { flash(`Mentor ${mentor.isActive ? "disabled" : "enabled"}!`); loadMentors(); }
+    else flash("Failed to update mentor", false);
+  }
+
+  async function assignStudent(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assignMentorId || !assignStudentId) return;
+    setAssigning(true);
+    const r = await apiFetch("/admin/mentor-assignments", {
+      method: "POST",
+      body: JSON.stringify({ mentorId: Number(assignMentorId), studentId: Number(assignStudentId) }),
+    });
+    setAssigning(false);
+    if (r.ok) {
+      flash("Student assigned to mentor!");
+      setAssignStudentId("");
+      loadMentors();
+      if (selectedMentor?.id === Number(assignMentorId)) loadAssignments(Number(assignMentorId));
+    } else {
+      const d = await r.json();
+      flash(d.error ?? "Failed to assign", false);
+    }
+  }
+
+  async function removeAssignment(assignmentId: number) {
+    await apiFetch(`/admin/mentor-assignments/${assignmentId}`, { method: "DELETE" });
+    flash("Assignment removed");
+    if (selectedMentor) loadAssignments(selectedMentor.id);
+    loadMentors();
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-black text-base" style={{ color: NAVY }}>Mentor Management</h3>
+          <p className="text-xs text-gray-500">Create mentors, assign students, and manage the student success team</p>
+        </div>
+        <div className="flex gap-2">
+          {(["list", "create", "assign"] as const).map(t => (
+            <button key={t} onClick={() => setSubTab(t)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize"
+              style={{
+                background: subTab === t ? "#05966915" : "transparent",
+                color: subTab === t ? "#059669" : "#6B7280",
+                border: subTab === t ? "1px solid #05966930" : "1px solid transparent",
+              }}>
+              {t === "list" ? "All Mentors" : t === "create" ? "+ Create Mentor" : "Assign Student"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── List ── */}
+      {subTab === "list" && (
+        <div className="space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent" /></div>
+          ) : mentors.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <UserCheck2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+              <p className="font-semibold text-gray-500">No mentors yet</p>
+              <p className="text-xs text-gray-400 mt-1">Click "+ Create Mentor" to add your first student success manager</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {mentors.map(m => (
+                <div key={m.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black"
+                        style={{ background: m.isActive ? "linear-gradient(135deg, #059669, #047857)" : "#9CA3AF" }}>
+                        {m.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-black text-sm" style={{ color: NAVY }}>{m.name}</div>
+                        <div className="text-xs text-gray-400">{m.email ?? m.phone ?? "—"}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "#05966915", color: "#059669" }}>
+                        {m.studentCount} student{m.studentCount !== 1 ? "s" : ""}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                        {m.isActive ? "Active" : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button size="sm" variant="outline" className="text-xs h-7"
+                      onClick={() => { setSelectedMentor(m); loadAssignments(m.id); }}>
+                      View Assignments
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7"
+                      onClick={() => toggleMentorActive(m)}>
+                      {m.isActive ? "Disable" : "Enable"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7"
+                      onClick={() => { setAssignMentorId(String(m.id)); setSubTab("assign"); }}>
+                      Assign Student
+                    </Button>
+                  </div>
+
+                  {/* Assignments panel */}
+                  {selectedMentor?.id === m.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold" style={{ color: NAVY }}>Assigned Students</p>
+                        <button onClick={() => setSelectedMentor(null)} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                      {loadingAssignments ? (
+                        <p className="text-xs text-gray-400">Loading…</p>
+                      ) : assignments.filter(a => a.isActive).length === 0 ? (
+                        <p className="text-xs text-gray-400">No active assignments.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {assignments.filter(a => a.isActive).map(a => (
+                            <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                              <div>
+                                <span className="text-sm font-semibold" style={{ color: NAVY }}>{a.studentName ?? `Student #${a.studentId}`}</span>
+                                <span className="text-xs text-gray-400 ml-2">Grade {a.studentGrade ?? "?"}</span>
+                              </div>
+                              <button onClick={() => removeAssignment(a.id)}
+                                className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Create ── */}
+      {subTab === "create" && (
+        <div className="max-w-md">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h4 className="font-black text-sm mb-4" style={{ color: NAVY }}>Create New Mentor</h4>
+            <form onSubmit={createMentor} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Full Name *</label>
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Priya Sharma" required />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Email *</label>
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="mentor@braintam.com" required />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Phone (optional)</label>
+                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Password *</label>
+                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters" required minLength={6} />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" disabled={creating} className="text-white" style={{ background: "#059669" }}>
+                  {creating ? "Creating…" : "Create Mentor"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setSubTab("list")}>Cancel</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Assign ── */}
+      {subTab === "assign" && (
+        <div className="max-w-md">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h4 className="font-black text-sm mb-4" style={{ color: NAVY }}>Assign Student to Mentor</h4>
+            <form onSubmit={assignStudent} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Select Mentor *</label>
+                <select value={assignMentorId} onChange={e => setAssignMentorId(e.target.value)} required
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-green-500 bg-white">
+                  <option value="">Choose mentor…</option>
+                  {mentors.filter(m => m.isActive).map(m => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.studentCount} students)</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Select Student *</label>
+                <SearchableSelect
+                  options={students.map(s => ({ value: String(s.id), label: `${s.name} (Grade ${s.grade})` }))}
+                  value={assignStudentId}
+                  onValueChange={setAssignStudentId}
+                  placeholder="Search student…"
+                />
+              </div>
+              <p className="text-xs text-gray-400">If this student already has a mentor, they will be reassigned.</p>
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" disabled={assigning || !assignMentorId || !assignStudentId} className="text-white" style={{ background: "#059669" }}>
+                  {assigning ? "Assigning…" : "Assign Student"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setSubTab("list")}>Cancel</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

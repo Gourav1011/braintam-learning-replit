@@ -17,6 +17,7 @@ import attendanceRouter from "./attendance";
 import curriculumRouter from "./curriculum";
 import syllabusRouter from "./syllabus";
 import demoBatchesRouter from "./demoBatches";
+import mentorRouter from "./mentor";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(homeworkRouter);
 router.use(assignmentsRouter);
 router.use(testsRouter);
 router.use(studentRouter);
+router.use(mentorRouter);
 
 export default router;

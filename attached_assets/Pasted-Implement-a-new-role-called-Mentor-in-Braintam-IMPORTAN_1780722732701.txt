@@ -1,0 +1,395 @@
+Implement a new role called "Mentor" in Braintam.
+
+IMPORTANT:
+
+This is NOT a Teacher role.
+
+This is NOT an Admin role.
+
+Mentors are Student Success Managers whose job is to monitor student engagement, attendance, homework completion, academic consistency, and parent follow-ups.
+
+The Mentor Portal must be lightweight, fast, and focused only on student success and retention.
+
+=================================================
+NEW USER ROLE
+=============
+
+Add new role:
+
+mentor
+
+Existing roles:
+
+* admin
+* teacher
+* mentor
+* student
+
+Future:
+
+* parent
+
+=================================================
+ADMIN PANEL CHANGES
+===================
+
+Create:
+
+Admin → Mentors
+
+Admin should be able to:
+
+* Create Mentor
+* Edit Mentor
+* Disable Mentor
+* Reset Mentor Password
+* Assign Students
+* Reassign Students
+
+Admin can assign:
+
+1 Student → 1 Mentor
+
+A mentor can manage multiple students.
+
+=================================================
+MENTOR ASSIGNMENT SYSTEM
+========================
+
+Add:
+
+Assign Mentor button in Student Profile.
+
+Admin can:
+
+Assign one mentor to a student.
+
+Display:
+
+Assigned Mentor
+
+Assigned Date
+
+Student Count per Mentor
+
+=================================================
+MENTOR PORTAL
+=============
+
+Create a completely separate Mentor Dashboard.
+
+Mentors should NOT have access to:
+
+❌ Course Creation
+
+❌ Live Class Creation
+
+❌ Homework Creation
+
+❌ Test Creation
+
+❌ Teacher Tools
+
+❌ Admin Settings
+
+Mentors should ONLY see their assigned students.
+
+=================================================
+MENTOR DASHBOARD
+================
+
+Show:
+
+Total Assigned Students
+
+Active Today
+
+Students Needing Attention
+
+At Risk Students
+
+Homework Pending
+
+Attendance Issues
+
+Upcoming Follow-Ups
+
+=================================================
+MY STUDENTS PAGE
+================
+
+Show only assigned students.
+
+Display:
+
+Name
+
+Grade
+
+Assigned Date
+
+Attendance %
+
+Homework %
+
+Test %
+
+Last Login
+
+Status
+
+Student Health Score
+
+Search and filter supported.
+
+=================================================
+STUDENT HEALTH SCORE
+====================
+
+Create automated score.
+
+Based on:
+
+Attendance
+
+Homework Submission
+
+Test Participation
+
+Login Activity
+
+Engagement
+
+Example:
+
+90–100 = Excellent
+
+75–89 = Good
+
+50–74 = Needs Attention
+
+Below 50 = At Risk
+
+Display color indicators.
+
+=================================================
+ALERT CENTER
+============
+
+Automatically generate mentor alerts.
+
+Examples:
+
+🔴 No login for 7 days
+
+🔴 Homework not submitted for 7 days
+
+🔴 Missed 2 consecutive live classes
+
+🔴 Attendance below 50%
+
+🔴 Test not attempted
+
+🔴 Inactive student
+
+Mentor sees daily action list.
+
+=================================================
+FOLLOW-UP CENTER
+================
+
+Mentors can add notes.
+
+Examples:
+
+Called Parent
+
+Parent Not Reachable
+
+Student Sick
+
+Homework Reminder Given
+
+Issue Resolved
+
+Follow-Up Scheduled
+
+All notes should be timestamped.
+
+=================================================
+PARENT COMMUNICATION LOG
+========================
+
+For each student:
+
+Display:
+
+Parent Name
+
+Phone Number
+
+Email
+
+Communication History
+
+Follow-Up Notes
+
+Last Contact Date
+
+=================================================
+MENTOR STUDENT PROFILE
+======================
+
+When mentor opens student profile:
+
+Show:
+
+Basic Details
+
+Parent Details
+
+Attendance %
+
+Homework %
+
+Assignments %
+
+Test Performance
+
+Last Login
+
+Last Activity
+
+Current Courses
+
+Current Mentor
+
+Risk Level
+
+Recent Activity Timeline
+
+=================================================
+DAILY TASK CENTER
+=================
+
+Auto-generate tasks.
+
+Examples:
+
+Call Student
+
+Call Parent
+
+Homework Reminder
+
+Attendance Follow-Up
+
+Test Follow-Up
+
+Tasks can be marked:
+
+Pending
+
+In Progress
+
+Completed
+
+=================================================
+MENTOR ANALYTICS
+================
+
+For each mentor show:
+
+Assigned Students
+
+Active Students
+
+At-Risk Students
+
+Follow-Ups Completed
+
+Attendance Improvements
+
+Homework Improvement Rate
+
+Student Retention Rate
+
+=================================================
+AUDIT LOGS
+==========
+
+Track:
+
+Student Assignment
+
+Mentor Reassignment
+
+Follow-Up Notes
+
+Task Completion
+
+Parent Contact Logs
+
+=================================================
+PERMISSIONS
+===========
+
+Mentors can:
+
+✅ View assigned students
+
+✅ View academic progress
+
+✅ Add notes
+
+✅ Create follow-up records
+
+✅ Track attendance
+
+✅ Track homework
+
+Mentors cannot:
+
+❌ Edit courses
+
+❌ Create tests
+
+❌ Create homework
+
+❌ Access admin settings
+
+❌ View unassigned students
+
+=================================================
+PERFORMANCE REQUIREMENTS
+========================
+
+Use filtered queries.
+
+Load only assigned students.
+
+Use pagination.
+
+Support:
+
+* 100 mentors
+* 10,000 students
+* 100 students per mentor
+
+without performance issues.
+
+=================================================
+FINAL GOAL
+==========
+
+Create a Student Success Management System.
+
+The Mentor Portal should help Braintam:
+
+* Improve retention
+* Improve attendance
+* Improve homework completion
+* Reduce student drop-off
+* Improve parent engagement
+
+while remaining simple, lightweight, fast, and fully integrated with Admin, Teacher, and Student portals.

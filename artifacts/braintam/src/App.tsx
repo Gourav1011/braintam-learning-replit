@@ -47,6 +47,8 @@ import AdminPage from "@/pages/admin";
 import TeacherPage from "@/pages/teacher";
 import TeacherLoginPage from "@/pages/teacher-login";
 import AdminLoginPage from "@/pages/admin-login";
+import MentorPage from "@/pages/mentor";
+import MentorLoginPage from "@/pages/mentor-login";
 import LoginPage from "@/pages/login";
 import EnrollPage from "@/pages/enroll";
 import DownloadAppPage from "@/pages/download-app";
@@ -281,6 +283,14 @@ function TeacherRoute({ component: Component }: { component: React.ComponentType
   return <Component />;
 }
 
+function MentorRoute({ component: Component }: { component: React.ComponentType }) {
+  const { student, role, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!student) return <Redirect to="/mentor/login" />;
+  if (role !== "mentor" && role !== "admin") return <Redirect to="/dashboard" />;
+  return <Component />;
+}
+
 function GuestRoute({ component: Component }: { component: React.ComponentType }) {
   const { student, isLoading } = useAuth();
   if (isLoading) return null;
@@ -386,10 +396,12 @@ function Router() {
       {/* Staff login pages */}
       <Route path="/teacher/login/*?" component={TeacherLoginPage} />
       <Route path="/admin/login/*?" component={AdminLoginPage} />
+      <Route path="/mentor/login/*?" component={MentorLoginPage} />
 
       {/* Role-specific portals */}
       <Route path="/admin"><AdminRoute component={AdminPage} /></Route>
       <Route path="/teacher"><TeacherRoute component={TeacherPage} /></Route>
+      <Route path="/mentor"><MentorRoute component={MentorPage} /></Route>
 
       {/* Protected */}
       <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>

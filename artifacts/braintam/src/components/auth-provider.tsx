@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 
-export type UserRole = "admin" | "teacher" | "student";
+export type UserRole = "admin" | "teacher" | "mentor" | "student";
 
 export interface StudentProfile {
   id: number;
@@ -62,7 +62,7 @@ async function syncClerkUser(email: string, name: string): Promise<{ token: stri
 }
 
 function isStaffPath(path: string) {
-  return path.startsWith("/admin") || path.startsWith("/teacher");
+  return path.startsWith("/admin") || path.startsWith("/teacher") || path.startsWith("/mentor");
 }
 
 function normalize(s: StudentProfile): StudentProfile {
