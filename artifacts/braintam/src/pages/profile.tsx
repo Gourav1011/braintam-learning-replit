@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetStudentProfile, useGetStudentProgress, getGetStudentProfileQueryKey, getGetStudentProgressQueryKey } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
@@ -124,6 +124,16 @@ export default function ProfilePage() {
   const { data: progress, isLoading: progressLoading } = useGetStudentProgress({
     query: { queryKey: getGetStudentProgressQueryKey(), enabled: !!student }
   });
+
+  const [myMentor, setMyMentor] = useState<{ id: number; name: string; phone: string | null; email: string } | null | "loading">("loading");
+
+  useEffect(() => {
+    if (!student) return;
+    fetch(`${BASE}/api/student/my-mentor`, { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setMyMentor(data))
+      .catch(() => setMyMentor(null));
+  }, [student]);
 
   const p = profile as any;
 
@@ -755,27 +765,76 @@ export default function ProfilePage() {
               </AnimatePresence>
             </div>
 
-            {/* Know Your Personal Teacher */}
+            {/* Know Your Mentor */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-              <Card className="border-2 border-dashed border-blue-100">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
-                      <UserCheck className="w-5 h-5 text-white" />
+              <Card className="border-2 border-blue-100 overflow-hidden">
+                <CardContent className="p-0">
+                  {/* Header strip */}
+                  <div className="flex items-center gap-3 px-4 py-3"
+                    style={{ background: `linear-gradient(135deg,${NAVY},#1A3F8A)` }}>
+                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                      <UserCheck className="w-4 h-4 text-white" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-gray-800">Know Your Personal Teacher</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Your dedicated mentor &amp; guide</p>
+                    <div>
+                      <p className="font-bold text-sm text-white">Know Your Mentor</p>
+                      <p className="text-[11px] text-blue-200">Your dedicated guide &amp; support</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-                      style={{ background: "#FFF3E0", color: ORANGE }}>
-                      Coming Soon
-                    </span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-                    Your assigned mentor teacher details will appear here once configured by the admin.
-                  </p>
+
+                  {/* Body */}
+                  <div className="px-4 py-3">
+                    {myMentor === "loading" ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gray-100 animate-pulse" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+                        </div>
+                      </div>
+                    ) : myMentor === null ? (
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ background: "#F3F4F6" }}>
+                          <UserCheck className="w-5 h-5 text-gray-300" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-400">No mentor assigned yet</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Your admin will assign one soon</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        {/* Avatar circle with initial */}
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-lg"
+                          style={{ background: `linear-gradient(135deg,${ORANGE},#e85d04)` }}>
+                          {myMentor.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-gray-800 truncate">{myMentor.name}</p>
+                          {myMentor.phone ? (
+                            <a href={`tel:${myMentor.phone}`}
+                              className="flex items-center gap-1 mt-1 group">
+                              <Phone className="w-3 h-3 flex-shrink-0" style={{ color: NAVY }} />
+                              <span className="text-xs font-semibold group-hover:underline" style={{ color: NAVY }}>
+                                {myMentor.phone}
+                              </span>
+                            </a>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-0.5">No contact number added</p>
+                          )}
+                          {myMentor.email && (
+                            <p className="text-[11px] text-gray-400 mt-0.5 truncate">{myMentor.email}</p>
+                          )}
+                        </div>
+                        <div className="flex-shrink-0">
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-full"
+                            style={{ background: "#ECFDF5", color: "#059669" }}>
+                            Active
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

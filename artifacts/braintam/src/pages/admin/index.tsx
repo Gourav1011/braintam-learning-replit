@@ -2825,7 +2825,8 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                       </div>
                       <div>
                         <div className="font-black text-sm" style={{ color: NAVY }}>{m.name}</div>
-                        <div className="text-xs text-gray-400">{m.email ?? m.phone ?? "—"}</div>
+                        <div className="text-xs text-gray-400">{m.email}</div>
+                        {m.phone && <div className="text-xs text-green-600 font-semibold">{m.phone}</div>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

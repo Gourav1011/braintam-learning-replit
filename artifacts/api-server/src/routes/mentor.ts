@@ -364,11 +364,12 @@ router.post("/admin/mentors", adminOnly, async (req, res) => {
 // Toggle mentor active
 router.patch("/admin/mentors/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
-  const { isActive, name, password } = req.body;
+  const { isActive, name, password, phone } = req.body;
   const updates: Record<string, unknown> = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
   if (name) updates.name = name;
   if (password) updates.passwordHash = hashPassword(password);
+  if (phone !== undefined) updates.phone = phone || null;
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "Nothing to update" });
     return;

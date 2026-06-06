@@ -5,6 +5,7 @@ import {
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
   coursesTable, announcementsTable, pointsLedgerTable,
+  mentorStudentAssignmentsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -453,6 +454,28 @@ router.get("/student/points-history", requireAuth, async (req, res) => {
     weekPoints,
     monthPoints,
   });
+});
+
+// ── My Mentor ──────────────────────────────────────────────────────────────
+router.get("/student/my-mentor", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+  const [row] = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      phone: usersTable.phone,
+      email: usersTable.email,
+    })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(usersTable, eq(usersTable.id, mentorStudentAssignmentsTable.mentorId))
+    .where(
+      and(
+        eq(mentorStudentAssignmentsTable.studentId, studentId),
+        eq(mentorStudentAssignmentsTable.isActive, true),
+      )
+    )
+    .limit(1);
+  res.json(row ?? null);
 });
 
 export default router;
