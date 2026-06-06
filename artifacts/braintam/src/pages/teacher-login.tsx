@@ -52,10 +52,10 @@ export default function TeacherLoginPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* ── Left branding panel ── */}
       <div
-        className="hidden lg:flex flex-col justify-between flex-1 p-12 relative overflow-hidden"
+        className="hidden lg:flex flex-col justify-between lg:w-5/12 p-12 relative overflow-hidden flex-shrink-0"
         style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0d3580 55%, #0a2660 100%)` }}
       >
         <div className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-10 blur-3xl" style={{ background: TEAL }} />
@@ -127,7 +127,7 @@ export default function TeacherLoginPage() {
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:px-12 lg:py-8 bg-gray-50 overflow-y-auto relative">
+      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 lg:px-8 lg:py-8 bg-gray-50 overflow-y-auto relative">
         <Link href="/">
           <div
             className="absolute top-5 left-5 flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer"
@@ -143,86 +143,88 @@ export default function TeacherLoginPage() {
           <span className="font-black text-xl" style={{ color: NAVY }}>Braintam</span>
         </div>
 
-        <div
-          className="w-full max-w-[440px] mb-5 px-4 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold"
-          style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}35`, color: TEAL }}
-        >
-          <BookOpen className="w-4 h-4 flex-shrink-0" />
-          Teacher Portal — sign in to manage your classes
-        </div>
+        <div className="w-full max-w-[400px]">
+          <div
+            className="w-full mb-5 px-4 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold"
+            style={{ background: `${TEAL}12`, border: `1px solid ${TEAL}35`, color: TEAL }}
+          >
+            <BookOpen className="w-4 h-4 flex-shrink-0" />
+            Teacher Portal — sign in to manage your classes
+          </div>
 
-        <div className="w-full max-w-[440px] bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>Teacher Sign In</h2>
-          <p className="text-sm text-gray-500 mb-6">Enter your credentials provided by your admin.</p>
+          <div className="w-full bg-white rounded-2xl shadow-xl p-7">
+            <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>Teacher Sign In</h2>
+            <p className="text-sm text-gray-500 mb-6">Enter your credentials provided by your admin.</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Email address</label>
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@school.com"
-                className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                style={{ border: `1.5px solid #E5E7EB`, color: NAVY, background: "#F8FAFC" }}
-                onFocus={e => (e.currentTarget.style.border = `1.5px solid ${TEAL}`)}
-                onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Password</label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Email address</label>
                 <input
-                  type={showPw ? "text" : "password"}
+                  type="email"
                   required
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Your password"
-                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all pr-11"
+                  autoComplete="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@school.com"
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
                   style={{ border: `1.5px solid #E5E7EB`, color: NAVY, background: "#F8FAFC" }}
                   onFocus={e => (e.currentTarget.style.border = `1.5px solid ${TEAL}`)}
                   onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
 
-            {error && (
-              <div className="px-4 py-3 rounded-xl text-sm font-medium text-red-700 bg-red-50 border border-red-200">
-                {error}
+              <div>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Password</label>
+                <div className="relative">
+                  <input
+                    type={showPw ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Your password"
+                    className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all pr-11"
+                    style={{ border: `1.5px solid #E5E7EB`, color: NAVY, background: "#F8FAFC" }}
+                    onFocus={e => (e.currentTarget.style.border = `1.5px solid ${TEAL}`)}
+                    onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-              style={{ background: `linear-gradient(135deg, ${TEAL}, #0669a1)` }}
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? "Signing in…" : "Sign In to Teacher Portal"}
-            </button>
-          </form>
+              {error && (
+                <div className="px-4 py-3 rounded-xl text-sm font-medium text-red-700 bg-red-50 border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                style={{ background: `linear-gradient(135deg, ${TEAL}, #0669a1)` }}
+              >
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loading ? "Signing in…" : "Sign In to Teacher Portal"}
+              </button>
+            </form>
+          </div>
+
+          <p className="text-xs text-center mt-5 text-gray-400">
+            Admin?{" "}
+            <Link href="/admin/login">
+              <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>
+                Admin login →
+              </span>
+            </Link>
+          </p>
         </div>
-
-        <p className="text-xs text-center mt-5 text-gray-400">
-          Admin?{" "}
-          <Link href="/admin/login">
-            <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>
-              Admin login →
-            </span>
-          </Link>
-        </p>
       </div>
     </div>
   );
