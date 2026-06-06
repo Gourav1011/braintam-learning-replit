@@ -59,6 +59,7 @@ import { CourseAnalyticsTab } from "./course-analytics-tab";
 import { TeacherAnalyticsTab } from "./teacher-analytics-tab";
 import { HealthTab } from "./health-tab";
 import { GamificationTab } from "./gamification-tab";
+import { BtlCrmTab } from "./btl-crm-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -86,6 +87,7 @@ type Tab =
   | "teacher-analytics"
   | "health"
   | "gamification"
+  | "btl-crm"
   | "mentors"
   | "settings";
 
@@ -1071,6 +1073,7 @@ function AdminPageInner() {
     { id: "teacher-analytics", label: "Teacher Analytics", icon: GradCap, group: "Insights" },
     { id: "health", label: "Learning Health", icon: AlertTriangle, group: "Insights" },
     { id: "gamification", label: "Gamification", icon: Zap, group: "Insights" },
+    { id: "btl-crm", label: "BTL CRM", icon: UserCheck2, group: "Insights" },
     { id: "courses", label: "Courses", icon: BookOpen, group: "Content" },
     { id: "demo-batches", label: "Demo Batches", icon: Layers, group: "Content" },
     { id: "liveclasses", label: "Live Classes", icon: Video, group: "Content" },
@@ -2551,6 +2554,9 @@ function AdminPageInner() {
             ]}
           />
         )}
+
+        {/* ── BTL CRM ──────────────────────────────────────────────────── */}
+        {tab === "btl-crm" && <BtlCrmTab users={users} />}
 
         {/* ── Mentors ──────────────────────────────────────────────────── */}
         {tab === "mentors" && <MentorsTab flash={flash} users={users} />}

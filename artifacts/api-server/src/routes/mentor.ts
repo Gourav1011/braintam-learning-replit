@@ -605,4 +605,178 @@ router.delete("/admin/mentor-assignments/:id", adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Admin: BTL CRM Overview ──────────────────────────────────────────────
+
+// Pipeline summary: count per lead stage across all assigned students
+router.get("/admin/btl-crm/pipeline", adminOnly, async (_req, res) => {
+  const students = await db
+    .select({ leadStage: usersTable.leadStage })
+    .from(usersTable)
+    .innerJoin(mentorStudentAssignmentsTable, and(
+      eq(mentorStudentAssignmentsTable.studentId, usersTable.id),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+    ))
+    .where(eq(usersTable.role, "student"));
+
+  const stageCounts: Record<string, number> = {};
+  let unassignedToStage = 0;
+  for (const s of students) {
+    if (s.leadStage) {
+      stageCounts[s.leadStage] = (stageCounts[s.leadStage] ?? 0) + 1;
+    } else {
+      unassignedToStage++;
+    }
+  }
+
+  const totalAssigned = students.length;
+  const converted = (stageCounts["Converted"] ?? 0) + (stageCounts["Paid Student"] ?? 0);
+  const dropped = stageCounts["Dropped"] ?? 0;
+  const active = totalAssigned - dropped - unassignedToStage;
+
+  res.json({ stageCounts, totalAssigned, converted, dropped, unassignedToStage, active });
+});
+
+// Mentor performance table: per-mentor stats across their pipeline
+router.get("/admin/btl-crm/mentor-performance", adminOnly, async (_req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const mentors = await db
+    .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.role, "mentor"));
+
+  if (mentors.length === 0) { res.json([]); return; }
+
+  const mentorIds = mentors.map(m => m.id);
+
+  const assignmentCounts = await db
+    .select({ mentorId: mentorStudentAssignmentsTable.mentorId, count: sql<number>`count(*)` })
+    .from(mentorStudentAssignmentsTable)
+    .where(and(inArray(mentorStudentAssignmentsTable.mentorId, mentorIds), eq(mentorStudentAssignmentsTable.isActive, true)))
+    .groupBy(mentorStudentAssignmentsTable.mentorId);
+  const assignMap = Object.fromEntries(assignmentCounts.map(r => [r.mentorId, Number(r.count)]));
+
+  const followUpStats = await db
+    .select({
+      mentorId: mentorFollowUpsTable.mentorId,
+      total: sql<number>`count(*)`,
+      completed: sql<number>`count(*) filter (where call_status = 'completed')`,
+      overdue: sql<number>`count(*) filter (where next_follow_up_date < ${today} and call_status != 'completed' and next_follow_up_date is not null)`,
+    })
+    .from(mentorFollowUpsTable)
+    .where(inArray(mentorFollowUpsTable.mentorId, mentorIds))
+    .groupBy(mentorFollowUpsTable.mentorId);
+  const fuMap = Object.fromEntries(followUpStats.map(r => [r.mentorId, r]));
+
+  const taskStats = await db
+    .select({
+      mentorId: mentorTasksTable.mentorId,
+      total: sql<number>`count(*)`,
+      done: sql<number>`count(*) filter (where status = 'done')`,
+      overdue: sql<number>`count(*) filter (where status in ('pending','in_progress') and due_date < ${today})`,
+    })
+    .from(mentorTasksTable)
+    .where(inArray(mentorTasksTable.mentorId, mentorIds))
+    .groupBy(mentorTasksTable.mentorId);
+  const taskMap = Object.fromEntries(taskStats.map(r => [r.mentorId, r]));
+
+  // students converted per mentor
+  const convertedCounts = await db
+    .select({ mentorId: mentorStudentAssignmentsTable.mentorId, count: sql<number>`count(*)` })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(usersTable, and(
+      eq(usersTable.id, mentorStudentAssignmentsTable.studentId),
+      inArray(usersTable.leadStage, ["Converted", "Paid Student"]),
+    ))
+    .where(and(inArray(mentorStudentAssignmentsTable.mentorId, mentorIds), eq(mentorStudentAssignmentsTable.isActive, true)))
+    .groupBy(mentorStudentAssignmentsTable.mentorId);
+  const convMap = Object.fromEntries(convertedCounts.map(r => [r.mentorId, Number(r.count)]));
+
+  const result = mentors.map(m => {
+    const fu = fuMap[m.id];
+    const tk = taskMap[m.id];
+    const fuTotal = Number(fu?.total ?? 0);
+    const fuDone = Number(fu?.completed ?? 0);
+    const fuCompletionRate = fuTotal > 0 ? Math.round((fuDone / fuTotal) * 100) : null;
+    return {
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      isActive: m.isActive,
+      totalStudents: assignMap[m.id] ?? 0,
+      converted: convMap[m.id] ?? 0,
+      followUpTotal: fuTotal,
+      followUpDone: fuDone,
+      followUpCompletionRate: fuCompletionRate,
+      overdueFollowUps: Number(fu?.overdue ?? 0),
+      totalTasks: Number(tk?.total ?? 0),
+      doneTasks: Number(tk?.done ?? 0),
+      overdueTasks: Number(tk?.overdue ?? 0),
+    };
+  });
+
+  res.json(result);
+});
+
+// Global overdue follow-up reminders across all mentors
+router.get("/admin/btl-crm/overdue-reminders", adminOnly, async (_req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const rows = await db
+    .select({
+      id: mentorFollowUpsTable.id,
+      mentorId: mentorFollowUpsTable.mentorId,
+      mentorName: sql<string>`(select name from users where id = ${mentorFollowUpsTable.mentorId})`,
+      studentId: mentorFollowUpsTable.studentId,
+      studentName: usersTable.name,
+      studentGrade: usersTable.grade,
+      leadStatus: mentorFollowUpsTable.leadStatus,
+      note: mentorFollowUpsTable.note,
+      nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate,
+      callStatus: mentorFollowUpsTable.callStatus,
+      createdAt: mentorFollowUpsTable.createdAt,
+    })
+    .from(mentorFollowUpsTable)
+    .leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.studentId))
+    .where(and(
+      sql`${mentorFollowUpsTable.nextFollowUpDate} < ${today}`,
+      sql`${mentorFollowUpsTable.callStatus} != 'completed'`,
+      sql`${mentorFollowUpsTable.nextFollowUpDate} is not null`,
+    ))
+    .orderBy(mentorFollowUpsTable.nextFollowUpDate)
+    .limit(100);
+
+  const enriched = rows.map(r => ({
+    ...r,
+    daysOverdue: r.nextFollowUpDate
+      ? Math.floor((new Date(today).getTime() - new Date(r.nextFollowUpDate).getTime()) / 86400000)
+      : 0,
+  }));
+
+  res.json(enriched);
+});
+
+// Admin posts a timeline entry on any student
+router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {
+  const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;
+  if (!studentId || !remark) { res.status(400).json({ error: "studentId and remark required" }); return; }
+
+  const actor = req.authUser!;
+  const [entry] = await db
+    .insert(studentTimelineTable)
+    .values({
+      studentId: Number(studentId),
+      createdById: actor.id,
+      createdByName: actor.name,
+      createdByRole: "admin",
+      noteType: noteType ?? "General Note",
+      remark,
+      followUpDate: followUpDate ?? null,
+      actionTaken: actionTaken ?? null,
+    })
+    .returning();
+
+  res.status(201).json(entry);
+});
+
 export default router;
