@@ -27,7 +27,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "attendance" | "students" | "follow-ups" | "tasks";
+type Tab = "dashboard" | "attendance" | "students" | "follow-ups" | "tasks" | "settings";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const LEAD_STAGES = [
@@ -567,6 +567,11 @@ export default function BTLCRMPage() {
   const [taskLoading, setTaskLoading] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
 
+  // Reminder prefs
+  const [reminderPrefs, setReminderPrefs] = useState<{ remindersEnabled: boolean; digestMode: boolean; digestTime: string } | null>(null);
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderSaved, setReminderSaved] = useState(false);
+
   const fetchDashboard = useCallback(async () => {
     const r = await apiFetch("/mentor/dashboard");
     if (r.ok) {
@@ -601,6 +606,10 @@ export default function BTLCRMPage() {
     if (r.ok) { const rows: AttendanceRecord[] = await r.json(); setAttendanceMap(Object.fromEntries((Array.isArray(rows) ? rows : []).map(r => [r.studentId, r]))); }
     setAttLoading(false);
   }, []);
+  const fetchReminderPrefs = useCallback(async () => {
+    const r = await apiFetch("/mentor/reminder-prefs");
+    if (r.ok) { const d = await r.json(); setReminderPrefs({ remindersEnabled: d.remindersEnabled ?? true, digestMode: d.digestMode ?? true, digestTime: d.digestTime ?? "09:00" }); }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && (role === "mentor" || role === "admin")) {
@@ -609,6 +618,7 @@ export default function BTLCRMPage() {
   }, [isLoading, role]);
   useEffect(() => { if (tab === "attendance") fetchLiveClasses(attDate); }, [tab, attDate]);
   useEffect(() => { if (tab === "attendance") fetchAttendance(attDate, selectedClassId); }, [tab, attDate, selectedClassId]);
+  useEffect(() => { if (tab === "settings") fetchReminderPrefs(); }, [tab]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
   if (!student || (role !== "mentor" && role !== "admin")) return <Redirect to="/mentor/login" />;
@@ -733,7 +743,19 @@ export default function BTLCRMPage() {
     { key: "students", label: "Students", icon: Users },
     { key: "follow-ups", label: "Follow-Ups", icon: MessageSquare },
     { key: "tasks", label: "Tasks", icon: CheckSquare },
+    { key: "settings", label: "Reminders", icon: Bell },
   ];
+
+  async function saveReminderPrefs() {
+    if (!reminderPrefs) return;
+    setReminderSaving(true);
+    const r = await apiFetch("/mentor/reminder-prefs", {
+      method: "PUT",
+      body: JSON.stringify(reminderPrefs),
+    });
+    if (r.ok) { const d = await r.json(); setReminderPrefs({ remindersEnabled: d.remindersEnabled, digestMode: d.digestMode, digestTime: d.digestTime }); setReminderSaved(true); setTimeout(() => setReminderSaved(false), 3000); }
+    setReminderSaving(false);
+  }
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F8FAFF", fontFamily: "Poppins, sans-serif" }}>
@@ -1335,6 +1357,106 @@ export default function BTLCRMPage() {
                 <Target className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-semibold">No tasks yet</p>
                 <p className="text-xs mt-1">Create your first task to stay organized</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ════ REMINDER SETTINGS ════ */}
+        {tab === "settings" && (
+          <div className="p-5 max-w-xl mx-auto space-y-5">
+            <div>
+              <h1 className="text-xl font-black" style={{ color: NAVY }}>SMS Reminder Settings</h1>
+              <p className="text-xs text-gray-500 mt-0.5">Configure when and how you receive overdue follow-up reminders via SMS</p>
+            </div>
+
+            {!reminderPrefs ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
+            ) : (
+              <div className="space-y-4">
+                {/* Enable / disable */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-sm" style={{ color: NAVY }}>SMS Reminders</div>
+                      <p className="text-xs text-gray-500 mt-0.5">Receive an SMS when follow-ups go overdue</p>
+                    </div>
+                    <button
+                      onClick={() => setReminderPrefs(p => p ? { ...p, remindersEnabled: !p.remindersEnabled } : p)}
+                      className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
+                      style={{ background: reminderPrefs.remindersEnabled ? GREEN : "#D1D5DB" }}>
+                      <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: reminderPrefs.remindersEnabled ? "translateX(20px)" : "translateX(0)" }} />
+                    </button>
+                  </div>
+                </div>
+
+                {reminderPrefs.remindersEnabled && (
+                  <>
+                    {/* Digest vs instant */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+                      <div className="font-bold text-sm" style={{ color: NAVY }}>Reminder Mode</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setReminderPrefs(p => p ? { ...p, digestMode: true } : p)}
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-left"
+                          style={{ borderColor: reminderPrefs.digestMode ? GREEN : "#E5E7EB", background: reminderPrefs.digestMode ? `${GREEN}10` : "white" }}>
+                          <Bell className="w-5 h-5" style={{ color: reminderPrefs.digestMode ? GREEN : "#9CA3AF" }} />
+                          <div className="font-bold text-xs" style={{ color: reminderPrefs.digestMode ? GREEN : NAVY }}>Daily Digest</div>
+                          <p className="text-[10px] text-gray-500 text-center">One SMS per day listing all overdue follow-ups</p>
+                        </button>
+                        <button
+                          onClick={() => setReminderPrefs(p => p ? { ...p, digestMode: false } : p)}
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-left"
+                          style={{ borderColor: !reminderPrefs.digestMode ? ORANGE : "#E5E7EB", background: !reminderPrefs.digestMode ? `${ORANGE}10` : "white" }}>
+                          <Phone className="w-5 h-5" style={{ color: !reminderPrefs.digestMode ? ORANGE : "#9CA3AF" }} />
+                          <div className="font-bold text-xs" style={{ color: !reminderPrefs.digestMode ? ORANGE : NAVY }}>Instant</div>
+                          <p className="text-[10px] text-gray-500 text-center">One SMS per overdue follow-up</p>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Digest time */}
+                    {reminderPrefs.digestMode && (
+                      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+                        <div className="font-bold text-sm" style={{ color: NAVY }}>Preferred Send Time</div>
+                        <p className="text-xs text-gray-500">The daily digest will be sent within 30 minutes of this time (IST)</p>
+                        <input
+                          type="time"
+                          value={reminderPrefs.digestTime}
+                          onChange={e => setReminderPrefs(p => p ? { ...p, digestTime: e.target.value } : p)}
+                          className="mt-1 px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none font-semibold"
+                          style={{ color: NAVY }} />
+                      </div>
+                    )}
+
+                    {/* Phone number note */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                      <Phone className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-700">
+                        SMS reminders are sent to the phone number registered on your mentor account.
+                        Contact your admin if you need to update it.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Save */}
+                <button
+                  onClick={saveReminderPrefs}
+                  disabled={reminderSaving}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all"
+                  style={{ background: reminderSaving ? "#9CA3AF" : GREEN }}>
+                  {reminderSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {reminderSaving ? "Saving…" : reminderSaved ? "Saved!" : "Save Preferences"}
+                </button>
+
+                {reminderSaved && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <p className="text-xs font-semibold text-green-700">Preferences saved. Reminders will apply from the next scheduled check.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

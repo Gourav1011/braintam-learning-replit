@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { runOverdueFollowUpReminders } from "./jobs/overdueFollowUpReminders.js";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,20 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  scheduleReminderJob();
 });
+
+function scheduleReminderJob(): void {
+  const CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
+  const runWithGuard = async () => {
+    try {
+      await runOverdueFollowUpReminders();
+    } catch (err) {
+      logger.error({ err }, "Overdue follow-up reminder job failed");
+    }
+  };
+
+  setInterval(runWithGuard, CHECK_INTERVAL_MS);
+  logger.info({ intervalMinutes: 30 }, "Overdue follow-up reminder job scheduled (runs every 30 min)");
+}

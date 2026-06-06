@@ -10,10 +10,12 @@ import {
   liveClassesTable,
   studentTimelineTable,
   mentorTasksTable,
+  mentorReminderPrefsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import crypto from "crypto";
+import { runOverdueFollowUpReminders } from "../jobs/overdueFollowUpReminders.js";
 
 function hashPassword(pw: string): string {
   return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
@@ -469,6 +471,57 @@ router.delete("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   await db.delete(mentorFollowUpsTable).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId)));
   res.json({ ok: true });
+});
+
+// ── Reminder Preferences ─────────────────────────────────────────────────
+router.get("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const [row] = await db
+    .select()
+    .from(mentorReminderPrefsTable)
+    .where(eq(mentorReminderPrefsTable.mentorId, mentorId))
+    .limit(1);
+  if (!row) {
+    res.json({ mentorId, remindersEnabled: true, digestMode: true, digestTime: "09:00" });
+    return;
+  }
+  res.json(row);
+});
+
+router.put("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const { remindersEnabled, digestMode, digestTime } = req.body;
+
+  if (digestTime !== undefined) {
+    if (typeof digestTime !== "string" || !/^\d{2}:\d{2}$/.test(digestTime)) {
+      res.status(400).json({ error: "digestTime must be in HH:MM format (e.g. '09:00')" });
+      return;
+    }
+  }
+
+  const values = {
+    mentorId,
+    remindersEnabled: typeof remindersEnabled === "boolean" ? remindersEnabled : true,
+    digestMode: typeof digestMode === "boolean" ? digestMode : true,
+    digestTime: typeof digestTime === "string" ? digestTime : "09:00",
+    updatedAt: new Date(),
+  };
+
+  const [row] = await db
+    .insert(mentorReminderPrefsTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: mentorReminderPrefsTable.mentorId,
+      set: { remindersEnabled: values.remindersEnabled, digestMode: values.digestMode, digestTime: values.digestTime, updatedAt: values.updatedAt },
+    })
+    .returning();
+  res.json(row);
+});
+
+// Admin-only: manually trigger reminder job (for testing / on-demand dispatch)
+router.post("/admin/trigger-reminder-job", requireRole("admin"), async (_req, res) => {
+  runOverdueFollowUpReminders().catch(() => {});
+  res.json({ ok: true, message: "Reminder job triggered in background" });
 });
 
 // ── Admin: Mentor management ─────────────────────────────────────────────

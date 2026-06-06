@@ -30,3 +30,4 @@ export * from "./mentorFollowUps";
 export * from "./mentorAttendance";
 export * from "./studentTimeline";
 export * from "./mentorTasks";
+export * from "./mentorReminderPrefs";
