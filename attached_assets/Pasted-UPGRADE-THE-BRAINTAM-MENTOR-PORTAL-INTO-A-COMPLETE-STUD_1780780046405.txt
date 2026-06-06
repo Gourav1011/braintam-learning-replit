@@ -1,0 +1,371 @@
+UPGRADE THE BRAINTAM MENTOR PORTAL INTO A COMPLETE STUDENT SUCCESS CRM
+
+IMPORTANT:
+Do not create unnecessary complexity.
+Keep the UI clean, fast, professional and scalable for 10,000+ students.
+Follow CRM principles similar to Zoho CRM, HubSpot and modern Student Success platforms.
+
+====================================================
+
+1. PERMANENT STUDENT TIMELINE (HIGHEST PRIORITY)
+   ====================================================
+
+Create a permanent student timeline.
+
+Rules:
+
+* Notes can NEVER be deleted.
+* Notes can only be added.
+* Edits must create audit history.
+* Timeline remains attached to the student forever.
+* If mentor changes, all previous notes remain visible.
+* Admin, Mentor and Teacher can view the timeline.
+* Timeline must show:
+
+Date & Time
+Created By
+Role
+Note Type
+Remark
+Follow-Up Date
+Action Taken
+
+Example:
+
+06 Jun 2026
+Mentor Priya
+Parent Call
+Parent concerned about attendance.
+
+08 Jun 2026
+Teacher Rahul
+Homework Reminder Sent.
+
+10 Jun 2026
+Admin Gourav
+Converted Demo to Paid Student.
+
+====================================================
+2. FOLLOW-UP REMINDER SYSTEM
+============================
+
+When mentor enters a Next Follow-Up Date:
+
+Automatically create a reminder.
+
+Reminder Status:
+
+* Due Today
+* Upcoming
+* Overdue
+* Completed
+
+Create separate menu:
+
+REMINDERS
+
+Dashboard widgets:
+
+* Due Today
+* Overdue
+* Next 7 Days
+* Completed
+
+Rules:
+
+* Reminder cannot disappear.
+* Completed reminders remain in history.
+* When completing reminder, mentor must enter remarks.
+* If new follow-up date entered, next reminder automatically created.
+
+Escalation Rules:
+
+1 Day Overdue:
+Show orange warning.
+
+3 Days Overdue:
+Show red warning.
+
+7 Days Overdue:
+Notify Admin.
+
+15 Days Overdue:
+Flag mentor performance.
+
+====================================================
+3. STUDENT HEALTH SCORE
+=======================
+
+Calculate automatically.
+
+Attendance = 30%
+Homework = 25%
+Tests = 25%
+Login Activity = 20%
+
+Show:
+
+Green = 80+
+Yellow = 60-79
+Red = Below 60
+
+Display everywhere:
+
+* Student List
+* Student Profile
+* Mentor Dashboard
+* Admin Dashboard
+
+====================================================
+4. AUTO ALERT ENGINE
+====================
+
+Automatically generate alerts.
+
+Examples:
+
+Absent 3 Days
+Absent 7 Days
+No Login 7 Days
+No Homework 5 Days
+Low Test Score
+Parent Not Contacted 15 Days
+Demo Student Inactive
+Attendance Below 60%
+
+Mentor should immediately see action items.
+
+====================================================
+5. STUDENT 360 PROFILE
+======================
+
+Create a professional CRM-style profile.
+
+LEFT PANEL:
+
+Photo
+Name
+Grade
+School
+Parent Name
+Phone
+Email
+Lead Stage
+Assigned Mentor
+Health Score
+
+RIGHT PANEL:
+
+Timeline
+Attendance
+Homework
+Tests
+Follow-Ups
+Teacher Notes
+Mentor Notes
+Risk Level
+Activity History
+
+Everything visible on one page.
+
+====================================================
+6. LEAD STAGE MANAGEMENT
+========================
+
+Every student/lead should have a stage.
+
+Stages:
+
+New Lead
+Contacted
+Demo Invited
+Demo Joined
+Demo Active
+Interested
+Parent Follow-Up
+Converted
+Paid Student
+Inactive
+Dropped
+
+Support:
+
+List View
+Kanban View
+
+Drag and drop between stages.
+
+====================================================
+7. CRM STYLE STUDENT LIST
+=========================
+
+Replace oversized cards.
+
+Show compact professional table.
+
+Columns:
+
+Student Name
+Grade
+Parent Name
+Phone
+Health Score
+Attendance %
+Homework %
+Test %
+Last Active
+Lead Stage
+Risk Level
+Assigned Mentor
+
+Goal:
+Mentor should see 30-50 students on one screen.
+
+====================================================
+8. QUICK ACTIONS
+================
+
+Every student row should support:
+
+Call Parent
+WhatsApp Parent
+Add Note
+Schedule Follow-Up
+View Profile
+
+Maximum 2 clicks.
+
+====================================================
+9. PARENT COMMUNICATION TRACKER
+===============================
+
+Track all communication.
+
+Store:
+
+Call Date
+Call Outcome
+Call Duration
+WhatsApp Sent
+Parent Response
+Next Follow-Up
+
+Show communication history in timeline.
+
+====================================================
+10. MENTOR TASK MANAGEMENT
+==========================
+
+Create Tasks section.
+
+Examples:
+
+Call Parent
+Homework Reminder
+Attendance Follow-Up
+Fee Reminder
+Conversion Follow-Up
+
+Statuses:
+
+Pending
+In Progress
+Completed
+Overdue
+
+====================================================
+11. MENTOR PERFORMANCE DASHBOARD
+================================
+
+Admin should see:
+
+Assigned Students
+Active Students
+At Risk Students
+Calls Made
+Follow-Ups Completed
+Overdue Follow-Ups
+Conversion Rate
+Retention Rate
+
+====================================================
+12. PARENT SATISFACTION SCORE
+=============================
+
+Track parent sentiment.
+
+Options:
+
+Happy
+Satisfied
+Neutral
+Concerned
+Unhappy
+
+Show score in Admin Dashboard.
+
+====================================================
+13. SCALABILITY REQUIREMENTS
+============================
+
+System must support:
+
+10,000+ Students
+500+ Leads Daily
+100+ Mentors
+
+Use:
+
+Pagination
+Server-side Filtering
+Lazy Loading
+Optimized Queries
+
+====================================================
+14. UI IMPROVEMENTS
+===================
+
+Current cards are too large.
+
+Requirements:
+
+* Reduce wasted space.
+* Increase information density.
+* Professional CRM appearance.
+* Clear typography.
+* Consistent spacing.
+* Sticky filters.
+* Sticky search bar.
+* Mobile responsive.
+* Desktop optimized.
+
+====================================================
+15. FUTURE READY
+================
+
+Design architecture for:
+
+WhatsApp Integration
+AI Mentor Assistant
+Parent Portal
+Renewal Prediction
+Student Risk Prediction
+Learning Gap Detection
+
+Do not build these yet.
+Only prepare architecture.
+
+====================================================
+FINAL GOAL
+==========
+
+Transform the Mentor Portal into a Student Success CRM where:
+
+Teachers manage Academics.
+Mentors manage Student Success.
+Admins manage Operations.
+
+Every student should have a complete life-cycle history from Lead → Demo → Paid Student → Renewal.
+
+Nothing should ever be lost when mentors change.
+All remarks, follow-ups and communication history must remain permanently attached to the student profile.
