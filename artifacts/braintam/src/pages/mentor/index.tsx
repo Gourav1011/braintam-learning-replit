@@ -693,9 +693,20 @@ export default function BTLCRMPage() {
     if (r.ok) { setFuNote(""); setFuCallStatus(""); setFuCallTime(""); setFuCalledBy(""); setFuCalledByName(""); setFuLeadStatus(""); setFuNextDate(""); await fetchFollowUps(); await fetchDashboard(); }
     setFuLoading(false);
   }
-  async function markFollowUpCompleted(id: number) {
-    await apiFetch(`/mentor/follow-ups/${id}`, { method: "PATCH", body: JSON.stringify({ callStatus: "completed" }) });
-    await fetchFollowUps();
+  const [completingId, setCompletingId] = useState<number | null>(null);
+  const [completeRemark, setCompleteRemark] = useState("");
+  const [completeError, setCompleteError] = useState("");
+  const [completeLoading, setCompleteLoading] = useState(false);
+
+  function startComplete(id: number) { setCompletingId(id); setCompleteRemark(""); setCompleteError(""); }
+  function cancelComplete() { setCompletingId(null); setCompleteRemark(""); setCompleteError(""); }
+  async function submitComplete(id: number) {
+    if (!completeRemark.trim()) { setCompleteError("Please enter a completion remark."); return; }
+    setCompleteLoading(true);
+    const r = await apiFetch(`/mentor/follow-ups/${id}`, { method: "PATCH", body: JSON.stringify({ callStatus: "completed", note: completeRemark.trim() }) });
+    if (r.ok) { setCompletingId(null); setCompleteRemark(""); setCompleteError(""); await fetchFollowUps(); await fetchDashboard(); }
+    else { const d = await r.json().catch(() => ({})); setCompleteError(d.error ?? "Failed to complete. Please retry."); }
+    setCompleteLoading(false);
   }
 
   // ── Tasks ──
@@ -1185,12 +1196,29 @@ export default function BTLCRMPage() {
                           <p className="text-[10px] text-gray-400 mt-0.5">{fmtDateTime(fu.createdAt)}</p>
                         </div>
                         {fu.fuStatus !== "completed" && (
-                          <button onClick={() => markFollowUpCompleted(fu.id)}
+                          <button onClick={() => startComplete(fu.id)}
                             className="flex-shrink-0 p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition-all" title="Mark completed">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
+                      {completingId === fu.id && (
+                        <div className="mt-2 p-3 rounded-xl border border-green-200 bg-green-50/50 space-y-2">
+                          <div className="text-[10px] font-bold text-green-700">Enter completion remark (required)</div>
+                          <textarea value={completeRemark} onChange={e => { setCompleteRemark(e.target.value); setCompleteError(""); }} rows={2}
+                            placeholder="What was the outcome of this follow-up? (required)"
+                            className="w-full px-2 py-1.5 rounded-lg border border-green-200 text-xs outline-none resize-none bg-white focus:border-green-400" />
+                          {completeError && <p className="text-[10px] text-red-600">{completeError}</p>}
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => submitComplete(fu.id)} disabled={completeLoading}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-60"
+                              style={{ background: GREEN }}>
+                              {completeLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Confirm
+                            </button>
+                            <button onClick={cancelComplete} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

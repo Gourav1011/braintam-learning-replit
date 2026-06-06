@@ -458,6 +458,8 @@ router.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
   if (callStatus !== undefined) updates.callStatus = callStatus;
   if (note !== undefined) updates.note = note;
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+  const [existing] = await db.select({ id: mentorFollowUpsTable.id }).from(mentorFollowUpsTable).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).limit(1);
+  if (!existing) { res.status(404).json({ error: "Follow-up not found" }); return; }
   const [row] = await db.update(mentorFollowUpsTable).set(updates).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).returning();
   res.json({ ...row, ...computeFollowUpStatus(row.nextFollowUpDate, row.callStatus) });
 });
