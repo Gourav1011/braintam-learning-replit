@@ -58,7 +58,7 @@ interface Student {
   isActive: boolean; hwCompletion: number; hwTotal: number; hwPending: number;
   testCount: number; healthScore: number; riskLevel: "excellent" | "good" | "attention" | "at-risk";
   daysSinceLogin: number; assignedAt: string; leadStage: string | null;
-  parentName: string | null; parentPhone: string | null;
+  parentName: string | null; parentPhone: string | null; attendancePct: number | null;
 }
 
 interface FollowUp {
@@ -133,7 +133,12 @@ function RiskBadge({ level, score }: { level: string; score: number }) {
 function FuStatusBadge({ status, daysOverdue }: { status: string; daysOverdue: number }) {
   if (status === "completed") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Completed</span>;
   if (status === "due_today") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Due Today</span>;
-  if (status === "overdue") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">Overdue {daysOverdue > 0 ? `${daysOverdue}d` : ""}</span>;
+  if (status === "overdue") {
+    const severe = daysOverdue >= 3;
+    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${severe ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-600"}`}>
+      Overdue {daysOverdue > 0 ? `${daysOverdue}d` : ""}
+    </span>;
+  }
   return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Upcoming</span>;
 }
 function TaskStatusBadge({ status }: { status: string }) {
@@ -388,36 +393,55 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
                     </button>
                   </form>
 
-                  {Array.isArray(timeline) && timeline.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-xs">No timeline entries yet. Add the first note above.</div>
-                  ) : (
-                    <div className="relative">
-                      <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-200" />
-                      <div className="space-y-3">
-                        {(Array.isArray(timeline) ? timeline : []).map(entry => (
-                          <div key={entry.id} className="flex gap-3 relative">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-white text-[10px] font-black"
-                              style={{ background: GREEN }}>
-                              {entry.createdByName.charAt(0)}
-                            </div>
-                            <div className="flex-1 bg-white rounded-xl border border-gray-100 p-3 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-xs font-bold" style={{ color: NAVY }}>{entry.createdByName}</span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{entry.createdByRole}</span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: `${GREEN}15`, color: GREEN }}>{entry.noteType}</span>
-                                </div>
-                                <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtDateTime(entry.createdAt)}</span>
+                  {(() => {
+                    const tlEntries = (Array.isArray(timeline) ? timeline : []).map(e => ({
+                      key: `tl-${e.id}`, kind: "timeline" as const, noteType: e.noteType,
+                      remark: e.remark, createdAt: e.createdAt,
+                      createdByName: e.createdByName, createdByRole: e.createdByRole,
+                      actionTaken: e.actionTaken ?? null, followUpDate: e.followUpDate ?? null,
+                      callStatus: null as string | null,
+                    }));
+                    const fuEntries = (Array.isArray(followUps) ? followUps : []).map(f => ({
+                      key: `fu-${f.id}`, kind: "followup" as const, noteType: f.noteType ?? "Follow-Up",
+                      remark: f.note ?? "", createdAt: f.createdAt,
+                      createdByName: null as string | null, createdByRole: null as string | null,
+                      actionTaken: null as string | null, followUpDate: null as string | null,
+                      callStatus: f.callStatus ?? null,
+                    }));
+                    const unified = [...tlEntries, ...fuEntries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    if (unified.length === 0) return <div className="text-center py-8 text-gray-400 text-xs">No timeline entries yet. Add the first note above.</div>;
+                    return (
+                      <div className="relative">
+                        <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-200" />
+                        <div className="space-y-3">
+                          {unified.map(entry => (
+                            <div key={entry.key} className="flex gap-3 relative">
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-white text-[10px] font-black"
+                                style={{ background: entry.kind === "timeline" ? GREEN : "#6366F1" }}>
+                                {entry.kind === "timeline" ? (entry.createdByName?.charAt(0) ?? "M") : "F"}
                               </div>
-                              <p className="text-xs text-gray-700 leading-relaxed">{entry.remark}</p>
-                              {entry.actionTaken && <p className="text-[10px] text-blue-600 mt-1">Action: {entry.actionTaken}</p>}
-                              {entry.followUpDate && <p className="text-[10px] text-orange-600 mt-0.5">Follow-up: {fmtDate(entry.followUpDate)}</p>}
+                              <div className={`flex-1 rounded-xl border p-3 min-w-0 ${entry.kind === "followup" ? "bg-indigo-50/40 border-indigo-100" : "bg-white border-gray-100"}`}>
+                                <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {entry.createdByName && <span className="text-xs font-bold" style={{ color: NAVY }}>{entry.createdByName}</span>}
+                                    {entry.createdByRole && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{entry.createdByRole}</span>}
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: entry.kind === "followup" ? "#6366F115" : `${GREEN}15`, color: entry.kind === "followup" ? "#6366F1" : GREEN }}>{entry.noteType}</span>
+                                    {entry.kind === "followup" && entry.callStatus && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">{entry.callStatus}</span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtDateTime(entry.createdAt)}</span>
+                                </div>
+                                <p className="text-xs text-gray-700 leading-relaxed">{entry.remark}</p>
+                                {entry.actionTaken && <p className="text-[10px] text-blue-600 mt-1">Action: {entry.actionTaken}</p>}
+                                {entry.followUpDate && <p className="text-[10px] text-orange-600 mt-0.5">Follow-up: {fmtDate(entry.followUpDate)}</p>}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
@@ -936,21 +960,23 @@ export default function BTLCRMPage() {
 
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-xs min-w-[680px]">
+                <table className="w-full text-xs min-w-[860px]">
                   <thead>
                     <tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
                       <th className="text-left px-3 py-2.5 font-bold text-gray-500">Name</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-8">Gr</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-16">Health</th>
+                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Risk Level</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">HW%</th>
+                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">Att%</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Last On</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-36">Lead Stage</th>
-                      <th className="text-right px-3 py-2.5 font-bold text-gray-500 w-20">Actions</th>
+                      <th className="text-right px-3 py-2.5 font-bold text-gray-500 w-24">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredStudents.length === 0 ? (
-                      <tr><td colSpan={7} className="text-center py-10 text-gray-400">No students found</td></tr>
+                      <tr><td colSpan={9} className="text-center py-10 text-gray-400">No students found</td></tr>
                     ) : filteredStudents.map(s => (
                       <tr key={s.id} onClick={() => open360(s)}
                         className="border-b border-gray-50 last:border-0 hover:bg-blue-50/30 transition-colors cursor-pointer">
@@ -969,7 +995,17 @@ export default function BTLCRMPage() {
                         <td className="px-2 py-2.5 font-bold" style={{ color: NAVY }}>{s.grade}</td>
                         <td className="px-2 py-2.5"><RiskBadge level={s.riskLevel} score={s.healthScore} /></td>
                         <td className="px-2 py-2.5">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${healthColor(s.riskLevel)}18`, color: healthColor(s.riskLevel) }}>
+                            {s.riskLevel === "at-risk" ? "At Risk" : s.riskLevel === "attention" ? "Attention" : s.riskLevel === "good" ? "Good" : "Excellent"}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2.5">
                           <span className={`font-bold ${s.hwCompletion >= 75 ? "text-green-600" : s.hwCompletion >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.hwCompletion}%</span>
+                        </td>
+                        <td className="px-2 py-2.5">
+                          {s.attendancePct !== null && s.attendancePct !== undefined
+                            ? <span className={`font-bold ${s.attendancePct >= 75 ? "text-green-600" : s.attendancePct >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.attendancePct}%</span>
+                            : <span className="text-gray-300">—</span>}
                         </td>
                         <td className="px-2 py-2.5 text-gray-500 text-[11px]">{s.daysSinceLogin < 999 ? `${s.daysSinceLogin}d` : "never"}</td>
                         <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
@@ -977,6 +1013,10 @@ export default function BTLCRMPage() {
                         </td>
                         <td className="px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => open360(s)}
+                              className="p-1 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all" title="Add Note">
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
                             <button onClick={() => { setFuStudentId(s.id); setTab("follow-ups"); }}
                               className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Follow-Up">
                               <MessageSquare className="w-3.5 h-3.5" />

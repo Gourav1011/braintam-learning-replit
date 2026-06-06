@@ -165,15 +165,19 @@ router.get("/mentor/students", mentorAuth, async (req, res) => {
 
   const hwCounts = await db.select({ studentId: homeworkSubmissionsTable.studentId, total: sql<number>`count(*)`, pending: sql<number>`count(*) filter (where status = 'pending')` }).from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
   const testCounts = await db.select({ studentId: testSubmissionsTable.studentId, total: sql<number>`count(*)` }).from(testSubmissionsTable).where(inArray(testSubmissionsTable.studentId, studentIds)).groupBy(testSubmissionsTable.studentId);
+  const attCounts = await db.select({ studentId: mentorAttendanceTable.studentId, total: sql<number>`count(*)`, present: sql<number>`count(*) filter (where status = 'present')` }).from(mentorAttendanceTable).where(inArray(mentorAttendanceTable.studentId, studentIds)).groupBy(mentorAttendanceTable.studentId);
   const hwMap = Object.fromEntries(hwCounts.map(r => [r.studentId, r]));
   const testMap = Object.fromEntries(testCounts.map(r => [r.studentId, r]));
+  const attMap = Object.fromEntries(attCounts.map(r => [r.studentId, r]));
 
   const result = students.map(s => {
     const hw = hwMap[s.id];
     const hwTotal = Number(hw?.total ?? 0);
     const hwPct = hwTotal > 0 ? Math.round(((hwTotal - Number(hw?.pending ?? 0)) / hwTotal) * 100) : 100;
     const { healthScore, riskLevel, daysSinceLogin } = computeHealth({ lastLoginDate: s.lastLoginDate, hwPct, testTotal: Number(testMap[s.id]?.total ?? 0) });
-    return { ...s, assignedAt: assignedAtMap[s.id], hwCompletion: hwPct, hwTotal, hwPending: Number(hw?.pending ?? 0), testCount: Number(testMap[s.id]?.total ?? 0), healthScore, riskLevel, daysSinceLogin };
+    const attTotal = Number(attMap[s.id]?.total ?? 0);
+    const attendancePct = attTotal > 0 ? Math.round((Number(attMap[s.id]?.present ?? 0) / attTotal) * 100) : null;
+    return { ...s, assignedAt: assignedAtMap[s.id], hwCompletion: hwPct, hwTotal, hwPending: Number(hw?.pending ?? 0), testCount: Number(testMap[s.id]?.total ?? 0), healthScore, riskLevel, daysSinceLogin, attendancePct };
   });
 
   res.json({ students: result, total: result.length });
@@ -446,12 +450,16 @@ router.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const id = parseInt(String(req.params.id), 10);
   const { callStatus, note } = req.body;
+  if (callStatus === "completed" && !String(note ?? "").trim()) {
+    res.status(400).json({ error: "A completion remark is required when marking a follow-up as completed." });
+    return;
+  }
   const updates: Record<string, unknown> = {};
   if (callStatus !== undefined) updates.callStatus = callStatus;
   if (note !== undefined) updates.note = note;
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [row] = await db.update(mentorFollowUpsTable).set(updates).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).returning();
-  res.json(row);
+  res.json({ ...row, ...computeFollowUpStatus(row.nextFollowUpDate, row.callStatus) });
 });
 
 router.delete("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
