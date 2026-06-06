@@ -1014,11 +1014,15 @@ router.get("/admin/dashboard", adminOnly, async (_req, res) => {
   const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
-    [students], [teachers], [courses_], [lcWeek],
+    [students], [teachers], [mentors_], [admins_],
+    [courses_], [lcWeek],
     [hwWeek], [testWeek], [activeToday], [xpToday], [enrolls],
+    gradeRows, teacherRows, mentorRows,
   ] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "student")),
-    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher")),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), eq(usersTable.isActive, true))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "admin"), eq(usersTable.isActive, true))),
     db.select({ count: sql<number>`count(*)` }).from(coursesTable),
     db.select({ count: sql<number>`count(*)` }).from(liveClassesTable).where(gte(liveClassesTable.scheduledAt, thisWeek)),
     db.select({ count: sql<number>`count(*)` }).from(homeworkSubmissionsTable).where(gte(homeworkSubmissionsTable.submittedAt, thisWeek)),
@@ -1026,11 +1030,30 @@ router.get("/admin/dashboard", adminOnly, async (_req, res) => {
     db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), gte(usersTable.lastLoginDate, today))),
     db.select({ count: sql<number>`count(distinct user_id)` }).from(pointsLedgerTable).where(gte(pointsLedgerTable.createdAt, today)),
     db.select({ count: sql<number>`count(*)` }).from(enrollmentsTable),
+    // Grade-wise student breakdown
+    db.select({ grade: usersTable.grade, count: sql<number>`count(*)` })
+      .from(usersTable).where(and(eq(usersTable.role, "student"), eq(usersTable.isActive, true)))
+      .groupBy(usersTable.grade).orderBy(usersTable.grade),
+    // Teacher-wise: name + course count (via teacher_courses) + live class count
+    db.select({
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      isActive: usersTable.isActive,
+      courseCount: sql<number>`(select count(*) from teacher_courses where teacher_id = users.id)`,
+      lcCount: sql<number>`(select count(*) from live_classes where teacher_id = users.id)`,
+    }).from(usersTable).where(eq(usersTable.role, "teacher")).orderBy(usersTable.name),
+    // Mentor-wise: name + student count
+    db.select({
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      isActive: usersTable.isActive,
+      studentCount: sql<number>`(select count(*) from mentor_student_assignments where mentor_id = users.id and is_active = true)`,
+    }).from(usersTable).where(eq(usersTable.role, "mentor")).orderBy(usersTable.name),
   ]);
 
   res.json({
     totalStudents: Number(students.count),
     totalTeachers: Number(teachers.count),
+    totalMentors: Number(mentors_.count),
+    totalAdmins: Number(admins_.count),
     activeCourses: Number(courses_.count),
     liveClassesThisWeek: Number(lcWeek.count),
     hwSubmittedThisWeek: Number(hwWeek.count),
@@ -1038,6 +1061,9 @@ router.get("/admin/dashboard", adminOnly, async (_req, res) => {
     activeStudentsToday: Number(activeToday.count),
     studentsEarningXPToday: Number(xpToday.count),
     totalEnrollments: Number(enrolls.count),
+    gradeBreakdown: gradeRows.map(r => ({ grade: r.grade, count: Number(r.count) })),
+    teacherBreakdown: teacherRows.map(r => ({ id: r.id, name: r.name, email: r.email, isActive: r.isActive, courseCount: Number(r.courseCount), lcCount: Number(r.lcCount) })),
+    mentorBreakdown: mentorRows.map(r => ({ id: r.id, name: r.name, email: r.email, isActive: r.isActive, studentCount: Number(r.studentCount) })),
   });
 });
 

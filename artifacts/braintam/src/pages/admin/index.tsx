@@ -2549,9 +2549,9 @@ function AdminPageInner() {
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === "settings" && (
           <div className="space-y-5 max-w-2xl">
-            <h3 className="font-bold text-base" style={{ color: NAVY }}>Account Settings</h3>
+            <h3 className="font-bold text-base" style={{ color: NAVY }}>Settings & Account</h3>
 
-            {/* Admin own password */}
+            {/* Admin own profile + password */}
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -2559,21 +2559,90 @@ function AdminPageInner() {
                 </div>
                 <div>
                   <div className="font-semibold text-sm">{student?.name}</div>
-                  <div className="text-xs text-gray-400">{student?.email ?? "No email"} · {student?.role}</div>
+                  <div className="text-xs text-gray-400">{student?.email ?? "No email"} · Administrator</div>
                 </div>
               </div>
               <div className="h-px bg-gray-100" />
               <ChangePasswordForm flash={flash} />
             </div>
 
-            {/* Reset any user's password */}
+            {/* Staff quick stats */}
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="w-4 h-4" style={{ color: NAVY }} />
+                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Staff Overview</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { role: "teacher", label: "Teachers", color: "#3B82F6", bg: "#EFF6FF" },
+                  { role: "mentor",  label: "Mentors",  color: "#059669", bg: "#ECFDF5" },
+                  { role: "admin",   label: "Admins",   color: "#8B5CF6", bg: "#F5F3FF" },
+                ].map(({ role, label, color, bg }) => {
+                  const count = users.filter(u => u.role === role && u.isActive).length;
+                  const inactive = users.filter(u => u.role === role && !u.isActive).length;
+                  return (
+                    <div key={role} className="rounded-xl p-3 text-center" style={{ background: bg }}>
+                      <div className="text-2xl font-black" style={{ color }}>{count}</div>
+                      <div className="text-xs font-semibold text-gray-600">{label}</div>
+                      {inactive > 0 && <div className="text-[10px] text-gray-400">{inactive} inactive</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Reset any user / teacher / mentor password */}
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <Key className="w-4 h-4" style={{ color: NAVY }} />
-                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Reset User / Teacher Password</h4>
+                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Reset Staff or Student Password</h4>
               </div>
-              <p className="text-xs text-gray-400">Search for any teacher or student and reset their password directly.</p>
+              <p className="text-xs text-gray-400">Search any teacher, mentor, or student and reset their password directly. Admins excluded for security.</p>
               <AdminUserPasswordReset users={users} flash={flash} />
+            </div>
+
+            {/* Platform info */}
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="w-4 h-4" style={{ color: NAVY }} />
+                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Platform Info</h4>
+              </div>
+              <div className="space-y-2.5">
+                {[
+                  { label: "Platform", value: "Braintam EdTech LMS" },
+                  { label: "Target", value: "School students, Grades 1–10" },
+                  { label: "Stack", value: "React + Vite · Express 5 · PostgreSQL · Drizzle ORM" },
+                  { label: "Auth (Students)", value: "Clerk — Google OAuth + Email/Password" },
+                  { label: "Auth (Staff)", value: "Custom email/password with hashed tokens" },
+                  { label: "Version", value: "2026.1" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-start justify-between gap-4 py-2 border-b border-gray-50 last:border-0">
+                    <span className="text-xs font-semibold text-gray-500 flex-shrink-0">{label}</span>
+                    <span className="text-xs text-gray-700 text-right">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total students by grade (quick view) */}
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <GraduationCap className="w-4 h-4" style={{ color: NAVY }} />
+                <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Student Grades at a Glance</h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(g => {
+                  const count = users.filter(u => u.role === "student" && u.isActive && u.grade === g).length;
+                  return (
+                    <div key={g} className="flex flex-col items-center justify-center rounded-xl px-3 py-2 min-w-[52px]"
+                      style={{ background: count > 0 ? "#EEF2FF" : "#F9FAFB" }}>
+                      <span className="text-base font-black" style={{ color: count > 0 ? NAVY : "#D1D5DB" }}>{count}</span>
+                      <span className="text-[10px] text-gray-400">Gr {g}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-3">Only active students shown. Go to Dashboard → Class/Grade Wise for full breakdown.</p>
             </div>
           </div>
         )}
@@ -2600,6 +2669,12 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [assignments, setAssignments] = useState<MentorAssignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [gradeFilter, setGradeFilter] = useState<number | "all">("all");
+
+  // Inline password change
+  const [changePwMentorId, setChangePwMentorId] = useState<number | null>(null);
+  const [mentorNewPw, setMentorNewPw] = useState("");
+  const [changingPw, setChangingPw] = useState(false);
 
   // Create form
   const [name, setName] = useState("");
@@ -2687,6 +2762,24 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
     loadMentors();
   }
 
+  async function changeMentorPassword(mentorId: number) {
+    if (!mentorNewPw || mentorNewPw.length < 6) return;
+    setChangingPw(true);
+    const r = await apiFetch(`/admin/mentors/${mentorId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ password: mentorNewPw }),
+    });
+    setChangingPw(false);
+    if (r.ok) {
+      flash("Mentor password updated!");
+      setChangePwMentorId(null);
+      setMentorNewPw("");
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash(d.error ?? "Failed to update password", false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -2745,10 +2838,10 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <Button size="sm" variant="outline" className="text-xs h-7"
-                      onClick={() => { setSelectedMentor(m); loadAssignments(m.id); }}>
-                      View Assignments
+                      onClick={() => { setSelectedMentor(selectedMentor?.id === m.id ? null : m); if (selectedMentor?.id !== m.id) { loadAssignments(m.id); setGradeFilter("all"); } }}>
+                      {selectedMentor?.id === m.id ? "Hide Students" : "View Students"}
                     </Button>
                     <Button size="sm" variant="outline" className="text-xs h-7"
                       onClick={() => toggleMentorActive(m)}>
@@ -2758,7 +2851,33 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                       onClick={() => { setAssignMentorId(String(m.id)); setSubTab("assign"); }}>
                       Assign Student
                     </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7"
+                      onClick={() => { setChangePwMentorId(changePwMentorId === m.id ? null : m.id); setMentorNewPw(""); }}>
+                      Change Password
+                    </Button>
                   </div>
+
+                  {/* Inline password change */}
+                  {changePwMentorId === m.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs font-bold mb-2" style={{ color: NAVY }}>Set New Password</p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          placeholder="New password (min 6 chars)"
+                          value={mentorNewPw}
+                          onChange={e => setMentorNewPw(e.target.value)}
+                          className="text-xs h-8 flex-1"
+                        />
+                        <Button size="sm" className="h-8 text-xs text-white"
+                          style={{ background: "#059669" }}
+                          disabled={changingPw || mentorNewPw.length < 6}
+                          onClick={() => changeMentorPassword(m.id)}>
+                          {changingPw ? "Saving…" : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Assignments panel */}
                   {selectedMentor?.id === m.id && (
@@ -2767,24 +2886,44 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                         <p className="text-xs font-bold" style={{ color: NAVY }}>Assigned Students</p>
                         <button onClick={() => setSelectedMentor(null)} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
                       </div>
+                      {/* Grade filter pills */}
+                      {!loadingAssignments && assignments.filter(a => a.isActive).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {(["all", ...Array.from(new Set(assignments.filter(a => a.isActive && a.studentGrade != null).map(a => a.studentGrade!))).sort((a, b) => a - b)] as (number | "all")[]).map(g => (
+                            <button key={g} onClick={() => setGradeFilter(g)}
+                              className="px-2 py-0.5 rounded-full text-xs font-bold transition-all"
+                              style={{
+                                background: gradeFilter === g ? NAVY : "#F3F4F6",
+                                color: gradeFilter === g ? "white" : "#6B7280",
+                              }}>
+                              {g === "all" ? "All Grades" : `Grade ${g}`}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {loadingAssignments ? (
                         <p className="text-xs text-gray-400">Loading…</p>
                       ) : assignments.filter(a => a.isActive).length === 0 ? (
                         <p className="text-xs text-gray-400">No active assignments.</p>
                       ) : (
                         <div className="space-y-1.5">
-                          {assignments.filter(a => a.isActive).map(a => (
-                            <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
-                              <div>
-                                <span className="text-sm font-semibold" style={{ color: NAVY }}>{a.studentName ?? `Student #${a.studentId}`}</span>
-                                <span className="text-xs text-gray-400 ml-2">Grade {a.studentGrade ?? "?"}</span>
+                          {assignments
+                            .filter(a => a.isActive && (gradeFilter === "all" || a.studentGrade === gradeFilter))
+                            .map(a => (
+                              <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+                                <div>
+                                  <span className="text-sm font-semibold" style={{ color: NAVY }}>{a.studentName ?? `Student #${a.studentId}`}</span>
+                                  <span className="text-xs font-medium ml-2 px-1.5 py-0.5 rounded-md" style={{ background: "#EEF2FF", color: NAVY }}>Grade {a.studentGrade ?? "?"}</span>
+                                </div>
+                                <button onClick={() => removeAssignment(a.id)}
+                                  className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
-                              <button onClick={() => removeAssignment(a.id)}
-                                className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
+                            ))}
+                          {assignments.filter(a => a.isActive && (gradeFilter === "all" || a.studentGrade === gradeFilter)).length === 0 && (
+                            <p className="text-xs text-gray-400 italic">No students in this grade.</p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2894,7 +3033,7 @@ function AdminUserPasswordReset({ users, flash }: { users: User[]; flash: (msg: 
     setBusy(true);
     const r = await apiFetch(`/admin/users/${selected.id}/reset-password`, {
       method: "POST",
-      body: JSON.stringify({ newPassword: newPw }),
+      body: JSON.stringify({ password: newPw }),
     });
     setBusy(false);
     if (r.ok) {
