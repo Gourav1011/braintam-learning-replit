@@ -8,6 +8,7 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
   auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
   academicYearsTable, announcementsTable, bannersTable, pointsLedgerTable,
+  mentorStudentAssignmentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, gte, lt, isNull, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";

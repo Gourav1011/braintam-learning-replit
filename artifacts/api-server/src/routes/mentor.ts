@@ -387,6 +387,46 @@ router.delete("/admin/mentors/:id", adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 
+// All active mentor-student assignments as a map (for admin users tab)
+router.get("/admin/mentor-student-map", adminOnly, async (req, res) => {
+  const rows = await db
+    .select({
+      studentId: mentorStudentAssignmentsTable.studentId,
+      mentorId: usersTable.id,
+      mentorName: usersTable.name,
+      mentorPhone: usersTable.phone,
+    })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(usersTable, eq(usersTable.id, mentorStudentAssignmentsTable.mentorId))
+    .where(eq(mentorStudentAssignmentsTable.isActive, true));
+  res.json(rows);
+});
+
+// Bulk-assign all active students of a grade to a mentor
+router.post("/admin/mentor-grade-assign", adminOnly, async (req, res) => {
+  const { mentorId, grade } = req.body;
+  if (!mentorId || grade === undefined || grade === null) {
+    res.status(400).json({ error: "mentorId and grade required" });
+    return;
+  }
+  const studentRows = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(and(eq(usersTable.role, "student"), eq(usersTable.isActive, true), eq(usersTable.grade, Number(grade))));
+
+  if (studentRows.length === 0) {
+    res.json({ assigned: 0 });
+    return;
+  }
+  // Deactivate any existing assignment for these students, then insert new
+  await db.update(mentorStudentAssignmentsTable)
+    .set({ isActive: false })
+    .where(inArray(mentorStudentAssignmentsTable.studentId, studentRows.map(s => s.id)));
+  await db.insert(mentorStudentAssignmentsTable)
+    .values(studentRows.map(s => ({ mentorId: Number(mentorId), studentId: s.id })));
+  res.json({ assigned: studentRows.length });
+});
+
 // Get assignments for a mentor
 router.get("/admin/mentors/:id/assignments", adminOnly, async (req, res) => {
   const mentorId = parseInt(String(req.params.id), 10);

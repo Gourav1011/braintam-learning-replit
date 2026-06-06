@@ -650,6 +650,7 @@ function AdminPageInner() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [mentorStudentMap, setMentorStudentMap] = useState<Record<number, { mentorName: string; mentorPhone: string | null }>>({});
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -733,7 +734,7 @@ function AdminPageInner() {
 
   async function loadAll() {
     setDataLoading(true);
-    const [s, u, c, a, e, anns, bans, ana, lcs, subjs, audit, yrs] = await Promise.all([
+    const [s, u, c, a, e, anns, bans, ana, lcs, subjs, audit, yrs, mentorMap] = await Promise.all([
       apiFetch("/admin/stats").then(r => r.ok ? r.json() : null),
       apiFetch("/admin/users").then(r => r.ok ? r.json() : []),
       apiFetch("/admin/courses").then(r => r.ok ? r.json() : []),
@@ -746,10 +747,16 @@ function AdminPageInner() {
       apiFetch("/subjects").then(r => r.ok ? r.json() : []),
       apiFetch("/admin/audit-logs").then(r => r.ok ? r.json() : []),
       apiFetch("/admin/academic-years").then(r => r.ok ? r.json() : []),
+      apiFetch("/admin/mentor-student-map").then(r => r.ok ? r.json() : []),
     ]);
     setStats(s); setUsers(u); setCourses(c); setAssignments(a); setEnrollments(e);
     setAnnouncements(anns); setBanners(bans); setAnalytics(ana); setLiveClassItems(lcs);
     setSubjectsList(subjs); setAuditLogs(audit); setAcademicYearsList(Array.isArray(yrs) ? yrs : []);
+    const mMap: Record<number, { mentorName: string; mentorPhone: string | null }> = {};
+    for (const row of (mentorMap as { studentId: number; mentorName: string; mentorPhone: string | null }[])) {
+      mMap[row.studentId] = { mentorName: row.mentorName, mentorPhone: row.mentorPhone };
+    }
+    setMentorStudentMap(mMap);
     setDataLoading(false);
   }
 
@@ -1741,10 +1748,25 @@ function AdminPageInner() {
                                         : <span className="italic text-gray-400">Never logged in</span>}
                                     </p>
                                   </div>
-                                  {u.school && !isEditing && (
+                                  {u.role === "student" && u.school && !isEditing && (
                                     <div>
                                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">School</p>
                                       <p className="text-xs text-gray-700">{u.school}</p>
+                                    </div>
+                                  )}
+                                  {u.role === "student" && mentorStudentMap[u.id] && !isEditing && (
+                                    <div>
+                                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Assigned Mentor</p>
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0"
+                                          style={{ background: "linear-gradient(135deg,#059669,#047857)" }}>
+                                          {mentorStudentMap[u.id].mentorName.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span className="text-xs text-gray-700 font-semibold">{mentorStudentMap[u.id].mentorName}</span>
+                                        {mentorStudentMap[u.id].mentorPhone && (
+                                          <span className="text-xs text-green-600">· {mentorStudentMap[u.id].mentorPhone}</span>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                   {/* Quick-edit toggle */}
@@ -1778,10 +1800,12 @@ function AdminPageInner() {
                                           <Input type="number" min="0" max="10" value={inlineEditForm.grade} onChange={e => setInlineEditForm(p => ({ ...p, grade: e.target.value }))} className="mt-1 h-8 text-sm" />
                                         </div>
                                       )}
-                                      <div>
-                                        <label className="text-[10px] text-gray-400 uppercase tracking-wide">School</label>
-                                        <Input value={inlineEditForm.school} onChange={e => setInlineEditForm(p => ({ ...p, school: e.target.value }))} className="mt-1 h-8 text-sm" />
-                                      </div>
+                                      {u.role === "student" && (
+                                        <div>
+                                          <label className="text-[10px] text-gray-400 uppercase tracking-wide">School</label>
+                                          <Input value={inlineEditForm.school} onChange={e => setInlineEditForm(p => ({ ...p, school: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                        </div>
+                                      )}
                                     </div>
                                     <div className="flex gap-2">
                                       <Button size="sm" onClick={() => saveInlineEdit(u.id)} disabled={busy} className="h-7 text-xs text-white px-4" style={{ background: NAVY }}>
@@ -2676,6 +2700,14 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
   const [mentorNewPw, setMentorNewPw] = useState("");
   const [changingPw, setChangingPw] = useState(false);
 
+  // Student search in expanded assignment panel
+  const [mentorStudentSearch, setMentorStudentSearch] = useState("");
+
+  // Bulk grade assign
+  const [bulkGrade, setBulkGrade] = useState("");
+  const [bulkMentorId, setBulkMentorId] = useState("");
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+
   // Create form
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -2762,6 +2794,27 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
     loadMentors();
   }
 
+  async function bulkGradeAssign(e: React.FormEvent) {
+    e.preventDefault();
+    if (!bulkMentorId || !bulkGrade) return;
+    setBulkAssigning(true);
+    const r = await apiFetch("/admin/mentor-grade-assign", {
+      method: "POST",
+      body: JSON.stringify({ mentorId: Number(bulkMentorId), grade: Number(bulkGrade) }),
+    });
+    setBulkAssigning(false);
+    if (r.ok) {
+      const d = await r.json();
+      flash(`Assigned ${d.assigned} Grade ${bulkGrade} student${d.assigned !== 1 ? "s" : ""} to mentor!`);
+      setBulkGrade(""); setBulkMentorId("");
+      loadMentors();
+      if (selectedMentor?.id === Number(bulkMentorId)) loadAssignments(Number(bulkMentorId));
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash(d.error ?? "Failed to bulk assign", false);
+    }
+  }
+
   async function changeMentorPassword(mentorId: number) {
     if (!mentorNewPw || mentorNewPw.length < 6) return;
     setChangingPw(true);
@@ -2829,7 +2882,16 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                         {m.phone && <div className="text-xs text-green-600 font-semibold">{m.phone}</div>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {/* Grade pills derived from this mentor's active assignments */}
+                      {selectedMentor?.id === m.id && assignments.filter(a => a.isActive && a.studentGrade != null).length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {Array.from(new Set(assignments.filter(a => a.isActive && a.studentGrade != null).map(a => a.studentGrade!))).sort((a,b)=>a-b).map(g => (
+                            <span key={g} className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ background: "#EEF2FF", color: NAVY }}>Gr {g}</span>
+                          ))}
+                        </div>
+                      )}
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                         style={{ background: "#05966915", color: "#059669" }}>
                         {m.studentCount} student{m.studentCount !== 1 ? "s" : ""}
@@ -2841,7 +2903,7 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <Button size="sm" variant="outline" className="text-xs h-7"
-                      onClick={() => { setSelectedMentor(selectedMentor?.id === m.id ? null : m); if (selectedMentor?.id !== m.id) { loadAssignments(m.id); setGradeFilter("all"); } }}>
+                      onClick={() => { setSelectedMentor(selectedMentor?.id === m.id ? null : m); if (selectedMentor?.id !== m.id) { loadAssignments(m.id); setGradeFilter("all"); setMentorStudentSearch(""); } }}>
                       {selectedMentor?.id === m.id ? "Hide Students" : "View Students"}
                     </Button>
                     <Button size="sm" variant="outline" className="text-xs h-7"
@@ -2884,9 +2946,28 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                   {selectedMentor?.id === m.id && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-bold" style={{ color: NAVY }}>Assigned Students</p>
+                        <p className="text-xs font-bold" style={{ color: NAVY }}>
+                          Assigned Students
+                          {!loadingAssignments && (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{ background: "#EEF2FF", color: NAVY }}>
+                              {assignments.filter(a => a.isActive).length}
+                            </span>
+                          )}
+                        </p>
                         <button onClick={() => setSelectedMentor(null)} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
                       </div>
+
+                      {/* Search students */}
+                      {!loadingAssignments && assignments.filter(a => a.isActive).length > 0 && (
+                        <Input
+                          placeholder="Search student by name…"
+                          value={mentorStudentSearch}
+                          onChange={e => setMentorStudentSearch(e.target.value)}
+                          className="mb-2 h-8 text-xs"
+                        />
+                      )}
+
                       {/* Grade filter pills */}
                       {!loadingAssignments && assignments.filter(a => a.isActive).length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mb-3">
@@ -2902,6 +2983,7 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                           ))}
                         </div>
                       )}
+
                       {loadingAssignments ? (
                         <p className="text-xs text-gray-400">Loading…</p>
                       ) : assignments.filter(a => a.isActive).length === 0 ? (
@@ -2909,7 +2991,9 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                       ) : (
                         <div className="space-y-1.5">
                           {assignments
-                            .filter(a => a.isActive && (gradeFilter === "all" || a.studentGrade === gradeFilter))
+                            .filter(a => a.isActive
+                              && (gradeFilter === "all" || a.studentGrade === gradeFilter)
+                              && (!mentorStudentSearch.trim() || (a.studentName ?? "").toLowerCase().includes(mentorStudentSearch.toLowerCase())))
                             .map(a => (
                               <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
                                 <div>
@@ -2922,8 +3006,11 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                                 </button>
                               </div>
                             ))}
-                          {assignments.filter(a => a.isActive && (gradeFilter === "all" || a.studentGrade === gradeFilter)).length === 0 && (
-                            <p className="text-xs text-gray-400 italic">No students in this grade.</p>
+                          {assignments.filter(a => a.isActive
+                            && (gradeFilter === "all" || a.studentGrade === gradeFilter)
+                            && (!mentorStudentSearch.trim() || (a.studentName ?? "").toLowerCase().includes(mentorStudentSearch.toLowerCase()))
+                          ).length === 0 && (
+                            <p className="text-xs text-gray-400 italic">No students match your search.</p>
                           )}
                         </div>
                       )}
@@ -2971,9 +3058,10 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
 
       {/* ── Assign ── */}
       {subTab === "assign" && (
-        <div className="max-w-md">
+        <div className="max-w-md space-y-4">
+          {/* Individual student assign */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h4 className="font-black text-sm mb-4" style={{ color: NAVY }}>Assign Student to Mentor</h4>
+            <h4 className="font-black text-sm mb-4" style={{ color: NAVY }}>Assign Individual Student</h4>
             <form onSubmit={assignStudent} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Select Mentor *</label>
@@ -3000,6 +3088,51 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                   {assigning ? "Assigning…" : "Assign Student"}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => setSubTab("list")}>Cancel</Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Bulk grade assign */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "#EEF2FF" }}>
+                <GraduationCap className="w-3.5 h-3.5" style={{ color: NAVY }} />
+              </div>
+              <h4 className="font-black text-sm" style={{ color: NAVY }}>Assign Entire Grade to Mentor</h4>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">Assign all active students of a grade at once. Existing assignments for those students will be replaced.</p>
+            <form onSubmit={bulkGradeAssign} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Select Mentor *</label>
+                <select value={bulkMentorId} onChange={e => setBulkMentorId(e.target.value)} required
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-500 bg-white">
+                  <option value="">Choose mentor…</option>
+                  {mentors.filter(m => m.isActive).map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Grade *</label>
+                <select value={bulkGrade} onChange={e => setBulkGrade(e.target.value)} required
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-500 bg-white">
+                  <option value="">Select grade…</option>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(g => {
+                    const cnt = students.filter(s => s.isActive && s.grade === g).length;
+                    return <option key={g} value={g}>Grade {g} ({cnt} student{cnt !== 1 ? "s" : ""})</option>;
+                  })}
+                </select>
+              </div>
+              {bulkGrade && bulkMentorId && (
+                <p className="text-xs font-semibold text-orange-600">
+                  This will assign all {students.filter(s => s.isActive && s.grade === Number(bulkGrade)).length} Grade {bulkGrade} students to the selected mentor.
+                </p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" disabled={bulkAssigning || !bulkMentorId || !bulkGrade} className="text-white" style={{ background: NAVY }}>
+                  {bulkAssigning ? "Assigning…" : "Bulk Assign Grade"}
+                </Button>
               </div>
             </form>
           </div>
