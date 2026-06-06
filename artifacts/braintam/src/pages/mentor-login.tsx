@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, UserCheck, BarChart2, MessageSquare, Bell, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, UserCheck, BarChart2, MessageSquare, Bell, Eye, EyeOff, Loader2, Target } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
@@ -9,10 +9,10 @@ const GREEN = "#059669";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const perks = [
-  { icon: UserCheck,     title: "Monitor Your Students",  desc: "Track attendance, homework, and test performance at a glance" },
-  { icon: BarChart2,     title: "Student Health Scores",   desc: "Automated risk scoring to identify students who need attention" },
-  { icon: MessageSquare, title: "Follow-Up Notes",          desc: "Log parent calls, reminders, and issue resolutions" },
-  { icon: Bell,          title: "Smart Alerts",             desc: "Get notified when a student goes inactive or misses submissions" },
+  { icon: Target,        title: "Full CRM Pipeline",      desc: "Track every student through New Lead → Paid Student with lead stage management" },
+  { icon: UserCheck,     title: "Student 360 Profiles",   desc: "Permanent timeline, parent info, health scores and full history in one view" },
+  { icon: MessageSquare, title: "Follow-Up Management",   desc: "Status-coded reminders — Due Today, Overdue, Upcoming, Completed" },
+  { icon: Bell,          title: "Task Management",        desc: "Assign and track mentor tasks: Call Parent, Fee Reminder, Attendance Follow-Up" },
 ];
 
 export default function MentorLoginPage() {
@@ -69,14 +69,14 @@ export default function MentorLoginPage() {
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-4"
               style={{ background: `${GREEN}25`, border: `1px solid ${GREEN}50`, color: "#6EE7B7" }}>
-              <UserCheck className="w-3.5 h-3.5" /> Mentor Portal
+              <Target className="w-3.5 h-3.5" /> BTL CRM
             </div>
             <h1 className="text-white font-black text-4xl leading-tight mb-3">
               Welcome back,<br />
               <span style={{ color: "#6EE7B7" }}>Mentor!</span>
             </h1>
             <p className="text-white/70 text-base leading-relaxed max-w-sm">
-              Your Student Success hub — monitor progress, log follow-ups, and keep every student on track.
+              Your Student Success CRM — pipeline management, permanent timelines, and follow-up tracking all in one place.
             </p>
           </div>
 
@@ -101,7 +101,7 @@ export default function MentorLoginPage() {
 
           <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
             <p className="text-white/70 text-sm italic">
-              "The Mentor Portal gives me a clear picture of every student's progress — I can act before they fall behind."
+              "BTL CRM gives me a clear 360° view of every student — from lead stage to permanent timeline. I can act before they fall behind."
             </p>
             <div className="flex items-center gap-2 mt-3">
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs"
@@ -133,12 +133,12 @@ export default function MentorLoginPage() {
         <div className="w-full max-w-[400px]">
           <div className="w-full mb-5 px-4 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold"
             style={{ background: `${GREEN}12`, border: `1px solid ${GREEN}35`, color: GREEN }}>
-            <UserCheck className="w-4 h-4 flex-shrink-0" />
-            Mentor Portal — sign in to manage your students
+            <Target className="w-4 h-4 flex-shrink-0" />
+            BTL CRM — sign in to manage your students
           </div>
 
           <div className="w-full bg-white rounded-2xl shadow-xl p-7">
-            <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>Mentor Sign In</h2>
+            <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>BTL CRM Sign In</h2>
             <p className="text-sm text-gray-500 mb-6">Enter your credentials provided by your admin.</p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -179,7 +179,7 @@ export default function MentorLoginPage() {
                 className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${GREEN}, #047857)` }}>
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? "Signing in…" : "Sign In to Mentor Portal"}
+                {loading ? "Signing in…" : "Sign In to BTL CRM"}
               </button>
             </form>
           </div>

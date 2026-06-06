@@ -8,6 +8,8 @@ import {
   homeworkSubmissionsTable,
   testSubmissionsTable,
   liveClassesTable,
+  studentTimelineTable,
+  mentorTasksTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -20,7 +22,6 @@ function hashPassword(pw: string): string {
 const router = Router();
 const mentorAuth = requireRole("mentor", "admin");
 
-// ── Helper: get mentor's student IDs ────────────────────────────────────
 async function getMentorStudentIds(mentorId: number): Promise<number[]> {
   const rows = await db
     .select({ studentId: mentorStudentAssignmentsTable.studentId })
@@ -32,7 +33,6 @@ async function getMentorStudentIds(mentorId: number): Promise<number[]> {
   return rows.map(r => r.studentId);
 }
 
-// ── Helper: compute student health ──────────────────────────────────────
 function computeHealth(s: {
   lastLoginDate: Date | null;
   hwPct: number;
@@ -51,14 +51,29 @@ function computeHealth(s: {
   return { healthScore, riskLevel, daysSinceLogin };
 }
 
-// ── Dashboard summary ────────────────────────────────────────────────────
+function computeFollowUpStatus(nextFollowUpDate: string | null, callStatus: string | null): {
+  fuStatus: "due_today" | "overdue" | "upcoming" | "completed";
+  daysOverdue: number;
+} {
+  if (callStatus === "completed") return { fuStatus: "completed", daysOverdue: 0 };
+  if (!nextFollowUpDate) return { fuStatus: "upcoming", daysOverdue: 0 };
+  const today = new Date().toISOString().slice(0, 10);
+  if (nextFollowUpDate === today) return { fuStatus: "due_today", daysOverdue: 0 };
+  if (nextFollowUpDate < today) {
+    const daysOverdue = Math.floor((new Date(today).getTime() - new Date(nextFollowUpDate).getTime()) / 86400000);
+    return { fuStatus: "overdue", daysOverdue };
+  }
+  return { fuStatus: "upcoming", daysOverdue: 0 };
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────
 router.get("/mentor/dashboard", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const studentIds = await getMentorStudentIds(mentorId);
   const totalAssigned = studentIds.length;
 
   if (totalAssigned === 0) {
-    res.json({ totalAssigned: 0, activeToday: 0, needsAttention: 0, atRisk: 0, green: 0, notActive3Days: 0, notActive7Days: 0, homeworkPending: 0, followUpReminders: [], recentFollowUps: [] });
+    res.json({ totalAssigned: 0, activeToday: 0, needsAttention: 0, atRisk: 0, green: 0, notActive3Days: 0, notActive7Days: 0, homeworkPending: 0, followUpReminders: [], recentFollowUps: [], pendingTasks: 0, overdueTasks: 0 });
     return;
   }
 
@@ -75,7 +90,7 @@ router.get("/mentor/dashboard", mentorAuth, async (req, res) => {
     const hwDone = hwTotal - Number(hw?.pending ?? 0);
     const hwPct = hwTotal > 0 ? Math.round((hwDone / hwTotal) * 100) : 100;
     hwPending += Number(hw?.pending ?? 0);
-    const { healthScore, riskLevel, daysSinceLogin } = computeHealth({ lastLoginDate: s.lastLoginDate, hwPct, testTotal: Number(testMap[s.id]?.total ?? 0) });
+    const { riskLevel, daysSinceLogin } = computeHealth({ lastLoginDate: s.lastLoginDate, hwPct, testTotal: Number(testMap[s.id]?.total ?? 0) });
     if (daysSinceLogin <= 1) activeToday++;
     if (daysSinceLogin >= 3 && daysSinceLogin < 7) notActive3Days++;
     if (daysSinceLogin >= 7) notActive7Days++;
@@ -85,19 +100,20 @@ router.get("/mentor/dashboard", mentorAuth, async (req, res) => {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const followUpReminders = await db.select({
-    id: mentorFollowUpsTable.id,
-    studentId: mentorFollowUpsTable.studentId,
-    studentName: usersTable.name,
-    nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate,
-    note: mentorFollowUpsTable.note,
-    leadStatus: mentorFollowUpsTable.leadStatus,
+  const allFollowUps = await db.select({
+    id: mentorFollowUpsTable.id, studentId: mentorFollowUpsTable.studentId, studentName: usersTable.name,
+    nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate, note: mentorFollowUpsTable.note,
+    leadStatus: mentorFollowUpsTable.leadStatus, callStatus: mentorFollowUpsTable.callStatus,
   })
     .from(mentorFollowUpsTable)
     .leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.studentId))
-    .where(and(eq(mentorFollowUpsTable.mentorId, mentorId), lte(mentorFollowUpsTable.nextFollowUpDate, today)))
-    .orderBy(mentorFollowUpsTable.nextFollowUpDate)
-    .limit(10);
+    .where(eq(mentorFollowUpsTable.mentorId, mentorId))
+    .orderBy(mentorFollowUpsTable.nextFollowUpDate);
+
+  const followUpReminders = allFollowUps
+    .filter(r => r.nextFollowUpDate && r.nextFollowUpDate <= today && r.callStatus !== "completed")
+    .slice(0, 10)
+    .map(r => ({ ...r, ...computeFollowUpStatus(r.nextFollowUpDate, r.callStatus) }));
 
   const recentFollowUps = await db.select({
     id: mentorFollowUpsTable.id, studentId: mentorFollowUpsTable.studentId, studentName: usersTable.name,
@@ -110,13 +126,25 @@ router.get("/mentor/dashboard", mentorAuth, async (req, res) => {
     .orderBy(desc(mentorFollowUpsTable.createdAt))
     .limit(5);
 
-  res.json({ totalAssigned, activeToday, needsAttention, atRisk, green, notActive3Days, notActive7Days, homeworkPending: hwPending, followUpReminders, recentFollowUps });
+  const taskCounts = await db.select({ status: mentorTasksTable.status, count: sql<number>`count(*)` })
+    .from(mentorTasksTable).where(eq(mentorTasksTable.mentorId, mentorId)).groupBy(mentorTasksTable.status);
+  const taskMap = Object.fromEntries(taskCounts.map(t => [t.status, Number(t.count)]));
+  const overdueTaskRows = await db.select({ id: mentorTasksTable.id })
+    .from(mentorTasksTable)
+    .where(and(eq(mentorTasksTable.mentorId, mentorId), lte(mentorTasksTable.dueDate, today), or(eq(mentorTasksTable.status, "pending"), eq(mentorTasksTable.status, "in_progress"))));
+
+  res.json({
+    totalAssigned, activeToday, needsAttention, atRisk, green, notActive3Days, notActive7Days,
+    homeworkPending: hwPending, followUpReminders, recentFollowUps,
+    pendingTasks: (taskMap["pending"] ?? 0) + (taskMap["in_progress"] ?? 0),
+    overdueTasks: overdueTaskRows.length,
+  });
 });
 
 // ── My students ──────────────────────────────────────────────────────────
 router.get("/mentor/students", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
-  const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? "100"), 10)));
+  const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? "200"), 10)));
 
   const assignments = await db.select({ studentId: mentorStudentAssignmentsTable.studentId, assignedAt: mentorStudentAssignmentsTable.assignedAt })
     .from(mentorStudentAssignmentsTable)
@@ -128,7 +156,13 @@ router.get("/mentor/students", mentorAuth, async (req, res) => {
   const studentIds = assignments.map(a => a.studentId);
   const assignedAtMap = Object.fromEntries(assignments.map(a => [a.studentId, a.assignedAt]));
 
-  const students = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, grade: usersTable.grade, school: usersTable.school, lastLoginDate: usersTable.lastLoginDate, isActive: usersTable.isActive }).from(usersTable).where(inArray(usersTable.id, studentIds));
+  const students = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone,
+    grade: usersTable.grade, school: usersTable.school, lastLoginDate: usersTable.lastLoginDate,
+    isActive: usersTable.isActive, leadStage: usersTable.leadStage,
+    parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
   const hwCounts = await db.select({ studentId: homeworkSubmissionsTable.studentId, total: sql<number>`count(*)`, pending: sql<number>`count(*) filter (where status = 'pending')` }).from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
   const testCounts = await db.select({ studentId: testSubmissionsTable.studentId, total: sql<number>`count(*)` }).from(testSubmissionsTable).where(inArray(testSubmissionsTable.studentId, studentIds)).groupBy(testSubmissionsTable.studentId);
   const hwMap = Object.fromEntries(hwCounts.map(r => [r.studentId, r]));
@@ -163,11 +197,142 @@ router.get("/mentor/students/:id", mentorAuth, async (req, res) => {
     note: mentorFollowUpsTable.note, callStatus: mentorFollowUpsTable.callStatus, callTime: mentorFollowUpsTable.callTime,
     calledBy: mentorFollowUpsTable.calledBy, calledByName: mentorFollowUpsTable.calledByName,
     leadStatus: mentorFollowUpsTable.leadStatus, nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate, createdAt: mentorFollowUpsTable.createdAt,
-  }).from(mentorFollowUpsTable).where(and(eq(mentorFollowUpsTable.mentorId, mentorId), eq(mentorFollowUpsTable.studentId, studentId))).orderBy(desc(mentorFollowUpsTable.createdAt));
+  }).from(mentorFollowUpsTable).where(eq(mentorFollowUpsTable.studentId, studentId)).orderBy(desc(mentorFollowUpsTable.createdAt));
 
-  const attendance = await db.select({ id: mentorAttendanceTable.id, liveClassId: mentorAttendanceTable.liveClassId, attendanceDate: mentorAttendanceTable.attendanceDate, status: mentorAttendanceTable.status, remark: mentorAttendanceTable.remark }).from(mentorAttendanceTable).where(and(eq(mentorAttendanceTable.mentorId, mentorId), eq(mentorAttendanceTable.studentId, studentId))).orderBy(desc(mentorAttendanceTable.attendanceDate)).limit(20);
+  const attendance = await db.select({
+    id: mentorAttendanceTable.id, liveClassId: mentorAttendanceTable.liveClassId,
+    attendanceDate: mentorAttendanceTable.attendanceDate, status: mentorAttendanceTable.status, remark: mentorAttendanceTable.remark,
+  }).from(mentorAttendanceTable).where(eq(mentorAttendanceTable.studentId, studentId)).orderBy(desc(mentorAttendanceTable.attendanceDate)).limit(20);
 
-  res.json({ student, hwSubs, testSubs, followUps, attendance });
+  const timeline = await db.select().from(studentTimelineTable).where(eq(studentTimelineTable.studentId, studentId)).orderBy(desc(studentTimelineTable.createdAt)).limit(100);
+
+  res.json({ student, hwSubs, testSubs, followUps, attendance, timeline });
+});
+
+// ── Update student (lead stage / parent info) ────────────────────────────
+router.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentId = parseInt(String(req.params.id), 10);
+
+  if (req.authUser!.role !== "admin") {
+    const [assignment] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
+      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    if (!assignment) { res.status(403).json({ error: "Not your assigned student" }); return; }
+  }
+
+  const { leadStage, parentName, parentPhone } = req.body;
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (leadStage !== undefined) updates.leadStage = leadStage || null;
+  if (parentName !== undefined) updates.parentName = parentName || null;
+  if (parentPhone !== undefined) updates.parentPhone = parentPhone || null;
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning({
+    id: usersTable.id, leadStage: usersTable.leadStage, parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
+  });
+  res.json(updated);
+});
+
+// ── Student Timeline (append-only, no DELETE/PATCH) ──────────────────────
+router.get("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentId = parseInt(String(req.params.studentId), 10);
+
+  if (req.authUser!.role !== "admin") {
+    const [assignment] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
+      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    if (!assignment) { res.status(403).json({ error: "Not your assigned student" }); return; }
+  }
+
+  const rows = await db.select().from(studentTimelineTable)
+    .where(eq(studentTimelineTable.studentId, studentId))
+    .orderBy(desc(studentTimelineTable.createdAt)).limit(200);
+  res.json(rows);
+});
+
+router.post("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentId = parseInt(String(req.params.studentId), 10);
+
+  if (req.authUser!.role !== "admin") {
+    const [assignment] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
+      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    if (!assignment) { res.status(403).json({ error: "Not your assigned student" }); return; }
+  }
+
+  const { noteType, remark, followUpDate, actionTaken } = req.body;
+  if (!remark?.trim()) { res.status(400).json({ error: "remark is required" }); return; }
+
+  const author = req.authUser!;
+  const [row] = await db.insert(studentTimelineTable).values({
+    studentId, createdById: author.id, createdByName: author.name, createdByRole: author.role,
+    noteType: noteType ?? "general", remark: String(remark),
+    followUpDate: followUpDate ?? null, actionTaken: actionTaken ?? null,
+  }).returning();
+  res.status(201).json(row);
+});
+
+// ── Mentor Tasks ─────────────────────────────────────────────────────────
+router.get("/mentor/tasks", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const tasks = await db.select({
+    id: mentorTasksTable.id, title: mentorTasksTable.title, taskType: mentorTasksTable.taskType,
+    status: mentorTasksTable.status, dueDate: mentorTasksTable.dueDate, note: mentorTasksTable.note,
+    studentId: mentorTasksTable.studentId, studentName: usersTable.name,
+    completedAt: mentorTasksTable.completedAt, createdAt: mentorTasksTable.createdAt,
+  })
+    .from(mentorTasksTable)
+    .leftJoin(usersTable, eq(usersTable.id, mentorTasksTable.studentId))
+    .where(eq(mentorTasksTable.mentorId, mentorId))
+    .orderBy(desc(mentorTasksTable.createdAt))
+    .limit(200);
+
+  const enriched = tasks.map(t => {
+    let effectiveStatus = t.status;
+    if (effectiveStatus !== "completed" && t.dueDate && t.dueDate < today) effectiveStatus = "overdue";
+    return { ...t, effectiveStatus };
+  });
+
+  res.json(enriched);
+});
+
+router.post("/mentor/tasks", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const { title, taskType, studentId, dueDate, note } = req.body;
+  if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
+  const [row] = await db.insert(mentorTasksTable).values({
+    mentorId, title: String(title), taskType: taskType ?? "general",
+    studentId: studentId ? Number(studentId) : null,
+    status: "pending", dueDate: dueDate ?? null, note: note ?? null,
+  }).returning();
+  res.status(201).json(row);
+});
+
+router.patch("/mentor/tasks/:id", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const id = parseInt(String(req.params.id), 10);
+
+  const [existing] = await db.select({ id: mentorTasksTable.id }).from(mentorTasksTable)
+    .where(and(eq(mentorTasksTable.id, id), eq(mentorTasksTable.mentorId, mentorId))).limit(1);
+  if (!existing) { res.status(404).json({ error: "Task not found" }); return; }
+
+  const { status, note, dueDate, title } = req.body;
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (status) { updates.status = status; if (status === "completed") updates.completedAt = new Date(); }
+  if (note !== undefined) updates.note = note;
+  if (dueDate !== undefined) updates.dueDate = dueDate || null;
+  if (title) updates.title = title;
+
+  const [updated] = await db.update(mentorTasksTable).set(updates).where(eq(mentorTasksTable.id, id)).returning();
+  res.json(updated);
+});
+
+router.delete("/mentor/tasks/:id", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const id = parseInt(String(req.params.id), 10);
+  await db.delete(mentorTasksTable).where(and(eq(mentorTasksTable.id, id), eq(mentorTasksTable.mentorId, mentorId)));
+  res.json({ ok: true });
 });
 
 // ── Live classes for attendance ──────────────────────────────────────────
@@ -206,17 +371,11 @@ router.get("/mentor/attendance", mentorAuth, async (req, res) => {
   if (liveClassId) conditions.push(eq(mentorAttendanceTable.liveClassId, liveClassId));
 
   const rows = await db.select({
-    id: mentorAttendanceTable.id,
-    studentId: mentorAttendanceTable.studentId,
-    studentName: usersTable.name,
-    status: mentorAttendanceTable.status,
-    callStatus: mentorAttendanceTable.callStatus,
-    callTime: mentorAttendanceTable.callTime,
-    calledBy: mentorAttendanceTable.calledBy,
-    calledByName: mentorAttendanceTable.calledByName,
-    remark: mentorAttendanceTable.remark,
-    liveClassId: mentorAttendanceTable.liveClassId,
-    attendanceDate: mentorAttendanceTable.attendanceDate,
+    id: mentorAttendanceTable.id, studentId: mentorAttendanceTable.studentId, studentName: usersTable.name,
+    status: mentorAttendanceTable.status, callStatus: mentorAttendanceTable.callStatus,
+    callTime: mentorAttendanceTable.callTime, calledBy: mentorAttendanceTable.calledBy,
+    calledByName: mentorAttendanceTable.calledByName, remark: mentorAttendanceTable.remark,
+    liveClassId: mentorAttendanceTable.liveClassId, attendanceDate: mentorAttendanceTable.attendanceDate,
   })
     .from(mentorAttendanceTable)
     .leftJoin(usersTable, eq(usersTable.id, mentorAttendanceTable.studentId))
@@ -229,10 +388,7 @@ router.get("/mentor/attendance", mentorAuth, async (req, res) => {
 router.post("/mentor/attendance", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const { studentId, liveClassId, attendanceDate, status, callStatus, callTime, calledBy, calledByName, remark } = req.body;
-  if (!studentId || !attendanceDate || !status) {
-    res.status(400).json({ error: "studentId, attendanceDate, status required" });
-    return;
-  }
+  if (!studentId || !attendanceDate || !status) { res.status(400).json({ error: "studentId, attendanceDate, status required" }); return; }
 
   const conditions = [
     eq(mentorAttendanceTable.mentorId, mentorId),
@@ -242,28 +398,13 @@ router.post("/mentor/attendance", mentorAuth, async (req, res) => {
   if (liveClassId) conditions.push(eq(mentorAttendanceTable.liveClassId, Number(liveClassId)));
 
   const existing = await db.select({ id: mentorAttendanceTable.id }).from(mentorAttendanceTable).where(and(...conditions)).limit(1);
-
-  const values = {
-    status: String(status),
-    callStatus: callStatus ?? null,
-    callTime: callTime ?? null,
-    calledBy: calledBy ?? null,
-    calledByName: calledByName ?? null,
-    remark: remark ?? null,
-    updatedAt: new Date(),
-  };
+  const values = { status: String(status), callStatus: callStatus ?? null, callTime: callTime ?? null, calledBy: calledBy ?? null, calledByName: calledByName ?? null, remark: remark ?? null, updatedAt: new Date() };
 
   if (existing.length > 0) {
     const [row] = await db.update(mentorAttendanceTable).set(values).where(eq(mentorAttendanceTable.id, existing[0].id)).returning();
     res.json(row);
   } else {
-    const [row] = await db.insert(mentorAttendanceTable).values({
-      mentorId,
-      studentId: Number(studentId),
-      liveClassId: liveClassId ? Number(liveClassId) : null,
-      attendanceDate: String(attendanceDate),
-      ...values,
-    }).returning();
+    const [row] = await db.insert(mentorAttendanceTable).values({ mentorId, studentId: Number(studentId), liveClassId: liveClassId ? Number(liveClassId) : null, attendanceDate: String(attendanceDate), ...values }).returning();
     res.status(201).json(row);
   }
 });
@@ -283,8 +424,10 @@ router.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
     .leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.studentId))
     .where(eq(mentorFollowUpsTable.mentorId, mentorId))
     .orderBy(desc(mentorFollowUpsTable.createdAt))
-    .limit(100);
-  res.json(rows);
+    .limit(200);
+
+  const enriched = rows.map(r => ({ ...r, ...computeFollowUpStatus(r.nextFollowUpDate, r.callStatus) }));
+  res.json(enriched);
 });
 
 router.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
@@ -297,6 +440,18 @@ router.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
     calledByName: calledByName ?? null, leadStatus: leadStatus ?? null, nextFollowUpDate: nextFollowUpDate ?? null,
   }).returning();
   res.status(201).json(row);
+});
+
+router.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const id = parseInt(String(req.params.id), 10);
+  const { callStatus, note } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (callStatus !== undefined) updates.callStatus = callStatus;
+  if (note !== undefined) updates.note = note;
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+  const [row] = await db.update(mentorFollowUpsTable).set(updates).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).returning();
+  res.json(row);
 });
 
 router.delete("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {

@@ -28,3 +28,5 @@ export * from "./notes";
 export * from "./mentorAssignments";
 export * from "./mentorFollowUps";
 export * from "./mentorAttendance";
+export * from "./studentTimeline";
+export * from "./mentorTasks";

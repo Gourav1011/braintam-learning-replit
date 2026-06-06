@@ -1,0 +1,573 @@
+BRAINTAM SALES MENTOR CRM
+
+
+
+We are introducing a new role called Sales Mentor.
+
+
+
+IMPORTANT:
+
+
+
+Sales Mentor and Academic Mentor are completely different roles.
+
+
+
+Sales Mentor converts leads into paid students.
+
+
+
+Academic Mentor supports students after enrollment.
+
+
+
+Do NOT merge these roles.
+
+
+
+SALES MENTOR OBJECTIVE
+
+
+
+Sales Mentor manages:
+
+
+
+Leads
+
+Demo Students
+
+Parent Follow-Ups
+
+Enrollment
+
+Payments
+
+Conversions
+
+
+
+Sales Mentor does NOT manage:
+
+
+
+Homework
+
+Attendance
+
+Tests
+
+Academic Support
+
+SALES MENTOR DASHBOARD
+
+
+
+Create a dedicated dashboard.
+
+
+
+Show:
+
+
+
+New Leads
+
+Today's Calls
+
+Due Follow-Ups
+
+Overdue Follow-Ups
+
+Demo Students
+
+Interested Parents
+
+Payment Pending
+
+Converted Today
+
+Revenue Generated
+
+LEAD PIPELINE
+
+
+
+Every lead must be in one stage.
+
+
+
+Stages:
+
+
+
+New Lead
+
+Contacted
+
+Connected
+
+Demo Invited
+
+Demo Joined
+
+Interested
+
+Parent Follow-Up
+
+Payment Discussion
+
+Enrollment Link Sent
+
+Payment Pending
+
+Converted
+
+Not Interested
+
+Lost
+
+
+
+Support:
+
+
+
+List View
+
+Kanban View
+
+
+
+Drag and Drop.
+
+
+
+CALL MANAGEMENT SYSTEM
+
+
+
+After every call:
+
+
+
+Sales Mentor MUST select:
+
+
+
+Connected
+
+Not Connected
+
+Busy
+
+Call Back Later
+
+Interested
+
+Not Interested
+
+Wrong Number
+
+Demo Scheduled
+
+Demo Joined
+
+Payment Discussion
+
+Converted
+
+
+
+Mandatory Fields:
+
+
+
+Remarks
+
+Next Action
+
+Follow-Up Date
+
+Follow-Up Time
+
+
+
+Cannot save without these fields.
+
+
+
+FOLLOW-UP SYSTEM
+
+
+
+Every lead must always have:
+
+
+
+Last Action
+
+Next Action
+
+Follow-Up Date
+
+Owner
+
+
+
+Automatically create reminders.
+
+
+
+Reminder statuses:
+
+
+
+Due Today
+
+Upcoming
+
+Overdue
+
+Completed
+
+
+
+Dashboard must show:
+
+
+
+Today's Follow-Ups
+
+Overdue Follow-Ups
+
+Upcoming Follow-Ups
+
+SMART CALLING QUEUE
+
+
+
+Create:
+
+
+
+▶ Next Lead
+
+
+
+Button.
+
+
+
+Workflow:
+
+
+
+Open Lead
+
+Call Parent
+
+Save Outcome
+
+Next Lead Opens Automatically
+
+
+
+This should work like a real sales CRM.
+
+
+
+LEAD PRIORITY SYSTEM
+
+
+
+Every lead gets:
+
+
+
+Hot Lead
+
+Warm Lead
+
+Cold Lead
+
+
+
+Hot Lead examples:
+
+
+
+Demo Attended
+
+Parent Interested
+
+Payment Discussion Started
+
+
+
+Show priority colors.
+
+
+
+PARENT COMMUNICATION HISTORY
+
+
+
+Store permanently:
+
+
+
+Call Date
+
+Mentor
+
+Outcome
+
+Remark
+
+Next Follow-Up
+
+
+
+Never delete.
+
+
+
+Never lose history.
+
+
+
+ENROLLMENT TRACKING
+
+
+
+Track:
+
+
+
+Enrollment Link Sent
+
+Fee Structure Shared
+
+Discount Offered
+
+EMI Discussed
+
+Payment Pending
+
+Converted
+
+
+
+Admin should see funnel statistics.
+
+
+
+SALES MENTOR PERFORMANCE
+
+
+
+Admin Dashboard:
+
+
+
+Show per mentor:
+
+
+
+Assigned Leads
+
+Calls Made
+
+Connected Calls
+
+Demo Joins
+
+Interested Parents
+
+Conversions
+
+Revenue Generated
+
+Follow-Ups Completed
+
+Overdue Follow-Ups
+
+PERMANENT TIMELINE
+
+
+
+Every activity must stay forever.
+
+
+
+Example:
+
+
+
+05 Jun
+
+Called Parent
+
+
+
+06 Jun
+
+Demo Scheduled
+
+
+
+08 Jun
+
+Demo Attended
+
+
+
+09 Jun
+
+Enrollment Link Sent
+
+
+
+11 Jun
+
+Payment Received
+
+
+
+12 Jun
+
+Converted
+
+
+
+Even if lead changes owner.
+
+
+
+History remains.
+
+
+
+AUTOMATION RULES
+
+
+
+If:
+
+
+
+Call Back Later
+
+
+
+then automatically create reminder.
+
+
+
+If:
+
+
+
+No activity for 3 days
+
+
+
+show warning.
+
+
+
+If:
+
+
+
+No activity for 7 days
+
+
+
+show critical alert.
+
+
+
+If:
+
+
+
+Interested + No Follow-Up
+
+
+
+show high-priority alert.
+
+
+
+UI REQUIREMENTS
+
+
+
+Make UI similar to:
+
+
+
+Zoho CRM
+
+HubSpot CRM
+
+Salesforce
+
+
+
+Requirements:
+
+
+
+Compact Tables
+
+Fast Filters
+
+Search
+
+Pagination
+
+Sticky Filters
+
+Color Status
+
+Quick Actions
+
+
+
+Support:
+
+
+
+500+ Leads Per Day
+
+10000+ Leads Database
+
+
+
+(FUTURE READY
+
+Design architecture for:
+
+
+
+WhatsApp Integration
+
+Cloud Telephony
+
+Call Recording
+
+AI Call Summary
+
+Do NOT build these now.
+
+Only prepare architecture.)
+
+
+
+Final Goal:
+
+A Sales Mentor should be able to manage 200–500 leads efficiently without Excel sheets, and Admin should know exactly which mentor called whom, what was discussed, when to call again, and which leads are most likely to convert.

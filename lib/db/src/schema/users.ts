@@ -27,6 +27,9 @@ export const usersTable = pgTable("users", {
   streakDays: integer("streak_days").notNull().default(0),
   lastLoginDate: timestamp("last_login_date"),
   isActive: boolean("is_active").notNull().default(true),
+  leadStage: text("lead_stage"),
+  parentName: text("parent_name"),
+  parentPhone: text("parent_phone"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
