@@ -52,6 +52,7 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 |--------|---------------------------|---------|------------|
 | poonam | braintam20@gmail.com      | teacher | poonam2026 |
 | gourav | gourav.manhas10@gmail.com | admin   | admin2026  |
+| priya  | priya@braintam.com        | mentor  | priya2026  |
 
 ## Product
 
