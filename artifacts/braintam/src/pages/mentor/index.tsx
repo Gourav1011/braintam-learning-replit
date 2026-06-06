@@ -186,22 +186,25 @@ export default function MentorPage() {
 
   const fetchDashboard = useCallback(async () => {
     const r = await apiFetch("/mentor/dashboard");
-    if (r.ok) setDashboard(await r.json());
+    if (r.ok) {
+      const d = await r.json();
+      setDashboard({ ...d, followUpReminders: Array.isArray(d.followUpReminders) ? d.followUpReminders : [], recentFollowUps: Array.isArray(d.recentFollowUps) ? d.recentFollowUps : [] });
+    }
   }, []);
 
   const fetchStudents = useCallback(async () => {
     const r = await apiFetch("/mentor/students?limit=200");
-    if (r.ok) { const d = await r.json(); setStudents(d.students ?? []); }
+    if (r.ok) { const d = await r.json(); setStudents(Array.isArray(d.students) ? d.students : []); }
   }, []);
 
   const fetchFollowUps = useCallback(async () => {
     const r = await apiFetch("/mentor/follow-ups");
-    if (r.ok) setFollowUps(await r.json());
+    if (r.ok) { const d = await r.json(); setFollowUps(Array.isArray(d) ? d : []); }
   }, []);
 
   const fetchLiveClasses = useCallback(async (date: string) => {
     const r = await apiFetch(`/mentor/live-classes?date=${date}`);
-    if (r.ok) { const cls = await r.json(); setLiveClasses(cls); if (cls.length > 0) setSelectedClassId(cls[0].id); else setSelectedClassId(null); }
+    if (r.ok) { const cls = await r.json(); const arr = Array.isArray(cls) ? cls : []; setLiveClasses(arr); if (arr.length > 0) setSelectedClassId(arr[0].id); else setSelectedClassId(null); }
   }, []);
 
   const fetchAttendance = useCallback(async (date: string, classId: number | null) => {
@@ -421,11 +424,11 @@ export default function MentorPage() {
                 </div>
 
                 {/* Follow-up reminders */}
-                {dashboard.followUpReminders.length > 0 && (
+                {(dashboard.followUpReminders?.length ?? 0) > 0 && (
                   <div className="bg-orange-50 rounded-2xl border border-orange-200 p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Bell className="w-4 h-4" style={{ color: ORANGE }} />
-                      <h3 className="font-black text-sm" style={{ color: ORANGE }}>Follow-Up Reminders ({dashboard.followUpReminders.length})</h3>
+                      <h3 className="font-black text-sm" style={{ color: ORANGE }}>Follow-Up Reminders ({dashboard.followUpReminders?.length ?? 0})</h3>
                     </div>
                     <div className="space-y-2">
                       {dashboard.followUpReminders.map(r => (
@@ -470,9 +473,9 @@ export default function MentorPage() {
                       <MessageSquare className="w-4 h-4" style={{ color: GREEN }} />
                       <h3 className="font-black text-sm" style={{ color: NAVY }}>Recent Follow-Ups</h3>
                     </div>
-                    {dashboard.recentFollowUps.length === 0 ? (
+                    {(dashboard.recentFollowUps?.length ?? 0) === 0 ? (
                       <p className="text-xs text-gray-400 text-center py-4">No follow-ups yet</p>
-                    ) : dashboard.recentFollowUps.map(fu => (
+                    ) : (dashboard.recentFollowUps ?? []).map(fu => (
                       <div key={fu.id} className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 mb-2 last:mb-0">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="font-bold text-xs" style={{ color: NAVY }}>{fu.studentName}</span>
@@ -957,7 +960,7 @@ function StudentDetailView({ student, detail, loading, onClose, onFollowUp }: {
           {/* Recent follow-ups */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <h3 className="font-black text-sm mb-3" style={{ color: NAVY }}>Follow-Up History</h3>
-            {detail.followUps.length === 0 ? <p className="text-xs text-gray-400">No follow-ups yet</p> : detail.followUps.slice(0, 5).map(fu => (
+            {(detail.followUps?.length ?? 0) === 0 ? <p className="text-xs text-gray-400">No follow-ups yet</p> : (detail.followUps ?? []).slice(0, 5).map(fu => (
               <div key={fu.id} className="py-2 border-b border-gray-50 last:border-0">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: `#05966915`, color: "#059669" }}>{fu.noteType}</span>
@@ -971,7 +974,7 @@ function StudentDetailView({ student, detail, loading, onClose, onFollowUp }: {
           {/* Attendance history */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <h3 className="font-black text-sm mb-3" style={{ color: NAVY }}>Recent Attendance</h3>
-            {detail.attendance.length === 0 ? <p className="text-xs text-gray-400">No attendance records yet</p> : detail.attendance.slice(0, 10).map((a, i) => (
+            {(detail.attendance?.length ?? 0) === 0 ? <p className="text-xs text-gray-400">No attendance records yet</p> : (detail.attendance ?? []).slice(0, 10).map((a, i) => (
               <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
                 <span className="text-xs text-gray-500">{fmtDate(a.attendanceDate)}</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${a.status === "present" ? "bg-green-100 text-green-700" : a.status === "absent" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-500"}`}>
