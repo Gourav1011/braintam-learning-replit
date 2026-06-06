@@ -27,3 +27,4 @@ export * from "./dailyCoinClaims";
 export * from "./notes";
 export * from "./mentorAssignments";
 export * from "./mentorFollowUps";
+export * from "./mentorAttendance";
