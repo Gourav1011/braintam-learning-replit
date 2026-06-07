@@ -275,7 +275,7 @@ function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPasswo
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {user.role !== "admin" && (
+            {user.role !== "admin" && user.role !== "super_admin" && (
               <button onClick={() => setEditing(p => !p)} title="Edit name & school"
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                 <Edit2 className="w-4 h-4 text-gray-400" />
@@ -310,13 +310,13 @@ function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPasswo
             {[
               { label: "Email", value: user.email ?? "—" },
               { label: "Phone", value: user.phone ?? "—" },
-              { label: "Grade", value: user.grade > 0 ? `Grade ${user.grade}` : "—" },
-              { label: "School", value: user.school ?? "—" },
+              user.role === "student" ? { label: "Grade", value: user.grade > 0 ? `Grade ${user.grade}` : "—" } : null,
+              user.role === "student" ? { label: "School", value: user.school ?? "—" } : null,
               { label: "User ID", value: `#${user.id}` },
               { label: "Joined", value: user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-IN") : "—" },
-              { label: "Enrollments", value: enrollmentCount === null ? "…" : `${enrollmentCount} course${enrollmentCount !== 1 ? "s" : ""}` },
+              user.role === "student" ? { label: "Enrollments", value: enrollmentCount === null ? "…" : `${enrollmentCount} course${enrollmentCount !== 1 ? "s" : ""}` } : null,
               { label: "Last Login", value: (user as any).lastLoginAt ? new Date((user as any).lastLoginAt).toLocaleDateString("en-IN") : "Not tracked" },
-            ].map(f => (
+            ].filter((f): f is { label: string; value: string } => f !== null).map(f => (
               <div key={f.label} className="bg-gray-50 rounded-xl p-2.5">
                 <div className="text-gray-400 font-medium">{f.label}</div>
                 <div className="font-semibold text-gray-700 mt-0.5 truncate">{f.value}</div>
@@ -326,15 +326,17 @@ function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPasswo
         )}
 
         <div className="grid grid-cols-2 gap-2 pt-2">
-          <Button size="sm" onClick={() => { onResetPassword(user); onClose(); }} variant="outline" className="gap-1.5 text-xs">
-            <Key className="w-3.5 h-3.5" /> Reset Password
-          </Button>
+          {user.role !== "super_admin" && (
+            <Button size="sm" onClick={() => { onResetPassword(user); onClose(); }} variant="outline" className="gap-1.5 text-xs">
+              <Key className="w-3.5 h-3.5" /> Reset Password
+            </Button>
+          )}
           {user.role === "student" && (
             <Button size="sm" onClick={() => { onEnroll(user); onClose(); }} variant="outline" className="gap-1.5 text-xs">
               <GradCap className="w-3.5 h-3.5" /> Enroll Course
             </Button>
           )}
-          {user.isActive ? (
+          {user.role !== "super_admin" && (user.isActive ? (
             <Button size="sm" onClick={() => { onDeactivate(user.id); onClose(); }}
               className="gap-1.5 text-xs text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100" variant="outline">
               <UserX className="w-3.5 h-3.5" /> Deactivate
@@ -344,7 +346,7 @@ function ProfileModal({ user, onClose, onDeactivate, onReactivate, onResetPasswo
               className="gap-1.5 text-xs text-green-600 border-green-200 bg-green-50 hover:bg-green-100" variant="outline">
               <UserCheck2 className="w-3.5 h-3.5" /> Reactivate
             </Button>
-          )}
+          ))}
         </div>
       </div>
     </div>
@@ -787,7 +789,7 @@ function AdminPageInner() {
 
   // ── Filtered + Sorted Users ─────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
-    let list = users;
+    let list = users.filter(u => u.role !== "super_admin");
 
     if (userSubTab === "active") list = list.filter(u => u.isActive);
     else if (userSubTab === "deactivated") list = list.filter(u => !u.isActive);
@@ -1100,7 +1102,7 @@ function AdminPageInner() {
     { id: "settings", label: "Settings", icon: Lock, group: "System" },
     { id: "overview", label: "Overview", icon: Activity, group: "System" },
     { id: "profile", label: "My Profile", icon: UserCircle, group: "System" },
-  ];
+  ].filter(t => t.id !== "super-admin" || role === "super_admin") as { id: Tab; label: string; icon: React.ElementType; group: string }[];
   const TAB_GROUPS = ["Home", "Insights", "Content", "Manage", "System"];
 
   return (
@@ -3237,7 +3239,7 @@ function AdminUserPasswordReset({ users, flash }: { users: User[]; flash: (msg: 
     if (!search.trim()) return [];
     const q = search.toLowerCase();
     return users
-      .filter(u => u.role !== "admin")
+      .filter(u => u.role !== "admin" && u.role !== "super_admin")
       .filter(u =>
         u.name.toLowerCase().includes(q) ||
         (u.email ?? "").toLowerCase().includes(q) ||
