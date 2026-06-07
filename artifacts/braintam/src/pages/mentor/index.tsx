@@ -690,6 +690,27 @@ export default function BTLCRMPage() {
     await apiFetch(`/mentor/students/${studentId}`, { method: "PATCH", body: JSON.stringify({ leadStage: stage || null }) });
     handleLeadStageChanged(studentId, stage);
   }
+  async function open360ById(studentId: number, studentName?: string | null) {
+    const found = students.find(s => s.id === studentId);
+    if (found) { open360(found); return; }
+    setProfileLoading(true);
+    const r = await apiFetch(`/mentor/students/${studentId}`);
+    if (r.ok) {
+      const data = await r.json();
+      setProfile360({
+        ...data,
+        student: {
+          id: studentId, name: studentName ?? data.student?.name ?? `Student #${studentId}`,
+          grade: 0, school: null, email: null, phone: null, isActive: true,
+          hwCompletion: 0, hwTotal: 0, hwPending: 0, testCount: 0,
+          healthScore: 0, riskLevel: "good" as const, daysSinceLogin: 0,
+          assignedAt: "", leadStage: null, parentName: null, parentPhone: null, attendancePct: null,
+          ...data.student,
+        },
+      });
+    }
+    setProfileLoading(false);
+  }
 
   // ── Follow-ups ──
   async function addFollowUp(e: React.FormEvent) {
@@ -879,7 +900,13 @@ export default function BTLCRMPage() {
                       {dashboard.followUpReminders.map(r => (
                         <div key={r.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-orange-100 gap-2">
                           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                            <span className="font-bold text-sm" style={{ color: NAVY }}>{r.studentName ?? `Student #${r.studentId}`}</span>
+                            <button
+                              className="font-bold text-sm hover:underline text-left"
+                              style={{ color: NAVY }}
+                              onClick={() => open360ById(r.studentId, r.studentName)}
+                            >
+                              {r.studentName ?? `Student #${r.studentId}`}
+                            </button>
                             <FuStatusBadge status={r.fuStatus ?? "upcoming"} daysOverdue={r.daysOverdue ?? 0} />
                           </div>
                           <button onClick={() => { setFuStudentId(r.studentId); setTab("follow-ups"); }}
@@ -1206,7 +1233,13 @@ export default function BTLCRMPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-bold text-xs" style={{ color: NAVY }}>{fu.studentName ?? `Student #${fu.studentId}`}</span>
+                            <button
+                              className="font-bold text-xs hover:underline text-left"
+                              style={{ color: NAVY }}
+                              onClick={() => open360ById(fu.studentId, fu.studentName)}
+                            >
+                              {fu.studentName ?? `Student #${fu.studentId}`}
+                            </button>
                             <FuStatusBadge status={fu.fuStatus ?? "upcoming"} daysOverdue={fu.daysOverdue ?? 0} />
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{fu.noteType}</span>
                           </div>
