@@ -38,9 +38,33 @@ export function StaffProfileTab({ user, apiFetch, flash, onSaved }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { setError("Please select an image file."); return; }
-    if (file.size > 2 * 1024 * 1024) { setError("Image must be under 2 MB."); return; }
     const reader = new FileReader();
-    reader.onload = ev => { setAvatarPreview(ev.target?.result as string); setError(""); };
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        // Center-crop to square, then draw at 120×120
+        const canvas = document.createElement("canvas");
+        canvas.width = 120;
+        canvas.height = 120;
+        const ctx = canvas.getContext("2d")!;
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 120, 120);
+        // Iteratively compress until ≤ 10 KB
+        let quality = 0.8;
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrl.length > 13_700 && quality > 0.05) {
+          quality = Math.round((quality - 0.1) * 10) / 10;
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+        setAvatarPreview(dataUrl);
+        setError("");
+      };
+      img.onerror = () => setError("Could not read image.");
+      img.src = ev.target?.result as string;
+    };
+    reader.onerror = () => setError("Could not read file.");
     reader.readAsDataURL(file);
   }
 

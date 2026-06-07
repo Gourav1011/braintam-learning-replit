@@ -51,7 +51,14 @@ function resizeImageToBase64(file: File, maxPx = 120): Promise<string> {
         canvas.height = maxPx;
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, sx, sy, size, size, 0, 0, maxPx, maxPx);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
+        // Iteratively compress until ≤ 10 KB (~13 700 base64 chars)
+        let quality = 0.8;
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrl.length > 13_700 && quality > 0.05) {
+          quality = Math.round((quality - 0.1) * 10) / 10;
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(dataUrl);
       };
       img.onerror = reject;
       img.src = e.target?.result as string;
