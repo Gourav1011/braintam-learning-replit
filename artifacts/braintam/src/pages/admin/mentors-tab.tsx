@@ -48,8 +48,17 @@ interface DashboardStats {
   healthDistribution: { excellent: number; good: number; average: number; needsAttention: number };
   workloadDistribution: { low: number; medium: number; high: number };
   topSalesMentors: { id: number; name: string; convPct: number }[];
+  topAcademicMentors: { id: number; name: string; healthScore: number; attPct: number | null }[];
   quickInsights: { totalDemoLeads: number; totalConversions: number; overallConversionPct: number; avgAttendancePct: number };
   recentActivity: { mentorName: string; studentName: string; note: string; time: string }[];
+}
+
+interface AlertsData {
+  noLoginDays: { id: number; name: string }[];
+  noStudents: { id: number; name: string }[];
+  noLeads: { id: number; name: string }[];
+  overloaded: { id: number; name: string }[];
+  lowConversion: { id: number; name: string; convPct: number }[];
 }
 
 interface MentorProfile {
@@ -74,6 +83,12 @@ function workloadColor(w: string) {
   if (w === "Low") return { bg: "#DCFCE7", text: "#15803D" };
   if (w === "Medium") return { bg: "#FEF3C7", text: "#B45309" };
   return { bg: "#FEE2E2", text: "#DC2626" };
+}
+
+function workloadDisplay(w: string): string {
+  if (w === "Low") return "Healthy";
+  if (w === "Medium") return "Busy";
+  return "Overloaded";
 }
 
 function timeAgo(iso: string | null): string {
@@ -725,10 +740,12 @@ const PAGE_SIZE = 10;
 export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => void; users: { id: number; name: string; role: string; grade: number; isActive: boolean }[] }) {
   const [mentors, setMentors] = useState<EnrichedMentor[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [alerts, setAlerts] = useState<AlertsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "academic" | "sales" | "inactive">("all");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [workloadFilter, setWorkloadFilter] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "healthScore", dir: "desc" });
   const [page, setPage] = useState(1);
@@ -736,16 +753,19 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
   const [showCreate, setShowCreate] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [mRes, sRes] = await Promise.all([
+    const [mRes, sRes, aRes] = await Promise.all([
       apiFetch("/admin/mentors/enriched"),
       apiFetch("/admin/mentors/dashboard-stats"),
+      apiFetch("/admin/mentors/alerts"),
     ]);
     if (mRes.ok) setMentors(await mRes.json());
     if (sRes.ok) setStats(await sRes.json());
+    if (aRes.ok) setAlerts(await aRes.json());
     setLoading(false);
   }, []);
 
@@ -766,6 +786,7 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       list = list.filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || (m.phone ?? "").includes(q));
     }
     if (typeFilter !== "all") list = list.filter(m => m.mentorType === typeFilter);
+    if (statusFilter !== "all") list = list.filter(m => statusFilter === "active" ? m.isActive : !m.isActive);
     if (workloadFilter !== "all") list = list.filter(m => m.workload.toLowerCase() === workloadFilter);
     list.sort((a, b) => {
       const va = a[sort.key] ?? 0;
@@ -817,13 +838,32 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-black text-lg" style={{ color: NAVY }}>Mentors Management</h3>
-          <p className="text-xs text-gray-500">Manage and monitor your academic and sales mentors</p>
+          <h3 className="font-black text-lg" style={{ color: NAVY }}>Mentor Management Center</h3>
+          <p className="text-xs text-gray-500">Manage academic and sales mentors · track performance, workload &amp; alerts</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all">
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
+          <div className="relative">
+            <button onClick={() => setShowBulkMenu(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all">
+              <MoreVertical className="w-3.5 h-3.5" /> Bulk Actions
+            </button>
+            {showBulkMenu && (
+              <div className="absolute right-0 top-9 z-30 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-48">
+                <button onClick={() => { setShowBulkMenu(false); setShowAssign(true); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                  <Users className="w-3.5 h-3.5 text-blue-500" /> Assign to Batch
+                </button>
+                <button onClick={() => { setShowBulkMenu(false); setShowBulk(true); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                  <GraduationCap className="w-3.5 h-3.5 text-orange-500" /> Enable / Disable
+                </button>
+                <button onClick={() => { setShowBulkMenu(false); exportCSV(); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                  <Download className="w-3.5 h-3.5 text-green-500" /> Export Current View
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={loadData} className="p-2 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition-all">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -888,20 +928,26 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
             </div>
             <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
               className="px-3 py-2 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
-              <option value="all">Mentor Type: All</option>
+              <option value="all">Type: All</option>
               <option value="academic">Academic</option>
               <option value="sales">Sales (SSM)</option>
+            </select>
+            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
+              <option value="all">Status: All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
             <select value={workloadFilter} onChange={e => { setWorkloadFilter(e.target.value); setPage(1); }}
               className="px-3 py-2 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
               <option value="all">Workload: All</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">Healthy</option>
+              <option value="medium">Busy</option>
+              <option value="high">Overloaded</option>
             </select>
-            {(search || typeFilter !== "all" || workloadFilter !== "all") && (
-              <button onClick={() => { setSearch(""); setTypeFilter("all"); setWorkloadFilter("all"); setPage(1); }}
-                className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600 bg-white">
+            {(search || typeFilter !== "all" || statusFilter !== "all" || workloadFilter !== "all") && (
+              <button onClick={() => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); setWorkloadFilter("all"); setPage(1); }}
+                className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600 bg-white" title="Reset filters">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -920,20 +966,16 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px]">
+                  <table className="w-full min-w-[780px]">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50">
                         <th className="text-left px-4 py-3"><SortHeader label="Mentor" sortKey="name" currentSort={sort} onSort={handleSort} /></th>
                         <th className="text-left px-3 py-3"><SortHeader label="Type" sortKey="mentorType" currentSort={sort} onSort={handleSort} /></th>
-                        <th className="text-center px-3 py-3"><SortHeader label="Assigned" sortKey="assignedStudents" currentSort={sort} onSort={handleSort} /></th>
-                        <th className="text-center px-3 py-3"><SortHeader label="Demo" sortKey="assignedDemoStudents" currentSort={sort} onSort={handleSort} /></th>
-                        <th className="text-center px-3 py-3"><SortHeader label="Conv." sortKey="conversions" currentSort={sort} onSort={handleSort} /></th>
-                        <th className="text-center px-3 py-3"><SortHeader label="Conv%" sortKey="conversionPct" currentSort={sort} onSort={handleSort} /></th>
-                        <th className="text-center px-3 py-3"><SortHeader label="Att%" sortKey="attendancePct" currentSort={sort} onSort={handleSort} /></th>
-                        <th className="text-center px-3 py-3"><SortHeader label="HW%" sortKey="homeworkPct" currentSort={sort} onSort={handleSort} /></th>
+                        <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500">Students / Leads</th>
+                        <th className="text-center px-3 py-3"><SortHeader label="Performance" sortKey="healthScore" currentSort={sort} onSort={handleSort} /></th>
+                        <th className="text-center px-3 py-3"><SortHeader label="Workload" sortKey="workload" currentSort={sort} onSort={handleSort} /></th>
                         <th className="text-center px-3 py-3"><SortHeader label="Last Login" sortKey="lastLoginAt" currentSort={sort} onSort={handleSort} /></th>
                         <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500">Status</th>
-                        <th className="text-center px-3 py-3"><SortHeader label="Health" sortKey="healthScore" currentSort={sort} onSort={handleSort} /></th>
                         <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500">Actions</th>
                       </tr>
                     </thead>
@@ -941,6 +983,7 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                       {pageData.map(m => {
                         const hc = healthColor(m.healthLabel);
                         const wc = workloadColor(m.workload);
+                        const isSales = m.mentorType === "sales";
                         return (
                           <tr key={m.id} className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => setProfileId(m.id)}>
                             <td className="px-4 py-3">
@@ -948,41 +991,52 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                                 <Avatar name={m.name} size={8} />
                                 <div>
                                   <div className="text-xs font-bold" style={{ color: NAVY }}>{m.name}</div>
-                                  <div className="text-[10px] text-gray-400 truncate max-w-[120px]">{m.phone ?? m.email}</div>
+                                  <div className="text-[10px] text-gray-400">{m.email}</div>
+                                  {m.phone && <div className="text-[10px] text-gray-400">{m.phone}</div>}
                                 </div>
                               </div>
                             </td>
                             <td className="px-3 py-3">
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                style={{ background: m.mentorType === "sales" ? "#FFFBEB" : "#ECFDF5", color: m.mentorType === "sales" ? "#D97706" : "#059669" }}>
-                                {m.mentorType === "sales" ? "Sales" : "Academic"}
+                                style={{ background: isSales ? "#FFFBEB" : "#ECFDF5", color: isSales ? "#D97706" : "#059669" }}>
+                                {isSales ? "💼 Sales" : "📚 Academic"}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-center text-xs font-semibold" style={{ color: NAVY }}>{m.assignedStudents || "—"}</td>
-                            <td className="px-3 py-3 text-center text-xs font-semibold" style={{ color: NAVY }}>{m.assignedDemoStudents || "—"}</td>
-                            <td className="px-3 py-3 text-center text-xs font-semibold text-green-600">{m.conversions || "—"}</td>
                             <td className="px-3 py-3 text-center">
-                              <span className={`text-xs font-bold ${m.conversionPct >= 20 ? "text-green-600" : m.conversionPct >= 10 ? "text-amber-600" : "text-gray-400"}`}>
-                                {m.conversionPct > 0 ? `${m.conversionPct}%` : "—"}
-                              </span>
+                              <div className="text-sm font-black" style={{ color: NAVY }}>
+                                {isSales ? (m.assignedDemoStudents || "—") : (m.assignedStudents || "—")}
+                              </div>
+                              <div className="text-[10px] text-gray-400">{isSales ? "demo leads" : "students"}</div>
+                              {isSales && m.conversions > 0 && (
+                                <div className="text-[10px] text-green-600 font-bold">{m.conversions} converted</div>
+                              )}
                             </td>
-                            <td className="px-3 py-3 text-center text-xs font-semibold text-purple-600">{m.attendancePct !== null ? `${m.attendancePct}%` : "—"}</td>
-                            <td className="px-3 py-3 text-center text-xs font-semibold text-blue-600">{m.homeworkPct !== null ? `${m.homeworkPct}%` : "—"}</td>
+                            <td className="px-3 py-3 text-center">
+                              <div className="text-sm font-black" style={{ color: hc.text }}>{m.healthScore}%</div>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: hc.bg, color: hc.text }}>{m.healthLabel}</span>
+                              {isSales ? (
+                                <div className="text-[10px] text-gray-400 mt-0.5">Conv: {m.conversionPct > 0 ? `${m.conversionPct}%` : "—"}</div>
+                              ) : (
+                                <div className="text-[10px] text-gray-400 mt-0.5">Att: {m.attendancePct !== null ? `${m.attendancePct}%` : "—"}</div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: wc.bg, color: wc.text }}>
+                                {workloadDisplay(m.workload)}
+                              </span>
+                              <div className="text-[10px] text-gray-400 mt-1">
+                                {isSales ? m.assignedDemoStudents : m.assignedStudents} / 60
+                              </div>
+                            </td>
                             <td className="px-3 py-3 text-center text-[10px] text-gray-500">{timeAgo(m.lastLoginAt)}</td>
                             <td className="px-3 py-3 text-center">
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                                 {m.isActive ? "Active" : "Inactive"}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-center">
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="text-xs font-black" style={{ color: hc.text }}>{m.healthScore}</span>
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: hc.bg, color: hc.text }}>{m.healthLabel}</span>
-                              </div>
-                            </td>
                             <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
                               <button onClick={() => setProfileId(m.id)}
-                                className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all">
+                                className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all" title="View profile">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                             </td>
@@ -1071,19 +1125,47 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
             </div>
           </div>
 
+          {/* Top Academic Mentors */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-black text-xs" style={{ color: NAVY }}>🏆 Top Academic Mentors</h4>
+              <span className="text-[10px] text-gray-400">by Health Score</span>
+            </div>
+            {(stats?.topAcademicMentors ?? []).length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-3">No academic mentors yet</p>
+            ) : (
+              <div className="space-y-2">
+                {(stats?.topAcademicMentors ?? []).map((m, i) => (
+                  <div key={m.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded-lg p-1 -mx-1 transition-all" onClick={() => setProfileId(m.id)}>
+                    <span className="w-5 text-xs font-black text-center">
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                    </span>
+                    <Avatar name={m.name} size={6} />
+                    <span className="flex-1 text-xs font-semibold truncate" style={{ color: NAVY }}>{m.name}</span>
+                    <span className="text-xs font-black" style={{ color: healthColor(m.healthScore >= 85 ? "Excellent" : m.healthScore >= 70 ? "Good" : m.healthScore >= 50 ? "Average" : "Needs Attention").text }}>{m.healthScore}%</span>
+                  </div>
+                ))}
+                <button onClick={() => { setActiveTab("academic"); setSort({ key: "healthScore", dir: "desc" }); setPage(1); tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                  className="w-full text-center text-[10px] text-blue-500 hover:text-blue-600 font-semibold mt-1 pt-1 border-t border-gray-100 transition-colors">
+                  View All Academic →
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Top Sales Mentors */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-black text-xs" style={{ color: NAVY }}>Top Sales Mentors</h4>
+              <h4 className="font-black text-xs" style={{ color: NAVY }}>🏆 Top Sales Mentors</h4>
               <span className="text-[10px] text-gray-400">by Conv%</span>
             </div>
-            {stats?.topSalesMentors.length === 0 ? (
+            {(stats?.topSalesMentors ?? []).length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-3">No sales mentors yet</p>
             ) : (
               <div className="space-y-2">
                 {(stats?.topSalesMentors ?? []).map((m, i) => (
                   <div key={m.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded-lg p-1 -mx-1 transition-all" onClick={() => setProfileId(m.id)}>
-                    <span className="w-5 text-xs font-black text-center" style={{ color: i === 0 ? "#F59E0B" : i === 1 ? "#94A3B8" : i === 2 ? "#CD7C2F" : NAVY }}>
+                    <span className="w-5 text-xs font-black text-center">
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
                     </span>
                     <Avatar name={m.name} size={6} />
@@ -1091,15 +1173,9 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                     <span className="text-xs font-black text-green-600">{m.convPct}%</span>
                   </div>
                 ))}
-                <button
-                  onClick={() => {
-                    setActiveTab("all");
-                    setSort({ key: "conversionPct", dir: "desc" });
-                    setPage(1);
-                    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
+                <button onClick={() => { setActiveTab("sales"); setSort({ key: "conversionPct", dir: "desc" }); setPage(1); tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
                   className="w-full text-center text-[10px] text-blue-500 hover:text-blue-600 font-semibold mt-1 pt-1 border-t border-gray-100 transition-colors">
-                  View Full Leaderboard →
+                  View All Sales →
                 </button>
               </div>
             )}
@@ -1158,28 +1234,84 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* Alerts & Notifications */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <h4 className="font-black text-xs mb-3 flex items-center gap-2" style={{ color: NAVY }}>
-            <Shield className="w-3.5 h-3.5 text-purple-500" /> Quick Actions
+            <AlertCircle className="w-3.5 h-3.5 text-red-500" /> Alerts &amp; Notifications
           </h4>
-          <div className="space-y-2">
-            {[
-              { icon: <Users className="w-3.5 h-3.5" />, label: "Assign Mentor to Batch", color: NAVY, onClick: () => setShowAssign(true) },
-              { icon: <BarChart3 className="w-3.5 h-3.5" />, label: "View Mentor Reports", color: "#7C3AED", onClick: exportCSV },
-              { icon: <GraduationCap className="w-3.5 h-3.5" />, label: "Bulk Update Mentors", color: ORANGE, onClick: () => setShowBulk(true) },
-              { icon: <Plus className="w-3.5 h-3.5" />, label: "Add New Mentor", color: GREEN, onClick: () => setShowCreate(true) },
-            ].map(qa => (
-              <button key={qa.label} onClick={qa.onClick}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 transition-all text-left">
-                <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: `${qa.color}15`, color: qa.color }}>
-                  {qa.icon}
-                </div>
-                <span className="text-xs font-semibold text-gray-700">{qa.label}</span>
-                <ArrowUpRight className="w-3 h-3 text-gray-300 ml-auto" />
-              </button>
-            ))}
-          </div>
+          {!alerts ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {[
+                {
+                  label: "No login ≥ 7 days",
+                  count: alerts.noLoginDays.length,
+                  names: alerts.noLoginDays.slice(0, 2).map(m => m.name),
+                  color: "#DC2626", bg: "#FEF2F2",
+                  icon: <CalendarDays className="w-3.5 h-3.5" />,
+                  onClick: () => { setSearch(""); setPage(1); },
+                },
+                {
+                  label: "Overloaded mentors",
+                  count: alerts.overloaded.length,
+                  names: alerts.overloaded.slice(0, 2).map(m => m.name),
+                  color: "#D97706", bg: "#FFFBEB",
+                  icon: <Flame className="w-3.5 h-3.5" />,
+                  onClick: () => { setWorkloadFilter("high"); setPage(1); },
+                },
+                {
+                  label: "Academic: no students",
+                  count: alerts.noStudents.length,
+                  names: alerts.noStudents.slice(0, 2).map(m => m.name),
+                  color: "#7C3AED", bg: "#F5F3FF",
+                  icon: <Users className="w-3.5 h-3.5" />,
+                  onClick: () => { setTypeFilter("academic"); setPage(1); },
+                },
+                {
+                  label: "Sales: low conversion (<10%)",
+                  count: alerts.lowConversion.length,
+                  names: alerts.lowConversion.slice(0, 2).map(m => m.name),
+                  color: "#0B2B6B", bg: "#EEF2FF",
+                  icon: <TrendingUp className="w-3.5 h-3.5" />,
+                  onClick: () => { setTypeFilter("sales"); setSort({ key: "conversionPct", dir: "asc" }); setPage(1); },
+                },
+                {
+                  label: "Sales: no demo leads",
+                  count: alerts.noLeads.length,
+                  names: alerts.noLeads.slice(0, 2).map(m => m.name),
+                  color: "#0891B2", bg: "#ECFEFF",
+                  icon: <Star className="w-3.5 h-3.5" />,
+                  onClick: () => { setTypeFilter("sales"); setPage(1); },
+                },
+              ].map(alert => (
+                <button key={alert.label} onClick={alert.onClick}
+                  className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-lg border transition-all text-left ${alert.count > 0 ? "border-opacity-50 hover:opacity-90" : "border-gray-100 opacity-50"}`}
+                  style={alert.count > 0 ? { background: alert.bg, borderColor: alert.color + "40" } : undefined}
+                  disabled={alert.count === 0}>
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: alert.count > 0 ? alert.color + "20" : "#F3F4F6", color: alert.count > 0 ? alert.color : "#9CA3AF" }}>
+                    {alert.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold" style={{ color: alert.count > 0 ? alert.color : "#9CA3AF" }}>{alert.label}</span>
+                      <span className={`text-xs font-black px-1.5 py-0.5 rounded-full ml-2 flex-shrink-0 ${alert.count > 0 ? "text-white" : "bg-gray-100 text-gray-400"}`}
+                        style={alert.count > 0 ? { background: alert.color } : undefined}>
+                        {alert.count}
+                      </span>
+                    </div>
+                    {alert.count > 0 && alert.names.length > 0 && (
+                      <div className="text-[10px] text-gray-500 mt-0.5 truncate">
+                        {alert.names.join(", ")}{alert.count > 2 ? ` +${alert.count - 2} more` : ""}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

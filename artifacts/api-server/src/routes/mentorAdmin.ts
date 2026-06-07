@@ -409,6 +409,7 @@ router.get("/admin/mentors/dashboard-stats", adminOnly, async (_req, res) => {
   let totalConversions = 0;
   let attTotal = 0; let attCount = 0;
   const salesPerf: { id: number; name: string; convPct: number }[] = [];
+  const academicPerf: { id: number; name: string; healthScore: number; attPct: number | null }[] = [];
 
   for (const m of mentors) {
     const students = studentMap[m.id] ?? 0;
@@ -426,7 +427,7 @@ router.get("/admin/mentors/dashboard-stats", adminOnly, async (_req, res) => {
     const convPct = totalBase > 0 ? Math.round((conversions / totalBase) * 100) : 0;
     totalConversions += conversions;
     if (attPct !== null) { attTotal += attPct; attCount++; }
-    const { label } = computeHealth(m.mentorType, attPct, null, convPct, fuPct, students, demoStudents);
+    const { label, score: healthScore } = computeHealth(m.mentorType, attPct, null, convPct, fuPct, students, demoStudents);
     if (label === "Excellent") healthDist.excellent++;
     else if (label === "Good") healthDist.good++;
     else if (label === "Average") healthDist.average++;
@@ -436,9 +437,11 @@ router.get("/admin/mentors/dashboard-stats", adminOnly, async (_req, res) => {
     else if (wl === "Medium") workloadDist.medium++;
     else workloadDist.high++;
     if (type === "sales" && m.isActive) salesPerf.push({ id: m.id, name: m.name, convPct });
+    if (type === "academic" && m.isActive) academicPerf.push({ id: m.id, name: m.name, healthScore, attPct });
   }
 
   salesPerf.sort((a, b) => b.convPct - a.convPct);
+  academicPerf.sort((a, b) => b.healthScore - a.healthScore);
   const topPerformer = salesPerf[0] ?? null;
   const totalDemoCount = Number(totalDemoLeads[0]?.cnt ?? 0);
   const overallConvPct = totalDemoCount > 0 ? Math.round((totalConversions / totalDemoCount) * 100) : 0;
@@ -461,6 +464,7 @@ router.get("/admin/mentors/dashboard-stats", adminOnly, async (_req, res) => {
     healthDistribution: healthDist,
     workloadDistribution: workloadDist,
     topSalesMentors: salesPerf.slice(0, 5),
+    topAcademicMentors: academicPerf.slice(0, 5),
     quickInsights: {
       totalDemoLeads: totalDemoCount,
       totalConversions,
@@ -469,6 +473,69 @@ router.get("/admin/mentors/dashboard-stats", adminOnly, async (_req, res) => {
     },
     recentActivity,
   });
+});
+
+router.get("/admin/mentors/alerts", adminOnly, async (_req, res) => {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const mentors = await db
+    .select({ id: usersTable.id, name: usersTable.name, mentorType: usersTable.mentorType, lastLoginDate: usersTable.lastLoginDate })
+    .from(usersTable)
+    .where(and(eq(usersTable.role, "mentor"), eq(usersTable.isArchived, false), eq(usersTable.isActive, true)));
+
+  if (mentors.length === 0) {
+    res.json({ noLoginDays: [], noStudents: [], noLeads: [], overloaded: [], lowConversion: [] });
+    return;
+  }
+
+  const mentorIds = mentors.map((m) => m.id);
+
+  const [studentCounts, demoStats] = await Promise.all([
+    db.select({ mentorId: mentorStudentAssignmentsTable.mentorId, cnt: count() })
+      .from(mentorStudentAssignmentsTable)
+      .where(and(inArray(mentorStudentAssignmentsTable.mentorId, mentorIds), eq(mentorStudentAssignmentsTable.isActive, true)))
+      .groupBy(mentorStudentAssignmentsTable.mentorId),
+    db.select({ mentorId: demoBatchEnrollmentsTable.assignedMentorId, total: count(), converted: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus} = 'converted' THEN 1 ELSE 0 END)` })
+      .from(demoBatchEnrollmentsTable)
+      .where(inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds))
+      .groupBy(demoBatchEnrollmentsTable.assignedMentorId),
+  ]);
+
+  const studentMap = Object.fromEntries(studentCounts.map((r) => [r.mentorId, Number(r.cnt)]));
+  const demoMap = Object.fromEntries(demoStats.map((r) => [r.mentorId!, { total: Number(r.total), converted: Number(r.converted) }]));
+
+  const noLoginDays: { id: number; name: string }[] = [];
+  const noStudents: { id: number; name: string }[] = [];
+  const noLeads: { id: number; name: string }[] = [];
+  const overloaded: { id: number; name: string }[] = [];
+  const lowConversion: { id: number; name: string; convPct: number }[] = [];
+
+  for (const m of mentors) {
+    const type = m.mentorType ?? "academic";
+    const students = studentMap[m.id] ?? 0;
+    const demo = demoMap[m.id];
+    const demoStudents = demo?.total ?? 0;
+    const demoConverted = demo?.converted ?? 0;
+
+    if (!m.lastLoginDate || m.lastLoginDate.toISOString().slice(0, 10) < sevenDaysAgo) {
+      noLoginDays.push({ id: m.id, name: m.name });
+    }
+    if (workloadLabel(students, demoStudents) === "High") {
+      overloaded.push({ id: m.id, name: m.name });
+    }
+    if (type === "academic" && students === 0) {
+      noStudents.push({ id: m.id, name: m.name });
+    }
+    if (type === "sales" && demoStudents === 0) {
+      noLeads.push({ id: m.id, name: m.name });
+    }
+    if (type === "sales" && demoStudents > 0) {
+      const convPct = Math.round((demoConverted / demoStudents) * 100);
+      if (convPct < 10) lowConversion.push({ id: m.id, name: m.name, convPct });
+    }
+  }
+
+  res.json({ noLoginDays, noStudents, noLeads, overloaded, lowConversion });
 });
 
 router.get("/admin/mentors/:id/profile", adminOnly, async (req, res) => {

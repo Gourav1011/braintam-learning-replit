@@ -1,0 +1,253 @@
+Braintam Phase 2 – Mentor Management Center
+
+IMPORTANT
+
+Do not redesign the entire admin panel.
+
+Keep all existing mentor functionality.
+
+Upgrade Mentor Management into a scalable control center.
+
+---
+
+SECTION 1 — MENTOR DASHBOARD
+
+Summary Cards:
+
+Total Mentors
+
+Academic Mentors
+
+Sales Mentors
+
+Active Mentors
+
+Inactive Mentors
+
+Top Performer
+
+Needs Attention
+
+All counts must come from real database data.
+
+---
+
+SECTION 2 — TABS
+
+Create tabs:
+
+All Mentors
+
+Academic Mentors
+
+Sales Mentors
+
+Inactive
+
+Each tab should show live counts.
+
+---
+
+SECTION 3 — SEARCH & FILTERS
+
+Search by:
+
+Name
+
+Email
+
+Phone
+
+Filters:
+
+Mentor Type
+
+Status
+
+Students Count
+
+Leads Count
+
+Performance
+
+Last Login
+
+---
+
+SECTION 4 — ACADEMIC MENTOR METRICS
+
+For every Academic Mentor show:
+
+Students Assigned
+
+Attendance %
+
+Homework %
+
+Classes Covered
+
+Last Login
+
+Status
+
+Performance Score
+
+Actions:
+
+View Profile
+
+View Students
+
+Assign Students
+
+Reset Password
+
+Disable
+
+---
+
+SECTION 5 — SALES MENTOR METRICS
+
+For every Sales Mentor show:
+
+Leads Assigned
+
+Calls Made
+
+Interested
+
+Payment Link Sent
+
+Converted
+
+Conversion %
+
+Last Login
+
+Status
+
+Actions:
+
+View Profile
+
+View Leads
+
+Assign Leads
+
+Reset Password
+
+Disable
+
+---
+
+SECTION 6 — WORKLOAD INDICATOR
+
+Show:
+
+Green = Healthy
+
+Yellow = Busy
+
+Red = Overloaded
+
+Based on:
+
+Student Count
+
+Lead Count
+
+Open Tasks
+
+---
+
+SECTION 7 — MENTOR PROFILE
+
+When admin clicks mentor:
+
+Show full profile.
+
+Overview
+
+Assigned Students
+
+Assigned Leads
+
+Attendance
+
+Conversions
+
+Activity Timeline
+
+Audit History
+
+---
+
+SECTION 8 — LEADERBOARD
+
+Separate leaderboards.
+
+Academic Leaderboard:
+
+Rank
+
+Mentor
+
+Attendance %
+
+Homework %
+
+Student Health
+
+Sales Leaderboard:
+
+Rank
+
+Mentor
+
+Conversions
+
+Conversion %
+
+Revenue Generated
+
+---
+
+SECTION 9 — BULK ACTIONS
+
+Bulk Assign Students
+
+Bulk Assign Leads
+
+Bulk Disable
+
+Bulk Export
+
+---
+
+SECTION 10 — ALERTS
+
+Show admin alerts:
+
+No Login 7 Days
+
+No Students
+
+No Leads
+
+Overloaded Mentor
+
+Low Conversion Rate
+
+Low Attendance Follow-up
+
+---
+
+FINAL REQUIREMENT
+
+No placeholder data.
+
+No fake performance scores.
+
+Every card and metric must come from real backend data.
+
+System must remain fast with 100+ mentors.
