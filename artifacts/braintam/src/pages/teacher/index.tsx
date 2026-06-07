@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import braintamLogo from "@assets/image_1780810348206.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
+import { StaffCheckin } from "@/components/staff-checkin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -692,6 +693,8 @@ export default function TeacherPage() {
           );
         })}
       </div>
+
+      <StaffCheckin apiFetch={apiFetch} role="teacher" />
 
       <div className="p-5 space-y-5">
         {msg && (

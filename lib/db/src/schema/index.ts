@@ -31,3 +31,6 @@ export * from "./mentorAttendance";
 export * from "./studentTimeline";
 export * from "./mentorTasks";
 export * from "./mentorReminderPrefs";
+export * from "./doubtSessions";
+export * from "./mentorEodReports";
+export * from "./employeeCheckins";

@@ -8,9 +8,15 @@ import {
   PhoneCall, PhoneOff, PhoneMissed, PhoneIncoming,
   Edit2, Save, UserCircle, FileText, Activity,
   Target, CheckSquare, History, ExternalLink, Video, Trash2,
+  Zap, HelpCircle, ClipboardCheck,
 } from "lucide-react";
 import braintamLogo from "@assets/image_1780810348206.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
+import { StaffCheckin } from "@/components/staff-checkin";
+import { TodayTasksTab } from "./today-tasks-tab";
+import { LiveClassesObserverTab } from "./live-classes-observer-tab";
+import { DoubtSessionsTab } from "./doubt-sessions-tab";
+import { EodReportTab } from "./eod-report-tab";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -29,7 +35,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "attendance" | "students" | "follow-ups" | "tasks" | "settings" | "profile";
+type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -902,10 +908,14 @@ export default function BTLCRMPage() {
 
   const tabs: { key: Tab; label: string; icon: typeof Home }[] = [
     { key: "dashboard", label: "Dashboard", icon: Home },
-    { key: "attendance", label: "Attendance", icon: Calendar },
+    { key: "today-tasks", label: "Today's Tasks", icon: Zap },
     { key: "students", label: "Students", icon: Users },
     { key: "follow-ups", label: "Follow-Ups", icon: MessageSquare },
     { key: "tasks", label: "Tasks", icon: CheckSquare },
+    { key: "attendance", label: "Attendance", icon: Calendar },
+    { key: "live-classes", label: "Live Classes", icon: Video },
+    { key: "doubt-sessions", label: "Doubt Sessions", icon: HelpCircle },
+    { key: "eod-report", label: "EOD Report", icon: ClipboardCheck },
     { key: "settings", label: "Reminders", icon: Bell },
     { key: "profile", label: "My Profile", icon: UserCircle },
   ];
@@ -1000,6 +1010,7 @@ export default function BTLCRMPage() {
 
       {/* ── Main ── */}
       <div className="flex-1 overflow-auto md:pt-0 pt-14">
+        <StaffCheckin apiFetch={apiFetch} role={role ?? "mentor"} />
 
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (
@@ -1814,6 +1825,32 @@ export default function BTLCRMPage() {
               apiFetch={apiFetch}
             />
           </div>
+        )}
+
+        {/* ════ TODAY'S TASKS ════ */}
+        {tab === "today-tasks" && (
+          <TodayTasksTab
+            apiFetch={apiFetch}
+            onFollowUpStudent={(sid) => { setFuStudentId(sid); setTab("follow-ups"); }}
+          />
+        )}
+
+        {/* ════ LIVE CLASSES (OBSERVER) ════ */}
+        {tab === "live-classes" && (
+          <LiveClassesObserverTab apiFetch={apiFetch} />
+        )}
+
+        {/* ════ DOUBT SESSIONS ════ */}
+        {tab === "doubt-sessions" && (
+          <DoubtSessionsTab
+            apiFetch={apiFetch}
+            students={students.map(s => ({ id: s.id, name: s.name, grade: s.grade }))}
+          />
+        )}
+
+        {/* ════ EOD REPORT ════ */}
+        {tab === "eod-report" && (
+          <EodReportTab apiFetch={apiFetch} />
         )}
       </div>
     </div>

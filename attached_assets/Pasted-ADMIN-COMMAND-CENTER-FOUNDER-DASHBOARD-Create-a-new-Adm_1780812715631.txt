@@ -1,0 +1,258 @@
+ADMIN COMMAND CENTER (FOUNDER DASHBOARD)
+
+Create a new Admin Dashboard section called:
+
+OPERATIONS COMMAND CENTER
+
+The dashboard should immediately show who is performing, who is inactive, and what requires attention.
+
+====================================================
+
+1. MENTOR ACTIVITY SCOREBOARD
+   ====================================================
+
+Show mentor ranking from best to worst.
+
+Metrics:
+
+* Students Assigned
+* Follow-Ups Completed Today
+* Follow-Ups Pending
+* Parent Calls Completed
+* Doubt Sessions Conducted
+* Attendance Recovery Calls
+* Homework Recovery Calls
+* Student Satisfaction Score
+* Daily Report Submitted
+
+Leaderboard:
+
+#1 Mentor Name
+#2 Mentor Name
+#3 Mentor Name
+
+Color Coding:
+
+Green = Excellent
+Yellow = Average
+Red = Needs Attention
+
+====================================================
+2. TEACHER PERFORMANCE SCOREBOARD
+=================================
+
+Show teacher ranking.
+
+Metrics:
+
+* Classes Assigned Today
+* Classes Conducted Today
+* Classes Missed
+* Attendance Marked
+* Homework Assigned
+* Tests Created
+* Student Attendance %
+* Student Feedback Score
+
+Leaderboard:
+
+Best Teacher → Lowest Teacher
+
+====================================================
+3. DOUBT SESSION MONITOR
+========================
+
+Today's Doubt Sessions
+
+Show:
+
+Mentor Name
+Subject
+Student Count
+Duration
+Status
+
+Example:
+
+Rahul
+Mathematics
+12 Students
+45 Minutes
+Completed
+
+Priya
+Science
+8 Students
+30 Minutes
+Completed
+
+Totals:
+
+Total Sessions Today
+Total Students Helped Today
+Subject Wise Breakdown
+
+Math
+Science
+English
+Coding
+
+====================================================
+4. FOLLOW-UP TRACKER
+====================
+
+Mentor Wise
+
+Show:
+
+Completed Today
+Pending Today
+Overdue
+
+Example:
+
+Rahul
+Completed: 35
+Pending: 8
+
+Priya
+Completed: 29
+Pending: 2
+
+Use:
+
+Green = Completed
+Red = Pending
+Orange = Overdue
+
+====================================================
+5. ATTENDANCE RECOVERY DASHBOARD
+================================
+
+Students Absent Today
+
+Show:
+
+Calls Completed
+Calls Pending
+
+Example:
+
+Absent Students: 42
+
+Calls Completed: 28
+Calls Pending: 14
+
+Mentor Wise Breakdown
+
+====================================================
+6. HOMEWORK RECOVERY DASHBOARD
+==============================
+
+Students Missing Homework
+
+Show:
+
+Contacted
+Not Contacted
+
+Mentor Wise
+
+Green:
+Contact Completed
+
+Red:
+Contact Pending
+
+====================================================
+7. LIVE CLASS CONTROL CENTER
+============================
+
+Show:
+
+Classes Assigned Today
+Classes Started
+Classes Completed
+Classes Missed
+
+Teacher Wise Breakdown
+
+Example:
+
+Rahul
+Assigned: 6
+Taken: 6
+
+Priya
+Assigned: 5
+Taken: 4
+
+Missed: 1
+
+====================================================
+8. TODAY'S TASK COMPLETION
+==========================
+
+For every mentor:
+
+Tasks Assigned
+Tasks Completed
+Tasks Pending
+
+Progress Bar
+
+Example:
+
+Rahul
+
+█████████░
+90%
+
+Priya
+
+██████░░░░
+60%
+
+====================================================
+9. EMPLOYEE STATUS BOARD
+========================
+
+Show:
+
+Checked In
+Checked Out
+Online
+Offline
+
+Role Wise
+
+Teachers
+Sales Mentors
+Academic Mentors
+
+====================================================
+10. EXECUTIVE SUMMARY
+=====================
+
+Top Widget:
+
+Today's Snapshot
+
+Students Requiring Attention
+Attendance Calls Pending
+Homework Follow-Ups Pending
+Doubt Sessions Conducted
+Live Classes Completed
+Mentors Online
+Teachers Online
+
+Everything should be understandable within 10 seconds.
+
+The founder should immediately know:
+
+Who is performing?
+Who is inactive?
+What needs attention?
+What is at risk today?
+
+without opening individual pages.

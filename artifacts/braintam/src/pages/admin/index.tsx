@@ -62,6 +62,8 @@ import { TeacherAnalyticsTab } from "./teacher-analytics-tab";
 import { HealthTab } from "./health-tab";
 import { GamificationTab } from "./gamification-tab";
 import { BtlCrmTab } from "./btl-crm-tab";
+import { EmployeeAttendanceTab } from "./employee-attendance-tab";
+import { StaffCheckin } from "@/components/staff-checkin";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -91,6 +93,7 @@ type Tab =
   | "gamification"
   | "btl-crm"
   | "mentors"
+  | "employee-attendance"
   | "settings"
   | "profile";
 
@@ -1086,6 +1089,7 @@ function AdminPageInner() {
     { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "Manage" },
     { id: "announcements", label: "Announcements", icon: Bell, group: "Manage" },
     { id: "banners", label: "Banners", icon: Image, group: "Manage" },
+    { id: "employee-attendance", label: "Staff Attendance", icon: CheckSquare, group: "Manage" },
     { id: "audit", label: "Audit Logs", icon: FileText, group: "System" },
     { id: "settings", label: "Settings", icon: Lock, group: "System" },
     { id: "overview", label: "Overview", icon: Activity, group: "System" },
@@ -1194,6 +1198,7 @@ function AdminPageInner() {
             {TABS.find(t => t.id === tab)?.label ?? ""}
           </span>
         </div>
+        <StaffCheckin apiFetch={apiFetch} role="admin" />
 
       <div className="p-5 space-y-5">
         {/* Toast */}
@@ -2569,6 +2574,9 @@ function AdminPageInner() {
 
         {/* ── Mentors ──────────────────────────────────────────────────── */}
         {tab === "mentors" && <MentorsTab flash={flash} users={users} />}
+
+        {/* ── Staff Attendance ─────────────────────────────────────────── */}
+        {tab === "employee-attendance" && <EmployeeAttendanceTab />}
 
         {/* ── Dashboard ────────────────────────────────────────────────── */}
         {tab === "dashboard" && <DashboardTab />}
