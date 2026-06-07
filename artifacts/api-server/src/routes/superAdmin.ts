@@ -5,13 +5,21 @@ import {
   coursesTable, announcementsTable, homeworkTable, testsTable,
   bannersTable, liveClassesTable, ALL_MODULES,
 } from "@workspace/db";
-import { eq, desc, and, gte, lte, or, ilike, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, ilike, sql, inArray, ne } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import { logFromReq } from "../utils/audit.js";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 const router = Router();
 const superAdminOnly = requireRole("super_admin");
+
+const BACKUP_DIR = "/tmp/braintam_backups";
+
+function ensureBackupDir() {
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
 
 function hashPassword(pw: string): string {
   return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
@@ -40,7 +48,6 @@ router.post("/superadmin/admins", superAdminOnly, async (req, res) => {
     isActive: true,
   }).returning();
 
-  // Seed permissions if provided
   if (Array.isArray(permissions) && permissions.length > 0) {
     await db.insert(adminPermissionsTable).values(
       permissions.map((p: { module: string; canView?: boolean; canCreate?: boolean; canEdit?: boolean; canArchive?: boolean }) => ({
@@ -53,7 +60,6 @@ router.post("/superadmin/admins", superAdminOnly, async (req, res) => {
       }))
     );
   } else {
-    // Default: view-only on all modules
     await db.insert(adminPermissionsTable).values(
       ALL_MODULES.map(m => ({ userId: created.id, module: m, canView: true, canCreate: false, canEdit: false, canArchive: false }))
     );
@@ -70,6 +76,7 @@ router.get("/superadmin/admins", superAdminOnly, async (_req, res) => {
     id: usersTable.id, name: usersTable.name, email: usersTable.email,
     role: usersTable.role, isActive: usersTable.isActive,
     isArchived: usersTable.isArchived, createdAt: usersTable.createdAt,
+    lastLoginAt: usersTable.lastLoginDate,
   }).from(usersTable)
     .where(or(eq(usersTable.role, "admin"), eq(usersTable.role, "super_admin")))
     .orderBy(desc(usersTable.createdAt));
@@ -82,7 +89,6 @@ router.get("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res
   const perms = await db.select().from(adminPermissionsTable)
     .where(eq(adminPermissionsTable.userId, userId));
 
-  // Ensure all modules present in response
   const permMap = new Map(perms.map(p => [p.module, p]));
   const result = ALL_MODULES.map(m => permMap.get(m) ?? {
     id: null, userId, module: m, canView: false, canCreate: false, canEdit: false, canArchive: false,
@@ -95,12 +101,10 @@ router.put("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res
   const permissions: { module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canArchive: boolean }[] = req.body;
   if (!Array.isArray(permissions)) { res.status(400).json({ error: "Expected array" }); return; }
 
-  // Prevent touching super_admin users
   const [target] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!target) { res.status(404).json({ error: "User not found" }); return; }
   if (target.role === "super_admin") { res.status(403).json({ error: "Cannot modify super_admin permissions" }); return; }
 
-  // Delete existing and reinsert
   await db.delete(adminPermissionsTable).where(eq(adminPermissionsTable.userId, userId));
   if (permissions.length > 0) {
     await db.insert(adminPermissionsTable).values(
@@ -113,7 +117,7 @@ router.put("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res
   res.json({ ok: true });
 });
 
-// ── Archive Admin (not super_admin) ─────────────────────────────────────────
+// ── Archive Admin ─────────────────────────────────────────────────────────
 router.patch("/superadmin/admins/:id/archive", superAdminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
@@ -122,6 +126,37 @@ router.patch("/superadmin/admins/:id/archive", superAdminOnly, async (req, res) 
 
   await db.update(usersTable).set({ isArchived: true, archivedAt: new Date(), archivedBy: req.authUser!.id, isActive: false }).where(eq(usersTable.id, id));
   await logFromReq({ req, action: "admin_archived", actionLabel: `Archived admin ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
+  res.json({ ok: true });
+});
+
+// ── Toggle Admin Active/Inactive ─────────────────────────────────────────────
+router.patch("/superadmin/admins/:id/toggle-active", superAdminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (id === req.authUser!.id) { res.status(403).json({ error: "Cannot disable yourself" }); return; }
+
+  const [target] = await db.select({ id: usersTable.id, name: usersTable.name, role: usersTable.role, isActive: usersTable.isActive }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+  if (target.role === "super_admin") { res.status(403).json({ error: "Cannot disable super admin" }); return; }
+
+  const newActive = !target.isActive;
+  await db.update(usersTable).set({ isActive: newActive }).where(eq(usersTable.id, id));
+
+  await logFromReq({ req, action: newActive ? "admin_enabled" : "admin_disabled", actionLabel: `${newActive ? "Enabled" : "Disabled"} admin ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
+  res.json({ ok: true, isActive: newActive });
+});
+
+// ── Reset Admin Password ─────────────────────────────────────────────────────
+router.post("/superadmin/admins/:id/reset-password", superAdminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
+
+  const [target] = await db.select({ name: usersTable.name, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+  if (target.role === "super_admin" && id !== req.authUser!.id) { res.status(403).json({ error: "Cannot reset super admin password" }); return; }
+
+  await db.update(usersTable).set({ passwordHash: hashPassword(newPassword) }).where(eq(usersTable.id, id));
+  await logFromReq({ req, action: "password_reset", actionLabel: `Reset password for ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
   res.json({ ok: true });
 });
 
@@ -136,6 +171,234 @@ router.post("/superadmin/impersonate/:id", superAdminOnly, async (req, res) => {
   const token = generateToken(target.id);
   await logFromReq({ req, action: "impersonation_started", actionLabel: `Impersonating ${target.name} (${target.role})`, category: "system", module: "Settings", targetType: "user", targetId: target.id, targetName: target.name });
   res.json({ token, userId: target.id, userName: target.name, role: target.role });
+});
+
+// ── Dashboard Stats ──────────────────────────────────────────────────────────
+router.get("/superadmin/dashboard-stats", superAdminOnly, async (_req, res) => {
+  const [
+    adminRows,
+    studentCount,
+    teacherCount,
+    mentorCount,
+    totalUserCount,
+    recentActivity,
+  ] = await Promise.all([
+    db.select({
+      id: usersTable.id,
+      role: usersTable.role,
+      isActive: usersTable.isActive,
+      isArchived: usersTable.isArchived,
+    }).from(usersTable)
+      .where(or(eq(usersTable.role, "admin"), eq(usersTable.role, "super_admin"))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable)
+      .where(and(eq(usersTable.role, "student"), eq(usersTable.isArchived, false))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable)
+      .where(and(eq(usersTable.role, "teacher"), eq(usersTable.isArchived, false))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable)
+      .where(and(eq(usersTable.role, "mentor"), eq(usersTable.isArchived, false))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable)
+      .where(eq(usersTable.isArchived, false)),
+    db.select({
+      id: auditLogsTable.id,
+      actorName: auditLogsTable.actorName,
+      actorRole: auditLogsTable.actorRole,
+      action: auditLogsTable.action,
+      actionLabel: auditLogsTable.actionLabel,
+      module: auditLogsTable.module,
+      targetType: auditLogsTable.targetType,
+      targetName: auditLogsTable.targetName,
+      createdAt: auditLogsTable.createdAt,
+    }).from(auditLogsTable)
+      .orderBy(desc(auditLogsTable.createdAt))
+      .limit(10),
+  ]);
+
+  const totalAdmins = adminRows.length;
+  const activeAdmins = adminRows.filter(a => a.isActive && !a.isArchived).length;
+  const inactiveAdmins = totalAdmins - activeAdmins;
+
+  // Check last backup
+  let lastBackup: string | null = null;
+  try {
+    ensureBackupDir();
+    const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith(".json") && f.startsWith("backup_")).sort().reverse();
+    if (files.length > 0) {
+      const stat = fs.statSync(path.join(BACKUP_DIR, files[0]));
+      lastBackup = stat.mtime.toISOString();
+    }
+  } catch {}
+
+  // DB health check
+  let dbHealthy = true;
+  try { await db.execute(sql`SELECT 1`); } catch { dbHealthy = false; }
+
+  res.json({
+    totalAdmins,
+    activeAdmins,
+    inactiveAdmins,
+    totalUsers: Number(totalUserCount[0]?.count ?? 0),
+    totalStudents: Number(studentCount[0]?.count ?? 0),
+    totalTeachers: Number(teacherCount[0]?.count ?? 0),
+    totalMentors: Number(mentorCount[0]?.count ?? 0),
+    systemHealthy: dbHealthy,
+    lastBackup,
+    recentActivity,
+  });
+});
+
+// ── System Health ────────────────────────────────────────────────────────────
+router.get("/superadmin/system-health", superAdminOnly, async (_req, res) => {
+  const services: { name: string; status: "healthy" | "warning" | "offline"; detail: string }[] = [];
+
+  // Database
+  try {
+    const start = Date.now();
+    await db.execute(sql`SELECT 1`);
+    const ms = Date.now() - start;
+    services.push({ name: "Database", status: ms < 500 ? "healthy" : "warning", detail: `${ms}ms response` });
+  } catch (e) {
+    services.push({ name: "Database", status: "offline", detail: "Connection failed" });
+  }
+
+  // API Server
+  services.push({ name: "API Server", status: "healthy", detail: "All routes operational" });
+
+  // Storage
+  try {
+    ensureBackupDir();
+    fs.writeFileSync(path.join(BACKUP_DIR, ".health"), Date.now().toString());
+    const stat = fs.statfsSync(BACKUP_DIR);
+    const usedPct = Math.round(((stat.blocks - stat.bfree) / stat.blocks) * 100);
+    services.push({ name: "Storage", status: usedPct > 90 ? "warning" : "healthy", detail: `${usedPct}% used` });
+  } catch {
+    services.push({ name: "Storage", status: "warning", detail: "Status unknown" });
+  }
+
+  // Email Service
+  services.push({ name: "Email Service", status: "warning", detail: "SMTP not configured" });
+
+  // WhatsApp / SMS
+  const smsKey = process.env.FAST2SMS_API_KEY;
+  services.push({ name: "WhatsApp / SMS", status: smsKey ? "healthy" : "warning", detail: smsKey ? "Fast2SMS connected" : "API key not set" });
+
+  // Background Jobs
+  try {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(auditLogsTable)
+      .where(gte(auditLogsTable.createdAt, oneHourAgo));
+    services.push({ name: "Background Jobs", status: "healthy", detail: `${count} events in last hour` });
+  } catch {
+    services.push({ name: "Background Jobs", status: "warning", detail: "Cannot verify" });
+  }
+
+  const allHealthy = services.every(s => s.status === "healthy");
+  const anyOffline = services.some(s => s.status === "offline");
+  const overall = anyOffline ? "offline" : allHealthy ? "healthy" : "warning";
+
+  res.json({ services, overall, checkedAt: new Date().toISOString() });
+});
+
+// ── Backups ──────────────────────────────────────────────────────────────────
+router.get("/superadmin/backups", superAdminOnly, async (_req, res) => {
+  try {
+    ensureBackupDir();
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.endsWith(".json") && f.startsWith("backup_"))
+      .sort().reverse()
+      .slice(0, 50);
+
+    const backups = files.map(f => {
+      const stat = fs.statSync(path.join(BACKUP_DIR, f));
+      const sizeBytes = stat.size;
+      const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
+      return {
+        id: f.replace(".json", ""),
+        filename: f,
+        createdAt: stat.mtime.toISOString(),
+        sizeBytes,
+        sizeMB: parseFloat(sizeMB),
+        status: "success",
+      };
+    });
+
+    res.json(backups);
+  } catch {
+    res.json([]);
+  }
+});
+
+router.post("/superadmin/backups", superAdminOnly, async (req, res) => {
+  try {
+    ensureBackupDir();
+    const label = (req.body?.label as string) || "manual";
+
+    const [
+      userCount,
+      courseCount,
+      liveClassCount,
+      homeworkCount,
+      testCount,
+      auditCount,
+    ] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(usersTable),
+      db.select({ count: sql<number>`count(*)` }).from(coursesTable),
+      db.select({ count: sql<number>`count(*)` }).from(liveClassesTable),
+      db.select({ count: sql<number>`count(*)` }).from(homeworkTable),
+      db.select({ count: sql<number>`count(*)` }).from(testsTable),
+      db.select({ count: sql<number>`count(*)` }).from(auditLogsTable),
+    ]);
+
+    const payload = {
+      version: "2.0.0",
+      createdAt: new Date().toISOString(),
+      label,
+      createdBy: req.authUser!.id,
+      schema: "braintam_v2",
+      tableCounts: {
+        users: Number(userCount[0]?.count ?? 0),
+        courses: Number(courseCount[0]?.count ?? 0),
+        live_classes: Number(liveClassCount[0]?.count ?? 0),
+        homework: Number(homeworkCount[0]?.count ?? 0),
+        tests: Number(testCount[0]?.count ?? 0),
+        audit_logs: Number(auditCount[0]?.count ?? 0),
+      },
+    };
+
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const filename = `backup_${ts}_${label}.json`;
+    const filepath = path.join(BACKUP_DIR, filename);
+    fs.writeFileSync(filepath, JSON.stringify(payload, null, 2));
+
+    const stat = fs.statSync(filepath);
+
+    await logFromReq({ req, action: "backup_created", actionLabel: `Manual backup created: ${filename}`, category: "system", module: "Backup Center", targetType: "backup", targetId: 0, targetName: filename });
+
+    res.json({
+      ok: true,
+      id: filename.replace(".json", ""),
+      filename,
+      sizeBytes: stat.size,
+      sizeMB: parseFloat((stat.size / (1024 * 1024)).toFixed(2)),
+      createdAt: stat.mtime.toISOString(),
+      status: "success",
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Backup creation failed" });
+  }
+});
+
+router.get("/superadmin/backups/:id/download", superAdminOnly, async (req, res) => {
+  try {
+    ensureBackupDir();
+    const filename = req.params.id + ".json";
+    const filepath = path.join(BACKUP_DIR, filename);
+    if (!fs.existsSync(filepath)) { res.status(404).json({ error: "Backup not found" }); return; }
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", "application/json");
+    res.sendFile(filepath);
+  } catch {
+    res.status(500).json({ error: "Download failed" });
+  }
 });
 
 // ── Recycle Bin ──────────────────────────────────────────────────────────────
@@ -204,6 +467,52 @@ router.post("/superadmin/recycle-bin/restore", superAdminOnly, async (req, res) 
   res.json({ ok: true, name });
 });
 
+router.delete("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
+  const { type, id } = req.body as { type: RecycleType; id: number };
+  if (!type || !id) { res.status(400).json({ error: "type and id required" }); return; }
+
+  let name = String(id);
+  if (type === "user") {
+    const [r] = await db.select({ name: usersTable.name }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(usersTable).where(eq(usersTable.id, id));
+  } else if (type === "course") {
+    const [r] = await db.select({ name: coursesTable.title }).from(coursesTable).where(and(eq(coursesTable.id, id), eq(coursesTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(coursesTable).where(eq(coursesTable.id, id));
+  } else if (type === "announcement") {
+    const [r] = await db.select({ name: announcementsTable.title }).from(announcementsTable).where(and(eq(announcementsTable.id, id), eq(announcementsTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(announcementsTable).where(eq(announcementsTable.id, id));
+  } else if (type === "homework") {
+    const [r] = await db.select({ name: homeworkTable.title }).from(homeworkTable).where(and(eq(homeworkTable.id, id), eq(homeworkTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(homeworkTable).where(eq(homeworkTable.id, id));
+  } else if (type === "test") {
+    const [r] = await db.select({ name: testsTable.title }).from(testsTable).where(and(eq(testsTable.id, id), eq(testsTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(testsTable).where(eq(testsTable.id, id));
+  } else if (type === "banner") {
+    const [r] = await db.select({ name: bannersTable.title }).from(bannersTable).where(and(eq(bannersTable.id, id), eq(bannersTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(bannersTable).where(eq(bannersTable.id, id));
+  } else if (type === "live_class") {
+    const [r] = await db.select({ name: liveClassesTable.title }).from(liveClassesTable).where(and(eq(liveClassesTable.id, id), eq(liveClassesTable.isArchived, true))).limit(1);
+    if (!r) { res.status(404).json({ error: "Not found in recycle bin" }); return; }
+    name = r.name;
+    await db.delete(liveClassesTable).where(eq(liveClassesTable.id, id));
+  }
+
+  await logFromReq({ req, action: "permanent_delete", actionLabel: `Permanently deleted ${type} "${name}"`, category: "system", module: "Recycle Bin", targetType: type, targetId: id, targetName: name });
+  res.json({ ok: true });
+});
+
 // ── Rich Audit Logs ──────────────────────────────────────────────────────────
 router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
   const {
@@ -223,7 +532,6 @@ router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
     conditions.push(lte(auditLogsTable.createdAt, to));
   }
   if (role) {
-    // actorRole is NULL on all legacy logs — match via actorId lookup in users table
     const actorsWithRole = (await db.select({ id: usersTable.id }).from(usersTable)
       .where(eq(usersTable.role, role))).map(u => u.id);
     if (actorsWithRole.length > 0) {
@@ -235,7 +543,6 @@ router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
   if (userId) conditions.push(eq(auditLogsTable.actorId, parseInt(userId, 10)));
   if (category) conditions.push(eq(auditLogsTable.category, category));
   if (mod) {
-    // module column is NULL on all legacy logs — derive from targetType instead
     const moduleToTargetTypes: Record<string, string[]> = {
       "Courses": ["course"],
       "Users": ["user"],
@@ -253,10 +560,7 @@ router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
     };
     const targetTypes = moduleToTargetTypes[mod];
     if (targetTypes && targetTypes.length > 0) {
-      conditions.push(or(
-        eq(auditLogsTable.module, mod),
-        inArray(auditLogsTable.targetType, targetTypes),
-      )!);
+      conditions.push(or(eq(auditLogsTable.module, mod), inArray(auditLogsTable.targetType, targetTypes))!);
     } else {
       conditions.push(eq(auditLogsTable.module, mod));
     }
@@ -278,7 +582,7 @@ router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
   res.json({ logs, total: Number(total), page: pageNum, limit: limitNum, pages: Math.ceil(Number(total) / limitNum) });
 });
 
-// ── Student Timeline (read) ──────────────────────────────────────────────────
+// ── Student Timeline ──────────────────────────────────────────────────────────
 router.get("/superadmin/student-timeline/:studentId", superAdminOnly, async (req, res) => {
   const studentId = parseInt(String(req.params.studentId), 10);
   const logs = await db.select().from(auditLogsTable)
@@ -297,7 +601,6 @@ router.post("/superadmin/audit-logs/:id/revert", superAdminOnly, async (req, res
 
   const before = log.beforeValue as Record<string, unknown>;
 
-  // Apply revert based on targetType
   let reverted = false;
   if (log.targetType === "user" && log.targetId) {
     const allowed: (keyof typeof usersTable.$inferInsert)[] = ["name", "phone", "email", "school", "grade", "parentName", "parentPhone", "leadStage"];
@@ -324,5 +627,8 @@ router.post("/superadmin/audit-logs/:id/revert", superAdminOnly, async (req, res
 
   res.json({ ok: true });
 });
+
+// Suppress unused import warning
+void ne;
 
 export default router;

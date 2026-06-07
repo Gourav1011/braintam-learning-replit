@@ -2643,7 +2643,7 @@ function AdminPageInner() {
         {tab === "operations-command-center" && <OperationsCommandCenterTab />}
 
         {/* ── Super Admin Console ───────────────────────────────────────── */}
-        {tab === "super-admin" && <SuperAdminTab flash={flash} />}
+        {tab === "super-admin" && <SuperAdminTab flash={flash} role={role ?? undefined} />}
 
         {/* ── Dashboard ────────────────────────────────────────────────── */}
         {tab === "dashboard" && <DashboardTab />}
