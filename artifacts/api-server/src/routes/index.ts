@@ -24,6 +24,7 @@ import staffRouter from "./staff";
 import operationsDashboardRouter from "./operationsDashboard";
 import superAdminRouter from "./superAdmin";
 import permissionsRouter from "./permissions";
+import mentorAdminRouter from "./mentorAdmin";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(staffRouter);
 router.use(operationsDashboardRouter);
 router.use(superAdminRouter);
 router.use(permissionsRouter);
+router.use(mentorAdminRouter);
 
 export default router;
