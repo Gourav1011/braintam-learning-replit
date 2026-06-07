@@ -82,11 +82,11 @@ interface AnalyticsData {
 }
 
 type DetailTab = "overview" | "students" | "sessions" | "mentor-tracking" | "analytics" | "settings";
-type StudentFilter = "all" | "day1" | "day2" | "day3" | "day4" | "day5" | "day6" | "converted" | "dropped";
+type StudentFilter = "all" | "converted" | "dropped" | (string & {});
 type AddMode = "search" | "csv" | "paste";
 
 const GRADES = Array.from({ length: 10 }, (_, i) => i + 1);
-const emptyBatch = { title: "", description: "", teacherName: "", mentorName: "", bannerUrl: "", joinLink: "", startDate: "", endDate: "", grade: "", subject: "", totalDays: "5", batchCode: "" };
+const emptyBatch = { title: "", description: "", teacherName: "", mentorName: "", bannerUrl: "", joinLink: "", startDate: "", endDate: "", grade: "none", subject: "", totalDays: "5", batchCode: "" };
 const emptySession = { title: "", description: "", dayNumber: "1", scheduledAt: "", duration: "60", joinUrl: "", recordingUrl: "", homeworkText: "" };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -176,7 +176,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       bannerUrl: selectedBatch.bannerUrl ?? "", joinLink: selectedBatch.joinLink ?? "",
       startDate: selectedBatch.startDate ? new Date(selectedBatch.startDate).toISOString().slice(0, 16) : "",
       endDate: selectedBatch.endDate ? new Date(selectedBatch.endDate).toISOString().slice(0, 16) : "",
-      grade: selectedBatch.grade ? String(selectedBatch.grade) : "",
+      grade: selectedBatch.grade ? String(selectedBatch.grade) : "none",
       subject: selectedBatch.subject ?? "", totalDays: String(selectedBatch.totalDays),
       batchCode: selectedBatch.batchCode ?? "",
     });
@@ -219,8 +219,14 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   }
 
   async function loadAnalytics(batchId: number) {
-    const r = await apiFetch(`/admin/demo-batches/${batchId}/analytics`);
-    if (r.ok) setAnalytics(await r.json());
+    setAnalytics(null);
+    try {
+      const r = await apiFetch(`/admin/demo-batches/${batchId}/analytics`);
+      if (r.ok) setAnalytics(await r.json());
+      else setAnalytics({ byGrade: [], byMentor: [], byInterest: [], total: 0 });
+    } catch {
+      setAnalytics({ byGrade: [], byMentor: [], byInterest: [], total: 0 });
+    }
   }
 
   function openBatch(batch: DemoBatch) {
@@ -249,7 +255,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
           teacherName: batchForm.teacherName || undefined, mentorName: batchForm.mentorName || undefined,
           bannerUrl: batchForm.bannerUrl || undefined, joinLink: batchForm.joinLink || undefined,
           startDate: batchForm.startDate || undefined, endDate: batchForm.endDate || undefined,
-          grade: batchForm.grade ? Number(batchForm.grade) : undefined,
+          grade: batchForm.grade && batchForm.grade !== "none" ? Number(batchForm.grade) : undefined,
           subject: batchForm.subject || undefined, totalDays: Number(batchForm.totalDays) || 5,
           batchCode: batchForm.batchCode || undefined,
         }),
@@ -292,7 +298,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
           teacherName: settingsForm.teacherName || undefined, mentorName: settingsForm.mentorName || undefined,
           bannerUrl: settingsForm.bannerUrl || undefined, joinLink: settingsForm.joinLink || undefined,
           startDate: settingsForm.startDate || undefined, endDate: settingsForm.endDate || undefined,
-          grade: settingsForm.grade ? Number(settingsForm.grade) : undefined,
+          grade: settingsForm.grade && settingsForm.grade !== "none" ? Number(settingsForm.grade) : undefined,
           subject: settingsForm.subject || undefined, totalDays: Number(settingsForm.totalDays) || 5,
           batchCode: settingsForm.batchCode || undefined,
         }),
@@ -473,9 +479,12 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
             <Input placeholder="Teacher name" value={batchForm.teacherName} onChange={e => setBatchForm(p => ({ ...p, teacherName: e.target.value }))} />
             <Input placeholder="Sales mentor name" value={batchForm.mentorName} onChange={e => setBatchForm(p => ({ ...p, mentorName: e.target.value }))} />
             <Input placeholder="Subject (e.g. Mathematics)" value={batchForm.subject} onChange={e => setBatchForm(p => ({ ...p, subject: e.target.value }))} />
-            <Select value={batchForm.grade} onValueChange={v => setBatchForm(p => ({ ...p, grade: v }))}>
+            <Select value={batchForm.grade || "none"} onValueChange={v => setBatchForm(p => ({ ...p, grade: v }))}>
               <SelectTrigger><SelectValue placeholder="Grade (optional)" /></SelectTrigger>
-              <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                <SelectItem value="none">No grade</SelectItem>
+                {GRADES.map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
+              </SelectContent>
             </Select>
             <Input type="number" placeholder="Total days (e.g. 5)" value={batchForm.totalDays} onChange={e => setBatchForm(p => ({ ...p, totalDays: e.target.value }))} min={1} max={30} />
             <Input placeholder="Default join link" value={batchForm.joinLink} onChange={e => setBatchForm(p => ({ ...p, joinLink: e.target.value }))} />
@@ -723,6 +732,7 @@ function BatchDetail(p: BatchDetailProps) {
       {p.detailTab === "students" && (
         <StudentsTab batch={batch}
           enrollments={p.enrollments} allStudents={p.allStudents}
+          sessions={p.sessions}
           filter={p.studentFilter} setFilter={p.setStudentFilter}
           searchQ={p.studSearchQ} setSearchQ={p.setStudSearchQ}
           addMode={p.addMode} setAddMode={p.setAddMode}
@@ -880,6 +890,7 @@ function OverviewTab({ batch, overview, loading, setTab }: {
 function StudentsTab(p: {
   batch: DemoBatch;
   enrollments: DemoEnrollment[]; allStudents: AdminUser[];
+  sessions: DemoSession[];
   filter: StudentFilter; setFilter: (f: StudentFilter) => void;
   searchQ: string; setSearchQ: (q: string) => void;
   addMode: AddMode; setAddMode: (m: AddMode) => void;
@@ -895,6 +906,7 @@ function StudentsTab(p: {
   handleCSVFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   runBulkUpload: () => void;
 }) {
+  const sessionByDay = Object.fromEntries(p.sessions.map(s => [s.dayNumber, s.title]));
   const filters: { key: StudentFilter; label: string }[] = [
     { key: "all", label: `All (${p.enrollments.length})` },
     ...Array.from({ length: p.batch.totalDays }, (_, i) => ({ key: `day${i + 1}` as StudentFilter, label: `Day ${i + 1}` })),
@@ -967,7 +979,9 @@ function StudentsTab(p: {
                           onClick={ev => ev.stopPropagation()}>
                           <option value={0}>Not started</option>
                           {Array.from({ length: p.batch.totalDays }, (_, i) => (
-                            <option key={i + 1} value={i + 1}>Day {i + 1}</option>
+                            <option key={i + 1} value={i + 1}>
+                              {sessionByDay[i + 1] ? `Day ${i + 1} — ${sessionByDay[i + 1]}` : `Day ${i + 1}`}
+                            </option>
                           ))}
                         </select>
                       </td>
@@ -1479,10 +1493,10 @@ function SettingsTab(p: {
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Grade</label>
-            <Select value={p.form.grade} onValueChange={v => p.setForm({ ...p.form, grade: v })}>
+            <Select value={p.form.grade || "none"} onValueChange={v => p.setForm({ ...p.form, grade: v })}>
               <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No grade</SelectItem>
+                <SelectItem value="none">No grade</SelectItem>
                 {GRADES.map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
               </SelectContent>
             </Select>
