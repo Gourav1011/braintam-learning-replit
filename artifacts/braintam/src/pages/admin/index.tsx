@@ -1221,6 +1221,15 @@ function AdminPageInner() {
       {/* ── Global Header ──────────────────────────────────────────────────────── */}
       <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">
         <img src={braintamLogo} alt="Braintam" className="h-7 w-auto shrink-0" />
+        <div className="flex items-center gap-1.5 pl-1">
+          <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+          <div>
+            <div className="font-black leading-tight" style={{ fontSize: "13px", color: NAVY, letterSpacing: "0.04em" }}>
+              BTL <span style={{ color: ORANGE }}>CRM</span>
+            </div>
+            <div className="text-[9px] text-gray-400 leading-tight">Education Ops Platform</div>
+          </div>
+        </div>
         <div className="flex-1" />
         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-600 cursor-default shrink-0">
           <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -1334,16 +1343,6 @@ function AdminPageInner() {
 
       {/* Left Sidebar */}
       <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
-        {/* Brand */}
-        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-1.5">
-            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
-            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
-              BTL <span style={{ color: ORANGE }}>CRM</span>
-            </span>
-          </div>
-          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
-        </div>
         <div className="px-4 pt-4 pb-1">
           <span className="text-[9px] font-bold tracking-widest text-gray-300 uppercase">Workspace</span>
         </div>
