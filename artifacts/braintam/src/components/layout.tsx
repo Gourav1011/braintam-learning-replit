@@ -101,7 +101,7 @@ const adminNavItems = [
 ];
 
 function getNavItems(role: UserRole | null) {
-  if (role === "admin") return adminNavItems;
+  if (role === "admin" || role === "super_admin") return adminNavItems;
   if (role === "teacher") return teacherNavItems;
   return studentNavItems;
 }

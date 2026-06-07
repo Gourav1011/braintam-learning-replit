@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 
-export type UserRole = "admin" | "teacher" | "mentor" | "student";
+export type UserRole = "admin" | "super_admin" | "teacher" | "mentor" | "student";
 
 export interface StudentProfile {
   id: number;

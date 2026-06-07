@@ -464,7 +464,7 @@ export default function DashboardPage() {
   const [showCoinPopup, setShowCoinPopup]         = useState(false);
   const midnightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  if (!authLoading && role === "admin")   return <Redirect to="/admin" />;
+  if (!authLoading && (role === "admin" || role === "super_admin")) return <Redirect to="/admin" />;
   if (!authLoading && role === "teacher") return <Redirect to="/teacher" />;
 
   const { data: dashboard, isLoading } = useGetStudentDashboard();

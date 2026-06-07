@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
         setError(data.error ?? "Invalid credentials");
         return;
       }
-      if (data.student?.role !== "admin") {
+      if (data.student?.role !== "admin" && data.student?.role !== "super_admin") {
         setError("This account does not have admin access.");
         return;
       }

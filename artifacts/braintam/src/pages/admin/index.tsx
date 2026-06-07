@@ -742,7 +742,7 @@ function AdminPageInner() {
   const teachers = useMemo(() => users.filter(u => u.role === "teacher"), [users]);
   const students = useMemo(() => users.filter(u => u.role === "student"), [users]);
 
-  useEffect(() => { if (!isLoading && role === "admin") loadAll(); }, [isLoading, role]);
+  useEffect(() => { if (!isLoading && (role === "admin" || role === "super_admin")) loadAll(); }, [isLoading, role]);
 
   async function loadAll() {
     setDataLoading(true);
@@ -852,7 +852,7 @@ function AdminPageInner() {
     </div>
   );
   if (!student) return <Redirect to="/sign-in" />;
-  if (role !== "admin") return <Redirect to="/dashboard" />;
+  if (role !== "admin" && role !== "super_admin") return <Redirect to="/dashboard" />;
 
   // ── Actions ──────────────────────────────────────────────────────────────
   async function createUser() {

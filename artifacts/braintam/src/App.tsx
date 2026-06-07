@@ -271,7 +271,7 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
   const { student, role, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
   if (!student) return <Redirect to="/admin/login" />;
-  if (role !== "admin") return <Redirect to="/dashboard" />;
+  if (role !== "admin" && role !== "super_admin") return <Redirect to="/dashboard" />;
   return <Component />;
 }
 
