@@ -19,6 +19,7 @@ export interface StudentProfile {
   rank: number;
   streak: number;
   avatarUrl: string | null;
+  isDemoStudent?: boolean;
 }
 
 interface AuthContextType {

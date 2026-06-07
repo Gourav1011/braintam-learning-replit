@@ -5,7 +5,7 @@ import {
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
   coursesTable, announcementsTable, pointsLedgerTable,
-  mentorStudentAssignmentsTable,
+  mentorStudentAssignmentsTable, demoBatchEnrollmentsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -158,6 +158,14 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     .where(eq(enrollmentsTable.studentId, studentId))
     .limit(6);
   const effectiveGrade: number = enrolled[0]?.grade ?? student.grade ?? 6;
+
+  const [demoEnrollRow] = await db
+    .select({ id: demoBatchEnrollmentsTable.id })
+    .from(demoBatchEnrollmentsTable)
+    .where(eq(demoBatchEnrollmentsTable.studentId, studentId))
+    .limit(1);
+  const isDemoStudent = !!demoEnrollRow && enrolled.length === 0;
+
   const todayUTC = new Date().toISOString().slice(0, 10);
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
   res.json({
@@ -178,6 +186,7 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     streak: student.streakDays ?? 0,
     dailyLoginClaimed: lastLoginUTC === todayUTC,
     enrolledCourses: enrolled.map(e => ({ id: e.courseId, title: e.courseTitle })),
+    isDemoStudent,
   });
 });
 

@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import { useAuth, UserRole } from "./auth-provider";
+import { DemoPaywall } from "./demo-paywall";
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
 import { LayoutDashboard, Video, BookOpen, FileText, CheckSquare, Award, LogOut, PlaySquare, ArrowLeft, Shield, GraduationCap, Users, ClipboardList, BarChart3, User, MessageCircle, Phone, Ticket, X } from "lucide-react";
@@ -260,7 +261,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           {/* Main content — extra bottom padding on mobile for the bottom nav */}
           <div className={`flex-1 overflow-y-auto ${isStudent ? "pb-16 md:pb-4" : ""}`}>
-            {children}
+            {isStudent && !location.startsWith("/demo-batch")
+              ? <DemoPaywall>{children}</DemoPaywall>
+              : children}
           </div>
         </main>
       </div>

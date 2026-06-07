@@ -643,23 +643,42 @@ export default function DashboardPage() {
         {/* Announcements from admin */}
         <AnnouncementStrip />
 
-        {/* No course banner — improved empty state */}
+        {/* No course banner — demo vs non-enrolled */}
         {hasNoCourse && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="rounded-2xl border-2 border-dashed border-orange-200 p-6 flex flex-col items-center text-center gap-3"
-              style={{ background: "linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)" }}>
-              <div className="text-5xl">📚</div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">Your journey starts soon!</h2>
-                <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto leading-relaxed">
-                  You haven't been enrolled in a course yet. Once your admin adds you, your live classes, homework, tests and progress will all appear here.
-                </p>
+            {student?.isDemoStudent ? (
+              <div className="rounded-2xl border-2 border-dashed border-blue-200 p-6 flex flex-col items-center text-center gap-3"
+                style={{ background: "linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%)" }}>
+                <div className="text-5xl">🎯</div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">You're on a Free Demo!</h2>
+                  <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto leading-relaxed">
+                    Check out your demo sessions below — then enroll in a long-term course to unlock live classes, homework, tests, leaderboard, and more.
+                  </p>
+                </div>
+                <Link href="/demo-batches">
+                  <button className="flex items-center gap-2 bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-blue-700 transition-colors">
+                    <span>🚀</span>
+                    <span>View My Demo Sessions</span>
+                  </button>
+                </Link>
               </div>
-              <div className="flex items-center gap-2 bg-orange-100 text-orange-700 text-xs font-semibold px-4 py-2 rounded-full">
-                <span>📞</span>
-                <span>Contact your teacher or admin to get started</span>
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-orange-200 p-6 flex flex-col items-center text-center gap-3"
+                style={{ background: "linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)" }}>
+                <div className="text-5xl">📚</div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Your journey starts soon!</h2>
+                  <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto leading-relaxed">
+                    You haven't been enrolled in a course yet. Once your admin adds you, your live classes, homework, tests and progress will all appear here.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 bg-orange-100 text-orange-700 text-xs font-semibold px-4 py-2 rounded-full">
+                  <span>📞</span>
+                  <span>Contact your teacher or admin to get started</span>
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         )}
 
