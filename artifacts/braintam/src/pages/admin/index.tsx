@@ -1181,7 +1181,6 @@ function AdminPageInner() {
         items: [
           { label: "Dashboard", icon: LayoutDashboard, tab: "ignite", igniteView: "dashboard" },
           { label: "Leads", icon: Users, tab: "ignite", igniteView: "leads" },
-          { label: "Demo Students", icon: UserCheck, tab: "ignite", igniteView: "demo-students" },
           { label: "Demo Batches", icon: Layers, tab: "ignite", igniteView: "demo-batches" },
           { label: "Attendance Analytics", icon: CheckSquare, tab: "ignite", igniteView: "attendance" },
           { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
