@@ -635,7 +635,11 @@ function Student360({ detail, onClose, onTimelineAdded, onFollowUpAdded, onLeadS
 // ── Main BTL CRM Component ───────────────────────────────────────────────
 export default function BTLCRMPage() {
   const { student, role, isLoading, logout } = useAuth();
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>(() => {
+    const stored = localStorage.getItem("braintam_mentor_portal_type");
+    localStorage.removeItem("braintam_mentor_portal_type");
+    return stored === "sales" ? "pipeline" : "dashboard";
+  });
 
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [students, setStudents] = useState<Student[]>([]);

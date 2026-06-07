@@ -1,0 +1,444 @@
+# BTL CRM – Student Success Mentor (SSM) Workflow
+
+## Objective
+
+Convert the current Mentor module into a Student Success Mentor (SSM) system that manages:
+
+* Ignite 6-Day Program leads
+* Daily follow-ups
+* Attendance tracking
+* Homework tracking
+* Parent communication
+* Conversion tracking
+* Long-term retention
+
+Mentors do NOT manually create leads.
+
+Leads are assigned by Admin through Ignite batches.
+
+---
+
+# ADMIN FLOW
+
+## Lead Assignment
+
+Existing lead assignment system remains.
+
+Admin creates:
+
+* Ignite G1
+* Ignite G2
+* Ignite G3
+
+Example:
+
+G1 = 50 Leads
+G2 = 50 Leads
+
+Admin assigns:
+
+Mentor A → G1 + G2
+Mentor B → G3
+
+All students of those groups automatically become assigned to that mentor.
+
+No manual lead assignment by mentor.
+
+---
+
+# NEW ADMIN DASHBOARD SECTION
+
+Create:
+
+## Mentor Performance Dashboard
+
+Cards:
+
+* Total Mentors
+* Total Assigned Leads
+* Active Leads
+* Converted Leads
+* Conversion %
+* Revenue Generated
+
+Table:
+
+Mentor | Assigned | Calls Done | Pending | Hot Leads | Converted | Conversion %
+
+---
+
+# MENTOR DASHBOARD REDESIGN
+
+Top Cards:
+
+Assigned Leads
+
+Today's Calls
+
+Calls Completed
+
+Pending Calls
+
+Demo Students Active
+
+Payment Follow-ups
+
+Converted Students
+
+Revenue Generated
+
+---
+
+# LEAD PIPELINE
+
+Every lead must belong to ONE stage:
+
+New Lead
+
+Contacted
+
+Joined Ignite
+
+Active In Program
+
+Hot Prospect
+
+Payment Discussion
+
+Payment Link Sent
+
+Converted
+
+Not Interested
+
+Dropped
+
+Admin and mentor can view pipeline.
+
+Only mentor can update stage.
+
+All changes stored in Audit Log.
+
+---
+
+# TODAY'S TASKS TAB
+
+This becomes mentor's main working screen.
+
+Sections:
+
+## Calls Due Today
+
+Students requiring call today.
+
+## Overdue Follow-Ups
+
+Students not contacted on scheduled date.
+
+## Payment Follow-Ups
+
+Students waiting for payment discussion.
+
+## Callback Requested
+
+Parents requested another call.
+
+## At Risk Students
+
+Automatically generated.
+
+Conditions:
+
+Absent 2+ classes
+
+Homework missing 3 times
+
+Test score below threshold
+
+No class attendance this week
+
+Parent not responding
+
+---
+
+# ATTENDANCE INTEGRATION
+
+Automatically fetch from live classes.
+
+Mentor can VIEW:
+
+Attendance
+
+Homework
+
+Test scores
+
+Teacher remarks
+
+Mentor cannot edit:
+
+Attendance history
+
+Homework marks
+
+Teacher remarks
+
+Class records
+
+Mentor can only add:
+
+Follow-up remarks
+
+Parent discussion notes
+
+Call outcomes
+
+---
+
+# PARENT COMMUNICATION
+
+For every lead:
+
+Store:
+
+Last Call Date
+
+Next Follow-Up Date
+
+Call Status
+
+Parent Feedback
+
+Interest Level
+
+Mentor Remarks
+
+History Timeline
+
+---
+
+# INTEREST LEVEL
+
+Every lead should have:
+
+🔥 Hot
+
+🟡 Warm
+
+⚪ Cold
+
+Auto suggestions:
+
+Hot:
+
+Attending classes
+
+Submitting homework
+
+Parent responsive
+
+Warm:
+
+Partial attendance
+
+Cold:
+
+Missing classes
+
+No responses
+
+---
+
+# PAYMENT WORKFLOW
+
+Prepare for Razorpay integration.
+
+Add button:
+
+Send Payment Link
+
+Fields:
+
+Course
+
+Amount
+
+Discount
+
+Final Amount
+
+Remarks
+
+Status:
+
+Not Sent
+
+Sent
+
+Opened
+
+Paid
+
+Expired
+
+When payment succeeds:
+
+Automatically move student to:
+
+Converted
+
+and remove from payment follow-up queue.
+
+---
+
+# CONVERTED STUDENTS
+
+Separate tab:
+
+Converted Students
+
+Show:
+
+Student
+
+Parent
+
+Course Purchased
+
+Amount Paid
+
+Joining Date
+
+Assigned Mentor
+
+Attendance %
+
+Homework %
+
+Test %
+
+Renewal Status
+
+Mentor remains assigned after conversion.
+
+---
+
+# WEEKLY PARENT REPORT
+
+Generate automatic report every Saturday.
+
+Show:
+
+Attendance %
+
+Homework %
+
+Tests %
+
+Teacher Feedback
+
+Mentor Remarks
+
+Parent Discussion Notes
+
+Can be exported as PDF and shared on WhatsApp.
+
+---
+
+# ADMIN CONTROLS
+
+Admin can:
+
+Assign batches
+
+Reassign mentors
+
+View mentor performance
+
+View conversion reports
+
+View payment reports
+
+View all mentor remarks
+
+View all communication history
+
+View at-risk students
+
+View inactive leads
+
+---
+
+# AUDIT LOG REQUIREMENT
+
+Every action must be logged:
+
+Lead Assigned
+
+Lead Reassigned
+
+Stage Changed
+
+Remark Added
+
+Follow-Up Updated
+
+Payment Link Sent
+
+Lead Converted
+
+Lead Dropped
+
+Mentor Changed
+
+Admin Changed
+
+Include:
+
+User
+
+Role
+
+Timestamp
+
+Old Value
+
+New Value
+
+---
+
+# DATA PROTECTION
+
+Mentors cannot:
+
+Delete leads
+
+Delete remarks
+
+Delete conversions
+
+Edit past attendance
+
+Edit teacher data
+
+Edit payment records
+
+Modify audit logs
+
+Only Super Admin can permanently delete records.
+
+Use soft-delete architecture.
+
+---
+
+# FUTURE READY
+
+Add organization_id support in database design but keep single organization mode active.
+
+No multi-tenant activation yet.
+
+Current organization:
+
+Braintam
+
+Future SaaS expansion ready.
