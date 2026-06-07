@@ -1,0 +1,295 @@
+# TEACHERS MODULE REDESIGN (MASTERY + COMMAND CENTER)
+
+Use the attached Teacher Management reference image as the design blueprint.
+
+IMPORTANT:
+Do not remove any existing teacher assignment functionality.
+Upgrade the Teachers module into a complete Teacher Management & Performance System.
+
+====================================================
+OVERVIEW
+====================================================
+
+The current Teacher page only shows:
+
+Teacher
+Course
+Assigned Date
+
+This is not sufficient for managing an academic team.
+
+Convert Teachers into a complete Teacher Performance Dashboard.
+
+====================================================
+TOP KPI CARDS
+====================================================
+
+Create dashboard cards:
+
+Total Teachers
+Active Teachers
+Live Classes Today
+Total Batches
+Total Students
+Average Attendance %
+Homework Completion %
+Teacher Performance Score
+
+Show trends and percentages where possible.
+
+====================================================
+TEACHERS TABLE
+====================================================
+
+Replace current simple table with:
+
+Teacher Name
+Subject(s)
+Courses Assigned
+Batches Assigned
+Students
+Classes Conducted
+Attendance %
+Homework %
+Performance Score
+Status
+Actions
+
+Example:
+
+Miss Poonam
+Math, Science
+3 Courses
+4 Batches
+72 Students
+145 Classes
+89%
+84%
+92/100
+Active
+
+====================================================
+TEACHER PERFORMANCE SCORE
+====================================================
+
+Automatically calculate score based on:
+
+Attendance Performance
+Class Completion
+Homework Tracking
+Test Tracking
+Student Retention
+Student Engagement
+
+Color Codes:
+
+90-100 = Excellent
+75-89 = Good
+60-74 = Average
+Below 60 = Needs Attention
+
+====================================================
+TEACHER 360 PROFILE
+====================================================
+
+When clicking View Teacher:
+
+Open Teacher 360 page.
+
+Tabs:
+
+Overview
+Courses
+Batches
+Students
+Live Classes
+Attendance
+Homework
+Assessments
+Performance
+Notes
+
+====================================================
+OVERVIEW TAB
+====================================================
+
+Show:
+
+Teacher Photo
+Name
+Email
+Phone
+Qualification
+Experience
+Joining Date
+Subjects
+Current Status
+
+Quick Stats:
+
+Courses Assigned
+Batches Assigned
+Students
+Classes Conducted
+Attendance %
+Performance Score
+
+====================================================
+COURSES TAB
+====================================================
+
+Show all assigned courses.
+
+Columns:
+
+Course
+Grade
+Students
+Status
+Created Date
+
+====================================================
+BATCHES TAB
+====================================================
+
+Show:
+
+Batch Name
+Grade
+Students
+Attendance %
+Progress %
+Status
+
+====================================================
+STUDENTS TAB
+====================================================
+
+Show all students taught by the teacher.
+
+Columns:
+
+Student
+Grade
+Batch
+Attendance %
+Homework %
+Health Score
+
+====================================================
+LIVE CLASSES TAB
+====================================================
+
+Show:
+
+Upcoming Classes
+Completed Classes
+Cancelled Classes
+Average Attendance
+
+Columns:
+
+Class
+Batch
+Date
+Duration
+Attendance %
+
+====================================================
+ATTENDANCE ANALYTICS
+====================================================
+
+Show charts:
+
+Teacher Attendance %
+Batch Attendance %
+Monthly Attendance Trend
+
+====================================================
+HOMEWORK ANALYTICS
+====================================================
+
+Show:
+
+Homework Assigned
+Homework Submitted
+Completion %
+Late Submissions
+
+====================================================
+ASSESSMENTS TAB
+====================================================
+
+Show:
+
+Tests Conducted
+Average Student Score
+Highest Score
+Lowest Score
+
+====================================================
+PERFORMANCE TAB
+====================================================
+
+Show:
+
+Classes Conducted
+Classes Missed
+Average Attendance
+Homework Completion
+Assessment Performance
+Student Retention
+
+Generate Performance Score automatically.
+
+====================================================
+NOTES TAB
+====================================================
+
+Academic Head can add notes.
+
+Columns:
+
+Date
+Added By
+Note
+
+====================================================
+ASSIGNMENTS
+====================================================
+
+Keep current Teacher-Course assignment feature.
+
+Move it into:
+
+Teacher 360 → Courses Tab
+
+and also keep a quick Assign Teacher button on the main page.
+
+====================================================
+FILTERS
+====================================================
+
+Add filters:
+
+Subject
+Grade
+Course
+Status
+Performance Range
+
+====================================================
+EXPORTS
+====================================================
+
+Allow export:
+
+Teacher Report
+Performance Report
+Attendance Report
+
+====================================================
+GOAL
+====================================================
+
+Convert Teachers from a simple assignment table into a professional Teacher Management System that helps Academic Heads monitor teaching quality, workload, attendance, student outcomes and performance across the entire Braintam platform.

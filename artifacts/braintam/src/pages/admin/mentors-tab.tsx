@@ -543,9 +543,9 @@ function CreateMentorModal({ onClose, onCreated, flash }: { onClose: () => void;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !email || !password) return;
+    if (!name || !email || !phone || !password) return;
     setCreating(true);
-    const r = await apiFetch("/admin/mentors", { method: "POST", body: JSON.stringify({ name, email, phone: phone || undefined, password, mentorType }) });
+    const r = await apiFetch("/admin/mentors", { method: "POST", body: JSON.stringify({ name, email, phone, password, mentorType }) });
     setCreating(false);
     if (r.ok) { flash(`Mentor ${name} created!`); onCreated(); onClose(); }
     else { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed", false); }
@@ -568,8 +568,8 @@ function CreateMentorModal({ onClose, onCreated, flash }: { onClose: () => void;
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="mentor@braintam.com" required />
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Phone</label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+            <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Phone *</label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" required />
           </div>
           <div>
             <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Password *</label>
@@ -768,6 +768,16 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
     if (aRes.ok) setAlerts(await aRes.json());
     setLoading(false);
   }, []);
+
+  async function moveToMastery(mentorId: number, mentorName: string) {
+    if (!window.confirm(`Move ${mentorName} from Ignite (Sales) to Mastery (Academic)?\n\nThis will change their mentor type to Academic and reassign their leads.`)) return;
+    const r = await apiFetch(`/admin/mentors/${mentorId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ mentorType: "academic" }),
+    });
+    if (r.ok) { flash(`${mentorName} moved to Mastery as Academic mentor!`, true); loadData(); }
+    else { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed to update mentor type", false); }
+  }
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -1035,10 +1045,21 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                               </span>
                             </td>
                             <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => setProfileId(m.id)}
-                                className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all" title="View profile">
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={() => setProfileId(m.id)}
+                                  className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all" title="View profile">
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                {isSales && (
+                                  <button
+                                    onClick={() => moveToMastery(m.id, m.name)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm"
+                                    style={{ borderColor: "#059669", color: "#059669", background: "#F0FDF4" }}
+                                    title="Move to Mastery (change to Academic mentor)">
+                                    <GraduationCap className="w-3 h-3" /> Ignite → Mastery
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
