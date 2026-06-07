@@ -1303,13 +1303,13 @@ function AdminPageInner() {
         </div>
         <div className="flex-1" />
         {/* Live date + IST clock */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 text-xs shrink-0">
-          <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs shrink-0">
+          <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
           <span className="text-gray-500 whitespace-nowrap">
-            {now.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
+            {now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}
           </span>
-          <span className="font-mono font-bold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>
-            {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}
+          <span className="font-mono font-semibold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>
+            {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}
           </span>
         </div>
         {/* Refresh */}
