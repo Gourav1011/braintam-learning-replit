@@ -40,7 +40,8 @@ export type IgniteView =
   | "homework"
   | "follow-ups"
   | "conversion"
-  | "sales-mentors";
+  | "sales-mentors"
+  | "payments";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -418,6 +419,277 @@ function StageBadge({ stage }: { stage: string | null }) {
 
 // ── Leads View ────────────────────────────────────────────────────────────────
 
+const STAGE_ORDER: Record<string, number> = {
+  "New Lead": 1, "Contacted": 2, "Demo Assigned": 3,
+  "Demo Joined": 4, "Interested": 5, "Payment Sent": 6, "Converted": 7,
+};
+
+// ── Lead Profile Modal ────────────────────────────────────────────────────────
+
+function LeadProfileModal({
+  lead, onClose, flash,
+}: {
+  lead: StudentRow;
+  onClose: () => void;
+  flash: (m: string, ok?: boolean) => void;
+}) {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [movingToMastery, setMovingToMastery] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/follow-ups")
+      .then((r) => r.json())
+      .then((all: FollowUp[]) => setFollowUps(all.filter((f) => f.studentId === lead.studentId)))
+      .catch(() => {});
+  }, [lead.studentId]);
+
+  const stageNum = STAGE_ORDER[lead.leadStage ?? ""] ?? 0;
+  const sorted = [...followUps].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const lastFU = sorted[0];
+  const upcomingFU = followUps.find((f) => f.nextFollowUpDate && new Date(f.nextFollowUpDate) >= new Date());
+
+  async function moveToMastery() {
+    if (!confirm(`Move ${lead.name} to Mastery? This will create a student account and enrolment.`)) return;
+    setMovingToMastery(true);
+    try {
+      const r = await apiFetch("/admin/ignite/move-to-mastery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: lead.studentId, enrollmentId: lead.enrollmentId }),
+      });
+      if (r.ok) { flash(`${lead.name} moved to Mastery!`, true); onClose(); }
+      else { const err = await r.json().catch(() => ({ error: "Failed" })); flash(err.error ?? "Failed to move to Mastery", false); }
+    } finally { setMovingToMastery(false); }
+  }
+
+  const PROFILE_TABS = ["Overview", "Attendance", "Follow-ups", "Calls", "Payments", "Notes", "Timeline"];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[88vh] flex overflow-hidden"
+        style={{ fontFamily: "Poppins, sans-serif" }}>
+
+        {/* ── Left sidebar ── */}
+        <div className="w-56 shrink-0 border-r border-gray-100 flex flex-col overflow-y-auto"
+          style={{ background: "#F8FAFF" }}>
+          <div className="p-5">
+            <button onClick={onClose}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 mb-5 transition-colors">
+              ← Back to Leads
+            </button>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-black mb-3"
+              style={{ background: NAVY }}>{lead.name?.[0] ?? "?"}</div>
+            <div className="font-black text-gray-800 text-base leading-tight">{lead.name}</div>
+            <div className="mt-2"><StageBadge stage={lead.leadStage} /></div>
+            <div className="text-[10px] text-gray-400 mt-1.5">
+              Lead ID: LDN-{String(lead.enrollmentId).padStart(6, "0")}
+            </div>
+          </div>
+
+          <div className="px-5 pb-6 space-y-3 border-t border-gray-100 pt-4 text-xs">
+            {[
+              { label: "Mobile", value: lead.phone ?? "–" },
+              { label: "Parent Mobile", value: lead.parentPhone ?? "–" },
+              { label: "Grade", value: lead.grade ? `Grade ${lead.grade}` : "–" },
+              { label: "City", value: lead.city ?? "–" },
+              { label: "School", value: lead.school ?? "–" },
+              { label: "Assigned Batch", value: lead.batchTitle },
+              { label: "Sales Mentor", value: lead.assignedMentorName ?? "–" },
+              { label: "Interest Level", value: lead.interestLevel ?? "–" },
+              { label: "Created On", value: fmt(lead.enrolledAt) },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</div>
+                <div className="font-semibold text-gray-700 mt-0.5 break-words">{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Right content ── */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0">
+            <div className="flex gap-1 overflow-x-auto">
+              {PROFILE_TABS.map((tab) => {
+                const key = tab.toLowerCase().replace(/[^a-z]/g, "");
+                return (
+                  <button key={tab} onClick={() => setActiveTab(key)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
+                    style={activeTab === key ? { background: NAVY, color: "#fff" } : { color: "#6B7280" }}>
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                Edit Lead
+              </button>
+              <button onClick={onClose}
+                className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 text-base font-bold leading-none">
+                ×
+              </button>
+            </div>
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 overflow-auto p-5">
+
+            {/* ── OVERVIEW ── */}
+            {activeTab === "overview" && (
+              <div className="space-y-4">
+                {/* KPI row */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Attendance</div>
+                    <div className="text-2xl font-black" style={{ color: "#059669" }}>
+                      {lead.lastDayAttended ?? "–"}
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      {lead.lastDayAttended ? "Sessions attended" : "No data yet"}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Follow-ups</div>
+                    <div className="text-2xl font-black" style={{ color: NAVY }}>{followUps.length}</div>
+                    <div className="text-[10px] text-gray-400">{upcomingFU ? "1 upcoming" : "None upcoming"}</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Interest Level</div>
+                    <div className="text-lg font-black mt-1"
+                      style={{ color: ["High", "Very High"].includes(lead.interestLevel ?? "") ? "#059669" : "#D97706" }}>
+                      {lead.interestLevel ?? "–"}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Payment Status</div>
+                    <div className="mt-1.5">
+                      <StageBadge stage={["Payment Sent", "Converted"].includes(lead.leadStage ?? "") ? lead.leadStage : null} />
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-1.5">
+                      {lead.leadStage === "Payment Sent" ? "Waiting for payment"
+                        : lead.leadStage === "Converted" ? "Confirmed ✓" : "Not yet"}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Conversion Stage</div>
+                    <div className="text-sm font-black mt-1" style={{ color: NAVY }}>{lead.leadStage ?? "–"}</div>
+                    <div className="text-[10px] text-gray-400 mt-1">
+                      {stageNum > 0 ? `Stage ${stageNum} / 7` : "–"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Follow-up timeline + Quick actions */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="font-bold text-sm mb-4" style={{ color: NAVY }}>Follow-up Timeline</div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-xs text-gray-400">Last Follow-up</div>
+                        <div className="font-semibold text-gray-800 text-sm mt-0.5">
+                          {lastFU ? fmt(lastFU.createdAt) : "–"}
+                        </div>
+                        {lastFU?.note && <div className="text-xs text-gray-400 mt-0.5 truncate">{lastFU.note}</div>}
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-400">Next Follow-up</div>
+                        <div className="font-semibold text-sm mt-0.5"
+                          style={{ color: upcomingFU ? ORANGE : "#9CA3AF" }}>
+                          {upcomingFU ? fmt(upcomingFU.nextFollowUpDate) : "Not scheduled"}
+                        </div>
+                        {upcomingFU && (
+                          <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold mt-1"
+                            style={{ background: "#EDE9FE", color: "#5B21B6" }}>Upcoming</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="font-bold text-sm mb-4" style={{ color: NAVY }}>Quick Actions</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold hover:opacity-90"
+                        style={{ background: "#EEF2FF", color: NAVY }}>
+                        <Phone className="w-3.5 h-3.5" /> Add Follow-up
+                      </button>
+                      <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold hover:opacity-90"
+                        style={{ background: "#D1FAE5", color: "#065F46" }}>
+                        <Phone className="w-3.5 h-3.5" /> Log Call
+                      </button>
+                      <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold hover:opacity-90"
+                        style={{ background: "#FEF3C7", color: "#92400E" }}>
+                        <Bell className="w-3.5 h-3.5" /> WhatsApp
+                      </button>
+                      {lead.leadStage === "Converted" ? (
+                        <button onClick={moveToMastery} disabled={movingToMastery}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold hover:opacity-90 disabled:opacity-50"
+                          style={{ background: NAVY, color: "#fff" }}>
+                          <Award className="w-3.5 h-3.5" />
+                          {movingToMastery ? "Moving…" : "Move To Mastery"}
+                        </button>
+                      ) : (
+                        <button disabled title={`Available when stage is Converted`}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold opacity-40 cursor-not-allowed"
+                          style={{ background: "#F3F4F6", color: "#6B7280" }}>
+                          <Award className="w-3.5 h-3.5" /> Move To Mastery
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── FOLLOW-UPS TAB ── */}
+            {activeTab === "followups" && (
+              <div className="space-y-3">
+                <div className="font-bold text-sm mb-1" style={{ color: NAVY }}>
+                  Follow-up History ({followUps.length})
+                </div>
+                {followUps.length === 0 ? (
+                  <div className="flex flex-col items-center py-16 text-gray-300">
+                    <ClipboardList className="w-10 h-10 mb-3" />
+                    <div className="text-sm font-semibold text-gray-400">No follow-ups yet</div>
+                  </div>
+                ) : sorted.map((f) => (
+                  <div key={f.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={f.callStatus ?? "unknown"} />
+                        <span className="text-xs text-gray-500">{f.noteType ?? "Call"}</span>
+                      </div>
+                      <span className="text-xs text-gray-400">{fmt(f.createdAt)}</span>
+                    </div>
+                    {f.note && <div className="text-xs text-gray-700 mt-1">{f.note}</div>}
+                    {f.nextFollowUpDate && (
+                      <div className="mt-2 text-[10px] text-gray-400">
+                        Next: <span className="font-semibold" style={{ color: ORANGE }}>{fmt(f.nextFollowUpDate)}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── OTHER TABS (placeholders) ── */}
+            {!["overview", "followups"].includes(activeTab) && (
+              <div className="flex flex-col items-center justify-center h-48 text-gray-300">
+                <ClipboardList className="w-10 h-10 mb-3" />
+                <div className="text-sm font-semibold text-gray-400">Coming Soon</div>
+                <div className="text-xs mt-1">This section is under development</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const PIPELINE_STAGES = ["New Lead", "Contacted", "Demo Assigned", "Demo Joined", "Interested", "Payment Sent", "Converted", "Dropped"];
 
 function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
@@ -427,6 +699,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [stageTab, setStageTab] = useState("All");
   const [mentorF, setMentorF] = useState("All Mentors");
   const [page, setPage] = useState(1);
+  const [selectedLead, setSelectedLead] = useState<StudentRow | null>(null);
   const PER = 12;
 
   useEffect(() => {
@@ -457,6 +730,10 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
 
   return (
     <div className="space-y-4">
+      {selectedLead && (
+        <LeadProfileModal lead={selectedLead} onClose={() => setSelectedLead(null)} flash={flash} />
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Leads</h1>
@@ -519,18 +796,18 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
           <table className="w-full text-sm">
             <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
               <tr>
-                {["Student", "Mobile", "Grade", "School", "Batch", "Mentor", "Interest", "Stage", "Last Follow-up", "Action"].map((h) => (
+                {["Student Name", "Parent Mobile", "Mobile", "Grade", "School", "Batch", "Mentor", "Stage", "Attendance", "Last Contact", "Action"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="text-center py-12 text-gray-400">
+                <tr><td colSpan={11} className="text-center py-12 text-gray-400">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading leads...
                 </td></tr>
               ) : paged.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-12 text-gray-400 text-sm">
+                <tr><td colSpan={11} className="text-center py-12 text-gray-400 text-sm">
                   {stageTab !== "All" ? `No leads in "${stageTab}" stage` : "No leads found"}
                 </td></tr>
               ) : paged.map((s) => (
@@ -545,16 +822,22 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs font-mono">{s.phone ?? s.parentPhone ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">{s.parentPhone ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs font-mono">{s.phone ?? "–"}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{s.grade ?? "–"}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs max-w-28 truncate">{s.school ?? "–"}</td>
                   <td className="px-4 py-3 text-gray-700 text-xs max-w-32 truncate">{s.batchTitle}</td>
                   <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{s.assignedMentorName ?? "–"}</td>
-                  <td className="px-4 py-3"><InterestBadge level={s.interestLevel} /></td>
                   <td className="px-4 py-3"><StageBadge stage={s.leadStage} /></td>
+                  <td className="px-4 py-3 text-xs">
+                    {s.lastDayAttended
+                      ? <span className="font-semibold" style={{ color: "#059669" }}>Day {s.lastDayAttended}</span>
+                      : <span className="text-gray-400">–</span>}
+                  </td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(s.lastCallAt ?? s.nextFollowUpAt)}</td>
                   <td className="px-4 py-3">
-                    <button className="text-xs font-semibold px-3 py-1 rounded-lg hover:opacity-80"
+                    <button onClick={() => setSelectedLead(s)}
+                      className="text-xs font-semibold px-3 py-1 rounded-lg hover:opacity-80"
                       style={{ background: "#EEF2FF", color: NAVY }}>View</button>
                   </td>
                 </tr>
@@ -1389,6 +1672,173 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
   );
 }
 
+// ── Payments View ────────────────────────────────────────────────────────────
+
+function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusF, setStatusF] = useState("All Status");
+  const [batchF, setBatchF] = useState("All Batches");
+  const [page, setPage] = useState(1);
+  const PER = 15;
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/demo-students")
+      .then((r) => r.json())
+      .then(setStudents)
+      .catch(() => flash("Failed to load payment data", false))
+      .finally(() => setLoading(false));
+  }, [flash]);
+
+  const paymentStudents = students.filter((s) =>
+    ["Interested", "Payment Sent", "Converted"].includes(s.leadStage ?? "")
+  );
+  const batches = [...new Set(paymentStudents.map((s) => s.batchTitle))];
+
+  const filtered = paymentStudents.filter((s) => {
+    if (statusF !== "All Status" && s.leadStage !== statusF) return false;
+    if (batchF !== "All Batches" && s.batchTitle !== batchF) return false;
+    return true;
+  });
+
+  const paged = filtered.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.ceil(filtered.length / PER);
+  const cnt = (stage: string) => students.filter((s) => s.leadStage === stage).length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>Payments</h1>
+          <p className="text-xs text-gray-500">Track demo fee collection and payment confirmations</p>
+        </div>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <Download className="w-3.5 h-3.5" /> Export
+        </button>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Interested</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#FFF7ED" }}>
+              <Star className="w-4 h-4" style={{ color: ORANGE }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>{cnt("Interested")}</div>
+          <div className="text-[10px] text-gray-400 mt-1">Ready for collection</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Payment Sent</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#DBEAFE" }}>
+              <CreditCard className="w-4 h-4 text-blue-500" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-blue-600">{cnt("Payment Sent")}</div>
+          <div className="text-[10px] text-gray-400 mt-1">Awaiting confirmation</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Converted</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-green-600">{cnt("Converted")}</div>
+          <div className="text-[10px] text-gray-400 mt-1">Payment confirmed</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Total Pipeline</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <TrendingUp className="w-4 h-4" style={{ color: NAVY }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>{paymentStudents.length}</div>
+          <div className="text-[10px] text-gray-400 mt-1">In payment funnel</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center">
+        <select value={statusF} onChange={(e) => { setStatusF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none">
+          <option>All Status</option>
+          {["Interested", "Payment Sent", "Converted"].map((s) => <option key={s}>{s}</option>)}
+        </select>
+        <select value={batchF} onChange={(e) => { setBatchF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none">
+          <option>All Batches</option>
+          {batches.map((b) => <option key={b}>{b}</option>)}
+        </select>
+        <span className="text-xs text-gray-400 ml-auto">{filtered.length} records</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+              <tr>
+                {["Student", "Mobile", "Grade", "Batch", "Sales Mentor", "Lead Stage", "Interest", "Last Contact", "Action"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={9} className="text-center py-12 text-gray-400">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading…
+                </td></tr>
+              ) : paged.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-gray-400 text-sm">No records found</td></tr>
+              ) : paged.map((s) => (
+                <tr key={s.enrollmentId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: NAVY }}>{s.name?.[0] ?? "?"}</div>
+                      <div>
+                        <div className="font-semibold text-gray-800 text-xs">{s.name}</div>
+                        <div className="text-gray-400 text-[10px]">{s.email ?? "–"}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs font-mono">{s.phone ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{s.grade ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs max-w-32 truncate">{s.batchTitle}</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{s.assignedMentorName ?? "–"}</td>
+                  <td className="px-4 py-3"><StageBadge stage={s.leadStage} /></td>
+                  <td className="px-4 py-3"><InterestBadge level={s.interestLevel} /></td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(s.lastCallAt ?? s.nextFollowUpAt)}</td>
+                  <td className="px-4 py-3">
+                    <button className="text-xs font-semibold px-3 py-1 rounded-lg hover:opacity-80"
+                      style={{ background: "#EEF2FF", color: NAVY }}>View</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setPage(p)}
+                  className="w-7 h-7 rounded-lg text-xs font-semibold"
+                  style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{p}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Sidebar Navigation ────────────────────────────────────────────────────────
 
 interface NavItem {
@@ -1751,6 +2201,7 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    case "payments": return <PaymentsView flash={flash} />;
     default: return <DashboardView setView={setView} />;
   }
 }
@@ -1778,6 +2229,7 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
+      case "payments": return <PaymentsView flash={flash} />;
       default: return <DashboardView setView={setView} />;
     }
   };

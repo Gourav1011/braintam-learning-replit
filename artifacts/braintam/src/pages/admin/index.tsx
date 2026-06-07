@@ -1184,7 +1184,7 @@ function AdminPageInner() {
           { label: "Demo Batches", icon: Layers, tab: "ignite", igniteView: "demo-batches" },
           { label: "Attendance Analytics", icon: CheckSquare, tab: "ignite", igniteView: "attendance" },
           { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
-          { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "follow-ups" },
+          { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "payments" },
           { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
           { label: "Student Outreach", icon: UserCheck2, tab: "btl-crm" },
           { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "overview" },
