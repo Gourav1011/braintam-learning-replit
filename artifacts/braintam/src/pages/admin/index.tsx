@@ -685,6 +685,7 @@ function AdminPageInner() {
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -867,13 +868,17 @@ function AdminPageInner() {
 
   // ── Filtered + Sorted Users ─────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
-    let list = users.filter(u => u.role !== "super_admin");
+    let list = users.filter(u => u.role === "student");
 
     if (userSubTab === "active") list = list.filter(u => u.isActive);
     else if (userSubTab === "deactivated") list = list.filter(u => !u.isActive);
 
-    if (roleFilter !== "all") list = list.filter(u => u.role === roleFilter);
     if (gradeFilter !== "all") list = list.filter(u => String(u.grade) === gradeFilter);
+
+    if (courseFilter !== "all") {
+      const enrolled = new Set(enrollments.filter(e => String(e.courseId) === courseFilter).map(e => e.studentId));
+      list = list.filter(u => enrolled.has(u.id));
+    }
 
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
@@ -896,7 +901,7 @@ function AdminPageInner() {
     });
 
     return list;
-  }, [users, userSubTab, roleFilter, gradeFilter, debouncedSearch, sortField, sortDir]);
+  }, [users, userSubTab, gradeFilter, courseFilter, enrollments, debouncedSearch, sortField, sortDir]);
 
   const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
   const pagedUsers = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -1809,7 +1814,7 @@ function AdminPageInner() {
                   <button key={st} onClick={() => { setUserSubTab(st); setPage(1); setSelectedIds(new Set()); }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all capitalize ${userSubTab === st ? "text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"}`}
                     style={userSubTab === st ? { background: NAVY } : {}}>
-                    {st === "active" ? `Active (${users.filter(u => u.isActive).length})` : st === "deactivated" ? `Deactivated (${users.filter(u => !u.isActive).length})` : `All (${users.length})`}
+                    {st === "active" ? `Active (${students.filter(u => u.isActive).length})` : st === "deactivated" ? `Inactive (${students.filter(u => !u.isActive).length})` : `All (${students.length})`}
                   </button>
                 ))}
               </div>
@@ -1818,7 +1823,7 @@ function AdminPageInner() {
                   <Download className="w-3.5 h-3.5" /> Export CSV
                 </Button>
                 <Button size="sm" onClick={() => setShowCreateUser(true)} className="text-white gap-1.5" style={{ background: ORANGE }}>
-                  <Plus className="w-3.5 h-3.5" /> Add User
+                  <Plus className="w-3.5 h-3.5" /> Add Student
                 </Button>
               </div>
             </div>
@@ -1841,16 +1846,7 @@ function AdminPageInner() {
               </div>
 
               {showFilters && (
-                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm grid sm:grid-cols-3 gap-3">
-                  <Select value={roleFilter} onValueChange={v => { setRoleFilter(v); setPage(1); }}>
-                    <SelectTrigger className="text-xs"><SelectValue placeholder="Role" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="student">Students</SelectItem>
-                      <SelectItem value="teacher">Teachers</SelectItem>
-                      <SelectItem value="admin">Admins</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm grid sm:grid-cols-4 gap-3">
                   <Select value={gradeFilter} onValueChange={v => { setGradeFilter(v); setPage(1); }}>
                     <SelectTrigger className="text-xs"><SelectValue placeholder="Grade" /></SelectTrigger>
                     <SelectContent>
@@ -1858,7 +1854,22 @@ function AdminPageInner() {
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" variant="ghost" onClick={() => { setRoleFilter("all"); setGradeFilter("all"); setSearchQuery(""); setPage(1); }} className="text-xs text-gray-400">
+                  <Select value={courseFilter} onValueChange={v => { setCourseFilter(v); setPage(1); }}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Course" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Courses</SelectItem>
+                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={userSubTab === "active" ? "active" : userSubTab === "deactivated" ? "deactivated" : "all"} onValueChange={v => { setUserSubTab(v as UserSubTab); setPage(1); }}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="deactivated">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="ghost" onClick={() => { setGradeFilter("all"); setCourseFilter("all"); setUserSubTab("active"); setSearchQuery(""); setPage(1); }} className="text-xs text-gray-400">
                     <X className="w-3.5 h-3.5 mr-1" /> Clear Filters
                   </Button>
                 </div>
@@ -1893,7 +1904,7 @@ function AdminPageInner() {
             {/* Create User Form */}
             {showCreateUser && (
               <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
-                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Create New User</h3>
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Create New Student</h3>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Full name *" value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} />
                   <Input placeholder="Email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} />
@@ -1921,23 +1932,13 @@ function AdminPageInner() {
                       <span className="text-xs font-semibold" style={{ color: passwordStrength(newUser.password).color }}>{passwordStrength(newUser.password).label}</span>
                     </div>
                   )}
-                  <Select value={newUser.role} onValueChange={v => setNewUser(p => ({ ...p, role: v as Role }))}>
-                    <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {newUser.role === "student" && (
-                    <Input placeholder="Grade (1-10)" type="number" min="1" max="10" value={newUser.grade} onChange={e => setNewUser(p => ({ ...p, grade: e.target.value }))} />
-                  )}
+                  <Input placeholder="Grade (1-10)" type="number" min="1" max="10" value={newUser.grade} onChange={e => setNewUser(p => ({ ...p, grade: e.target.value }))} />
                   <Input placeholder="School" value={newUser.school} onChange={e => setNewUser(p => ({ ...p, school: e.target.value }))} className="sm:col-span-2" />
                 </div>
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" onClick={createUser} disabled={busy || !newUser.name || !newUser.password || newUser.password !== newUser.confirmPassword}
                     className="text-white" style={{ background: ORANGE }}>
-                    {busy ? "Creating…" : "Create User"}
+                    {busy ? "Creating…" : "Create Student"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setShowCreateUser(false)}>Cancel</Button>
                 </div>
@@ -1958,12 +1959,11 @@ function AdminPageInner() {
                       <span className="flex items-center gap-1">Name <SortIcon field="name" /></span>
                     </th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Contact</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs cursor-pointer select-none" onClick={() => toggleSort("role")}>
-                      <span className="flex items-center gap-1">Role <SortIcon field="role" /></span>
-                    </th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">School</th>
                     <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs cursor-pointer select-none" onClick={() => toggleSort("grade")}>
-                      <span className="flex items-center gap-1">Gr <SortIcon field="grade" /></span>
+                      <span className="flex items-center gap-1">Grade <SortIcon field="grade" /></span>
                     </th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Enrolled</th>
                     <th className="px-4 py-3 font-semibold text-gray-500 text-xs text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1992,10 +1992,16 @@ function AdminPageInner() {
                           <div>{u.email ?? "—"}</div>
                           {u.phone && <div className="text-gray-400">{u.phone}</div>}
                         </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${ROLE_COLORS[u.role] ?? ""}`}>{u.role}</span>
+                        <td className="px-4 py-3 text-gray-500 text-xs max-w-36 truncate">{u.school ?? "—"}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{u.grade > 0 ? `Grade ${u.grade}` : "—"}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">
+                          {(() => {
+                            const count = enrollments.filter(e => e.studentId === u.id).length;
+                            return count > 0
+                              ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#EEF2FF", color: "#3730A3" }}>{count} course{count !== 1 ? "s" : ""}</span>
+                              : <span className="text-gray-300 text-xs">None</span>;
+                          })()}
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{u.grade > 0 ? `Gr ${u.grade}` : "—"}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => toggleUserExpand(u.id)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Expand details">
@@ -2051,7 +2057,7 @@ function AdminPageInner() {
                         const isEditing = inlineEditUserId === u.id;
                         return (
                           <tr className="bg-blue-50/20 border-b border-blue-100">
-                            <td colSpan={6} className="px-6 py-4">
+                            <td colSpan={7} className="px-6 py-4">
                               <div className="space-y-3">
                                 {/* Stats row */}
                                 <div className="flex flex-wrap gap-6">
@@ -2160,7 +2166,7 @@ function AdminPageInner() {
                     </Fragment>
                   ))}
                   {!dataLoading && pagedUsers.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400 text-sm">No users found</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-sm">No students found</td></tr>
                   )}
                 </tbody>
               </table>
