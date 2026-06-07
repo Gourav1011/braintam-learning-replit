@@ -5,7 +5,7 @@ import {
   coursesTable, announcementsTable, homeworkTable, testsTable,
   bannersTable, liveClassesTable, ALL_MODULES,
 } from "@workspace/db";
-import { eq, desc, and, gte, lte, or, ilike, sql, isNotNull } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, ilike, sql, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import { logFromReq } from "../utils/audit.js";
 import crypto from "crypto";
@@ -222,7 +222,15 @@ router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
     to.setDate(to.getDate() + 1);
     conditions.push(lte(auditLogsTable.createdAt, to));
   }
-  if (role) conditions.push(eq(auditLogsTable.actorRole, role));
+  if (role) {
+    // Match stored actorRole OR actor's current role in users table (for legacy logs without actorRole)
+    const actorsWithRole = (await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.role, role))).map(u => u.id);
+    const roleCondition = actorsWithRole.length > 0
+      ? or(eq(auditLogsTable.actorRole, role), inArray(auditLogsTable.actorId, actorsWithRole))
+      : eq(auditLogsTable.actorRole, role);
+    if (roleCondition) conditions.push(roleCondition);
+  }
   if (userId) conditions.push(eq(auditLogsTable.actorId, parseInt(userId, 10)));
   if (category) conditions.push(eq(auditLogsTable.category, category));
   if (mod) conditions.push(eq(auditLogsTable.module, mod));

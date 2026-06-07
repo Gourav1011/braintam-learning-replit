@@ -460,6 +460,7 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     rating: coursesTable.rating,
   })
     .from(coursesTable)
+    .where(eq(coursesTable.isArchived, false))
     .orderBy(desc(coursesTable.createdAt));
   res.json(courses.map(c => ({
     ...c,
@@ -524,7 +525,11 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
   const [course] = await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, id));
-  await db.delete(coursesTable).where(eq(coursesTable.id, id));
+  await db.update(coursesTable).set({
+    isArchived: true,
+    archivedAt: new Date(),
+    archivedBy: req.authUser!.id,
+  }).where(eq(coursesTable.id, id));
   await logAudit(
     req.authUser!.id, req.authUser!.name,
     "course_deleted", "course", id, course?.title ?? String(id),
