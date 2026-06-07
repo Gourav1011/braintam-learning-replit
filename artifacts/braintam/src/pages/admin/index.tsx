@@ -2765,8 +2765,19 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
   // Inline type change
   const [changeTypeMentorId, setChangeTypeMentorId] = useState<number | null>(null);
   const [changingType, setChangingType] = useState(false);
+  const [typeChangeConfirm, setTypeChangeConfirm] = useState<{
+    mentorId: number; mentorName: string;
+    from: string; to: "academic" | "sales";
+    studentCount: number;
+  } | null>(null);
+
+  function requestTypeChange(mentorId: number, mentorName: string, from: string, to: "academic" | "sales", studentCount: number) {
+    if (from === to) return;
+    setTypeChangeConfirm({ mentorId, mentorName, from, to, studentCount });
+  }
 
   async function changeMentorType(mentorId: number, mentorType: "academic" | "sales") {
+    setTypeChangeConfirm(null);
     setChangingType(true);
     const r = await apiFetch(`/admin/mentors/${mentorId}`, {
       method: "PATCH",
@@ -2776,9 +2787,15 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
     if (r.ok) {
       const saved = await r.json().catch(() => null);
       const confirmedType = saved?.mentorType ?? mentorType;
-      // Optimistic update — reflect change immediately in the list
-      setMentors(prev => prev.map(m => m.id === mentorId ? { ...m, mentorType: confirmedType } : m));
-      flash(`✅ Mentor type saved as "${confirmedType === "sales" ? "💼 Sales (SSM)" : "📚 Academic"}"`, true);
+      const delinked: number = saved?.delinkCount ?? 0;
+      setMentors(prev => prev.map(m =>
+        m.id === mentorId
+          ? { ...m, mentorType: confirmedType, studentCount: 0 }
+          : m
+      ));
+      const typeLabel = confirmedType === "sales" ? "💼 Sales (SSM)" : "📚 Academic";
+      const delink = delinked > 0 ? ` — ${delinked} student${delinked !== 1 ? "s" : ""} delinked` : "";
+      flash(`✅ Type changed to ${typeLabel}${delink}`, true);
       setChangeTypeMentorId(null);
     } else {
       const d = await r.json().catch(() => ({}));
@@ -2922,6 +2939,81 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
 
   return (
     <div className="space-y-5">
+
+      {/* ── Type-change confirmation modal ── */}
+      {typeChangeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "#FEF3C7" }}>
+                <span className="text-xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="font-black text-base" style={{ color: NAVY }}>Change Mentor Type?</h3>
+                <p className="text-xs text-gray-500 mt-0.5">This cannot be undone automatically.</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl p-3.5 mb-4 space-y-2" style={{ background: "#F8FAFF", border: "1px solid #E0E7FF" }}>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-bold" style={{ color: NAVY }}>{typeChangeConfirm.mentorName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="px-2 py-0.5 rounded-full font-bold"
+                  style={{ background: typeChangeConfirm.from === "sales" ? "#FFFBEB" : "#ECFDF5", color: typeChangeConfirm.from === "sales" ? "#D97706" : "#059669" }}>
+                  {typeChangeConfirm.from === "sales" ? "💼 Sales (SSM)" : "📚 Academic"}
+                </span>
+                <span className="text-gray-400">→</span>
+                <span className="px-2 py-0.5 rounded-full font-bold"
+                  style={{ background: typeChangeConfirm.to === "sales" ? "#FFFBEB" : "#ECFDF5", color: typeChangeConfirm.to === "sales" ? "#D97706" : "#059669" }}>
+                  {typeChangeConfirm.to === "sales" ? "💼 Sales (SSM)" : "📚 Academic"}
+                </span>
+              </div>
+            </div>
+
+            {typeChangeConfirm.studentCount > 0 ? (
+              <div className="rounded-xl p-3.5 mb-4 flex items-start gap-2"
+                style={{ background: "#FFF7ED", border: "1px solid #FED7AA" }}>
+                <span className="text-base leading-none mt-0.5">🔗</span>
+                <div className="text-xs">
+                  <span className="font-black text-orange-700">
+                    {typeChangeConfirm.studentCount} assigned student{typeChangeConfirm.studentCount !== 1 ? "s" : ""} will be delinked
+                  </span>
+                  <p className="text-orange-600 mt-0.5">
+                    All student assignments for this mentor will be removed. Students will need to be reassigned to another mentor.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl p-3.5 mb-4 flex items-start gap-2"
+                style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+                <span className="text-base leading-none mt-0.5">✅</span>
+                <p className="text-xs text-green-700">This mentor has no assigned students. Safe to change.</p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => changeMentorType(typeChangeConfirm.mentorId, typeChangeConfirm.to)}
+                disabled={changingType}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-black transition-all disabled:opacity-60"
+                style={{ background: typeChangeConfirm.studentCount > 0 ? "#DC2626" : "#059669" }}>
+                {changingType ? "Changing…" : typeChangeConfirm.studentCount > 0
+                  ? `Yes, Change & Delink ${typeChangeConfirm.studentCount} Student${typeChangeConfirm.studentCount !== 1 ? "s" : ""}`
+                  : "Yes, Change Type"}
+              </button>
+              <button
+                onClick={() => setTypeChangeConfirm(null)}
+                disabled={changingType}
+                className="px-4 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-60">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-black text-base" style={{ color: NAVY }}>Mentor Management</h3>
@@ -3029,8 +3121,9 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                           const current = m.mentorType ?? "academic";
                           return (
                             <button key={t.value} type="button"
-                              disabled={changingType || t.soon}
-                              onClick={() => !t.soon && changeMentorType(m.id, t.value as "academic" | "sales")}
+                              disabled={changingType || t.soon || current === t.value}
+                              onClick={() => !t.soon && current !== t.value &&
+                                requestTypeChange(m.id, m.name, current, t.value as "academic" | "sales", m.studentCount)}
                               className="relative py-2 px-3 rounded-xl text-xs font-bold border-2 transition-all text-left disabled:cursor-not-allowed"
                               style={{
                                 borderColor: current === t.value ? t.color : "#E5E7EB",
@@ -3039,16 +3132,14 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                                 opacity: (changingType || t.soon) ? 0.7 : 1,
                               }}>
                               {t.label}
-                              {current === t.value && !t.soon && <span className="ml-1">✓</span>}
+                              {current === t.value && !t.soon && <span className="ml-1">✓ Current</span>}
                               {t.soon && <span className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded-full bg-gray-200 text-gray-500">Soon</span>}
                             </button>
                           );
                         })}
                       </div>
                       <p className="text-[10px] text-gray-400 mt-1.5">
-                        {(m.mentorType ?? "academic") === "sales"
-                          ? "Sales SSM — Lead Tracker + Assigned Leads portal."
-                          : "Academic — Students, Attendance, Live Classes portal."}
+                        Changing type will <strong className="text-orange-600">delink all assigned students</strong> from this mentor.
                       </p>
                     </div>
                   )}

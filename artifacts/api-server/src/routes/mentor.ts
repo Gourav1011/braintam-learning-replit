@@ -618,10 +618,33 @@ router.patch("/admin/mentors/:id", adminOnly, async (req, res) => {
   if (name) updates.name = name;
   if (password) updates.passwordHash = hashPassword(password);
   if (phone !== undefined) updates.phone = phone || null;
-  if (mentorType) updates.mentorType = mentorType;
+
+  let delinkCount = 0;
+  if (mentorType) {
+    const [current] = await db
+      .select({ mentorType: usersTable.mentorType })
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .limit(1);
+    const currentType = current?.mentorType ?? "academic";
+    updates.mentorType = mentorType;
+    // Type is changing — delink all active student assignments
+    if (currentType !== mentorType) {
+      const delinked = await db
+        .update(mentorStudentAssignmentsTable)
+        .set({ isActive: false })
+        .where(and(
+          eq(mentorStudentAssignmentsTable.mentorId, id),
+          eq(mentorStudentAssignmentsTable.isActive, true),
+        ))
+        .returning({ id: mentorStudentAssignmentsTable.id });
+      delinkCount = delinked.length;
+    }
+  }
+
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
-  res.json(updated);
+  res.json({ ...updated, studentCount: 0, delinkCount });
 });
 
 router.delete("/admin/mentors/:id", adminOnly, async (req, res) => {
