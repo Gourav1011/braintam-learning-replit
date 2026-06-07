@@ -155,10 +155,12 @@ function StudentCrmModal({
   studentId,
   onClose,
   flash,
+  onStageChange,
 }: {
   studentId: number;
   onClose: () => void;
   flash: (msg: string, ok?: boolean) => void;
+  onStageChange?: (studentId: number, newStage: string) => void;
 }) {
   const [detail, setDetail] = useState<{ student: StudentCrmDetail; timeline: TimelineEntry[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,6 +169,7 @@ function StudentCrmModal({
   const [followUpDate, setFollowUpDate] = useState("");
   const [actionTaken, setActionTaken] = useState("");
   const [saving, setSaving] = useState(false);
+  const [stageSaving, setStageSaving] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -183,6 +186,24 @@ function StudentCrmModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  async function updateStage(newStage: string) {
+    if (!detail || stageSaving) return;
+    setStageSaving(true);
+    const r = await apiFetch(`/mentor/students/${studentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ leadStage: newStage }),
+    });
+    setStageSaving(false);
+    if (r.ok) {
+      setDetail(prev => prev ? { ...prev, student: { ...prev.student, leadStage: newStage } } : prev);
+      onStageChange?.(studentId, newStage);
+      flash("Lead stage updated!");
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash((d as { error?: string }).error ?? "Failed to update stage", false);
+    }
+  }
 
   async function postEntry(e: React.FormEvent) {
     e.preventDefault();
@@ -308,6 +329,45 @@ function StudentCrmModal({
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Lead Stage */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Lead Stage</h5>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <Select
+                    value={student.leadStage ?? ""}
+                    onValueChange={updateStage}
+                    disabled={stageSaving}
+                  >
+                    <SelectTrigger className="h-8 text-xs bg-white">
+                      {student.leadStage ? (
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0 inline-block"
+                            style={{ background: LEAD_STAGE_COLORS[student.leadStage]?.dot ?? "#6B7280" }}
+                          />
+                          {stageSaving ? "Saving…" : student.leadStage}
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Not set — click to assign" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_STAGES.map(stage => {
+                        const c = LEAD_STAGE_COLORS[stage] ?? { dot: "#6B7280" };
+                        return (
+                          <SelectItem key={stage} value={stage}>
+                            <span className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full shrink-0 inline-block" style={{ background: c.dot }} />
+                              {stage}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1135,6 +1195,11 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
           studentId={crmStudentId}
           onClose={() => setCrmStudentId(null)}
           flash={flash}
+          onStageChange={(sid, newStage) => {
+            setReminders(prev =>
+              prev.map(r => r.studentId === sid ? { ...r, leadStatus: newStage } : r)
+            );
+          }}
         />
       )}
 
