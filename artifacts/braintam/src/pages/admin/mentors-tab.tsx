@@ -769,13 +769,16 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
     setLoading(false);
   }, []);
 
-  async function moveToMastery(mentorId: number, mentorName: string) {
-    if (!window.confirm(`Move ${mentorName} from Ignite (Sales) to Mastery (Academic)?\n\nThis will change their mentor type to Academic and reassign their leads.`)) return;
+  async function convertMentorType(mentorId: number, mentorName: string, currentType: string) {
+    const toSales = currentType !== "sales";
+    const targetType = toSales ? "sales" : "academic";
+    const label = toSales ? "Ignite (Sales)" : "Mastery (Academic)";
+    if (!window.confirm(`Move ${mentorName} to ${label}?\n\nThis will change their mentor type and reassign their leads accordingly.`)) return;
     const r = await apiFetch(`/admin/mentors/${mentorId}`, {
       method: "PATCH",
-      body: JSON.stringify({ mentorType: "academic" }),
+      body: JSON.stringify({ mentorType: targetType }),
     });
-    if (r.ok) { flash(`${mentorName} moved to Mastery as Academic mentor!`, true); loadData(); }
+    if (r.ok) { flash(`${mentorName} moved to ${label}!`, true); loadData(); }
     else { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed to update mentor type", false); }
   }
 
@@ -1050,13 +1053,21 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                                   className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all" title="View profile">
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
-                                {isSales && (
+                                {isSales ? (
                                   <button
-                                    onClick={() => moveToMastery(m.id, m.name)}
+                                    onClick={() => convertMentorType(m.id, m.name, m.mentorType)}
                                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm"
                                     style={{ borderColor: "#059669", color: "#059669", background: "#F0FDF4" }}
                                     title="Move to Mastery (change to Academic mentor)">
                                     <GraduationCap className="w-3 h-3" /> Ignite → Mastery
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => convertMentorType(m.id, m.name, m.mentorType)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm"
+                                    style={{ borderColor: "#D97706", color: "#D97706", background: "#FFFBEB" }}
+                                    title="Move to Ignite (change to Sales mentor)">
+                                    <TrendingUp className="w-3 h-3" /> Mastery → Ignite
                                   </button>
                                 )}
                               </div>
