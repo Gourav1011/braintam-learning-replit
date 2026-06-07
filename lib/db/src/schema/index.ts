@@ -34,3 +34,4 @@ export * from "./mentorReminderPrefs";
 export * from "./doubtSessions";
 export * from "./mentorEodReports";
 export * from "./employeeCheckins";
+export * from "./adminPermissions";

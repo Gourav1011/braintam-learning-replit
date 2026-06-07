@@ -10,6 +10,9 @@ export const announcementsTable = pgTable("announcements", {
   targetRole: text("target_role").default("all"),
   isActive: boolean("is_active").notNull().default(true),
   createdBy: integer("created_by").notNull(),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

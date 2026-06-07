@@ -16,6 +16,9 @@ export const coursesTable = pgTable("courses", {
   rating: real("rating"),
   isPublished: boolean("is_published").notNull().default(true),
   status: text("status").notNull().default("active"),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

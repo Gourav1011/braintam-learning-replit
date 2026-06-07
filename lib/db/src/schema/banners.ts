@@ -9,6 +9,9 @@ export const bannersTable = pgTable("banners", {
   link: text("link"),
   isActive: boolean("is_active").notNull().default(true),
   displayOrder: integer("display_order").notNull().default(0),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

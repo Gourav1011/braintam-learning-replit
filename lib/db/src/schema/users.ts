@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const userRoles = ["admin", "teacher", "mentor", "student"] as const;
+export const userRoles = ["super_admin", "admin", "teacher", "mentor", "student"] as const;
 export type UserRole = (typeof userRoles)[number];
 
 export const accountTypes = ["lead", "demo_student", "paid_student", "teacher", "admin"] as const;
@@ -30,6 +30,10 @@ export const usersTable = pgTable("users", {
   leadStage: text("lead_stage"),
   parentName: text("parent_name"),
   parentPhone: text("parent_phone"),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
+  organizationId: integer("organization_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

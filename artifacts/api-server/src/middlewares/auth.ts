@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-export type UserRole = "admin" | "teacher" | "mentor" | "student";
+export type UserRole = "super_admin" | "admin" | "teacher" | "mentor" | "student";
 
 export interface AuthUser {
   id: number;
@@ -74,6 +74,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   next();
 }
 
+/** Returns true if role has admin-or-higher privileges */
+export function isAdminLevel(role: UserRole): boolean {
+  return role === "admin" || role === "super_admin";
+}
+
 export function requireRole(...roles: UserRole[]) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = await resolveUser(req);
@@ -81,12 +86,13 @@ export function requireRole(...roles: UserRole[]) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    if (!roles.includes(user.role)) {
-      res.status(403).json({ error: "Forbidden: insufficient role" });
+    // super_admin bypasses all role checks
+    if (user.role === "super_admin" || roles.includes(user.role)) {
+      req.authUser = user;
+      next();
       return;
     }
-    req.authUser = user;
-    next();
+    res.status(403).json({ error: "Forbidden: insufficient role" });
   };
 }
 

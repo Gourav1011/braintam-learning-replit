@@ -21,6 +21,9 @@ export const liveClassesTable = pgTable("live_classes", {
   studentsJoined: integer("students_joined").default(0),
   joinUrl: text("join_url"),
   isPublished: boolean("is_published").notNull().default(true),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

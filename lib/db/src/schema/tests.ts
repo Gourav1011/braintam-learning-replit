@@ -17,6 +17,9 @@ export const testsTable = pgTable("tests", {
   totalQuestions: integer("total_questions").notNull().default(10),
   status: text("status").notNull().default("upcoming"),
   isPublished: boolean("is_published").notNull().default(true),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -65,6 +65,7 @@ import { BtlCrmTab } from "./btl-crm-tab";
 import { EmployeeAttendanceTab } from "./employee-attendance-tab";
 import { OperationsCommandCenterTab } from "./operations-command-center-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
+import { SuperAdminTab } from "./super-admin-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -96,6 +97,7 @@ type Tab =
   | "mentors"
   | "employee-attendance"
   | "operations-command-center"
+  | "super-admin"
   | "settings"
   | "profile";
 
@@ -1093,6 +1095,7 @@ function AdminPageInner() {
     { id: "banners", label: "Banners", icon: Image, group: "Manage" },
     { id: "employee-attendance", label: "Staff Attendance", icon: CheckSquare, group: "Manage" },
     { id: "operations-command-center", label: "Operations Center", icon: Zap, group: "System" },
+    { id: "super-admin", label: "Super Admin", icon: ShieldCheck, group: "System" },
     { id: "audit", label: "Audit Logs", icon: FileText, group: "System" },
     { id: "settings", label: "Settings", icon: Lock, group: "System" },
     { id: "overview", label: "Overview", icon: Activity, group: "System" },
@@ -2588,6 +2591,9 @@ function AdminPageInner() {
 
         {/* ── Operations Command Center ─────────────────────────────────── */}
         {tab === "operations-command-center" && <OperationsCommandCenterTab />}
+
+        {/* ── Super Admin Console ───────────────────────────────────────── */}
+        {tab === "super-admin" && <SuperAdminTab flash={flash} />}
 
         {/* ── Dashboard ────────────────────────────────────────────────── */}
         {tab === "dashboard" && <DashboardTab />}

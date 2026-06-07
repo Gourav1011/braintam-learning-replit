@@ -20,6 +20,9 @@ export const homeworkTable = pgTable("homework", {
   maxMarks: real("max_marks").notNull().default(10),
   questionsJson: text("questions_json"),
   isPublished: boolean("is_published").notNull().default(true),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
