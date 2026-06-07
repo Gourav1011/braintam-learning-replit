@@ -762,6 +762,25 @@ function AdminPageInner() {
     apiFetch("/staff/checkin/today").then(r => r.ok ? r.json() : null).then(setTodayCheckin).catch(() => setTodayCheckin(null));
   }, []);
 
+  // Live clock (IST)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Bell / notifications dropdown
+  const [bellDropOpen, setBellDropOpen] = useState(false);
+  const bellDropRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!bellDropOpen) return;
+    function handler(e: MouseEvent) {
+      if (bellDropRef.current && !bellDropRef.current.contains(e.target as Node)) setBellDropOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [bellDropOpen]);
+
   // Close profile dropdown on outside click
   useEffect(() => {
     if (!profileDropOpen) return;
@@ -771,6 +790,31 @@ function AdminPageInner() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [profileDropOpen]);
+
+  // Export report as CSV
+  function exportReport() {
+    if (!stats) { flash("Load dashboard data first", false); return; }
+    const rows: (string | number)[][] = [
+      ["Braintam Report", new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })],
+      [],
+      ["Metric", "Value"],
+      ["Total Users", stats.totalUsers],
+      ["Students", stats.totalStudents],
+      ["Teachers", stats.totalTeachers],
+      ["Courses", stats.totalCourses],
+      ["Enrollments", stats.totalEnrollments],
+      ["Teacher Assignments", stats.totalTeacherAssignments],
+    ];
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `braintam-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    flash("Report exported ✓", true);
+  }
 
   async function loadAll() {
     setDataLoading(true);
@@ -1258,22 +1302,50 @@ function AdminPageInner() {
           </div>
         </div>
         <div className="flex-1" />
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-600 cursor-default shrink-0">
-          <Calendar className="w-3.5 h-3.5 text-gray-400" />
-          <span className="font-medium whitespace-nowrap">
-            {new Date(Date.now() - 6 * 86400000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-            {" – "}
-            {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+        {/* Live date + IST clock */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 text-xs shrink-0">
+          <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <span className="text-gray-500 whitespace-nowrap">
+            {now.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
+          </span>
+          <span className="font-mono font-bold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>
+            {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}
           </span>
         </div>
-        <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity shrink-0"
+        {/* Refresh */}
+        <button onClick={() => loadAll()} title="Refresh data"
+          className="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors shrink-0">
+          <RotateCcw className={`w-4 h-4 text-gray-500 ${dataLoading ? "animate-spin" : ""}`} />
+        </button>
+        {/* Export */}
+        <button onClick={exportReport}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shrink-0"
           style={{ background: NAVY }}>
-          <Download className="w-3.5 h-3.5" /> Export Report
+          <Download className="w-3.5 h-3.5" /> Export
         </button>
-        <button className="relative w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors shrink-0">
-          <Bell className="w-4 h-4 text-gray-500" />
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px] font-bold" style={{ background: ORANGE }}>3</span>
-        </button>
+        {/* Bell */}
+        <div className="relative shrink-0" ref={bellDropRef}>
+          <button onClick={() => setBellDropOpen(o => !o)}
+            className="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
+            <Bell className="w-4 h-4 text-gray-500" />
+          </button>
+          {bellDropOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              style={{ boxShadow: "0 8px 32px rgba(11,43,107,0.13)" }}>
+              <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between" style={{ background: "#F8FAFF" }}>
+                <span className="text-sm font-black" style={{ color: NAVY }}>Notifications</span>
+                <span className="text-[10px] text-gray-400">
+                  {now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}
+                </span>
+              </div>
+              <div className="px-4 py-10 flex flex-col items-center gap-2 text-center">
+                <Bell className="w-8 h-8 text-gray-200" />
+                <div className="text-xs font-semibold text-gray-400">All caught up!</div>
+                <div className="text-[10px] text-gray-300">No new notifications</div>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="relative shrink-0" ref={profileDropRef}>
           <button onClick={() => setProfileDropOpen(o => !o)}
             className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors">
