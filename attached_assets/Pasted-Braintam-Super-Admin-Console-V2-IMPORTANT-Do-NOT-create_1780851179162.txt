@@ -1,0 +1,255 @@
+Braintam Super Admin Console V2
+
+IMPORTANT:
+Do NOT create a static UI.
+Do NOT use placeholder data.
+Do NOT create dummy cards.
+
+Every widget, table, counter, status indicator, and action must be connected to real backend APIs and database data.
+
+The current Super Admin page already works.
+
+Keep all existing functionality.
+
+Upgrade it into a true platform control center.
+
+---
+
+SECTION 1 — DASHBOARD OVERVIEW
+
+Create summary cards:
+
+1. Total Admins
+2. Active Admins
+3. Inactive Admins
+4. Total Users
+5. Total Students
+6. Total Teachers
+7. Total Mentors
+8. System Health
+9. Last Backup Date
+
+All counts must come from database queries.
+
+---
+
+SECTION 2 — ADMIN ACCOUNT MANAGEMENT
+
+Existing functionality must remain.
+
+Add:
+
+* Last Login
+* Created By
+* Last Activity
+* Status
+* Role
+
+Actions:
+
+* Create Admin
+* Disable Admin
+* Enable Admin
+* Reset Password
+* View Activity
+
+Super Admin cannot accidentally disable themselves.
+
+---
+
+SECTION 3 — AUDIT LOGS
+
+Use existing audit system.
+
+Enhance with:
+
+Filters:
+
+* Date
+* Module
+* Action
+* User
+* Role
+
+Search:
+
+* Name
+* Email
+* Phone
+
+Show:
+
+Who
+Did What
+When
+Target
+Module
+
+All data must be real.
+
+---
+
+SECTION 4 — RECYCLE BIN
+
+Show:
+
+Deleted Students
+Deleted Teachers
+Deleted Mentors
+Deleted Courses
+Deleted Batches
+
+Actions:
+
+Restore
+
+Permanent Delete
+
+Permanent Delete only visible to Super Admin.
+
+---
+
+SECTION 5 — BACKUP CENTER
+
+Create new page.
+
+Features:
+
+Create Backup
+
+Backup History
+
+Download Backup
+
+Show:
+
+Backup Name
+Created Date
+Size
+Status
+
+Display:
+
+Last Successful Backup
+
+Next Scheduled Backup
+
+Backup Retention
+
+All actions must work.
+
+No fake buttons.
+
+---
+
+SECTION 6 — SYSTEM HEALTH
+
+Display real status:
+
+Database
+
+API Server
+
+Storage
+
+Email Service
+
+WhatsApp Service
+
+Background Jobs
+
+Status:
+
+Healthy
+Warning
+Offline
+
+Must be generated from actual checks.
+
+---
+
+SECTION 7 — ACTIVITY MONITOR
+
+Show live activity:
+
+Admin Logins
+
+User Creation
+
+Role Changes
+
+Lead Assignment
+
+Student Conversion
+
+Attendance Updates
+
+Homework Updates
+
+Latest 100 activities.
+
+---
+
+SECTION 8 — QUICK ACTIONS
+
+Create Admin
+
+Create Backup
+
+View Audit Logs
+
+Open Recycle Bin
+
+System Settings
+
+Activity Monitor
+
+Buttons must navigate correctly.
+
+---
+
+SECTION 9 — SECURITY
+
+Only Super Admin can access:
+
+Backup Center
+Recycle Bin
+Admin Management
+System Health
+
+Normal Admins must receive:
+
+403 Access Denied
+
+---
+
+SECTION 10 — PERFORMANCE
+
+Do not load everything at once.
+
+Use:
+
+Pagination
+
+Lazy Loading
+
+Efficient SQL Queries
+
+Cache summary cards
+
+---
+
+FINAL REQUIREMENT
+
+Before marking complete:
+
+Verify every card.
+Verify every count.
+Verify every button.
+Verify every API route.
+
+No placeholder data.
+No mock data.
+No UI-only implementation.
+
+Everything must function end-to-end using real backend data.

@@ -44,7 +44,7 @@ import {
   CheckSquare, Square, AlertTriangle, UserX, UserCheck2, Key, FileText,
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
-  ShieldCheck, Zap, UserCircle,
+  ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -741,12 +741,33 @@ function AdminPageInner() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
+  // Profile dropdown + check-in state
+  const [profileDropOpen, setProfileDropOpen] = useState(false);
+  const [todayCheckin, setTodayCheckin] = useState<{ checkInTime: string | null; checkOutTime: string | null } | null | undefined>(undefined);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const profileDropRef = useRef<HTMLDivElement>(null);
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const teachers = useMemo(() => users.filter(u => u.role === "teacher"), [users]);
   const students = useMemo(() => users.filter(u => u.role === "student"), [users]);
 
   useEffect(() => { if (!isLoading && (role === "admin" || role === "super_admin")) loadAll(); }, [isLoading, role]);
+
+  // Load today's check-in status
+  useEffect(() => {
+    apiFetch("/staff/checkin/today").then(r => r.ok ? r.json() : null).then(setTodayCheckin).catch(() => setTodayCheckin(null));
+  }, []);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!profileDropOpen) return;
+    function handler(e: MouseEvent) {
+      if (profileDropRef.current && !profileDropRef.current.contains(e.target as Node)) setProfileDropOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [profileDropOpen]);
 
   async function loadAll() {
     setDataLoading(true);
@@ -786,6 +807,14 @@ function AdminPageInner() {
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3500); }
+
+  async function doCheckIn() {
+    setCheckingIn(true);
+    try {
+      const r = await apiFetch("/staff/checkin", { method: "POST" });
+      if (r.ok) { setTodayCheckin(await r.json()); flash("Checked in successfully!"); }
+    } finally { setCheckingIn(false); }
+  }
 
   function confirm(dialog: ConfirmDialog) { setConfirmDialog(dialog); }
 
@@ -1210,10 +1239,129 @@ function AdminPageInner() {
       {/* Main content */}
       <div className="flex-1 min-w-0">
         {/* Slim top bar */}
-        <div className="px-6 py-3 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-20">
+        <div className="px-6 py-2.5 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-20">
           <span className="text-sm font-semibold" style={{ color: NAVY }}>
             {TABS.find(t => t.id === tab)?.label ?? ""}
           </span>
+
+          {/* User profile dropdown */}
+          <div className="relative" ref={profileDropRef}>
+            <button
+              onClick={() => setProfileDropOpen(o => !o)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              {/* Avatar */}
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0 overflow-hidden"
+                style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+                {student.avatarUrl
+                  ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : (student.name?.[0] ?? "A")}
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-bold leading-tight" style={{ color: NAVY }}>{student.name}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: ORANGE }}>
+                  {role === "super_admin" ? "Super Admin" : role}
+                </div>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${profileDropOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {profileDropOpen && (
+              <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+                style={{ boxShadow: "0 8px 32px rgba(11,43,107,0.13)" }}>
+                {/* Profile header */}
+                <div className="px-4 py-3 border-b border-gray-50" style={{ background: "#F8FAFF" }}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0 overflow-hidden"
+                      style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+                      {student.avatarUrl
+                        ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        : (student.name?.[0] ?? "A")}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-black truncate" style={{ color: NAVY }}>{student.name}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: ORANGE }}>
+                        {role === "super_admin" ? "Super Admin" : role}
+                      </div>
+                      {student.email && <div className="text-[10px] text-gray-400 truncate">{student.email}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Check In / Out section */}
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Attendance</div>
+                  {todayCheckin === undefined ? (
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading…
+                    </div>
+                  ) : todayCheckin?.checkInTime && !todayCheckin?.checkOutTime ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        Checked in at {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                      <button
+                        onClick={() => { setProfileDropOpen(false); setTab("employee-attendance"); }}
+                        className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1.5"
+                      >
+                        <LogOut className="w-3 h-3" /> Check Out
+                      </button>
+                    </div>
+                  ) : todayCheckin?.checkInTime && todayCheckin?.checkOutTime ? (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-0.5">
+                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                        Completed today
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                        {" → "}
+                        {new Date(todayCheckin.checkOutTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => doCheckIn()}
+                      disabled={checkingIn}
+                      className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-green-700 bg-green-50 hover:bg-green-100 transition-colors flex items-center gap-1.5 disabled:opacity-60"
+                    >
+                      {checkingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                      {checkingIn ? "Checking in…" : "Check In"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Navigation items */}
+                <div className="py-1">
+                  <button
+                    onClick={() => { setTab("profile"); setProfileDropOpen(false); }}
+                    className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5 text-gray-400" /> My Profile
+                  </button>
+                  <button
+                    onClick={() => { setTab("employee-attendance"); setProfileDropOpen(false); }}
+                    className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-gray-400" /> Attendance
+                  </button>
+                  <a href="/"
+                    className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                    <Globe className="w-3.5 h-3.5 text-gray-400" /> ← Back to Site
+                  </a>
+                  <div className="border-t border-gray-50 mt-1 pt-1">
+                    <button
+                      onClick={() => { setProfileDropOpen(false); logout(); }}
+                      className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors font-semibold"
+                    >
+                      <LogOut className="w-3.5 h-3.5" /> Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       <div className="p-5 space-y-5">
         {/* Toast */}
