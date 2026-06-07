@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   TrendingUp, Users, CheckCircle, AlertTriangle, Clock, Plus,
   RefreshCw, ChevronDown, ChevronUp, Target, UserCheck2, UserX,
-  Phone, User, BookOpen, X, Send, GraduationCap,
+  Phone, User, BookOpen, X, Send, GraduationCap, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { exportCSV } from "./index";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -987,11 +988,51 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
             <h3 className="font-black text-base" style={{ color: NAVY }}>BTL CRM Overview</h3>
             <p className="text-xs text-gray-400 mt-0.5">Pipeline + mentor performance across all relationship managers</p>
           </div>
-          <Button size="sm" variant="outline" onClick={loadAll}
-            className="flex items-center gap-1.5 text-xs border-gray-200 h-8">
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={loadingPipeline || loadingPerf || !pipeline}
+              onClick={() => {
+                if (!pipeline) return;
+                const today = new Date().toISOString().slice(0, 10);
+                // Pipeline stage breakdown CSV
+                const { stageCounts, totalAssigned, converted, dropped, unassignedToStage } = pipeline;
+                const pipelineRows: (string | number)[][] = [
+                  ["Summary", ""],
+                  ["Total in Pipeline", totalAssigned],
+                  ["Converted / Paid", converted],
+                  ["Dropped", dropped],
+                  ["No Stage Set", unassignedToStage],
+                  ["", ""],
+                  ...LEAD_STAGES.map(stage => [stage, stageCounts[stage] ?? 0]),
+                ];
+                exportCSV(`btl-pipeline-${today}.csv`, ["Stage", "Count"], pipelineRows);
+                // Mentor performance CSV
+                if (mentorPerf.length > 0) {
+                  exportCSV(
+                    `btl-mentor-performance-${today}.csv`,
+                    ["Mentor", "Email", "Status", "Students", "Converted", "Follow-Up Rate (%)", "Overdue Follow-Ups", "Follow-Ups Done", "Follow-Ups Total", "Total Tasks", "Done Tasks", "Overdue Tasks"],
+                    mentorPerf.map(m => [
+                      m.name, m.email, m.isActive ? "Active" : "Inactive",
+                      m.totalStudents, m.converted, m.followUpCompletionRate,
+                      m.overdueFollowUps, m.followUpDone, m.followUpTotal,
+                      m.totalTasks, m.doneTasks, m.overdueTasks,
+                    ]),
+                  );
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs border-gray-200 h-8"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export CSV
+            </Button>
+            <Button size="sm" variant="outline" onClick={loadAll}
+              className="flex items-center gap-1.5 text-xs border-gray-200 h-8">
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Flash */}

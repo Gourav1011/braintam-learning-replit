@@ -168,7 +168,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   return { score, label: "Strong", color: "#22C55E" };
 }
 
-function exportCSV(filename: string, headers: string[], rows: (string | number | null | undefined)[][]) {
+export function exportCSV(filename: string, headers: string[], rows: (string | number | null | undefined)[][]) {
   const escape = (v: string | number | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = [headers.map(escape).join(","), ...rows.map(r => r.map(escape).join(","))].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
