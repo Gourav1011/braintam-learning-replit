@@ -28,6 +28,7 @@ export const usersTable = pgTable("users", {
   lastLoginDate: timestamp("last_login_date"),
   isActive: boolean("is_active").notNull().default(true),
   leadStage: text("lead_stage"),
+  mentorType: text("mentor_type"), // 'sales' | 'academic' — null for non-mentors
   parentName: text("parent_name"),
   parentPhone: text("parent_phone"),
   isArchived: boolean("is_archived").notNull().default(false),

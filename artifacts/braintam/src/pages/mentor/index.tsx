@@ -8,8 +8,10 @@ import {
   PhoneCall, PhoneOff, PhoneMissed, PhoneIncoming,
   Edit2, Save, UserCircle, FileText, Activity,
   Target, CheckSquare, History, ExternalLink, Video, Trash2,
-  Zap, HelpCircle, ClipboardCheck,
+  Zap, HelpCircle, ClipboardCheck, Trophy, TrendingUp, LayoutGrid, List, BarChart3,
 } from "lucide-react";
+import { LeaderboardTab } from "./leaderboard-tab";
+import { PipelineTab } from "./pipeline-tab";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
@@ -35,7 +37,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile";
+type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "pipeline" | "leaderboard";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -112,11 +114,20 @@ interface FollowUpEdit {
 }
 
 interface DashboardData {
+  mentorType: string;
   totalAssigned: number; activeToday: number; needsAttention: number;
   atRisk: number; green: number; notActive3Days: number; notActive7Days: number;
   homeworkPending: number; pendingTasks: number; overdueTasks: number;
   followUpReminders: (FollowUp & { fuStatus: string; daysOverdue: number })[];
   recentFollowUps: FollowUp[];
+}
+
+interface HealthSummary {
+  green: { id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }[];
+  yellow: { id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }[];
+  red: { id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }[];
+  critical: { id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }[];
+  total: number;
 }
 
 interface StudentDetail {
@@ -679,6 +690,10 @@ export default function BTLCRMPage() {
   const [reminderSaving, setReminderSaving] = useState(false);
   const [reminderSaved, setReminderSaved] = useState(false);
 
+  // Health summary + students view toggle
+  const [healthSummary, setHealthSummary] = useState<HealthSummary | null>(null);
+  const [studentsView, setStudentsView] = useState<"table" | "health">("table");
+
   const fetchDashboard = useCallback(async () => {
     const r = await apiFetch("/mentor/dashboard");
     if (r.ok) {
@@ -693,6 +708,10 @@ export default function BTLCRMPage() {
   const fetchStudents = useCallback(async () => {
     const r = await apiFetch("/mentor/students?limit=200");
     if (r.ok) { const d = await r.json(); setStudents(Array.isArray(d.students) ? d.students : []); }
+  }, []);
+  const fetchHealthSummary = useCallback(async () => {
+    const r = await apiFetch("/mentor/students/health-summary");
+    if (r.ok) setHealthSummary(await r.json());
   }, []);
   const fetchFollowUps = useCallback(async () => {
     const r = await apiFetch("/mentor/follow-ups");
@@ -738,6 +757,7 @@ export default function BTLCRMPage() {
   useEffect(() => { if (tab === "attendance") fetchAttendance(attDate, selectedClassId); }, [tab, attDate, selectedClassId]);
   useEffect(() => { if (tab === "attendance") fetchUpcomingClasses(); }, [tab]);
   useEffect(() => { if (tab === "settings") fetchReminderPrefs(); }, [tab]);
+  useEffect(() => { if (tab === "students") fetchHealthSummary(); }, [tab, fetchHealthSummary]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
   if (!student || (role !== "mentor" && role !== "admin")) return <Redirect to="/mentor/login" />;
@@ -913,12 +933,17 @@ export default function BTLCRMPage() {
     setTasks(prev => prev.filter(t => t.id !== id));
   }
 
+  const mentorType = dashboard?.mentorType ?? "academic";
+  const isSales = mentorType === "sales";
+
   const tabs: { key: Tab; label: string; icon: typeof Home }[] = [
     { key: "dashboard", label: "Dashboard", icon: Home },
     { key: "today-tasks", label: "Today's Tasks", icon: Zap },
+    ...(isSales ? [{ key: "pipeline" as Tab, label: "My Pipeline", icon: TrendingUp }] : []),
     { key: "students", label: "Students", icon: Users },
     { key: "follow-ups", label: "Follow-Ups", icon: MessageSquare },
     { key: "tasks", label: "Tasks", icon: CheckSquare },
+    { key: "leaderboard", label: "Leaderboard", icon: Trophy },
     { key: "attendance", label: "Attendance", icon: Calendar },
     { key: "live-classes", label: "Live Classes", icon: Video },
     { key: "doubt-sessions", label: "Doubt Sessions", icon: HelpCircle },
@@ -1042,43 +1067,91 @@ export default function BTLCRMPage() {
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (
           <div className="p-5 max-w-5xl mx-auto space-y-5">
-            <div>
-              <h1 className="text-xl font-black" style={{ color: NAVY }}>BTL CRM Dashboard</h1>
-              <p className="text-xs text-gray-500 mt-0.5">Welcome back, {student.name}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-black" style={{ color: NAVY }}>BTL CRM Dashboard</h1>
+                <p className="text-xs text-gray-500 mt-0.5">Welcome back, {student.name}</p>
+              </div>
+              {dashboard && (
+                <span className="text-xs font-bold px-3 py-1.5 rounded-xl" style={{ background: isSales ? "#FEF3C7" : "#ECFDF5", color: isSales ? "#D97706" : "#059669" }}>
+                  {isSales ? "💼 Sales Mentor" : "📚 Academic Mentor"}
+                </span>
+              )}
             </div>
             {dashboard ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {[
-                    { label: "Assigned", value: dashboard.totalAssigned, icon: "👥", color: NAVY },
-                    { label: "Active Today", value: dashboard.activeToday, icon: "✅", color: GREEN },
-                    { label: "At Risk", value: dashboard.atRisk, icon: "🔴", color: "#DC2626" },
-                    { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
-                    { label: "Tasks Overdue", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
-                  ].map(c => (
-                    <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-lg">{c.icon}</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                {/* ── Type-specific top stats ── */}
+                {isSales ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {[
+                      { label: "My Leads", value: dashboard.totalAssigned, icon: "👥", color: NAVY },
+                      { label: "Follow-Up Due", value: dashboard.followUpReminders?.length ?? 0, icon: "📞", color: "#DC2626" },
+                      { label: "Converted", value: dashboard.green, icon: "🎯", color: GREEN },
+                      { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
+                      { label: "Overdue Tasks", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
+                    ].map(c => (
+                      <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-lg">{c.icon}</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                        </div>
+                        <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
                       </div>
-                      <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {[
+                      { label: "Assigned", value: dashboard.totalAssigned, icon: "👥", color: NAVY },
+                      { label: "Active Today", value: dashboard.activeToday, icon: "✅", color: GREEN },
+                      { label: "At Risk", value: dashboard.atRisk, icon: "🔴", color: "#DC2626" },
+                      { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
+                      { label: "Tasks Overdue", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
+                    ].map(c => (
+                      <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-lg">{c.icon}</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                        </div>
+                        <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
+                {/* ── Secondary stats row ── */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: "Green", value: dashboard.green, color: GREEN },
+                  {(isSales ? [
+                    { label: "At Risk Leads", value: dashboard.atRisk, color: "#DC2626" },
+                    { label: "Needs Attention", value: dashboard.needsAttention, color: "#D97706" },
+                    { label: "Inactive 3d+", value: dashboard.notActive3Days, color: "#D97706" },
+                    { label: "HW Follow-up", value: dashboard.homeworkPending, color: ORANGE },
+                  ] : [
+                    { label: "Green (Healthy)", value: dashboard.green, color: GREEN },
                     { label: "Needs Attention", value: dashboard.needsAttention, color: "#D97706" },
                     { label: "Inactive 3d+", value: dashboard.notActive3Days, color: "#D97706" },
                     { label: "HW Pending", value: dashboard.homeworkPending, color: ORANGE },
-                  ].map(c => (
+                  ]).map(c => (
                     <div key={c.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
                       <div className="text-[10px] font-bold mb-1" style={{ color: c.color }}>{c.label}</div>
                       <div className="text-xl font-black" style={{ color: NAVY }}>{c.value}</div>
                     </div>
                   ))}
                 </div>
+
+                {/* ── Sales-specific: Pipeline shortcut banner ── */}
+                {isSales && (
+                  <div className="rounded-2xl border-2 p-4 flex items-center justify-between" style={{ borderColor: "#D97706", background: "#FFFBEB" }}>
+                    <div>
+                      <div className="font-black text-sm" style={{ color: "#D97706" }}>Sales Pipeline</div>
+                      <div className="text-xs text-gray-500 mt-0.5">View your leads by stage, overdue follow-ups, and conversion status</div>
+                    </div>
+                    <button onClick={() => setTab("pipeline")}
+                      className="text-xs font-bold px-3 py-2 rounded-xl text-white flex-shrink-0" style={{ background: "#D97706" }}>
+                      Open Pipeline →
+                    </button>
+                  </div>
+                )}
 
                 {(dashboard.followUpReminders?.length ?? 0) > 0 && (
                   <div className="bg-orange-50 rounded-2xl border border-orange-200 p-4">
@@ -1153,7 +1226,7 @@ export default function BTLCRMPage() {
           </div>
         )}
 
-        {/* ════ STUDENTS (Compact CRM Table) ════ */}
+        {/* ════ STUDENTS (Compact CRM Table + Health Map) ════ */}
         {tab === "students" && (
           <div className="p-4 max-w-7xl mx-auto space-y-4">
             <div className="flex items-center justify-between">
@@ -1161,125 +1234,218 @@ export default function BTLCRMPage() {
                 <h1 className="text-lg font-black" style={{ color: NAVY }}>Students</h1>
                 <p className="text-xs text-gray-400">{filteredStudents.length} of {students.length} students</p>
               </div>
-              <button onClick={fetchStudents} className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600"><RefreshCw className="w-3.5 h-3.5" /></button>
+              <div className="flex items-center gap-2">
+                {/* View toggle */}
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+                  <button onClick={() => setStudentsView("table")}
+                    className={`px-3 py-1.5 flex items-center gap-1 font-semibold transition-all ${studentsView === "table" ? "text-white" : "text-gray-500"}`}
+                    style={studentsView === "table" ? { background: NAVY } : {}}>
+                    <List className="w-3 h-3" /> Table
+                  </button>
+                  <button onClick={() => setStudentsView("health")}
+                    className={`px-3 py-1.5 flex items-center gap-1 font-semibold transition-all ${studentsView === "health" ? "text-white" : "text-gray-500"}`}
+                    style={studentsView === "health" ? { background: "#059669" } : {}}>
+                    <BarChart3 className="w-3 h-3" /> Health Map
+                  </button>
+                </div>
+                <button onClick={() => { fetchStudents(); fetchHealthSummary(); }} className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600"><RefreshCw className="w-3.5 h-3.5" /></button>
+              </div>
             </div>
 
-            {Object.keys(stageCounts).length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-100 p-3">
-                <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">BTL CRM Pipeline</div>
-                <div className="flex flex-wrap gap-2">
-                  {SUCCESS_STAGES.filter(s => stageCounts[s]).map(s => (
-                    <button key={s} onClick={() => setStageFilter(stageFilter === s ? "" : s)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all border"
-                      style={{ background: stageFilter === s ? `${SUCCESS_STAGE_COLORS[s]}25` : `${SUCCESS_STAGE_COLORS[s]}10`, color: SUCCESS_STAGE_COLORS[s], borderColor: stageFilter === s ? SUCCESS_STAGE_COLORS[s] : "transparent" }}>
-                      {s} <span className="font-black">{stageCounts[s]}</span>
-                    </button>
-                  ))}
-                </div>
+            {/* ── Health Map View ── */}
+            {studentsView === "health" && (
+              <div className="space-y-4">
+                {/* Summary tiles */}
+                {healthSummary && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      { label: "Green", key: "green" as const, color: "#059669", bg: "#DCFCE7", icon: "🟢" },
+                      { label: "Yellow", key: "yellow" as const, color: "#D97706", bg: "#FEF3C7", icon: "🟡" },
+                      { label: "Red", key: "red" as const, color: "#DC2626", bg: "#FEE2E2", icon: "🔴" },
+                      { label: "Critical", key: "critical" as const, color: "#7F1D1D", bg: "#FEF2F2", icon: "⛔" },
+                    ].map(b => (
+                      <div key={b.key} className="rounded-2xl border p-3 text-center" style={{ borderColor: b.color, background: b.bg }}>
+                        <div className="text-xl mb-0.5">{b.icon}</div>
+                        <div className="text-2xl font-black" style={{ color: NAVY }}>{healthSummary[b.key].length}</div>
+                        <div className="text-[10px] font-bold" style={{ color: b.color }}>{b.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Columns */}
+                {healthSummary ? (
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {[
+                      { label: "🟢 Green (75+)", key: "green" as const, color: "#059669", bg: "#DCFCE7", border: "#059669" },
+                      { label: "🟡 Yellow (50–74)", key: "yellow" as const, color: "#D97706", bg: "#FFFBEB", border: "#D97706" },
+                      { label: "🔴 Red (25–49)", key: "red" as const, color: "#DC2626", bg: "#FEF2F2", border: "#DC2626" },
+                      { label: "⛔ Critical (<25)", key: "critical" as const, color: "#7F1D1D", bg: "#FEF2F2", border: "#7F1D1D" },
+                    ].map(col => (
+                      <div key={col.key} className="flex-shrink-0 w-56">
+                        <div className="flex items-center justify-between px-1 mb-2">
+                          <span className="text-xs font-bold" style={{ color: col.color }}>{col.label}</span>
+                          <span className="text-[10px] text-gray-400">{healthSummary[col.key].length}</span>
+                        </div>
+                        <div className="space-y-2 min-h-16">
+                          {healthSummary[col.key].map(s => (
+                            <div key={s.id} className="bg-white rounded-xl border shadow-sm p-3 cursor-pointer hover:shadow-md transition-shadow"
+                              style={{ borderLeft: `3px solid ${col.border}` }}
+                              onClick={() => open360ById(s.id, s.name)}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="font-semibold text-xs leading-tight" style={{ color: NAVY }}>{s.name}</div>
+                                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background: col.bg, color: col.color }}>{s.healthScore}%</span>
+                              </div>
+                              <div className="text-[10px] text-gray-400 mb-1.5">Gr.{s.grade} · {s.daysSinceLogin < 999 ? `${s.daysSinceLogin}d ago` : "never active"}</div>
+                              {/* Health bar */}
+                              <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{ width: `${s.healthScore}%`, background: col.color }} />
+                              </div>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <button onClick={e => { e.stopPropagation(); setFuStudentId(s.id); setTab("follow-ups"); }}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-lg text-white" style={{ background: ORANGE }}>
+                                  Follow Up
+                                </button>
+                                <button onClick={e => { e.stopPropagation(); open360ById(s.id, s.name); }}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-lg" style={{ background: "#EEF2FF", color: NAVY }}>
+                                  View
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          {healthSummary[col.key].length === 0 && (
+                            <div className="text-center py-6 text-[10px] text-gray-300">No students</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
+                )}
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="relative flex-1 min-w-[160px] max-w-xs">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-                  className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-xs outline-none" />
-              </div>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white">
-                <option value="health">Health ↓</option>
-                <option value="name">Name A–Z</option>
-                <option value="grade">Grade</option>
-                <option value="stage">Stage</option>
-              </select>
-              <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white">
-                <option value="">All Risk</option>
-                <option value="at-risk">At Risk</option>
-                <option value="attention">Attention</option>
-                <option value="good">Good</option>
-                <option value="excellent">Excellent</option>
-              </select>
-              {(riskFilter || stageFilter || search) && (
-                <button onClick={() => { setRiskFilter(""); setStageFilter(""); setSearch(""); }} className="text-xs text-red-500 font-semibold px-2 py-1 hover:bg-red-50 rounded-lg">Clear</button>
-              )}
-            </div>
+            {/* ── Table View ── */}
+            {studentsView === "table" && (
+              <div className="space-y-4">
+                {Object.keys(stageCounts).length > 0 && (
+                  <div className="bg-white rounded-xl border border-gray-100 p-3">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">BTL CRM Pipeline</div>
+                    <div className="flex flex-wrap gap-2">
+                      {SUCCESS_STAGES.filter(s => stageCounts[s]).map(s => (
+                        <button key={s} onClick={() => setStageFilter(stageFilter === s ? "" : s)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all border"
+                          style={{ background: stageFilter === s ? `${SUCCESS_STAGE_COLORS[s]}25` : `${SUCCESS_STAGE_COLORS[s]}10`, color: SUCCESS_STAGE_COLORS[s], borderColor: stageFilter === s ? SUCCESS_STAGE_COLORS[s] : "transparent" }}>
+                          {s} <span className="font-black">{stageCounts[s]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs min-w-[860px]">
-                  <thead>
-                    <tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
-                      <th className="text-left px-3 py-2.5 font-bold text-gray-500">Name</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-8">Gr</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-16">Health</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Risk Level</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">HW%</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">Att%</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Last On</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-36">Student Status</th>
-                      <th className="text-right px-3 py-2.5 font-bold text-gray-500 w-24">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStudents.length === 0 ? (
-                      <tr><td colSpan={9} className="text-center py-10 text-gray-400">No students found</td></tr>
-                    ) : filteredStudents.map(s => (
-                      <tr key={s.id} onClick={() => open360(s)}
-                        className="border-b border-gray-50 last:border-0 hover:bg-blue-50/30 transition-colors cursor-pointer">
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0"
-                              style={{ background: healthColor(s.riskLevel) }}>
-                              {s.name.charAt(0)}
-                            </div>
-                            <div>
-                              <div className="font-semibold leading-none" style={{ color: NAVY }}>{s.name}</div>
-                              {s.phone && <div className="text-[9px] text-gray-400">{s.phone}</div>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-2 py-2.5 font-bold" style={{ color: NAVY }}>{s.grade}</td>
-                        <td className="px-2 py-2.5"><RiskBadge level={s.riskLevel} score={s.healthScore} /></td>
-                        <td className="px-2 py-2.5">
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${healthColor(s.riskLevel)}18`, color: healthColor(s.riskLevel) }}>
-                            {s.riskLevel === "at-risk" ? "At Risk" : s.riskLevel === "attention" ? "Attention" : s.riskLevel === "good" ? "Good" : "Excellent"}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <span className={`font-bold ${s.hwCompletion >= 75 ? "text-green-600" : s.hwCompletion >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.hwCompletion}%</span>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          {s.attendancePct !== null && s.attendancePct !== undefined
-                            ? <span className={`font-bold ${s.attendancePct >= 75 ? "text-green-600" : s.attendancePct >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.attendancePct}%</span>
-                            : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-2 py-2.5 text-gray-500 text-[11px]">{s.daysSinceLogin < 999 ? `${s.daysSinceLogin}d` : "never"}</td>
-                        <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
-                          <LeadStageDropdown value={s.leadStage} onChange={v => updateLeadStageInline(s.id, v)} />
-                        </td>
-                        <td className="px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => open360(s)}
-                              className="p-1 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all" title="Add Note">
-                              <FileText className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => { setFuStudentId(s.id); setTab("follow-ups"); }}
-                              className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Follow-Up">
-                              <MessageSquare className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => open360(s)}
-                              className="p-1 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all" title="360 Profile">
-                              <UserCircle className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="relative flex-1 min-w-[160px] max-w-xs">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-xs outline-none" />
+                  </div>
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white">
+                    <option value="health">Health ↓</option>
+                    <option value="name">Name A–Z</option>
+                    <option value="grade">Grade</option>
+                    <option value="stage">Stage</option>
+                  </select>
+                  <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white">
+                    <option value="">All Risk</option>
+                    <option value="at-risk">At Risk</option>
+                    <option value="attention">Attention</option>
+                    <option value="good">Good</option>
+                    <option value="excellent">Excellent</option>
+                  </select>
+                  {(riskFilter || stageFilter || search) && (
+                    <button onClick={() => { setRiskFilter(""); setStageFilter(""); setSearch(""); }} className="text-xs text-red-500 font-semibold px-2 py-1 hover:bg-red-50 rounded-lg">Clear</button>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs min-w-[860px]">
+                      <thead>
+                        <tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+                          <th className="text-left px-3 py-2.5 font-bold text-gray-500">Name</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-8">Gr</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-16">Health</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Risk Level</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">HW%</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">Att%</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Last On</th>
+                          <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-36">Student Status</th>
+                          <th className="text-right px-3 py-2.5 font-bold text-gray-500 w-24">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.length === 0 ? (
+                          <tr><td colSpan={9} className="text-center py-10 text-gray-400">No students found</td></tr>
+                        ) : filteredStudents.map(s => (
+                          <tr key={s.id} onClick={() => open360(s)}
+                            className="border-b border-gray-50 last:border-0 hover:bg-blue-50/30 transition-colors cursor-pointer">
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0"
+                                  style={{ background: healthColor(s.riskLevel) }}>
+                                  {s.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <div className="font-semibold leading-none" style={{ color: NAVY }}>{s.name}</div>
+                                  {s.phone && <div className="text-[9px] text-gray-400">{s.phone}</div>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-2 py-2.5 font-bold" style={{ color: NAVY }}>{s.grade}</td>
+                            <td className="px-2 py-2.5"><RiskBadge level={s.riskLevel} score={s.healthScore} /></td>
+                            <td className="px-2 py-2.5">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${healthColor(s.riskLevel)}18`, color: healthColor(s.riskLevel) }}>
+                                {s.riskLevel === "at-risk" ? "At Risk" : s.riskLevel === "attention" ? "Attention" : s.riskLevel === "good" ? "Good" : "Excellent"}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2.5">
+                              <span className={`font-bold ${s.hwCompletion >= 75 ? "text-green-600" : s.hwCompletion >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.hwCompletion}%</span>
+                            </td>
+                            <td className="px-2 py-2.5">
+                              {s.attendancePct !== null && s.attendancePct !== undefined
+                                ? <span className={`font-bold ${s.attendancePct >= 75 ? "text-green-600" : s.attendancePct >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.attendancePct}%</span>
+                                : <span className="text-gray-300">—</span>}
+                            </td>
+                            <td className="px-2 py-2.5 text-gray-500 text-[11px]">{s.daysSinceLogin < 999 ? `${s.daysSinceLogin}d` : "never"}</td>
+                            <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
+                              <LeadStageDropdown value={s.leadStage} onChange={v => updateLeadStageInline(s.id, v)} />
+                            </td>
+                            <td className="px-3 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => open360(s)}
+                                  className="p-1 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all" title="Add Note">
+                                  <FileText className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => { setFuStudentId(s.id); setTab("follow-ups"); }}
+                                  className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Follow-Up">
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => open360(s)}
+                                  className="p-1 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all" title="360 Profile">
+                                  <UserCircle className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -1878,6 +2044,18 @@ export default function BTLCRMPage() {
         {/* ════ EOD REPORT ════ */}
         {tab === "eod-report" && (
           <EodReportTab apiFetch={apiFetch} />
+        )}
+
+        {/* ════ PIPELINE (Sales only) ════ */}
+        {tab === "pipeline" && (
+          <PipelineTab
+            onOpenStudent={(id, name) => open360ById(id, name)}
+          />
+        )}
+
+        {/* ════ LEADERBOARD ════ */}
+        {tab === "leaderboard" && (
+          <LeaderboardTab myId={student.id} />
         )}
       </div>
     </div>

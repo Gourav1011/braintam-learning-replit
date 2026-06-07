@@ -12,8 +12,9 @@ import {
   studentTimelineTable,
   mentorTasksTable,
   mentorReminderPrefsTable,
+  doubtSessionsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, inArray, gte, lte, or } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte, lte, or, lt } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import crypto from "crypto";
 import { runOverdueFollowUpReminders } from "../jobs/overdueFollowUpReminders.js";
@@ -72,11 +73,14 @@ function computeFollowUpStatus(nextFollowUpDate: string | null, callStatus: stri
 // ── Dashboard ────────────────────────────────────────────────────────────
 router.get("/mentor/dashboard", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
+  const mentorRow = await db.select({ mentorType: usersTable.mentorType }).from(usersTable).where(eq(usersTable.id, mentorId)).limit(1);
+  const mentorType = mentorRow[0]?.mentorType ?? "academic";
+
   const studentIds = await getMentorStudentIds(mentorId);
   const totalAssigned = studentIds.length;
 
   if (totalAssigned === 0) {
-    res.json({ totalAssigned: 0, activeToday: 0, needsAttention: 0, atRisk: 0, green: 0, notActive3Days: 0, notActive7Days: 0, homeworkPending: 0, followUpReminders: [], recentFollowUps: [], pendingTasks: 0, overdueTasks: 0 });
+    res.json({ mentorType, totalAssigned: 0, activeToday: 0, needsAttention: 0, atRisk: 0, green: 0, notActive3Days: 0, notActive7Days: 0, homeworkPending: 0, followUpReminders: [], recentFollowUps: [], pendingTasks: 0, overdueTasks: 0 });
     return;
   }
 
@@ -137,6 +141,7 @@ router.get("/mentor/dashboard", mentorAuth, async (req, res) => {
     .where(and(eq(mentorTasksTable.mentorId, mentorId), lte(mentorTasksTable.dueDate, today), or(eq(mentorTasksTable.status, "pending"), eq(mentorTasksTable.status, "in_progress"))));
 
   res.json({
+    mentorType,
     totalAssigned, activeToday, needsAttention, atRisk, green, notActive3Days, notActive7Days,
     homeworkPending: hwPending, followUpReminders, recentFollowUps,
     pendingTasks: (taskMap["pending"] ?? 0) + (taskMap["in_progress"] ?? 0),
@@ -590,29 +595,30 @@ router.post("/admin/trigger-reminder-job", requireRole("admin"), async (_req, re
 const adminOnly = requireRole("admin");
 
 router.get("/admin/mentors", adminOnly, async (req, res) => {
-  const mentors = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "mentor")).orderBy(desc(usersTable.createdAt));
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, mentorType: usersTable.mentorType, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "mentor")).orderBy(desc(usersTable.createdAt));
   const counts = await db.select({ mentorId: mentorStudentAssignmentsTable.mentorId, count: sql<number>`count(*)` }).from(mentorStudentAssignmentsTable).where(eq(mentorStudentAssignmentsTable.isActive, true)).groupBy(mentorStudentAssignmentsTable.mentorId);
   const countMap = Object.fromEntries(counts.map(c => [c.mentorId, Number(c.count)]));
   res.json(mentors.map(m => ({ ...m, studentCount: countMap[m.id] ?? 0 })));
 });
 
 router.post("/admin/mentors", adminOnly, async (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, mentorType } = req.body;
   if (!name || !email || !password) { res.status(400).json({ error: "name, email, password required" }); return; }
   const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) { res.status(400).json({ error: "Email already in use" }); return; }
-  const [mentor] = await db.insert(usersTable).values({ name, email, phone: phone ?? null, role: "mentor", grade: 0, passwordHash: hashPassword(password), points: 0, streakDays: 0 }).returning();
-  res.status(201).json({ id: mentor.id, name: mentor.name, email: mentor.email, phone: mentor.phone, isActive: mentor.isActive, createdAt: mentor.createdAt, studentCount: 0 });
+  const [mentor] = await db.insert(usersTable).values({ name, email, phone: phone ?? null, role: "mentor", grade: 0, passwordHash: hashPassword(password), points: 0, streakDays: 0, mentorType: mentorType ?? "academic" }).returning();
+  res.status(201).json({ id: mentor.id, name: mentor.name, email: mentor.email, phone: mentor.phone, isActive: mentor.isActive, mentorType: mentor.mentorType, createdAt: mentor.createdAt, studentCount: 0 });
 });
 
 router.patch("/admin/mentors/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
-  const { isActive, name, password, phone } = req.body;
+  const { isActive, name, password, phone, mentorType } = req.body;
   const updates: Record<string, unknown> = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
   if (name) updates.name = name;
   if (password) updates.passwordHash = hashPassword(password);
   if (phone !== undefined) updates.phone = phone || null;
+  if (mentorType) updates.mentorType = mentorType;
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
   res.json(updated);
@@ -909,6 +915,165 @@ router.get("/admin/btl-crm/student/:id", adminOnly, async (req, res) => {
 
   res.json({ student, timeline });
 });
+
+// ── Mentor: Sales pipeline (scoped to my students) ───────────────────────
+router.get("/mentor/my-pipeline", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentIds = await getMentorStudentIds(mentorId);
+  if (studentIds.length === 0) { res.json([]); return; }
+
+  const students = await db.select({
+    id: usersTable.id, name: usersTable.name, grade: usersTable.grade,
+    phone: usersTable.phone, parentPhone: usersTable.parentPhone,
+    leadStage: usersTable.leadStage, accountType: usersTable.accountType,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Latest follow-up per student
+  const latestFu = await db.select({
+    studentId: mentorFollowUpsTable.studentId,
+    nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate,
+    note: mentorFollowUpsTable.note,
+    createdAt: mentorFollowUpsTable.createdAt,
+  }).from(mentorFollowUpsTable)
+    .where(and(eq(mentorFollowUpsTable.mentorId, mentorId), inArray(mentorFollowUpsTable.studentId, studentIds)))
+    .orderBy(desc(mentorFollowUpsTable.createdAt));
+
+  const fuMap = new Map<number, typeof latestFu[0]>();
+  for (const f of latestFu) {
+    if (!fuMap.has(f.studentId)) fuMap.set(f.studentId, f);
+  }
+
+  const result = students.map(s => {
+    const fu = fuMap.get(s.id);
+    const nextFollowUpDate = fu?.nextFollowUpDate ?? null;
+    const daysOverdue = nextFollowUpDate && nextFollowUpDate < today
+      ? Math.floor((new Date(today).getTime() - new Date(nextFollowUpDate).getTime()) / 86400000)
+      : 0;
+    return {
+      ...s,
+      lastContact: fu?.createdAt ?? null,
+      nextFollowUpDate,
+      lastNote: fu?.note ?? null,
+      daysOverdue,
+    };
+  });
+
+  res.json(result);
+});
+
+// ── Mentor: Leaderboard ───────────────────────────────────────────────────
+router.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
+  const period = String(req.query.period ?? "week");
+
+  const now = new Date();
+  let startDate: Date;
+  if (period === "month") {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (period === "all") {
+    startDate = new Date(2024, 0, 1);
+  } else {
+    // week
+    const day = now.getDay();
+    startDate = new Date(now);
+    startDate.setDate(now.getDate() - day);
+    startDate.setHours(0, 0, 0, 0);
+  }
+
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name, mentorType: usersTable.mentorType })
+    .from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true)));
+  if (mentors.length === 0) { res.json([]); return; }
+
+  const mentorIds = mentors.map(m => m.id);
+
+  const [followUps, doubtSessions, assignments] = await Promise.all([
+    db.select({ mentorId: mentorFollowUpsTable.mentorId, noteType: mentorFollowUpsTable.noteType, count: sql<number>`count(*)` })
+      .from(mentorFollowUpsTable)
+      .where(and(inArray(mentorFollowUpsTable.mentorId, mentorIds), gte(mentorFollowUpsTable.createdAt, startDate)))
+      .groupBy(mentorFollowUpsTable.mentorId, mentorFollowUpsTable.noteType),
+    db.select({ mentorId: doubtSessionsTable.mentorId, count: sql<number>`count(*)` })
+      .from(doubtSessionsTable)
+      .where(and(inArray(doubtSessionsTable.mentorId, mentorIds), sql`${doubtSessionsTable.scheduledDate} >= ${startDate.toISOString().slice(0, 10)}`))
+      .groupBy(doubtSessionsTable.mentorId),
+    db.select({ mentorId: mentorStudentAssignmentsTable.mentorId, count: sql<number>`count(*)` })
+      .from(mentorStudentAssignmentsTable)
+      .where(and(inArray(mentorStudentAssignmentsTable.mentorId, mentorIds), eq(mentorStudentAssignmentsTable.isActive, true)))
+      .groupBy(mentorStudentAssignmentsTable.mentorId),
+  ]);
+
+  const fuMap = new Map<number, { calls: number; followUps: number; parentCalls: number }>();
+  for (const f of followUps) {
+    const cur = fuMap.get(f.mentorId) ?? { calls: 0, followUps: 0, parentCalls: 0 };
+    cur.followUps += Number(f.count);
+    if (f.noteType === "Check-in Call" || f.noteType === "General Note") cur.calls += Number(f.count);
+    if (f.noteType === "Parent Call") cur.parentCalls += Number(f.count);
+    fuMap.set(f.mentorId, cur);
+  }
+  const dsMap = new Map(doubtSessions.map(d => [d.mentorId, Number(d.count)]));
+  const assignMap = new Map(assignments.map(a => [a.mentorId, Number(a.count)]));
+
+  const ranked = mentors.map(m => {
+    const fu = fuMap.get(m.id) ?? { calls: 0, followUps: 0, parentCalls: 0 };
+    const ds = dsMap.get(m.id) ?? 0;
+    const assigned = assignMap.get(m.id) ?? 0;
+    // Score: calls×3 + followUps×2 + parentCalls×2 + doubtSessions×4
+    const score = fu.calls * 3 + fu.followUps * 2 + fu.parentCalls * 2 + ds * 4;
+    return {
+      id: m.id, name: m.name, mentorType: m.mentorType,
+      callsThisWeek: fu.calls,
+      followUpsThisWeek: fu.followUps,
+      doubtSessionsThisWeek: ds,
+      studentsEngaged: fu.followUps,
+      studentsAssigned: assigned,
+      score,
+    };
+  }).sort((a, b) => b.score - a.score)
+    .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+
+  res.json(ranked);
+});
+
+// ── Mentor: Student health summary (bucketed) ─────────────────────────────
+router.get("/mentor/students/health-summary", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentIds = await getMentorStudentIds(mentorId);
+  if (studentIds.length === 0) {
+    res.json({ green: [], yellow: [], red: [], critical: [], total: 0 });
+    return;
+  }
+
+  const students = await db.select({
+    id: usersTable.id, name: usersTable.name, grade: usersTable.grade,
+    lastLoginDate: usersTable.lastLoginDate, leadStage: usersTable.leadStage,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
+  const hwCounts = await db.select({ studentId: homeworkSubmissionsTable.studentId, total: sql<number>`count(*)`, pending: sql<number>`count(*) filter (where status = 'pending')` })
+    .from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
+  const testCounts = await db.select({ studentId: testSubmissionsTable.studentId, total: sql<number>`count(*)` })
+    .from(testSubmissionsTable).where(inArray(testSubmissionsTable.studentId, studentIds)).groupBy(testSubmissionsTable.studentId);
+  const hwMap = Object.fromEntries(hwCounts.map(r => [r.studentId, r]));
+  const testMap = Object.fromEntries(testCounts.map(r => [r.studentId, r]));
+
+  const buckets: Record<"green" | "yellow" | "red" | "critical", Array<{ id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }>> = { green: [], yellow: [], red: [], critical: [] };
+
+  for (const s of students) {
+    const hw = hwMap[s.id];
+    const hwTotal = Number(hw?.total ?? 0);
+    const hwPct = hwTotal > 0 ? Math.round(((hwTotal - Number(hw?.pending ?? 0)) / hwTotal) * 100) : 100;
+    const { healthScore, daysSinceLogin } = computeHealth({ lastLoginDate: s.lastLoginDate, hwPct, testTotal: Number(testMap[s.id]?.total ?? 0) });
+    const entry = { id: s.id, name: s.name, grade: s.grade, healthScore, daysSinceLogin, leadStage: s.leadStage };
+    if (healthScore >= 75) buckets.green.push(entry);
+    else if (healthScore >= 50) buckets.yellow.push(entry);
+    else if (healthScore >= 25) buckets.red.push(entry);
+    else buckets.critical.push(entry);
+  }
+
+  res.json({ ...buckets, total: students.length });
+});
+
+// ── Mentor: Dashboard (extend to include mentorType) ─────────────────────
+// (mentorType is added by fetching the user row — it's already in req.authUser via auth middleware)
 
 // Admin posts a timeline entry on any student
 router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {

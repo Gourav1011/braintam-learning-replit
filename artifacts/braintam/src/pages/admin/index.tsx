@@ -2739,7 +2739,7 @@ function AdminPageInner() {
 // ── Admin: Mentors Tab ──────────────────────────────────────────────────────
 interface Mentor {
   id: number; name: string; email: string | null; phone: string | null;
-  isActive: boolean; createdAt: string; studentCount: number;
+  isActive: boolean; createdAt: string; studentCount: number; mentorType: string | null;
 }
 interface MentorAssignment {
   id: number; studentId: number; studentName: string | null; studentGrade: number | null;
@@ -2773,6 +2773,7 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [mentorTypeForm, setMentorTypeForm] = useState<"academic" | "sales">("academic");
   const [creating, setCreating] = useState(false);
 
   // Assign form
@@ -2804,12 +2805,12 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
     setCreating(true);
     const r = await apiFetch("/admin/mentors", {
       method: "POST",
-      body: JSON.stringify({ name, email, phone: phone || undefined, password }),
+      body: JSON.stringify({ name, email, phone: phone || undefined, password, mentorType: mentorTypeForm }),
     });
     setCreating(false);
     if (r.ok) {
       flash(`Mentor ${name} created!`);
-      setName(""); setEmail(""); setPhone(""); setPassword("");
+      setName(""); setEmail(""); setPhone(""); setPassword(""); setMentorTypeForm("academic");
       setSubTab("list");
       loadMentors();
     } else {
@@ -2956,6 +2957,12 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                         style={{ background: "#05966915", color: "#059669" }}>
                         {m.studentCount} student{m.studentCount !== 1 ? "s" : ""}
                       </span>
+                      {m.mentorType && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full capitalize"
+                          style={{ background: m.mentorType === "sales" ? "#FFFBEB" : "#ECFDF5", color: m.mentorType === "sales" ? "#D97706" : "#059669" }}>
+                          {m.mentorType === "sales" ? "💼 Sales" : "📚 Academic"}
+                        </span>
+                      )}
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                         {m.isActive ? "Active" : "Disabled"}
                       </span>
@@ -3104,6 +3111,23 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Password *</label>
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters" required minLength={6} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-2" style={{ color: NAVY }}>Mentor Type *</label>
+                <div className="flex gap-2">
+                  {(["academic", "sales"] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setMentorTypeForm(t)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all capitalize"
+                      style={{
+                        borderColor: mentorTypeForm === t ? (t === "sales" ? "#D97706" : "#059669") : "#E5E7EB",
+                        background: mentorTypeForm === t ? (t === "sales" ? "#FFFBEB" : "#ECFDF5") : "white",
+                        color: mentorTypeForm === t ? (t === "sales" ? "#D97706" : "#059669") : "#6B7280",
+                      }}>
+                      {t === "academic" ? "📚 Academic" : "💼 Sales"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">{mentorTypeForm === "sales" ? "Sales mentors manage lead pipeline, demos, and enrollment conversion." : "Academic mentors track engagement, homework, tests, and doubt sessions."}</p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button type="submit" disabled={creating} className="text-white" style={{ background: "#059669" }}>
