@@ -260,7 +260,7 @@ function DemoBatchesView({ flash }: { flash: (m: string, ok?: boolean) => void }
       .then(setBatches)
       .catch(() => flash("Failed to load batches", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -708,7 +708,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       .then(setStudents)
       .catch(() => flash("Failed to load leads", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   const mentors = [...new Set(students.map((s) => s.assignedMentorName).filter(Boolean))] as string[];
 
@@ -897,7 +897,7 @@ function DemoStudentsView({ flash }: { flash: (m: string, ok?: boolean) => void 
       .then(setStudents)
       .catch(() => flash("Failed to load students", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   const batches = [...new Set(students.map((s) => s.batchTitle))];
   const mentors = [...new Set(students.map((s) => s.assignedMentorName).filter(Boolean))] as string[];
@@ -1272,7 +1272,7 @@ function HomeworkView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       })
       .catch(() => flash("Failed to load homework", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   const batchOptions = [...new Set(sessions.map((s) => s.batchTitle))];
   const filtered = sessions.filter((s) => {
@@ -1433,7 +1433,7 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
       .then(setFollowUps)
       .catch(() => flash("Failed to load follow-ups", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   const todayStr = new Date().toDateString();
   const tomorrowStr = new Date(Date.now() + 86400000).toDateString();
@@ -1584,7 +1584,7 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
       .then(setMentors)
       .catch(() => flash("Failed to load sales mentors", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   const totalAssigned = mentors.reduce((s, m) => s + m.assignedLeads, 0);
   const totalConverted = mentors.reduce((s, m) => s + m.converted, 0);
@@ -1688,7 +1688,7 @@ function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       .then(setStudents)
       .catch(() => flash("Failed to load payment data", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  }, []);
 
   const paymentStudents = students.filter((s) =>
     ["Interested", "Payment Sent", "Converted"].includes(s.leadStage ?? "")
@@ -1863,7 +1863,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { id: "conversion", label: "Conversion Center", icon: TrendingUp },
-  { id: "leads", label: "Payments", icon: CreditCard },
+  { id: "payments", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
 ];
 

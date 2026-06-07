@@ -1198,7 +1198,6 @@ function AdminPageInner() {
           { label: "Dashboard", icon: Activity, tab: "dashboard" },
           { label: "Students", icon: Users, tab: "users" },
           { label: "Courses", icon: BookOpen, tab: "courses" },
-          { label: "Demo Batches", icon: Layers, tab: "demo-batches" },
           { label: "Live Classes", icon: Video, tab: "liveclasses" },
           { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
           { label: "Mentors", icon: UserCheck2, tab: "mentors" },
