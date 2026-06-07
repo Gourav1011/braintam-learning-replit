@@ -727,6 +727,13 @@ export default function BTLCRMPage() {
       fetchDashboard(); fetchStudents(); fetchFollowUps(); fetchTasks();
     }
   }, [isLoading, role]);
+
+  useEffect(() => {
+    if (isLoading || (role !== "mentor" && role !== "admin")) return;
+    const id = setInterval(() => { fetchFollowUps(); }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [isLoading, role, fetchFollowUps]);
+
   useEffect(() => { if (tab === "attendance") fetchLiveClasses(attDate); }, [tab, attDate]);
   useEffect(() => { if (tab === "attendance") fetchAttendance(attDate, selectedClassId); }, [tab, attDate, selectedClassId]);
   useEffect(() => { if (tab === "attendance") fetchUpcomingClasses(); }, [tab]);
