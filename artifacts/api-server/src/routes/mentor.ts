@@ -785,6 +785,40 @@ router.get("/admin/btl-crm/unassigned", adminOnly, async (_req, res) => {
   res.json({ count: rows.length, students: rows });
 });
 
+// Admin: full student CRM detail (contact info + last 5 timeline entries)
+router.get("/admin/btl-crm/student/:id", adminOnly, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid student id" }); return; }
+
+  const [student] = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      grade: usersTable.grade,
+      school: usersTable.school,
+      leadStage: usersTable.leadStage,
+      parentName: usersTable.parentName,
+      parentPhone: usersTable.parentPhone,
+      lastLoginDate: usersTable.lastLoginDate,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, studentId))
+    .limit(1);
+
+  if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+
+  const timeline = await db
+    .select()
+    .from(studentTimelineTable)
+    .where(eq(studentTimelineTable.studentId, studentId))
+    .orderBy(desc(studentTimelineTable.createdAt))
+    .limit(5);
+
+  res.json({ student, timeline });
+});
+
 // Admin posts a timeline entry on any student
 router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {
   const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;

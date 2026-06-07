@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   TrendingUp, Users, CheckCircle, AlertTriangle, Clock, Plus,
   RefreshCw, ChevronDown, ChevronUp, Target, UserCheck2, UserX,
+  Phone, User, BookOpen, X, Send, GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +95,31 @@ interface StudentOption {
   grade: number;
 }
 
+interface StudentCrmDetail {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  grade: number | null;
+  school: string | null;
+  leadStage: string | null;
+  parentName: string | null;
+  parentPhone: string | null;
+  lastLoginDate: string | null;
+}
+
+interface TimelineEntry {
+  id: number;
+  studentId: number;
+  createdByName: string | null;
+  createdByRole: string | null;
+  noteType: string | null;
+  remark: string;
+  followUpDate: string | null;
+  actionTaken: string | null;
+  createdAt: string;
+}
+
 interface UnassignedStudent {
   id: number;
   name: string;
@@ -112,6 +138,260 @@ interface MentorOption {
   name: string;
   studentCount: number;
   isActive: boolean;
+}
+
+function StudentCrmModal({
+  studentId,
+  onClose,
+  flash,
+}: {
+  studentId: number;
+  onClose: () => void;
+  flash: (msg: string, ok?: boolean) => void;
+}) {
+  const [detail, setDetail] = useState<{ student: StudentCrmDetail; timeline: TimelineEntry[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [noteType, setNoteType] = useState("General Note");
+  const [remark, setRemark] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [actionTaken, setActionTaken] = useState("");
+  const [saving, setSaving] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch(`/admin/btl-crm/student/${studentId}`);
+    if (r.ok) setDetail(await r.json());
+    setLoading(false);
+  }, [studentId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function postEntry(e: React.FormEvent) {
+    e.preventDefault();
+    if (!remark.trim()) return;
+    setSaving(true);
+    const r = await apiFetch("/admin/btl-crm/timeline", {
+      method: "POST",
+      body: JSON.stringify({
+        studentId,
+        noteType,
+        remark: remark.trim(),
+        followUpDate: followUpDate || null,
+        actionTaken: actionTaken.trim() || null,
+      }),
+    });
+    setSaving(false);
+    if (r.ok) {
+      flash("Timeline entry posted!");
+      setRemark(""); setFollowUpDate(""); setActionTaken("");
+      load();
+    } else {
+      const d = await r.json();
+      flash(d.error ?? "Failed to post entry", false);
+    }
+  }
+
+  const student = detail?.student;
+  const timeline = detail?.timeline ?? [];
+
+  return (
+    <div
+      ref={backdropRef}
+      className="fixed inset-0 z-50 flex items-start justify-end"
+      style={{ background: "rgba(11,43,107,0.25)", backdropFilter: "blur(2px)" }}
+      onClick={e => { if (e.target === backdropRef.current) onClose(); }}
+    >
+      <div
+        className="relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden"
+        style={{ borderLeft: `4px solid ${NAVY}` }}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-gray-100 flex items-start gap-3" style={{ background: NAVY }}>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-black text-base shrink-0">
+            {student?.name?.[0]?.toUpperCase() ?? "?"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-base text-white truncate">{loading ? "Loading…" : (student?.name ?? "Student")}</div>
+            {student && (
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {student.grade && (
+                  <span className="text-white/70 text-[11px] flex items-center gap-1">
+                    <GraduationCap className="w-3 h-3" />Grade {student.grade}
+                  </span>
+                )}
+                {student.leadStage && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                    style={{
+                      background: LEAD_STAGE_COLORS[student.leadStage]?.bg ?? "#F3F4F6",
+                      color: LEAD_STAGE_COLORS[student.leadStage]?.text ?? "#374151",
+                    }}>
+                    {student.leadStage}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="py-12 flex items-center justify-center text-sm text-gray-400">Loading student data…</div>
+          ) : !student ? (
+            <div className="py-12 flex items-center justify-center text-sm text-red-400">Failed to load student.</div>
+          ) : (
+            <div className="px-5 py-4 space-y-5">
+              {/* Contact Details */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Contact Details</h5>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Parent Name</div>
+                      <div className="text-sm font-semibold" style={{ color: NAVY }}>
+                        {student.parentName ?? <span className="text-gray-400 font-normal italic">Not set</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Parent Phone</div>
+                      <div className="text-sm font-semibold" style={{ color: NAVY }}>
+                        {student.parentPhone
+                          ? <a href={`tel:${student.parentPhone}`} className="hover:underline" style={{ color: ORANGE }}>{student.parentPhone}</a>
+                          : <span className="text-gray-400 font-normal italic">Not set</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {student.phone && (
+                    <div className="flex items-start gap-3">
+                      <Phone className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Student Phone</div>
+                        <div className="text-sm font-semibold">
+                          <a href={`tel:${student.phone}`} className="hover:underline" style={{ color: ORANGE }}>{student.phone}</a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {student.school && (
+                    <div className="flex items-start gap-3">
+                      <BookOpen className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">School</div>
+                        <div className="text-sm font-semibold" style={{ color: NAVY }}>{student.school}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Recent Timeline {timeline.length > 0 && <span className="text-gray-300">({timeline.length} of last 5)</span>}
+                </h5>
+                {timeline.length === 0 ? (
+                  <div className="bg-gray-50 rounded-xl px-4 py-6 text-center">
+                    <Clock className="w-6 h-6 text-gray-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-gray-400">No timeline entries yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {timeline.map(entry => (
+                      <div key={entry.id} className="bg-gray-50 rounded-xl p-3 border-l-2" style={{ borderColor: ORANGE }}>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600">
+                            {entry.noteType ?? "Note"}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(entry.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-700 leading-relaxed">{entry.remark}</p>
+                        {entry.actionTaken && (
+                          <p className="text-[10px] text-gray-400 mt-1">Action: {entry.actionTaken}</p>
+                        )}
+                        {entry.followUpDate && (
+                          <p className="text-[10px] text-gray-400 mt-0.5">Follow-up: {entry.followUpDate}</p>
+                        )}
+                        <p className="text-[9px] text-gray-300 mt-1">
+                          — {entry.createdByName ?? "Unknown"} ({entry.createdByRole ?? "staff"})
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Post New Entry */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Add Timeline Entry</h5>
+                <form onSubmit={postEntry} className="bg-blue-50/50 rounded-xl p-4 space-y-3 border border-blue-100">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Note Type</label>
+                    <Select value={noteType} onValueChange={setNoteType}>
+                      <SelectTrigger className="h-8 text-xs bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NOTE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Remark *</label>
+                    <Textarea
+                      value={remark}
+                      onChange={e => setRemark(e.target.value)}
+                      placeholder="What was discussed or actioned…"
+                      className="text-xs resize-none bg-white"
+                      rows={3}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Follow-Up Date</label>
+                      <Input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="text-xs h-8 bg-white" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Action Taken</label>
+                      <Input value={actionTaken} onChange={e => setActionTaken(e.target.value)} placeholder="e.g. Sent brochure" className="text-xs h-8 bg-white" />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={saving || !remark.trim()}
+                    size="sm"
+                    className="w-full text-white h-8 text-xs flex items-center gap-1.5"
+                    style={{ background: saving ? "#9CA3AF" : NAVY }}
+                  >
+                    <Send className="w-3 h-3" />
+                    {saving ? "Posting…" : "Post Entry"}
+                  </Button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function StatCard({ icon: Icon, label, value, sub, color = NAVY, bg = "#F0F4FF" }: {
@@ -289,7 +569,15 @@ function MentorPerformanceTable({ mentors, loading }: { mentors: MentorPerf[]; l
   );
 }
 
-function OverdueRemindersList({ reminders, loading }: { reminders: OverdueReminder[]; loading: boolean }) {
+function OverdueRemindersList({
+  reminders,
+  loading,
+  onStudentClick,
+}: {
+  reminders: OverdueReminder[];
+  loading: boolean;
+  onStudentClick: (studentId: number) => void;
+}) {
   if (loading) return <div className="h-32 flex items-center justify-center text-sm text-gray-400">Loading reminders…</div>;
 
   return (
@@ -311,13 +599,20 @@ function OverdueRemindersList({ reminders, loading }: { reminders: OverdueRemind
       ) : (
         <div className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
           {reminders.map(r => (
-            <div key={r.id} className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
-                <Clock className="w-4 h-4 text-red-400" />
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onStudentClick(r.studentId)}
+              className="w-full text-left px-5 py-3 flex items-start gap-3 hover:bg-blue-50/40 transition-colors group"
+            >
+              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 transition-colors">
+                <Clock className="w-4 h-4 text-red-400 group-hover:text-blue-500 transition-colors" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold" style={{ color: NAVY }}>{r.studentName ?? `Student #${r.studentId}`}</span>
+                  <span className="text-xs font-bold group-hover:underline" style={{ color: NAVY }}>
+                    {r.studentName ?? `Student #${r.studentId}`}
+                  </span>
                   {r.studentGrade && <span className="text-[10px] text-gray-400">Gr.{r.studentGrade}</span>}
                   {r.leadStatus && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold"
@@ -328,6 +623,9 @@ function OverdueRemindersList({ reminders, loading }: { reminders: OverdueRemind
                       {r.leadStatus}
                     </span>
                   )}
+                  <span className="ml-auto text-[9px] text-blue-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    View details →
+                  </span>
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5">
                   Mentor: <span className="font-semibold">{r.mentorName}</span>
@@ -339,7 +637,7 @@ function OverdueRemindersList({ reminders, loading }: { reminders: OverdueRemind
                   <div className="text-[10px] text-gray-400 mt-0.5 truncate italic">"{r.note}"</div>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -625,6 +923,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
   const [loadingReminders, setLoadingReminders] = useState(true);
   const [loadingUnassigned, setLoadingUnassigned] = useState(true);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [crmStudentId, setCrmStudentId] = useState<number | null>(null);
 
   const students = users.filter(u => u.role === "student") as StudentOption[];
 
@@ -672,59 +971,73 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
   useEffect(() => { loadAll(); }, [loadAll]);
 
   return (
-    <div className="space-y-5 max-w-5xl">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="font-black text-base" style={{ color: NAVY }}>BTL CRM Overview</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Pipeline + mentor performance across all relationship managers</p>
-        </div>
-        <Button size="sm" variant="outline" onClick={loadAll}
-          className="flex items-center gap-1.5 text-xs border-gray-200 h-8">
-          <RefreshCw className="w-3.5 h-3.5" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Flash */}
-      {msg && (
-        <div className={`px-4 py-2.5 rounded-xl text-xs font-semibold ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-          {msg.text}
-        </div>
-      )}
-
-      {/* Pipeline Summary */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <TrendingUp className="w-4 h-4" style={{ color: NAVY }} />
-          <h4 className="font-bold text-sm" style={{ color: NAVY }}>Pipeline Summary</h4>
-        </div>
-        <PipelineSummary pipeline={pipeline} loading={loadingPipeline} />
-      </section>
-
-      {/* Two-column: Mentor table + Overdue reminders */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <MentorPerformanceTable mentors={mentorPerf} loading={loadingPerf} />
-        <OverdueRemindersList reminders={reminders} loading={loadingReminders} />
-      </div>
-
-      {/* Unassigned Students */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <UserX className="w-4 h-4" style={{ color: NAVY }} />
-          <h4 className="font-bold text-sm" style={{ color: NAVY }}>Coverage Gaps</h4>
-        </div>
-        <UnassignedStudents
-          data={unassigned}
-          mentors={mentorOptions}
-          loading={loadingUnassigned}
-          onAssigned={() => { loadUnassigned(); loadAll(); }}
+    <>
+      {crmStudentId !== null && (
+        <StudentCrmModal
+          studentId={crmStudentId}
+          onClose={() => setCrmStudentId(null)}
           flash={flash}
         />
-      </section>
+      )}
 
-      {/* Post Timeline Entry */}
-      <PostTimelineForm students={students} flash={flash} />
-    </div>
+      <div className="space-y-5 max-w-5xl">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>BTL CRM Overview</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Pipeline + mentor performance across all relationship managers</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={loadAll}
+            className="flex items-center gap-1.5 text-xs border-gray-200 h-8">
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Flash */}
+        {msg && (
+          <div className={`px-4 py-2.5 rounded-xl text-xs font-semibold ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+            {msg.text}
+          </div>
+        )}
+
+        {/* Pipeline Summary */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4" style={{ color: NAVY }} />
+            <h4 className="font-bold text-sm" style={{ color: NAVY }}>Pipeline Summary</h4>
+          </div>
+          <PipelineSummary pipeline={pipeline} loading={loadingPipeline} />
+        </section>
+
+        {/* Two-column: Mentor table + Overdue reminders */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <MentorPerformanceTable mentors={mentorPerf} loading={loadingPerf} />
+          <OverdueRemindersList
+            reminders={reminders}
+            loading={loadingReminders}
+            onStudentClick={setCrmStudentId}
+          />
+        </div>
+
+        {/* Unassigned Students */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <UserX className="w-4 h-4" style={{ color: NAVY }} />
+            <h4 className="font-bold text-sm" style={{ color: NAVY }}>Coverage Gaps</h4>
+          </div>
+          <UnassignedStudents
+            data={unassigned}
+            mentors={mentorOptions}
+            loading={loadingUnassigned}
+            onAssigned={() => { loadUnassigned(); loadAll(); }}
+            flash={flash}
+          />
+        </section>
+
+        {/* Post Timeline Entry */}
+        <PostTimelineForm students={students} flash={flash} />
+      </div>
+    </>
   );
 }
