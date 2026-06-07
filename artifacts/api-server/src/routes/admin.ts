@@ -9,6 +9,7 @@ import {
   auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
   academicYearsTable, announcementsTable, bannersTable, pointsLedgerTable,
   mentorStudentAssignmentsTable, studentTimelineTable, mentorFollowUpsTable, mentorAttendanceTable,
+  attendanceTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, gte, lt, isNull, inArray, ilike, or } from "drizzle-orm";
 
@@ -1499,6 +1500,135 @@ router.patch("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   const [row] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning({ id: usersTable.id });
   if (!row) { res.status(404).json({ error: "Student not found" }); return; }
   res.json({ ok: true });
+});
+
+// ── Teachers: Summary Stats ───────────────────────────────────────
+router.get("/admin/teachers/summary-stats", adminOnly, async (_req, res) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const [tot, act, todayCls] = await Promise.all([
+    db.select({ c: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher")),
+    db.select({ c: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))),
+    db.select({ c: sql<number>`count(*)` }).from(liveClassesTable).where(and(gte(liveClassesTable.scheduledAt, today), lt(liveClassesTable.scheduledAt, tomorrow))),
+  ]);
+  res.json({ totalTeachers: Number(tot[0]?.c ?? 0), activeTeachers: Number(act[0]?.c ?? 0), liveClassesToday: Number(todayCls[0]?.c ?? 0) });
+});
+
+// ── Teachers: Enriched List ───────────────────────────────────────
+router.get("/admin/teachers/enriched", adminOnly, async (_req, res) => {
+  const teachers = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "teacher")).orderBy(usersTable.name);
+  if (teachers.length === 0) { res.json([]); return; }
+  const tIds = teachers.map(t => t.id);
+  const idArr = sql.raw(tIds.join(","));
+
+  const [courseRows, classRows, enrollRows, attendRows, hwGradedRows, hwTotalRows] = await Promise.all([
+    db.select({ teacherId: teacherCoursesTable.teacherId, courseId: teacherCoursesTable.courseId, title: coursesTable.title, grade: coursesTable.grade })
+      .from(teacherCoursesTable).innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id))
+      .where(inArray(teacherCoursesTable.teacherId, tIds)),
+
+    db.select({ id: liveClassesTable.id, teacherId: liveClassesTable.teacherId, status: liveClassesTable.status })
+      .from(liveClassesTable).where(sql`teacher_id = ANY(ARRAY[${idArr}]::int[])`),
+
+    db.select({ teacherId: teacherCoursesTable.teacherId, studentId: enrollmentsTable.studentId })
+      .from(teacherCoursesTable).innerJoin(enrollmentsTable, eq(enrollmentsTable.courseId, teacherCoursesTable.courseId))
+      .where(inArray(teacherCoursesTable.teacherId, tIds)),
+
+    db.select({ liveClassId: attendanceTable.liveClassId, present: attendanceTable.present })
+      .from(attendanceTable).innerJoin(liveClassesTable, eq(attendanceTable.liveClassId, liveClassesTable.id))
+      .where(sql`${liveClassesTable.teacherId} = ANY(ARRAY[${idArr}]::int[])`),
+
+    db.select({ teacherId: homeworkTable.teacherId })
+      .from(homeworkSubmissionsTable).innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(and(eq(homeworkSubmissionsTable.status, "graded"), sql`${homeworkTable.teacherId} = ANY(ARRAY[${idArr}]::int[])`)),
+
+    db.select({ teacherId: homeworkTable.teacherId })
+      .from(homeworkSubmissionsTable).innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(sql`${homeworkTable.teacherId} = ANY(ARRAY[${idArr}]::int[])`),
+  ]);
+
+  const classToTeacher: Record<number, number> = {};
+  for (const c of classRows) { if (c.teacherId) classToTeacher[c.id] = c.teacherId; }
+
+  const attendByTeacher: Record<number, { total: number; present: number }> = {};
+  for (const a of attendRows) {
+    const tid = classToTeacher[a.liveClassId];
+    if (tid) { if (!attendByTeacher[tid]) attendByTeacher[tid] = { total: 0, present: 0 }; attendByTeacher[tid].total++; if (a.present) attendByTeacher[tid].present++; }
+  }
+
+  const hwGraded: Record<number, number> = {};
+  for (const h of hwGradedRows) { if (h.teacherId) hwGraded[h.teacherId] = (hwGraded[h.teacherId] ?? 0) + 1; }
+  const hwTotal: Record<number, number> = {};
+  for (const h of hwTotalRows) { if (h.teacherId) hwTotal[h.teacherId] = (hwTotal[h.teacherId] ?? 0) + 1; }
+
+  res.json(teachers.map(t => {
+    const courses = courseRows.filter(c => c.teacherId === t.id);
+    const classes = classRows.filter(c => c.teacherId === t.id);
+    const students = new Set(enrollRows.filter(e => e.teacherId === t.id).map(e => e.studentId)).size;
+    const done = classes.filter(c => c.status === "completed").length;
+    const att = attendByTeacher[t.id];
+    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : 0;
+    const graded = hwGraded[t.id] ?? 0;
+    const total = hwTotal[t.id] ?? 0;
+    const hwPct = total > 0 ? Math.round((graded / total) * 100) : 0;
+    const score = Math.round(
+      (done > 0 ? Math.min(done / 30, 1) : 0) * 35 +
+      (attPct / 100) * 30 +
+      (hwPct / 100) * 25 +
+      (t.isActive ? 10 : 0)
+    );
+    return { id: t.id, name: t.name, email: t.email, phone: t.phone, isActive: t.isActive, createdAt: t.createdAt, coursesAssigned: courses.length, coursesList: courses.map(c => ({ id: c.courseId, title: c.title, grade: c.grade })), studentsTotal: students, classesTotal: classes.length, classesDone: done, attendancePct: attPct, hwGraded: graded, hwTotal: total, hwCompletionPct: hwPct, performanceScore: score };
+  }));
+});
+
+// ── Teacher 360 Detail ────────────────────────────────────────────
+router.get("/admin/teachers/:id/detail", adminOnly, async (req, res) => {
+  const teacherId = parseInt(String(req.params.id), 10);
+  if (isNaN(teacherId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [teacher] = await db.select().from(usersTable).where(and(eq(usersTable.id, teacherId), eq(usersTable.role, "teacher"))).limit(1);
+  if (!teacher) { res.status(404).json({ error: "Teacher not found" }); return; }
+
+  const [courses, classes, notes] = await Promise.all([
+    db.select({ id: teacherCoursesTable.courseId, title: coursesTable.title, grade: coursesTable.grade, assignedAt: teacherCoursesTable.assignedAt })
+      .from(teacherCoursesTable).innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id))
+      .where(eq(teacherCoursesTable.teacherId, teacherId)),
+    db.select().from(liveClassesTable).where(eq(liveClassesTable.teacherId, teacherId)).orderBy(desc(liveClassesTable.scheduledAt)).limit(60),
+    db.select().from(auditLogsTable).where(and(eq(auditLogsTable.targetId, teacherId), eq(auditLogsTable.action, "teacher_note"))).orderBy(desc(auditLogsTable.createdAt)).limit(50),
+  ]);
+
+  const courseIds = courses.map(c => c.id);
+  const [students, attendance] = await Promise.all([
+    courseIds.length > 0
+      ? db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, grade: usersTable.grade, school: usersTable.school, courseId: enrollmentsTable.courseId })
+          .from(enrollmentsTable).innerJoin(usersTable, eq(enrollmentsTable.studentId, usersTable.id))
+          .where(inArray(enrollmentsTable.courseId, courseIds))
+      : Promise.resolve([]),
+    db.select({ liveClassId: attendanceTable.liveClassId, present: attendanceTable.present })
+      .from(attendanceTable).innerJoin(liveClassesTable, eq(attendanceTable.liveClassId, liveClassesTable.id))
+      .where(eq(liveClassesTable.teacherId, teacherId)),
+  ]);
+
+  const attPct = attendance.length > 0 ? Math.round((attendance.filter(a => a.present).length / attendance.length) * 100) : 0;
+  res.json({
+    teacher: { id: teacher.id, name: teacher.name, email: teacher.email, phone: teacher.phone, isActive: teacher.isActive, createdAt: teacher.createdAt, lastLoginDate: teacher.lastLoginDate },
+    courses,
+    classes: classes.map(c => ({ id: c.id, title: c.title, grade: c.grade, status: c.status, scheduledAt: c.scheduledAt, duration: c.duration, studentsJoined: c.studentsJoined })),
+    students,
+    attendancePct: attPct,
+    notes: notes.map(n => ({ id: n.id, note: n.metadata, addedBy: n.actorName, createdAt: n.createdAt })),
+  });
+});
+
+// ── Teacher Notes (add) ───────────────────────────────────────────
+router.post("/admin/teachers/:id/notes", adminOnly, async (req, res) => {
+  const teacherId = parseInt(String(req.params.id), 10);
+  if (isNaN(teacherId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { note } = req.body;
+  if (!note?.trim()) { res.status(400).json({ error: "Note cannot be empty" }); return; }
+  const [teacher] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, teacherId)).limit(1);
+  if (!teacher) { res.status(404).json({ error: "Teacher not found" }); return; }
+  const actor = req.authUser!;
+  const [row] = await db.insert(auditLogsTable).values({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, actorEmail: actor.email ?? undefined, action: "teacher_note", actionLabel: "Added note", category: "admin", module: "teachers", targetType: "teacher", targetId: teacherId, targetName: teacher.name, metadata: note.trim() }).returning();
+  res.json({ id: row.id, note: row.metadata, addedBy: row.actorName, createdAt: row.createdAt });
 });
 
 export default router;

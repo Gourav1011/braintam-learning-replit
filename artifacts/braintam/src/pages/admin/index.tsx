@@ -1218,7 +1218,7 @@ function AdminPageInner() {
           sectionLabel: "Analytics",
           items: [
             { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
-            { label: "Teacher Analytics", icon: GradCap, tab: "teacher-analytics" },
+            { label: "Teachers", icon: GradCap, tab: "teacher-analytics" },
             { label: "Ignite Analytics", icon: Zap, tab: "analytics" },
             { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
           ],
@@ -2819,8 +2819,8 @@ function AdminPageInner() {
         {/* ── Course Analytics ─────────────────────────────────────────── */}
         {tab === "course-analytics" && <CourseAnalyticsTab />}
 
-        {/* ── Teacher Analytics ────────────────────────────────────────── */}
-        {tab === "teacher-analytics" && <TeacherAnalyticsTab />}
+        {/* ── Teachers ─────────────────────────────────────────────────── */}
+        {tab === "teacher-analytics" && <TeacherAnalyticsTab flash={flash} />}
 
         {/* ── Learning Health ───────────────────────────────────────────── */}
         {tab === "health" && <HealthTab />}
