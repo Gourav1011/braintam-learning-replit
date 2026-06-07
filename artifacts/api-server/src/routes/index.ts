@@ -21,6 +21,7 @@ import mentorRouter from "./mentor";
 import mentorExtendedRouter from "./mentorExtended";
 import checkinsRouter from "./checkins";
 import staffRouter from "./staff";
+import operationsDashboardRouter from "./operationsDashboard";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(mentorRouter);
 router.use(mentorExtendedRouter);
 router.use(checkinsRouter);
 router.use(staffRouter);
+router.use(operationsDashboardRouter);
 
 export default router;

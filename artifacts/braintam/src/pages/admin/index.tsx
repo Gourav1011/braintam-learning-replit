@@ -63,6 +63,7 @@ import { HealthTab } from "./health-tab";
 import { GamificationTab } from "./gamification-tab";
 import { BtlCrmTab } from "./btl-crm-tab";
 import { EmployeeAttendanceTab } from "./employee-attendance-tab";
+import { OperationsCommandCenterTab } from "./operations-command-center-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -94,6 +95,7 @@ type Tab =
   | "btl-crm"
   | "mentors"
   | "employee-attendance"
+  | "operations-command-center"
   | "settings"
   | "profile";
 
@@ -1090,6 +1092,7 @@ function AdminPageInner() {
     { id: "announcements", label: "Announcements", icon: Bell, group: "Manage" },
     { id: "banners", label: "Banners", icon: Image, group: "Manage" },
     { id: "employee-attendance", label: "Staff Attendance", icon: CheckSquare, group: "Manage" },
+    { id: "operations-command-center", label: "Operations Center", icon: Zap, group: "System" },
     { id: "audit", label: "Audit Logs", icon: FileText, group: "System" },
     { id: "settings", label: "Settings", icon: Lock, group: "System" },
     { id: "overview", label: "Overview", icon: Activity, group: "System" },
@@ -2577,6 +2580,9 @@ function AdminPageInner() {
 
         {/* ── Staff Attendance ─────────────────────────────────────────── */}
         {tab === "employee-attendance" && <EmployeeAttendanceTab />}
+
+        {/* ── Operations Command Center ─────────────────────────────────── */}
+        {tab === "operations-command-center" && <OperationsCommandCenterTab />}
 
         {/* ── Dashboard ────────────────────────────────────────────────── */}
         {tab === "dashboard" && <DashboardTab />}
