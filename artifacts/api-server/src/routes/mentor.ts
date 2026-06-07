@@ -4,6 +4,7 @@ import {
   usersTable,
   mentorStudentAssignmentsTable,
   mentorFollowUpsTable,
+  mentorFollowUpEditsTable,
   mentorAttendanceTable,
   homeworkSubmissionsTable,
   testSubmissionsTable,
@@ -344,6 +345,7 @@ router.delete("/mentor/tasks/:id", mentorAuth, async (req, res) => {
 // ── Live classes for attendance ──────────────────────────────────────────
 router.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
+  const upcoming = req.query.upcoming === "true";
   const date = String(req.query.date ?? new Date().toISOString().slice(0, 10));
 
   const studentIds = await getMentorStudentIds(mentorId);
@@ -352,17 +354,36 @@ router.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   const grades = await db.select({ grade: usersTable.grade }).from(usersTable).where(inArray(usersTable.id, studentIds));
   const gradeSet = [...new Set(grades.map(g => g.grade))];
 
-  const dayStart = new Date(date + "T00:00:00.000Z");
-  const dayEnd = new Date(date + "T23:59:59.999Z");
+  let rangeStart: Date;
+  let rangeEnd: Date;
+  if (upcoming) {
+    rangeStart = new Date();
+    rangeEnd = new Date();
+    rangeEnd.setDate(rangeEnd.getDate() + 14);
+  } else {
+    rangeStart = new Date(date + "T00:00:00.000Z");
+    rangeEnd = new Date(date + "T23:59:59.999Z");
+  }
 
-  const classes = await db.select().from(liveClassesTable)
+  const classes = await db.select({
+    id: liveClassesTable.id,
+    title: liveClassesTable.title,
+    grade: liveClassesTable.grade,
+    scheduledAt: liveClassesTable.scheduledAt,
+    duration: liveClassesTable.duration,
+    status: liveClassesTable.status,
+    joinUrl: liveClassesTable.joinUrl,
+    teacher: liveClassesTable.teacher,
+    subjectId: liveClassesTable.subjectId,
+  }).from(liveClassesTable)
     .where(and(
       inArray(liveClassesTable.grade, gradeSet),
-      gte(liveClassesTable.scheduledAt, dayStart),
-      lte(liveClassesTable.scheduledAt, dayEnd),
+      gte(liveClassesTable.scheduledAt, rangeStart),
+      lte(liveClassesTable.scheduledAt, rangeEnd),
       eq(liveClassesTable.isPublished, true),
     ))
-    .orderBy(liveClassesTable.scheduledAt);
+    .orderBy(liveClassesTable.scheduledAt)
+    .limit(upcoming ? 20 : 100);
 
   res.json(classes);
 });
@@ -450,27 +471,68 @@ router.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
 
 router.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
+  const actorName = req.authUser!.name ?? "Staff";
+  const actorRole = req.authUser!.role ?? "mentor";
   const id = parseInt(String(req.params.id), 10);
-  const { callStatus, note } = req.body;
-  if (callStatus === "completed" && !String(note ?? "").trim()) {
+
+  const { noteType, note, callStatus, callTime, calledBy, calledByName, leadStatus, nextFollowUpDate, editRemark } = req.body;
+  const isFullEdit = editRemark !== undefined;
+
+  if (isFullEdit && !String(editRemark ?? "").trim()) {
+    res.status(400).json({ error: "editRemark is required when editing a follow-up." });
+    return;
+  }
+  if (!isFullEdit && callStatus === "completed" && !String(note ?? "").trim()) {
     res.status(400).json({ error: "A completion remark is required when marking a follow-up as completed." });
     return;
   }
-  const updates: Record<string, unknown> = {};
-  if (callStatus !== undefined) updates.callStatus = callStatus;
-  if (note !== undefined) updates.note = note;
-  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
-  const [existing] = await db.select({ id: mentorFollowUpsTable.id }).from(mentorFollowUpsTable).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).limit(1);
+
+  const [existing] = await db.select().from(mentorFollowUpsTable)
+    .where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).limit(1);
   if (!existing) { res.status(404).json({ error: "Follow-up not found" }); return; }
-  const [row] = await db.update(mentorFollowUpsTable).set(updates).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).returning();
+
+  const updates: Record<string, unknown> = {};
+  if (noteType !== undefined) updates.noteType = noteType;
+  if (note !== undefined) updates.note = note;
+  if (callStatus !== undefined) updates.callStatus = callStatus;
+  if (callTime !== undefined) updates.callTime = callTime;
+  if (calledBy !== undefined) updates.calledBy = calledBy;
+  if (calledByName !== undefined) updates.calledByName = calledByName;
+  if (leadStatus !== undefined) updates.leadStatus = leadStatus;
+  if (nextFollowUpDate !== undefined) updates.nextFollowUpDate = nextFollowUpDate;
+
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+
+  if (isFullEdit) {
+    await db.insert(mentorFollowUpEditsTable).values({
+      followUpId: id,
+      editedById: mentorId,
+      editedByName: actorName,
+      editedByRole: actorRole,
+      previousNote: existing.note,
+      editRemark: String(editRemark).trim(),
+    });
+  }
+
+  const [row] = await db.update(mentorFollowUpsTable).set(updates)
+    .where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).returning();
   res.json({ ...row, ...computeFollowUpStatus(row.nextFollowUpDate, row.callStatus) });
 });
 
-router.delete("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
+router.get("/mentor/follow-ups/:id/edits", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const id = parseInt(String(req.params.id), 10);
-  await db.delete(mentorFollowUpsTable).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId)));
-  res.json({ ok: true });
+  const [ownership] = await db.select({ id: mentorFollowUpsTable.id }).from(mentorFollowUpsTable)
+    .where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).limit(1);
+  if (!ownership) { res.status(404).json({ error: "Follow-up not found" }); return; }
+  const edits = await db.select().from(mentorFollowUpEditsTable)
+    .where(eq(mentorFollowUpEditsTable.followUpId, id))
+    .orderBy(desc(mentorFollowUpEditsTable.editedAt));
+  res.json(edits);
+});
+
+router.delete("/mentor/follow-ups/:id", mentorAuth, async (_req, res) => {
+  res.status(405).json({ error: "Follow-ups cannot be deleted. Edit the record instead." });
 });
 
 // ── Reminder Preferences ─────────────────────────────────────────────────

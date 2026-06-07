@@ -7,7 +7,7 @@ import {
   Calendar, X, Loader2, Clock, ClipboardList,
   PhoneCall, PhoneOff, PhoneMissed, PhoneIncoming,
   Edit2, Save, UserCircle, FileText, Activity,
-  Target, Trash2, CheckSquare,
+  Target, CheckSquare, History, ExternalLink, Video, Trash2,
 } from "lucide-react";
 
 const NAVY = "#0B2B6B";
@@ -94,6 +94,13 @@ interface AttendanceRecord {
 interface LiveClass {
   id: number; title: string; grade: number;
   scheduledAt: string; duration: number; status: string;
+  joinUrl: string | null; teacher: string;
+}
+
+interface FollowUpEdit {
+  id: number; followUpId: number; editedById: number;
+  editedByName: string; editedByRole: string;
+  previousNote: string | null; editRemark: string; editedAt: string;
 }
 
 interface DashboardData {
@@ -611,11 +618,21 @@ export default function BTLCRMPage() {
   // Attendance
   const [attDate, setAttDate] = useState(todayStr());
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
+  const [upcomingClasses, setUpcomingClasses] = useState<LiveClass[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [attendanceMap, setAttendanceMap] = useState<Record<number, AttendanceRecord>>({});
   const [attLoading, setAttLoading] = useState(false);
   const [expandedCall, setExpandedCall] = useState<number | null>(null);
   const [callDrafts, setCallDrafts] = useState<Record<number, { callStatus: string; callTime: string; calledBy: string; calledByName: string; remark: string }>>({});
+
+  // Follow-up edit
+  const [editingFollowUpId, setEditingFollowUpId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<FollowUp> & { editRemark: string }>({ editRemark: "" });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editHistories, setEditHistories] = useState<Record<number, FollowUpEdit[]>>({});
+  const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
 
   // Students
   const [search, setSearch] = useState("");
@@ -681,6 +698,10 @@ export default function BTLCRMPage() {
     const r = await apiFetch(`/mentor/live-classes?date=${date}`);
     if (r.ok) { const cls = await r.json(); const arr = Array.isArray(cls) ? cls : []; setLiveClasses(arr); setSelectedClassId(arr.length > 0 ? arr[0].id : null); }
   }, []);
+  const fetchUpcomingClasses = useCallback(async () => {
+    const r = await apiFetch("/mentor/live-classes?upcoming=true");
+    if (r.ok) { const cls = await r.json(); setUpcomingClasses(Array.isArray(cls) ? cls : []); }
+  }, []);
   const fetchAttendance = useCallback(async (date: string, classId: number | null) => {
     setAttLoading(true);
     const qs = classId ? `?date=${date}&liveClassId=${classId}` : `?date=${date}`;
@@ -700,6 +721,7 @@ export default function BTLCRMPage() {
   }, [isLoading, role]);
   useEffect(() => { if (tab === "attendance") fetchLiveClasses(attDate); }, [tab, attDate]);
   useEffect(() => { if (tab === "attendance") fetchAttendance(attDate, selectedClassId); }, [tab, attDate, selectedClassId]);
+  useEffect(() => { if (tab === "attendance") fetchUpcomingClasses(); }, [tab]);
   useEffect(() => { if (tab === "settings") fetchReminderPrefs(); }, [tab]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
@@ -820,6 +842,42 @@ export default function BTLCRMPage() {
     if (r.ok) { setCompletingId(null); setCompleteRemark(""); setCompleteError(""); await fetchFollowUps(); await fetchDashboard(); }
     else { const d = await r.json().catch(() => ({})); setCompleteError(d.error ?? "Failed to complete. Please retry."); }
     setCompleteLoading(false);
+  }
+
+  // ── Edit follow-up ──
+  function startEditFollowUp(fu: FollowUp) {
+    setEditingFollowUpId(fu.id);
+    setEditDraft({ noteType: fu.noteType, note: fu.note, callStatus: fu.callStatus ?? "", callTime: fu.callTime ?? "", calledBy: fu.calledBy ?? "", calledByName: fu.calledByName ?? "", leadStatus: fu.leadStatus ?? "", nextFollowUpDate: fu.nextFollowUpDate ?? "", editRemark: "" });
+    setEditError("");
+    setCompletingId(null);
+  }
+  function cancelEditFollowUp() { setEditingFollowUpId(null); setEditDraft({ editRemark: "" }); setEditError(""); }
+  async function saveEditFollowUp(id: number) {
+    if (!editDraft.editRemark?.trim()) { setEditError("Please enter a reason for this edit."); return; }
+    setEditLoading(true);
+    const r = await apiFetch(`/mentor/follow-ups/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        noteType: editDraft.noteType, note: editDraft.note,
+        callStatus: editDraft.callStatus || null, callTime: editDraft.callTime || null,
+        calledBy: editDraft.calledBy || null, calledByName: editDraft.calledByName || null,
+        leadStatus: editDraft.leadStatus || null, nextFollowUpDate: editDraft.nextFollowUpDate || null,
+        editRemark: editDraft.editRemark,
+      }),
+    });
+    if (r.ok) { cancelEditFollowUp(); await fetchFollowUps(); }
+    else { const d = await r.json().catch(() => ({})); setEditError(d.error ?? "Failed to save. Please retry."); }
+    setEditLoading(false);
+  }
+  async function toggleEditHistory(id: number) {
+    if (expandedHistoryId === id) { setExpandedHistoryId(null); return; }
+    if (!editHistories[id]) {
+      setLoadingHistoryId(id);
+      const r = await apiFetch(`/mentor/follow-ups/${id}/edits`);
+      if (r.ok) { const edits = await r.json(); setEditHistories(prev => ({ ...prev, [id]: edits })); }
+      setLoadingHistoryId(null);
+    }
+    setExpandedHistoryId(id);
   }
 
   // ── Tasks ──
@@ -1184,9 +1242,49 @@ export default function BTLCRMPage() {
           <div className="p-5 max-w-5xl mx-auto space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <h1 className="text-lg font-black" style={{ color: NAVY }}>Attendance</h1>
-              <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)}
+              <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)} max={todayStr()}
                 className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none" />
             </div>
+
+            {/* Upcoming classes with Join buttons */}
+            {upcomingClasses.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Video className="w-4 h-4" style={{ color: NAVY }} />
+                  <h2 className="font-bold text-sm" style={{ color: NAVY }}>Upcoming Classes</h2>
+                  <span className="text-[10px] text-gray-400">(next 14 days)</span>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {upcomingClasses.map(cls => {
+                    const now = new Date();
+                    const start = new Date(cls.scheduledAt);
+                    const end = new Date(start.getTime() + cls.duration * 60000);
+                    const isLive = start <= now && now <= end;
+                    const isPast = end < now;
+                    return (
+                      <div key={cls.id} className={`flex-shrink-0 rounded-xl border p-3 min-w-[180px] max-w-[210px] ${isLive ? "border-green-200 bg-green-50/50" : "border-gray-100"}`}>
+                        <div className="font-bold text-xs truncate" style={{ color: NAVY }}>{cls.title}</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">Grade {cls.grade}{cls.teacher ? ` · ${cls.teacher}` : ""}</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">{fmtDateTime(cls.scheduledAt)} · {cls.duration}m</div>
+                        {isLive && <div className="text-[10px] font-bold text-green-600 mt-1 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" /> Live Now</div>}
+                        {cls.joinUrl && !isPast ? (
+                          <a href={cls.joinUrl} target="_blank" rel="noopener noreferrer"
+                            className="mt-2 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold text-white w-full"
+                            style={{ background: isLive ? GREEN : NAVY }}>
+                            <ExternalLink className="w-2.5 h-2.5" /> {isLive ? "Join Now" : "Join Class"}
+                          </a>
+                        ) : isPast ? (
+                          <div className="mt-2 text-[10px] text-gray-400 text-center">Ended</div>
+                        ) : (
+                          <div className="mt-2 text-[10px] text-gray-400 text-center">No join link</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {liveClasses.length > 0 && (
               <div className="flex gap-2 flex-wrap">
                 {liveClasses.map(cls => (
@@ -1316,31 +1414,100 @@ export default function BTLCRMPage() {
                     <div className="text-center py-8 text-xs text-gray-400 bg-white rounded-xl border border-gray-100">No follow-ups in this category</div>
                   ) : filteredFollowUps.map(fu => (
                     <div key={fu.id} className={`bg-white rounded-xl border p-3 ${fu.fuStatus === "overdue" ? "border-red-100" : fu.fuStatus === "due_today" ? "border-orange-100" : "border-gray-100"}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <button
-                              className="font-bold text-xs hover:underline text-left"
-                              style={{ color: NAVY }}
-                              onClick={() => open360ById(fu.studentId, fu.studentName)}
-                            >
-                              {fu.studentName ?? `Student #${fu.studentId}`}
-                            </button>
-                            <FuStatusBadge status={fu.fuStatus ?? "upcoming"} daysOverdue={fu.daysOverdue ?? 0} />
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{fu.noteType}</span>
+
+                      {editingFollowUpId === fu.id ? (
+                        /* ── Inline edit form ── */
+                        <div className="space-y-2">
+                          <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: NAVY }}>
+                            <Edit2 className="w-3 h-3" /> Edit Follow-Up
                           </div>
-                          <p className="text-xs text-gray-600 leading-relaxed">{fu.note}</p>
-                          {fu.nextFollowUpDate && <p className="text-[10px] text-orange-600 mt-1">📅 {fmtDate(fu.nextFollowUpDate)}</p>}
-                          <p className="text-[10px] text-gray-400 mt-0.5">{fmtDateTime(fu.createdAt)}</p>
+                          <select value={editDraft.noteType ?? fu.noteType}
+                            onChange={e => setEditDraft(d => ({ ...d, noteType: e.target.value }))}
+                            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
+                            {INTERACTION_TYPES.map(t => <option key={t}>{t}</option>)}
+                          </select>
+                          <textarea value={editDraft.note ?? ""}
+                            onChange={e => setEditDraft(d => ({ ...d, note: e.target.value }))} rows={2}
+                            placeholder="Note…"
+                            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none resize-none" />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-gray-400 block mb-0.5">Call Status</label>
+                              <select value={editDraft.callStatus ?? ""}
+                                onChange={e => setEditDraft(d => ({ ...d, callStatus: e.target.value }))}
+                                className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
+                                <option value="">— no call —</option>
+                                {["answered", "not_answered", "callback_requested", "completed"].map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-400 block mb-0.5">Lead Status</label>
+                              <select value={editDraft.leadStatus ?? ""}
+                                onChange={e => setEditDraft(d => ({ ...d, leadStatus: e.target.value }))}
+                                className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
+                                <option value="">— unchanged —</option>
+                                {SUCCESS_STAGES.map(s => <option key={s}>{s}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-400 block mb-0.5">Next Follow-Up Date</label>
+                            <input type="date" value={editDraft.nextFollowUpDate ?? ""}
+                              onChange={e => setEditDraft(d => ({ ...d, nextFollowUpDate: e.target.value }))}
+                              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-400 block mb-0.5">Reason for edit <span className="text-red-500">*</span></label>
+                            <input value={editDraft.editRemark ?? ""}
+                              onChange={e => { setEditDraft(d => ({ ...d, editRemark: e.target.value })); setEditError(""); }}
+                              placeholder="Why are you editing this? (required)"
+                              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400" />
+                          </div>
+                          {editError && <p className="text-[10px] text-red-600">{editError}</p>}
+                          <div className="flex gap-2">
+                            <button onClick={() => saveEditFollowUp(fu.id)} disabled={editLoading}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-60"
+                              style={{ background: NAVY }}>
+                              {editLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save Changes
+                            </button>
+                            <button onClick={cancelEditFollowUp} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
+                          </div>
                         </div>
-                        {fu.fuStatus !== "completed" && (
-                          <button onClick={() => startComplete(fu.id)}
-                            className="flex-shrink-0 p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition-all" title="Mark completed">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                      {completingId === fu.id && (
+                      ) : (
+                        /* ── Normal view ── */
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <button
+                                className="font-bold text-xs hover:underline text-left"
+                                style={{ color: NAVY }}
+                                onClick={() => open360ById(fu.studentId, fu.studentName)}
+                              >
+                                {fu.studentName ?? `Student #${fu.studentId}`}
+                              </button>
+                              <FuStatusBadge status={fu.fuStatus ?? "upcoming"} daysOverdue={fu.daysOverdue ?? 0} />
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{fu.noteType}</span>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">{fu.note}</p>
+                            {fu.nextFollowUpDate && <p className="text-[10px] text-orange-600 mt-1">📅 {fmtDate(fu.nextFollowUpDate)}</p>}
+                            <p className="text-[10px] text-gray-400 mt-0.5">{fmtDateTime(fu.createdAt)}</p>
+                          </div>
+                          <div className="flex-shrink-0 flex gap-1">
+                            <button onClick={() => startEditFollowUp(fu)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit follow-up">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            {fu.fuStatus !== "completed" && (
+                              <button onClick={() => startComplete(fu.id)}
+                                className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition-all" title="Mark completed">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {completingId === fu.id && editingFollowUpId !== fu.id && (
                         <div className="mt-2 p-3 rounded-xl border border-green-200 bg-green-50/50 space-y-2">
                           <div className="text-[10px] font-bold text-green-700">Enter completion remark (required)</div>
                           <textarea value={completeRemark} onChange={e => { setCompleteRemark(e.target.value); setCompleteError(""); }} rows={2}
@@ -1357,6 +1524,38 @@ export default function BTLCRMPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Edit history */}
+                      <div className="mt-2 pt-2 border-t border-gray-50">
+                        <button onClick={() => toggleEditHistory(fu.id)}
+                          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
+                          <History className="w-3 h-3" />
+                          Edit History
+                          {loadingHistoryId === fu.id && <Loader2 className="w-2.5 h-2.5 animate-spin ml-0.5" />}
+                          {expandedHistoryId !== fu.id && editHistories[fu.id]?.length > 0 && (
+                            <span className="ml-1 px-1 py-0.5 rounded-full bg-gray-100 text-gray-500 font-bold">{editHistories[fu.id].length}</span>
+                          )}
+                        </button>
+                        {expandedHistoryId === fu.id && (
+                          <div className="mt-1.5 space-y-1.5">
+                            {!editHistories[fu.id] || editHistories[fu.id].length === 0 ? (
+                              <p className="text-[10px] text-gray-400 pl-1">No edits recorded yet.</p>
+                            ) : editHistories[fu.id].map(edit => (
+                              <div key={edit.id} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-bold" style={{ color: NAVY }}>{edit.editedByName}</span>
+                                  <span className="text-[10px] text-gray-400">{fmtDateTime(edit.editedAt)}</span>
+                                </div>
+                                <p className="text-[10px] text-blue-700 mt-0.5">Reason: {edit.editRemark}</p>
+                                {edit.previousNote && (
+                                  <p className="text-[10px] text-gray-400 mt-0.5 italic">Previous note: "{edit.previousNote}"</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
                     </div>
                   ))}
                 </div>
