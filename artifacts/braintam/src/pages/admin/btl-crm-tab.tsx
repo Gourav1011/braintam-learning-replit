@@ -1207,7 +1207,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h3 className="font-black text-base" style={{ color: NAVY }}>BTL CRM Overview</h3>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Student Outreach Overview</h3>
             <p className="text-xs text-gray-400 mt-0.5">Pipeline + mentor performance across all relationship managers</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
