@@ -644,6 +644,7 @@ export default function BTLCRMPage() {
 
   // Attendance
   const [attDate, setAttDate] = useState(todayStr());
+  const [attStatusFilter, setAttStatusFilter] = useState<"all" | "present" | "absent" | "late" | "unmarked">("all");
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
   const [upcomingClasses, setUpcomingClasses] = useState<LiveClass[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
@@ -1601,6 +1602,29 @@ export default function BTLCRMPage() {
               </div>
             )}
 
+            {/* ── Status filter tabs ── */}
+            {students.length > 0 && !attLoading && (
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { key: "all",      label: "All",        count: students.length },
+                  { key: "present",  label: "Present",    count: attPresentCount },
+                  { key: "absent",   label: "Absent",     count: attAbsentCount },
+                  { key: "late",     label: "Late",       count: attLateCount },
+                  { key: "unmarked", label: "Not Marked", count: students.length - attMarkedCount },
+                ] as const).map(f => (
+                  <button key={f.key} onClick={() => setAttStatusFilter(f.key)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border"
+                    style={{
+                      background: attStatusFilter === f.key ? (f.key === "present" ? "#DCFCE7" : f.key === "absent" ? "#FEE2E2" : f.key === "late" ? "#FEF3C7" : `${NAVY}10`) : "white",
+                      color: attStatusFilter === f.key ? (f.key === "present" ? "#059669" : f.key === "absent" ? "#DC2626" : f.key === "late" ? "#D97706" : NAVY) : "#9CA3AF",
+                      borderColor: attStatusFilter === f.key ? (f.key === "present" ? "#059669" : f.key === "absent" ? "#DC2626" : f.key === "late" ? "#D97706" : NAVY) : "#E5E7EB",
+                    }}>
+                    {f.label} <span className="font-black">{f.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* ── Student list ── */}
             {attLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
@@ -1608,7 +1632,12 @@ export default function BTLCRMPage() {
               <div className="text-center py-10 text-gray-400 text-sm">No students assigned</div>
             ) : (
               <div className="space-y-2">
-                {students.map(s => {
+                {students.filter(s => {
+                  if (attStatusFilter === "all") return true;
+                  const status = attendanceMap[s.id]?.status ?? null;
+                  if (attStatusFilter === "unmarked") return !status;
+                  return status === attStatusFilter;
+                }).map(s => {
                   const att = attendanceMap[s.id];
                   const draft = callDrafts[s.id] ?? { callStatus: "", callTime: "", calledBy: "", calledByName: "", remark: "" };
                   const isExpanded = expandedCall === s.id;
@@ -1700,6 +1729,13 @@ export default function BTLCRMPage() {
                           <input value={draft.remark} onChange={e => updateDraft(s.id, "remark", e.target.value)} placeholder="Remark…"
                             className="w-full mt-2 px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
                           <button onClick={() => saveCallDetails(s.id)} className="mt-2 w-full py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: GREEN }}>Save Call Details</button>
+                        </div>
+                      )}
+                      {/* Saved call record (shown when not in edit mode) */}
+                      {!isExpanded && att && (att.callStatus || att.remark) && (
+                        <div className="mt-2 p-2 rounded-lg text-[10px] space-y-0.5" style={{ background: "#EEF2FF", border: "1px solid #C7D2FE" }}>
+                          {att.callStatus && <div className="text-indigo-700"><span className="font-bold">Call:</span> {att.callStatus}{att.callTime ? ` at ${att.callTime}` : ""}{att.calledByName ? `, by ${att.calledByName}` : ""}</div>}
+                          {att.remark && <div className="text-indigo-600"><span className="font-bold">Remark:</span> {att.remark}</div>}
                         </div>
                       )}
                     </div>

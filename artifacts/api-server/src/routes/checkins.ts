@@ -28,13 +28,17 @@ router.post("/staff/checkin", staffAuth, async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const [existing] = await db.select().from(employeeCheckinsTable)
     .where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
-  if (existing?.checkInTime) { res.json(existing); return; }
+  // Already checked in and not yet checked out — return existing session
+  if (existing?.checkInTime && !existing?.checkOutTime) { res.json(existing); return; }
 
   const { browser, device } = parseUA(req.headers["user-agent"] ?? "");
   const now = new Date();
   if (existing) {
-    const [row] = await db.update(employeeCheckinsTable).set({ checkInTime: now, browser, device, updatedAt: now })
-      .where(eq(employeeCheckinsTable.id, existing.id)).returning();
+    // Either no checkInTime yet, or user is re-checking-in after a checkout (new session)
+    const [row] = await db.update(employeeCheckinsTable).set({
+      checkInTime: now, checkOutTime: null, browser, device, updatedAt: now,
+      workSummary: null, challenges: null, pendingTasks: null, tomorrowPriorities: null,
+    }).where(eq(employeeCheckinsTable.id, existing.id)).returning();
     res.status(201).json(row);
   } else {
     const [row] = await db.insert(employeeCheckinsTable).values({ userId, checkDate: today, checkInTime: now, browser, device }).returning();
