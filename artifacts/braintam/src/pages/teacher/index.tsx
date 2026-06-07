@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Redirect } from "wouter";
+import { Student360Modal } from "@/pages/admin/student360-modal";
 import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
@@ -25,9 +26,9 @@ interface Course { id: number; title: string; subjectName: string; subjectId: nu
 interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; chapterId: number | null; topicId: number | null; }
 interface Homework { id: number; title: string; subjectId: number; subjectName: string; grade: number; courseId: number | null; liveClassId: number | null; chapterId: number | null; topicId: number | null; dueDate: string; maxMarks: number; description: string | null; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
 interface Assignment { id: number; title: string; subjectName: string; grade: number; dueDate: string; description: string | null; maxMarks: number; attachmentUrl: string | null; }
-interface HwSubmission { id: number; homeworkId: number; homeworkTitle: string; homeworkType: string; maxMarks: number; questionsJson: string | null; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
-interface AsgnSubmission { id: number; assignmentId: number; assignmentTitle: string; maxMarks: number; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
-interface TestSubmission { id: number; testId: number; testTitle: string; subjectName: string; grade: number; totalQuestions: number; studentName: string; answers: string; score: number | null; maxScore: number | null; submittedAt: string; }
+interface HwSubmission { id: number; homeworkId: number; homeworkTitle: string; homeworkType: string; maxMarks: number; questionsJson: string | null; studentId: number; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
+interface AsgnSubmission { id: number; assignmentId: number; assignmentTitle: string; maxMarks: number; studentId: number; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
+interface TestSubmission { id: number; testId: number; testTitle: string; subjectName: string; grade: number; totalQuestions: number; studentId: number; studentName: string; answers: string; score: number | null; maxScore: number | null; submittedAt: string; }
 interface Submission { id: number; homeworkTitle?: string; assignmentTitle?: string; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
 interface Subject { id: number; name: string; }
 interface DashStats { teacherName: string; totalCourses: number; totalStudents: number; upcomingLiveClasses: number; pendingHomework: number; }
@@ -136,6 +137,7 @@ export default function TeacherPage() {
   // Attendance
   const [attendanceClassId, setAttendanceClassId] = useState<number | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [crmStudent, setCrmStudent] = useState<{ id: number; name: string } | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
 
   const [busy, setBusy] = useState(false);
@@ -1550,7 +1552,7 @@ export default function TeacherPage() {
                       <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div>
-                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <button onClick={() => setCrmStudent({ id: s.studentId, name: s.studentName })} className="font-semibold text-sm hover:underline" style={{ color: NAVY }}>{s.studentName}</button>
                             <span className="ml-2 text-xs text-gray-400">{s.homeworkTitle}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1595,7 +1597,7 @@ export default function TeacherPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <button onClick={() => setCrmStudent({ id: s.studentId, name: s.studentName })} className="font-semibold text-sm hover:underline" style={{ color: NAVY }}>{s.studentName}</button>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700"}`}>{s.status}</span>
                             {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks}/{s.maxMarks} marks</span>}
                           </div>
@@ -1622,7 +1624,7 @@ export default function TeacherPage() {
                       <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div>
-                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <button onClick={() => setCrmStudent({ id: s.studentId, name: s.studentName })} className="font-semibold text-sm hover:underline" style={{ color: NAVY }}>{s.studentName}</button>
                             <span className="ml-2 text-xs text-gray-400">{s.testTitle} · Grade {s.grade}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1649,7 +1651,7 @@ export default function TeacherPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm" style={{ color: NAVY }}>{s.studentName}</span>
+                            <button onClick={() => setCrmStudent({ id: s.studentId, name: s.studentName })} className="font-semibold text-sm hover:underline" style={{ color: NAVY }}>{s.studentName}</button>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "graded" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700"}`}>{s.status}</span>
                             {s.marks !== null && <span className="text-xs text-gray-500 font-medium">{s.marks}/{s.maxMarks} marks</span>}
                           </div>
@@ -1694,7 +1696,7 @@ export default function TeacherPage() {
                         <div key={r.studentId} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: NAVY }}>{r.studentName[0]}</div>
-                            <span className="text-sm font-medium" style={{ color: NAVY }}>{r.studentName}</span>
+                            <button onClick={() => setCrmStudent({ id: r.studentId, name: r.studentName })} className="text-sm font-medium hover:underline" style={{ color: NAVY }}>{r.studentName}</button>
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => setAttendanceRecords(prev => prev.map((rec, idx) => idx === i ? { ...rec, present: true } : rec))}
@@ -1732,6 +1734,10 @@ export default function TeacherPage() {
           </div>
         )}
       </div>
+
+      {crmStudent !== null && (
+        <Student360Modal userId={crmStudent.id} userName={crmStudent.name} userEmail={null} onClose={() => setCrmStudent(null)} />
+      )}
     </div>
   );
 }

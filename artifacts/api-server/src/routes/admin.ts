@@ -33,6 +33,7 @@ import crypto from "crypto";
 
 const router = Router();
 const adminOnly = requireRole("admin");
+const allStaffAuth = requireRole("admin", "teacher", "mentor");
 
 function hashPassword(pw: string): string {
   return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
@@ -1085,7 +1086,7 @@ router.get("/admin/dashboard", adminOnly, async (_req, res) => {
 });
 
 // ── Student 360 Profile ───────────────────────────────────────
-router.get("/admin/students/:id/360", adminOnly, async (req, res) => {
+router.get("/admin/students/:id/360", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -1337,7 +1338,7 @@ router.get("/admin/audit-logs", adminOnly, async (req, res) => {
 });
 
 // ── Student CRM Profile (BTL CRM data for any student) ────────────────────
-router.get("/admin/students/:id/crm", adminOnly, async (req, res) => {
+router.get("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -1396,7 +1397,7 @@ router.get("/admin/students/:id/crm", adminOnly, async (req, res) => {
   });
 });
 
-router.patch("/admin/students/:id/crm", adminOnly, async (req, res) => {
+router.patch("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { leadStage, parentName, parentPhone } = req.body;

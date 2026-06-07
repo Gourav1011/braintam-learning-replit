@@ -30,19 +30,20 @@ function apiFetch(path: string, opts?: RequestInit) {
 type Tab = "dashboard" | "attendance" | "students" | "follow-ups" | "tasks" | "settings";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
-const LEAD_STAGES = [
-  "New Lead", "Contacted", "Demo Invited", "Demo Joined", "Demo Active",
-  "Interested", "Parent Follow-Up", "Converted", "Paid Student", "Inactive", "Dropped",
+const SUCCESS_STAGES = [
+  "New Student", "Onboarding", "Active", "Engaged",
+  "Needs Check-in", "Needs Attention", "At Risk",
+  "On Pause", "Dropped Out", "Course Completed",
 ];
 
-const LEAD_STAGE_COLORS: Record<string, string> = {
-  "New Lead": "#6B7280", "Contacted": "#6366F1", "Demo Invited": "#8B5CF6",
-  "Demo Joined": "#0284C7", "Demo Active": "#0891B2", "Interested": "#D97706",
-  "Parent Follow-Up": "#EA580C", "Converted": "#16A34A", "Paid Student": "#059669",
-  "Inactive": "#DC2626", "Dropped": "#9CA3AF",
+const SUCCESS_STAGE_COLORS: Record<string, string> = {
+  "New Student": "#6B7280", "Onboarding": "#6366F1", "Active": "#059669",
+  "Engaged": "#0284C7", "Needs Check-in": "#D97706", "Needs Attention": "#EA580C",
+  "At Risk": "#DC2626", "On Pause": "#9CA3AF", "Dropped Out": "#7F1D1D",
+  "Course Completed": "#065F46",
 };
 
-const NOTE_TYPES = ["General Note", "Call Log", "Parent Call", "Homework Issue", "Attendance Issue", "Fee Reminder", "Conversion Call", "Escalation", "Other"];
+const INTERACTION_TYPES = ["Check-in Call", "Parent Call", "Progress Review", "Homework Support", "Attendance Check", "Escalation", "General Note", "Other"];
 const TASK_TYPES = ["Call Parent", "Homework Reminder", "Attendance Follow-Up", "Fee Reminder", "Conversion Follow-Up", "Send Material", "Schedule Demo", "Other"];
 const CALL_STATUS_OPTIONS = [
   { value: "called", label: "Called", icon: PhoneCall, color: GREEN },
@@ -156,14 +157,14 @@ function fmtDate(d: string) { return new Date(d + "T00:00:00").toLocaleDateStrin
 function fmtDateTime(d: string) { return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
 
 function LeadStageDropdown({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
-  const color = value ? (LEAD_STAGE_COLORS[value] ?? "#6B7280") : "#6B7280";
+  const color = value ? (SUCCESS_STAGE_COLORS[value] ?? "#6B7280") : "#6B7280";
   return (
     <select value={value ?? ""} onChange={e => onChange(e.target.value)}
       onClick={e => e.stopPropagation()}
       className="text-[10px] font-bold rounded-full border-0 outline-none cursor-pointer px-1.5 py-0.5"
       style={{ background: value ? `${color}18` : "#F3F4F6", color: value ? color : "#9CA3AF" }}>
       <option value="">No Stage</option>
-      {LEAD_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+      {SUCCESS_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
     </select>
   );
 }
@@ -300,7 +301,7 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
             </div>
 
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Lead Stage</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Student Status</div>
               <LeadStageDropdown value={student.leadStage} onChange={changeLeadStage} />
             </div>
 
@@ -366,10 +367,10 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
               {profileTab === "timeline" && (
                 <div className="space-y-4">
                   <form onSubmit={addTimelineEntry} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
-                    <div className="text-xs font-bold" style={{ color: NAVY }}>Add to Permanent Timeline</div>
+                    <div className="text-xs font-bold" style={{ color: NAVY }}>Log Interaction</div>
                     <select value={tlNoteType} onChange={e => setTlNoteType(e.target.value)}
                       className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
-                      {NOTE_TYPES.map(t => <option key={t}>{t}</option>)}
+                      {INTERACTION_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>
                     <textarea value={tlRemark} onChange={e => setTlRemark(e.target.value)} required rows={2}
                       placeholder="Remark / observation… (required)"
@@ -389,7 +390,7 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
                     <button type="submit" disabled={tlLoading}
                       className="w-full py-1.5 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
                       style={{ background: GREEN }}>
-                      {tlLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />} Add Entry (Permanent)
+                      {tlLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />} Log Interaction
                     </button>
                   </form>
 
@@ -409,36 +410,32 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
                       callStatus: f.callStatus ?? null,
                     }));
                     const unified = [...tlEntries, ...fuEntries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                    if (unified.length === 0) return <div className="text-center py-8 text-gray-400 text-xs">No timeline entries yet. Add the first note above.</div>;
+                    if (unified.length === 0) return <div className="text-center py-8 text-gray-400 text-xs">No interactions yet. Log the first one above.</div>;
                     return (
-                      <div className="relative">
-                        <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-200" />
-                        <div className="space-y-3">
-                          {unified.map(entry => (
-                            <div key={entry.key} className="flex gap-3 relative">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-white text-[10px] font-black"
-                                style={{ background: entry.kind === "timeline" ? GREEN : "#6366F1" }}>
-                                {entry.kind === "timeline" ? (entry.createdByName?.charAt(0) ?? "M") : "F"}
+                      <div className="space-y-2">
+                        {unified.map(entry => (
+                          <div key={entry.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 flex-wrap gap-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {entry.createdByName && <span className="text-xs font-bold" style={{ color: NAVY }}>{entry.createdByName}</span>}
+                                {entry.createdByName && entry.createdByRole && <span className="text-[10px] text-gray-400">—</span>}
+                                {entry.createdByRole && <span className="text-[10px] text-gray-500 capitalize">{entry.createdByRole}</span>}
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: entry.kind === "followup" ? "#6366F115" : `${GREEN}15`, color: entry.kind === "followup" ? "#6366F1" : GREEN }}>{entry.noteType}</span>
+                                {entry.kind === "followup" && entry.callStatus && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">{entry.callStatus}</span>
+                                )}
                               </div>
-                              <div className={`flex-1 rounded-xl border p-3 min-w-0 ${entry.kind === "followup" ? "bg-indigo-50/40 border-indigo-100" : "bg-white border-gray-100"}`}>
-                                <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {entry.createdByName && <span className="text-xs font-bold" style={{ color: NAVY }}>{entry.createdByName}</span>}
-                                    {entry.createdByRole && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{entry.createdByRole}</span>}
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: entry.kind === "followup" ? "#6366F115" : `${GREEN}15`, color: entry.kind === "followup" ? "#6366F1" : GREEN }}>{entry.noteType}</span>
-                                    {entry.kind === "followup" && entry.callStatus && (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">{entry.callStatus}</span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtDateTime(entry.createdAt)}</span>
-                                </div>
-                                <p className="text-xs text-gray-700 leading-relaxed">{entry.remark}</p>
-                                {entry.actionTaken && <p className="text-[10px] text-blue-600 mt-1">Action: {entry.actionTaken}</p>}
-                                {entry.followUpDate && <p className="text-[10px] text-orange-600 mt-0.5">Follow-up: {fmtDate(entry.followUpDate)}</p>}
-                              </div>
+                              <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtDateTime(entry.createdAt)}</span>
                             </div>
-                          ))}
-                        </div>
+                            <div className="h-px bg-gray-100 mx-3" />
+                            <div className="px-3 py-2">
+                              <p className="text-xs text-gray-700 leading-relaxed">{entry.remark}</p>
+                              {entry.actionTaken && <p className="text-[10px] text-blue-600 mt-1">Action: {entry.actionTaken}</p>}
+                              {entry.followUpDate && <p className="text-[10px] text-orange-600 mt-0.5">Follow-up: {fmtDate(entry.followUpDate)}</p>}
+                            </div>
+                            <div className="h-px bg-gray-50" />
+                          </div>
+                        ))}
                       </div>
                     );
                   })()}
@@ -952,12 +949,12 @@ export default function BTLCRMPage() {
 
             {Object.keys(stageCounts).length > 0 && (
               <div className="bg-white rounded-xl border border-gray-100 p-3">
-                <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Lead Pipeline</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">BTL CRM Pipeline</div>
                 <div className="flex flex-wrap gap-2">
-                  {LEAD_STAGES.filter(s => stageCounts[s]).map(s => (
+                  {SUCCESS_STAGES.filter(s => stageCounts[s]).map(s => (
                     <button key={s} onClick={() => setStageFilter(stageFilter === s ? "" : s)}
                       className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all border"
-                      style={{ background: stageFilter === s ? `${LEAD_STAGE_COLORS[s]}25` : `${LEAD_STAGE_COLORS[s]}10`, color: LEAD_STAGE_COLORS[s], borderColor: stageFilter === s ? LEAD_STAGE_COLORS[s] : "transparent" }}>
+                      style={{ background: stageFilter === s ? `${SUCCESS_STAGE_COLORS[s]}25` : `${SUCCESS_STAGE_COLORS[s]}10`, color: SUCCESS_STAGE_COLORS[s], borderColor: stageFilter === s ? SUCCESS_STAGE_COLORS[s] : "transparent" }}>
                       {s} <span className="font-black">{stageCounts[s]}</span>
                     </button>
                   ))}
@@ -1003,7 +1000,7 @@ export default function BTLCRMPage() {
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">HW%</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-12">Att%</th>
                       <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-20">Last On</th>
-                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-36">Lead Stage</th>
+                      <th className="text-left px-2 py-2.5 font-bold text-gray-500 w-36">Student Status</th>
                       <th className="text-right px-3 py-2.5 font-bold text-gray-500 w-24">Actions</th>
                     </tr>
                   </thead>
@@ -1155,7 +1152,7 @@ export default function BTLCRMPage() {
                   </select>
                   <select value={fuNoteType} onChange={e => setFuNoteType(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none bg-white">
-                    {NOTE_TYPES.map(t => <option key={t}>{t}</option>)}
+                    {INTERACTION_TYPES.map(t => <option key={t}>{t}</option>)}
                   </select>
                   <textarea value={fuNote} onChange={e => setFuNote(e.target.value)} required rows={2}
                     placeholder="Note / observation…"
