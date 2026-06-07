@@ -103,6 +103,7 @@ type Tab =
   | "super-admin"
   | "ignite"
   | "settings"
+  | "revenue-analytics"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1113,6 +1114,10 @@ function AdminPageInner() {
 
   const [igniteView, setIgniteView] = useState<IgniteView>("dashboard");
   const [openWorkspace, setOpenWorkspace] = useState<string>("ignite");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    "command-center:Analytics": true,
+    "command-center:Administration": true,
+  });
 
   type WorkspaceNavItem = {
     label: string;
@@ -1121,51 +1126,70 @@ function AdminPageInner() {
     igniteView?: IgniteView;
     superAdminOnly?: boolean;
   };
-  const WORKSPACE_NAV: { id: string; emoji: string; label: string; sublabel: string; color: string; items: WorkspaceNavItem[] }[] = [
+  type WorkspaceSection = {
+    sectionLabel?: string;
+    items: WorkspaceNavItem[];
+  };
+  const WORKSPACE_NAV: { id: string; emoji: string; label: string; sublabel: string; color: string; sections: WorkspaceSection[] }[] = [
     {
       id: "ignite", emoji: "🚀", label: "Ignite", sublabel: "Sales & Admissions", color: ORANGE,
-      items: [
-        { label: "Dashboard", icon: LayoutDashboard, tab: "ignite", igniteView: "dashboard" },
-        { label: "Leads", icon: Users, tab: "ignite", igniteView: "leads" },
-        { label: "Demo Students", icon: UserCheck, tab: "ignite", igniteView: "demo-students" },
-        { label: "Demo Batches", icon: Layers, tab: "ignite", igniteView: "demo-batches" },
-        { label: "Attendance Analytics", icon: CheckSquare, tab: "ignite", igniteView: "attendance" },
-        { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
-        { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "follow-ups" },
-        { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
-        { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "overview" },
-      ],
+      sections: [{
+        items: [
+          { label: "Dashboard", icon: LayoutDashboard, tab: "ignite", igniteView: "dashboard" },
+          { label: "Leads", icon: Users, tab: "ignite", igniteView: "leads" },
+          { label: "Demo Students", icon: UserCheck, tab: "ignite", igniteView: "demo-students" },
+          { label: "Demo Batches", icon: Layers, tab: "ignite", igniteView: "demo-batches" },
+          { label: "Attendance Analytics", icon: CheckSquare, tab: "ignite", igniteView: "attendance" },
+          { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
+          { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "follow-ups" },
+          { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
+          { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "overview" },
+        ],
+      }],
     },
     {
       id: "mastery", emoji: "📚", label: "Mastery", sublabel: "Academic Operations", color: "#3B82F6",
-      items: [
-        { label: "Dashboard", icon: Activity, tab: "dashboard" },
-        { label: "Users", icon: Users, tab: "users" },
-        { label: "Courses", icon: BookOpen, tab: "courses" },
-        { label: "Demo Batches", icon: Layers, tab: "demo-batches" },
-        { label: "Live Classes", icon: Video, tab: "liveclasses" },
-        { label: "Teachers", icon: GradCap, tab: "assignments" },
-        { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
-        { label: "Mentors", icon: UserCheck2, tab: "mentors" },
-        { label: "Announcements", icon: Bell, tab: "announcements" },
-        { label: "Attendance", icon: CheckSquare, tab: "health" },
-        { label: "BTL CRM", icon: UserCheck2, tab: "btl-crm" },
-        { label: "Gamification", icon: Zap, tab: "gamification" },
-      ],
+      sections: [{
+        items: [
+          { label: "Dashboard", icon: Activity, tab: "dashboard" },
+          { label: "Students", icon: Users, tab: "users" },
+          { label: "Courses", icon: BookOpen, tab: "courses" },
+          { label: "Demo Batches", icon: Layers, tab: "demo-batches" },
+          { label: "Live Classes", icon: Video, tab: "liveclasses" },
+          { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
+          { label: "Mentors", icon: UserCheck2, tab: "mentors" },
+          { label: "Announcements", icon: Bell, tab: "announcements" },
+          { label: "Attendance", icon: CheckSquare, tab: "health" },
+          { label: "BTL CRM", icon: UserCheck2, tab: "btl-crm" },
+        ],
+      }],
     },
     {
-      id: "command-center", emoji: "🎯", label: "Command Center", sublabel: "Company Management", color: "#8B5CF6",
-      items: [
-        { label: "Analytics", icon: BarChart3, tab: "analytics" },
-        { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
-        { label: "Teacher Analytics", icon: GradCap, tab: "teacher-analytics" },
-        { label: "Operations Center", icon: Cpu, tab: "operations-command-center" },
-        { label: "Super Admin", icon: ShieldCheck, tab: "super-admin", superAdminOnly: true },
-        { label: "Overview", icon: Activity, tab: "overview" },
-        { label: "Audit Logs", icon: FileText, tab: "audit" },
-        { label: "Staff Attendance", icon: CheckSquare, tab: "employee-attendance" },
-        { label: "Banners", icon: Image, tab: "banners" },
-        { label: "Settings", icon: Lock, tab: "settings" },
+      id: "command-center", emoji: "🎯", label: "Command Center", sublabel: "Administration & Shared Resources", color: "#8B5CF6",
+      sections: [
+        {
+          sectionLabel: "Analytics",
+          items: [
+            { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
+            { label: "Teacher Analytics", icon: GradCap, tab: "teacher-analytics" },
+            { label: "Ignite Analytics", icon: Zap, tab: "analytics" },
+            { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
+          ],
+        },
+        {
+          sectionLabel: "Administration",
+          items: [
+            { label: "Teachers", icon: GradCap, tab: "assignments" },
+            { label: "Gamification", icon: Zap, tab: "gamification" },
+            { label: "Operations Center", icon: Cpu, tab: "operations-command-center" },
+            { label: "Super Admin", icon: ShieldCheck, tab: "super-admin", superAdminOnly: true },
+            { label: "Overview", icon: Activity, tab: "overview" },
+            { label: "Audit Logs", icon: FileText, tab: "audit" },
+            { label: "Staff Attendance", icon: CheckSquare, tab: "employee-attendance" },
+            { label: "Banners", icon: Image, tab: "banners" },
+            { label: "Settings", icon: Lock, tab: "settings" },
+          ],
+        },
       ],
     },
   ];
@@ -1322,6 +1346,10 @@ function AdminPageInner() {
                   className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
                   <User className="w-3.5 h-3.5 text-gray-400" /> My Profile
                 </button>
+                <button onClick={() => { setTab("settings"); setProfileDropOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                  <Lock className="w-3.5 h-3.5 text-gray-400" /> Account Settings
+                </button>
                 <button onClick={() => { setTab("employee-attendance"); setProfileDropOpen(false); }}
                   className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
                   <Clock className="w-3.5 h-3.5 text-gray-400" /> Staff Attendance
@@ -1354,6 +1382,7 @@ function AdminPageInner() {
             const isOpen = openWorkspace === workspace.id;
             return (
               <div key={workspace.id}>
+                {/* Workspace toggle button */}
                 <button
                   onClick={() => setOpenWorkspace(w => w === workspace.id ? "" : workspace.id)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors hover:bg-gray-50 mt-1"
@@ -1367,29 +1396,49 @@ function AdminPageInner() {
                   </div>
                   {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
-                {isOpen && (
-                  <div className="mt-0.5 ml-2 space-y-0.5">
-                    {workspace.items.filter(item => !item.superAdminOnly || role === "super_admin").map((item, idx) => {
-                      const Icon = item.icon;
-                      const isActive = item.igniteView
-                        ? (tab === "ignite" && igniteView === item.igniteView)
-                        : tab === item.tab;
-                      return (
-                        <button key={idx}
-                          onClick={() => {
-                            if (item.igniteView) { setTab("ignite"); setIgniteView(item.igniteView!); }
-                            else { setTab(item.tab); }
-                            setMsg(null);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
-                          style={isActive ? { background: "#EEF2FF", color: NAVY, fontWeight: 600 } : { color: "#6B7280" }}>
-                          <Icon className="w-3.5 h-3.5 shrink-0" />
-                          <span>{item.label}</span>
+
+                {/* Workspace sections */}
+                {isOpen && workspace.sections.map((section, sIdx) => {
+                  const sectionKey = `${workspace.id}:${section.sectionLabel ?? sIdx}`;
+                  const sectionOpen = section.sectionLabel ? (openSections[sectionKey] ?? true) : true;
+                  return (
+                    <div key={sIdx} className="mt-0.5">
+                      {/* Collapsible section header */}
+                      {section.sectionLabel && (
+                        <button
+                          onClick={() => setOpenSections(s => ({ ...s, [sectionKey]: !sectionOpen }))}
+                          className="w-full flex items-center justify-between px-3 py-1 rounded-lg hover:bg-gray-50 transition-colors mt-1">
+                          <span className="text-[9px] font-bold tracking-widest uppercase text-gray-400">{section.sectionLabel}</span>
+                          {sectionOpen ? <ChevronUp className="w-2.5 h-2.5 text-gray-300" /> : <ChevronDown className="w-2.5 h-2.5 text-gray-300" />}
                         </button>
-                      );
-                    })}
-                  </div>
-                )}
+                      )}
+                      {/* Section items */}
+                      {sectionOpen && (
+                        <div className="ml-2 space-y-0.5 mt-0.5">
+                          {section.items.filter(item => !item.superAdminOnly || role === "super_admin").map((item, idx) => {
+                            const Icon = item.icon;
+                            const isActive = item.igniteView
+                              ? (tab === "ignite" && igniteView === item.igniteView)
+                              : tab === item.tab;
+                            return (
+                              <button key={idx}
+                                onClick={() => {
+                                  if (item.igniteView) { setTab("ignite"); setIgniteView(item.igniteView!); }
+                                  else { setTab(item.tab); }
+                                  setMsg(null);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                                style={isActive ? { background: "#EEF2FF", color: NAVY, fontWeight: 600 } : { color: "#6B7280" }}>
+                                <Icon className="w-3.5 h-3.5 shrink-0" />
+                                <span>{item.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -1620,6 +1669,15 @@ function AdminPageInner() {
         {/* ── Demo Batches ─────────────────────────────────────────────── */}
         {tab === "demo-batches" && (
           <DemoBatchesTab flash={flash} />
+        )}
+
+        {/* ── Revenue Analytics ────────────────────────────────────────── */}
+        {tab === "revenue-analytics" && (
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: "#F5F3FF" }}>💰</div>
+            <div className="text-lg font-bold" style={{ color: NAVY }}>Revenue Analytics</div>
+            <div className="text-sm text-gray-400 text-center max-w-xs">Fee collection, payment trends, and revenue forecasting coming soon.</div>
+          </div>
         )}
 
         {/* ── Overview ─────────────────────────────────────────────────── */}
