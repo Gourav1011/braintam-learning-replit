@@ -9,6 +9,8 @@ import {
   Edit2, Save, UserCircle, FileText, Activity,
   Target, CheckSquare, History, ExternalLink, Video, Trash2,
 } from "lucide-react";
+import braintamLogo from "@assets/image_1780810348206.png";
+import { StaffProfileTab } from "@/components/staff-profile-tab";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -27,7 +29,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "attendance" | "students" | "follow-ups" | "tasks" | "settings";
+type Tab = "dashboard" | "attendance" | "students" | "follow-ups" | "tasks" | "settings" | "profile";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -905,6 +907,7 @@ export default function BTLCRMPage() {
     { key: "follow-ups", label: "Follow-Ups", icon: MessageSquare },
     { key: "tasks", label: "Tasks", icon: CheckSquare },
     { key: "settings", label: "Reminders", icon: Bell },
+    { key: "profile", label: "My Profile", icon: UserCircle },
   ];
 
   async function saveReminderPrefs() {
@@ -937,13 +940,8 @@ export default function BTLCRMPage() {
       {/* ── Sidebar ── */}
       <aside className="w-48 flex-shrink-0 hidden md:flex flex-col border-r border-gray-100 bg-white" style={{ position: "sticky", top: 0, height: "100vh" }}>
         <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs" style={{ background: GREEN }}>B</div>
-            <div>
-              <div className="font-black text-xs" style={{ color: NAVY }}>BTL CRM</div>
-              <div className="text-[10px] text-gray-400 truncate max-w-[90px]">{student.name}</div>
-            </div>
-          </div>
+          <img src={braintamLogo} alt="Braintam" className="h-5 w-auto mb-1" />
+          <div className="font-black text-xs" style={{ color: NAVY }}>BTL CRM</div>
         </div>
         <nav className="flex-1 p-2 space-y-0.5">
           {tabs.map(t => {
@@ -963,7 +961,17 @@ export default function BTLCRMPage() {
             );
           })}
         </nav>
-        <div className="p-2 border-t border-gray-100">
+        <div className="p-2 border-t border-gray-100 space-y-1">
+          <button onClick={() => setTab("profile")}
+            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all hover:bg-gray-50">
+            <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+              style={{ background: student.avatarUrl ? "transparent" : GREEN }}>
+              {student.avatarUrl
+                ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                : (student.name?.[0] ?? "M")}
+            </div>
+            <span className="truncate text-gray-600">{student.name}</span>
+          </button>
           <button onClick={() => { logout(); window.location.href = "/mentor/login"; }}
             className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all">
             <LogOut className="w-3.5 h-3.5" /> Sign Out
@@ -1414,6 +1422,18 @@ export default function BTLCRMPage() {
                     <div className="text-center py-8 text-xs text-gray-400 bg-white rounded-xl border border-gray-100">No follow-ups in this category</div>
                   ) : filteredFollowUps.map(fu => (
                     <div key={fu.id} className={`bg-white rounded-xl border p-3 ${fu.fuStatus === "overdue" ? "border-red-100" : fu.fuStatus === "due_today" ? "border-orange-100" : "border-gray-100"}`}>
+                      {/* Mentor avatar row */}
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                          style={{ background: student.avatarUrl ? "transparent" : GREEN }}>
+                          {student.avatarUrl
+                            ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                            : (student.name?.[0] ?? "M")}
+                        </div>
+                        <span className="text-[10px] font-semibold text-gray-500">{student.name}</span>
+                        <span className="text-[10px] text-gray-300">·</span>
+                        <span className="text-[10px] text-gray-400">{fu.createdAt ? new Date(fu.createdAt).toLocaleDateString("en-IN") : ""}</span>
+                      </div>
 
                       {editingFollowUpId === fu.id ? (
                         /* ── Inline edit form ── */
@@ -1774,6 +1794,25 @@ export default function BTLCRMPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ════ MY PROFILE ════ */}
+        {tab === "profile" && (
+          <div className="p-5 space-y-3">
+            <h1 className="text-xl font-black" style={{ color: NAVY }}>My Profile</h1>
+            <StaffProfileTab
+              user={{
+                id: student.id,
+                name: student.name ?? "",
+                email: student.email ?? null,
+                phone: student.phone ?? null,
+                role: role ?? "mentor",
+                avatarUrl: student.avatarUrl,
+                school: student.school,
+              }}
+              apiFetch={apiFetch}
+            />
           </div>
         )}
       </div>

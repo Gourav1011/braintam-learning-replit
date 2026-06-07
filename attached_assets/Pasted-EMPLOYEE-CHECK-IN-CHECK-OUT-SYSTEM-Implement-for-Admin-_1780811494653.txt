@@ -1,0 +1,217 @@
+EMPLOYEE CHECK-IN / CHECK-OUT SYSTEM
+
+Implement for:
+
+* Admin
+* Teacher
+* Sales Mentor
+* Academic Mentor
+
+====================================================
+
+1. DAILY CHECK-IN
+   ====================================================
+
+When user logs in for the first time each day:
+
+Show:
+
+CHECK IN
+
+Capture:
+
+* Date
+* Time
+* User
+* Role
+* Device
+* Browser
+* IP Address (optional)
+
+Status:
+
+Checked In
+
+====================================================
+2. DAILY CHECK-OUT
+==================
+
+Create:
+
+CHECK OUT
+
+Before checkout show:
+
+Today's Summary
+
+Auto-fill:
+
+For Teachers:
+
+* Classes Conducted
+* Students Attended
+* Homework Assigned
+* Tests Conducted
+
+For Sales Mentors:
+
+* Calls Made
+* Follow-Ups Completed
+* Leads Contacted
+* Conversions
+
+For Academic Mentors:
+
+* Students Contacted
+* Follow-Ups Completed
+* Doubt Sessions Conducted
+* Parent Calls
+
+User enters:
+
+* Work Summary
+* Challenges
+* Pending Tasks
+* Tomorrow Priorities
+
+Click:
+
+Submit & Check Out
+
+====================================================
+3. ADMIN ATTENDANCE DASHBOARD
+=============================
+
+Admin should see:
+
+Employee Name
+Role
+Check-In Time
+Check-Out Time
+Working Hours
+Current Status
+
+Statuses:
+
+Online
+Checked In
+Checked Out
+Inactive
+
+====================================================
+4. LIVE ACTIVITY MONITOR
+========================
+
+Admin Dashboard:
+
+Show:
+
+Currently Online Users
+
+Example:
+
+Teacher Rahul
+Online
+Checked In: 9:03 AM
+
+Mentor Priya
+Online
+Checked In: 8:56 AM
+
+====================================================
+5. WORKING HOURS REPORT
+=======================
+
+Daily
+Weekly
+Monthly
+
+Show:
+
+Total Hours
+Average Hours
+Late Check-Ins
+Missed Check-Outs
+
+====================================================
+6. AUTOMATIC PRODUCTIVITY METRICS
+=================================
+
+Teachers:
+
+Classes Conducted
+Attendance Taken
+Homework Created
+Tests Created
+
+Sales Mentors:
+
+Calls
+Follow-Ups
+Conversions
+Revenue
+
+Academic Mentors:
+
+Follow-Ups
+Parent Calls
+Doubt Sessions
+Student Interactions
+
+====================================================
+7. MISSED CHECK-IN ALERTS
+=========================
+
+Admin receives alerts:
+
+Not Checked In By:
+10 AM
+
+Missed Check-Out
+
+Inactive For Long Period
+
+====================================================
+8. DAILY REPORT ARCHIVE
+=======================
+
+Store permanently.
+
+Admin can filter by:
+
+Date
+User
+Role
+
+and view historical reports.
+
+====================================================
+9. FUTURE READY
+===============
+
+Prepare for future:
+
+* GPS Check-In
+* Mobile App Check-In
+* Face Verification
+* Biometric Integration
+
+Do NOT build these now.
+
+====================================================
+10. IMPORTANT
+=============
+
+This is NOT salary tracking.
+
+This is productivity and accountability tracking.
+
+The goal is for Admin to understand:
+
+Who worked today?
+What work was completed?
+Who needs support?
+Who is overloaded?
+Who is underperforming?
+
+without manually asking every employee.

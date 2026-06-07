@@ -5,8 +5,10 @@ import { Student360Modal } from "@/pages/admin/student360-modal";
 import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
-  LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle,
+  LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
 } from "lucide-react";
+import braintamLogo from "@assets/image_1780810348206.png";
+import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +22,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes";
+type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes" | "profile";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
 interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; chapterId: number | null; topicId: number | null; }
@@ -617,6 +619,7 @@ export default function TeacherPage() {
     { id: "notes", label: "Notes & Resources", icon: LinkIcon },
     { id: "submissions", label: "Grade Work", icon: CheckCircle },
     { id: "attendance", label: "Attendance", icon: Clock },
+    { id: "profile", label: "My Profile", icon: UserCircle },
   ];
 
   return (
@@ -651,13 +654,21 @@ export default function TeacherPage() {
       </AlertDialog>
 
       {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between shadow-sm" style={{ background: NAVY }}>
+      <div className="px-6 py-3 flex items-center justify-between shadow-sm" style={{ background: NAVY }}>
         <div className="flex items-center gap-3">
-          <GraduationCap className="w-6 h-6 text-white" />
-          <span className="font-black text-white text-lg">Teacher Portal</span>
+          <img src={braintamLogo} alt="Braintam" className="h-6 w-auto brightness-0 invert" />
+          <span className="font-black text-white text-lg">BTL CRM</span>
           <span className="text-white/40 text-sm hidden md:inline">— {student.name}</span>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setTab("profile")} className="flex items-center gap-1.5 group" title="My Profile">
+            <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold border-2 border-white/30 group-hover:border-white/60 transition-colors"
+              style={{ background: student.avatarUrl ? "transparent" : "rgba(255,255,255,0.2)" }}>
+              {student.avatarUrl
+                ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                : (student.name?.[0] ?? "T")}
+            </div>
+          </button>
           <a href="/" className="text-xs px-3 py-1 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">← Site</a>
           <button onClick={logout} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-white/10 text-white hover:bg-red-500/40 transition-colors">
             <LogOut className="w-3.5 h-3.5" /> Logout
@@ -1737,6 +1748,26 @@ export default function TeacherPage() {
 
       {crmStudent !== null && (
         <Student360Modal userId={crmStudent.id} userName={crmStudent.name} userEmail={null} onClose={() => setCrmStudent(null)} />
+      )}
+
+      {/* ── My Profile ── */}
+      {tab === "profile" && (
+        <div className="p-5 space-y-3">
+          <h3 className="font-bold text-base" style={{ color: NAVY }}>My Profile</h3>
+          <StaffProfileTab
+            user={{
+              id: student.id,
+              name: student.name ?? "",
+              email: student.email ?? null,
+              phone: student.phone ?? null,
+              role: role ?? "teacher",
+              avatarUrl: student.avatarUrl,
+              school: student.school,
+            }}
+            apiFetch={apiFetch}
+            flash={msg => setMsg({ text: msg, ok: true })}
+          />
+        </div>
       )}
     </div>
   );

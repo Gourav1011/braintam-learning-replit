@@ -1,0 +1,282 @@
+ACADEMIC MENTOR PORTAL UPGRADE
+
+IMPORTANT:
+Academic Mentor is a Student Success Manager.
+
+Their job is:
+
+* Student engagement
+* Parent communication
+* Follow-ups
+* Academic monitoring
+* Doubt support
+* Student retention
+
+Mentors must NOT edit academic data.
+
+They can only view and support students.
+
+====================================================
+
+1. NEW TAB: TODAY'S TASKS
+   ====================================================
+
+Create a dedicated "Today's Tasks" tab.
+
+Purpose:
+Mentor should immediately know who needs attention today.
+
+Sections:
+
+A. Follow-Up Due Today
+
+* Student Name
+* Last Contact Date
+* Next Follow-Up Date
+* Last Remark
+* Call Button
+* Update Follow-Up Button
+
+B. Contact Pending
+Students not contacted recently.
+
+Rules:
+
+Green:
+Contacted within last 3 days
+
+Yellow:
+No contact in 4-7 days
+
+Red:
+No contact in 7+ days
+
+C. Homework Follow-Up Required
+
+Show:
+
+* Homework pending
+* Homework not submitted
+* Missing submissions
+
+D. Attendance Concern
+
+Show:
+
+* Low attendance
+* Consecutive absences
+* Students missing classes
+
+E. Test Performance Concern
+
+Show:
+
+* Low scores
+* Failed tests
+* Performance decline
+
+====================================================
+2. MENTOR CONTACT FREQUENCY TRACKING
+====================================
+
+Goal:
+
+Every student should be contacted at least twice every week.
+
+Create metrics:
+
+* Last Contact Date
+* Days Since Last Contact
+* Contacts This Week
+* Contacts This Month
+
+Dashboard Widget:
+
+Students Not Contacted:
+
+* 3 Days
+* 7 Days
+* 14 Days
+
+Mentor should never lose track of students.
+
+====================================================
+3. ACADEMIC OBSERVER MODE
+=========================
+
+Mentors can VIEW but NOT EDIT.
+
+Allow viewing:
+
+Grades
+Homework
+Tests
+Attendance
+Subjects
+Syllabus
+Course Progress
+Live Classes
+
+Restrictions:
+
+No edit
+No delete
+No attendance marking
+No grade editing
+No homework editing
+
+Read-only access only.
+
+====================================================
+4. LIVE CLASSES TAB
+===================
+
+Mentors should see:
+
+Upcoming Classes
+Completed Classes
+Teacher
+Subject
+Timing
+
+Mentor may JOIN class.
+
+Mentor cannot:
+
+Create class
+Edit class
+Delete class
+
+Only join and observe.
+
+====================================================
+5. STUDENT COURSE OVERVIEW
+==========================
+
+Mentor should see:
+
+Assigned Courses
+Completed Topics
+Pending Topics
+Syllabus Progress
+
+Display:
+
+Progress %
+Current Chapter
+Upcoming Chapter
+
+====================================================
+6. NEW TAB: DOUBT SESSIONS
+==========================
+
+Mentor can schedule support sessions.
+
+Create:
+
+Schedule Doubt Session
+
+Fields:
+
+Student(s)
+Date
+Time
+Duration
+Platform
+
+Dropdown:
+
+Google Meet
+Zoom
+Microsoft Teams
+Custom Link
+
+Topic
+Remarks
+
+Status:
+
+Scheduled
+Completed
+Cancelled
+No Show
+
+====================================================
+7. DOUBT SESSION ANALYTICS
+==========================
+
+Track:
+
+Total Sessions
+Completed Sessions
+Cancelled Sessions
+No Shows
+
+Student Count
+
+Example:
+
+Sessions Conducted: 42
+Students Supported: 78
+Completion Rate: 91%
+
+Mentor Dashboard should display this.
+
+====================================================
+8. DAILY WORK REPORT
+====================
+
+Create new tab:
+
+END OF DAY REPORT
+
+Mentor submits once daily.
+
+Auto-fill:
+
+Students Contacted
+Calls Completed
+Follow-Ups Completed
+Follow-Ups Pending
+Doubt Sessions Conducted
+Classes Observed
+
+Mentor fills:
+
+Challenges Faced
+Students Needing Attention
+Parent Concerns
+Remarks
+
+Store reports permanently.
+
+====================================================
+9. MENTOR PRODUCTIVITY DASHBOARD
+================================
+
+Show:
+
+Assigned Students
+Students Contacted This Week
+Students Not Contacted
+Follow-Ups Due Today
+Homework Alerts
+Attendance Alerts
+Low Score Alerts
+Doubt Sessions Conducted
+End Of Day Reports Submitted
+
+====================================================
+10. STUDENT SUCCESS GOAL
+========================
+
+The mentor dashboard should answer:
+
+Who needs attention today?
+Who has not been contacted recently?
+Who is academically struggling?
+Who needs parent communication?
+Who attended doubt sessions?
+What work has the mentor completed today?
+
+Mentors should be able to manage 100+ students efficiently from one dashboard.

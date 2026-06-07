@@ -44,8 +44,10 @@ import {
   CheckSquare, Square, AlertTriangle, UserX, UserCheck2, Key, FileText,
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
-  ShieldCheck, Zap,
+  ShieldCheck, Zap, UserCircle,
 } from "lucide-react";
+import braintamLogo from "@assets/image_1780810348206.png";
+import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,7 +91,8 @@ type Tab =
   | "gamification"
   | "btl-crm"
   | "mentors"
-  | "settings";
+  | "settings"
+  | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
 type SortField = "name" | "role" | "grade" | "school" | "id";
@@ -1086,6 +1089,7 @@ function AdminPageInner() {
     { id: "audit", label: "Audit Logs", icon: FileText, group: "System" },
     { id: "settings", label: "Settings", icon: Lock, group: "System" },
     { id: "overview", label: "Overview", icon: Activity, group: "System" },
+    { id: "profile", label: "My Profile", icon: UserCircle, group: "System" },
   ];
   const TAB_GROUPS = ["Home", "Insights", "Content", "Manage", "System"];
 
@@ -1115,12 +1119,11 @@ function AdminPageInner() {
       {/* Left Sidebar */}
       <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
         {/* Brand */}
-        <div className="px-5 py-5 border-b border-gray-100">
+        <div className="px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-0.5">
-            <Shield className="w-5 h-5" style={{ color: NAVY }} />
-            <span className="font-black text-sm" style={{ color: NAVY }}>Admin Panel</span>
+            <img src={braintamLogo} alt="Braintam" className="h-5 w-auto" />
           </div>
-          <span className="text-xs text-gray-400">Braintam ERP</span>
+          <span className="font-black text-sm" style={{ color: NAVY }}>BTL CRM</span>
         </div>
 
         {/* Nav list */}
@@ -1158,13 +1161,19 @@ function AdminPageInner() {
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-gray-100 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: NAVY }}>
-              {student.name?.[0] ?? "A"}
+        <div className="px-4 py-4 border-t border-gray-100 space-y-2">
+          <button onClick={() => setTab("profile")} className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-xl px-1 py-1 transition-colors group">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+              {student.avatarUrl
+                ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                : (student.name?.[0] ?? "A")}
             </div>
-            <span className="text-xs text-gray-600 font-medium truncate">{student.name}</span>
-          </div>
+            <div className="min-w-0 text-left">
+              <div className="text-xs text-gray-700 font-semibold truncate">{student.name}</div>
+              <div className="text-[10px] text-gray-400">My Profile</div>
+            </div>
+          </button>
           <div className="flex items-center gap-2">
             <button onClick={loadAll} className="text-gray-400 hover:text-gray-600 transition-colors" title="Refresh">
               <RotateCcw className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`} />
@@ -2674,6 +2683,26 @@ function AdminPageInner() {
               </div>
               <p className="text-[10px] text-gray-400 mt-3">Only active students shown. Go to Dashboard → Class/Grade Wise for full breakdown.</p>
             </div>
+          </div>
+        )}
+
+        {/* ── My Profile ── */}
+        {tab === "profile" && (
+          <div className="space-y-2">
+            <h3 className="font-bold text-base" style={{ color: NAVY }}>My Profile</h3>
+            <StaffProfileTab
+              user={{
+                id: student.id,
+                name: student.name ?? "",
+                email: student.email ?? null,
+                phone: student.phone ?? null,
+                role: role ?? "admin",
+                avatarUrl: student.avatarUrl,
+                school: student.school,
+              }}
+              apiFetch={apiFetch}
+              flash={flash}
+            />
           </div>
         )}
       </div>
