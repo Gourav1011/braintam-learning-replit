@@ -1373,8 +1373,11 @@ router.get("/admin/students/:id/crm", adminOnly, async (req, res) => {
       id: mentorFollowUpsTable.id, noteType: mentorFollowUpsTable.noteType,
       note: mentorFollowUpsTable.note, callStatus: mentorFollowUpsTable.callStatus,
       nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate, createdAt: mentorFollowUpsTable.createdAt,
-      leadStatus: mentorFollowUpsTable.leadStatus,
-    }).from(mentorFollowUpsTable).where(eq(mentorFollowUpsTable.studentId, studentId))
+      leadStatus: mentorFollowUpsTable.leadStatus, calledByName: mentorFollowUpsTable.calledByName,
+      mentorName: usersTable.name,
+    }).from(mentorFollowUpsTable)
+      .leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.mentorId))
+      .where(eq(mentorFollowUpsTable.studentId, studentId))
       .orderBy(desc(mentorFollowUpsTable.createdAt)).limit(50),
   ]);
 

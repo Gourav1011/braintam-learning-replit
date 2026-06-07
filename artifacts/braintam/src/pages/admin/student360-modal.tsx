@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, MessageSquare, User, Phone, Edit2, Save, Loader2, Target } from "lucide-react";
+import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, User, Phone, Edit2, Save, Loader2, Target } from "lucide-react";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -54,6 +54,7 @@ interface CrmTimeline {
 interface CrmFollowUp {
   id: number; noteType: string | null; note: string | null; callStatus: string | null;
   nextFollowUpDate: string | null; createdAt: string; leadStatus: string | null;
+  calledByName: string | null; mentorName: string | null;
   fuStatus: "due_today" | "overdue" | "upcoming" | "completed"; daysOverdue: number;
 }
 interface CrmData {
@@ -74,44 +75,61 @@ const SPACE_COLORS: Record<string, string> = {
   "Moon Explorer": "#6B7280", "Earth Explorer": "#22C55E",
 };
 
-const LEAD_STAGES = [
-  "New Lead", "Contacted", "Demo Invited", "Demo Joined", "Demo Active",
-  "Interested", "Parent Follow-Up", "Converted", "Paid Student", "Inactive", "Dropped",
+// ── Customer Success stages (not sales pipeline) ────────────────────────────
+const SUCCESS_STAGES = [
+  "New Student", "Onboarding", "Active", "Engaged",
+  "Needs Check-in", "Needs Attention", "At Risk",
+  "On Pause", "Dropped Out", "Course Completed",
 ];
-const LEAD_STAGE_COLORS: Record<string, string> = {
-  "New Lead": "#6B7280", "Contacted": "#6366F1", "Demo Invited": "#8B5CF6",
-  "Demo Joined": "#0284C7", "Demo Active": "#0891B2", "Interested": "#D97706",
-  "Parent Follow-Up": "#EA580C", "Converted": "#16A34A", "Paid Student": "#059669",
-  "Inactive": "#DC2626", "Dropped": "#9CA3AF",
+const SUCCESS_STAGE_COLORS: Record<string, string> = {
+  "New Student":      "#6366F1",
+  "Onboarding":       "#8B5CF6",
+  "Active":           "#059669",
+  "Engaged":          "#16A34A",
+  "Needs Check-in":   "#D97706",
+  "Needs Attention":  "#EA580C",
+  "At Risk":          "#DC2626",
+  "On Pause":         "#9CA3AF",
+  "Dropped Out":      "#6B7280",
+  "Course Completed": "#0891B2",
 };
-const NOTE_TYPES = ["General Note", "Call Log", "Parent Call", "Homework Issue", "Attendance Issue", "Fee Reminder", "Conversion Call", "Escalation", "Other"];
+
+// ── Interaction types for CS (not sales) ───────────────────────────────────
+const INTERACTION_TYPES = [
+  "General Note",
+  "Check-in Call",
+  "Parent Call",
+  "Progress Review",
+  "Homework Support",
+  "Attendance Concern",
+  "Academic Alert",
+  "Encouragement",
+  "Technical Issue",
+  "Other",
+];
 
 function healthColor(level: string) {
-  if (level === "excellent") return "#059669";
-  if (level === "good") return "#16A34A";
-  if (level === "attention") return "#D97706";
-  return "#DC2626";
+  return level === "excellent" ? "#059669" : level === "good" ? "#16A34A" : level === "attention" ? "#D97706" : "#DC2626";
 }
 function healthBg(level: string) {
-  if (level === "excellent") return "#DCFCE7";
-  if (level === "good") return "#D1FAE5";
-  if (level === "attention") return "#FEF3C7";
-  return "#FEE2E2";
+  return level === "excellent" ? "#DCFCE7" : level === "good" ? "#D1FAE5" : level === "attention" ? "#FEF3C7" : "#FEE2E2";
 }
+function healthLabel(level: string) {
+  return level === "at-risk" ? "At Risk" : level === "attention" ? "Needs Attention" : level === "good" ? "Good" : "Excellent";
+}
+
 function fmtDateTime(d: string) {
   return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
-function FuStatusBadge({ status, daysOverdue }: { status: string; daysOverdue: number }) {
-  if (status === "completed") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Completed</span>;
-  if (status === "due_today") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Due Today</span>;
-  if (status === "overdue") {
-    const severe = daysOverdue >= 3;
-    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${severe ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-600"}`}>Overdue {daysOverdue > 0 ? `${daysOverdue}d` : ""}</span>;
-  }
-  return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Upcoming</span>;
+
+function CheckInStatusBadge({ status, daysOverdue }: { status: string; daysOverdue: number }) {
+  if (status === "completed") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">Done</span>;
+  if (status === "due_today") return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Due Today</span>;
+  if (status === "overdue") return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${daysOverdue >= 3 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-600"}`}>Overdue {daysOverdue > 0 ? `${daysOverdue}d` : ""}</span>;
+  return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">Upcoming</span>;
 }
 
 type InnerTab = "overview" | "courses" | "activity" | "xp" | "crm";
@@ -126,14 +144,14 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
   const [crmData, setCrmData] = useState<CrmData | null>(null);
   const [crmLoading, setCrmLoading] = useState(false);
   const [crmError, setCrmError] = useState<string | null>(null);
-  const [editingLeadStage, setEditingLeadStage] = useState(false);
-  const [leadStage, setLeadStage] = useState<string>("");
+  const [editingStage, setEditingStage] = useState(false);
+  const [stageValue, setStageValue] = useState("");
   const [editingParent, setEditingParent] = useState(false);
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [crmSaving, setCrmSaving] = useState(false);
-  // Add note form
-  const [noteType, setNoteType] = useState("General Note");
+  // Interaction log form
+  const [interactionType, setInteractionType] = useState("General Note");
   const [remark, setRemark] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [actionTaken, setActionTaken] = useState("");
@@ -141,96 +159,85 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
   const [noteSuccess, setNoteSuccess] = useState(false);
 
   function loadAcademic() {
-    setLoading(true);
-    setFetchError(null);
+    setLoading(true); setFetchError(null);
     apiFetch(`/admin/students/${userId}/360`)
-      .then(async r => {
-        if (r.ok) return r.json() as Promise<Student360Data>;
-        const body = await r.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? `Error ${r.status}`);
-      })
+      .then(async r => { if (r.ok) return r.json() as Promise<Student360Data>; const b = await r.json().catch(() => ({})) as { error?: string }; throw new Error(b.error ?? `Error ${r.status}`); })
       .then((d: Student360Data) => setData(d))
       .catch((e: unknown) => setFetchError(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
   }
 
   function loadCrm() {
-    setCrmLoading(true);
-    setCrmError(null);
+    setCrmLoading(true); setCrmError(null);
     apiFetch(`/admin/students/${userId}/crm`)
-      .then(async r => {
-        if (r.ok) return r.json() as Promise<CrmData>;
-        const body = await r.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? `Error ${r.status}`);
-      })
-      .then((d: CrmData) => {
-        setCrmData(d);
-        setLeadStage(d.student.leadStage ?? "");
-        setParentName(d.student.parentName ?? "");
-        setParentPhone(d.student.parentPhone ?? "");
-      })
-      .catch((e: unknown) => setCrmError(e instanceof Error ? e.message : "Failed to load CRM data"))
+      .then(async r => { if (r.ok) return r.json() as Promise<CrmData>; const b = await r.json().catch(() => ({})) as { error?: string }; throw new Error(b.error ?? `Error ${r.status}`); })
+      .then((d: CrmData) => { setCrmData(d); setStageValue(d.student.leadStage ?? ""); setParentName(d.student.parentName ?? ""); setParentPhone(d.student.parentPhone ?? ""); })
+      .catch((e: unknown) => setCrmError(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setCrmLoading(false));
   }
 
   useEffect(() => { loadAcademic(); }, [userId]);
   useEffect(() => { if (innerTab === "crm" && !crmData && !crmLoading) loadCrm(); }, [innerTab]);
 
-  async function saveCrmField(field: "leadStage" | "parent") {
+  async function saveCrmField(field: "stage" | "parent") {
     setCrmSaving(true);
-    const body = field === "leadStage"
-      ? { leadStage: leadStage || null }
-      : { parentName: parentName || null, parentPhone: parentPhone || null };
+    const body = field === "stage" ? { leadStage: stageValue || null } : { parentName: parentName || null, parentPhone: parentPhone || null };
     await apiFetch(`/admin/students/${userId}/crm`, { method: "PATCH", body: JSON.stringify(body) });
-    if (field === "leadStage") setEditingLeadStage(false);
-    else setEditingParent(false);
-    await loadCrm();
-    setCrmSaving(false);
+    if (field === "stage") setEditingStage(false); else setEditingParent(false);
+    await loadCrm(); setCrmSaving(false);
   }
 
-  async function addNote(e: React.FormEvent) {
+  async function logInteraction(e: React.FormEvent) {
     e.preventDefault();
     if (!remark.trim()) return;
     setNoteSaving(true);
     const r = await apiFetch("/admin/btl-crm/timeline", {
       method: "POST",
-      body: JSON.stringify({ studentId: userId, noteType, remark, followUpDate: followUpDate || null, actionTaken: actionTaken || null }),
+      body: JSON.stringify({ studentId: userId, noteType: interactionType, remark, followUpDate: followUpDate || null, actionTaken: actionTaken || null }),
     });
-    if (r.ok) { setRemark(""); setFollowUpDate(""); setActionTaken(""); setNoteSuccess(true); setTimeout(() => setNoteSuccess(false), 2000); loadCrm(); }
+    if (r.ok) { setRemark(""); setFollowUpDate(""); setActionTaken(""); setNoteSuccess(true); setTimeout(() => setNoteSuccess(false), 2500); loadCrm(); }
     setNoteSaving(false);
   }
 
   const p = data?.profile;
   const levelColor = data ? (SPACE_COLORS[data.spaceLevel] ?? NAVY) : NAVY;
 
-  // Unified timeline: merge student_timeline + follow_ups sorted by date desc
-  const unifiedTimeline = crmData ? [
-    ...(crmData.timeline.map(e => ({
+  // Unified interaction log: merge student_timeline + follow_ups newest-first
+  type UnifiedEntry = {
+    key: string; kind: "timeline" | "checkin";
+    authorName: string; authorRole: string;
+    noteType: string; text: string; createdAt: string;
+    actionTaken: string | null; followUpDate: string | null;
+    callStatus: string | null; fuStatus: string | null; daysOverdue: number;
+  };
+
+  const unifiedLog: UnifiedEntry[] = crmData ? [
+    ...crmData.timeline.map(e => ({
       key: `tl-${e.id}`, kind: "timeline" as const,
+      authorName: e.createdByName, authorRole: e.createdByRole,
       noteType: e.noteType, text: e.remark, createdAt: e.createdAt,
-      createdByName: e.createdByName, createdByRole: e.createdByRole,
-      actionTaken: e.actionTaken, followUpDate: e.followUpDate, callStatus: null as string | null,
-      fuStatus: null as string | null, daysOverdue: 0,
-    }))),
-    ...(crmData.followUps.map(f => ({
-      key: `fu-${f.id}`, kind: "followup" as const,
-      noteType: f.noteType ?? "Follow-Up", text: f.note ?? "", createdAt: f.createdAt,
-      createdByName: null as string | null, createdByRole: null as string | null,
-      actionTaken: null as string | null, followUpDate: f.nextFollowUpDate,
+      actionTaken: e.actionTaken, followUpDate: e.followUpDate,
+      callStatus: null, fuStatus: null, daysOverdue: 0,
+    })),
+    ...crmData.followUps.map(f => ({
+      key: `fu-${f.id}`, kind: "checkin" as const,
+      authorName: f.calledByName ?? f.mentorName ?? "Mentor", authorRole: "mentor",
+      noteType: f.noteType ?? "Check-in",
+      text: f.note ?? "", createdAt: f.createdAt,
+      actionTaken: null, followUpDate: f.nextFollowUpDate,
       callStatus: f.callStatus, fuStatus: f.fuStatus, daysOverdue: f.daysOverdue,
-    }))),
+    })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full flex flex-col" style={{ maxHeight: "92vh", maxWidth: innerTab === "crm" ? "860px" : "672px" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full flex flex-col" style={{ maxHeight: "92vh", maxWidth: innerTab === "crm" ? "900px" : "672px" }}>
 
         {/* Header */}
         <div className="shrink-0 px-6 pt-5 pb-4 border-b border-gray-100">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-black shrink-0"
-                style={{ background: NAVY }}>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-black shrink-0" style={{ background: NAVY }}>
                 {(p?.name ?? userName)?.[0]?.toUpperCase() ?? "?"}
               </div>
               {loading ? (
@@ -275,29 +282,25 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
               ))}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-100 bg-gray-50">
                 <Clock className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-[11px] text-gray-500">
-                  Last login: {p.lastLoginAt ? new Date(p.lastLoginAt).toLocaleDateString("en-IN") : "Never"}
-                </span>
+                <span className="text-[11px] text-gray-500">Last login: {p.lastLoginAt ? new Date(p.lastLoginAt).toLocaleDateString("en-IN") : "Never"}</span>
               </div>
             </div>
           )}
 
-          {/* Inner tabs */}
+          {/* Tabs */}
           <div className="flex gap-1 mt-4 flex-wrap">
             {([
               { key: "overview", label: "Overview" },
               { key: "courses", label: "Courses" },
               { key: "activity", label: "Activity" },
               { key: "xp", label: "XP History" },
-              { key: "crm", label: "BTL CRM", icon: Target },
+              { key: "crm", label: "Customer Success", icon: Target },
             ] as { key: InnerTab; label: string; icon?: typeof Target }[]).map(t => {
               const Icon = t.icon;
               return (
                 <button key={t.key} onClick={() => setInnerTab(t.key)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors flex items-center gap-1"
-                  style={innerTab === t.key
-                    ? { background: t.key === "crm" ? ORANGE : NAVY, color: "white" }
-                    : { color: "#6B7280" }}>
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                  style={innerTab === t.key ? { background: t.key === "crm" ? ORANGE : NAVY, color: "white" } : { color: "#6B7280" }}>
                   {Icon && <Icon className="w-3 h-3" />}
                   {t.label}
                 </button>
@@ -309,226 +312,252 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6">
 
-          {/* ── CRM TAB ── */}
+          {/* ── CUSTOMER SUCCESS TAB ───────────────────────────────────── */}
           {innerTab === "crm" && (
             crmLoading ? (
-              <div className="space-y-3 animate-pulse">
-                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}
-              </div>
+              <div className="space-y-3 animate-pulse">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 bg-gray-100 rounded-xl" />)}</div>
             ) : crmError ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <div className="text-sm font-semibold text-gray-700">Could not load CRM data</div>
+                <div className="text-sm font-semibold text-gray-700">Could not load success data</div>
                 <div className="text-xs text-red-500">{crmError}</div>
                 <button onClick={loadCrm} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">Retry</button>
               </div>
             ) : crmData ? (
-              <div className="flex gap-5 h-full">
+              <div className="flex gap-5">
 
-                {/* Left: CRM info panel */}
-                <div className="w-52 flex-shrink-0 space-y-4">
+                {/* Left: student success info */}
+                <div className="w-52 flex-shrink-0 space-y-3">
 
-                  {/* Health score */}
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Health Score</div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-black" style={{ color: healthColor(crmData.student.riskLevel) }}>{crmData.student.healthScore}%</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: healthBg(crmData.student.riskLevel), color: healthColor(crmData.student.riskLevel) }}>
-                        {crmData.student.riskLevel === "at-risk" ? "At Risk" : crmData.student.riskLevel === "attention" ? "Attention" : crmData.student.riskLevel === "good" ? "Good" : "Excellent"}
+                  {/* Engagement health */}
+                  <div className="rounded-xl border border-gray-200 p-3">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Engagement Health</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xl font-black" style={{ color: healthColor(crmData.student.riskLevel) }}>{crmData.student.healthScore}%</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: healthBg(crmData.student.riskLevel), color: healthColor(crmData.student.riskLevel) }}>
+                        {healthLabel(crmData.student.riskLevel)}
                       </span>
                     </div>
-                    <div className="text-[10px] text-gray-400 mt-1">
-                      {crmData.student.daysSinceLogin < 999 ? `${crmData.student.daysSinceLogin}d since login` : "Never logged in"}
+                    <div className="text-[10px] text-gray-400">
+                      {crmData.student.daysSinceLogin < 999 ? `Last seen ${crmData.student.daysSinceLogin}d ago` : "Never logged in"}
                     </div>
-                  </div>
-
-                  {/* Quick stats */}
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 space-y-1.5">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Stats</div>
-                    {[
-                      { label: "HW Done", value: `${crmData.student.hwCompletion}%` },
-                      { label: "Attendance", value: crmData.student.attendancePct !== null ? `${crmData.student.attendancePct}%` : "—" },
-                    ].map(s => (
-                      <div key={s.label} className="flex justify-between text-xs">
-                        <span className="text-gray-500">{s.label}</span>
-                        <span className="font-bold" style={{ color: NAVY }}>{s.value}</span>
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-500">Homework done</span>
+                        <span className="font-bold text-gray-700">{crmData.student.hwCompletion}%</span>
                       </div>
-                    ))}
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-500">Attendance</span>
+                        <span className="font-bold text-gray-700">{crmData.student.attendancePct !== null ? `${crmData.student.attendancePct}%` : "—"}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Lead Stage */}
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  {/* Student Status */}
+                  <div className="rounded-xl border border-gray-200 p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-[10px] font-bold text-gray-400 uppercase">Lead Stage</div>
-                      <button onClick={() => setEditingLeadStage(v => !v)} className="text-gray-400 hover:text-blue-500 transition-colors">
-                        <Edit2 className="w-3 h-3" />
-                      </button>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Student Status</div>
+                      <button onClick={() => setEditingStage(v => !v)} className="text-gray-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3 h-3" /></button>
                     </div>
-                    {editingLeadStage ? (
+                    {editingStage ? (
                       <div className="space-y-1.5">
-                        <select value={leadStage} onChange={e => setLeadStage(e.target.value)}
-                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
-                          <option value="">No Stage</option>
-                          {LEAD_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                        <select value={stageValue} onChange={e => setStageValue(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none bg-white">
+                          <option value="">— Not set —</option>
+                          {SUCCESS_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        <button onClick={() => saveCrmField("leadStage")} disabled={crmSaving}
-                          className="w-full py-1.5 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                        <button onClick={() => saveCrmField("stage")} disabled={crmSaving}
+                          className="w-full py-1.5 rounded-lg text-[11px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
                           style={{ background: GREEN }}>
                           {crmSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
                         </button>
                       </div>
                     ) : (
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                        style={crmData.student.leadStage ? { background: `${LEAD_STAGE_COLORS[crmData.student.leadStage] ?? "#6B7280"}18`, color: LEAD_STAGE_COLORS[crmData.student.leadStage] ?? "#6B7280" } : { background: "#F3F4F6", color: "#9CA3AF" }}>
-                        {crmData.student.leadStage ?? "Not Set"}
+                      <span className="inline-flex text-[11px] font-bold px-2 py-0.5 rounded"
+                        style={crmData.student.leadStage
+                          ? { background: `${SUCCESS_STAGE_COLORS[crmData.student.leadStage] ?? "#6B7280"}18`, color: SUCCESS_STAGE_COLORS[crmData.student.leadStage] ?? "#6B7280" }
+                          : { background: "#F3F4F6", color: "#9CA3AF" }}>
+                        {crmData.student.leadStage ?? "Not set"}
                       </span>
                     )}
                   </div>
 
-                  {/* Parent Info */}
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  {/* Parent / Guardian */}
+                  <div className="rounded-xl border border-gray-200 p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-[10px] font-bold text-gray-400 uppercase">Parent Info</div>
-                      <button onClick={() => setEditingParent(v => !v)} className="text-gray-400 hover:text-blue-500 transition-colors">
-                        <Edit2 className="w-3 h-3" />
-                      </button>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Parent / Guardian</div>
+                      <button onClick={() => setEditingParent(v => !v)} className="text-gray-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3 h-3" /></button>
                     </div>
                     {editingParent ? (
                       <div className="space-y-1.5">
                         <input value={parentName} onChange={e => setParentName(e.target.value)} placeholder="Parent name"
-                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-green-400" />
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none focus:border-blue-400" />
                         <input value={parentPhone} onChange={e => setParentPhone(e.target.value)} placeholder="Phone"
-                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-green-400" />
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none focus:border-blue-400" />
                         <button onClick={() => saveCrmField("parent")} disabled={crmSaving}
-                          className="w-full py-1.5 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                          className="w-full py-1.5 rounded-lg text-[11px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
                           style={{ background: GREEN }}>
                           {crmSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-1 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
                           <User className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="font-semibold" style={{ color: NAVY }}>{crmData.student.parentName || "—"}</span>
+                          <span className="text-[11px] font-semibold" style={{ color: NAVY }}>{crmData.student.parentName || "—"}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-xs">
+                        <div className="flex items-center gap-1.5">
                           <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="text-gray-500">{crmData.student.parentPhone || "—"}</span>
+                          <span className="text-[11px] text-gray-500">{crmData.student.parentPhone || "—"}</span>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Assigned Mentor */}
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Assigned Mentor</div>
+                  <div className="rounded-xl border border-gray-200 p-3">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Success Mentor</div>
                     {crmData.assignedMentor ? (
                       <div>
-                        <div className="text-xs font-semibold" style={{ color: NAVY }}>{crmData.assignedMentor.mentorName ?? "—"}</div>
-                        <div className="text-[10px] text-gray-400">{crmData.assignedMentor.mentorEmail ?? ""}</div>
+                        <div className="text-[11px] font-bold" style={{ color: NAVY }}>{crmData.assignedMentor.mentorName ?? "—"}</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">{crmData.assignedMentor.mentorEmail ?? ""}</div>
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-400">No mentor assigned</div>
+                      <div className="text-[11px] text-gray-400 italic">No mentor assigned</div>
                     )}
                   </div>
                 </div>
 
-                {/* Right: Unified Timeline */}
+                {/* Right: Interaction log */}
                 <div className="flex-1 min-w-0 space-y-4">
 
-                  {/* Add note form */}
-                  <form onSubmit={addNote} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
-                    <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: NAVY }}>
-                      <Activity className="w-3.5 h-3.5" /> Add to Permanent Timeline
+                  {/* Log interaction form */}
+                  <form onSubmit={logInteraction} className="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-3 space-y-2">
+                    <div className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: NAVY }}>
+                      <Activity className="w-3.5 h-3.5" style={{ color: ORANGE }} />
+                      Log Interaction
                     </div>
-                    <select value={noteType} onChange={e => setNoteType(e.target.value)}
-                      className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
-                      {NOTE_TYPES.map(t => <option key={t}>{t}</option>)}
+                    <select value={interactionType} onChange={e => setInteractionType(e.target.value)}
+                      className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none bg-white">
+                      {INTERACTION_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>
                     <textarea value={remark} onChange={e => setRemark(e.target.value)} required rows={2}
-                      placeholder="Remark / observation… (required)"
-                      className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none resize-none" />
+                      placeholder="What happened? What did you observe or discuss? (required)"
+                      className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none resize-none focus:border-blue-300" />
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-gray-400 block mb-0.5">Follow-Up Date</label>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">Next Check-in Date</label>
                         <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)}
-                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none" />
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-400 block mb-0.5">Action Taken</label>
                         <input value={actionTaken} onChange={e => setActionTaken(e.target.value)} placeholder="e.g. Called parent"
-                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] outline-none" />
                       </div>
                     </div>
                     <button type="submit" disabled={noteSaving}
-                      className="w-full py-1.5 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                      className="w-full py-1.5 rounded-lg text-[11px] font-bold text-white flex items-center justify-center gap-1 transition-colors disabled:opacity-60"
                       style={{ background: noteSuccess ? GREEN : NAVY }}>
                       {noteSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : noteSuccess ? <CheckCircle className="w-3 h-3" /> : null}
-                      {noteSuccess ? "Added!" : "Add Entry (Permanent)"}
+                      {noteSuccess ? "Logged!" : "Log Interaction"}
                     </button>
                   </form>
 
-                  {/* Unified timeline */}
-                  {unifiedTimeline.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-xs">No timeline entries or follow-ups yet.</div>
-                  ) : (
-                    <div className="relative">
-                      <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-200" />
-                      <div className="space-y-3">
-                        {unifiedTimeline.map(entry => (
-                          <div key={entry.key} className="flex gap-3 relative">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-white text-[10px] font-black"
-                              style={{ background: entry.kind === "timeline" ? GREEN : "#6366F1" }}>
-                              {entry.kind === "timeline" ? (entry.createdByName?.charAt(0) ?? "A") : "F"}
-                            </div>
-                            <div className={`flex-1 rounded-xl border p-3 min-w-0 ${entry.kind === "followup" ? "bg-indigo-50/40 border-indigo-100" : "bg-white border-gray-100"}`}>
-                              <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {entry.createdByName && <span className="text-xs font-bold" style={{ color: NAVY }}>{entry.createdByName}</span>}
-                                  {entry.createdByRole && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{entry.createdByRole}</span>}
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full"
-                                    style={{ background: entry.kind === "followup" ? "#6366F115" : `${GREEN}15`, color: entry.kind === "followup" ? "#6366F1" : GREEN }}>
-                                    {entry.noteType}
-                                  </span>
-                                  {entry.kind === "followup" && entry.fuStatus && (
-                                    <FuStatusBadge status={entry.fuStatus} daysOverdue={entry.daysOverdue} />
-                                  )}
-                                  {entry.kind === "followup" && entry.callStatus && entry.callStatus !== "completed" && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">{entry.callStatus}</span>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtDateTime(entry.createdAt)}</span>
-                              </div>
-                              {entry.text && <p className="text-xs text-gray-700 leading-relaxed">{entry.text}</p>}
-                              {entry.actionTaken && <p className="text-[10px] text-blue-600 mt-1">Action: {entry.actionTaken}</p>}
-                              {entry.followUpDate && <p className="text-[10px] text-orange-600 mt-0.5">Follow-up: {fmtDate(entry.followUpDate)}</p>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  {/* ── Unified interaction log ── */}
+                  <div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                      <span>Interaction History</span>
+                      {unifiedLog.length > 0 && <span className="text-gray-300">({unifiedLog.length})</span>}
                     </div>
-                  )}
+
+                    {unifiedLog.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400 text-xs italic">No interactions logged yet.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {unifiedLog.map(entry => {
+                          const isCheckin = entry.kind === "checkin";
+                          const authorLine = entry.authorName
+                            ? `${entry.authorName}  —  ${entry.authorRole === "admin" ? "Admin" : entry.authorRole === "teacher" ? "Teacher" : "Mentor"}`
+                            : "Mentor";
+                          return (
+                            <div key={entry.key} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                              {/* Author + timestamp header */}
+                              <div className="px-3 py-2 border-b border-gray-100" style={{ background: isCheckin ? "#F5F3FF" : "#F0FDF4" }}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0"
+                                      style={{ background: isCheckin ? "#6366F1" : GREEN }}>
+                                      {entry.authorName?.charAt(0)?.toUpperCase() ?? "?"}
+                                    </div>
+                                    <div>
+                                      <div className="text-[11px] font-bold leading-tight" style={{ color: NAVY }}>{authorLine}</div>
+                                      <div className="text-[10px] text-gray-400 leading-tight">{fmtDateTime(entry.createdAt)}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                                      style={{ background: isCheckin ? "#6366F115" : `${GREEN}15`, color: isCheckin ? "#6366F1" : GREEN }}>
+                                      {entry.noteType}
+                                    </span>
+                                    {entry.fuStatus && <CheckInStatusBadge status={entry.fuStatus} daysOverdue={entry.daysOverdue} />}
+                                    {isCheckin && entry.callStatus && entry.callStatus !== "completed" && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{entry.callStatus}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Divider */}
+                              <div className="border-b border-gray-100" />
+
+                              {/* Remark body */}
+                              <div className="px-3 py-2.5">
+                                {entry.text ? (
+                                  <p className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">{entry.text}</p>
+                                ) : (
+                                  <p className="text-xs text-gray-400 italic">No remark recorded.</p>
+                                )}
+                              </div>
+
+                              {/* Footer: action taken / next check-in */}
+                              {(entry.actionTaken || entry.followUpDate) && (
+                                <>
+                                  <div className="border-t border-gray-100" />
+                                  <div className="px-3 py-1.5 flex gap-3 flex-wrap">
+                                    {entry.actionTaken && (
+                                      <span className="text-[10px] text-blue-600">✓ {entry.actionTaken}</span>
+                                    )}
+                                    {entry.followUpDate && (
+                                      <span className="text-[10px] text-orange-600">📅 Next check-in: {fmtDate(entry.followUpDate)}</span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : null
           )}
 
-          {/* ── ACADEMIC TABS ── */}
+          {/* ── ACADEMIC TABS ─────────────────────────────────────────── */}
           {innerTab !== "crm" && (
             loading ? (
-              <div className="space-y-3 animate-pulse">
-                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}
-              </div>
+              <div className="space-y-3 animate-pulse">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}</div>
             ) : !data ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <div className="text-sm font-semibold text-gray-700">Could not load student data</div>
                 {fetchError && <div className="text-xs text-red-500 text-center max-w-xs">{fetchError}</div>}
-                <button onClick={loadAcademic} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors mt-1">
+                <button onClick={loadAcademic} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
                   <AlertCircle className="w-3.5 h-3.5" /> Retry
                 </button>
               </div>
             ) : (
               <>
-                {/* Overview Tab */}
                 {innerTab === "overview" && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3 text-xs">
@@ -563,7 +592,6 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
                   </div>
                 )}
 
-                {/* Courses Tab */}
                 {innerTab === "courses" && (
                   <div className="space-y-2">
                     {data.enrolledCourses.length === 0 ? (
@@ -585,7 +613,6 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
                   </div>
                 )}
 
-                {/* Activity Tab */}
                 {innerTab === "activity" && (
                   <div className="space-y-4">
                     {data.recentHw.length > 0 && (
@@ -656,7 +683,6 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
                   </div>
                 )}
 
-                {/* XP Tab */}
                 {innerTab === "xp" && (
                   <div className="space-y-2">
                     {data.xpHistory.length === 0 ? (
@@ -673,9 +699,7 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
                           {x.note && <div className="text-[10px] text-gray-400 truncate">{x.note}</div>}
                         </div>
                         <div className="text-right shrink-0">
-                          <span className={`text-sm font-bold ${x.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                            {x.amount > 0 ? "+" : ""}{x.amount}
-                          </span>
+                          <span className={`text-sm font-bold ${x.amount > 0 ? "text-green-600" : "text-red-600"}`}>{x.amount > 0 ? "+" : ""}{x.amount}</span>
                           <div className="text-[10px] text-gray-400">{new Date(x.createdAt).toLocaleDateString("en-IN")}</div>
                         </div>
                       </div>
