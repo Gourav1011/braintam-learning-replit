@@ -2762,6 +2762,27 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
   const [mentorNewPw, setMentorNewPw] = useState("");
   const [changingPw, setChangingPw] = useState(false);
 
+  // Inline type change
+  const [changeTypeMentorId, setChangeTypeMentorId] = useState<number | null>(null);
+  const [changingType, setChangingType] = useState(false);
+
+  async function changeMentorType(mentorId: number, mentorType: "academic" | "sales") {
+    setChangingType(true);
+    const r = await apiFetch(`/admin/mentors/${mentorId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ mentorType }),
+    });
+    setChangingType(false);
+    if (r.ok) {
+      flash(`Mentor type changed to ${mentorType}!`);
+      setChangeTypeMentorId(null);
+      loadMentors();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash(d.error ?? "Failed to change type", false);
+    }
+  }
+
   // Student search in expanded assignment panel
   const [mentorStudentSearch, setMentorStudentSearch] = useState("");
 
@@ -2959,12 +2980,10 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                         style={{ background: "#05966915", color: "#059669" }}>
                         {m.studentCount} student{m.studentCount !== 1 ? "s" : ""}
                       </span>
-                      {m.mentorType && (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full capitalize"
-                          style={{ background: m.mentorType === "sales" ? "#FFFBEB" : "#ECFDF5", color: m.mentorType === "sales" ? "#D97706" : "#059669" }}>
-                          {m.mentorType === "sales" ? "💼 Sales" : "📚 Academic"}
-                        </span>
-                      )}
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full capitalize"
+                        style={{ background: m.mentorType === "sales" ? "#FFFBEB" : "#ECFDF5", color: m.mentorType === "sales" ? "#D97706" : "#059669" }}>
+                        {m.mentorType === "sales" ? "💼 Sales" : "📚 Academic"}
+                      </span>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                         {m.isActive ? "Active" : "Disabled"}
                       </span>
@@ -2984,10 +3003,42 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                       Assign Student
                     </Button>
                     <Button size="sm" variant="outline" className="text-xs h-7"
-                      onClick={() => { setChangePwMentorId(changePwMentorId === m.id ? null : m.id); setMentorNewPw(""); }}>
+                      onClick={() => { setChangePwMentorId(changePwMentorId === m.id ? null : m.id); setMentorNewPw(""); setChangeTypeMentorId(null); }}>
                       Change Password
                     </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7"
+                      onClick={() => { setChangeTypeMentorId(changeTypeMentorId === m.id ? null : m.id); setChangePwMentorId(null); setMentorNewPw(""); }}>
+                      Change Type
+                    </Button>
                   </div>
+
+                  {/* Inline type change */}
+                  {changeTypeMentorId === m.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs font-bold mb-2" style={{ color: NAVY }}>Change Mentor Type</p>
+                      <div className="flex gap-2">
+                        {(["academic", "sales"] as const).map(t => (
+                          <button key={t} type="button"
+                            disabled={changingType}
+                            onClick={() => changeMentorType(m.id, t)}
+                            className="flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all capitalize disabled:opacity-60"
+                            style={{
+                              borderColor: (m.mentorType ?? "academic") === t ? (t === "sales" ? "#D97706" : "#059669") : "#E5E7EB",
+                              background: (m.mentorType ?? "academic") === t ? (t === "sales" ? "#FFFBEB" : "#ECFDF5") : "white",
+                              color: (m.mentorType ?? "academic") === t ? (t === "sales" ? "#D97706" : "#059669") : "#6B7280",
+                            }}>
+                            {t === "academic" ? "📚 Academic" : "💼 Sales"}
+                            {(m.mentorType ?? "academic") === t && " ✓"}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1.5">
+                        {(m.mentorType ?? "academic") === "sales"
+                          ? "Sales mentors see the Pipeline CRM tab in their portal."
+                          : "Academic mentors track student engagement, homework and tests."}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Inline password change */}
                   {changePwMentorId === m.id && (
