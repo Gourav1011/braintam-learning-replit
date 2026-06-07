@@ -177,18 +177,20 @@ export function EodReportTab({ apiFetch }: {
           <div className="text-[11px] font-bold text-gray-400 uppercase mb-2">Auto-filled Activity Summary</div>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {[
-              { label: "Contacted", key: "studentsContacted", val: studentsContacted, set: setStudentsContacted, color: GREEN },
-              { label: "Calls", key: "callsCompleted", val: callsCompleted, set: setCallsCompleted, color: "#2563EB" },
-              { label: "FU Done", key: "followUpsCompleted", val: followUpsCompleted, set: setFollowUpsCompleted, color: GREEN },
-              { label: "FU Pending", key: "followUpsPending", val: followUpsPending, set: setFollowUpsPending, color: ORANGE },
-              { label: "Doubt Sessions", key: "doubtSessions", val: doubtSessionsConducted, set: setDoubtSessionsConducted, color: "#6366F1" },
-              { label: "Classes Seen", key: "classesObserved", val: classesObserved, set: setClassesObserved, color: NAVY },
+              { label: "Contacted", key: "studentsContacted", val: studentsContacted, color: GREEN },
+              { label: "Calls", key: "callsCompleted", val: callsCompleted, color: "#2563EB" },
+              { label: "FU Done", key: "followUpsCompleted", val: followUpsCompleted, color: GREEN },
+              { label: "FU Pending", key: "followUpsPending", val: followUpsPending, color: ORANGE },
+              { label: "Doubt Sessions", key: "doubtSessions", val: doubtSessionsConducted, color: "#6366F1" },
+              { label: "Classes Seen", key: "classesObserved", val: classesObserved, color: NAVY },
             ].map(item => (
               <div key={item.key} className="text-center">
-                <input type="number" min={0} value={item.val}
-                  onChange={e => item.set(e.target.value)}
-                  className="w-full text-center text-xl font-black border border-gray-200 rounded-xl py-2 outline-none focus:border-blue-400"
-                  style={{ color: NAVY }} />
+                <div
+                  className="w-full text-center text-xl font-black rounded-xl py-2"
+                  style={{ color: NAVY, background: "#F1F5F9", border: "1px solid #E2E8F0" }}
+                >
+                  {item.val}
+                </div>
                 <div className="text-[9px] font-bold mt-0.5" style={{ color: item.color }}>{item.label}</div>
               </div>
             ))}
