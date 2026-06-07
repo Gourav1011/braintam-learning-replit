@@ -1001,6 +1001,7 @@ export default function BTLCRMPage() {
                 style={{ background: tab === t.key ? `${GREEN}15` : "transparent", color: tab === t.key ? GREEN : "#9CA3AF" }}>
                 <Icon className="w-4 h-4" />
                 {t.key === "students" && alertCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-white text-[8px] flex items-center justify-center font-black" style={{ background: "#DC2626" }}>{alertCount}</span>}
+                {t.key === "follow-ups" && (fuCounts.due_today + fuCounts.overdue) > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-white text-[8px] flex items-center justify-center font-black" style={{ background: ORANGE }}>{fuCounts.due_today + fuCounts.overdue}</span>}
               </button>
             );
           })}
