@@ -808,6 +808,9 @@ export default function BTLCRMPage() {
   const isClassLive = classState === "live";
   const isToday = attDate === todayStr();
   const isPastDate = attDate < todayStr();
+  const yesterdayStr = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().split("T")[0]; })();
+  // Completed classes remain editable for 1 extra day (call-back window)
+  const canEditCompleted = attDate >= yesterdayStr;
   const attTotalStudents = students.length;
   const attPresentCount = students.filter(s => attendanceMap[s.id]?.status === "present").length;
   const attAbsentCount = students.filter(s => attendanceMap[s.id]?.status === "absent").length;
@@ -1503,7 +1506,8 @@ export default function BTLCRMPage() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h1 className="text-lg font-black" style={{ color: NAVY }}>Attendance</h1>
-                {isPastDate && <p className="text-[10px] text-gray-400 mt-0.5">📋 Past record — view only</p>}
+                {isPastDate && canEditCompleted && <p className="text-[10px] mt-0.5 font-semibold" style={{ color: "#F97316" }}>📞 Call window open — edit attendance &amp; calls until end of day</p>}
+                {isPastDate && !canEditCompleted && <p className="text-[10px] text-gray-400 mt-0.5">📋 Past record — view only</p>}
                 {attDate > todayStr() && <p className="text-[10px] text-gray-400 mt-0.5">🔒 Future class — locked</p>}
               </div>
               <div className="flex items-center gap-2">
@@ -1821,8 +1825,13 @@ export default function BTLCRMPage() {
                 {completedClassesForDate.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="text-xs font-black tracking-wide text-gray-500">COMPLETED</span>
+                      {canEditCompleted
+                        ? <Phone className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#F97316" }} />
+                        : <CheckCircle2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      }
+                      <span className="text-xs font-black tracking-wide" style={{ color: canEditCompleted ? "#F97316" : "#6B7280" }}>
+                        {canEditCompleted ? "COMPLETED — CALL WINDOW OPEN" : "COMPLETED"}
+                      </span>
                     </div>
                     <div className="space-y-4">
                       {completedClassesForDate.map(cls => {
@@ -1832,6 +1841,9 @@ export default function BTLCRMPage() {
                           : attPresentPct >= 60 ? { label: "Moderate", bg: "#FEF3C7", color: "#D97706" }
                           : { label: "At Risk", bg: "#FEE2E2", color: "#DC2626" }
                           : null;
+                        const borderL = canEditCompleted ? "#FB923C" : "#9CA3AF";
+                        const borderFull = canEditCompleted ? "#FED7AA" : "#E5E7EB";
+                        const bgSelected = canEditCompleted ? "#FFF7ED" : "#F9FAFB";
                         const filtered = students.filter(s => {
                           if (attStatusFilter === "all") return true;
                           const st = attendanceMap[s.id]?.status ?? null;
@@ -1840,12 +1852,12 @@ export default function BTLCRMPage() {
                         });
                         return (
                           <div key={cls.id}>
-                            {/* Class card — grey border */}
-                            <div style={{ borderLeft: "4px solid #9CA3AF", border: "1.5px solid #E5E7EB", borderRadius: "16px", background: isSelected ? "#F9FAFB" : "white" }}>
+                            {/* Class card */}
+                            <div style={{ borderLeft: `4px solid ${borderL}`, border: `1.5px solid ${borderFull}`, borderRadius: "16px", background: isSelected ? bgSelected : "white" }}>
                               <button className="w-full text-left p-4" onClick={() => setSelectedClassId(cls.id)}>
                                 <div className="flex items-start justify-between gap-3 flex-wrap">
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-black text-sm" style={{ color: "#4B5563" }}>{cls.title}</div>
+                                    <div className="font-black text-sm" style={{ color: canEditCompleted ? NAVY : "#4B5563" }}>{cls.title}</div>
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-gray-400 mt-1">
                                       {cls.teacher && <span>👩‍🏫 {cls.teacher}</span>}
                                       <span>⏰ {fmtDateTime(cls.scheduledAt)}</span>
@@ -1855,21 +1867,31 @@ export default function BTLCRMPage() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                                     {hBadge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: hBadge.bg, color: hBadge.color }}>{hBadge.label}</span>}
-                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">✅ Completed</span>
+                                    {canEditCompleted
+                                      ? <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "#FED7AA", color: "#EA580C" }}>📞 Call window</span>
+                                      : <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">✅ Completed</span>
+                                    }
                                   </div>
                                 </div>
+                                {/* Call-window notice */}
+                                {canEditCompleted && (
+                                  <div className="mt-2 pt-2 border-t text-[10px] font-semibold" style={{ borderColor: "#FED7AA", color: "#EA580C" }}>
+                                    📞 Call absent students and update attendance — window closes at midnight
+                                  </div>
+                                )}
                                 {/* Summary footer */}
                                 {isSelected && (
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100 text-[10px] font-semibold">
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 text-[10px] font-semibold" style={{ borderTop: `1px solid ${canEditCompleted ? "#FED7AA" : "#F3F4F6"}` }}>
                                     <span style={{ color: "#059669" }}>✅ Present: {attPresentCount}</span>
                                     <span style={{ color: "#DC2626" }}>❌ Absent: {attAbsentCount}</span>
                                     <span style={{ color: "#F97316" }}>⏰ Call Later: {attCallLaterCount}</span>
                                     <span style={{ color: "#2563EB" }}>📞 Calls Done: {attCallsDone}</span>
+                                    {canEditCompleted && attRemainingCalls > 0 && <span style={{ color: "#D97706" }}>⚠️ {attRemainingCalls} calls pending</span>}
                                   </div>
                                 )}
                               </button>
                             </div>
-                            {/* Student list (read-only) */}
+                            {/* Student list */}
                             {isSelected && (
                               <div className="mt-3 ml-4 space-y-2">
                                 {/* Filter tabs */}
@@ -1902,6 +1924,77 @@ export default function BTLCRMPage() {
                                     : att?.status === "late"
                                     ? { emoji: "🟡", label: "Late", color: "#D97706", bg: "#FEF3C7" }
                                     : null;
+
+                                  /* ── EDITABLE row (today or yesterday) ── */
+                                  if (canEditCompleted) {
+                                    const draft = callDrafts[s.id] ?? { callStatus: "", callTime: "", calledBy: "", calledByName: "", remark: "" };
+                                    const isExpanded = expandedCall === s.id;
+                                    const isAbsent = att?.status === "absent";
+                                    return (
+                                      <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                                            style={{ background: att?.status === "present" ? "#059669" : att?.status === "absent" ? "#DC2626" : att?.status === "late" ? "#D97706" : "#9CA3AF" }}>
+                                            {s.name.charAt(0)}
+                                          </div>
+                                          <div className="w-28 sm:w-36 flex-shrink-0">
+                                            <div className="font-semibold text-xs truncate" style={{ color: NAVY }}>{s.name}</div>
+                                            <div className="text-[10px] text-gray-400">Gr.{s.grade}</div>
+                                          </div>
+                                          <div className="flex items-center gap-1 flex-wrap flex-1">
+                                            <button onClick={() => markAttendance(s.id, "present")}
+                                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                              style={{ background: att?.status === "present" ? "#DCFCE7" : "white", color: att?.status === "present" ? "#059669" : "#9CA3AF", borderColor: att?.status === "present" ? "#059669" : "#E5E7EB" }}>
+                                              Present
+                                            </button>
+                                            <button onClick={() => markAttendance(s.id, "absent")}
+                                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                              style={{ background: att?.status === "absent" ? "#FEE2E2" : "white", color: att?.status === "absent" ? "#DC2626" : "#9CA3AF", borderColor: att?.status === "absent" ? "#DC2626" : "#E5E7EB" }}>
+                                              Absent
+                                            </button>
+                                            <button
+                                              onClick={() => isAbsent ? setExpandedCall(isExpanded ? null : s.id) : undefined}
+                                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                              style={{ background: att?.callStatus === "called" ? "#DBEAFE" : isAbsent ? "white" : "#F9FAFB", color: att?.callStatus === "called" ? "#2563EB" : isAbsent ? "#6366F1" : "#D1D5DB", borderColor: att?.callStatus === "called" ? "#6366F1" : isAbsent ? "#E0E7FF" : "#F3F4F6", cursor: isAbsent ? "pointer" : "default" }}>
+                                              📞 Call
+                                            </button>
+                                            <button
+                                              onClick={() => isAbsent ? markCallStatus(s.id, att?.callStatus === "call_later" ? "" : "call_later") : undefined}
+                                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                              style={{ background: att?.callStatus === "call_later" ? "#FED7AA" : isAbsent ? "white" : "#F9FAFB", color: att?.callStatus === "call_later" ? "#F97316" : isAbsent ? "#9CA3AF" : "#D1D5DB", borderColor: att?.callStatus === "call_later" ? "#FB923C" : isAbsent ? "#E5E7EB" : "#F3F4F6", cursor: isAbsent ? "pointer" : "default" }}>
+                                              ⏰ Call Later
+                                            </button>
+                                          </div>
+                                          {badge && (
+                                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+                                              style={{ background: badge.bg, color: badge.color }}>
+                                              {badge.emoji} {badge.label}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {isExpanded && (
+                                          <div className="mt-3 ml-10">
+                                            <CallDetailsForm callStatus={draft.callStatus} callTime={draft.callTime} calledBy={draft.calledBy} calledByName={draft.calledByName}
+                                              onChange={(f, v) => updateDraft(s.id, f, v)} />
+                                            <input value={draft.remark} onChange={e => updateDraft(s.id, "remark", e.target.value)} placeholder="Remark…"
+                                              className="w-full mt-2 px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
+                                            <button onClick={() => saveCallDetails(s.id)}
+                                              className="mt-2 w-full py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: GREEN }}>
+                                              Save Call Details
+                                            </button>
+                                          </div>
+                                        )}
+                                        {!isExpanded && att && att.callStatus === "called" && (
+                                          <div className="mt-2 ml-10 p-2 rounded-lg text-[10px]" style={{ background: "#EEF2FF", border: "1px solid #C7D2FE" }}>
+                                            <span className="text-indigo-700 font-semibold">📞 Called{att.callTime ? ` at ${att.callTime}` : ""}{att.calledByName ? `, by ${att.calledByName}` : ""}</span>
+                                            {att.remark && <span className="text-indigo-600 ml-2">· {att.remark}</span>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+
+                                  /* ── READ-ONLY row (2+ days old) ── */
                                   return (
                                     <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
                                       <div className="flex items-center gap-3">
