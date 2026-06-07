@@ -718,6 +718,35 @@ router.get("/admin/btl-crm/mentor-performance", adminOnly, async (_req, res) => 
   res.json(result);
 });
 
+// Students filtered by pipeline lead stage (assigned to any mentor)
+router.get("/admin/btl-crm/pipeline/students", adminOnly, async (req, res) => {
+  const stage = String(req.query.stage ?? "").trim();
+  if (!stage) { res.status(400).json({ error: "stage query param required" }); return; }
+
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      grade: usersTable.grade,
+      school: usersTable.school,
+      parentName: usersTable.parentName,
+      parentPhone: usersTable.parentPhone,
+      leadStage: usersTable.leadStage,
+    })
+    .from(usersTable)
+    .innerJoin(mentorStudentAssignmentsTable, and(
+      eq(mentorStudentAssignmentsTable.studentId, usersTable.id),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+    ))
+    .where(and(
+      eq(usersTable.role, "student"),
+      eq(usersTable.leadStage, stage),
+    ))
+    .orderBy(usersTable.name);
+
+  res.json(rows);
+});
+
 // Global overdue follow-up reminders across all mentors
 router.get("/admin/btl-crm/overdue-reminders", adminOnly, async (_req, res) => {
   const today = new Date().toISOString().slice(0, 10);

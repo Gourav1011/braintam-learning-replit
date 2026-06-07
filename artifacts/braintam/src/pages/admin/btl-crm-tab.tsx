@@ -129,6 +129,16 @@ interface UnassignedStudent {
   email: string | null;
 }
 
+interface PipelineStudent {
+  id: number;
+  name: string;
+  grade: number;
+  school: string | null;
+  parentName: string | null;
+  parentPhone: string | null;
+  leadStage: string | null;
+}
+
 interface UnassignedData {
   count: number;
   students: UnassignedStudent[];
@@ -395,6 +405,111 @@ function StudentCrmModal({
   );
 }
 
+function StageStudentDrawer({
+  stage,
+  onClose,
+  onStudentClick,
+}: {
+  stage: string;
+  onClose: () => void;
+  onStudentClick: (studentId: number) => void;
+}) {
+  const [students, setStudents] = useState<PipelineStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch(`/admin/btl-crm/pipeline/students?stage=${encodeURIComponent(stage)}`)
+      .then(r => r.json())
+      .then(data => { setStudents(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [stage]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const colors = LEAD_STAGE_COLORS[stage] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
+
+  return (
+    <div
+      ref={backdropRef}
+      className="fixed inset-0 z-40 flex items-start justify-end"
+      style={{ background: "rgba(11,43,107,0.18)", backdropFilter: "blur(2px)" }}
+      onClick={e => { if (e.target === backdropRef.current) onClose(); }}
+    >
+      <div
+        className="relative h-full w-full max-w-sm bg-white shadow-2xl flex flex-col overflow-hidden"
+        style={{ borderLeft: `4px solid ${colors.dot}` }}
+      >
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3" style={{ background: NAVY }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: colors.dot }}>
+            <Users className="w-4 h-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-sm text-white truncate">{stage}</div>
+            <div className="text-white/60 text-[10px]">
+              {loading ? "Loading…" : `${students.length} student${students.length !== 1 ? "s" : ""}`}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="py-12 flex items-center justify-center text-sm text-gray-400">Loading students…</div>
+          ) : students.length === 0 ? (
+            <div className="py-12 flex flex-col items-center gap-2">
+              <Users className="w-8 h-8 text-gray-200" />
+              <p className="text-sm text-gray-400">No students in this stage</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {students.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => { onStudentClick(s.id); }}
+                  className="w-full text-left px-5 py-3.5 flex items-center gap-3 hover:bg-blue-50/40 transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                    style={{ background: NAVY }}>
+                    {s.name[0]?.toUpperCase() ?? "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold group-hover:underline truncate" style={{ color: NAVY }}>
+                      {s.name}
+                    </div>
+                    <div className="text-[10px] text-gray-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                      {s.grade > 0 && <span>Grade {s.grade}</span>}
+                      {s.school && <span className="truncate">{s.school}</span>}
+                      {s.parentPhone && (
+                        <span className="font-medium" style={{ color: ORANGE }}>{s.parentPhone}</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-blue-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    View →
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, label, value, sub, color = NAVY, bg = "#F0F4FF" }: {
   icon: React.ElementType; label: string; value: string | number; sub?: string;
   color?: string; bg?: string;
@@ -414,12 +529,13 @@ function StatCard({ icon: Icon, label, value, sub, color = NAVY, bg = "#F0F4FF" 
 }
 
 function PipelineSummary({
-  pipeline, loading, unassignedCount, onNoMentorClick,
+  pipeline, loading, unassignedCount, onNoMentorClick, onStageClick,
 }: {
   pipeline: PipelineData | null;
   loading: boolean;
   unassignedCount: number;
   onNoMentorClick: () => void;
+  onStageClick: (stage: string) => void;
 }) {
   if (loading) return <div className="h-40 flex items-center justify-center text-sm text-gray-400">Loading pipeline…</div>;
   if (!pipeline) return null;
@@ -447,22 +563,36 @@ function PipelineSummary({
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-        <h4 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Lead Stage Breakdown</h4>
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-bold text-sm" style={{ color: NAVY }}>Lead Stage Breakdown</h4>
+          <span className="text-[10px] text-gray-400">Click a stage to view students</span>
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {LEAD_STAGES.map(stage => {
             const count = stageCounts[stage] ?? 0;
             if (count === 0) return null;
             const colors = LEAD_STAGE_COLORS[stage] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
             return (
-              <div key={stage}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                style={{ background: colors.bg }}>
+              <button
+                key={stage}
+                type="button"
+                onClick={() => onStageClick(stage)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-1"
+                style={{
+                  background: colors.bg,
+                  ["--tw-ring-color" as string]: colors.dot,
+                }}
+                title={`View ${count} students in ${stage}`}
+              >
                 <div className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-semibold truncate" style={{ color: colors.text }}>{stage}</div>
-                  <div className="text-lg font-black" style={{ color: colors.text }}>{count}</div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black" style={{ color: colors.text }}>{count}</span>
+                    <span className="text-[9px] font-semibold opacity-0 group-hover:opacity-100" style={{ color: colors.text }}>→</span>
+                  </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -943,6 +1073,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
   const [loadingUnassigned, setLoadingUnassigned] = useState(true);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [crmStudentId, setCrmStudentId] = useState<number | null>(null);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const coverageGapsRef = useRef<HTMLElement>(null);
 
   const students = users.filter(u => u.role === "student") as StudentOption[];
@@ -992,6 +1123,13 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
 
   return (
     <>
+      {selectedStage !== null && (
+        <StageStudentDrawer
+          stage={selectedStage}
+          onClose={() => setSelectedStage(null)}
+          onStudentClick={id => { setSelectedStage(null); setCrmStudentId(id); }}
+        />
+      )}
       {crmStudentId !== null && (
         <StudentCrmModal
           studentId={crmStudentId}
@@ -1072,6 +1210,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
             loading={loadingPipeline}
             unassignedCount={unassigned?.count ?? 0}
             onNoMentorClick={() => coverageGapsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onStageClick={stage => setSelectedStage(stage)}
           />
         </section>
 
