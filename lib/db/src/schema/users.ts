@@ -31,6 +31,15 @@ export const usersTable = pgTable("users", {
   mentorType: text("mentor_type"), // 'sales' | 'academic' — null for non-mentors
   parentName: text("parent_name"),
   parentPhone: text("parent_phone"),
+  callStatus: text("call_status"),            // Need To Call | Picked | Busy | Call Back | Not Connected
+  interestLevel: text("interest_level"),      // Low | Moderate | High | Very High
+  weakSubject: text("weak_subject"),
+  strongSubject: text("strong_subject"),
+  repeatedCustomer: boolean("repeated_customer").notNull().default(false),
+  nextFollowUpAt: text("next_follow_up_at"),  // YYYY-MM-DD
+  nextFollowUpTime: text("next_follow_up_time"), // HH:MM
+  lastCallAt: timestamp("last_call_at"),
+  busyReason: text("busy_reason"),
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at"),
   archivedBy: integer("archived_by"),

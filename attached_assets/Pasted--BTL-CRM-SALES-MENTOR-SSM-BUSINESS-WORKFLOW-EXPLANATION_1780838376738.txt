@@ -1,0 +1,566 @@
+# BTL CRM SALES MENTOR (SSM) – BUSINESS WORKFLOW EXPLANATION
+
+Before making any UI changes, please understand the actual business process.
+
+The current implementation looks like a generic CRM.
+
+Braintam does NOT operate like a traditional sales company.
+
+Please read the workflow below before designing further screens.
+
+---
+
+# HOW BRAINTAM ACTUALLY WORKS
+
+We run Ignite Programs.
+
+Ignite Program = 6-Day Learning Program.
+
+Students join Ignite first.
+
+The goal is to convert them into long-term enrolled students.
+
+The Sales Mentor is not a sales executive.
+
+The Sales Mentor acts as:
+
+Parent Coordinator
+
+Student Success Coordinator
+
+Attendance Tracker
+
+Homework Tracker
+
+Conversion Coordinator
+
+Retention Coordinator
+
+All in one role.
+
+---
+
+# WHAT HAPPENS ON MONDAY
+
+Admin creates Ignite groups.
+
+Example:
+
+Grade 1 Batch A
+
+Grade 1 Batch B
+
+Grade 2 Batch A
+
+etc.
+
+Admin assigns groups to mentors.
+
+Example:
+
+Priya
+
+Grade 1 Batch A
+
+50 Students
+
+Amit
+
+Grade 1 Batch B
+
+50 Students
+
+Once assigned:
+
+Mentor automatically receives all students.
+
+Mentor never manually creates leads.
+
+Mentor never imports leads.
+
+Mentor never manages CRM pipelines.
+
+Everything starts from assigned Ignite students.
+
+---
+
+# WHAT MENTOR DOES DAILY
+
+Mentor's day is not:
+
+Manage tasks
+
+Manage pipeline
+
+Manage reports
+
+Mentor's day is:
+
+Call parents
+
+Check attendance
+
+Check homework
+
+Add remarks
+
+Schedule callback
+
+Send WhatsApp
+
+Track conversions
+
+That's it.
+
+Everything else is secondary.
+
+---
+
+# WHY CURRENT DASHBOARD IS WRONG
+
+Current dashboard contains:
+
+Tasks
+
+Reports
+
+Follow-Ups
+
+Pipeline
+
+Inactive 30+
+
+Overdue Tasks
+
+CRM Metrics
+
+These are developer assumptions.
+
+This is not how mentors work.
+
+Mentors don't wake up and ask:
+
+How many reports do I have?
+
+How many tasks do I have?
+
+How many CRM stages exist?
+
+Mentors wake up and ask:
+
+Which parent should I call first?
+
+Who attended class yesterday?
+
+Who missed homework?
+
+Who is interested?
+
+Who wants callback?
+
+Who is likely to convert?
+
+That should drive the design.
+
+---
+
+# HOW A MENTOR WORKS AFTER CLASS
+
+Example:
+
+Student attended Ignite Day 2.
+
+System automatically records:
+
+Attendance
+
+Homework
+
+Teacher Remarks
+
+Mentor opens student.
+
+Mentor sees:
+
+Attended
+
+Homework submitted
+
+Teacher says active participation
+
+Mentor calls parent.
+
+Conversation happens.
+
+Mentor adds remark.
+
+Finished.
+
+That is the workflow.
+
+No CRM management.
+
+No pipeline management.
+
+No task management.
+
+---
+
+# LEAD STATUS VS CALL STATUS
+
+These are currently mixed.
+
+Please separate them.
+
+---
+
+## LEAD STATUS
+
+Business stage.
+
+Only one active status.
+
+New Lead
+
+Demo Active
+
+Interested
+
+Highly Interested
+
+Converted
+
+Dropped
+
+Used only for business reporting.
+
+---
+
+## CALL STATUS
+
+Operational status.
+
+Changes every day.
+
+Need To Call
+
+Picked
+
+Busy
+
+Call Back
+
+Not Connected
+
+Used only for daily calling workflow.
+
+Do not mix these concepts.
+
+---
+
+# MAIN SALES MENTOR SCREEN
+
+The most important screen should not be Dashboard.
+
+The most important screen should be:
+
+TODAY'S CALLING QUEUE
+
+Everything should revolve around this.
+
+---
+
+# TOP HORIZONTAL FILTERS
+
+Need To Call
+
+Picked
+
+Busy
+
+Call Back
+
+Not Connected
+
+Interested
+
+Highly Interested
+
+Converted
+
+Mentor clicks a filter.
+
+Matching students appear.
+
+This should be the primary working experience.
+
+Not Kanban.
+
+Not CRM stages.
+
+Not reports.
+
+---
+
+# STUDENT LIST SHOULD SHOW
+
+Student Name
+
+Grade
+
+School
+
+City
+
+State
+
+Weak Subject
+
+Strong Subject
+
+Repeated Customer
+
+Attendance %
+
+Homework %
+
+Current Status
+
+Interest Level
+
+Last Call
+
+Next Follow-Up
+
+Assigned Mentor
+
+This gives mentor everything needed before making a call.
+
+---
+
+# REPEATED CUSTOMER IS IMPORTANT
+
+Many parents attend demo more than once.
+
+These leads usually convert faster.
+
+Repeated Customer should be prominently displayed.
+
+Example:
+
+Repeated Customer
+
+Visible in:
+
+Lead list
+
+Student profile
+
+Dashboard filters
+
+---
+
+# STUDENT PROFILE PAGE
+
+This page becomes the mentor's workspace.
+
+When mentor opens a student:
+
+Show:
+
+Student Information
+
+Attendance Summary
+
+Homework Summary
+
+Teacher Remarks
+
+Call History
+
+Communication Timeline
+
+Conversion Status
+
+Payment Status
+
+Everything on one page.
+
+No need to visit multiple screens.
+
+---
+
+# REMARKS ARE LEGAL HISTORY
+
+This is extremely important.
+
+Mentors should never edit remarks.
+
+Example:
+
+7 Jun
+Parent requested callback tomorrow.
+
+After saving:
+
+Cannot Edit
+
+Cannot Delete
+
+Cannot Overwrite
+
+Reason:
+
+When multiple mentors or admins review history later, they need an accurate record.
+
+Every remark should become permanent timeline history.
+
+Only Super Admin can archive.
+
+Nobody can modify history.
+
+---
+
+# HOMEWORK AND ATTENDANCE
+
+Sales Mentor should see:
+
+Attendance %
+
+Classes Attended
+
+Classes Missed
+
+Homework Submitted
+
+Homework Missing
+
+Teacher Remarks
+
+But Sales Mentor should never edit academic records.
+
+Academic data is read-only.
+
+Sales Mentor uses this information during parent calls.
+
+Example:
+
+Your child attended all classes this week.
+
+Homework was submitted on time.
+
+Teacher says participation is excellent.
+
+These conversations help conversion.
+
+---
+
+# CONVERTED STUDENTS
+
+Converted students should not disappear.
+
+Mentor still needs visibility.
+
+Show:
+
+Course Purchased
+
+Payment Date
+
+Attendance %
+
+Homework %
+
+Teacher Remarks
+
+Parent Contact
+
+This helps future retention.
+
+---
+
+# LEADERBOARD IS CURRENTLY WRONG
+
+Current leaderboard tracks generic actions.
+
+This is not useful.
+
+We care about outcomes.
+
+---
+
+# SALES MENTOR LEADERBOARD
+
+Rank mentors by:
+
+Conversions
+
+Conversion Rate
+
+Example:
+
+Priya
+
+12 Conversions
+
+18% Conversion Rate
+
+Amit
+
+9 Conversions
+
+15% Conversion Rate
+
+This reflects actual performance.
+
+---
+
+# ADMIN ANALYTICS
+
+Admin should also see:
+
+Grade 1 Conversions
+
+Grade 2 Conversions
+
+Grade 3 Conversions
+
+Grade 4 Conversions
+
+etc.
+
+This is more valuable than generic CRM reports.
+
+---
+
+# FINAL DESIGN PRINCIPLE
+
+Please stop thinking:
+
+Sales CRM
+
+Task Manager
+
+Pipeline Manager
+
+Generic Dashboard
+
+Instead think:
+
+A mentor receives Ignite students.
+
+Monitors attendance.
+
+Monitors homework.
+
+Calls parents.
+
+Adds remarks.
+
+Schedules callbacks.
+
+Guides conversion.
+
+Tracks retention.
+
+The entire UI should support that exact workflow and remove anything that does not help the mentor perform those actions.

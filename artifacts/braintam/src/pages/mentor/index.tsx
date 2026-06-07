@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { LeaderboardTab } from "./leaderboard-tab";
 import { PipelineTab } from "./pipeline-tab";
+import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, SalesLeaderboardTab } from "./sales-calling-queue";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
@@ -37,7 +38,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "pipeline" | "leaderboard";
+type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "pipeline" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -707,6 +708,9 @@ export default function BTLCRMPage() {
   const [healthSummary, setHealthSummary] = useState<HealthSummary | null>(null);
   const [studentsView, setStudentsView] = useState<"table" | "health">("table");
 
+  // Sales SSM dashboard metrics
+  const [salesMetrics, setSalesMetrics] = useState<{ assignedLeads: number; needToCall: number; interested: number; highlyInterested: number; converted: number; repeatedCustomers: number; dropped: number } | null>(null);
+
   const fetchDashboard = useCallback(async () => {
     const r = await apiFetch("/mentor/dashboard");
     if (r.ok) {
@@ -754,6 +758,11 @@ export default function BTLCRMPage() {
     if (r.ok) { const d = await r.json(); setReminderPrefs({ remindersEnabled: d.remindersEnabled ?? true, digestMode: d.digestMode ?? true, digestTime: d.digestTime ?? "09:00" }); }
   }, []);
 
+  const fetchSalesMetrics = useCallback(async () => {
+    const r = await apiFetch("/mentor/sales/dashboard");
+    if (r.ok) setSalesMetrics(await r.json());
+  }, []);
+
   useEffect(() => {
     if (!isLoading && (role === "mentor" || role === "admin")) {
       fetchDashboard(); fetchStudents(); fetchFollowUps(); fetchTasks();
@@ -771,6 +780,7 @@ export default function BTLCRMPage() {
   useEffect(() => { if (tab === "attendance") fetchUpcomingClasses(); }, [tab]);
   useEffect(() => { if (tab === "settings") fetchReminderPrefs(); }, [tab]);
   useEffect(() => { if (tab === "students") fetchHealthSummary(); }, [tab, fetchHealthSummary]);
+  useEffect(() => { if (tab === "dashboard" && dashboard?.mentorType === "sales") fetchSalesMetrics(); }, [tab, dashboard?.mentorType, fetchSalesMetrics]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
   if (!student || (role !== "mentor" && role !== "admin")) return <Redirect to="/mentor/login" />;
@@ -1005,15 +1015,12 @@ export default function BTLCRMPage() {
   ];
 
   const salesTabs: { key: Tab; label: string; icon: typeof Home }[] = [
-    { key: "dashboard",   label: "Dashboard",       icon: Home },
-    { key: "today-tasks", label: "Today's Tasks",   icon: Zap },
-    { key: "students",    label: "Assigned Leads",  icon: Users },
-    { key: "pipeline",    label: "Lead Tracker",    icon: TrendingUp },
-    { key: "follow-ups",  label: "Follow-Ups",      icon: MessageSquare },
-    { key: "tasks",       label: "Tasks",           icon: CheckSquare },
-    { key: "leaderboard", label: "Leaderboard",     icon: Trophy },
-    { key: "eod-report",  label: "Reports",         icon: BarChart3 },
-    { key: "profile",     label: "My Profile",      icon: UserCircle },
+    { key: "dashboard",          label: "Dashboard",        icon: Home },
+    { key: "calling-queue",      label: "Today's Calling",  icon: Phone },
+    { key: "assigned-leads",     label: "Assigned Leads",   icon: Users },
+    { key: "converted-students", label: "Converted",        icon: CheckCircle2 },
+    { key: "leaderboard",        label: "Leaderboard",      icon: Trophy },
+    { key: "profile",            label: "My Profile",       icon: UserCircle },
   ];
 
   const tabs = isSales ? salesTabs : academicTabs;
@@ -1155,77 +1162,78 @@ export default function BTLCRMPage() {
             </div>
             {dashboard ? (
               <>
-                {/* ── Type-specific top stats ── */}
+                {/* ── Sales SSM Dashboard ── */}
                 {isSales ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {[
-                      { label: "My Leads", value: dashboard.totalAssigned, icon: "👥", color: NAVY },
-                      { label: "Follow-Up Due", value: dashboard.followUpReminders?.length ?? 0, icon: "📞", color: "#DC2626" },
-                      { label: "Converted", value: dashboard.green, icon: "🎯", color: GREEN },
-                      { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
-                      { label: "Overdue Tasks", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
-                    ].map(c => (
-                      <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-lg">{c.icon}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[
+                        { label: "Assigned Leads", value: salesMetrics?.assignedLeads ?? dashboard.totalAssigned, icon: "👥", color: NAVY, tab: "assigned-leads" as Tab },
+                        { label: "Need To Call", value: salesMetrics?.needToCall ?? 0, icon: "📞", color: "#DC2626", tab: "calling-queue" as Tab },
+                        { label: "Interested", value: salesMetrics?.interested ?? 0, icon: "💡", color: "#0284C7", tab: "calling-queue" as Tab },
+                        { label: "Highly Interested", value: salesMetrics?.highlyInterested ?? 0, icon: "🔥", color: "#D97706", tab: "calling-queue" as Tab },
+                        { label: "Converted", value: salesMetrics?.converted ?? 0, icon: "🎯", color: GREEN, tab: "converted-students" as Tab },
+                        { label: "Repeated Customers", value: salesMetrics?.repeatedCustomers ?? 0, icon: "🔄", color: ORANGE, tab: "assigned-leads" as Tab },
+                      ].map(c => (
+                        <button key={c.label} onClick={() => setTab(c.tab)}
+                          className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm text-left hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-lg">{c.icon}</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                          </div>
+                          <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* CTA to calling queue */}
+                    <div className="rounded-2xl border-2 p-4 flex items-center justify-between" style={{ borderColor: "#DC2626", background: "#FEF2F2" }}>
+                      <div>
+                        <div className="font-black text-sm" style={{ color: "#DC2626" }}>📞 Today's Calling Queue</div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {salesMetrics?.needToCall ?? 0} parents to call · Filter by status · Add remarks
                         </div>
-                        <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
                       </div>
-                    ))}
-                  </div>
+                      <button onClick={() => setTab("calling-queue")}
+                        className="text-xs font-bold px-3 py-2 rounded-xl text-white flex-shrink-0" style={{ background: "#DC2626" }}>
+                        Start Calling →
+                      </button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {[
-                      { label: "Assigned", value: dashboard.totalAssigned, icon: "👥", color: NAVY },
-                      { label: "Active Today", value: dashboard.activeToday, icon: "✅", color: GREEN },
-                      { label: "At Risk", value: dashboard.atRisk, icon: "🔴", color: "#DC2626" },
-                      { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
-                      { label: "Tasks Overdue", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
-                    ].map(c => (
-                      <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-lg">{c.icon}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {[
+                        { label: "Assigned", value: dashboard.totalAssigned, icon: "👥", color: NAVY },
+                        { label: "Active Today", value: dashboard.activeToday, icon: "✅", color: GREEN },
+                        { label: "At Risk", value: dashboard.atRisk, icon: "🔴", color: "#DC2626" },
+                        { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
+                        { label: "Tasks Overdue", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
+                      ].map(c => (
+                        <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-lg">{c.icon}</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
+                          </div>
+                          <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
                         </div>
-                        <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* ── Secondary stats row ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {(isSales ? [
-                    { label: "At Risk Leads", value: dashboard.atRisk, color: "#DC2626" },
-                    { label: "Needs Attention", value: dashboard.needsAttention, color: "#D97706" },
-                    { label: "Inactive 3d+", value: dashboard.notActive3Days, color: "#D97706" },
-                    { label: "HW Follow-up", value: dashboard.homeworkPending, color: ORANGE },
-                  ] : [
-                    { label: "Green (Healthy)", value: dashboard.green, color: GREEN },
-                    { label: "Needs Attention", value: dashboard.needsAttention, color: "#D97706" },
-                    { label: "Inactive 3d+", value: dashboard.notActive3Days, color: "#D97706" },
-                    { label: "HW Pending", value: dashboard.homeworkPending, color: ORANGE },
-                  ]).map(c => (
-                    <div key={c.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-                      <div className="text-[10px] font-bold mb-1" style={{ color: c.color }}>{c.label}</div>
-                      <div className="text-xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                {/* ── Sales-specific: Pipeline shortcut banner ── */}
-                {isSales && (
-                  <div className="rounded-2xl border-2 p-4 flex items-center justify-between" style={{ borderColor: "#D97706", background: "#FFFBEB" }}>
-                    <div>
-                      <div className="font-black text-sm" style={{ color: "#D97706" }}>Sales Pipeline</div>
-                      <div className="text-xs text-gray-500 mt-0.5">View your leads by stage, overdue follow-ups, and conversion status</div>
+                    {/* ── Secondary stats row (academic only) ── */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: "Green (Healthy)", value: dashboard.green, color: GREEN },
+                        { label: "Needs Attention", value: dashboard.needsAttention, color: "#D97706" },
+                        { label: "Inactive 3d+", value: dashboard.notActive3Days, color: "#D97706" },
+                        { label: "HW Pending", value: dashboard.homeworkPending, color: ORANGE },
+                      ].map(c => (
+                        <div key={c.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                          <div className="text-[10px] font-bold mb-1" style={{ color: c.color }}>{c.label}</div>
+                          <div className="text-xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                        </div>
+                      ))}
                     </div>
-                    <button onClick={() => setTab("pipeline")}
-                      className="text-xs font-bold px-3 py-2 rounded-xl text-white flex-shrink-0" style={{ background: "#D97706" }}>
-                      Open Pipeline →
-                    </button>
-                  </div>
+                  </>
                 )}
 
                 {(dashboard.followUpReminders?.length ?? 0) > 0 && (
@@ -2546,16 +2554,39 @@ export default function BTLCRMPage() {
           <EodReportTab apiFetch={apiFetch} />
         )}
 
-        {/* ════ PIPELINE (Sales only) ════ */}
+        {/* ════ PIPELINE (Sales only — legacy, kept for fallback) ════ */}
         {tab === "pipeline" && (
           <PipelineTab
             onOpenStudent={(id, name) => open360ById(id, name)}
           />
         )}
 
+        {/* ════ TODAY'S CALLING QUEUE (Sales SSM) ════ */}
+        {tab === "calling-queue" && (
+          <SalesCallingQueueTab
+            onOpenStudent={(id, name) => open360ById(id, name)}
+          />
+        )}
+
+        {/* ════ ASSIGNED LEADS (Sales SSM) ════ */}
+        {tab === "assigned-leads" && (
+          <AssignedLeadsTab
+            onOpenStudent={(id, name) => open360ById(id, name)}
+          />
+        )}
+
+        {/* ════ CONVERTED STUDENTS (Sales SSM) ════ */}
+        {tab === "converted-students" && (
+          <ConvertedStudentsTab
+            onOpenStudent={(id, name) => open360ById(id, name)}
+          />
+        )}
+
         {/* ════ LEADERBOARD ════ */}
         {tab === "leaderboard" && (
-          <LeaderboardTab myId={student.id} />
+          isSales
+            ? <SalesLeaderboardTab myId={student.id} />
+            : <LeaderboardTab myId={student.id} />
         )}
       </div>
     </div>

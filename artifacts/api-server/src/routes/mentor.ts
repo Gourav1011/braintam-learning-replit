@@ -1098,6 +1098,192 @@ router.get("/mentor/students/health-summary", mentorAuth, async (req, res) => {
 // ── Mentor: Dashboard (extend to include mentorType) ─────────────────────
 // (mentorType is added by fetching the user row — it's already in req.authUser via auth middleware)
 
+// ── Sales SSM: Leads list ─────────────────────────────────────────────────
+router.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+
+  const assignments = await db
+    .select({ studentId: mentorStudentAssignmentsTable.studentId })
+    .from(mentorStudentAssignmentsTable)
+    .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.isActive, true)));
+
+  if (assignments.length === 0) { res.json([]); return; }
+  const studentIds = assignments.map(a => a.studentId);
+
+  const students = await db.select({
+    id: usersTable.id, name: usersTable.name, grade: usersTable.grade,
+    school: usersTable.school, city: usersTable.city, state: usersTable.state,
+    phone: usersTable.phone, parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
+    leadStage: usersTable.leadStage, callStatus: usersTable.callStatus,
+    interestLevel: usersTable.interestLevel, weakSubject: usersTable.weakSubject,
+    strongSubject: usersTable.strongSubject, repeatedCustomer: usersTable.repeatedCustomer,
+    nextFollowUpAt: usersTable.nextFollowUpAt, nextFollowUpTime: usersTable.nextFollowUpTime,
+    lastCallAt: usersTable.lastCallAt, busyReason: usersTable.busyReason,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
+  const hwCounts = await db.select({
+    studentId: homeworkSubmissionsTable.studentId,
+    total: sql<number>`count(*)`,
+    pending: sql<number>`count(*) filter (where status = 'pending')`,
+  }).from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
+
+  const attCounts = await db.select({
+    studentId: mentorAttendanceTable.studentId,
+    total: sql<number>`count(*)`,
+    present: sql<number>`count(*) filter (where status = 'present')`,
+  }).from(mentorAttendanceTable).where(inArray(mentorAttendanceTable.studentId, studentIds)).groupBy(mentorAttendanceTable.studentId);
+
+  const hwMap = Object.fromEntries(hwCounts.map(r => [r.studentId, r]));
+  const attMap = Object.fromEntries(attCounts.map(r => [r.studentId, r]));
+
+  const result = students.map(s => {
+    const hw = hwMap[s.id];
+    const hwTotal = Number(hw?.total ?? 0);
+    const hwPct = hwTotal > 0 ? Math.round(((hwTotal - Number(hw?.pending ?? 0)) / hwTotal) * 100) : null;
+    const att = attMap[s.id];
+    const attTotal = Number(att?.total ?? 0);
+    const attPct = attTotal > 0 ? Math.round((Number(att?.present ?? 0) / attTotal) * 100) : null;
+    return {
+      ...s,
+      hwPct, hwTotal, hwPending: Number(hw?.pending ?? 0),
+      attPct, attTotal,
+      leadStage: s.leadStage ?? "New Lead",
+      callStatus: s.callStatus ?? "Need To Call",
+    };
+  });
+
+  res.json(result);
+});
+
+// ── Sales SSM: Dashboard metrics ──────────────────────────────────────────
+router.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentIds = await getMentorStudentIds(mentorId);
+
+  if (studentIds.length === 0) {
+    res.json({ assignedLeads: 0, needToCall: 0, interested: 0, highlyInterested: 0, converted: 0, repeatedCustomers: 0, dropped: 0 });
+    return;
+  }
+
+  const students = await db.select({
+    callStatus: usersTable.callStatus,
+    leadStage: usersTable.leadStage,
+    repeatedCustomer: usersTable.repeatedCustomer,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
+  res.json({
+    assignedLeads: students.length,
+    needToCall: students.filter(s => !s.callStatus || s.callStatus === "Need To Call").length,
+    interested: students.filter(s => s.leadStage === "Interested").length,
+    highlyInterested: students.filter(s => s.leadStage === "Highly Interested").length,
+    converted: students.filter(s => s.leadStage === "Converted").length,
+    repeatedCustomers: students.filter(s => s.repeatedCustomer).length,
+    dropped: students.filter(s => s.leadStage === "Dropped").length,
+  });
+});
+
+// ── Sales SSM: Save call outcome (permanent remark) ───────────────────────
+router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentId = parseInt(String(req.params.studentId), 10);
+
+  if (req.authUser!.role !== "admin") {
+    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
+      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    if (!asgn) { res.status(403).json({ error: "Not your assigned student" }); return; }
+  }
+
+  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, repeatedCustomer } = req.body;
+  if (!remark?.trim()) { res.status(400).json({ error: "Remark is required" }); return; }
+  if (!callOutcome) { res.status(400).json({ error: "callOutcome is required" }); return; }
+
+  const now = new Date();
+  const updates: Record<string, unknown> = { callStatus: callOutcome, lastCallAt: now, updatedAt: now };
+  if (busyReason !== undefined) updates.busyReason = busyReason || null;
+  if (leadStatus) updates.leadStage = leadStatus;
+  if (interestLevel) updates.interestLevel = interestLevel;
+  if (nextFollowUpAt) updates.nextFollowUpAt = nextFollowUpAt;
+  if (nextFollowUpTime) updates.nextFollowUpTime = nextFollowUpTime;
+  if (repeatedCustomer !== undefined) updates.repeatedCustomer = Boolean(repeatedCustomer);
+
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId));
+
+  const actor = req.authUser!;
+  const noteText = `[${callOutcome}${busyReason ? ` – ${busyReason}` : ""}] ${remark.trim()}`;
+  const [fu] = await db.insert(mentorFollowUpsTable).values({
+    mentorId,
+    studentId,
+    noteType: "Call Outcome",
+    note: noteText,
+    callStatus: callOutcome,
+    callTime: now.toISOString(),
+    calledBy: String(actor.id),
+    calledByName: actor.name,
+    leadStatus: leadStatus ?? null,
+    nextFollowUpDate: nextFollowUpAt ?? null,
+  }).returning();
+
+  res.status(201).json({ ok: true, followUp: fu });
+});
+
+// ── Sales SSM: Follow-up history for a student ────────────────────────────
+router.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentId = parseInt(String(req.params.studentId), 10);
+
+  if (req.authUser!.role !== "admin") {
+    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
+      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    if (!asgn) { res.status(403).json({ error: "Not your assigned student" }); return; }
+  }
+
+  const rows = await db.select().from(mentorFollowUpsTable)
+    .where(eq(mentorFollowUpsTable.studentId, studentId))
+    .orderBy(desc(mentorFollowUpsTable.createdAt))
+    .limit(50);
+  res.json(rows);
+});
+
+// ── Sales SSM: Leaderboard (by conversions) ───────────────────────────────
+router.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .where(and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"), eq(usersTable.isActive, true)));
+
+  if (mentors.length === 0) { res.json([]); return; }
+  const mentorIds = mentors.map(m => m.id);
+
+  const assignments = await db.select({
+    mentorId: mentorStudentAssignmentsTable.mentorId,
+    studentId: mentorStudentAssignmentsTable.studentId,
+  }).from(mentorStudentAssignmentsTable)
+    .where(and(inArray(mentorStudentAssignmentsTable.mentorId, mentorIds), eq(mentorStudentAssignmentsTable.isActive, true)));
+
+  const mentorStudentMap: Record<number, number[]> = {};
+  for (const a of assignments) {
+    if (!mentorStudentMap[a.mentorId]) mentorStudentMap[a.mentorId] = [];
+    mentorStudentMap[a.mentorId].push(a.studentId);
+  }
+
+  const allStudentIds = assignments.map(a => a.studentId);
+  const stageRows = allStudentIds.length > 0
+    ? await db.select({ id: usersTable.id, leadStage: usersTable.leadStage })
+        .from(usersTable).where(inArray(usersTable.id, allStudentIds))
+    : [];
+  const stageMap = Object.fromEntries(stageRows.map(s => [s.id, s.leadStage]));
+
+  const results = mentors.map(m => {
+    const sIds = mentorStudentMap[m.id] ?? [];
+    const assignedCount = sIds.length;
+    const convertedCount = sIds.filter(id => stageMap[id] === "Converted").length;
+    const conversionRate = assignedCount > 0 ? Math.round((convertedCount / assignedCount) * 100) : 0;
+    return { mentorId: m.id, mentorName: m.name, assignedCount, convertedCount, conversionRate };
+  });
+
+  results.sort((a, b) => b.convertedCount - a.convertedCount || b.conversionRate - a.conversionRate);
+  res.json(results.map((r, i) => ({ ...r, rank: i + 1 })));
+});
+
 // Admin posts a timeline entry on any student
 router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {
   const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;
