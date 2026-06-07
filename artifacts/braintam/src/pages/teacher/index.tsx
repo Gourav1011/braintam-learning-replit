@@ -6,6 +6,7 @@ import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
+  Phone, CheckCircle2, XCircle, Timer,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -36,7 +37,8 @@ interface Submission { id: number; homeworkTitle?: string; assignmentTitle?: str
 interface Subject { id: number; name: string; }
 interface DashStats { teacherName: string; totalCourses: number; totalStudents: number; upcomingLiveClasses: number; pendingHomework: number; }
 interface TeacherTest { id: number; title: string; subjectName: string; grade: number; scheduledAt: string; duration: number; totalQuestions: number; status: string; testType?: string; driveLink?: string | null; }
-interface AttendanceRecord { studentId: number; studentName: string; present: boolean; }
+type AttendStatus = "present" | "absent" | "late";
+interface AttendanceRecord { studentId: number; studentName: string; grade: number | null; phone: string | null; status: AttendStatus; contacted: boolean; }
 
 type QuestionType = "mcq" | "truefalse";
 interface HwQuestion {
@@ -142,6 +144,11 @@ export default function TeacherPage() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [crmStudent, setCrmStudent] = useState<{ id: number; name: string } | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [attendDate, setAttendDate] = useState(() => {
+    const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    return now.toISOString().slice(0, 10);
+  });
+  const [pastSummaries, setPastSummaries] = useState<Record<number, { present: number; absent: number; late: number; contacted: number }>>({});
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -583,17 +590,63 @@ export default function TeacherPage() {
     return `${y}-${mo}-${dy}` === dateStr;
   }
 
-  // ── Attendance ─────────────────────────────────────────────────
+  // ── Attendance helpers ──────────────────────────────────────────
+  function istDateOf(isoTs: string) {
+    const ist = new Date(new Date(isoTs).getTime() + 5.5 * 60 * 60 * 1000);
+    return ist.toISOString().slice(0, 10);
+  }
+  function todayIST() {
+    return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+  function tomorrowIST() {
+    const d = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  // "present" | "absent" | "late" → for a class date relative to today
+  // past  → show read-only summary
+  // today → full marking
+  // tomorrow → call-only
+  // future → class info only
+  function dateMode(classDate: string): "past" | "today" | "tomorrow" | "future" {
+    const today = todayIST();
+    const tomorrow = tomorrowIST();
+    if (classDate < today) return "past";
+    if (classDate === today) return "today";
+    if (classDate === tomorrow) return "tomorrow";
+    return "future";
+  }
+
   async function loadAttendance(classId: number) {
     setAttendanceClassId(classId);
-    const classStudents = students.map(s => ({ studentId: s.studentId, studentName: s.studentName, present: true }));
+    const classStudents = students.map((s: any) => ({
+      studentId: s.studentId,
+      studentName: s.studentName,
+      grade: s.grade ?? null,
+      phone: s.phone ?? null,
+      status: "present" as AttendStatus,
+      contacted: false,
+    }));
     const existing = await apiFetch(`/teacher/live-classes/${classId}/attendance`).then(r => r.ok ? r.json() : []);
     if (existing.length > 0) {
-      const map = Object.fromEntries(existing.map((e: any) => [e.studentId, e.present]));
-      setAttendanceRecords(classStudents.map(s => ({ ...s, present: map[s.studentId] ?? true })));
+      const map = Object.fromEntries(existing.map((e: any) => [e.studentId, { status: e.status ?? (e.present ? "present" : "absent"), contacted: e.contacted ?? false }]));
+      setAttendanceRecords(classStudents.map(s => ({ ...s, ...(map[s.studentId] ?? {}) })));
     } else {
       setAttendanceRecords(classStudents);
     }
+  }
+
+  async function loadPastSummary(classId: number) {
+    const existing = await apiFetch(`/teacher/live-classes/${classId}/attendance`).then(r => r.ok ? r.json() : []);
+    const summary = { present: 0, absent: 0, late: 0, contacted: 0 };
+    for (const e of existing) {
+      const s = e.status ?? (e.present ? "present" : "absent");
+      if (s === "present") summary.present++;
+      else if (s === "late") summary.late++;
+      else summary.absent++;
+      if (e.contacted) summary.contacted++;
+    }
+    setPastSummaries(prev => ({ ...prev, [classId]: summary }));
   }
 
   async function saveAttendance() {
@@ -601,11 +654,19 @@ export default function TeacherPage() {
     setAttendanceBusy(true);
     const r = await apiFetch(`/teacher/live-classes/${attendanceClassId}/attendance`, {
       method: "POST",
-      body: JSON.stringify({ records: attendanceRecords.map(r => ({ studentId: r.studentId, present: r.present })) }),
+      body: JSON.stringify({ records: attendanceRecords.map(r => ({ studentId: r.studentId, status: r.status, contacted: r.contacted })) }),
     });
     if (r.ok) { flash("Attendance saved!"); setAttendanceClassId(null); }
     else flash("Failed to save attendance", false);
     setAttendanceBusy(false);
+  }
+
+  async function toggleContacted(classId: number, studentId: number, contacted: boolean) {
+    await apiFetch(`/teacher/live-classes/${classId}/attendance/${studentId}/contacted`, {
+      method: "PATCH",
+      body: JSON.stringify({ contacted }),
+    });
+    setAttendanceRecords(prev => prev.map(r => r.studentId === studentId ? { ...r, contacted } : r));
   }
 
   const pendingCount = submissions.filter(s => s.status === "submitted").length;
@@ -1696,67 +1757,184 @@ export default function TeacherPage() {
         })()}
 
         {/* ── Attendance ── */}
-        {tab === "attendance" && (
-          <div className="space-y-4">
-            <h3 className="font-bold" style={{ color: NAVY }}>Mark Attendance</h3>
-            {attendanceClassId !== null ? (
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-sm" style={{ color: NAVY }}>
-                    {liveClasses.find(c => c.id === attendanceClassId)?.title ?? `Class #${attendanceClassId}`}
-                  </h4>
-                  <button onClick={() => setAttendanceClassId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+        {tab === "attendance" && (() => {
+          const classesForDate = liveClasses.filter(lc => istDateOf(lc.scheduledAt) === attendDate);
+          const mode = dateMode(attendDate);
+
+          function fmtTime(iso: string) {
+            const ist = new Date(new Date(iso).getTime() + 5.5 * 60 * 60 * 1000);
+            return ist.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" });
+          }
+
+          return (
+            <div className="space-y-4">
+              {/* Header row with date picker */}
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-bold text-base" style={{ color: NAVY }}>Attendance</h3>
+                <input
+                  type="date"
+                  value={attendDate}
+                  onChange={e => { setAttendDate(e.target.value); setAttendanceClassId(null); setPastSummaries({}); }}
+                  className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold outline-none focus:border-blue-400"
+                  style={{ color: NAVY }}
+                />
+              </div>
+
+              {/* Mode badge */}
+              <div className="flex items-center gap-2 text-xs">
+                {mode === "past" && <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">📅 Past — View Summary Only</span>}
+                {mode === "today" && <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-semibold">✅ Today — Mark Attendance</span>}
+                {mode === "tomorrow" && <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">📞 Tomorrow — Follow-up Calls Only</span>}
+                {mode === "future" && <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-600 font-semibold">🗓 Upcoming — No Attendance Yet</span>}
+              </div>
+
+              {classesForDate.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                  <Clock className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No classes scheduled for this date</p>
                 </div>
-                {attendanceRecords.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-4">No enrolled students found for this class</p>
-                ) : (
-                  <>
-                    <div className="flex gap-2 text-xs">
-                      <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, present: true })))} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 font-semibold hover:bg-green-100">Mark All Present</button>
-                      <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, present: false })))} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-500 font-semibold hover:bg-red-100">Mark All Absent</button>
-                    </div>
-                    <div className="space-y-2">
-                      {attendanceRecords.map((r, i) => (
-                        <div key={r.studentId} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: NAVY }}>{r.studentName[0]}</div>
-                            <button onClick={() => setCrmStudent({ id: r.studentId, name: r.studentName })} className="text-sm font-medium hover:underline" style={{ color: NAVY }}>{r.studentName}</button>
+              ) : (
+                <div className="space-y-4">
+                  {classesForDate.map(lc => {
+                    const isOpen = attendanceClassId === lc.id;
+                    const summary = pastSummaries[lc.id];
+
+                    return (
+                      <div key={lc.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        {/* Class header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                          <div>
+                            <div className="font-bold text-sm" style={{ color: NAVY }}>{lc.title}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              Grade {lc.grade} · {fmtTime(lc.scheduledAt)} · {lc.duration}m
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => setAttendanceRecords(prev => prev.map((rec, idx) => idx === i ? { ...rec, present: true } : rec))}
-                              className={`text-xs px-3 py-1 rounded-full font-semibold transition-all ${r.present ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"}`}>Present</button>
-                            <button onClick={() => setAttendanceRecords(prev => prev.map((rec, idx) => idx === i ? { ...rec, present: false } : rec))}
-                              className={`text-xs px-3 py-1 rounded-full font-semibold transition-all ${!r.present ? "bg-red-500 text-white" : "bg-gray-100 text-gray-400"}`}>Absent</button>
+                          <div className="flex items-center gap-2">
+                            {/* PAST: load summary button */}
+                            {mode === "past" && !summary && (
+                              <button
+                                onClick={() => loadPastSummary(lc.id)}
+                                className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                                style={{ background: "#EFF6FF", color: NAVY }}
+                              >View</button>
+                            )}
+                            {/* TODAY: mark attendance */}
+                            {mode === "today" && !isOpen && (
+                              <button
+                                onClick={() => loadAttendance(lc.id)}
+                                className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white"
+                                style={{ background: NAVY }}
+                              >Mark Attendance</button>
+                            )}
+                            {isOpen && (
+                              <button onClick={() => setAttendanceClassId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                            )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button size="sm" onClick={saveAttendance} disabled={attendanceBusy} className="text-white" style={{ background: ORANGE }}>Save Attendance</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setAttendanceClassId(null)}>Cancel</Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-400 font-medium">Pick a class to mark attendance:</p>
-                {liveClasses.map(lc => (
-                  <div key={lc.id} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm" style={{ color: NAVY }}>{lc.title}</div>
-                      <div className="text-xs text-gray-400">{new Date(lc.scheduledAt).toLocaleDateString("en-IN")} · Grade {lc.grade}</div>
-                    </div>
-                    <Button size="sm" onClick={() => loadAttendance(lc.id)} className="text-xs text-white" style={{ background: NAVY }}>Mark Attendance</Button>
-                  </div>
-                ))}
-                {liveClasses.length === 0 && (
-                  <div className="py-8 text-center"><Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" /><p className="text-gray-400 text-sm">No live classes yet</p></div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+
+                        {/* PAST: summary stats */}
+                        {mode === "past" && summary && (
+                          <div className="px-4 py-3 grid grid-cols-4 gap-2">
+                            {[
+                              { label: "Present", value: summary.present, color: "#059669", bg: "#F0FDF4", icon: <CheckCircle2 className="w-4 h-4" /> },
+                              { label: "Absent",  value: summary.absent,  color: "#DC2626", bg: "#FEF2F2", icon: <XCircle className="w-4 h-4" /> },
+                              { label: "Late",    value: summary.late,    color: "#D97706", bg: "#FFFBEB", icon: <Timer className="w-4 h-4" /> },
+                              { label: "Contacted", value: summary.contacted, color: "#2563EB", bg: "#EFF6FF", icon: <Phone className="w-4 h-4" /> },
+                            ].map(s => (
+                              <div key={s.label} className="text-center rounded-xl py-2" style={{ background: s.bg }}>
+                                <div className="flex justify-center mb-0.5" style={{ color: s.color }}>{s.icon}</div>
+                                <div className="text-xl font-black" style={{ color: s.color }}>{s.value}</div>
+                                <div className="text-[10px] font-semibold text-gray-500">{s.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* TODAY: full attendance marking */}
+                        {mode === "today" && isOpen && (
+                          <div className="px-4 pb-4 space-y-3 pt-2">
+                            <div className="flex gap-2 text-xs">
+                              <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, status: "present" as AttendStatus })))} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100">All Present</button>
+                              <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, status: "absent" as AttendStatus })))} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100">All Absent</button>
+                            </div>
+                            {attendanceRecords.length === 0 ? (
+                              <p className="text-sm text-gray-400 text-center py-3">No enrolled students</p>
+                            ) : (
+                              <div className="space-y-1">
+                                {attendanceRecords.map((r, i) => (
+                                  <div key={r.studentId} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: NAVY }}>{r.studentName[0]}</div>
+                                      <div className="min-w-0">
+                                        <button onClick={() => setCrmStudent({ id: r.studentId, name: r.studentName })} className="text-sm font-semibold hover:underline truncate block" style={{ color: NAVY }}>{r.studentName}</button>
+                                        {r.grade && <div className="text-[10px] text-gray-400">Grade {r.grade}</div>}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      {(["present", "absent", "late"] as AttendStatus[]).map(s => (
+                                        <button key={s} onClick={() => setAttendanceRecords(prev => prev.map((rec, idx) => idx === i ? { ...rec, status: s } : rec))}
+                                          className={`text-[11px] px-2.5 py-1 rounded-full font-bold transition-all capitalize ${
+                                            r.status === s
+                                              ? s === "present" ? "bg-green-500 text-white" : s === "absent" ? "bg-red-500 text-white" : "bg-amber-400 text-white"
+                                              : "bg-gray-100 text-gray-400"
+                                          }`}>{s}</button>
+                                      ))}
+                                      {r.phone && (
+                                        <a href={`tel:${r.phone}`}
+                                          onClick={() => toggleContacted(lc.id, r.studentId, true)}
+                                          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${r.contacted ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600"}`}>
+                                          <Phone className="w-3.5 h-3.5" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex gap-2 pt-1">
+                              <Button size="sm" onClick={saveAttendance} disabled={attendanceBusy} className="text-white text-xs" style={{ background: ORANGE }}>Save Attendance</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setAttendanceClassId(null)} className="text-xs">Cancel</Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TOMORROW: call-only follow-up */}
+                        {mode === "tomorrow" && (
+                          <div className="px-4 py-3 space-y-1">
+                            <p className="text-[11px] text-blue-600 font-semibold mb-2">📞 Follow up with parents before class</p>
+                            {students.filter((s: any) => s.phone).length === 0 ? (
+                              <p className="text-xs text-gray-400">No student phone numbers on record</p>
+                            ) : (
+                              students.map((s: any) => s.phone ? (
+                                <div key={s.studentId} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ background: NAVY }}>{s.studentName[0]}</div>
+                                    <span className="text-sm font-medium" style={{ color: NAVY }}>{s.studentName}</span>
+                                    {s.grade && <span className="text-[10px] text-gray-400">Gr {s.grade}</span>}
+                                  </div>
+                                  <a href={`tel:${s.phone}`} className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors">
+                                    <Phone className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              ) : null)
+                            )}
+                          </div>
+                        )}
+
+                        {/* FUTURE: info only */}
+                        {mode === "future" && (
+                          <div className="px-4 py-3">
+                            <p className="text-xs text-gray-400 italic">Attendance will be available on the day of class</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {crmStudent !== null && (

@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, boolean, timestamp, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -7,6 +7,8 @@ export const attendanceTable = pgTable("attendance", {
   liveClassId: integer("live_class_id").notNull(),
   studentId: integer("student_id").notNull(),
   present: boolean("present").notNull().default(true),
+  status: text("status").notNull().default("present"),
+  contacted: boolean("contacted").notNull().default(false),
   markedAt: timestamp("marked_at").defaultNow().notNull(),
 });
 
