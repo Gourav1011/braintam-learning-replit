@@ -2774,12 +2774,15 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
     });
     setChangingType(false);
     if (r.ok) {
-      flash(`Mentor type changed to ${mentorType}!`);
+      const saved = await r.json().catch(() => null);
+      const confirmedType = saved?.mentorType ?? mentorType;
+      // Optimistic update — reflect change immediately in the list
+      setMentors(prev => prev.map(m => m.id === mentorId ? { ...m, mentorType: confirmedType } : m));
+      flash(`✅ Mentor type saved as "${confirmedType === "sales" ? "💼 Sales (SSM)" : "📚 Academic"}"`, true);
       setChangeTypeMentorId(null);
-      loadMentors();
     } else {
       const d = await r.json().catch(() => ({}));
-      flash(d.error ?? "Failed to change type", false);
+      flash(d.error ?? "Failed to change type — try again", false);
     }
   }
 
