@@ -1187,7 +1187,7 @@ function AdminPageInner() {
           { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
           { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "follow-ups" },
           { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
-          { label: "BTL CRM", icon: UserCheck2, tab: "btl-crm" },
+          { label: "Outreach CRM", icon: UserCheck2, tab: "btl-crm" },
           { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "overview" },
         ],
       }],
@@ -1316,12 +1316,6 @@ function AdminPageInner() {
         <button onClick={() => loadAll()} title="Refresh data"
           className="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors shrink-0">
           <RotateCcw className={`w-4 h-4 text-gray-500 ${dataLoading ? "animate-spin" : ""}`} />
-        </button>
-        {/* Export */}
-        <button onClick={exportReport}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all shrink-0"
-          style={{ background: NAVY }}>
-          <Download className="w-3.5 h-3.5" /> Export
         </button>
         {/* Bell */}
         <div className="relative shrink-0" ref={bellDropRef}>
