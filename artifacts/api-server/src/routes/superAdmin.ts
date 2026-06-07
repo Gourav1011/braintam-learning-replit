@@ -223,17 +223,44 @@ router.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
     conditions.push(lte(auditLogsTable.createdAt, to));
   }
   if (role) {
-    // Match stored actorRole OR actor's current role in users table (for legacy logs without actorRole)
+    // actorRole is NULL on all legacy logs — match via actorId lookup in users table
     const actorsWithRole = (await db.select({ id: usersTable.id }).from(usersTable)
       .where(eq(usersTable.role, role))).map(u => u.id);
-    const roleCondition = actorsWithRole.length > 0
-      ? or(eq(auditLogsTable.actorRole, role), inArray(auditLogsTable.actorId, actorsWithRole))
-      : eq(auditLogsTable.actorRole, role);
-    if (roleCondition) conditions.push(roleCondition);
+    if (actorsWithRole.length > 0) {
+      conditions.push(or(eq(auditLogsTable.actorRole, role), inArray(auditLogsTable.actorId, actorsWithRole))!);
+    } else {
+      conditions.push(eq(auditLogsTable.actorRole, role));
+    }
   }
   if (userId) conditions.push(eq(auditLogsTable.actorId, parseInt(userId, 10)));
   if (category) conditions.push(eq(auditLogsTable.category, category));
-  if (mod) conditions.push(eq(auditLogsTable.module, mod));
+  if (mod) {
+    // module column is NULL on all legacy logs — derive from targetType instead
+    const moduleToTargetTypes: Record<string, string[]> = {
+      "Courses": ["course"],
+      "Users": ["user"],
+      "Live Classes": ["live_class"],
+      "Homework": ["homework"],
+      "Tests": ["test"],
+      "Assignments": ["assignment"],
+      "Announcements": ["announcement"],
+      "Banners": ["banner"],
+      "Teachers": ["teacher_course", "teacher"],
+      "Enrollments": ["enrollment"],
+      "Settings": ["settings"],
+      "BTL CRM": ["follow_up", "demo_batch", "demo_session"],
+      "Staff Attendance": ["checkin"],
+    };
+    const targetTypes = moduleToTargetTypes[mod];
+    if (targetTypes && targetTypes.length > 0) {
+      conditions.push(or(
+        eq(auditLogsTable.module, mod),
+        inArray(auditLogsTable.targetType, targetTypes),
+      )!);
+    } else {
+      conditions.push(eq(auditLogsTable.module, mod));
+    }
+  }
   if (action) conditions.push(ilike(auditLogsTable.action, `%${action}%`));
   if (targetName) conditions.push(ilike(auditLogsTable.targetName, `%${targetName}%`));
 

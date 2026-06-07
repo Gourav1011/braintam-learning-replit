@@ -150,11 +150,12 @@ router.get("/admin/users", adminOnly, async (req, res) => {
     lastLoginAt: usersTable.lastLoginDate,
   })
     .from(usersTable)
-    .where(
+    .where(and(
+      eq(usersTable.isArchived, false),
       role ? eq(usersTable.role, String(role)) :
       accountType ? eq(usersTable.accountType, String(accountType)) :
-      undefined
-    )
+      undefined,
+    ))
     .orderBy(desc(usersTable.createdAt));
   res.json(users);
 });
@@ -277,11 +278,16 @@ router.delete("/admin/users/:id", adminOnly, async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [user] = await db.select({ id: usersTable.id, name: usersTable.name })
     .from(usersTable).where(eq(usersTable.id, id)).limit(1);
-  await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, id));
+  await db.update(usersTable).set({
+    isActive: false,
+    isArchived: true,
+    archivedAt: new Date(),
+    archivedBy: req.authUser!.id,
+  }).where(eq(usersTable.id, id));
   if (user) {
     await logAudit(
       req.authUser!.id, req.authUser!.name,
-      "user_deactivated", "user", user.id, user.name,
+      "user_deleted", "user", user.id, user.name,
     );
   }
   res.json({ success: true });
