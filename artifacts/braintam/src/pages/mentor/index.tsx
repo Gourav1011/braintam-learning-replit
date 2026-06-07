@@ -211,10 +211,11 @@ function CallDetailsForm({ callStatus, callTime, calledBy, calledByName, onChang
 }
 
 // ── Student 360 Profile Slide-Over ───────────────────────────────────────
-function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onParentSaved }: {
+function Student360({ detail, onClose, onTimelineAdded, onFollowUpAdded, onLeadStageChanged, onParentSaved }: {
   detail: StudentDetail;
   onClose: () => void;
   onTimelineAdded: () => void;
+  onFollowUpAdded: () => void;
   onLeadStageChanged: (studentId: number, stage: string) => void;
   onParentSaved: (studentId: number, name: string, phone: string) => void;
 }) {
@@ -230,6 +231,17 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
   const [parentPhone, setParentPhone] = useState(student.parentPhone ?? "");
   const [parentLoading, setParentLoading] = useState(false);
 
+  // Follow-up form state
+  const [fuNoteType, setFuNoteType] = useState("General Note");
+  const [fuNote, setFuNote] = useState("");
+  const [fuCallStatus, setFuCallStatus] = useState("");
+  const [fuCallTime, setFuCallTime] = useState("");
+  const [fuCalledBy, setFuCalledBy] = useState("");
+  const [fuCalledByName, setFuCalledByName] = useState("");
+  const [fuLeadStatus, setFuLeadStatus] = useState("");
+  const [fuNextDate, setFuNextDate] = useState("");
+  const [fuLoading, setFuLoading] = useState(false);
+
   async function addTimelineEntry(e: React.FormEvent) {
     e.preventDefault();
     if (!tlRemark.trim()) return;
@@ -240,6 +252,37 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
     });
     if (r.ok) { setTlRemark(""); setTlFollowUpDate(""); setTlActionTaken(""); onTimelineAdded(); }
     setTlLoading(false);
+  }
+
+  async function addFollowUpFromSlider(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fuNote.trim()) return;
+    setFuLoading(true);
+    const r = await apiFetch("/mentor/follow-ups", {
+      method: "POST",
+      body: JSON.stringify({
+        studentId: student.id,
+        noteType: fuNoteType,
+        note: fuNote,
+        callStatus: fuCallStatus || null,
+        callTime: fuCallTime || null,
+        calledBy: fuCalledBy || null,
+        calledByName: fuCalledByName || null,
+        leadStatus: fuLeadStatus || null,
+        nextFollowUpDate: fuNextDate || null,
+      }),
+    });
+    if (r.ok) {
+      setFuNote("");
+      setFuCallStatus("");
+      setFuCallTime("");
+      setFuCalledBy("");
+      setFuCalledByName("");
+      setFuLeadStatus("");
+      setFuNextDate("");
+      onFollowUpAdded();
+    }
+    setFuLoading(false);
   }
 
   async function saveParent() {
@@ -444,20 +487,62 @@ function Student360({ detail, onClose, onTimelineAdded, onLeadStageChanged, onPa
 
               {/* Follow-ups tab */}
               {profileTab === "followups" && (
-                <div className="space-y-2">
-                  {!Array.isArray(followUps) || followUps.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-xs">No follow-ups recorded yet.</div>
-                  ) : (Array.isArray(followUps) ? followUps : []).map(fu => (
-                    <div key={fu.id} className="bg-white rounded-xl border border-gray-100 p-3">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-bold" style={{ color: NAVY }}>{fu.noteType}</span>
-                        <span className="text-[10px] text-gray-400">{fmtDateTime(fu.createdAt)}</span>
+                <div className="space-y-4">
+                  <form onSubmit={addFollowUpFromSlider} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+                    <div className="text-xs font-bold" style={{ color: NAVY }}>Add Follow-Up</div>
+                    <select value={fuNoteType} onChange={e => setFuNoteType(e.target.value)}
+                      className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
+                      {INTERACTION_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                    <textarea value={fuNote} onChange={e => setFuNote(e.target.value)} required rows={2}
+                      placeholder="Remark / note… (required)"
+                      className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none resize-none" />
+                    <CallDetailsForm
+                      callStatus={fuCallStatus} callTime={fuCallTime}
+                      calledBy={fuCalledBy} calledByName={fuCalledByName}
+                      onChange={(field, val) => {
+                        if (field === "callStatus") setFuCallStatus(val);
+                        else if (field === "callTime") setFuCallTime(val);
+                        else if (field === "calledBy") setFuCalledBy(val);
+                        else if (field === "calledByName") setFuCalledByName(val);
+                      }} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">Next Follow-Up Date</label>
+                        <input type="date" value={fuNextDate} onChange={e => setFuNextDate(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
                       </div>
-                      <p className="text-xs text-gray-600">{fu.note}</p>
-                      {fu.nextFollowUpDate && <p className="text-[10px] text-orange-600 mt-1">Follow-up: {fmtDate(fu.nextFollowUpDate)}</p>}
-                      {fu.callStatus && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 mt-1 inline-block">{fu.callStatus}</span>}
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">Lead Status</label>
+                        <select value={fuLeadStatus} onChange={e => setFuLeadStatus(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none bg-white">
+                          <option value="">— none —</option>
+                          {SUCCESS_STAGES.map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      </div>
                     </div>
-                  ))}
+                    <button type="submit" disabled={fuLoading}
+                      className="w-full py-1.5 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                      style={{ background: ORANGE }}>
+                      {fuLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Save Follow-Up
+                    </button>
+                  </form>
+
+                  <div className="space-y-2">
+                    {!Array.isArray(followUps) || followUps.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 text-xs">No follow-ups recorded yet.</div>
+                    ) : (Array.isArray(followUps) ? followUps : []).map(fu => (
+                      <div key={fu.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-bold" style={{ color: NAVY }}>{fu.noteType}</span>
+                          <span className="text-[10px] text-gray-400">{fmtDateTime(fu.createdAt)}</span>
+                        </div>
+                        <p className="text-xs text-gray-600">{fu.note}</p>
+                        {fu.nextFollowUpDate && <p className="text-[10px] text-orange-600 mt-1">Follow-up: {fmtDate(fu.nextFollowUpDate)}</p>}
+                        {fu.callStatus && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 mt-1 inline-block">{fu.callStatus}</span>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -786,6 +871,7 @@ export default function BTLCRMPage() {
       {profile360 && !profileLoading && (
         <Student360 detail={profile360} onClose={() => setProfile360(null)}
           onTimelineAdded={() => refreshProfile360(profile360.student.id)}
+          onFollowUpAdded={async () => { await refreshProfile360(profile360.student.id); await fetchFollowUps(); await fetchDashboard(); }}
           onLeadStageChanged={handleLeadStageChanged}
           onParentSaved={handleParentSaved} />
       )}
