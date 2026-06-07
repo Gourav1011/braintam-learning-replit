@@ -989,21 +989,34 @@ export default function BTLCRMPage() {
   const mentorType = dashboard?.mentorType ?? "academic";
   const isSales = mentorType === "sales";
 
-  const tabs: { key: Tab; label: string; icon: typeof Home }[] = [
-    { key: "dashboard", label: "Dashboard", icon: Home },
-    { key: "today-tasks", label: "Today's Tasks", icon: Zap },
-    ...(isSales ? [{ key: "pipeline" as Tab, label: "My Pipeline", icon: TrendingUp }] : []),
-    { key: "students", label: "Students", icon: Users },
-    { key: "follow-ups", label: "Follow-Ups", icon: MessageSquare },
-    { key: "tasks", label: "Tasks", icon: CheckSquare },
-    { key: "leaderboard", label: "Leaderboard", icon: Trophy },
-    { key: "attendance", label: "Attendance", icon: Calendar },
-    { key: "live-classes", label: "Live Classes", icon: Video },
-    { key: "doubt-sessions", label: "Doubt Sessions", icon: HelpCircle },
-    { key: "eod-report", label: "EOD Report", icon: ClipboardCheck },
-    { key: "settings", label: "Reminders", icon: Bell },
-    { key: "profile", label: "My Profile", icon: UserCircle },
+  const academicTabs: { key: Tab; label: string; icon: typeof Home }[] = [
+    { key: "dashboard",     label: "Dashboard",     icon: Home },
+    { key: "today-tasks",   label: "Today's Tasks", icon: Zap },
+    { key: "students",      label: "Students",      icon: Users },
+    { key: "follow-ups",    label: "Follow-Ups",    icon: MessageSquare },
+    { key: "tasks",         label: "Tasks",         icon: CheckSquare },
+    { key: "leaderboard",   label: "Leaderboard",   icon: Trophy },
+    { key: "attendance",    label: "Attendance",    icon: Calendar },
+    { key: "live-classes",  label: "Live Classes",  icon: Video },
+    { key: "doubt-sessions",label: "Doubt Sessions",icon: HelpCircle },
+    { key: "eod-report",    label: "EOD Report",    icon: ClipboardCheck },
+    { key: "settings",      label: "Reminders",     icon: Bell },
+    { key: "profile",       label: "My Profile",    icon: UserCircle },
   ];
+
+  const salesTabs: { key: Tab; label: string; icon: typeof Home }[] = [
+    { key: "dashboard",   label: "Dashboard",       icon: Home },
+    { key: "today-tasks", label: "Today's Tasks",   icon: Zap },
+    { key: "students",    label: "Assigned Leads",  icon: Users },
+    { key: "pipeline",    label: "Lead Tracker",    icon: TrendingUp },
+    { key: "follow-ups",  label: "Follow-Ups",      icon: MessageSquare },
+    { key: "tasks",       label: "Tasks",           icon: CheckSquare },
+    { key: "leaderboard", label: "Leaderboard",     icon: Trophy },
+    { key: "eod-report",  label: "Reports",         icon: BarChart3 },
+    { key: "profile",     label: "My Profile",      icon: UserCircle },
+  ];
+
+  const tabs = isSales ? salesTabs : academicTabs;
 
   async function saveReminderPrefs() {
     if (!reminderPrefs) return;
@@ -1043,7 +1056,16 @@ export default function BTLCRMPage() {
               BTL <span style={{ color: ORANGE }}>CRM</span>
             </span>
           </div>
-          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
+          <div className="mt-1.5 pl-3">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: isSales ? "#FFFBEB" : "#ECFDF5",
+                color: isSales ? "#D97706" : "#059669",
+                border: `1px solid ${isSales ? "#FCD34D" : "#6EE7B7"}`,
+              }}>
+              {isSales ? "💼 Sales SSM" : "📚 Academic"}
+            </span>
+          </div>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
           {tabs.map(t => {

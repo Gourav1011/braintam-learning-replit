@@ -2796,7 +2796,7 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [mentorTypeForm, setMentorTypeForm] = useState<"academic" | "sales">("academic");
+  const [mentorTypeForm, setMentorTypeForm] = useState<"academic" | "sales" | "team_lead" | "manager">("academic");
   const [creating, setCreating] = useState(false);
 
   // Assign form
@@ -3016,26 +3016,36 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
                   {changeTypeMentorId === m.id && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <p className="text-xs font-bold mb-2" style={{ color: NAVY }}>Change Mentor Type</p>
-                      <div className="flex gap-2">
-                        {(["academic", "sales"] as const).map(t => (
-                          <button key={t} type="button"
-                            disabled={changingType}
-                            onClick={() => changeMentorType(m.id, t)}
-                            className="flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all capitalize disabled:opacity-60"
-                            style={{
-                              borderColor: (m.mentorType ?? "academic") === t ? (t === "sales" ? "#D97706" : "#059669") : "#E5E7EB",
-                              background: (m.mentorType ?? "academic") === t ? (t === "sales" ? "#FFFBEB" : "#ECFDF5") : "white",
-                              color: (m.mentorType ?? "academic") === t ? (t === "sales" ? "#D97706" : "#059669") : "#6B7280",
-                            }}>
-                            {t === "academic" ? "📚 Academic" : "💼 Sales"}
-                            {(m.mentorType ?? "academic") === t && " ✓"}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { value: "academic",  label: "📚 Academic",    color: "#059669", bg: "#ECFDF5", soon: false },
+                          { value: "sales",     label: "💼 Sales (SSM)", color: "#D97706", bg: "#FFFBEB", soon: false },
+                          { value: "team_lead", label: "👑 Team Lead",   color: "#6366F1", bg: "#EEF2FF", soon: true  },
+                          { value: "manager",   label: "🏢 Manager",     color: NAVY,      bg: "#EFF6FF", soon: true  },
+                        ] as const).map(t => {
+                          const current = m.mentorType ?? "academic";
+                          return (
+                            <button key={t.value} type="button"
+                              disabled={changingType || t.soon}
+                              onClick={() => !t.soon && changeMentorType(m.id, t.value as "academic" | "sales")}
+                              className="relative py-2 px-3 rounded-xl text-xs font-bold border-2 transition-all text-left disabled:cursor-not-allowed"
+                              style={{
+                                borderColor: current === t.value ? t.color : "#E5E7EB",
+                                background: current === t.value ? t.bg : t.soon ? "#F9FAFB" : "white",
+                                color: t.soon ? "#9CA3AF" : current === t.value ? t.color : "#6B7280",
+                                opacity: (changingType || t.soon) ? 0.7 : 1,
+                              }}>
+                              {t.label}
+                              {current === t.value && !t.soon && <span className="ml-1">✓</span>}
+                              {t.soon && <span className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded-full bg-gray-200 text-gray-500">Soon</span>}
+                            </button>
+                          );
+                        })}
                       </div>
                       <p className="text-[10px] text-gray-400 mt-1.5">
                         {(m.mentorType ?? "academic") === "sales"
-                          ? "Sales mentors see the Pipeline CRM tab in their portal."
-                          : "Academic mentors track student engagement, homework and tests."}
+                          ? "Sales SSM — Lead Tracker + Assigned Leads portal."
+                          : "Academic — Students, Attendance, Live Classes portal."}
                       </p>
                     </div>
                   )}
@@ -3167,20 +3177,32 @@ function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => vo
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-2" style={{ color: NAVY }}>Mentor Type *</label>
-                <div className="flex gap-2">
-                  {(["academic", "sales"] as const).map(t => (
-                    <button key={t} type="button" onClick={() => setMentorTypeForm(t)}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all capitalize"
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: "academic",  label: "📚 Academic",    color: "#059669", bg: "#ECFDF5", soon: false },
+                    { value: "sales",     label: "💼 Sales (SSM)", color: "#D97706", bg: "#FFFBEB", soon: false },
+                    { value: "team_lead", label: "👑 Team Lead",   color: "#6366F1", bg: "#EEF2FF", soon: true  },
+                    { value: "manager",   label: "🏢 Manager",     color: NAVY,      bg: "#EFF6FF", soon: true  },
+                  ] as const).map(t => (
+                    <button key={t.value} type="button"
+                      onClick={() => !t.soon && setMentorTypeForm(t.value as "academic" | "sales")}
+                      disabled={t.soon}
+                      className="relative py-2 px-3 rounded-xl text-xs font-bold border-2 transition-all text-left disabled:cursor-not-allowed"
                       style={{
-                        borderColor: mentorTypeForm === t ? (t === "sales" ? "#D97706" : "#059669") : "#E5E7EB",
-                        background: mentorTypeForm === t ? (t === "sales" ? "#FFFBEB" : "#ECFDF5") : "white",
-                        color: mentorTypeForm === t ? (t === "sales" ? "#D97706" : "#059669") : "#6B7280",
+                        borderColor: mentorTypeForm === t.value ? t.color : "#E5E7EB",
+                        background: mentorTypeForm === t.value ? t.bg : t.soon ? "#F9FAFB" : "white",
+                        color: t.soon ? "#9CA3AF" : mentorTypeForm === t.value ? t.color : "#6B7280",
+                        opacity: t.soon ? 0.75 : 1,
                       }}>
-                      {t === "academic" ? "📚 Academic" : "💼 Sales"}
+                      {t.label}
+                      {t.soon && <span className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded-full bg-gray-200 text-gray-500">Soon</span>}
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1">{mentorTypeForm === "sales" ? "Sales mentors manage lead pipeline, demos, and enrollment conversion." : "Academic mentors track engagement, homework, tests, and doubt sessions."}</p>
+                <p className="text-[10px] text-gray-400 mt-1.5">
+                  {mentorTypeForm === "sales" ? "Sales SSM — manages lead pipeline, Ignite program demos and conversion." :
+                   "Academic — tracks student engagement, homework, tests and doubt sessions."}
+                </p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button type="submit" disabled={creating} className="text-white" style={{ background: "#059669" }}>

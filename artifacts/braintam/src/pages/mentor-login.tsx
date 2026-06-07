@@ -27,6 +27,7 @@ export default function MentorLoginPage() {
   const [error, setError]             = useState<string | null>(null);
   const [dbMentorType, setDbMentorType] = useState<"sales" | "academic">("academic");
   const [savedToken, setSavedToken]   = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +71,11 @@ export default function MentorLoginPage() {
   }
 
   function enterPortal(choice: "academic" | "sales") {
+    if (choice !== dbMentorType) {
+      setAccessDenied(true);
+      return;
+    }
+    setAccessDenied(false);
     localStorage.setItem("braintam_staff_token", savedToken);
     localStorage.removeItem("braintam_student_token");
     localStorage.setItem("braintam_mentor_portal_type", choice);
@@ -304,9 +310,23 @@ export default function MentorLoginPage() {
                 </button>
               </div>
 
-              <p className="text-[10px] text-gray-400 text-center mt-4">
-                You can always switch tabs once inside the portal.
-              </p>
+              {accessDenied && (
+                <div className="mt-4 px-4 py-3 rounded-xl text-sm font-semibold text-red-700 bg-red-50 border border-red-200 flex items-start gap-2">
+                  <span className="text-base leading-none mt-0.5">🚫</span>
+                  <div>
+                    <div className="font-black">Access Denied</div>
+                    <div className="text-xs font-normal mt-0.5">
+                      Your account is set up as a <strong>{dbMentorType === "sales" ? "Sales (SSM)" : "Academic"} Mentor</strong>. You cannot open the {dbMentorType === "sales" ? "Academic" : "Sales"} portal. Contact your admin to change your account type.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!accessDenied && (
+                <p className="text-[10px] text-gray-400 text-center mt-4">
+                  Select the portal that matches your role above.
+                </p>
+              )}
             </div>
           )}
         </div>

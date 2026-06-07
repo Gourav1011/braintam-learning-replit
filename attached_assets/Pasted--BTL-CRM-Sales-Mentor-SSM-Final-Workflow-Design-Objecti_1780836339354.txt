@@ -1,0 +1,529 @@
+# BTL CRM – Sales Mentor (SSM) Final Workflow Design
+
+## Objective
+
+Sales Mentor (SSM) is responsible for:
+
+* Ignite 6-Day Program students
+* Daily follow-ups
+* Parent communication
+* Attendance monitoring
+* Homework monitoring
+* Conversion tracking
+* Retention support
+
+This is NOT a traditional sales CRM.
+
+This is a Student Success + Conversion Management system.
+
+---
+
+# MENTOR TYPE
+
+Do NOT create a separate portal.
+
+Keep existing mentor portal architecture.
+
+Add:
+
+mentor_type
+
+Values:
+
+academic
+sales_ssm
+
+Both use same login system.
+
+Render different menus and dashboards based on mentor_type.
+
+---
+
+# SALES MENTOR SIDEBAR
+
+Dashboard
+
+Today's Tasks
+
+Assigned Leads
+
+Lead Tracker
+
+Converted Students
+
+Reports
+
+Leaderboard
+
+My Profile
+
+---
+
+# DASHBOARD
+
+Top Horizontal Status Cards
+
+These cards must be clickable.
+
+Need To Call
+
+Picked
+
+Busy
+
+Call Back
+
+Not Connected
+
+Interested
+
+Highly Interested
+
+Converted
+
+Example:
+
+Need To Call (18)
+
+Picked (12)
+
+Busy (5)
+
+Call Back (7)
+
+Not Connected (4)
+
+Interested (15)
+
+Highly Interested (8)
+
+Converted (22)
+
+Clicking a card filters the lead list instantly.
+
+No page reload.
+
+---
+
+# LEAD STATUS
+
+Actual Lead Status:
+
+New Lead
+
+Demo Active
+
+Interested
+
+Highly Interested
+
+Converted
+
+Dropped
+
+Only one active lead status at a time.
+
+These statuses are used for reporting.
+
+---
+
+# CALL OUTCOME
+
+Call Outcome is separate from Lead Status.
+
+Options:
+
+Need To Call
+
+Picked
+
+Busy
+
+Call Back
+
+Not Connected
+
+Call outcomes are operational statuses only.
+
+They should not affect reporting pipeline.
+
+---
+
+# BUSY OPTIONS
+
+When Busy selected:
+
+Dropdown:
+
+In Meeting
+
+In School
+
+At Work
+
+Travelling
+
+Call Later Requested
+
+Other
+
+Mandatory:
+
+Follow-Up Date
+
+Follow-Up Time
+
+System automatically moves lead back into Need To Call when follow-up time arrives.
+
+---
+
+# CALL BACK OPTIONS
+
+When Call Back selected:
+
+Dropdown:
+
+Parent Requested Callback
+
+Need Student Present
+
+Need Both Parents
+
+Network Issue
+
+Other
+
+Mandatory:
+
+Follow-Up Date
+
+Follow-Up Time
+
+System automatically returns lead to Need To Call queue at scheduled time.
+
+---
+
+# NOT CONNECTED OPTIONS
+
+Dropdown:
+
+Ringing No Answer
+
+Phone Switched Off
+
+Rejected Call
+
+Invalid Number
+
+Other
+
+---
+
+# PICKED CALL
+
+When Picked selected:
+
+Show Interest Level:
+
+Low
+
+Moderate
+
+High
+
+Very High
+
+Mandatory Remark.
+
+Example:
+
+Parent interested in Maths course.
+
+Will discuss with spouse.
+
+---
+
+# LEAD LIST
+
+Columns:
+
+Student Name
+
+Grade
+
+School
+
+City
+
+State
+
+Weak Subject
+
+Strong Subject
+
+Repeated Customer
+
+Attendance %
+
+Homework %
+
+Current Lead Status
+
+Interest Level
+
+Last Call Date
+
+Next Follow-Up Date
+
+Assigned Mentor
+
+---
+
+# REPEATED CUSTOMER
+
+Show badge:
+
+🔁 Repeated Customer
+
+Display next to student name.
+
+Visible everywhere.
+
+---
+
+# LEAD PROFILE
+
+Clicking a lead opens full profile.
+
+Sections:
+
+Student Information
+
+Attendance Summary
+
+Homework Summary
+
+Teacher Remarks
+
+Call Timeline
+
+Parent Communication History
+
+Follow-Up History
+
+Payment Status
+
+Conversion Status
+
+Everything visible on one screen.
+
+---
+
+# ATTENDANCE & HOMEWORK
+
+Sales Mentor can VIEW:
+
+Attendance %
+
+Classes Attended
+
+Classes Missed
+
+Homework Submitted
+
+Homework Pending
+
+Teacher Remarks
+
+Test Summary
+
+Read Only.
+
+Sales Mentor cannot edit academic data.
+
+---
+
+# REMARKS
+
+Critical Requirement.
+
+Once remark is saved:
+
+Cannot Edit
+
+Cannot Delete
+
+Cannot Overwrite
+
+New remark creates a new timeline entry.
+
+Example:
+
+07-Jun-2026
+7:15 PM
+
+Parent requested callback tomorrow at 6 PM.
+
+Permanent history.
+
+Only Admin/Super Admin may archive.
+
+---
+
+# WHATSAPP
+
+Admin creates templates.
+
+Examples:
+
+Welcome Message
+
+Class Reminder
+
+Homework Reminder
+
+Attendance Reminder
+
+Progress Update
+
+Payment Reminder
+
+Sales Mentor can:
+
+Select Template
+
+Send Template
+
+Cannot edit template content.
+
+All sends logged.
+
+---
+
+# PAYMENT SYSTEM
+
+Prepare for Razorpay integration.
+
+Button:
+
+Generate Payment Link
+
+Fields:
+
+Course
+
+Amount
+
+Discount
+
+Final Amount
+
+Remarks
+
+Status:
+
+Not Sent
+
+Sent
+
+Viewed
+
+Paid
+
+Expired
+
+When payment successful:
+
+Lead Status automatically becomes:
+
+Converted
+
+---
+
+# TODAY'S TASKS
+
+Auto-generated queue.
+
+Show:
+
+Calls Due Today
+
+Callbacks Due
+
+Busy Follow-Ups Due
+
+Not Connected Follow-Ups Due
+
+Interested Leads Pending Contact
+
+Hot Leads
+
+Repeated Customers
+
+Students Missing Classes
+
+Students Missing Homework
+
+Mentor should immediately know who to contact first.
+
+---
+
+# PRIORITY SCORE
+
+Automatically calculate:
+
+🔥 High Priority
+
+🟡 Medium Priority
+
+⚪ Low Priority
+
+Based on:
+
+Attendance
+
+Homework
+
+Repeated Customer
+
+Call Responses
+
+Demo Participation
+
+Interest Level
+
+Sort highest priority first.
+
+---
+
+# SECURITY
+
+Sales Mentor cannot:
+
+Edit Attendance
+
+Edit Homework
+
+Edit Tests
+
+Delete Leads
+
+Delete Remarks
+
+Modify Academic Records
+
+Delete Timeline
+
+Modify Payment Records
+
+Only Admin/Super Admin can perform those actions.
+
+---
+
+# GOAL
+
+The Sales Mentor dashboard should function as a daily action queue.
+
+Mentors should spend time calling, following up, supporting parents, and converting students—not managing CRM columns.
+
+The system should automatically organize leads and follow-ups while preserving complete communication history.
