@@ -1334,6 +1334,16 @@ function AdminPageInner() {
 
       {/* Left Sidebar */}
       <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
+        {/* Brand */}
+        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
+              BTL <span style={{ color: ORANGE }}>CRM</span>
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
+        </div>
         <div className="px-4 pt-4 pb-1">
           <span className="text-[9px] font-bold tracking-widest text-gray-300 uppercase">Workspace</span>
         </div>
