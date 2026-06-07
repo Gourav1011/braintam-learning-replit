@@ -1083,7 +1083,7 @@ function AttendanceView({ flash }: { flash: (m: string, ok?: boolean) => void })
       .then(setData)
       .catch(() => flash("Failed to load attendance", false))
       .finally(() => setLoading(false));
-  }, [selectedBatch, flash]);
+  }, [selectedBatch]);
 
   const paged = data ? data.grid.slice((page - 1) * PER, page * PER) : [];
   const totalPages = data ? Math.ceil(data.grid.length / PER) : 0;
