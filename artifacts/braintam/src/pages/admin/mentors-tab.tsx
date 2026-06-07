@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Users, UserCheck2, TrendingUp, Phone, Search, X, Eye,
   MoreVertical, ChevronUp, ChevronDown, Trophy, Zap,
@@ -584,6 +584,142 @@ function CreateMentorModal({ onClose, onCreated, flash }: { onClose: () => void;
   );
 }
 
+function AssignToBatchModal({ mentors, onClose, flash }: { mentors: EnrichedMentor[]; onClose: () => void; flash: (msg: string, ok?: boolean) => void }) {
+  const [batches, setBatches] = useState<{ id: number; title: string; grade: number | null; subject: string | null }[]>([]);
+  const [selectedMentorId, setSelectedMentorId] = useState("");
+  const [selectedBatchId, setSelectedBatchId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/admin/demo-batches").then(r => r.ok ? r.json() : []).then(setBatches);
+  }, []);
+
+  async function assign() {
+    if (!selectedMentorId || !selectedBatchId) return;
+    const mentor = mentors.find(m => m.id === Number(selectedMentorId));
+    if (!mentor) return;
+    setSaving(true);
+    const r = await apiFetch(`/admin/demo-batches/${selectedBatchId}`, {
+      method: "PUT",
+      body: JSON.stringify({ mentorName: mentor.name, mentorId: mentor.id }),
+    });
+    setSaving(false);
+    if (r.ok) { flash("Mentor assigned to batch!"); onClose(); }
+    else flash("Failed to assign mentor", false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Assign Mentor to Batch</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Link a mentor to a demo batch</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-gray-600 mb-1.5 block">Select Mentor</label>
+            <select value={selectedMentorId} onChange={e => setSelectedMentorId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white outline-none focus:border-blue-400">
+              <option value="">— Choose a mentor —</option>
+              {mentors.map(m => <option key={m.id} value={m.id}>{m.name} ({m.mentorType === "sales" ? "Sales" : "Academic"})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-600 mb-1.5 block">Select Demo Batch</label>
+            <select value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white outline-none focus:border-blue-400">
+              <option value="">— Choose a batch —</option>
+              {batches.map(b => <option key={b.id} value={b.id}>{b.title}{b.grade ? ` (Grade ${b.grade})` : ""}{b.subject ? ` — ${b.subject}` : ""}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all">Cancel</button>
+          <button onClick={assign} disabled={!selectedMentorId || !selectedBatchId || saving}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-all hover:opacity-90"
+            style={{ background: NAVY }}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Assign Mentor"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BulkUpdateModal({ mentors, onClose, onDone, flash }: { mentors: EnrichedMentor[]; onClose: () => void; onDone: () => void; flash: (msg: string, ok?: boolean) => void }) {
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  function toggle(id: number) {
+    setSelected(prev => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
+  }
+  function selectAll() { setSelected(new Set(mentors.map(m => m.id))); }
+  function clearAll() { setSelected(new Set()); }
+
+  async function bulkSetActive(active: boolean) {
+    if (!selected.size) return;
+    setSaving(true);
+    await Promise.all([...selected].map(id =>
+      apiFetch(`/admin/mentors/${id}`, { method: "PATCH", body: JSON.stringify({ isActive: active }) })
+    ));
+    setSaving(false);
+    flash(`${selected.size} mentor(s) ${active ? "enabled" : "disabled"}!`);
+    onDone();
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Bulk Update Mentors</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{selected.size} of {mentors.length} selected</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <div className="flex gap-2 mb-3">
+          <button onClick={selectAll} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 font-semibold text-gray-600 transition-all">Select All</button>
+          <button onClick={clearAll} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 font-semibold text-gray-600 transition-all">Clear</button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-1 min-h-0 pr-1">
+          {mentors.map(m => (
+            <label key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-100 transition-all">
+              <input type="checkbox" checked={selected.has(m.id)} onChange={() => toggle(m.id)} className="w-4 h-4 rounded accent-blue-600 flex-shrink-0" />
+              <Avatar name={m.name} size={7} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold truncate" style={{ color: NAVY }}>{m.name}</p>
+                <p className="text-[10px] text-gray-400 truncate">{m.email}</p>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                {m.isActive ? "Active" : "Inactive"}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: m.mentorType === "sales" ? "#FFFBEB" : "#ECFDF5", color: m.mentorType === "sales" ? "#D97706" : "#059669" }}>
+                {m.mentorType === "sales" ? "Sales" : "Academic"}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all">Cancel</button>
+          <button onClick={() => bulkSetActive(false)} disabled={!selected.size || saving}
+            className="flex-1 py-2.5 rounded-xl border border-red-200 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-40 transition-all">
+            Disable Selected
+          </button>
+          <button onClick={() => bulkSetActive(true)} disabled={!selected.size || saving}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-40 transition-all hover:opacity-90"
+            style={{ background: GREEN }}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Enable Selected"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const PAGE_SIZE = 10;
 
 export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean) => void; users: { id: number; name: string; role: string; grade: number; isActive: boolean }[] }) {
@@ -598,6 +734,9 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
   const [page, setPage] = useState(1);
   const [profileId, setProfileId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showAssign, setShowAssign] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -728,7 +867,7 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       {/* Main content: table + sidebar */}
       <div className="flex gap-4 items-start">
         {/* Left: table area */}
-        <div className="flex-1 min-w-0 space-y-3">
+        <div ref={tableRef} className="flex-1 min-w-0 space-y-3">
           {/* Tabs */}
           <div className="flex gap-0 border-b border-gray-200">
             {TABS.map(t => (
@@ -952,7 +1091,14 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                     <span className="text-xs font-black text-green-600">{m.convPct}%</span>
                   </div>
                 ))}
-                <button className="w-full text-center text-[10px] text-blue-500 hover:text-blue-600 font-semibold mt-1 pt-1 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    setActiveTab("all");
+                    setSort({ key: "conversionPct", dir: "desc" });
+                    setPage(1);
+                    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="w-full text-center text-[10px] text-blue-500 hover:text-blue-600 font-semibold mt-1 pt-1 border-t border-gray-100 transition-colors">
                   View Full Leaderboard →
                 </button>
               </div>
@@ -1019,9 +1165,9 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
           </h4>
           <div className="space-y-2">
             {[
-              { icon: <Users className="w-3.5 h-3.5" />, label: "Assign Mentor to Batch", color: NAVY },
-              { icon: <BarChart3 className="w-3.5 h-3.5" />, label: "View Mentor Reports", color: "#7C3AED" },
-              { icon: <GraduationCap className="w-3.5 h-3.5" />, label: "Bulk Update Mentors", color: ORANGE },
+              { icon: <Users className="w-3.5 h-3.5" />, label: "Assign Mentor to Batch", color: NAVY, onClick: () => setShowAssign(true) },
+              { icon: <BarChart3 className="w-3.5 h-3.5" />, label: "View Mentor Reports", color: "#7C3AED", onClick: exportCSV },
+              { icon: <GraduationCap className="w-3.5 h-3.5" />, label: "Bulk Update Mentors", color: ORANGE, onClick: () => setShowBulk(true) },
               { icon: <Plus className="w-3.5 h-3.5" />, label: "Add New Mentor", color: GREEN, onClick: () => setShowCreate(true) },
             ].map(qa => (
               <button key={qa.label} onClick={qa.onClick}
@@ -1045,6 +1191,16 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       {/* Create Mentor Modal */}
       {showCreate && (
         <CreateMentorModal onClose={() => setShowCreate(false)} onCreated={loadData} flash={flash} />
+      )}
+
+      {/* Assign to Batch Modal */}
+      {showAssign && (
+        <AssignToBatchModal mentors={mentors} onClose={() => setShowAssign(false)} flash={flash} />
+      )}
+
+      {/* Bulk Update Modal */}
+      {showBulk && (
+        <BulkUpdateModal mentors={mentors} onClose={() => setShowBulk(false)} onDone={loadData} flash={flash} />
       )}
     </div>
   );
