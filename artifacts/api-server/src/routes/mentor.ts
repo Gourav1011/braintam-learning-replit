@@ -756,6 +756,35 @@ router.get("/admin/btl-crm/overdue-reminders", adminOnly, async (_req, res) => {
   res.json(enriched);
 });
 
+// Unassigned students: active students with no active mentor assignment
+router.get("/admin/btl-crm/unassigned", adminOnly, async (_req, res) => {
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      grade: usersTable.grade,
+      school: usersTable.school,
+      email: usersTable.email,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .leftJoin(
+      mentorStudentAssignmentsTable,
+      and(
+        eq(mentorStudentAssignmentsTable.studentId, usersTable.id),
+        eq(mentorStudentAssignmentsTable.isActive, true),
+      ),
+    )
+    .where(and(
+      eq(usersTable.role, "student"),
+      eq(usersTable.isActive, true),
+      sql`${mentorStudentAssignmentsTable.id} is null`,
+    ))
+    .orderBy(usersTable.grade, usersTable.name);
+
+  res.json({ count: rows.length, students: rows });
+});
+
 // Admin posts a timeline entry on any student
 router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {
   const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;

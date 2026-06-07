@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   TrendingUp, Users, CheckCircle, AlertTriangle, Clock, Plus,
-  RefreshCw, ChevronDown, ChevronUp, Target, UserCheck2,
+  RefreshCw, ChevronDown, ChevronUp, Target, UserCheck2, UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +92,26 @@ interface StudentOption {
   id: number;
   name: string;
   grade: number;
+}
+
+interface UnassignedStudent {
+  id: number;
+  name: string;
+  grade: number;
+  school: string | null;
+  email: string | null;
+}
+
+interface UnassignedData {
+  count: number;
+  students: UnassignedStudent[];
+}
+
+interface MentorOption {
+  id: number;
+  name: string;
+  studentCount: number;
+  isActive: boolean;
 }
 
 function StatCard({ icon: Icon, label, value, sub, color = NAVY, bg = "#F0F4FF" }: {
@@ -327,6 +347,139 @@ function OverdueRemindersList({ reminders, loading }: { reminders: OverdueRemind
   );
 }
 
+function UnassignedStudents({
+  data, mentors, loading, onAssigned, flash,
+}: {
+  data: UnassignedData | null;
+  mentors: MentorOption[];
+  loading: boolean;
+  onAssigned: () => void;
+  flash: (msg: string, ok?: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [assigning, setAssigning] = useState<number | null>(null);
+  const [selectedMentor, setSelectedMentor] = useState<Record<number, string>>({});
+
+  async function assign(studentId: number) {
+    const mentorId = selectedMentor[studentId];
+    if (!mentorId) return;
+    setAssigning(studentId);
+    const r = await apiFetch("/admin/mentor-assignments", {
+      method: "POST",
+      body: JSON.stringify({ mentorId: Number(mentorId), studentId }),
+    });
+    setAssigning(null);
+    if (r.ok) {
+      flash("Mentor assigned successfully!");
+      onAssigned();
+    } else {
+      const d = await r.json();
+      flash(d.error ?? "Failed to assign mentor", false);
+    }
+  }
+
+  const count = data?.count ?? 0;
+
+  return (
+    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden"
+      style={{ borderColor: count > 0 ? "#FECACA" : "#F3F4F6" }}>
+      <button
+        onClick={() => setExpanded(o => !o)}
+        className="w-full px-5 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: count > 0 ? "#FEF2F2" : "#F0FDF4" }}>
+          <UserX className="w-5 h-5" style={{ color: count > 0 ? "#DC2626" : "#16A34A" }} />
+        </div>
+        <div className="flex-1 text-left">
+          <div className="flex items-center gap-2">
+            <span className="font-black text-base" style={{ color: count > 0 ? "#DC2626" : "#16A34A" }}>
+              {loading ? "…" : count}
+            </span>
+            <span className="font-bold text-sm" style={{ color: NAVY }}>Unassigned Students</span>
+            {count > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600">
+                No mentor coverage
+              </span>
+            )}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5">
+            Active students with no mentor assigned
+          </div>
+        </div>
+        {!loading && count > 0 && (
+          expanded ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+        )}
+      </button>
+
+      {expanded && data && data.students.length > 0 && (
+        <div className="border-t border-red-50">
+          {mentors.length === 0 && (
+            <div className="px-5 py-3 text-xs text-amber-600 bg-amber-50 font-semibold">
+              No mentors found — add a mentor first before assigning.
+            </div>
+          )}
+          <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+            {data.students.map(s => (
+              <div key={s.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                  style={{ background: NAVY }}>
+                  {s.name[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold" style={{ color: NAVY }}>{s.name}</span>
+                    <span className="text-[10px] text-gray-400 shrink-0">Gr. {s.grade}</span>
+                    {s.school && (
+                      <span className="text-[10px] text-gray-400 truncate max-w-[160px]">{s.school}</span>
+                    )}
+                  </div>
+                  {s.email && <div className="text-[10px] text-gray-400 mt-0.5">{s.email}</div>}
+                </div>
+                {mentors.length > 0 && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Select
+                      value={selectedMentor[s.id] ?? ""}
+                      onValueChange={v => setSelectedMentor(prev => ({ ...prev, [s.id]: v }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs w-36">
+                        <SelectValue placeholder="Pick mentor…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mentors.filter(m => m.isActive).map(m => (
+                          <SelectItem key={m.id} value={String(m.id)}>
+                            {m.name} ({m.studentCount})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      disabled={!selectedMentor[s.id] || assigning === s.id}
+                      onClick={() => assign(s.id)}
+                      className="text-white h-8 px-3 text-xs"
+                      style={{ background: NAVY }}
+                    >
+                      {assigning === s.id ? "…" : "Assign"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {expanded && data && data.students.length === 0 && (
+        <div className="border-t border-gray-50 py-8 flex flex-col items-center gap-2">
+          <CheckCircle className="w-7 h-7 text-emerald-300" />
+          <p className="text-sm font-semibold text-gray-400">All active students have a mentor 🎉</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PostTimelineForm({ students, flash }: { students: StudentOption[]; flash: (msg: string, ok?: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const [studentId, setStudentId] = useState("");
@@ -465,9 +618,12 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
   const [pipeline, setPipeline] = useState<PipelineData | null>(null);
   const [mentorPerf, setMentorPerf] = useState<MentorPerf[]>([]);
   const [reminders, setReminders] = useState<OverdueReminder[]>([]);
+  const [unassigned, setUnassigned] = useState<UnassignedData | null>(null);
+  const [mentorOptions, setMentorOptions] = useState<MentorOption[]>([]);
   const [loadingPipeline, setLoadingPipeline] = useState(true);
   const [loadingPerf, setLoadingPerf] = useState(true);
   const [loadingReminders, setLoadingReminders] = useState(true);
+  const [loadingUnassigned, setLoadingUnassigned] = useState(true);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const students = users.filter(u => u.role === "student") as StudentOption[];
@@ -477,15 +633,25 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
     setTimeout(() => setMsg(null), 3000);
   }
 
+  const loadUnassigned = useCallback(async () => {
+    setLoadingUnassigned(true);
+    const r = await apiFetch("/admin/btl-crm/unassigned");
+    if (r.ok) setUnassigned(await r.json());
+    setLoadingUnassigned(false);
+  }, []);
+
   const loadAll = useCallback(async () => {
     setLoadingPipeline(true);
     setLoadingPerf(true);
     setLoadingReminders(true);
+    setLoadingUnassigned(true);
 
-    const [pRes, mRes, rRes] = await Promise.all([
+    const [pRes, mRes, rRes, uRes, mentRes] = await Promise.all([
       apiFetch("/admin/btl-crm/pipeline"),
       apiFetch("/admin/btl-crm/mentor-performance"),
       apiFetch("/admin/btl-crm/overdue-reminders"),
+      apiFetch("/admin/btl-crm/unassigned"),
+      apiFetch("/admin/mentors"),
     ]);
 
     if (pRes.ok) setPipeline(await pRes.json());
@@ -496,6 +662,11 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
 
     if (rRes.ok) setReminders(await rRes.json());
     setLoadingReminders(false);
+
+    if (uRes.ok) setUnassigned(await uRes.json());
+    setLoadingUnassigned(false);
+
+    if (mentRes.ok) setMentorOptions(await mentRes.json());
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -536,6 +707,21 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
         <MentorPerformanceTable mentors={mentorPerf} loading={loadingPerf} />
         <OverdueRemindersList reminders={reminders} loading={loadingReminders} />
       </div>
+
+      {/* Unassigned Students */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <UserX className="w-4 h-4" style={{ color: NAVY }} />
+          <h4 className="font-bold text-sm" style={{ color: NAVY }}>Coverage Gaps</h4>
+        </div>
+        <UnassignedStudents
+          data={unassigned}
+          mentors={mentorOptions}
+          loading={loadingUnassigned}
+          onAssigned={() => { loadUnassigned(); loadAll(); }}
+          flash={flash}
+        />
+      </section>
 
       {/* Post Timeline Entry */}
       <PostTimelineForm students={students} flash={flash} />
