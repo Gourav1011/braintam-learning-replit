@@ -22,9 +22,12 @@ interface Props {
   onSaved?: (updated: StaffUser) => void;
 }
 
+const BRAINTAM_ROLES = ["teacher", "mentor"];
+
 export function StaffProfileTab({ user, apiFetch, flash, onSaved }: Props) {
+  const isStaff = BRAINTAM_ROLES.includes(user.role);
   const [name, setName] = useState(user.name ?? "");
-  const [school, setSchool] = useState(user.school ?? "");
+  const [school, setSchool] = useState(isStaff ? "Braintam Learning" : (user.school ?? ""));
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -99,15 +102,29 @@ export function StaffProfileTab({ user, apiFetch, flash, onSaved }: Props) {
         <h3 className="font-bold text-sm" style={{ color: NAVY }}>Profile Details</h3>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 block mb-1">Full Name</label>
-          <input value={name} onChange={e => { setName(e.target.value); setError(""); }}
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 transition-colors" />
+          <label className="text-xs font-semibold text-gray-500 block mb-1">
+            Full Name{isStaff && <span className="ml-1.5 font-normal text-gray-400">(contact admin to change)</span>}
+          </label>
+          {isStaff ? (
+            <input value={name} readOnly
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-100 text-sm outline-none bg-gray-50 text-gray-500 cursor-not-allowed" />
+          ) : (
+            <input value={name} onChange={e => { setName(e.target.value); setError(""); }}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 transition-colors" />
+          )}
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 block mb-1">School / Organisation</label>
-          <input value={school} onChange={e => setSchool(e.target.value)} placeholder="Optional"
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 transition-colors" />
+          <label className="text-xs font-semibold text-gray-500 block mb-1">Organisation</label>
+          {isStaff ? (
+            <div className="w-full px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50 text-sm flex items-center gap-2">
+              <span className="font-semibold" style={{ color: NAVY }}>Braintam Learning</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white" style={{ background: ORANGE }}>Verified</span>
+            </div>
+          ) : (
+            <input value={school} onChange={e => setSchool(e.target.value)} placeholder="Optional"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 transition-colors" />
+          )}
         </div>
 
         <div>
