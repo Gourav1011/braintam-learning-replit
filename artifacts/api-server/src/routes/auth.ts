@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import crypto from "crypto";
 import { checkDailyLogin } from "../services/pointsService.js";
+import { logAction } from "../utils/audit.js";
 
 const router = Router();
 
@@ -82,6 +83,13 @@ router.post("/auth/login", async (req, res) => {
   if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
+  }
+  const role = user.role ?? "student";
+  if (role !== "student") {
+    const xff = req.headers["x-forwarded-for"];
+    const ip = xff ? (Array.isArray(xff) ? xff[0] : xff).split(",")[0].trim() : (req.socket?.remoteAddress ?? "unknown");
+    const ua = String(req.headers["user-agent"] ?? "");
+    logAction({ actorId: user.id, actorName: user.name, actorRole: role, actorEmail: user.email ?? undefined, action: "login", actionLabel: `${role} logged in`, category: "auth", module: "Users", targetType: "user", targetId: user.id, targetName: user.name, ipAddress: ip, userAgent: ua }).catch(() => {});
   }
   res.json({ token: generateToken(user.id), student: userToProfile(user) });
 });

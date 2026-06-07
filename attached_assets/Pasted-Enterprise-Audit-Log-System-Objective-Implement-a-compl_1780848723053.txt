@@ -1,0 +1,338 @@
+Enterprise Audit Log System
+Objective
+
+Implement a complete enterprise-grade audit logging system.
+
+Every important action in the platform must be recorded permanently.
+
+Audit logs are for accountability, security, troubleshooting, and recovery.
+
+Core Principle
+
+Every log entry must answer:
+
+Who
+Did What
+To Whom
+When
+From Where
+New Audit Log Structure
+
+Fields:
+
+ID
+
+Timestamp
+
+Actor Name
+
+Actor Role
+
+Module
+
+Action
+
+Target Type
+
+Target Name
+
+Target ID
+
+Old Value
+
+New Value
+
+IP Address
+
+Device
+
+Status
+
+Example:
+
+07 Jun 2026
+7:14 PM
+
+Priya Sharma
+Sales Mentor
+
+CRM
+
+Lead Assigned
+
+Student:
+Rahul Sharma
+
+Old:
+Unassigned
+
+New:
+Assigned to Priya
+Modules To Track
+
+Track actions from:
+
+Students
+
+Demo Students
+
+Teachers
+
+Academic Mentors
+
+Sales Mentors
+
+CRM
+
+Demo Batches
+
+Courses
+
+Attendance
+
+Homework
+
+Payments
+
+Users
+
+Permissions
+
+Settings
+Mandatory Actions To Log
+User Management
+Create User
+
+Disable User
+
+Enable User
+
+Role Change
+
+Password Reset
+
+Permission Change
+Student Management
+Student Created
+
+Student Updated
+
+Student Archived
+
+Student Converted
+
+Teacher Changed
+
+Mentor Changed
+CRM
+Lead Assigned
+
+Lead Reassigned
+
+Lead Converted
+
+Lead Dropped
+
+Remark Added
+
+Payment Link Sent
+Demo Batch
+Batch Created
+
+Student Added
+
+Student Removed
+
+Teacher Assigned
+
+Mentor Assigned
+Attendance
+Attendance Marked
+
+Attendance Updated
+
+Attendance Override
+Homework
+Homework Assigned
+
+Homework Submitted
+
+Homework Updated
+Immutable History
+
+Audit logs:
+
+Cannot Edit
+
+Cannot Delete
+
+Cannot Overwrite
+
+Only Super Admin may archive old logs.
+
+No user can modify history.
+
+Search & Filters
+
+Audit page should support:
+
+Search
+Name
+
+Email
+
+Phone
+
+Student
+
+Teacher
+
+Mentor
+Filters
+Date Range
+
+Module
+
+Action
+
+Role
+
+User
+
+Status
+Timeline UI
+
+Instead of showing raw rows only.
+
+Show:
+
+Today
+
+Yesterday
+
+This Week
+
+Older
+
+Grouped timeline.
+
+Example:
+
+07 Jun 2026
+
+09:15 AM
+Priya Sharma
+Assigned Lead
+
+10:30 AM
+Amit Kumar
+Converted Student
+
+12:15 PM
+Admin
+Changed Teacher
+
+
+---
+
+# High Risk Events
+
+Add red badges for:
+
+```text
+Role Changed
+
+User Disabled
+
+Permission Changed
+
+Student Archived
+
+Settings Changed
+
+Payment Modified
+
+These should be highlighted.
+
+Super Admin Dashboard
+
+Add small widgets:
+
+Today's Activities
+
+Users Modified
+
+Students Updated
+
+Leads Converted
+
+Permission Changes
+
+Quick visibility.
+
+Future Recovery Ready
+
+Every log should store:
+
+Old Value
+
+New Value
+
+So later we can build:
+
+Restore
+
+Rollback
+
+Undo
+
+without redesigning database.
+
+Final Goal
+
+Braintam should have a professional audit system similar to enterprise products.
+
+Super Admin should be able to answer:
+
+Who changed it?
+
+When?
+
+What exactly changed?
+
+What was the previous value?
+
+What is the current value?
+
+within seconds.
+
+REFERENCE IMAGE DIRECTION
+
+Ask Replit to build the Audit Logs page similar to:
+
+Left Side:
+Filters Panel
+
+Right Side:
+Timeline View
+
+Top:
+Activity Summary Cards
+
+Bottom:
+Detailed Change History
+Layout
+┌─────────────────────────────────────┐
+│ Today's Activities | High Risk | CRM│
+├─────────────────────────────────────┤
+│ Filters                            │
+│ Date                               │
+│ Module                             │
+│ User                               │
+├─────────────────────────────────────┤
+│ 07 Jun 2026                        │
+│ Priya → Lead Assigned              │
+│ Amit → Student Converted           │
+│ Admin → Permission Changed         │
+│ ...                                │
+└─────────────────────────────────────┘

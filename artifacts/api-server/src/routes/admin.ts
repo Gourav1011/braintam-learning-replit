@@ -10,7 +10,7 @@ import {
   academicYearsTable, announcementsTable, bannersTable, pointsLedgerTable,
   mentorStudentAssignmentsTable, studentTimelineTable, mentorFollowUpsTable, mentorAttendanceTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, gte, lt, isNull, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lt, isNull, inArray, ilike, or } from "drizzle-orm";
 
 function computeCrmHealth(s: { lastLoginDate: Date | null; hwPct: number; testTotal: number }): { healthScore: number; riskLevel: "excellent" | "good" | "attention" | "at-risk"; daysSinceLogin: number } {
   const daysSinceLogin = s.lastLoginDate ? Math.floor((Date.now() - new Date(s.lastLoginDate).getTime()) / 86400000) : 999;
@@ -28,7 +28,7 @@ function computeCrmFuStatus(nextFollowUpDate: string | null, callStatus: string 
   return { fuStatus: "upcoming", daysOverdue: 0 };
 }
 import { requireRole } from "../middlewares/auth.js";
-import { logAction } from "../utils/audit.js";
+import { logAction, logFromReq } from "../utils/audit.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -1334,18 +1334,97 @@ router.patch("/admin/me/password", adminOnly, async (req, res) => {
 });
 
 // ── Audit Logs ─────────────────────────────────────────────────
+// ── Audit Log Stats (summary cards) ──────────────────────────────────────────
+const HIGH_RISK_KW = ["role_change", "change_role", "disable", "deactivate", "permission_change", "archive", "delete_user", "settings_change", "bulk_disable"];
+
+router.get("/admin/audit-logs/stats", adminOnly, async (req, res) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+
+  const [todayLogs, [{ yesterdayTotal }]] = await Promise.all([
+    db.select().from(auditLogsTable).where(gte(auditLogsTable.createdAt, todayStart)).orderBy(desc(auditLogsTable.createdAt)).limit(1000),
+    db.select({ yesterdayTotal: sql<number>`count(*)` }).from(auditLogsTable)
+      .where(and(gte(auditLogsTable.createdAt, yesterdayStart), lt(auditLogsTable.createdAt, todayStart))),
+  ]);
+
+  const todayTotal = todayLogs.length;
+  const usersModified = todayLogs.filter(l => ["user", "student"].includes(l.targetType ?? "")).length;
+  const studentsUpdated = todayLogs.filter(l => l.targetType === "student").length;
+  const leadsConverted = todayLogs.filter(l => l.action.toLowerCase().includes("convert")).length;
+  const highRiskCount = todayLogs.filter(l => HIGH_RISK_KW.some(k => l.action.toLowerCase().includes(k))).length;
+
+  res.json({ todayTotal, yesterdayTotal: Number(yesterdayTotal), usersModified, studentsUpdated, leadsConverted, highRiskCount });
+});
+
+// ── Audit Logs (full filter + pagination) ────────────────────────────────────
 router.get("/admin/audit-logs", adminOnly, async (req, res) => {
-  const { start, end } = req.query;
-  const startDate = start ? new Date(String(start)) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const endDate = end ? new Date(String(end)) : new Date();
+  const {
+    search, module: mod, action, role,
+    dateFrom, dateTo, highRisk,
+    page = "1", limit: lim = "50",
+  } = req.query as Record<string, string>;
 
-  const logs = await db.select()
-    .from(auditLogsTable)
-    .where(gte(auditLogsTable.createdAt, startDate))
-    .orderBy(desc(auditLogsTable.createdAt))
-    .limit(200);
+  const pageNum = Math.max(1, parseInt(page, 10));
+  const limitNum = Math.min(200, Math.max(1, parseInt(lim, 10)));
+  const offset = (pageNum - 1) * limitNum;
 
-  res.json(logs);
+  const conditions = [];
+  const defaultStart = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  conditions.push(gte(auditLogsTable.createdAt, dateFrom ? new Date(dateFrom) : defaultStart));
+  if (dateTo) {
+    const to = new Date(dateTo);
+    to.setDate(to.getDate() + 1);
+    conditions.push(lt(auditLogsTable.createdAt, to));
+  }
+
+  if (search) {
+    conditions.push(or(
+      ilike(auditLogsTable.actorName, `%${search}%`),
+      ilike(auditLogsTable.actorEmail, `%${search}%`),
+      ilike(auditLogsTable.action, `%${search}%`),
+      ilike(auditLogsTable.targetName, `%${search}%`),
+    )!);
+  }
+
+  if (mod) {
+    const moduleToTargetTypes: Record<string, string[]> = {
+      "Users": ["user"], "Students": ["student"], "CRM": ["follow_up", "lead"],
+      "Demo Batches": ["demo_batch", "demo_session"], "Courses": ["course"],
+      "Attendance": ["attendance"], "Homework": ["homework"], "Assignments": ["assignment"],
+      "Tests": ["test"], "Teachers": ["teacher_course", "teacher"],
+      "Mentors": ["mentor", "mentor_assignment"], "Settings": ["settings"], "Permissions": ["permission"],
+    };
+    const tts = moduleToTargetTypes[mod];
+    if (tts?.length) {
+      conditions.push(or(eq(auditLogsTable.module, mod), inArray(auditLogsTable.targetType, tts))!);
+    } else {
+      conditions.push(eq(auditLogsTable.module, mod));
+    }
+  }
+
+  if (action) conditions.push(ilike(auditLogsTable.action, `%${action}%`));
+
+  if (role) {
+    const actors = (await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, role))).map(u => u.id);
+    if (actors.length > 0) {
+      conditions.push(or(eq(auditLogsTable.actorRole, role), inArray(auditLogsTable.actorId, actors))!);
+    } else {
+      conditions.push(eq(auditLogsTable.actorRole, role));
+    }
+  }
+
+  if (highRisk === "true") {
+    conditions.push(or(...HIGH_RISK_KW.map(k => ilike(auditLogsTable.action, `%${k}%`)))!);
+  }
+
+  const where = and(...conditions);
+  const [logs, [{ total }]] = await Promise.all([
+    db.select().from(auditLogsTable).where(where).orderBy(desc(auditLogsTable.createdAt)).limit(limitNum).offset(offset),
+    db.select({ total: sql<number>`count(*)` }).from(auditLogsTable).where(where),
+  ]);
+
+  res.json({ logs, total: Number(total), page: pageNum, limit: limitNum, pages: Math.ceil(Number(total) / limitNum) });
 });
 
 // ── Student CRM Profile (BTL CRM data for any student) ────────────────────

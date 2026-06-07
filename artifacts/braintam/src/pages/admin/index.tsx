@@ -67,6 +67,7 @@ import { EmployeeAttendanceTab } from "./employee-attendance-tab";
 import { OperationsCommandCenterTab } from "./operations-command-center-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { SuperAdminTab } from "./super-admin-tab";
+import { AuditLogsTab } from "./audit-logs-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -760,7 +761,7 @@ function AdminPageInner() {
       apiFetch("/admin/analytics").then(r => r.ok ? r.json() : null),
       apiFetch("/admin/live-classes").then(r => r.ok ? r.json() : []),
       apiFetch("/subjects").then(r => r.ok ? r.json() : []),
-      apiFetch("/admin/audit-logs").then(r => r.ok ? r.json() : []),
+      apiFetch("/admin/audit-logs").then(async r => { if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.logs ?? []); }),
       apiFetch("/admin/academic-years").then(r => r.ok ? r.json() : []),
       apiFetch("/admin/mentor-student-map").then(r => r.ok ? r.json() : []),
     ]);
@@ -2429,109 +2430,7 @@ function AdminPageInner() {
         )}
 
         {/* ── Audit Logs ─────────────────────────────────────────────────── */}
-        {tab === "audit" && (() => {
-          // Build a map: actorId → role from users list
-          const userRoleMap = new Map(users.map(u => [u.id, u.role]));
-
-          let filteredLogs = auditLogs;
-          if (auditSearch) {
-            const q = auditSearch.toLowerCase();
-            filteredLogs = filteredLogs.filter(l =>
-              (l.actorName ?? "").toLowerCase().includes(q) ||
-              (l.actorEmail ?? "").toLowerCase().includes(q) ||
-              (l.action ?? "").toLowerCase().includes(q) ||
-              (l.targetName ?? "").toLowerCase().includes(q)
-            );
-          }
-          if (auditRoleFilter !== "all") {
-            filteredLogs = filteredLogs.filter(l => {
-              const role = userRoleMap.get(l.actorId) ?? (l.actorName?.toLowerCase().includes("admin") ? "admin" : "");
-              return role === auditRoleFilter;
-            });
-          }
-          return (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <h3 className="font-bold text-base" style={{ color: NAVY }}>Audit Log</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">All portal activity — student logins, edits, deletes, password resets, enrollments</p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <Input
-                      placeholder="Search by name, email, action…"
-                      value={auditSearch}
-                      onChange={e => setAuditSearch(e.target.value)}
-                      className="pl-9 text-xs h-9 w-56"
-                    />
-                  </div>
-                  <Select value={auditRoleFilter} onValueChange={setAuditRoleFilter}>
-                    <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Roles" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="student">Student</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" variant="outline" onClick={() => exportCSV("audit_log.csv",
-                    ["Time", "Actor", "Email", "Action", "Target Type", "Target"],
-                    filteredLogs.map(l => [l.createdAt, l.actorName, (l as any).actorEmail ?? "", l.action, l.targetType, l.targetName])
-                  )} className="gap-1.5 text-xs h-9">
-                    <Download className="w-3.5 h-3.5" /> Export
-                  </Button>
-                </div>
-              </div>
-
-              {auditSearch && (
-                <p className="text-xs text-gray-400">
-                  Showing {filteredLogs.length} of {auditLogs.length} records matching "{auditSearch}"
-                </p>
-              )}
-
-              {filteredLogs.length > 0 ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Time</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Actor</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Action</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Target</th>
-                    </tr></thead>
-                    <tbody>
-                      {filteredLogs.slice(0, 200).map(l => (
-                        <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50">
-                          <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">{new Date(l.createdAt).toLocaleString("en-IN")}</td>
-                          <td className="px-4 py-2.5 text-xs">
-                            <div className="font-medium" style={{ color: NAVY }}>{l.actorName}</div>
-                            {(l as any).actorEmail && <div className="text-gray-400 text-[10px]">{(l as any).actorEmail}</div>}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                              l.action.includes("delete") || l.action.includes("deactivate") ? "bg-red-100 text-red-600" :
-                              l.action.includes("create") || l.action.includes("enroll") ? "bg-green-100 text-green-600" :
-                              l.action.includes("reset") || l.action.includes("password") ? "bg-orange-100 text-orange-600" :
-                              l.action.includes("login") ? "bg-purple-100 text-purple-600" :
-                              "bg-blue-100 text-blue-600"
-                            }`}>{l.action}</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-gray-500 text-xs">{l.targetType}: <span className="font-medium">{l.targetName}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
-                  <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-400 font-medium">{auditSearch ? "No matching logs found" : "No audit logs yet"}</p>
-                  <p className="text-xs text-gray-300 mt-1">{auditSearch ? "Try a different search term" : "Actions will appear here as users interact with the portal"}</p>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {tab === "audit" && <AuditLogsTab />}
 
         {/* ── Fees (Placeholder) ────────────────────────────────────────── */}
         {tab === "fees" && (
