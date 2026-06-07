@@ -10,7 +10,7 @@ import {
   Target, CheckSquare, History, ExternalLink, Video, Trash2,
   Zap, HelpCircle, ClipboardCheck,
 } from "lucide-react";
-import braintamLogo from "@assets/image_1780810348206.png";
+import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { TodayTasksTab } from "./today-tasks-tab";
@@ -955,21 +955,33 @@ export default function BTLCRMPage() {
       )}
 
       {/* ── Sidebar ── */}
-      <aside className="w-48 flex-shrink-0 hidden md:flex flex-col border-r border-gray-100 bg-white" style={{ position: "sticky", top: 0, height: "100vh" }}>
-        <div className="p-4 border-b border-gray-100">
-          <img src={braintamLogo} alt="Braintam" className="h-5 w-auto mb-1" />
-          <div className="font-black text-xs" style={{ color: NAVY }}>BTL CRM</div>
+      <aside className="w-52 flex-shrink-0 hidden md:flex flex-col border-r border-gray-100 bg-white" style={{ position: "sticky", top: 0, height: "100vh" }}>
+        {/* Brand */}
+        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto mb-3" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
+              BTL <span style={{ color: ORANGE }}>CRM</span>
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
         </div>
-        <nav className="flex-1 p-2 space-y-0.5">
+        <nav className="flex-1 py-2 overflow-y-auto">
           {tabs.map(t => {
             const Icon = t.icon;
             const active = tab === t.key;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: active ? `${GREEN}15` : "transparent", color: active ? GREEN : "#6B7280" }}>
+                className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
+                style={{
+                  color: active ? ORANGE : "#6B7280",
+                  background: active ? "#FFF4EE" : "transparent",
+                  fontWeight: active ? 600 : 400,
+                  borderRight: active ? `3px solid ${ORANGE}` : "3px solid transparent",
+                }}>
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                {t.label}
+                <span className="text-xs">{t.label}</span>
                 {t.key === "students" && alertCount > 0 && <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: "#DC2626" }}>{alertCount}</span>}
                 {t.key === "follow-ups" && (fuCounts.due_today + fuCounts.overdue) > 0 && <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: ORANGE }}>{fuCounts.due_today + fuCounts.overdue}</span>}
                 {t.key === "tasks" && taskOverdue > 0 && <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: "#DC2626" }}>{taskOverdue}</span>}
@@ -978,21 +990,29 @@ export default function BTLCRMPage() {
             );
           })}
         </nav>
-        <div className="p-2 border-t border-gray-100 space-y-1">
+        {/* Footer */}
+        <div className="px-4 py-4 border-t border-gray-100 space-y-2.5">
           <button onClick={() => setTab("profile")}
-            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all hover:bg-gray-50">
-            <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-              style={{ background: student.avatarUrl ? "transparent" : GREEN }}>
+            className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-xl px-1 py-1 transition-colors">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
               {student.avatarUrl
                 ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
                 : (student.name?.[0] ?? "M")}
             </div>
-            <span className="truncate text-gray-600">{student.name}</span>
+            <div className="min-w-0 text-left">
+              <div className="text-xs text-gray-700 font-semibold truncate">{student.name}</div>
+              <div className="text-[10px] text-gray-400">My Profile</div>
+            </div>
           </button>
-          <button onClick={() => { logout(); window.location.href = "/mentor/login"; }}
-            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all">
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
-          </button>
+          <StaffCheckin apiFetch={apiFetch} role={role ?? "mentor"} compact />
+          <div className="flex items-center gap-2">
+            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Site</a>
+            <button onClick={() => { logout(); window.location.href = "/mentor/login"; }}
+              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto">
+              <LogOut className="w-3.5 h-3.5" /> Logout
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -1018,7 +1038,6 @@ export default function BTLCRMPage() {
 
       {/* ── Main ── */}
       <div className="flex-1 overflow-auto md:pt-0 pt-14">
-        <StaffCheckin apiFetch={apiFetch} role={role ?? "mentor"} />
 
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (

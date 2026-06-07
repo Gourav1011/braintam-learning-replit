@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, CheckCircle2, LogOut as CheckOutIcon, X, Loader2, Send } from "lucide-react";
+import { Clock, LogOut as CheckOutIcon, X, Loader2, Send } from "lucide-react";
 
 const GREEN = "#059669";
 const ORANGE = "#FF6B1A";
@@ -14,6 +14,13 @@ interface CheckinRecord {
 
 function fmtTime(d: string) {
   return new Date(d).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtElapsed(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function workingHours(checkIn: string, checkOut: string | null): string {
@@ -39,19 +46,37 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
   const [pendingTasks, setPendingTasks] = useState("");
   const [tomorrowPriorities, setTomorrowPriorities] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     apiFetch("/staff/checkin/today")
       .then(r => r.ok ? r.json() : null)
-      .then(d => setRecord(d))
+      .then(d => {
+        setRecord(d);
+        if (d?.checkInTime && !d?.checkOutTime) {
+          const secs = Math.floor((Date.now() - new Date(d.checkInTime).getTime()) / 1000);
+          setElapsed(Math.max(0, secs));
+        }
+      })
       .catch(() => setRecord(null));
   }, []);
+
+  // Live HH:MM:SS tick while checked in and not checked out
+  useEffect(() => {
+    if (!record?.checkInTime || record?.checkOutTime) return;
+    const id = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [record?.checkInTime, record?.checkOutTime]);
 
   async function checkIn() {
     setCheckingIn(true);
     try {
       const r = await apiFetch("/staff/checkin", { method: "POST" });
-      if (r.ok) setRecord(await r.json());
+      if (r.ok) {
+        const d = await r.json();
+        setRecord(d);
+        setElapsed(0);
+      }
     } catch { /* ignore */ }
     setCheckingIn(false);
   }
@@ -71,7 +96,6 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
     setCheckingOut(false);
   }
 
-  // Loading — show nothing until we know status
   if (record === undefined) return null;
 
   const checkedIn = !!record?.checkInTime;
@@ -96,11 +120,18 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
             </span>
           </div>
 
+          {/* Running timer when checked in */}
+          {checkedIn && !checkedOut && (
+            <div className="font-black text-sm tabular-nums" style={{ color: "#2563EB", letterSpacing: "0.04em" }}>
+              {fmtElapsed(elapsed)}
+            </div>
+          )}
+
           {/* Status row + button */}
           <div className="flex items-center justify-between gap-1">
             <span className="text-[10px] font-bold"
               style={{ color: checkedOut ? GREEN : checkedIn ? "#2563EB" : ORANGE }}>
-              {checkedOut ? "✓ Done" : checkedIn ? `${workingHours(record!.checkInTime!, null)}` : "Not checked in"}
+              {checkedOut ? `✓ ${workingHours(record!.checkInTime!, record!.checkOutTime!)}` : checkedIn ? "Running…" : "Not checked in"}
             </span>
             {!checkedIn && (
               <button onClick={checkIn} disabled={checkingIn}
@@ -120,8 +151,7 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
           </div>
         </div>
 
-        {/* Checkout Modal */}
-        {showCheckout && <CheckoutModal role={role} record={record!} checkingOut={checkingOut} workSummary={workSummary} setWorkSummary={setWorkSummary} challenges={challenges} setChallenges={setChallenges} pendingTasks={pendingTasks} setPendingTasks={setPendingTasks} tomorrowPriorities={tomorrowPriorities} setTomorrowPriorities={setTomorrowPriorities} onClose={() => setShowCheckout(false)} onSubmit={checkOut} />}
+        {showCheckout && <CheckoutModal role={role} record={record!} elapsed={elapsed} checkingOut={checkingOut} workSummary={workSummary} setWorkSummary={setWorkSummary} challenges={challenges} setChallenges={setChallenges} pendingTasks={pendingTasks} setPendingTasks={setPendingTasks} tomorrowPriorities={tomorrowPriorities} setTomorrowPriorities={setTomorrowPriorities} onClose={() => setShowCheckout(false)} onSubmit={checkOut} />}
       </>
     );
   }
@@ -131,7 +161,7 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
     <>
       <div className="flex items-center justify-between px-4 py-2 text-xs"
         style={{ background: checkedOut ? "#F0FDF4" : checkedIn ? "#EFF6FF" : "#FFF7ED", borderBottom: "1px solid", borderColor: checkedOut ? "#BBF7D0" : checkedIn ? "#BFDBFE" : "#FED7AA" }}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Clock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: checkedIn ? (checkedOut ? GREEN : "#2563EB") : ORANGE }} />
           <span className="font-semibold" style={{ color: "#374151" }}>
             In: <strong>{checkedIn ? fmtTime(record!.checkInTime!) : "--:--"}</strong>
@@ -139,7 +169,7 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
             Out: <strong style={{ color: checkedOut ? GREEN : "#9CA3AF" }}>{checkedOut ? fmtTime(record!.checkOutTime!) : "--:--"}</strong>
           </span>
           {checkedIn && !checkedOut && (
-            <span className="text-blue-500 text-[11px]">· {workingHours(record!.checkInTime!, null)} elapsed</span>
+            <span className="font-black tabular-nums" style={{ color: "#2563EB", fontSize: "13px" }}>{fmtElapsed(elapsed)}</span>
           )}
         </div>
         {!checkedIn && (
@@ -159,20 +189,24 @@ export function StaffCheckin({ apiFetch, role, compact = false }: Props) {
         )}
       </div>
 
-      {showCheckout && <CheckoutModal role={role} record={record!} checkingOut={checkingOut} workSummary={workSummary} setWorkSummary={setWorkSummary} challenges={challenges} setChallenges={setChallenges} pendingTasks={pendingTasks} setPendingTasks={setPendingTasks} tomorrowPriorities={tomorrowPriorities} setTomorrowPriorities={setTomorrowPriorities} onClose={() => setShowCheckout(false)} onSubmit={checkOut} />}
+      {showCheckout && <CheckoutModal role={role} record={record!} elapsed={elapsed} checkingOut={checkingOut} workSummary={workSummary} setWorkSummary={setWorkSummary} challenges={challenges} setChallenges={setChallenges} pendingTasks={pendingTasks} setPendingTasks={setPendingTasks} tomorrowPriorities={tomorrowPriorities} setTomorrowPriorities={setTomorrowPriorities} onClose={() => setShowCheckout(false)} onSubmit={checkOut} />}
     </>
   );
 }
 
 // ── Shared checkout modal ─────────────────────────────────────────────────
-function CheckoutModal({ role, record, checkingOut, workSummary, setWorkSummary, challenges, setChallenges, pendingTasks, setPendingTasks, tomorrowPriorities, setTomorrowPriorities, onClose, onSubmit }: {
-  role: string; record: CheckinRecord; checkingOut: boolean;
+function CheckoutModal({ role, record, elapsed, checkingOut, workSummary, setWorkSummary, challenges, setChallenges, pendingTasks, setPendingTasks, tomorrowPriorities, setTomorrowPriorities, onClose, onSubmit }: {
+  role: string; record: CheckinRecord; elapsed: number; checkingOut: boolean;
   workSummary: string; setWorkSummary: (v: string) => void;
   challenges: string; setChallenges: (v: string) => void;
   pendingTasks: string; setPendingTasks: (v: string) => void;
   tomorrowPriorities: string; setTomorrowPriorities: (v: string) => void;
   onClose: () => void; onSubmit: () => void;
 }) {
+  function fmtElapsed(s: number) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }} onClick={onClose}>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -180,7 +214,7 @@ function CheckoutModal({ role, record, checkingOut, workSummary, setWorkSummary,
           <div>
             <div className="font-black text-white text-sm">Check Out</div>
             <div className="text-white/60 text-[11px] mt-0.5">
-              In: {fmtTime(record.checkInTime!)} · Duration: {workingHours(record.checkInTime!, null)}
+              In: {fmtTime(record.checkInTime!)} · Duration: <span className="tabular-nums font-bold">{fmtElapsed(elapsed)}</span>
             </div>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white"><X className="w-4 h-4" /></button>

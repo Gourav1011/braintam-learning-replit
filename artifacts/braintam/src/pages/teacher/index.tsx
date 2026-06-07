@@ -685,7 +685,7 @@ export default function TeacherPage() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
+    <div className="min-h-screen flex" style={{ background: "#F8F9FF", fontFamily: "Poppins, sans-serif" }}>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={open => { if (!open) setDeleteConfirm(null); }}>
@@ -715,59 +715,70 @@ export default function TeacherPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Header */}
-      <div className="px-5 py-3 flex items-center justify-between shadow-sm" style={{ background: NAVY }}>
-        <div className="flex items-center gap-3">
-          <img src={braintamLogo} alt="Braintam" className="h-7 w-auto" />
+      {/* ── Left Sidebar ── */}
+      <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
+        {/* Brand */}
+        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto mb-3" />
           <div className="flex items-center gap-1.5">
-            <div className="w-0.5 h-5 rounded-full bg-white/30" />
-            <div>
-              <div className="flex items-center gap-1">
-                <span className="font-black text-white tracking-wide" style={{ fontSize: "14px", letterSpacing: "0.04em" }}>
-                  BTL <span style={{ color: "#FF6B1A" }}>CRM</span>
-                </span>
-              </div>
-              <div className="text-white/40 text-[9px] tracking-wider uppercase">Relationship Management</div>
-            </div>
+            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
+              BTL <span style={{ color: ORANGE }}>CRM</span>
+            </span>
           </div>
-          <span className="text-white/30 text-xs hidden md:inline">· {student.name}</span>
+          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Compact check-in inline */}
-          <StaffCheckin apiFetch={apiFetch} role="teacher" compact />
-          <button onClick={() => setTab("profile")} className="flex items-center gap-1.5 group" title="My Profile">
-            <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold border-2 border-white/30 group-hover:border-white/60 transition-colors"
-              style={{ background: student.avatarUrl ? "transparent" : "rgba(255,255,255,0.2)" }}>
+
+        {/* Nav */}
+        <nav className="flex-1 py-2 overflow-y-auto">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const isActive = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
+                style={{
+                  color: isActive ? ORANGE : "#6B7280",
+                  background: isActive ? "#FFF4EE" : "transparent",
+                  fontWeight: isActive ? 600 : 400,
+                  borderRight: isActive ? `3px solid ${ORANGE}` : "3px solid transparent",
+                }}>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-xs">{t.label}</span>
+                {t.id === "submissions" && pendingCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white rounded-full text-[10px] w-4 h-4 flex items-center justify-center font-black">{pendingCount}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-4 py-4 border-t border-gray-100 space-y-2.5">
+          <button onClick={() => setTab("profile")} className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-xl px-1 py-1 transition-colors">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
               {student.avatarUrl
                 ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
                 : (student.name?.[0] ?? "T")}
             </div>
+            <div className="min-w-0 text-left">
+              <div className="text-xs text-gray-700 font-semibold truncate">{student.name}</div>
+              <div className="text-[10px] text-gray-400">My Profile</div>
+            </div>
           </button>
-          <a href="/" className="text-xs px-3 py-1 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">← Site</a>
-          <button onClick={logout} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-white/10 text-white hover:bg-red-500/40 transition-colors">
-            <LogOut className="w-3.5 h-3.5" /> Logout
-          </button>
+          <StaffCheckin apiFetch={apiFetch} role="teacher" compact />
+          <div className="flex items-center gap-2">
+            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Site</a>
+            <button onClick={logout} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto">
+              <LogOut className="w-3.5 h-3.5" /> Logout
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 px-4 pt-4 pb-0 overflow-x-auto">
-        {TABS.map(t => {
-          const Icon = t.icon;
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-t-xl text-xs font-semibold transition-all whitespace-nowrap ${tab === t.id ? "text-white" : "text-gray-500 hover:text-gray-700"}`}
-              style={{ background: tab === t.id ? ORANGE : "rgba(255,255,255,0.6)" }}>
-              <Icon className="w-3.5 h-3.5" />{t.label}
-              {t.id === "submissions" && pendingCount > 0 && (
-                <span className="ml-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center leading-none">{pendingCount}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="p-5 space-y-5">
+      <div className="flex-1 min-w-0 overflow-auto">
+      <div className="p-4 space-y-4">
         {msg && (
           <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-between ${msg.ok ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
             <span>{msg.text}</span>
@@ -1960,6 +1971,7 @@ export default function TeacherPage() {
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

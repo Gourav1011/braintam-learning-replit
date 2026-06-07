@@ -1134,7 +1134,7 @@ function AdminPageInner() {
               BTL <span style={{ color: ORANGE }}>CRM</span>
             </span>
           </div>
-          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Relationship Management</p>
+          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
         </div>
 
         {/* Nav list */}
