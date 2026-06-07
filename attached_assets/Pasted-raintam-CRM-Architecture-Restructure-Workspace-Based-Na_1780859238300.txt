@@ -1,0 +1,140 @@
+raintam CRM Architecture Restructure (Workspace-Based Navigation)
+
+Use the attached reference image as the target design direction.
+
+Goal
+
+Restructure the entire CRM into 3 logical workspaces:
+
+🚀 Ignite (Sales & Admissions)
+
+Contains ONLY:
+
+Dashboard
+Leads
+Demo Students
+Demo Batches
+Attendance Analytics
+Conversion Center
+Payments
+Sales Mentors
+Reports & Analytics
+
+Everything related to:
+
+Lead → Demo → Conversion → Payment
+
+belongs here.
+
+📚 Mastery (Academic Operations)
+
+Contains ONLY:
+
+Dashboard
+Courses
+Teachers
+Enrollments
+Live Classes
+Homework
+Attendance
+Announcements
+
+Everything related to:
+
+Paid Student → Learning Journey
+
+belongs here.
+
+⚙ Administration
+
+Contains:
+
+Operations Center
+Super Admin
+Audit Logs
+Staff Attendance
+Banners
+Settings
+
+Company-level controls only.
+
+Important Navigation Change
+
+Current system feels like:
+
+Sidebar
+   ↓
+Ignite CRM
+      ↓
+Another Sidebar
+
+This creates nested navigation and wastes space.
+
+Remove the secondary navigation panel completely.
+
+Use a Workspace Switcher at the top of the sidebar:
+
+🚀 Ignite CRM ▼
+📚 Mastery ▼
+🌐 Enterprise ▼
+
+When a workspace is selected, show only its menu items.
+
+Enterprise View (Super Admin)
+
+Add a third workspace:
+
+🌐 Enterprise
+
+Visible only to Super Admin.
+
+Shows:
+
+Overall Overview
+Ignite Analytics
+Mastery Analytics
+Revenue
+Student Growth
+Mentor Performance
+Operations Center
+Super Admin
+Audit Logs
+
+Enterprise acts as the company command center.
+
+Permission Rules
+
+Sales Mentors:
+
+Ignite only
+
+Academic Mentors:
+
+Mastery only
+
+Super Admin:
+
+Ignite
+Mastery
+Enterprise
+
+Can switch between all workspaces.
+
+UI Requirements
+Single sidebar only
+No nested sidebars
+No duplicate navigation
+Clean SaaS layout
+Workspace switcher at top
+Profile remains in top-right header
+Sidebar used only for navigation
+Fully responsive
+Do Not Change
+Database structure
+Existing APIs
+Existing data
+Existing permissions
+
+This is primarily a navigation and workspace reorganization.
+
+Goal: Make Braintam scalable for future teams while keeping Ignite, Mastery, and Administration cleanly separated.

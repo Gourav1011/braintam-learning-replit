@@ -1,0 +1,190 @@
+Braintam CRM Final Navigation Restructure
+
+Use the attached reference image as the design reference.
+
+Critical Requirements
+1. DO NOT REMOVE ANY EXISTING MODULE
+
+Every existing feature must remain accessible.
+
+If the sidebar becomes large:
+
+Create new parent sections
+Create collapsible groups
+Create submenus
+
+But DO NOT remove any existing functionality.
+
+2. Move User Profile to Header
+
+Remove from left sidebar:
+
+Profile Photo
+My Profile
+Check In
+Check Out
+Working Hours
+Logout
+
+Move all of these to the top-right header.
+
+Example:
+
+Avatar
+Gourav Manhas
+Super Admin ▼
+
+Dropdown should contain:
+
+My Profile
+Check In
+Check Out
+Working Hours
+Account Settings
+Logout
+
+The left sidebar should contain navigation only.
+
+3. Workspace Structure
+
+Add workspace selector at the top:
+
+🚀 Ignite CRM
+📚 Mastery
+🌐 Enterprise
+🚀 Ignite CRM
+
+Move all demo/admission/sales related modules here:
+
+Dashboard
+Leads
+Demo Students
+Demo Batches
+Attendance Analytics
+Conversion Center
+Payments
+Sales Mentors
+Reports & Analytics
+
+Everything related to:
+
+Lead → Demo → Conversion → Payment
+
+belongs here.
+
+📚 Mastery
+
+Move all long-term academic modules here:
+
+Dashboard
+Courses
+Teachers
+Enrollments
+Live Classes
+Homework
+Attendance
+Announcements
+
+Everything related to:
+
+Paid Student → Learning Journey
+
+belongs here.
+
+🌐 Enterprise
+
+Company-wide management:
+
+Overview
+Operations Center
+Super Admin
+Audit Logs
+Staff Attendance
+Banners
+Settings
+
+This is the owner/admin workspace.
+
+4. Sidebar Rules
+
+Sidebar should contain ONLY:
+
+Navigation
+
+No profile card.
+
+No attendance card.
+
+No check-in widget.
+
+No logout card.
+
+No personal information block.
+
+5. Smart Grouping
+
+If menu count becomes large:
+
+Academics
+Courses
+Teachers
+Enrollments
+Live Classes
+Homework
+Attendance
+Announcements
+Sales & Admissions
+Leads
+Demo Students
+Demo Batches
+Attendance Analytics
+Conversion Center
+Payments
+Sales Mentors
+Reports
+Administration
+Operations Center
+Super Admin
+Audit Logs
+Staff Attendance
+Banners
+Settings
+
+Use collapsible sections.
+
+6. Enterprise Permissions
+Sales Mentor
+
+Can access:
+
+Ignite only
+Academic Mentor
+
+Can access:
+
+Mastery only
+Super Admin
+
+Can access:
+
+Ignite
+Mastery
+Enterprise
+
+and switch between workspaces.
+
+Goal
+
+Create a clean, scalable ERP/CRM structure where:
+
+Ignite = Sales & Admissions
+Mastery = Academic Operations
+Enterprise = Company Management
+
+while preserving every existing feature and improving navigation, usability, and future scalability.
+
+Web app dashboard redesign concept
+
+Edit
+Voice chat ended
+25s

@@ -68,7 +68,7 @@ import { OperationsCommandCenterTab } from "./operations-command-center-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
-import { IgniteTab } from "./ignite-tab";
+import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -1111,6 +1111,62 @@ function AdminPageInner() {
 
   async function deleteLiveClass(id: number) { await apiFetch(`/admin/live-classes/${id}`, { method: "DELETE" }); loadAll(); }
 
+  const [igniteView, setIgniteView] = useState<IgniteView>("dashboard");
+  const [openWorkspace, setOpenWorkspace] = useState<string>("ignite");
+
+  type WorkspaceNavItem = {
+    label: string;
+    icon: React.ElementType;
+    tab: Tab;
+    igniteView?: IgniteView;
+    superAdminOnly?: boolean;
+  };
+  const WORKSPACE_NAV: { id: string; emoji: string; label: string; sublabel: string; color: string; items: WorkspaceNavItem[] }[] = [
+    {
+      id: "ignite", emoji: "🚀", label: "Ignite CRM", sublabel: "Sales & Admissions", color: ORANGE,
+      items: [
+        { label: "Dashboard", icon: LayoutDashboard, tab: "ignite", igniteView: "dashboard" },
+        { label: "Leads", icon: Users, tab: "ignite", igniteView: "leads" },
+        { label: "Demo Students", icon: UserCheck, tab: "ignite", igniteView: "demo-students" },
+        { label: "Demo Batches", icon: Layers, tab: "ignite", igniteView: "demo-batches" },
+        { label: "Attendance Analytics", icon: CheckSquare, tab: "ignite", igniteView: "attendance" },
+        { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
+        { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "follow-ups" },
+        { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
+        { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "overview" },
+      ],
+    },
+    {
+      id: "mastery", emoji: "📚", label: "Mastery", sublabel: "Academic Operations", color: "#3B82F6",
+      items: [
+        { label: "Dashboard", icon: Activity, tab: "dashboard" },
+        { label: "Courses", icon: BookOpen, tab: "courses" },
+        { label: "Teachers", icon: GradCap, tab: "assignments" },
+        { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
+        { label: "Live Classes", icon: Video, tab: "liveclasses" },
+        { label: "Attendance", icon: CheckSquare, tab: "health" },
+        { label: "Announcements", icon: Bell, tab: "announcements" },
+        { label: "Mentors", icon: UserCheck2, tab: "mentors" },
+        { label: "BTL CRM", icon: UserCheck2, tab: "btl-crm" },
+        { label: "Gamification", icon: Zap, tab: "gamification" },
+      ],
+    },
+    {
+      id: "enterprise", emoji: "🌐", label: "Enterprise", sublabel: "Company Management", color: "#8B5CF6",
+      items: [
+        { label: "Analytics", icon: BarChart3, tab: "analytics" },
+        { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
+        { label: "Teacher Analytics", icon: GradCap, tab: "teacher-analytics" },
+        { label: "Operations Center", icon: Cpu, tab: "operations-command-center" },
+        { label: "Super Admin", icon: ShieldCheck, tab: "super-admin", superAdminOnly: true },
+        { label: "Audit Logs", icon: FileText, tab: "audit" },
+        { label: "Staff Attendance", icon: CheckSquare, tab: "employee-attendance" },
+        { label: "Banners", icon: Image, tab: "banners" },
+        { label: "Settings", icon: Lock, tab: "settings" },
+      ],
+    },
+  ];
+
   const TABS: { id: Tab; label: string; icon: React.ElementType; group: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: Activity, group: "Home" },
     { id: "analytics", label: "Analytics", icon: BarChart3, group: "Home" },
@@ -1140,7 +1196,7 @@ function AdminPageInner() {
   const TAB_GROUPS = ["Home", "Insights", "Content", "Manage", "System"];
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
       {/* Confirm Dialog */}
       {confirmDialog && <ConfirmModal dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />}
       {/* Profile Modal */}
@@ -1162,197 +1218,186 @@ function AdminPageInner() {
       {/* Student 360 Modal */}
       {student360Id && <Student360Modal userId={student360Id} userName={users.find(u => u.id === student360Id)?.name ?? ""} userEmail={users.find(u => u.id === student360Id)?.email ?? null} onClose={() => setStudent360Id(null)} />}
 
-      {/* Left Sidebar */}
-      <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
-        {/* Brand */}
-        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto mb-3" />
-          <div className="flex items-center gap-1.5">
-            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
-            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
-              BTL <span style={{ color: ORANGE }}>CRM</span>
-            </span>
+      {/* ── Global Header ──────────────────────────────────────────────────────── */}
+      <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">
+        <img src={braintamLogo} alt="Braintam" className="h-7 w-auto shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer shrink-0 select-none" style={{ minWidth: "168px" }}>
+          <span className="text-sm leading-none">{WORKSPACE_NAV.find(w => w.id === openWorkspace)?.emoji ?? "🚀"}</span>
+          <div className="text-left min-w-0 flex-1">
+            <div className="text-xs font-bold truncate leading-none" style={{ color: NAVY }}>
+              {WORKSPACE_NAV.find(w => w.id === openWorkspace)?.label ?? "Ignite CRM"}
+            </div>
+            <div className="text-[10px] text-gray-400 truncate leading-none mt-0.5">
+              {WORKSPACE_NAV.find(w => w.id === openWorkspace)?.sublabel ?? ""}
+            </div>
           </div>
-          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
+          <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
         </div>
-
-        {/* Nav list */}
-        <nav className="flex-1 py-2 overflow-y-auto">
-          {TAB_GROUPS.map(group => {
-            const groupTabs = TABS.filter(t => t.group === group);
-            return (
-              <div key={group}>
-                <div className="px-5 pt-3 pb-1">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-300">{group}</span>
+        <div className="flex-1" />
+        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-600 cursor-default shrink-0">
+          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+          <span className="font-medium whitespace-nowrap">
+            {new Date(Date.now() - 6 * 86400000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+            {" – "}
+            {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+          </span>
+        </div>
+        <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity shrink-0"
+          style={{ background: NAVY }}>
+          <Download className="w-3.5 h-3.5" /> Export Report
+        </button>
+        <button className="relative w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors shrink-0">
+          <Bell className="w-4 h-4 text-gray-500" />
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px] font-bold" style={{ background: ORANGE }}>3</span>
+        </button>
+        <div className="relative shrink-0" ref={profileDropRef}>
+          <button onClick={() => setProfileDropOpen(o => !o)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0 overflow-hidden"
+              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+              {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" /> : (student.name?.[0] ?? "A")}
+            </div>
+            <div className="hidden sm:block text-left">
+              <div className="text-xs font-bold leading-tight" style={{ color: NAVY }}>{student.name}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: ORANGE }}>
+                {role === "super_admin" ? "Super Admin" : role}
+              </div>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${profileDropOpen ? "rotate-180" : ""}`} />
+          </button>
+          {profileDropOpen && (
+            <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              style={{ boxShadow: "0 8px 32px rgba(11,43,107,0.13)" }}>
+              <div className="px-4 py-3 border-b border-gray-50" style={{ background: "#F8FAFF" }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0 overflow-hidden"
+                    style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+                    {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" /> : (student.name?.[0] ?? "A")}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-black truncate" style={{ color: NAVY }}>{student.name}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: ORANGE }}>
+                      {role === "super_admin" ? "Super Admin" : role}
+                    </div>
+                    {student.email && <div className="text-[10px] text-gray-400 truncate">{student.email}</div>}
+                  </div>
                 </div>
-                {groupTabs.map(t => {
-                  const Icon = t.icon;
-                  const isActive = tab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => { setTab(t.id); setMsg(null); }}
-                      className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
-                      style={{
-                        color: isActive ? ORANGE : "#6B7280",
-                        background: isActive ? "#FFF4EE" : "transparent",
-                        fontWeight: isActive ? 600 : 400,
-                        borderRight: isActive ? `3px solid ${ORANGE}` : "3px solid transparent",
-                      }}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="text-xs">{t.label}</span>
+              </div>
+              <div className="px-4 py-3 border-b border-gray-50">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Attendance</div>
+                {todayCheckin === undefined ? (
+                  <div className="flex items-center gap-1.5 text-[11px] text-gray-400"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</div>
+                ) : todayCheckin?.checkInTime && !todayCheckin?.checkOutTime ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      Checked in at {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <button onClick={() => { setProfileDropOpen(false); setTab("employee-attendance"); }}
+                      className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1.5">
+                      <LogOut className="w-3 h-3" /> Check Out
                     </button>
-                  );
-                })}
+                  </div>
+                ) : todayCheckin?.checkInTime && todayCheckin?.checkOutTime ? (
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" /> Completed today
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                      {" → "}
+                      {new Date(todayCheckin.checkOutTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => doCheckIn()} disabled={checkingIn}
+                    className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-green-700 bg-green-50 hover:bg-green-100 transition-colors flex items-center gap-1.5 disabled:opacity-60">
+                    {checkingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    {checkingIn ? "Checking in…" : "Check In"}
+                  </button>
+                )}
+              </div>
+              <div className="py-1">
+                <button onClick={() => { setTab("profile"); setProfileDropOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                  <User className="w-3.5 h-3.5 text-gray-400" /> My Profile
+                </button>
+                <button onClick={() => { setTab("employee-attendance"); setProfileDropOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" /> Staff Attendance
+                </button>
+                <a href="/" className="block px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                  <Globe className="w-3.5 h-3.5 text-gray-400" /> ← Back to Site
+                </a>
+                <div className="border-t border-gray-50 mt-1 pt-1">
+                  <button onClick={() => { setProfileDropOpen(false); logout(); }}
+                    className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors font-semibold">
+                    <LogOut className="w-3.5 h-3.5" /> Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Body: Sidebar + Content ─────────────────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+      {/* Left Sidebar */}
+      <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
+        <div className="px-4 pt-4 pb-1">
+          <span className="text-[9px] font-bold tracking-widest text-gray-300 uppercase">Workspace</span>
+        </div>
+        <nav className="flex-1 px-2 pb-4 space-y-0.5">
+          {WORKSPACE_NAV.map(workspace => {
+            const isOpen = openWorkspace === workspace.id;
+            return (
+              <div key={workspace.id}>
+                <button
+                  onClick={() => setOpenWorkspace(w => w === workspace.id ? "" : workspace.id)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors hover:bg-gray-50 mt-1"
+                  style={{ color: isOpen ? workspace.color : "#9CA3AF" }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{workspace.emoji}</span>
+                    <div className="text-left">
+                      <div>{workspace.label}</div>
+                      <div className="text-[9px] font-normal text-gray-400">{workspace.sublabel}</div>
+                    </div>
+                  </div>
+                  {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {isOpen && (
+                  <div className="mt-0.5 ml-2 space-y-0.5">
+                    {workspace.items.filter(item => !item.superAdminOnly || role === "super_admin").map((item, idx) => {
+                      const Icon = item.icon;
+                      const isActive = item.igniteView
+                        ? (tab === "ignite" && igniteView === item.igniteView)
+                        : tab === item.tab;
+                      return (
+                        <button key={idx}
+                          onClick={() => {
+                            if (item.igniteView) { setTab("ignite"); setIgniteView(item.igniteView!); }
+                            else { setTab(item.tab); }
+                            setMsg(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                          style={isActive ? { background: "#EEF2FF", color: NAVY, fontWeight: 600 } : { color: "#6B7280" }}>
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
         </nav>
-
-        {/* Footer */}
-        <div className="px-4 py-4 border-t border-gray-100 space-y-2.5">
-          {/* Check-in compact strip */}
-          <StaffCheckin apiFetch={apiFetch} role="admin" compact />
-          <div className="flex items-center gap-2">
-            <button onClick={loadAll} className="text-gray-400 hover:text-gray-600 transition-colors" title="Refresh">
-              <RotateCcw className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`} />
-            </button>
-            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Site</a>
-            <button onClick={logout} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto" title="Logout">
-              <LogOut className="w-3.5 h-3.5" /> Logout
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0">
-        {/* Slim top bar */}
-        <div className="px-6 py-2.5 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-20">
-          <span className="text-sm font-semibold" style={{ color: NAVY }}>
-            {TABS.find(t => t.id === tab)?.label ?? ""}
-          </span>
-
-          {/* User profile dropdown */}
-          <div className="relative" ref={profileDropRef}>
-            <button
-              onClick={() => setProfileDropOpen(o => !o)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"
-            >
-              {/* Avatar */}
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0 overflow-hidden"
-                style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
-                {student.avatarUrl
-                  ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  : (student.name?.[0] ?? "A")}
-              </div>
-              <div className="hidden sm:block text-left">
-                <div className="text-xs font-bold leading-tight" style={{ color: NAVY }}>{student.name}</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: ORANGE }}>
-                  {role === "super_admin" ? "Super Admin" : role}
-                </div>
-              </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${profileDropOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {profileDropOpen && (
-              <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
-                style={{ boxShadow: "0 8px 32px rgba(11,43,107,0.13)" }}>
-                {/* Profile header */}
-                <div className="px-4 py-3 border-b border-gray-50" style={{ background: "#F8FAFF" }}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0 overflow-hidden"
-                      style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
-                      {student.avatarUrl
-                        ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" />
-                        : (student.name?.[0] ?? "A")}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-black truncate" style={{ color: NAVY }}>{student.name}</div>
-                      <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: ORANGE }}>
-                        {role === "super_admin" ? "Super Admin" : role}
-                      </div>
-                      {student.email && <div className="text-[10px] text-gray-400 truncate">{student.email}</div>}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Check In / Out section */}
-                <div className="px-4 py-3 border-b border-gray-50">
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Attendance</div>
-                  {todayCheckin === undefined ? (
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Loading…
-                    </div>
-                  ) : todayCheckin?.checkInTime && !todayCheckin?.checkOutTime ? (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        Checked in at {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
-                      </div>
-                      <button
-                        onClick={() => { setProfileDropOpen(false); setTab("employee-attendance"); }}
-                        className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1.5"
-                      >
-                        <LogOut className="w-3 h-3" /> Check Out
-                      </button>
-                    </div>
-                  ) : todayCheckin?.checkInTime && todayCheckin?.checkOutTime ? (
-                    <div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-0.5">
-                        <CheckCircle2 className="w-3 h-3 text-green-500" />
-                        Completed today
-                      </div>
-                      <div className="text-[10px] text-gray-400">
-                        {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
-                        {" → "}
-                        {new Date(todayCheckin.checkOutTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => doCheckIn()}
-                      disabled={checkingIn}
-                      className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-green-700 bg-green-50 hover:bg-green-100 transition-colors flex items-center gap-1.5 disabled:opacity-60"
-                    >
-                      {checkingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
-                      {checkingIn ? "Checking in…" : "Check In"}
-                    </button>
-                  )}
-                </div>
-
-                {/* Navigation items */}
-                <div className="py-1">
-                  <button
-                    onClick={() => { setTab("profile"); setProfileDropOpen(false); }}
-                    className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
-                  >
-                    <User className="w-3.5 h-3.5 text-gray-400" /> My Profile
-                  </button>
-                  <button
-                    onClick={() => { setTab("employee-attendance"); setProfileDropOpen(false); }}
-                    className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
-                  >
-                    <Clock className="w-3.5 h-3.5 text-gray-400" /> Attendance
-                  </button>
-                  <a href="/"
-                    className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
-                    <Globe className="w-3.5 h-3.5 text-gray-400" /> ← Back to Site
-                  </a>
-                  <div className="border-t border-gray-50 mt-1 pt-1">
-                    <button
-                      onClick={() => { setProfileDropOpen(false); logout(); }}
-                      className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors font-semibold"
-                    >
-                      <LogOut className="w-3.5 h-3.5" /> Logout
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="flex-1 min-w-0 overflow-auto" style={{ background: "#F5F7FF" }}>
       <div className="p-5 space-y-5">
         {/* Toast */}
         {msg && (
@@ -2622,7 +2667,7 @@ function AdminPageInner() {
 
         {/* ── Ignite (Sales & Admissions) CRM ──────────────────────────── */}
         {tab === "ignite" && (
-          <IgniteTab flash={flash} userName={student.name ?? "Admin"} userRole={role ?? "admin"} />
+          <IgniteContentArea view={igniteView} setView={setIgniteView} flash={flash} />
         )}
 
         {/* ── BTL CRM ──────────────────────────────────────────────────── */}
@@ -2775,6 +2820,7 @@ function AdminPageInner() {
             />
           </div>
         )}
+      </div>
       </div>
       </div>
     </div>

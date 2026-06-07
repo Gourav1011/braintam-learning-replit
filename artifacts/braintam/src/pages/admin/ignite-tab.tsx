@@ -30,7 +30,7 @@ function fmt(d: string | null | undefined) {
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-type IgniteView =
+export type IgniteView =
   | "dashboard"
   | "leads"
   | "overview"
@@ -1428,6 +1428,30 @@ function OverviewView({ setView }: { setView: (v: IgniteView) => void }) {
       </div>
     </div>
   );
+}
+
+// ── Ignite Content Area (used by admin portal — no own header/sidebar) ────────
+
+export function IgniteContentArea({
+  view, setView, flash,
+}: {
+  view: IgniteView;
+  setView: (v: IgniteView) => void;
+  flash: (m: string, ok?: boolean) => void;
+}) {
+  switch (view) {
+    case "dashboard": return <DashboardView setView={setView} />;
+    case "leads": return <DemoStudentsView flash={flash} />;
+    case "overview": return <OverviewView setView={setView} />;
+    case "demo-batches": return <DemoBatchesView flash={flash} />;
+    case "demo-students": return <DemoStudentsView flash={flash} />;
+    case "attendance": return <AttendanceView flash={flash} />;
+    case "homework": return <HomeworkView flash={flash} />;
+    case "follow-ups": return <FollowUpsView flash={flash} />;
+    case "conversion": return <ConversionCenterView setView={setView} />;
+    case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    default: return <DashboardView setView={setView} />;
+  }
 }
 
 // ── Main Ignite Tab ───────────────────────────────────────────────────────────
