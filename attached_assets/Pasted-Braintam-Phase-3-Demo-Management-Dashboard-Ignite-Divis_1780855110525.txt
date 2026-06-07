@@ -1,0 +1,284 @@
+Braintam Phase 3 — Demo Management Dashboard (Ignite Division)
+Objective
+
+Create a completely separate Demo Management module for the Ignite (Sales & Admissions) division.
+
+Do NOT mix this with:
+
+Courses
+Academic Students
+Academic Mentors
+Homework Management
+Attendance Management of Long-Term Students
+
+This module is only for:
+
+Lead → Demo Student → Conversion
+Sidebar Structure
+
+Create:
+
+🚀 Ignite (Sales & Admissions)
+
+Dashboard
+Leads
+Demo Management
+Conversion Center
+Payments
+Sales Mentors
+Reports & Analytics
+
+Do NOT mix with Mastery (Academic).
+
+Demo Management Dashboard
+
+Create a dashboard exactly like the reference image.
+
+Top KPI Cards
+
+Show real database values:
+
+Total Demo Students
+
+Active Demo Students
+
+Attended Today
+
+Interested Students
+
+Payment Sent
+
+Converted Students
+
+Conversion Rate %
+
+All values must come from real data.
+
+No placeholders.
+
+Dashboard Tabs
+
+Create tabs:
+
+Overview
+
+Demo Batches
+
+Demo Students
+
+Attendance
+
+Homework
+
+Follow-ups
+
+Switch without page reload.
+
+Demo Student Pipeline
+
+Show funnel:
+
+New Lead
+↓
+Assigned
+↓
+Demo Joined
+↓
+Active Demo
+↓
+Interested
+↓
+Payment Sent
+↓
+Converted
+
+Each stage shows:
+
+Student Count
+Percentage
+Conversion Trend Chart
+
+Show:
+
+Joined
+Interested
+Payment Sent
+Converted
+
+Last 7 days
+
+Last 30 days
+
+Custom Range
+
+Top Performing Demo Batches
+
+Table:
+
+Batch Name
+
+Teacher
+
+Start Date
+
+Students
+
+Attendance %
+
+Interested %
+
+Converted %
+
+View
+
+Sort by:
+
+Conversion %
+Attendance %
+Student Count
+Sales Mentor Performance
+
+Show:
+
+Need To Call
+
+Call Again
+
+Busy
+
+Interested
+
+Payment Sent
+
+Converted
+
+Dropped
+
+Real counts.
+
+Mentor Ranking Table
+
+Show:
+
+Mentor
+
+Assigned
+
+Interested
+
+Converted
+
+Conversion %
+
+Sort by conversion rate.
+
+Recent Demo Students Requiring Attention
+
+Table:
+
+Student
+
+Batch
+
+Mentor
+
+Last Attended
+
+Status
+
+Next Action
+
+Statuses:
+
+Not Attended 2 Days
+
+Not Attended 3 Days
+
+Low Engagement
+
+Payment Pending
+
+Follow-up Required
+
+Actions:
+
+Call
+
+WhatsApp
+
+View Full Profile
+Conversion Summary
+
+Show:
+
+Converted
+
+Payment Sent
+
+Interested
+
+Active Demo
+
+Not Interested
+
+Pie/Donut Chart.
+
+Student Profile (Important)
+
+When clicking any student:
+
+Show:
+
+Personal Details
+
+School
+
+City
+
+State
+
+Weak Subject
+
+Strong Subject
+
+Demo Batch
+
+Attendance
+
+Homework
+
+Call History
+
+Mentor Remarks
+
+Interested Level
+
+Payment Status
+
+Conversion Status
+
+This should become the single source of truth for demo students.
+
+Rules
+Demo Students must NOT appear in Academic Students list.
+Academic Mentors must NOT manage demo students.
+Sales Mentors manage demo students.
+Conversion and payment tracking belong only to Ignite Division.
+Everything must use existing database data.
+Do not create dummy statistics.
+Do not break existing CRM functionality.
+Future Ready
+
+Prepare structure for:
+
+Payment Links
+Razorpay
+WhatsApp Automation
+Conversion Analytics
+Revenue Analytics
+
+but do not implement them yet.
+
+Goal:
+
+Create a professional admissions and conversion operating system that can handle 10,000+ leads and demo students while remaining separate from the academic (Mastery) division.

@@ -68,6 +68,7 @@ import { OperationsCommandCenterTab } from "./operations-command-center-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
+import { IgniteTab } from "./ignite-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -100,6 +101,7 @@ type Tab =
   | "employee-attendance"
   | "operations-command-center"
   | "super-admin"
+  | "ignite"
   | "settings"
   | "profile";
 
@@ -1122,6 +1124,7 @@ function AdminPageInner() {
     { id: "liveclasses", label: "Live Classes", icon: Video, group: "Content" },
     { id: "users", label: "Users", icon: Users, group: "Manage" },
     { id: "mentors", label: "Mentors", icon: UserCheck2, group: "Manage" },
+    { id: "ignite", label: "🚀 Ignite CRM", icon: Zap, group: "Manage" },
     { id: "assignments", label: "Teachers", icon: LinkIcon, group: "Manage" },
     { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "Manage" },
     { id: "announcements", label: "Announcements", icon: Bell, group: "Manage" },
@@ -2628,6 +2631,11 @@ function AdminPageInner() {
               "Student self-download portal",
             ]}
           />
+        )}
+
+        {/* ── Ignite (Sales & Admissions) CRM ──────────────────────────── */}
+        {tab === "ignite" && (
+          <IgniteTab flash={flash} userName={student.name ?? "Admin"} userRole={role ?? "admin"} />
         )}
 
         {/* ── BTL CRM ──────────────────────────────────────────────────── */}

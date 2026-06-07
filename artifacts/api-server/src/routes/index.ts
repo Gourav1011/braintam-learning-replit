@@ -25,6 +25,7 @@ import operationsDashboardRouter from "./operationsDashboard";
 import superAdminRouter from "./superAdmin";
 import permissionsRouter from "./permissions";
 import mentorAdminRouter from "./mentorAdmin";
+import igniteRouter from "./ignite";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(operationsDashboardRouter);
 router.use(superAdminRouter);
 router.use(permissionsRouter);
 router.use(mentorAdminRouter);
+router.use(igniteRouter);
 
 export default router;
