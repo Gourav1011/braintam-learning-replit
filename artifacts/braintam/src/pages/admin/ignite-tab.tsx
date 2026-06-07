@@ -394,6 +394,197 @@ function DemoBatchesView({ flash }: { flash: (m: string, ok?: boolean) => void }
   );
 }
 
+// ── Stage Badge ───────────────────────────────────────────────────────────────
+
+const STAGE_COLORS: Record<string, { bg: string; text: string }> = {
+  "New Lead":       { bg: "#EEF2FF", text: "#3730A3" },
+  "Contacted":      { bg: "#DBEAFE", text: "#1D4ED8" },
+  "Demo Assigned":  { bg: "#EDE9FE", text: "#5B21B6" },
+  "Demo Joined":    { bg: "#D1FAE5", text: "#065F46" },
+  "Interested":     { bg: "#FEF3C7", text: "#92400E" },
+  "Payment Sent":   { bg: "#ECFDF5", text: "#047857" },
+  "Converted":      { bg: "#DBEAFE", text: "#1D4ED8" },
+  "Dropped":        { bg: "#FEE2E2", text: "#991B1B" },
+};
+
+function StageBadge({ stage }: { stage: string | null }) {
+  if (!stage) return <span className="text-gray-400 text-xs">–</span>;
+  const cfg = STAGE_COLORS[stage] ?? { bg: "#F3F4F6", text: "#374151" };
+  return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+      style={{ background: cfg.bg, color: cfg.text }}>{stage}</span>
+  );
+}
+
+// ── Leads View ────────────────────────────────────────────────────────────────
+
+const PIPELINE_STAGES = ["New Lead", "Contacted", "Demo Assigned", "Demo Joined", "Interested", "Payment Sent", "Converted", "Dropped"];
+
+function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [stageTab, setStageTab] = useState("All");
+  const [mentorF, setMentorF] = useState("All Mentors");
+  const [page, setPage] = useState(1);
+  const PER = 12;
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/demo-students")
+      .then((r) => r.json())
+      .then(setStudents)
+      .catch(() => flash("Failed to load leads", false))
+      .finally(() => setLoading(false));
+  }, [flash]);
+
+  const mentors = [...new Set(students.map((s) => s.assignedMentorName).filter(Boolean))] as string[];
+
+  const stageCounts = PIPELINE_STAGES.reduce((acc, stage) => {
+    acc[stage] = students.filter((s) => s.leadStage === stage).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const filtered = students.filter((s) => {
+    const q = search.toLowerCase();
+    if (q && !s.name.toLowerCase().includes(q) && !(s.phone ?? "").includes(q) && !(s.school ?? "").toLowerCase().includes(q)) return false;
+    if (stageTab !== "All" && s.leadStage !== stageTab) return false;
+    if (mentorF !== "All Mentors" && s.assignedMentorName !== mentorF) return false;
+    return true;
+  });
+
+  const paged = filtered.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.ceil(filtered.length / PER);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>Leads</h1>
+          <p className="text-xs text-gray-500">Manage all incoming leads through the sales pipeline</p>
+        </div>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
+          style={{ background: ORANGE }}>
+          <Plus className="w-3.5 h-3.5" /> Add Lead
+        </button>
+      </div>
+
+      {/* Stage pipeline tabs */}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => { setStageTab("All"); setPage(1); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+          style={stageTab === "All"
+            ? { background: NAVY, color: "#fff", borderColor: NAVY }
+            : { background: "#fff", color: "#6B7280", borderColor: "#E5E7EB" }}>
+          All
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black"
+            style={stageTab === "All" ? { background: "rgba(255,255,255,0.2)", color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>
+            {students.length}
+          </span>
+        </button>
+        {PIPELINE_STAGES.map((stage) => (
+          <button key={stage} onClick={() => { setStageTab(stage); setPage(1); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+            style={stageTab === stage
+              ? { background: STAGE_COLORS[stage]?.text ?? NAVY, color: "#fff", borderColor: STAGE_COLORS[stage]?.text ?? NAVY }
+              : { background: "#fff", color: "#6B7280", borderColor: "#E5E7EB" }}>
+            {stage}
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black"
+              style={stageTab === stage
+                ? { background: "rgba(255,255,255,0.25)", color: "#fff" }
+                : { background: STAGE_COLORS[stage]?.bg ?? "#F3F4F6", color: STAGE_COLORS[stage]?.text ?? "#374151" }}>
+              {stageCounts[stage] ?? 0}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by name, phone or school..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100" />
+        </div>
+        <select value={mentorF} onChange={(e) => { setMentorF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none">
+          <option>All Mentors</option>
+          {mentors.map((m) => <option key={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+              <tr>
+                {["Student", "Mobile", "Grade", "School", "Batch", "Mentor", "Interest", "Stage", "Last Follow-up", "Action"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={10} className="text-center py-12 text-gray-400">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading leads...
+                </td></tr>
+              ) : paged.length === 0 ? (
+                <tr><td colSpan={10} className="text-center py-12 text-gray-400 text-sm">
+                  {stageTab !== "All" ? `No leads in "${stageTab}" stage` : "No leads found"}
+                </td></tr>
+              ) : paged.map((s) => (
+                <tr key={s.enrollmentId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: NAVY }}>{s.name?.[0] ?? "?"}</div>
+                      <div>
+                        <div className="font-semibold text-gray-800 text-xs">{s.name}</div>
+                        <div className="text-gray-400 text-[10px]">{s.email ?? "–"}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs font-mono">{s.phone ?? s.parentPhone ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{s.grade ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs max-w-28 truncate">{s.school ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs max-w-32 truncate">{s.batchTitle}</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{s.assignedMentorName ?? "–"}</td>
+                  <td className="px-4 py-3"><InterestBadge level={s.interestLevel} /></td>
+                  <td className="px-4 py-3"><StageBadge stage={s.leadStage} /></td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(s.lastCallAt ?? s.nextFollowUpAt)}</td>
+                  <td className="px-4 py-3">
+                    <button className="text-xs font-semibold px-3 py-1 rounded-lg hover:opacity-80"
+                      style={{ background: "#EEF2FF", color: NAVY }}>View</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setPage(p)}
+                  className="w-7 h-7 rounded-lg text-xs font-semibold"
+                  style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{p}</button>
+              ))}
+              {totalPages > 7 && <span className="px-1">…</span>}
+              {totalPages > 7 && (
+                <button onClick={() => setPage(totalPages)}
+                  className="w-7 h-7 rounded-lg text-xs font-semibold"
+                  style={page === totalPages ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{totalPages}</button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Demo Students View ────────────────────────────────────────────────────────
 
 interface StudentRow {
@@ -949,6 +1140,7 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("All");
   const [page, setPage] = useState(1);
   const PER = 12;
 
@@ -960,7 +1152,32 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
       .finally(() => setLoading(false));
   }, [flash]);
 
-  const filtered = followUps.filter((f) => {
+  const todayStr = new Date().toDateString();
+  const tomorrowStr = new Date(Date.now() + 86400000).toDateString();
+  const nowTs = Date.now();
+
+  function isToday(d: string | null) { return !!d && new Date(d).toDateString() === todayStr; }
+  function isTomorrow(d: string | null) { return !!d && new Date(d).toDateString() === tomorrowStr; }
+  function isOverdue(f: FollowUp) { return !!f.nextFollowUpDate && new Date(f.nextFollowUpDate).getTime() < nowTs && (f.callStatus ?? "").toLowerCase() !== "completed"; }
+  function isCompleted(f: FollowUp) { return (f.callStatus ?? "").toLowerCase() === "completed"; }
+
+  const TABS = [
+    { id: "All",       color: NAVY,      count: followUps.length },
+    { id: "Today",     color: ORANGE,    count: followUps.filter((f) => isToday(f.nextFollowUpDate)).length },
+    { id: "Tomorrow",  color: "#3B82F6", count: followUps.filter((f) => isTomorrow(f.nextFollowUpDate)).length },
+    { id: "Overdue",   color: "#EF4444", count: followUps.filter(isOverdue).length },
+    { id: "Completed", color: GREEN,     count: followUps.filter(isCompleted).length },
+  ];
+
+  const byTab = followUps.filter((f) => {
+    if (activeTab === "Today")     return isToday(f.nextFollowUpDate);
+    if (activeTab === "Tomorrow")  return isTomorrow(f.nextFollowUpDate);
+    if (activeTab === "Overdue")   return isOverdue(f);
+    if (activeTab === "Completed") return isCompleted(f);
+    return true;
+  });
+
+  const filtered = byTab.filter((f) => {
     const q = search.toLowerCase();
     return !q || (f.studentName ?? "").toLowerCase().includes(q) || (f.mentorName ?? "").toLowerCase().includes(q);
   });
@@ -968,23 +1185,34 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
   const totalPages = Math.ceil(filtered.length / PER);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Follow-ups</h1>
-          <p className="text-xs text-gray-500">Mentor follow-up activity and call logs</p>
+          <p className="text-xs text-gray-500">Manage mentor follow-up activity and call logs</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <KpiCard label="Total Follow-ups" value={followUps.length} icon={Phone} color={NAVY} bgColor="#EEF2FF" />
-        <KpiCard label="Today" value={followUps.filter((f) => f.createdAt && new Date(f.createdAt).toDateString() === new Date().toDateString()).length}
-          icon={Calendar} color={ORANGE} bgColor="#FFF7ED" />
-        <KpiCard label="Overdue" value={followUps.filter((f) => f.nextFollowUpDate && new Date(f.nextFollowUpDate) < new Date()).length}
-          icon={AlertTriangle} color="#EF4444" bgColor="#FEE2E2" />
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((t) => (
+          <button key={t.id} onClick={() => { setActiveTab(t.id); setPage(1); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+            style={activeTab === t.id
+              ? { background: t.color, color: "#fff", borderColor: t.color }
+              : { background: "#fff", color: "#6B7280", borderColor: "#E5E7EB" }}>
+            {t.id}
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black"
+              style={activeTab === t.id
+                ? { background: "rgba(255,255,255,0.25)", color: "#fff" }
+                : { background: t.id === "Overdue" ? "#FEE2E2" : "#F3F4F6", color: t.id === "Overdue" ? "#991B1B" : "#374151" }}>
+              {t.count}
+            </span>
+          </button>
+        ))}
       </div>
 
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -996,34 +1224,36 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100">
+            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
               <tr>
-                {["Student", "Grade", "Mentor", "Call Status", "Lead Status", "Note", "Next Follow-up", "Date", "Action"].map((h) => (
+                {["Student", "Grade", "Mentor", "Type", "Status", "Note", "Next Follow-up", "Action"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-400">
+                <tr><td colSpan={8} className="text-center py-12 text-gray-400">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading follow-ups...
                 </td></tr>
               ) : paged.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-400 text-sm">No follow-ups found</td></tr>
-              ) : paged.map((f) => (
+                <tr><td colSpan={8} className="text-center py-12 text-gray-400 text-sm">No follow-ups in this category</td></tr>
+              ) : paged.map((f) => {
+                const overdue = isOverdue(f);
+                return (
                 <tr key={f.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-semibold text-gray-800 text-xs whitespace-nowrap">{f.studentName ?? "–"}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{f.studentGrade ?? "–"}</td>
                   <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{f.mentorName ?? "–"}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{f.noteType ?? "Call"}</td>
                   <td className="px-4 py-3 text-xs">
                     {f.callStatus ? <StatusBadge status={f.callStatus} /> : <span className="text-gray-400">–</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs">
-                    {f.leadStatus ? <StatusBadge status={f.leadStatus} /> : <span className="text-gray-400">–</span>}
-                  </td>
                   <td className="px-4 py-3 text-gray-600 text-xs max-w-48 truncate">{f.note ?? "–"}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmt(f.nextFollowUpDate)}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(f.createdAt)}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: overdue ? "#EF4444" : "#374151" }}>
+                    {fmt(f.nextFollowUpDate)}
+                    {overdue && <span className="ml-1 text-[10px] font-bold text-red-500">!</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <button className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg hover:opacity-80"
                       style={{ background: "#EEF2FF", color: NAVY }}>
@@ -1031,13 +1261,14 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
         {totalPages > 1 && (
           <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Showing {((page - 1) * PER) + 1} to {Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
                 <button key={p} onClick={() => setPage(p)}
@@ -1377,19 +1608,89 @@ function IgniteHeader({
 // ── Conversion Center (placeholder) ──────────────────────────────────────────
 
 function ConversionCenterView({ setView }: { setView: (v: IgniteView) => void }) {
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/demo-students")
+      .then((r) => r.json())
+      .then(setStudents)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const total = students.length;
+
+  const FUNNEL = [
+    { stage: "Leads",        key: null,            color: "#3B82F6", bg: "#DBEAFE" },
+    { stage: "Contacted",    key: "Contacted",      color: "#8B5CF6", bg: "#EDE9FE" },
+    { stage: "Demo Joined",  key: "Demo Joined",    color: "#F59E0B", bg: "#FEF3C7" },
+    { stage: "Interested",   key: "Interested",     color: "#EA580C", bg: "#FFF7ED" },
+    { stage: "Payment Sent", key: "Payment Sent",   color: "#059669", bg: "#D1FAE5" },
+    { stage: "Converted",    key: "Converted",      color: NAVY,      bg: "#EEF2FF" },
+  ];
+
+  const counts = FUNNEL.map((p) => ({
+    ...p,
+    count: p.key === null ? total : students.filter((s) => s.leadStage === p.key).length,
+  }));
+
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-black" style={{ color: NAVY }}>Conversion Center</h1>
-        <p className="text-xs text-gray-500">Lead-to-student conversion pipeline</p>
+        <p className="text-xs text-gray-500">Track conversion funnel from leads to enrolled students</p>
       </div>
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-        <TrendingUp className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-        <h3 className="font-bold text-gray-600 mb-1">Conversion Pipeline</h3>
-        <p className="text-sm text-gray-400 mb-4">Track and manage your lead-to-conversion funnel. Full pipeline view, Razorpay integration, and WhatsApp automation coming soon.</p>
-        <button onClick={() => setView("demo-students")}
-          className="px-4 py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90"
-          style={{ background: ORANGE }}>View Demo Students →</button>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {counts.map((p) => (
+          <button key={p.stage} onClick={() => setView("leads")}
+            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md transition-shadow group">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2" style={{ background: p.bg }}>
+              <TrendingUp className="w-4 h-4" style={{ color: p.color }} />
+            </div>
+            <div className="font-black text-xl" style={{ color: NAVY }}>{loading ? "…" : p.count}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{p.stage}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Funnel table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-bold text-sm" style={{ color: NAVY }}>Pipeline Funnel</h3>
+          <span className="text-xs text-gray-400">{total} total leads</span>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+          </div>
+        ) : (
+          <div className="p-6 space-y-3">
+            {counts.map((p) => {
+              const pct = total > 0 ? Math.round((p.count / total) * 100) : 0;
+              return (
+                <div key={p.stage} className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 w-32 shrink-0">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
+                    <span className="font-semibold text-gray-700 text-xs truncate">{p.stage}</span>
+                  </div>
+                  <div className="font-black text-sm w-10 shrink-0 text-right" style={{ color: NAVY }}>{p.count}</div>
+                  <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full flex items-center pl-2 transition-all"
+                      style={{ width: `${Math.max(pct, 2)}%`, background: p.color }}>
+                      {pct >= 8 && <span className="text-white text-[10px] font-bold">{pct}%</span>}
+                    </div>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500 w-10 shrink-0">{pct}%</div>
+                  <button onClick={() => setView("leads")}
+                    className="text-xs font-semibold px-3 py-1 rounded-lg hover:opacity-80 shrink-0"
+                    style={{ background: "#EEF2FF", color: NAVY }}>View</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1441,7 +1742,7 @@ export function IgniteContentArea({
 }) {
   switch (view) {
     case "dashboard": return <DashboardView setView={setView} />;
-    case "leads": return <DemoStudentsView flash={flash} />;
+    case "leads": return <LeadsView flash={flash} />;
     case "overview": return <OverviewView setView={setView} />;
     case "demo-batches": return <DemoBatchesView flash={flash} />;
     case "demo-students": return <DemoStudentsView flash={flash} />;
@@ -1468,7 +1769,7 @@ export function IgniteTab({
   const renderContent = () => {
     switch (view) {
       case "dashboard": return <DashboardView setView={setView} />;
-      case "leads": return <DemoStudentsView flash={flash} />;
+      case "leads": return <LeadsView flash={flash} />;
       case "overview": return <OverviewView setView={setView} />;
       case "demo-batches": return <DemoBatchesView flash={flash} />;
       case "demo-students": return <DemoStudentsView flash={flash} />;

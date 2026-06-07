@@ -1,0 +1,252 @@
+# IGNITE CRM REFINEMENT (FINAL)
+
+Use the attached Ignite reference image as the blueprint.
+
+IMPORTANT:
+Do not remove any existing functionality or data.
+Only simplify the workflow and eliminate duplicate modules.
+
+--------------------------------------------------
+REMOVE DEMO STUDENTS MODULE
+--------------------------------------------------
+
+Remove the separate "Demo Students" menu from Ignite CRM.
+
+Current:
+
+Dashboard
+Leads
+Demo Students
+Demo Batches
+Attendance Analytics
+Conversion Center
+Payments
+Sales Mentors
+Student Outreach / Follow-ups
+Reports
+
+New Structure:
+
+Dashboard
+Leads
+Demo Batches
+Attendance Analytics
+Conversion Center
+Payments
+Sales Mentors
+Student Outreach / Follow-ups
+Reports
+
+--------------------------------------------------
+LEADS = COMPLETE SALES PIPELINE
+--------------------------------------------------
+
+Leads should become the single source of truth for all Ignite students.
+
+A lead should move through stages inside ONE module.
+
+Pipeline:
+
+Lead Created
+↓
+Contacted
+↓
+Demo Assigned
+↓
+Demo Joined
+↓
+Interested
+↓
+Payment Sent
+↓
+Converted
+↓
+Move To Mastery
+
+Do NOT create duplicate student records.
+
+--------------------------------------------------
+LEADS PAGE TABS
+--------------------------------------------------
+
+Create tabs or stage filters:
+
+All Leads
+New Leads
+Contacted
+Demo Assigned
+Demo Joined
+Interested
+Payment Sent
+Converted
+Dropped
+
+Each tab should display only students in that stage.
+
+--------------------------------------------------
+LEADS TABLE
+--------------------------------------------------
+
+Columns:
+
+Student Name
+Parent Name
+Mobile Number
+Grade
+School
+City
+Assigned Batch
+Sales Mentor
+Attendance %
+Interest Level
+Current Stage
+Last Follow-up
+Payment Status
+Created Date
+Actions
+
+--------------------------------------------------
+STUDENT VIEW PAGE
+--------------------------------------------------
+
+When clicking View:
+
+Show complete lead profile:
+
+Basic Information
+Attendance
+Follow-ups
+Call History
+Interest Level
+Payment Status
+Assigned Mentor
+Assigned Batch
+Timeline
+
+No duplicate Demo Student page should exist.
+
+--------------------------------------------------
+DEMO BATCH INTEGRATION
+--------------------------------------------------
+
+Demo Batches must pull students directly from Leads.
+
+Show:
+
+Batch Name
+Teacher
+Total Students
+Attendance %
+Conversion %
+Status
+
+View Batch:
+
+Students
+Attendance
+Teacher
+Sessions
+Interested Students
+Converted Students
+Dropped Students
+
+--------------------------------------------------
+CONVERSION CENTER
+--------------------------------------------------
+
+Keep Conversion Center.
+
+Show funnel:
+
+Lead Created
+Contacted
+Demo Assigned
+Demo Joined
+Interested
+Payment Sent
+Converted
+
+Each stage should be clickable.
+
+Clicking a stage should open filtered lead records.
+
+--------------------------------------------------
+PAYMENTS
+--------------------------------------------------
+
+Keep Payments separate.
+
+Columns:
+
+Student
+Course
+Amount
+Discount
+Final Amount
+Payment Status
+Payment Date
+Receipt
+
+Dashboard Cards:
+
+Pending Payments
+Today's Collection
+Weekly Collection
+Monthly Collection
+
+--------------------------------------------------
+SALES MENTORS
+--------------------------------------------------
+
+Show:
+
+Assigned Leads
+Demo Joined
+Interested
+Payment Sent
+Converted
+Conversion %
+
+Create mentor ranking automatically.
+
+--------------------------------------------------
+FOLLOW-UPS
+--------------------------------------------------
+
+Keep Follow-ups.
+
+Sections:
+
+Today
+Tomorrow
+Overdue
+Completed
+
+--------------------------------------------------
+MASTERY TRANSFER
+--------------------------------------------------
+
+When a lead reaches Converted status:
+
+Show button:
+
+"Move To Mastery"
+
+This should:
+
+Create Student in Mastery
+Create Enrollment
+Preserve all lead history
+Preserve attendance history
+Preserve payment history
+Preserve mentor notes
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+Create a professional CRM workflow where one lead progresses through all stages without duplicate records.
+
+Lead → Demo → Interested → Payment → Converted → Mastery
+
+Use the attached reference image for layout, cards, tables, colors, analytics, and module structure.
