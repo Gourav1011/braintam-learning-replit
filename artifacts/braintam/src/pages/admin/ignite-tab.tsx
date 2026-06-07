@@ -4,6 +4,7 @@ import {
   Phone, TrendingUp, ChevronDown, ChevronRight, Search, Filter,
   Download, Plus, Eye, RefreshCw, Star, Award, Zap, CheckCircle,
   XCircle, Clock, UserCheck, BarChart3, AlertTriangle, Check, X,
+  Bell, CreditCard, ChevronUp,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 
@@ -1181,16 +1182,15 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { id: "conversion", label: "Conversion Center", icon: TrendingUp },
+  { id: "leads", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
 ];
 
 function IgniteSidebar({
-  view, setView, userName, userRole,
+  view, setView,
 }: {
   view: IgniteView;
   setView: (v: IgniteView) => void;
-  userName: string;
-  userRole: string;
 }) {
   const demoManagementViews: IgniteView[] = ["overview", "demo-batches", "demo-students", "attendance", "homework", "follow-ups"];
   const isDemoManagement = demoManagementViews.includes(view);
@@ -1199,35 +1199,31 @@ function IgniteSidebar({
   const isActive = (id: IgniteView) => view === id;
 
   return (
-    <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen overflow-y-auto z-20">
-      {/* Brand */}
-      <div className="px-4 pt-5 pb-4 border-b border-gray-100">
-        <img src={braintamLogo} alt="Braintam" className="h-7 w-auto mb-3" />
-        <div className="px-2 py-1.5 rounded-lg" style={{ background: "#FFF7ED" }}>
-          <div className="text-xs font-black tracking-wide" style={{ color: ORANGE }}>🚀 IGNITE</div>
-          <div className="text-xs text-gray-500 font-medium">Sales & Admissions</div>
-        </div>
+    <div className="w-52 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto z-20" style={{ height: "calc(100vh - 56px)" }}>
+      {/* MAIN MENU label */}
+      <div className="px-4 pt-4 pb-1">
+        <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Main Menu</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+      <nav className="flex-1 px-3 pb-4 space-y-0.5">
+        {NAV_ITEMS.map((item, idx) => {
           if (item.children) {
             const isParentActive = item.children.some((c) => isActive(c.id));
             return (
-              <div key={item.id}>
+              <div key={`${item.id}-${idx}`}>
                 <button
                   onClick={() => setDemoOpen(!demoOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition-colors hover:bg-gray-50"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors hover:bg-gray-50"
                   style={isParentActive ? { color: NAVY } : { color: "#6B7280" }}>
                   <div className="flex items-center gap-2.5">
                     <item.icon className="w-4 h-4 shrink-0" />
                     <span>{item.label}</span>
                   </div>
-                  {demoOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  {demoOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
                 {demoOpen && (
-                  <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 pl-3" style={{ borderColor: "#E5E7EB" }}>
+                  <div className="ml-3 mt-0.5 mb-1 space-y-0.5 border-l-2 pl-3" style={{ borderColor: "#E5E7EB" }}>
                     {item.children.map((child) => (
                       <button key={child.id} onClick={() => setView(child.id)}
                         className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -1243,8 +1239,8 @@ function IgniteSidebar({
             );
           }
           return (
-            <button key={item.id} onClick={() => setView(item.id)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+            <button key={`${item.id}-${idx}`} onClick={() => setView(item.id)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
               style={isActive(item.id)
                 ? { background: "#EEF2FF", color: NAVY }
                 : { color: "#6B7280" }}>
@@ -1254,23 +1250,125 @@ function IgniteSidebar({
           );
         })}
 
-        {/* Reports & Analytics (coming soon) */}
-        <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-gray-400 hover:bg-gray-50">
+        {/* Reports & Analytics */}
+        <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors">
           <BarChart3 className="w-4 h-4 shrink-0" />
           <span>Reports & Analytics</span>
         </button>
       </nav>
+    </div>
+  );
+}
 
-      {/* User footer */}
-      <div className="px-3 pb-4 pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-gray-50">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-            style={{ background: NAVY }}>{userName?.[0] ?? "?"}</div>
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-gray-800 truncate">{userName}</div>
-            <div className="text-xs text-gray-400 capitalize">{userRole.replace("_", " ")}</div>
+// ── Ignite Header ─────────────────────────────────────────────────────────────
+
+function IgniteHeader({
+  userName, userRole,
+}: {
+  userName: string;
+  userRole: string;
+}) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+
+  const today = new Date();
+  const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+  const fmtHeader = (d: Date) =>
+    d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+  return (
+    <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30" style={{ fontFamily: "Poppins, sans-serif" }}>
+      {/* Logo */}
+      <div className="flex items-center gap-2 shrink-0">
+        <img src={braintamLogo} alt="Braintam" className="h-7 w-auto" />
+      </div>
+
+      {/* Workspace selector */}
+      <div className="relative shrink-0">
+        <button
+          onClick={() => { setWorkspaceOpen(!workspaceOpen); setProfileOpen(false); }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+          style={{ minWidth: "160px" }}>
+          <span className="text-base">🚀</span>
+          <div className="text-left min-w-0">
+            <div className="text-xs font-bold truncate" style={{ color: NAVY }}>Ignite CRM</div>
+            <div className="text-[10px] text-gray-400 truncate">Sales &amp; Admissions</div>
           </div>
-        </div>
+          <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-auto shrink-0" />
+        </button>
+        {workspaceOpen && (
+          <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+            <div className="px-3 py-2 rounded-lg mx-1 cursor-default" style={{ background: "#EEF2FF" }}>
+              <div className="text-xs font-bold" style={{ color: NAVY }}>🚀 Ignite CRM</div>
+              <div className="text-[10px] text-gray-500">Sales &amp; Admissions</div>
+            </div>
+            <div className="px-3 py-2 rounded-lg mx-1 mt-0.5 hover:bg-gray-50 cursor-pointer" onClick={() => setWorkspaceOpen(false)}>
+              <div className="text-xs font-semibold text-gray-600">🎓 Mastery</div>
+              <div className="text-[10px] text-gray-400">Academic Portal</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Date range */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-600 cursor-pointer hover:bg-gray-50 shrink-0">
+        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+        <span className="font-medium whitespace-nowrap">{fmtHeader(weekAgo)} – {fmtHeader(today)}</span>
+        <ChevronDown className="w-3 h-3 text-gray-400" />
+      </div>
+
+      {/* Export Report */}
+      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity shrink-0"
+        style={{ background: NAVY }}>
+        <Download className="w-3.5 h-3.5" />
+        Export Report
+      </button>
+
+      {/* Notifications */}
+      <button className="relative w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 shrink-0">
+        <Bell className="w-4 h-4 text-gray-500" />
+        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px] font-bold"
+          style={{ background: ORANGE }}>3</span>
+      </button>
+
+      {/* User profile */}
+      <div className="relative shrink-0">
+        <button
+          onClick={() => { setProfileOpen(!profileOpen); setWorkspaceOpen(false); }}
+          className="flex items-center gap-2.5 hover:bg-gray-50 px-2 py-1.5 rounded-xl transition-colors">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+            style={{ background: NAVY }}>{userName?.[0] ?? "G"}</div>
+          <div className="text-left hidden sm:block">
+            <div className="text-xs font-bold" style={{ color: NAVY }}>{userName}</div>
+            <div className="text-[10px] text-gray-400 capitalize">{userRole.replace("_", " ")}</div>
+          </div>
+          <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+        </button>
+        {profileOpen && (
+          <div className="absolute top-full right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+            <div className="px-3 py-2 border-b border-gray-50 mb-1">
+              <div className="text-xs font-bold text-gray-800">{userName}</div>
+              <div className="text-[10px] text-gray-400 capitalize">{userRole.replace("_", " ")}</div>
+            </div>
+            {[
+              { label: "My Profile", icon: UserCheck },
+              { label: "Settings", icon: Filter },
+            ].map(({ label, icon: Icon }) => (
+              <button key={label} onClick={() => setProfileOpen(false)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 transition-colors">
+                <Icon className="w-3.5 h-3.5" />{label}
+              </button>
+            ))}
+            <div className="border-t border-gray-50 mt-1 pt-1">
+              <button onClick={() => { setProfileOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 transition-colors">
+                <XCircle className="w-3.5 h-3.5" /> Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1360,10 +1458,15 @@ export function IgniteTab({
   };
 
   return (
-    <div className="flex min-h-full -mx-6 -my-5" style={{ fontFamily: "Poppins, sans-serif" }}>
-      <IgniteSidebar view={view} setView={setView} userName={userName} userRole={userRole} />
-      <div className="flex-1 overflow-auto p-6 min-w-0" style={{ background: "#F5F7FF" }}>
-        {renderContent()}
+    <div className="flex flex-col -mx-6 -my-5" style={{ fontFamily: "Poppins, sans-serif", height: "calc(100vh - 0px)", minHeight: "600px" }}>
+      {/* Top header */}
+      <IgniteHeader userName={userName} userRole={userRole} />
+      {/* Body: sidebar + content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <IgniteSidebar view={view} setView={setView} />
+        <div className="flex-1 overflow-auto p-6 min-w-0" style={{ background: "#F5F7FF" }}>
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
