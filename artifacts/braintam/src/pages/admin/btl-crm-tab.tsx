@@ -413,7 +413,14 @@ function StatCard({ icon: Icon, label, value, sub, color = NAVY, bg = "#F0F4FF" 
   );
 }
 
-function PipelineSummary({ pipeline, loading }: { pipeline: PipelineData | null; loading: boolean }) {
+function PipelineSummary({
+  pipeline, loading, unassignedCount, onNoMentorClick,
+}: {
+  pipeline: PipelineData | null;
+  loading: boolean;
+  unassignedCount: number;
+  onNoMentorClick: () => void;
+}) {
   if (loading) return <div className="h-40 flex items-center justify-center text-sm text-gray-400">Loading pipeline…</div>;
   if (!pipeline) return null;
 
@@ -421,11 +428,22 @@ function PipelineSummary({ pipeline, loading }: { pipeline: PipelineData | null;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard icon={Users} label="Total in Pipeline" value={totalAssigned} bg="#EFF6FF" color="#2563EB" />
         <StatCard icon={CheckCircle} label="Converted / Paid" value={converted} bg="#DCFCE7" color="#16A34A" />
         <StatCard icon={AlertTriangle} label="Dropped" value={dropped} bg="#FEF2F2" color="#DC2626" />
         <StatCard icon={Target} label="No Stage Set" value={unassignedToStage} bg="#FFF7ED" color={ORANGE} />
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onNoMentorClick}
+          onKeyDown={e => e.key === "Enter" && onNoMentorClick()}
+          className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 rounded-2xl"
+          style={{ ["--tw-ring-color" as string]: "#6B7280" }}
+          title="Click to view Coverage Gaps"
+        >
+          <StatCard icon={UserX} label="No Mentor" value={unassignedCount} bg="#F9FAFB" color="#6B7280" />
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
@@ -925,6 +943,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
   const [loadingUnassigned, setLoadingUnassigned] = useState(true);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [crmStudentId, setCrmStudentId] = useState<number | null>(null);
+  const coverageGapsRef = useRef<HTMLElement>(null);
 
   const students = users.filter(u => u.role === "student") as StudentOption[];
 
@@ -1048,7 +1067,12 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
             <TrendingUp className="w-4 h-4" style={{ color: NAVY }} />
             <h4 className="font-bold text-sm" style={{ color: NAVY }}>Pipeline Summary</h4>
           </div>
-          <PipelineSummary pipeline={pipeline} loading={loadingPipeline} />
+          <PipelineSummary
+            pipeline={pipeline}
+            loading={loadingPipeline}
+            unassignedCount={unassigned?.count ?? 0}
+            onNoMentorClick={() => coverageGapsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          />
         </section>
 
         {/* Two-column: Mentor table + Overdue reminders */}
@@ -1062,7 +1086,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
         </div>
 
         {/* Unassigned Students */}
-        <section>
+        <section ref={coverageGapsRef}>
           <div className="flex items-center gap-2 mb-3">
             <UserX className="w-4 h-4" style={{ color: NAVY }} />
             <h4 className="font-bold text-sm" style={{ color: NAVY }}>Coverage Gaps</h4>
