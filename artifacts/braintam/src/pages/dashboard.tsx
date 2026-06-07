@@ -670,12 +670,12 @@ export default function DashboardPage() {
                 <div>
                   <h2 className="text-lg font-bold text-gray-800">Your journey starts soon!</h2>
                   <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto leading-relaxed">
-                    You haven't been enrolled in a course yet. Once your admin adds you, your live classes, homework, tests and progress will all appear here.
+                    You're not enrolled in any course yet. Once Braintam adds you to a batch, your live classes, homework, tests and progress will all appear here.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 bg-orange-100 text-orange-700 text-xs font-semibold px-4 py-2 rounded-full">
                   <span>📞</span>
-                  <span>Contact your teacher or admin to get started</span>
+                  <span>Contact Braintam support to get enrolled</span>
                 </div>
               </div>
             )}
