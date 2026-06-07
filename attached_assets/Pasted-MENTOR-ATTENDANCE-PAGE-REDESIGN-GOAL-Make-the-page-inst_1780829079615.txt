@@ -1,0 +1,168 @@
+MENTOR ATTENDANCE PAGE REDESIGN
+
+GOAL:
+Make the page instantly understandable for mentors handling 50–100 students.
+
+==================================================
+
+TOP SECTION (TODAY SUMMARY)
+
+Replace current chips with dashboard cards:
+
+[ Total Students ]
+[ Present ]
+[ Absent ]
+[ Calls Done ]
+[ Remaining Calls ]
+[ Call Later ]
+
+Show counts in large numbers.
+
+Example:
+
+Total Students: 72
+Present: 58
+Absent: 14
+Calls Done: 31
+Remaining Calls: 27
+Call Later: 8
+
+==================================================
+
+CLASS STATUS SECTION
+
+Show 3 sections separately:
+
+1. LIVE NOW
+   (Green Border)
+
+* Join Class button active
+* Attendance editable
+* Calling editable
+
+2. UPCOMING
+   (Blue Border)
+
+* Student list visible
+* Attendance locked
+* Calling locked
+
+Join Button:
+Disabled
+
+Text:
+"Available at class start time"
+
+3. COMPLETED
+   (Grey Border)
+
+* Read only
+* No edits allowed
+* No attendance changes
+* No calling changes
+
+Show summary:
+
+Present: XX
+Absent: XX
+Call Later: XX
+
+Badge:
+Completed
+
+==================================================
+
+STUDENT ROW IMPROVEMENT
+
+Current:
+Present | Absent | Late | Call
+
+Replace with:
+
+[ Present ]
+[ Absent ]
+[ Call ]
+[ Call Later ]
+
+Show status badge on right:
+
+🟢 Present
+🔴 Absent
+🟠 Call Later
+🔵 Called
+
+==================================================
+
+MENTOR ACTION LOCKING
+
+PAST CLASSES
+
+* View only
+* No edits
+
+TODAY ACTIVE CLASS
+
+* Editable
+
+FUTURE CLASSES
+
+* Locked
+
+==================================================
+
+ATTENDANCE PROTECTION
+
+Mentors cannot modify:
+
+* Past attendance
+* Future attendance
+* Teacher records
+* Live class schedule
+
+Mentors can modify only:
+
+* Today's attendance
+* Calling status
+* Follow-up remarks
+
+==================================================
+
+CLASS HEALTH INDICATOR
+
+Show color badge:
+
+Green:
+Attendance > 80%
+
+Orange:
+Attendance 60-80%
+
+Red:
+Attendance < 60%
+
+==================================================
+
+CARD FOOTER
+
+Show:
+
+Teacher
+Subject
+Class Time
+Duration
+Present %
+Calls Pending
+
+==================================================
+
+UI PRIORITY
+
+Mentor should understand in 5 seconds:
+
+1. Which class is live now.
+2. Which students are absent.
+3. Whom to call.
+4. Which calls are pending.
+5. Which classes are completed.
+
+No scrolling through unnecessary details.

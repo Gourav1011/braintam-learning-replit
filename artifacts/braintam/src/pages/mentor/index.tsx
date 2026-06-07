@@ -806,16 +806,22 @@ export default function BTLCRMPage() {
   const isClassCompleted = classState === "completed";
   const isClassUpcoming = classState === "upcoming";
   const isClassLive = classState === "live";
+  const isToday = attDate === todayStr();
+  const isPastDate = attDate < todayStr();
   const attTotalStudents = students.length;
   const attPresentCount = students.filter(s => attendanceMap[s.id]?.status === "present").length;
   const attAbsentCount = students.filter(s => attendanceMap[s.id]?.status === "absent").length;
   const attLateCount = students.filter(s => attendanceMap[s.id]?.status === "late").length;
   const attMarkedCount = attPresentCount + attAbsentCount + attLateCount;
   const attCallsDone = students.filter(s => attendanceMap[s.id]?.callStatus === "called").length;
-  const attPendingCalls = Math.max(0, attAbsentCount - attCallsDone);
-  const attFollowupRequired = students.filter(s => attendanceMap[s.id]?.status === "absent" && !attendanceMap[s.id]?.callStatus).length;
+  const attCallLaterCount = students.filter(s => attendanceMap[s.id]?.callStatus === "call_later").length;
+  const attRemainingCalls = students.filter(s => attendanceMap[s.id]?.status === "absent" && !attendanceMap[s.id]?.callStatus).length;
   const attPct = attTotalStudents > 0 ? Math.round((attMarkedCount / attTotalStudents) * 100) : 0;
   const callPct = attAbsentCount > 0 ? Math.round((attCallsDone / attAbsentCount) * 100) : (attMarkedCount > 0 ? 100 : 0);
+  const attPresentPct = attTotalStudents > 0 ? Math.round((attPresentCount / attTotalStudents) * 100) : 0;
+  const liveNowClasses = liveClasses.filter(c => getClassState(c) === "live");
+  const upcomingClassesForDate = liveClasses.filter(c => getClassState(c) === "upcoming");
+  const completedClassesForDate = liveClasses.filter(c => getClassState(c) === "completed");
 
   // ── Attendance helpers ──
   async function markAttendance(studentId: number, status: string) {
@@ -833,6 +839,20 @@ export default function BTLCRMPage() {
   }
   function updateDraft(studentId: number, field: string, val: string) {
     setCallDrafts(prev => ({ ...prev, [studentId]: { ...{ callStatus: "", callTime: "", calledBy: "", calledByName: "", remark: "" }, ...prev[studentId], [field]: val } }));
+  }
+  async function markCallStatus(studentId: number, callStatus: string) {
+    const current = attendanceMap[studentId];
+    if (!current) return;
+    await apiFetch("/mentor/attendance", {
+      method: "POST",
+      body: JSON.stringify({
+        studentId, attendanceDate: attDate, liveClassId: selectedClassId,
+        status: current.status, callStatus: callStatus || null,
+        callTime: current.callTime || null, calledBy: current.calledBy || null,
+        calledByName: current.calledByName || null, remark: current.remark || null,
+      }),
+    });
+    await fetchAttendance(attDate, selectedClassId);
   }
 
   // ── 360 profile ──
@@ -1477,270 +1497,445 @@ export default function BTLCRMPage() {
 
         {/* ════ ATTENDANCE ════ */}
         {tab === "attendance" && (
-          <div className="p-5 max-w-5xl mx-auto space-y-4">
+          <div className="p-4 max-w-5xl mx-auto space-y-5">
+
+            {/* ── Header ── */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <h1 className="text-lg font-black" style={{ color: NAVY }}>Attendance</h1>
-              <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none" />
+              <div>
+                <h1 className="text-lg font-black" style={{ color: NAVY }}>Attendance</h1>
+                {isPastDate && <p className="text-[10px] text-gray-400 mt-0.5">📋 Past record — view only</p>}
+                {attDate > todayStr() && <p className="text-[10px] text-gray-400 mt-0.5">🔒 Future class — locked</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                {isToday && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: "#DCFCE7", color: GREEN }}>📅 Today</span>}
+                <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-blue-400" />
+                <button onClick={() => { fetchLiveClasses(attDate); fetchAttendance(attDate, selectedClassId); }}
+                  className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
-            {/* ── Upcoming Classes preview strip ── */}
-            {upcomingClasses.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Video className="w-4 h-4" style={{ color: NAVY }} />
-                  <h2 className="font-bold text-sm" style={{ color: NAVY }}>Upcoming Classes</h2>
-                  <span className="text-[10px] text-gray-400">(next 14 days)</span>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-1">
-                  {upcomingClasses.map(cls => {
-                    const state = getClassState(cls);
-                    const isPast = state === "completed";
-                    const isLive = state === "live";
-                    return (
-                      <div key={cls.id} className={`flex-shrink-0 rounded-xl border p-3 min-w-[180px] max-w-[210px] ${isLive ? "border-green-200 bg-green-50/50" : isPast ? "border-gray-100 bg-gray-50" : "border-gray-100"}`}>
-                        <div className="font-bold text-xs truncate" style={{ color: isPast ? "#9CA3AF" : NAVY }}>{cls.title}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">Grade {cls.grade}{cls.teacher ? ` · ${cls.teacher}` : ""}</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">{fmtDateTime(cls.scheduledAt)} · {cls.duration}m</div>
-                        {isLive && <div className="text-[10px] font-bold text-green-600 mt-1 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" /> Live Now</div>}
-                        {isPast && <div className="text-[10px] text-gray-400 mt-1">Ended</div>}
-                        {!isPast && cls.joinUrl ? (
-                          <a href={cls.joinUrl} target="_blank" rel="noopener noreferrer"
-                            className="mt-2 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold text-white w-full"
-                            style={{ background: isLive ? GREEN : NAVY }}>
-                            <ExternalLink className="w-2.5 h-2.5" /> {isLive ? "Join Now" : "Join Class"}
-                          </a>
-                        ) : !isPast && (
-                          <div className="mt-2 text-[10px] text-gray-400 text-center">No join link</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Class selector cards for selected date ── */}
-            {liveClasses.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
-                {liveClasses.map(cls => {
-                  const st = getClassState(cls);
-                  const isSelected = selectedClassId === cls.id;
-                  const stateLabel = st === "live" ? "🔴 Live" : st === "upcoming" ? "⏳ Upcoming" : "✅ Done";
-                  const stateColor = st === "live" ? "#059669" : st === "upcoming" ? "#6366F1" : "#9CA3AF";
-                  return (
-                    <button key={cls.id} onClick={() => setSelectedClassId(cls.id)}
-                      className="text-left px-3 py-2 rounded-xl text-xs font-bold transition-all border"
-                      style={{ background: isSelected ? `${NAVY}10` : "white", color: isSelected ? NAVY : "#6B7280", borderColor: isSelected ? NAVY : "#E5E7EB" }}>
-                      <div>{cls.title}</div>
-                      <div className="text-[10px] font-semibold mt-0.5" style={{ color: stateColor }}>{stateLabel}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ── State banner ── */}
-            {selectedClass && isClassCompleted && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#F3F4F6", color: "#6B7280", border: "1px solid #E5E7EB" }}>
-                <History className="w-3.5 h-3.5" /> HISTORICAL RECORD — This class has ended. Attendance and call records are read-only.
-              </div>
-            )}
-            {selectedClass && isClassUpcoming && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#EEF2FF", color: "#6366F1", border: "1px solid #C7D2FE" }}>
-                <Clock className="w-3.5 h-3.5" /> CLASS NOT STARTED — View the student list below. Attendance marking will be enabled once the class goes live.
-              </div>
-            )}
-            {selectedClass && isClassLive && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0" }}>
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" /> CLASS IS LIVE — Mark attendance and log calls in real time.
-              </div>
-            )}
-
-            {/* ── Counters + Progress bars ── */}
-            {selectedClass && attTotalStudents > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
-                {/* Counter tiles */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {[
-                    { label: "Students", value: attTotalStudents, color: NAVY },
-                    { label: "Present", value: attPresentCount, color: "#059669" },
-                    { label: "Absent", value: attAbsentCount, color: "#DC2626" },
-                    { label: "Calls Done", value: attCallsDone, color: "#6366F1" },
-                    { label: "Pending Calls", value: attPendingCalls, color: "#D97706" },
-                    { label: "Follow-up Req.", value: attFollowupRequired, color: ORANGE },
-                  ].map(c => (
-                    <div key={c.label} className="rounded-xl p-2.5 text-center" style={{ background: `${c.color}08`, border: `1px solid ${c.color}20` }}>
-                      <div className="text-xl font-black" style={{ color: c.color }}>{c.value}</div>
-                      <div className="text-[9px] font-bold mt-0.5" style={{ color: c.color }}>{c.label}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* Progress bars */}
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex justify-between text-[10px] font-bold mb-1">
-                      <span style={{ color: NAVY }}>Attendance Marked</span>
-                      <span style={{ color: attPct >= 80 ? "#059669" : attPct >= 50 ? "#D97706" : "#DC2626" }}>{attPct}% ({attMarkedCount}/{attTotalStudents})</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${attPct}%`, background: attPct >= 80 ? "#059669" : attPct >= 50 ? "#D97706" : "#DC2626" }} />
-                    </div>
+            {/* ── TODAY SUMMARY CARDS ── */}
+            {selectedClass && students.length > 0 && !attLoading && (
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {[
+                  { label: "Total Students", value: attTotalStudents, color: NAVY },
+                  { label: "Present",         value: attPresentCount,   color: "#059669" },
+                  { label: "Absent",          value: attAbsentCount,    color: "#DC2626" },
+                  { label: "Calls Done",      value: attCallsDone,      color: "#2563EB" },
+                  { label: "Remaining Calls", value: attRemainingCalls, color: "#D97706" },
+                  { label: "Call Later",      value: attCallLaterCount, color: "#F97316" },
+                ].map(c => (
+                  <div key={c.label} className="rounded-2xl p-3 text-center"
+                    style={{ background: `${c.color}10`, border: `1.5px solid ${c.color}22` }}>
+                    <div className="text-2xl font-black leading-none" style={{ color: c.color }}>{c.value}</div>
+                    <div className="text-[9px] font-bold mt-1 leading-tight" style={{ color: c.color }}>{c.label}</div>
                   </div>
-                  {attAbsentCount > 0 && (
-                    <div>
-                      <div className="flex justify-between text-[10px] font-bold mb-1">
-                        <span style={{ color: NAVY }}>Absent Students Called</span>
-                        <span style={{ color: callPct >= 80 ? "#059669" : callPct >= 50 ? "#D97706" : "#DC2626" }}>{callPct}% ({attCallsDone}/{attAbsentCount})</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${callPct}%`, background: callPct >= 80 ? "#059669" : callPct >= 50 ? "#D97706" : "#DC2626" }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ── Status filter tabs ── */}
-            {students.length > 0 && !attLoading && (
-              <div className="flex gap-1.5 flex-wrap">
-                {([
-                  { key: "all",      label: "All",        count: students.length },
-                  { key: "present",  label: "Present",    count: attPresentCount },
-                  { key: "absent",   label: "Absent",     count: attAbsentCount },
-                  { key: "late",     label: "Late",       count: attLateCount },
-                  { key: "unmarked", label: "Not Marked", count: students.length - attMarkedCount },
-                ] as const).map(f => (
-                  <button key={f.key} onClick={() => setAttStatusFilter(f.key)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border"
-                    style={{
-                      background: attStatusFilter === f.key ? (f.key === "present" ? "#DCFCE7" : f.key === "absent" ? "#FEE2E2" : f.key === "late" ? "#FEF3C7" : `${NAVY}10`) : "white",
-                      color: attStatusFilter === f.key ? (f.key === "present" ? "#059669" : f.key === "absent" ? "#DC2626" : f.key === "late" ? "#D97706" : NAVY) : "#9CA3AF",
-                      borderColor: attStatusFilter === f.key ? (f.key === "present" ? "#059669" : f.key === "absent" ? "#DC2626" : f.key === "late" ? "#D97706" : NAVY) : "#E5E7EB",
-                    }}>
-                    {f.label} <span className="font-black">{f.count}</span>
-                  </button>
                 ))}
               </div>
             )}
 
-            {/* ── Student list ── */}
-            {attLoading ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
-            ) : students.length === 0 ? (
-              <div className="text-center py-10 text-gray-400 text-sm">No students assigned</div>
-            ) : (
-              <div className="space-y-2">
-                {students.filter(s => {
-                  if (attStatusFilter === "all") return true;
-                  const status = attendanceMap[s.id]?.status ?? null;
-                  if (attStatusFilter === "unmarked") return !status;
-                  return status === attStatusFilter;
-                }).map(s => {
-                  const att = attendanceMap[s.id];
-                  const draft = callDrafts[s.id] ?? { callStatus: "", callTime: "", calledBy: "", calledByName: "", remark: "" };
-                  const isExpanded = expandedCall === s.id;
-                  const avatarBg = att?.status === "present" ? GREEN : att?.status === "absent" ? "#DC2626" : att?.status === "late" ? "#D97706" : "#9CA3AF";
-
-                  /* ── COMPLETED: read-only grey card ── */
-                  if (isClassCompleted) {
-                    return (
-                      <div key={s.id} className="rounded-xl border p-3" style={{ background: "#F9FAFB", borderColor: "#E5E7EB" }}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                            style={{ background: avatarBg }}>
-                            {s.name.charAt(0)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-xs" style={{ color: "#4B5563" }}>{s.name}</div>
-                            <div className="text-[10px] text-gray-400">Grade {s.grade}</div>
-                          </div>
-                          {/* Read-only status tag */}
-                          {att?.status ? (
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
-                              style={{ background: att.status === "present" ? "#DCFCE7" : att.status === "absent" ? "#FEE2E2" : "#FEF3C7", color: att.status === "present" ? GREEN : att.status === "absent" ? "#DC2626" : "#D97706" }}>
-                              {att.status.charAt(0).toUpperCase() + att.status.slice(1)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-gray-300 font-semibold">Not marked</span>
-                          )}
-                        </div>
-                        {/* Call record */}
-                        {att && (att.callStatus || att.remark) && (
-                          <div className="mt-2 ml-11 p-2 rounded-lg text-[10px] space-y-0.5" style={{ background: "#F3F4F6" }}>
-                            {att.callStatus && <div className="text-gray-500"><span className="font-bold text-gray-700">Call:</span> {att.callStatus}{att.callTime ? ` at ${att.callTime}` : ""}{att.calledBy ? `, picked by ${att.calledByName || att.calledBy}` : ""}</div>}
-                            {att.remark && <div className="text-gray-500"><span className="font-bold text-gray-700">Remark:</span> {att.remark}</div>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  /* ── UPCOMING: view-only card ── */
-                  if (isClassUpcoming) {
-                    return (
-                      <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                            style={{ background: "#9CA3AF" }}>
-                            {s.name.charAt(0)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-xs" style={{ color: NAVY }}>{s.name}</div>
-                            <div className="text-[10px] text-gray-400">Grade {s.grade}</div>
-                          </div>
-                          <span className="text-[10px] text-gray-400 font-semibold px-2.5 py-1 rounded-lg border border-gray-200">—</span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  /* ── LIVE: full editable card (existing behaviour) ── */
-                  return (
-                    <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                          style={{ background: avatarBg }}>
-                          {s.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-xs" style={{ color: NAVY }}>{s.name}</div>
-                          <div className="text-[10px] text-gray-400">Grade {s.grade}</div>
-                        </div>
-                        <div className="flex gap-1.5 items-center flex-wrap">
-                          {["present", "absent", "late"].map(status => (
-                            <button key={status} onClick={() => markAttendance(s.id, status)}
-                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
-                              style={{ background: att?.status === status ? (status === "present" ? "#DCFCE7" : status === "absent" ? "#FEE2E2" : "#FEF3C7") : "white", color: att?.status === status ? (status === "present" ? GREEN : status === "absent" ? "#DC2626" : "#D97706") : "#9CA3AF", borderColor: att?.status === status ? (status === "present" ? GREEN : status === "absent" ? "#DC2626" : "#D97706") : "#E5E7EB" }}>
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </button>
-                          ))}
-                          <button onClick={() => setExpandedCall(isExpanded ? null : s.id)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 border border-gray-200">
-                            <Phone className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <div className="mt-3">
-                          <CallDetailsForm callStatus={draft.callStatus} callTime={draft.callTime} calledBy={draft.calledBy} calledByName={draft.calledByName}
-                            onChange={(f, v) => updateDraft(s.id, f, v)} />
-                          <input value={draft.remark} onChange={e => updateDraft(s.id, "remark", e.target.value)} placeholder="Remark…"
-                            className="w-full mt-2 px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
-                          <button onClick={() => saveCallDetails(s.id)} className="mt-2 w-full py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: GREEN }}>Save Call Details</button>
-                        </div>
-                      )}
-                      {/* Saved call record (shown when not in edit mode) */}
-                      {!isExpanded && att && (att.callStatus || att.remark) && (
-                        <div className="mt-2 p-2 rounded-lg text-[10px] space-y-0.5" style={{ background: "#EEF2FF", border: "1px solid #C7D2FE" }}>
-                          {att.callStatus && <div className="text-indigo-700"><span className="font-bold">Call:</span> {att.callStatus}{att.callTime ? ` at ${att.callTime}` : ""}{att.calledByName ? `, by ${att.calledByName}` : ""}</div>}
-                          {att.remark && <div className="text-indigo-600"><span className="font-bold">Remark:</span> {att.remark}</div>}
-                        </div>
-                      )}
+            {/* ── Progress bars ── */}
+            {selectedClass && attTotalStudents > 0 && !attLoading && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+                <div>
+                  <div className="flex justify-between text-[10px] font-bold mb-1">
+                    <span style={{ color: NAVY }}>Attendance Marked</span>
+                    <span style={{ color: attPct >= 80 ? "#059669" : attPct >= 60 ? "#D97706" : "#DC2626" }}>
+                      {attPct}% ({attMarkedCount}/{attTotalStudents})
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${attPct}%`, background: attPct >= 80 ? "#059669" : attPct >= 60 ? "#D97706" : "#DC2626" }} />
+                  </div>
+                </div>
+                {attAbsentCount > 0 && (
+                  <div>
+                    <div className="flex justify-between text-[10px] font-bold mb-1">
+                      <span style={{ color: NAVY }}>Absent Students Called</span>
+                      <span style={{ color: callPct >= 80 ? "#059669" : callPct >= 60 ? "#D97706" : "#DC2626" }}>
+                        {callPct}% ({attCallsDone}/{attAbsentCount})
+                      </span>
                     </div>
-                  );
-                })}
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${callPct}%`, background: callPct >= 80 ? "#059669" : callPct >= 60 ? "#D97706" : "#DC2626" }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── CLASS SECTIONS ── */}
+            {attLoading && liveClasses.length === 0 ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
+            ) : liveClasses.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">No classes scheduled for this date.</div>
+            ) : (
+              <div className="space-y-8">
+
+                {/* ══ LIVE NOW ══ */}
+                {liveNowClasses.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+                      <span className="text-xs font-black tracking-wide" style={{ color: "#059669" }}>LIVE NOW</span>
+                    </div>
+                    <div className="space-y-4">
+                      {liveNowClasses.map(cls => {
+                        const isSelected = selectedClassId === cls.id;
+                        const hBadge = isSelected && attMarkedCount > 0
+                          ? attPresentPct >= 80 ? { label: "Healthy", bg: "#DCFCE7", color: "#059669" }
+                          : attPresentPct >= 60 ? { label: "Moderate", bg: "#FEF3C7", color: "#D97706" }
+                          : { label: "At Risk", bg: "#FEE2E2", color: "#DC2626" }
+                          : null;
+                        const filtered = students.filter(s => {
+                          if (attStatusFilter === "all") return true;
+                          const st = attendanceMap[s.id]?.status ?? null;
+                          if (attStatusFilter === "unmarked") return !st;
+                          return st === attStatusFilter;
+                        });
+                        return (
+                          <div key={cls.id}>
+                            {/* Class card — green border */}
+                            <div style={{ borderLeft: "4px solid #059669", border: "1.5px solid #059669", borderRadius: "16px", background: isSelected ? "#F0FDF4" : "white" }}>
+                              <button className="w-full text-left p-4" onClick={() => setSelectedClassId(cls.id)}>
+                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-black text-sm" style={{ color: NAVY }}>{cls.title}</div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-gray-500 mt-1">
+                                      {cls.teacher && <span>👩‍🏫 {cls.teacher}</span>}
+                                      <span>⏰ {fmtDateTime(cls.scheduledAt)}</span>
+                                      <span>⏱ {cls.duration}min</span>
+                                      <span>Grade {cls.grade}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                                    {hBadge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: hBadge.bg, color: hBadge.color }}>{hBadge.label}</span>}
+                                    {cls.joinUrl
+                                      ? <a href={cls.joinUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-white"
+                                          style={{ background: "#059669" }}>
+                                          <ExternalLink className="w-2.5 h-2.5" /> Join Class
+                                        </a>
+                                      : <span className="text-[10px] text-gray-400 px-3 py-1.5 rounded-xl border border-gray-200">No link</span>
+                                    }
+                                  </div>
+                                </div>
+                                {/* Footer stats */}
+                                {isSelected && attTotalStudents > 0 && (
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-green-100 text-[10px] font-semibold">
+                                    <span style={{ color: "#059669" }}>✅ Present: {attPresentCount}</span>
+                                    <span style={{ color: "#DC2626" }}>❌ Absent: {attAbsentCount}</span>
+                                    <span style={{ color: "#F97316" }}>⏰ Call Later: {attCallLaterCount}</span>
+                                    <span style={{ color: "#2563EB" }}>📞 Calls Done: {attCallsDone}</span>
+                                    {attRemainingCalls > 0 && <span style={{ color: "#D97706" }}>⚠️ {attRemainingCalls} calls pending</span>}
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Student list (live + editable) */}
+                            {isSelected && (
+                              <div className="mt-3 ml-4 space-y-2">
+                                {/* Status filter tabs */}
+                                <div className="flex gap-1.5 flex-wrap">
+                                  {([
+                                    { key: "all",      label: "All",        count: students.length },
+                                    { key: "present",  label: "Present",    count: attPresentCount },
+                                    { key: "absent",   label: "Absent",     count: attAbsentCount },
+                                    { key: "late",     label: "Late",       count: attLateCount },
+                                    { key: "unmarked", label: "Not Marked", count: students.length - attMarkedCount },
+                                  ] as const).map(f => (
+                                    <button key={f.key} onClick={() => setAttStatusFilter(f.key)}
+                                      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all border"
+                                      style={{
+                                        background: attStatusFilter === f.key
+                                          ? f.key === "present" ? "#DCFCE7" : f.key === "absent" ? "#FEE2E2" : `${NAVY}10`
+                                          : "white",
+                                        color: attStatusFilter === f.key
+                                          ? f.key === "present" ? "#059669" : f.key === "absent" ? "#DC2626" : NAVY
+                                          : "#9CA3AF",
+                                        borderColor: attStatusFilter === f.key
+                                          ? f.key === "present" ? "#059669" : f.key === "absent" ? "#DC2626" : NAVY
+                                          : "#E5E7EB",
+                                      }}>
+                                      {f.label} <span className="font-black">{f.count}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                                {attLoading ? (
+                                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
+                                ) : filtered.length === 0 ? (
+                                  <div className="text-center py-4 text-gray-400 text-xs">No students match this filter.</div>
+                                ) : filtered.map(s => {
+                                  const att = attendanceMap[s.id];
+                                  const draft = callDrafts[s.id] ?? { callStatus: "", callTime: "", calledBy: "", calledByName: "", remark: "" };
+                                  const isExpanded = expandedCall === s.id;
+                                  const isAbsent = att?.status === "absent";
+                                  const badge = att?.status === "present"
+                                    ? { emoji: "🟢", label: "Present", color: "#059669", bg: "#DCFCE7" }
+                                    : att?.callStatus === "called"
+                                    ? { emoji: "🔵", label: "Called", color: "#2563EB", bg: "#DBEAFE" }
+                                    : att?.callStatus === "call_later"
+                                    ? { emoji: "🟠", label: "Call Later", color: "#F97316", bg: "#FED7AA" }
+                                    : att?.status === "absent"
+                                    ? { emoji: "🔴", label: "Absent", color: "#DC2626", bg: "#FEE2E2" }
+                                    : att?.status === "late"
+                                    ? { emoji: "🟡", label: "Late", color: "#D97706", bg: "#FEF3C7" }
+                                    : null;
+                                  return (
+                                    <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                                          style={{ background: att?.status === "present" ? "#059669" : att?.status === "absent" ? "#DC2626" : att?.status === "late" ? "#D97706" : "#9CA3AF" }}>
+                                          {s.name.charAt(0)}
+                                        </div>
+                                        <div className="w-28 sm:w-36 flex-shrink-0">
+                                          <div className="font-semibold text-xs truncate" style={{ color: NAVY }}>{s.name}</div>
+                                          <div className="text-[10px] text-gray-400">Gr.{s.grade}</div>
+                                        </div>
+                                        <div className="flex items-center gap-1 flex-wrap flex-1">
+                                          <button onClick={() => markAttendance(s.id, "present")}
+                                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                            style={{ background: att?.status === "present" ? "#DCFCE7" : "white", color: att?.status === "present" ? "#059669" : "#9CA3AF", borderColor: att?.status === "present" ? "#059669" : "#E5E7EB" }}>
+                                            Present
+                                          </button>
+                                          <button onClick={() => markAttendance(s.id, "absent")}
+                                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                            style={{ background: att?.status === "absent" ? "#FEE2E2" : "white", color: att?.status === "absent" ? "#DC2626" : "#9CA3AF", borderColor: att?.status === "absent" ? "#DC2626" : "#E5E7EB" }}>
+                                            Absent
+                                          </button>
+                                          <button
+                                            onClick={() => isAbsent ? setExpandedCall(isExpanded ? null : s.id) : undefined}
+                                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                            style={{ background: att?.callStatus === "called" ? "#DBEAFE" : isAbsent ? "white" : "#F9FAFB", color: att?.callStatus === "called" ? "#2563EB" : isAbsent ? "#6366F1" : "#D1D5DB", borderColor: att?.callStatus === "called" ? "#6366F1" : isAbsent ? "#E0E7FF" : "#F3F4F6", cursor: isAbsent ? "pointer" : "default" }}>
+                                            📞 Call
+                                          </button>
+                                          <button
+                                            onClick={() => isAbsent ? markCallStatus(s.id, att?.callStatus === "call_later" ? "" : "call_later") : undefined}
+                                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all border"
+                                            style={{ background: att?.callStatus === "call_later" ? "#FED7AA" : isAbsent ? "white" : "#F9FAFB", color: att?.callStatus === "call_later" ? "#F97316" : isAbsent ? "#9CA3AF" : "#D1D5DB", borderColor: att?.callStatus === "call_later" ? "#FB923C" : isAbsent ? "#E5E7EB" : "#F3F4F6", cursor: isAbsent ? "pointer" : "default" }}>
+                                            ⏰ Call Later
+                                          </button>
+                                        </div>
+                                        {badge && (
+                                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+                                            style={{ background: badge.bg, color: badge.color }}>
+                                            {badge.emoji} {badge.label}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {isExpanded && (
+                                        <div className="mt-3 ml-10">
+                                          <CallDetailsForm callStatus={draft.callStatus} callTime={draft.callTime} calledBy={draft.calledBy} calledByName={draft.calledByName}
+                                            onChange={(f, v) => updateDraft(s.id, f, v)} />
+                                          <input value={draft.remark} onChange={e => updateDraft(s.id, "remark", e.target.value)} placeholder="Remark…"
+                                            className="w-full mt-2 px-2 py-1.5 rounded-lg border border-gray-200 text-xs outline-none" />
+                                          <button onClick={() => saveCallDetails(s.id)}
+                                            className="mt-2 w-full py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: GREEN }}>
+                                            Save Call Details
+                                          </button>
+                                        </div>
+                                      )}
+                                      {!isExpanded && att && att.callStatus === "called" && (
+                                        <div className="mt-2 ml-10 p-2 rounded-lg text-[10px]" style={{ background: "#EEF2FF", border: "1px solid #C7D2FE" }}>
+                                          <span className="text-indigo-700 font-semibold">📞 Called{att.callTime ? ` at ${att.callTime}` : ""}{att.calledByName ? `, by ${att.calledByName}` : ""}</span>
+                                          {att.remark && <span className="text-indigo-600 ml-2">· {att.remark}</span>}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ UPCOMING ══ */}
+                {upcomingClassesForDate.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                      <span className="text-xs font-black tracking-wide text-indigo-600">UPCOMING</span>
+                    </div>
+                    <div className="space-y-4">
+                      {upcomingClassesForDate.map(cls => {
+                        const isSelected = selectedClassId === cls.id;
+                        return (
+                          <div key={cls.id}>
+                            {/* Class card — blue border */}
+                            <div style={{ borderLeft: "4px solid #6366F1", border: "1.5px solid #C7D2FE", borderRadius: "16px", background: isSelected ? "#EEF2FF" : "white" }}>
+                              <button className="w-full text-left p-4" onClick={() => setSelectedClassId(cls.id)}>
+                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-black text-sm" style={{ color: NAVY }}>{cls.title}</div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-gray-500 mt-1">
+                                      {cls.teacher && <span>👩‍🏫 {cls.teacher}</span>}
+                                      <span>⏰ {fmtDateTime(cls.scheduledAt)}</span>
+                                      <span>⏱ {cls.duration}min</span>
+                                      <span>Grade {cls.grade}</span>
+                                    </div>
+                                  </div>
+                                  <button disabled className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200 flex-shrink-0">
+                                    <ExternalLink className="w-2.5 h-2.5" /> Available at class start
+                                  </button>
+                                </div>
+                                <div className="mt-2 pt-2 border-t border-indigo-100 text-[10px] text-indigo-500 font-semibold">
+                                  🔒 Attendance marking will be enabled once the class goes live
+                                </div>
+                              </button>
+                            </div>
+                            {/* Student list (locked) */}
+                            {isSelected && students.length > 0 && (
+                              <div className="mt-3 ml-4 space-y-2">
+                                {students.map(s => (
+                                  <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3 flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0" style={{ background: "#C7D2FE" }}>
+                                      {s.name.charAt(0)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-semibold text-xs truncate" style={{ color: NAVY }}>{s.name}</div>
+                                      <div className="text-[10px] text-gray-400">Gr.{s.grade}</div>
+                                    </div>
+                                    <span className="text-[10px] text-gray-400 border border-gray-200 rounded-lg px-2.5 py-1 flex-shrink-0">🔒 Locked</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ COMPLETED ══ */}
+                {completedClassesForDate.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-xs font-black tracking-wide text-gray-500">COMPLETED</span>
+                    </div>
+                    <div className="space-y-4">
+                      {completedClassesForDate.map(cls => {
+                        const isSelected = selectedClassId === cls.id;
+                        const hBadge = isSelected && attMarkedCount > 0
+                          ? attPresentPct >= 80 ? { label: "Healthy", bg: "#DCFCE7", color: "#059669" }
+                          : attPresentPct >= 60 ? { label: "Moderate", bg: "#FEF3C7", color: "#D97706" }
+                          : { label: "At Risk", bg: "#FEE2E2", color: "#DC2626" }
+                          : null;
+                        const filtered = students.filter(s => {
+                          if (attStatusFilter === "all") return true;
+                          const st = attendanceMap[s.id]?.status ?? null;
+                          if (attStatusFilter === "unmarked") return !st;
+                          return st === attStatusFilter;
+                        });
+                        return (
+                          <div key={cls.id}>
+                            {/* Class card — grey border */}
+                            <div style={{ borderLeft: "4px solid #9CA3AF", border: "1.5px solid #E5E7EB", borderRadius: "16px", background: isSelected ? "#F9FAFB" : "white" }}>
+                              <button className="w-full text-left p-4" onClick={() => setSelectedClassId(cls.id)}>
+                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-black text-sm" style={{ color: "#4B5563" }}>{cls.title}</div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-gray-400 mt-1">
+                                      {cls.teacher && <span>👩‍🏫 {cls.teacher}</span>}
+                                      <span>⏰ {fmtDateTime(cls.scheduledAt)}</span>
+                                      <span>⏱ {cls.duration}min</span>
+                                      <span>Grade {cls.grade}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                                    {hBadge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: hBadge.bg, color: hBadge.color }}>{hBadge.label}</span>}
+                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">✅ Completed</span>
+                                  </div>
+                                </div>
+                                {/* Summary footer */}
+                                {isSelected && (
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100 text-[10px] font-semibold">
+                                    <span style={{ color: "#059669" }}>✅ Present: {attPresentCount}</span>
+                                    <span style={{ color: "#DC2626" }}>❌ Absent: {attAbsentCount}</span>
+                                    <span style={{ color: "#F97316" }}>⏰ Call Later: {attCallLaterCount}</span>
+                                    <span style={{ color: "#2563EB" }}>📞 Calls Done: {attCallsDone}</span>
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+                            {/* Student list (read-only) */}
+                            {isSelected && (
+                              <div className="mt-3 ml-4 space-y-2">
+                                {/* Filter tabs */}
+                                <div className="flex gap-1.5 flex-wrap">
+                                  {([
+                                    { key: "all",      label: "All",        count: students.length },
+                                    { key: "present",  label: "Present",    count: attPresentCount },
+                                    { key: "absent",   label: "Absent",     count: attAbsentCount },
+                                    { key: "unmarked", label: "Not Marked", count: students.length - attMarkedCount },
+                                  ] as const).map(f => (
+                                    <button key={f.key} onClick={() => setAttStatusFilter(f.key)}
+                                      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all border"
+                                      style={{ background: attStatusFilter === f.key ? `${NAVY}10` : "white", color: attStatusFilter === f.key ? NAVY : "#9CA3AF", borderColor: attStatusFilter === f.key ? NAVY : "#E5E7EB" }}>
+                                      {f.label} <span className="font-black">{f.count}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                                {attLoading ? (
+                                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
+                                ) : filtered.map(s => {
+                                  const att = attendanceMap[s.id];
+                                  const badge = att?.status === "present"
+                                    ? { emoji: "🟢", label: "Present", color: "#059669", bg: "#DCFCE7" }
+                                    : att?.callStatus === "called"
+                                    ? { emoji: "🔵", label: "Called", color: "#2563EB", bg: "#DBEAFE" }
+                                    : att?.callStatus === "call_later"
+                                    ? { emoji: "🟠", label: "Call Later", color: "#F97316", bg: "#FED7AA" }
+                                    : att?.status === "absent"
+                                    ? { emoji: "🔴", label: "Absent", color: "#DC2626", bg: "#FEE2E2" }
+                                    : att?.status === "late"
+                                    ? { emoji: "🟡", label: "Late", color: "#D97706", bg: "#FEF3C7" }
+                                    : null;
+                                  return (
+                                    <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                                          style={{ background: att?.status === "present" ? "#059669" : att?.status === "absent" ? "#DC2626" : "#9CA3AF" }}>
+                                          {s.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-semibold text-xs truncate" style={{ color: "#4B5563" }}>{s.name}</div>
+                                          <div className="text-[10px] text-gray-400">Gr.{s.grade}</div>
+                                        </div>
+                                        {badge
+                                          ? <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 flex-shrink-0" style={{ background: badge.bg, color: badge.color }}>{badge.emoji} {badge.label}</span>
+                                          : <span className="text-[10px] text-gray-300 font-semibold flex-shrink-0">Not marked</span>
+                                        }
+                                      </div>
+                                      {att && (att.callStatus || att.remark) && (
+                                        <div className="mt-2 ml-11 p-2 rounded-lg text-[10px] space-y-0.5" style={{ background: "#F3F4F6" }}>
+                                          {att.callStatus && <div className="text-gray-500"><span className="font-bold text-gray-700">Call:</span> {att.callStatus}{att.callTime ? ` at ${att.callTime}` : ""}{att.calledByName ? `, by ${att.calledByName}` : ""}</div>}
+                                          {att.remark && <div className="text-gray-500"><span className="font-bold text-gray-700">Note:</span> {att.remark}</div>}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
           </div>
