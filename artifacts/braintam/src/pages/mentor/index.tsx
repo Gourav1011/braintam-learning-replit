@@ -181,6 +181,14 @@ function TaskStatusBadge({ status }: { status: string }) {
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtDate(d: string) { return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" }); }
 function fmtDateTime(d: string) { return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
+function getClassState(cls: LiveClass): "upcoming" | "live" | "completed" {
+  const now = new Date();
+  const start = new Date(cls.scheduledAt);
+  const end = new Date(start.getTime() + cls.duration * 60000);
+  if (now < start) return "upcoming";
+  if (now > end) return "completed";
+  return "live";
+}
 
 function LeadStageDropdown({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
   const color = value ? (SUCCESS_STAGE_COLORS[value] ?? "#6B7280") : "#6B7280";
@@ -790,6 +798,23 @@ export default function BTLCRMPage() {
   const taskOverdue = tasks.filter(t => t.effectiveStatus === "overdue").length;
   const taskPending = tasks.filter(t => t.effectiveStatus === "pending" || t.effectiveStatus === "in_progress").length;
   const alertCount = atRiskStudents.length + attentionStudents.length;
+
+  // ── Attendance class state & counters ──
+  const selectedClass = liveClasses.find(c => c.id === selectedClassId) ?? null;
+  const classState = selectedClass ? getClassState(selectedClass) : null;
+  const isClassCompleted = classState === "completed";
+  const isClassUpcoming = classState === "upcoming";
+  const isClassLive = classState === "live";
+  const attTotalStudents = students.length;
+  const attPresentCount = students.filter(s => attendanceMap[s.id]?.status === "present").length;
+  const attAbsentCount = students.filter(s => attendanceMap[s.id]?.status === "absent").length;
+  const attLateCount = students.filter(s => attendanceMap[s.id]?.status === "late").length;
+  const attMarkedCount = attPresentCount + attAbsentCount + attLateCount;
+  const attCallsDone = students.filter(s => attendanceMap[s.id]?.callStatus === "called").length;
+  const attPendingCalls = Math.max(0, attAbsentCount - attCallsDone);
+  const attFollowupRequired = students.filter(s => attendanceMap[s.id]?.status === "absent" && !attendanceMap[s.id]?.callStatus).length;
+  const attPct = attTotalStudents > 0 ? Math.round((attMarkedCount / attTotalStudents) * 100) : 0;
+  const callPct = attAbsentCount > 0 ? Math.round((attCallsDone / attAbsentCount) * 100) : (attMarkedCount > 0 ? 100 : 0);
 
   // ── Attendance helpers ──
   async function markAttendance(studentId: number, status: string) {
@@ -1454,11 +1479,11 @@ export default function BTLCRMPage() {
           <div className="p-5 max-w-5xl mx-auto space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <h1 className="text-lg font-black" style={{ color: NAVY }}>Attendance</h1>
-              <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)} max={todayStr()}
+              <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)}
                 className="px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none" />
             </div>
 
-            {/* Upcoming classes with Join buttons */}
+            {/* ── Upcoming Classes preview strip ── */}
             {upcomingClasses.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -1468,26 +1493,23 @@ export default function BTLCRMPage() {
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   {upcomingClasses.map(cls => {
-                    const now = new Date();
-                    const start = new Date(cls.scheduledAt);
-                    const end = new Date(start.getTime() + cls.duration * 60000);
-                    const isLive = start <= now && now <= end;
-                    const isPast = end < now;
+                    const state = getClassState(cls);
+                    const isPast = state === "completed";
+                    const isLive = state === "live";
                     return (
-                      <div key={cls.id} className={`flex-shrink-0 rounded-xl border p-3 min-w-[180px] max-w-[210px] ${isLive ? "border-green-200 bg-green-50/50" : "border-gray-100"}`}>
-                        <div className="font-bold text-xs truncate" style={{ color: NAVY }}>{cls.title}</div>
+                      <div key={cls.id} className={`flex-shrink-0 rounded-xl border p-3 min-w-[180px] max-w-[210px] ${isLive ? "border-green-200 bg-green-50/50" : isPast ? "border-gray-100 bg-gray-50" : "border-gray-100"}`}>
+                        <div className="font-bold text-xs truncate" style={{ color: isPast ? "#9CA3AF" : NAVY }}>{cls.title}</div>
                         <div className="text-[10px] text-gray-400 mt-0.5">Grade {cls.grade}{cls.teacher ? ` · ${cls.teacher}` : ""}</div>
                         <div className="text-[10px] text-gray-500 mt-0.5">{fmtDateTime(cls.scheduledAt)} · {cls.duration}m</div>
                         {isLive && <div className="text-[10px] font-bold text-green-600 mt-1 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" /> Live Now</div>}
-                        {cls.joinUrl && !isPast ? (
+                        {isPast && <div className="text-[10px] text-gray-400 mt-1">Ended</div>}
+                        {!isPast && cls.joinUrl ? (
                           <a href={cls.joinUrl} target="_blank" rel="noopener noreferrer"
                             className="mt-2 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold text-white w-full"
                             style={{ background: isLive ? GREEN : NAVY }}>
                             <ExternalLink className="w-2.5 h-2.5" /> {isLive ? "Join Now" : "Join Class"}
                           </a>
-                        ) : isPast ? (
-                          <div className="mt-2 text-[10px] text-gray-400 text-center">Ended</div>
-                        ) : (
+                        ) : !isPast && (
                           <div className="mt-2 text-[10px] text-gray-400 text-center">No join link</div>
                         )}
                       </div>
@@ -1497,17 +1519,89 @@ export default function BTLCRMPage() {
               </div>
             )}
 
+            {/* ── Class selector cards for selected date ── */}
             {liveClasses.length > 0 && (
               <div className="flex gap-2 flex-wrap">
-                {liveClasses.map(cls => (
-                  <button key={cls.id} onClick={() => setSelectedClassId(cls.id)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold transition-all border"
-                    style={{ background: selectedClassId === cls.id ? `${NAVY}10` : "white", color: selectedClassId === cls.id ? NAVY : "#6B7280", borderColor: selectedClassId === cls.id ? NAVY : "#E5E7EB" }}>
-                    {cls.title}
-                  </button>
-                ))}
+                {liveClasses.map(cls => {
+                  const st = getClassState(cls);
+                  const isSelected = selectedClassId === cls.id;
+                  const stateLabel = st === "live" ? "🔴 Live" : st === "upcoming" ? "⏳ Upcoming" : "✅ Done";
+                  const stateColor = st === "live" ? "#059669" : st === "upcoming" ? "#6366F1" : "#9CA3AF";
+                  return (
+                    <button key={cls.id} onClick={() => setSelectedClassId(cls.id)}
+                      className="text-left px-3 py-2 rounded-xl text-xs font-bold transition-all border"
+                      style={{ background: isSelected ? `${NAVY}10` : "white", color: isSelected ? NAVY : "#6B7280", borderColor: isSelected ? NAVY : "#E5E7EB" }}>
+                      <div>{cls.title}</div>
+                      <div className="text-[10px] font-semibold mt-0.5" style={{ color: stateColor }}>{stateLabel}</div>
+                    </button>
+                  );
+                })}
               </div>
             )}
+
+            {/* ── State banner ── */}
+            {selectedClass && isClassCompleted && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#F3F4F6", color: "#6B7280", border: "1px solid #E5E7EB" }}>
+                <History className="w-3.5 h-3.5" /> HISTORICAL RECORD — This class has ended. Attendance and call records are read-only.
+              </div>
+            )}
+            {selectedClass && isClassUpcoming && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#EEF2FF", color: "#6366F1", border: "1px solid #C7D2FE" }}>
+                <Clock className="w-3.5 h-3.5" /> CLASS NOT STARTED — View the student list below. Attendance marking will be enabled once the class goes live.
+              </div>
+            )}
+            {selectedClass && isClassLive && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0" }}>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" /> CLASS IS LIVE — Mark attendance and log calls in real time.
+              </div>
+            )}
+
+            {/* ── Counters + Progress bars ── */}
+            {selectedClass && attTotalStudents > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+                {/* Counter tiles */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {[
+                    { label: "Students", value: attTotalStudents, color: NAVY },
+                    { label: "Present", value: attPresentCount, color: "#059669" },
+                    { label: "Absent", value: attAbsentCount, color: "#DC2626" },
+                    { label: "Calls Done", value: attCallsDone, color: "#6366F1" },
+                    { label: "Pending Calls", value: attPendingCalls, color: "#D97706" },
+                    { label: "Follow-up Req.", value: attFollowupRequired, color: ORANGE },
+                  ].map(c => (
+                    <div key={c.label} className="rounded-xl p-2.5 text-center" style={{ background: `${c.color}08`, border: `1px solid ${c.color}20` }}>
+                      <div className="text-xl font-black" style={{ color: c.color }}>{c.value}</div>
+                      <div className="text-[9px] font-bold mt-0.5" style={{ color: c.color }}>{c.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Progress bars */}
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between text-[10px] font-bold mb-1">
+                      <span style={{ color: NAVY }}>Attendance Marked</span>
+                      <span style={{ color: attPct >= 80 ? "#059669" : attPct >= 50 ? "#D97706" : "#DC2626" }}>{attPct}% ({attMarkedCount}/{attTotalStudents})</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${attPct}%`, background: attPct >= 80 ? "#059669" : attPct >= 50 ? "#D97706" : "#DC2626" }} />
+                    </div>
+                  </div>
+                  {attAbsentCount > 0 && (
+                    <div>
+                      <div className="flex justify-between text-[10px] font-bold mb-1">
+                        <span style={{ color: NAVY }}>Absent Students Called</span>
+                        <span style={{ color: callPct >= 80 ? "#059669" : callPct >= 50 ? "#D97706" : "#DC2626" }}>{callPct}% ({attCallsDone}/{attAbsentCount})</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${callPct}%`, background: callPct >= 80 ? "#059669" : callPct >= 50 ? "#D97706" : "#DC2626" }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Student list ── */}
             {attLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
             ) : students.length === 0 ? (
@@ -1518,11 +1612,67 @@ export default function BTLCRMPage() {
                   const att = attendanceMap[s.id];
                   const draft = callDrafts[s.id] ?? { callStatus: "", callTime: "", calledBy: "", calledByName: "", remark: "" };
                   const isExpanded = expandedCall === s.id;
+                  const avatarBg = att?.status === "present" ? GREEN : att?.status === "absent" ? "#DC2626" : att?.status === "late" ? "#D97706" : "#9CA3AF";
+
+                  /* ── COMPLETED: read-only grey card ── */
+                  if (isClassCompleted) {
+                    return (
+                      <div key={s.id} className="rounded-xl border p-3" style={{ background: "#F9FAFB", borderColor: "#E5E7EB" }}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                            style={{ background: avatarBg }}>
+                            {s.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-xs" style={{ color: "#4B5563" }}>{s.name}</div>
+                            <div className="text-[10px] text-gray-400">Grade {s.grade}</div>
+                          </div>
+                          {/* Read-only status tag */}
+                          {att?.status ? (
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
+                              style={{ background: att.status === "present" ? "#DCFCE7" : att.status === "absent" ? "#FEE2E2" : "#FEF3C7", color: att.status === "present" ? GREEN : att.status === "absent" ? "#DC2626" : "#D97706" }}>
+                              {att.status.charAt(0).toUpperCase() + att.status.slice(1)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-300 font-semibold">Not marked</span>
+                          )}
+                        </div>
+                        {/* Call record */}
+                        {att && (att.callStatus || att.remark) && (
+                          <div className="mt-2 ml-11 p-2 rounded-lg text-[10px] space-y-0.5" style={{ background: "#F3F4F6" }}>
+                            {att.callStatus && <div className="text-gray-500"><span className="font-bold text-gray-700">Call:</span> {att.callStatus}{att.callTime ? ` at ${att.callTime}` : ""}{att.calledBy ? `, picked by ${att.calledByName || att.calledBy}` : ""}</div>}
+                            {att.remark && <div className="text-gray-500"><span className="font-bold text-gray-700">Remark:</span> {att.remark}</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  /* ── UPCOMING: view-only card ── */
+                  if (isClassUpcoming) {
+                    return (
+                      <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                            style={{ background: "#9CA3AF" }}>
+                            {s.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-xs" style={{ color: NAVY }}>{s.name}</div>
+                            <div className="text-[10px] text-gray-400">Grade {s.grade}</div>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-semibold px-2.5 py-1 rounded-lg border border-gray-200">—</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  /* ── LIVE: full editable card (existing behaviour) ── */
                   return (
                     <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                          style={{ background: att?.status === "present" ? GREEN : att?.status === "absent" ? "#DC2626" : "#9CA3AF" }}>
+                          style={{ background: avatarBg }}>
                           {s.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
