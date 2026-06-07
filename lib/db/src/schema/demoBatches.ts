@@ -8,6 +8,8 @@ export const demoBatchesTable = pgTable("demo_batches", {
   description: text("description"),
   teacherId: integer("teacher_id"),
   teacherName: text("teacher_name"),
+  mentorId: integer("mentor_id"),
+  mentorName: text("mentor_name"),
   bannerUrl: text("banner_url"),
   joinLink: text("join_link"),
   startDate: timestamp("start_date"),
@@ -18,6 +20,7 @@ export const demoBatchesTable = pgTable("demo_batches", {
   grade: integer("grade"),
   subject: text("subject"),
   totalDays: integer("total_days").notNull().default(5),
+  batchCode: text("batch_code"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

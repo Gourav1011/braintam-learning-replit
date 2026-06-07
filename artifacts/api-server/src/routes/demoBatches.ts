@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { demoBatchesTable, demoSessionsTable, demoBatchEnrollmentsTable, usersTable } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql, count } from "drizzle-orm";
 import { requireRole, requireAuth } from "../middlewares/auth.js";
 import crypto from "crypto";
 
@@ -11,7 +11,7 @@ function hashPassword(pw: string): string {
 
 const router = Router();
 const adminOnly = requireRole("admin");
-const staffOnly = requireRole("teacher");
+const staffAuth = requireRole("teacher"); // mentor-level or above
 
 // ── Public / Student routes ──────────────────────────────────
 
@@ -37,21 +37,45 @@ router.get("/demo-batches/:id", async (req, res) => {
   res.json({ batch, sessions });
 });
 
-// ── Admin routes ─────────────────────────────────────────────
+// ── Admin: Batch CRUD ─────────────────────────────────────────
 
 router.get("/admin/demo-batches", adminOnly, async (_req, res) => {
   const batches = await db
     .select()
     .from(demoBatchesTable)
     .orderBy(desc(demoBatchesTable.createdAt));
-  res.json(batches);
+
+  // Enrich each batch with enrollment counts
+  const enriched = await Promise.all(batches.map(async (b) => {
+    const [counts] = await db
+      .select({
+        total: count(demoBatchEnrollmentsTable.id),
+        converted: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus} = 'converted' THEN 1 ELSE 0 END)`,
+        dropped: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus} = 'dropped' THEN 1 ELSE 0 END)`,
+      })
+      .from(demoBatchEnrollmentsTable)
+      .where(eq(demoBatchEnrollmentsTable.batchId, b.id));
+    const total = Number(counts?.total ?? 0);
+    const converted = Number(counts?.converted ?? 0);
+    const dropped = Number(counts?.dropped ?? 0);
+    return {
+      ...b,
+      enrolledCount: total,
+      convertedCount: converted,
+      droppedCount: dropped,
+      conversionRate: total > 0 ? Math.round((converted / total) * 100) : 0,
+    };
+  }));
+
+  res.json(enriched);
 });
 
 router.post("/admin/demo-batches", adminOnly, async (req, res) => {
-  const { title, description, teacherName, bannerUrl, joinLink, startDate, endDate, grade, subject, totalDays, isPublic } = req.body as {
+  const { title, description, teacherName, bannerUrl, joinLink, startDate, endDate, grade, subject, totalDays, isPublic, mentorName, mentorId, batchCode } = req.body as {
     title?: string; description?: string; teacherName?: string; bannerUrl?: string;
     joinLink?: string; startDate?: string; endDate?: string; grade?: number;
     subject?: string; totalDays?: number; isPublic?: boolean;
+    mentorName?: string; mentorId?: number; batchCode?: string;
   };
   if (!title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
   const [row] = await db.insert(demoBatchesTable).values({
@@ -66,6 +90,9 @@ router.post("/admin/demo-batches", adminOnly, async (req, res) => {
     subject: subject?.trim(),
     totalDays: totalDays ?? 5,
     isPublic: isPublic ?? true,
+    mentorName: mentorName?.trim(),
+    mentorId: mentorId ?? undefined,
+    batchCode: batchCode?.trim(),
   }).returning();
   res.json(row);
 });
@@ -73,7 +100,7 @@ router.post("/admin/demo-batches", adminOnly, async (req, res) => {
 router.put("/admin/demo-batches/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, teacherName, bannerUrl, joinLink, startDate, endDate, grade, subject, totalDays, isPublic, isActive, status } = req.body as Record<string, unknown>;
+  const { title, description, teacherName, bannerUrl, joinLink, startDate, endDate, grade, subject, totalDays, isPublic, isActive, status, mentorName, mentorId, batchCode } = req.body as Record<string, unknown>;
   const updates: Partial<typeof demoBatchesTable.$inferInsert> = {};
   if (title !== undefined) updates.title = String(title).trim();
   if (description !== undefined) updates.description = String(description).trim();
@@ -88,6 +115,9 @@ router.put("/admin/demo-batches/:id", adminOnly, async (req, res) => {
   if (isPublic !== undefined) updates.isPublic = Boolean(isPublic);
   if (isActive !== undefined) updates.isActive = Boolean(isActive);
   if (status !== undefined) updates.status = String(status);
+  if (mentorName !== undefined) updates.mentorName = String(mentorName).trim();
+  if (mentorId !== undefined) updates.mentorId = Number(mentorId);
+  if (batchCode !== undefined) updates.batchCode = String(batchCode).trim();
   const [row] = await db.update(demoBatchesTable).set(updates).where(eq(demoBatchesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
@@ -97,8 +127,278 @@ router.delete("/admin/demo-batches/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(demoSessionsTable).where(eq(demoSessionsTable.batchId, id));
+  await db.delete(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.batchId, id));
   await db.delete(demoBatchesTable).where(eq(demoBatchesTable.id, id));
   res.json({ success: true });
+});
+
+// ── Admin: Batch Overview ─────────────────────────────────────
+
+router.get("/admin/demo-batches/:id/overview", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.id);
+  if (!batchId) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId));
+  if (!batch) { res.status(404).json({ error: "Not found" }); return; }
+
+  const sessions = await db.select().from(demoSessionsTable)
+    .where(eq(demoSessionsTable.batchId, batchId)).orderBy(demoSessionsTable.dayNumber);
+
+  const enrollments = await db.select().from(demoBatchEnrollmentsTable)
+    .where(eq(demoBatchEnrollmentsTable.batchId, batchId));
+
+  const total = enrollments.length;
+  const converted = enrollments.filter(e => e.enrollmentStatus === "converted").length;
+  const dropped = enrollments.filter(e => e.enrollmentStatus === "dropped").length;
+  const active = total - converted - dropped;
+  const conversionRate = total > 0 ? Math.round((converted / total) * 100) : 0;
+
+  // Day-by-day attendance: count of students who reached each day (lastDayAttended >= N)
+  const dayBreakdown: { day: number; count: number }[] = [];
+  for (let d = 1; d <= batch.totalDays; d++) {
+    dayBreakdown.push({
+      day: d,
+      count: enrollments.filter(e => (e.lastDayAttended ?? 0) >= d).length,
+    });
+  }
+
+  // Mentor assignment summary
+  const mentorMap = new Map<string, { name: string; assigned: number; converted: number; pending: number }>();
+  for (const e of enrollments) {
+    const mname = e.assignedMentorName ?? "Unassigned";
+    if (!mentorMap.has(mname)) mentorMap.set(mname, { name: mname, assigned: 0, converted: 0, pending: 0 });
+    const m = mentorMap.get(mname)!;
+    m.assigned++;
+    if (e.enrollmentStatus === "converted") m.converted++;
+    else if (e.enrollmentStatus === "active") m.pending++;
+  }
+  const mentorStats = Array.from(mentorMap.values()).map(m => ({
+    ...m,
+    conversionRate: m.assigned > 0 ? Math.round((m.converted / m.assigned) * 100) : 0,
+  }));
+
+  res.json({
+    batch,
+    sessions,
+    metrics: { total, converted, dropped, active, conversionRate },
+    dayBreakdown,
+    mentorStats,
+  });
+});
+
+// ── Admin: Batch Students (enriched) ─────────────────────────
+
+router.get("/admin/demo-batches/:batchId/students", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+  const filter = String(req.query.filter ?? "all");
+
+  const rows = await db
+    .select({
+      enrollmentId: demoBatchEnrollmentsTable.id,
+      studentId: demoBatchEnrollmentsTable.studentId,
+      enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+      lastDayAttended: demoBatchEnrollmentsTable.lastDayAttended,
+      assignedMentorId: demoBatchEnrollmentsTable.assignedMentorId,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
+      name: usersTable.name,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      grade: usersTable.grade,
+      school: usersTable.school,
+      city: usersTable.city,
+      callStatus: usersTable.callStatus,
+      interestLevel: usersTable.interestLevel,
+      leadStage: usersTable.leadStage,
+      nextFollowUpAt: usersTable.nextFollowUpAt,
+      lastCallAt: usersTable.lastCallAt,
+      repeatedCustomer: usersTable.repeatedCustomer,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))
+    .where(eq(demoBatchEnrollmentsTable.batchId, batchId))
+    .orderBy(desc(demoBatchEnrollmentsTable.enrolledAt));
+
+  // Filter by day or status
+  const filtered = filter === "all" ? rows
+    : filter === "converted" ? rows.filter(r => r.enrollmentStatus === "converted")
+    : filter === "dropped" ? rows.filter(r => r.enrollmentStatus === "dropped")
+    : filter.startsWith("day") ? (() => {
+        const day = parseInt(filter.replace("day", ""));
+        return rows.filter(r => (r.lastDayAttended ?? 0) >= day);
+      })()
+    : rows;
+
+  res.json(filtered);
+});
+
+// ── Admin: Mentor Tracking ────────────────────────────────────
+
+router.get("/admin/demo-batches/:batchId/mentor-tracking", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+
+  const [batch] = await db.select({ totalDays: demoBatchesTable.totalDays })
+    .from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId));
+  if (!batch) { res.status(404).json({ error: "Not found" }); return; }
+
+  const rows = await db
+    .select({
+      enrollmentId: demoBatchEnrollmentsTable.id,
+      studentId: demoBatchEnrollmentsTable.studentId,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+      lastDayAttended: demoBatchEnrollmentsTable.lastDayAttended,
+      assignedMentorId: demoBatchEnrollmentsTable.assignedMentorId,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
+      name: usersTable.name,
+      grade: usersTable.grade,
+      school: usersTable.school,
+      city: usersTable.city,
+      phone: usersTable.phone,
+      callStatus: usersTable.callStatus,
+      interestLevel: usersTable.interestLevel,
+      leadStage: usersTable.leadStage,
+      nextFollowUpAt: usersTable.nextFollowUpAt,
+      nextFollowUpTime: usersTable.nextFollowUpTime,
+      lastCallAt: usersTable.lastCallAt,
+      repeatedCustomer: usersTable.repeatedCustomer,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))
+    .where(eq(demoBatchEnrollmentsTable.batchId, batchId))
+    .orderBy(usersTable.name);
+
+  const totalDays = batch.totalDays;
+  const enriched = rows.map(r => ({
+    ...r,
+    attPct: totalDays > 0 ? Math.round(((r.lastDayAttended ?? 0) / totalDays) * 100) : 0,
+  }));
+
+  res.json(enriched);
+});
+
+// ── Admin: Update Enrollment Status ──────────────────────────
+
+router.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/status", adminOnly, async (req, res) => {
+  const enrollmentId = Number(req.params.enrollmentId);
+  if (!enrollmentId) { res.status(400).json({ error: "Invalid enrollmentId" }); return; }
+  const { status } = req.body as { status?: string };
+  if (!status || !["active", "converted", "dropped"].includes(status)) {
+    res.status(400).json({ error: "status must be active|converted|dropped" }); return;
+  }
+  const [row] = await db.update(demoBatchEnrollmentsTable)
+    .set({ enrollmentStatus: status })
+    .where(eq(demoBatchEnrollmentsTable.id, enrollmentId))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  // If converting to paid student, update user's leadStage
+  if (status === "converted") {
+    await db.update(usersTable)
+      .set({ leadStage: "Converted", accountType: "paid_student" })
+      .where(eq(usersTable.id, row.studentId));
+  }
+  res.json(row);
+});
+
+// ── Admin: Update Enrollment Attendance Day ───────────────────
+
+router.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/attendance", adminOnly, async (req, res) => {
+  const enrollmentId = Number(req.params.enrollmentId);
+  if (!enrollmentId) { res.status(400).json({ error: "Invalid enrollmentId" }); return; }
+  const { lastDayAttended } = req.body as { lastDayAttended?: number };
+  if (lastDayAttended === undefined || lastDayAttended < 0) {
+    res.status(400).json({ error: "lastDayAttended required" }); return;
+  }
+  const [row] = await db.update(demoBatchEnrollmentsTable)
+    .set({ lastDayAttended })
+    .where(eq(demoBatchEnrollmentsTable.id, enrollmentId))
+    .returning();
+  res.json(row);
+});
+
+// ── Admin: Assign Mentor to Enrollment ───────────────────────
+
+router.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/mentor", adminOnly, async (req, res) => {
+  const enrollmentId = Number(req.params.enrollmentId);
+  if (!enrollmentId) { res.status(400).json({ error: "Invalid enrollmentId" }); return; }
+  const { mentorId, mentorName } = req.body as { mentorId?: number; mentorName?: string };
+  const [row] = await db.update(demoBatchEnrollmentsTable)
+    .set({ assignedMentorId: mentorId ?? null, assignedMentorName: mentorName ?? null })
+    .where(eq(demoBatchEnrollmentsTable.id, enrollmentId))
+    .returning();
+  res.json(row);
+});
+
+// ── Admin: Batch Analytics ────────────────────────────────────
+
+router.get("/admin/demo-batches/:batchId/analytics", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+
+  const enrollments = await db
+    .select({
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+      grade: usersTable.grade,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
+      interestLevel: usersTable.interestLevel,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))
+    .where(eq(demoBatchEnrollmentsTable.batchId, batchId));
+
+  // By grade
+  const gradeMap = new Map<number, { total: number; converted: number }>();
+  for (const e of enrollments) {
+    const g = e.grade ?? 0;
+    if (!gradeMap.has(g)) gradeMap.set(g, { total: 0, converted: 0 });
+    const gd = gradeMap.get(g)!;
+    gd.total++;
+    if (e.enrollmentStatus === "converted") gd.converted++;
+  }
+  const byGrade = Array.from(gradeMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([grade, d]) => ({
+      grade,
+      total: d.total,
+      converted: d.converted,
+      pct: d.total > 0 ? Math.round((d.converted / d.total) * 100) : 0,
+    }));
+
+  // By mentor
+  const mentorMap = new Map<string, { total: number; converted: number }>();
+  for (const e of enrollments) {
+    const m = e.assignedMentorName ?? "Unassigned";
+    if (!mentorMap.has(m)) mentorMap.set(m, { total: 0, converted: 0 });
+    const md = mentorMap.get(m)!;
+    md.total++;
+    if (e.enrollmentStatus === "converted") md.converted++;
+  }
+  const byMentor = Array.from(mentorMap.entries())
+    .map(([mentor, d]) => ({
+      mentor,
+      total: d.total,
+      converted: d.converted,
+      pct: d.total > 0 ? Math.round((d.converted / d.total) * 100) : 0,
+    }))
+    .sort((a, b) => b.converted - a.converted);
+
+  // By interest level
+  const interestMap = new Map<string, { total: number; converted: number }>();
+  for (const e of enrollments) {
+    const lvl = e.interestLevel ?? "Unknown";
+    if (!interestMap.has(lvl)) interestMap.set(lvl, { total: 0, converted: 0 });
+    const id = interestMap.get(lvl)!;
+    id.total++;
+    if (e.enrollmentStatus === "converted") id.converted++;
+  }
+  const byInterest = Array.from(interestMap.entries()).map(([level, d]) => ({
+    level, total: d.total, converted: d.converted,
+    pct: d.total > 0 ? Math.round((d.converted / d.total) * 100) : 0,
+  }));
+
+  res.json({ byGrade, byMentor, byInterest, total: enrollments.length });
 });
 
 // ── Demo Session CRUD ────────────────────────────────────────
@@ -176,11 +476,15 @@ router.get("/admin/demo-batches/:batchId/enrollments", adminOnly, async (req, re
       enrollmentId: demoBatchEnrollmentsTable.id,
       studentId: demoBatchEnrollmentsTable.studentId,
       enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+      lastDayAttended: demoBatchEnrollmentsTable.lastDayAttended,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
       name: usersTable.name,
       email: usersTable.email,
       phone: usersTable.phone,
       grade: usersTable.grade,
       school: usersTable.school,
+      repeatedCustomer: usersTable.repeatedCustomer,
     })
     .from(demoBatchEnrollmentsTable)
     .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))

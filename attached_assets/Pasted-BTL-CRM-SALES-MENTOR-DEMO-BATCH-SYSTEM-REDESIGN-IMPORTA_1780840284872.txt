@@ -1,0 +1,601 @@
+BTL CRM SALES MENTOR + DEMO BATCH SYSTEM REDESIGN
+IMPORTANT
+
+Stop treating this as a generic CRM.
+
+Do not build Salesforce, HubSpot, Zoho, or a traditional sales pipeline.
+
+Braintam is an EdTech company.
+
+Our workflow is:
+
+Lead
+↓
+Demo Batch Student
+↓
+Active Ignite Student
+↓
+Converted Student
+↓
+Long-Term Student
+
+The entire system should be designed around this journey.
+
+FIRST UNDERSTAND OUR BUSINESS
+
+We run:
+
+Ignite Program
+(6-Day Learning Program)
+
+Students join Ignite.
+
+Teachers teach.
+
+Academic Mentors track learning.
+
+Sales Mentors track parents.
+
+After 6 days:
+
+Some students convert.
+
+Some students drop.
+
+Some need more follow-up.
+
+This is our business.
+
+We do NOT have a traditional sales team.
+
+We have Student Success Mentors.
+
+CURRENT PROBLEM
+
+The current Sales Mentor portal looks like a generic CRM.
+
+It contains:
+
+Tasks
+Reports
+Follow-Ups
+Pipeline
+CRM Metrics
+Generic Leaderboards
+
+These are clutter.
+
+Mentors will never use them properly.
+
+The portal should focus on:
+
+Calling
+Attendance
+Homework
+Parent Communication
+Conversion
+Retention
+
+Only.
+
+DEMO BATCHES SHOULD BECOME THE HEART OF THE SYSTEM
+
+Current Demo Batch card is too simple.
+
+Every Demo Batch should become a mini business dashboard.
+
+Example:
+
+Mental Math Ignite Batch
+
+Total Enrolled: 50
+
+Day 1: 48
+
+Day 2: 42
+
+Day 3: 39
+
+Day 4: 31
+
+Day 5: 26
+
+Day 6: 22
+
+Converted: 12
+
+Dropped: 14
+
+Conversion Rate: 24%
+
+Admin should understand batch performance instantly.
+
+WHEN OPENING A DEMO BATCH
+
+Open a full dashboard.
+
+Tabs:
+
+Overview
+Students
+Sessions
+Mentor Tracking
+Analytics
+Settings
+OVERVIEW TAB
+
+Show:
+
+Total Students
+
+Attendance Today
+
+Homework Submitted
+
+Converted
+
+Dropped
+
+Conversion %
+
+Teacher Assigned
+
+Sales Mentor Assigned
+
+Progress Bar
+
+Example:
+
+Day 1 → Day 2 → Day 3 → Day 4 → Day 5 → Day 6
+
+Admin should know exactly where students are in the program.
+
+STUDENTS TAB
+
+Filters:
+
+All Students
+
+Day 1
+
+Day 2
+
+Day 3
+
+Day 4
+
+Day 5
+
+Day 6
+
+Converted
+
+Dropped
+
+This allows Admin to instantly see:
+
+Who is progressing.
+
+Who is missing.
+
+Who converted.
+
+Who dropped.
+
+MENTOR TRACKING TAB
+
+This is the most important screen.
+
+Every student should show:
+
+Student Name
+
+Grade
+
+School
+
+City
+
+Attendance %
+
+Homework %
+
+Last Call
+
+Next Follow-Up
+
+Current Status
+
+Interest Level
+
+Assigned Mentor
+
+Quick Actions:
+
+Call
+
+WhatsApp
+
+Add Remark
+
+Open Full Profile
+
+STUDENT PROFILE
+
+When Admin or Mentor opens a student:
+
+Everything should be visible.
+
+Sections:
+
+Student Information
+
+Parent Information
+
+Attendance
+
+Homework
+
+Teacher Remarks
+
+Call History
+
+Mentor Remarks
+
+WhatsApp History
+
+Payment History
+
+Conversion Status
+
+Nothing should require opening multiple pages.
+
+REMARK SYSTEM
+
+Very important.
+
+Once a mentor saves a remark:
+
+It becomes permanent.
+
+No editing.
+
+No deleting.
+
+No overwriting.
+
+Example:
+
+7 June 2026
+7:15 PM
+
+Parent requested callback tomorrow.
+
+Later:
+
+8 June 2026
+6:30 PM
+
+Parent attended discussion.
+
+Every entry becomes timeline history.
+
+Only Super Admin may archive.
+
+Nobody may modify history.
+
+SEPARATE CALL STATUS FROM LEAD STATUS
+
+Current systems usually mix these.
+
+Do NOT mix them.
+
+CALL STATUS
+
+Operational.
+
+Changes daily.
+
+Need To Call
+
+Picked
+
+Busy
+
+Call Back
+
+Not Connected
+LEAD STATUS
+
+Business stage.
+
+Demo Active
+
+Interested
+
+Highly Interested
+
+Converted
+
+Dropped
+
+Lead Status should never become:
+
+Busy
+
+Call Back
+
+Not Connected
+
+Those are call outcomes only.
+
+SALES MENTOR DASHBOARD
+
+Current dashboard has too many unnecessary widgets.
+
+Remove:
+
+Tasks
+
+Reports
+
+Sales Pipeline
+
+Inactive 30+
+
+Overdue Cards
+
+Generic CRM Cards
+
+Replace with:
+
+TODAY'S CALLING QUEUE
+
+Top horizontal filters:
+
+Need To Call
+
+Picked
+
+Busy
+
+Call Back
+
+Not Connected
+
+Interested
+
+Highly Interested
+
+Converted
+
+Example:
+
+Need To Call (18)
+
+Busy (5)
+
+Call Back (7)
+
+Interested (12)
+
+Converted (21)
+
+Mentor clicks a filter.
+
+Matching students appear immediately.
+
+This should be the primary working screen.
+
+ATTENDANCE & HOMEWORK VISIBILITY
+
+Sales Mentor should be able to SEE:
+
+Attendance %
+
+Classes Attended
+
+Classes Missed
+
+Homework Submitted
+
+Homework Missing
+
+Teacher Remarks
+
+But should NEVER be able to edit academic records.
+
+Academic data is read-only.
+
+Mentors use this information while talking to parents.
+
+REPEATED CUSTOMER
+
+Very important.
+
+If a parent has attended demos before:
+
+Show badge:
+
+🔁 Repeated Customer
+
+This should appear:
+
+Lead List
+
+Student Profile
+
+Mentor Dashboard
+
+Repeated customers convert faster.
+
+USERS PAGE IS WRONG
+
+Currently Students, Teachers, Mentors and Admins are mixed together.
+
+This will become unmanageable.
+
+RESTRUCTURE USERS
+
+Users should become:
+
+Staff Management
+
+Only:
+
+Super Admin
+
+Admin
+
+Academic Mentor
+
+Sales Mentor
+
+Teacher
+
+Operations Staff
+
+No students.
+
+CREATE SEPARATE MODULES
+
+Sidebar should have:
+
+Students
+
+Demo Batches
+
+Mentors
+
+Teachers
+
+Users (Staff)
+
+Students should never be mixed with staff.
+
+LEADERBOARD REDESIGN
+
+Current leaderboard rewards activities.
+
+We care about results.
+
+SALES MENTOR LEADERBOARD
+
+Rank by:
+
+Conversions
+
+Conversion %
+
+Example:
+
+Priya
+
+12 Conversions
+
+24%
+
+Amit
+
+9 Conversions
+
+18%
+
+ADMIN ANALYTICS
+
+Show:
+
+Conversion by Batch
+
+Conversion by Grade
+
+Conversion by Mentor
+
+Conversion by Teacher
+
+Example:
+
+Grade 1 → 24%
+
+Grade 2 → 18%
+
+Grade 3 → 21%
+
+Teacher Poonam → 28%
+
+Mentor Priya → 24%
+
+This is the information management actually needs.
+
+SECURITY
+
+Sales Mentors:
+
+CAN:
+
+View Attendance
+
+View Homework
+
+View Teacher Remarks
+
+Call Parents
+
+Send WhatsApp Templates
+
+Add Remarks
+
+Update Call Status
+
+Update Lead Status
+
+CANNOT:
+
+Delete Students
+
+Delete Remarks
+
+Edit Attendance
+
+Edit Homework
+
+Edit Tests
+
+Edit Teacher Data
+
+Edit Payment Records
+
+Delete History
+
+FINAL GOAL
+
+When a Sales Mentor logs in, they should immediately know:
+
+Who needs calling.
+
+Who attended classes.
+
+Who missed homework.
+
+Who requested callback.
+
+Who is interested.
+
+Who is likely to convert.
+
+Who already converted.
+
+The entire portal should feel like:
+
+Student Success Management
++
+Parent Communication
++
+Conversion Tracking
+
+and NOT like a generic CRM or task manager.
+
+Focus on simplicity, scalability, and daily mentor workflow.
+
+Voice chat ended
+51s
