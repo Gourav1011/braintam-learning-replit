@@ -8,9 +8,25 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
   auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
   academicYearsTable, announcementsTable, bannersTable, pointsLedgerTable,
-  mentorStudentAssignmentsTable,
+  mentorStudentAssignmentsTable, studentTimelineTable, mentorFollowUpsTable, mentorAttendanceTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, gte, lt, isNull, inArray } from "drizzle-orm";
+
+function computeCrmHealth(s: { lastLoginDate: Date | null; hwPct: number; testTotal: number }): { healthScore: number; riskLevel: "excellent" | "good" | "attention" | "at-risk"; daysSinceLogin: number } {
+  const daysSinceLogin = s.lastLoginDate ? Math.floor((Date.now() - new Date(s.lastLoginDate).getTime()) / 86400000) : 999;
+  const loginScore = daysSinceLogin <= 1 ? 100 : daysSinceLogin <= 3 ? 80 : daysSinceLogin <= 7 ? 60 : 30;
+  const healthScore = Math.round((s.hwPct * 0.5) + (loginScore * 0.3) + (s.testTotal > 0 ? 20 : 0));
+  const riskLevel: "excellent" | "good" | "attention" | "at-risk" = healthScore >= 90 ? "excellent" : healthScore >= 75 ? "good" : healthScore >= 50 ? "attention" : "at-risk";
+  return { healthScore, riskLevel, daysSinceLogin };
+}
+function computeCrmFuStatus(nextFollowUpDate: string | null, callStatus: string | null): { fuStatus: "due_today" | "overdue" | "upcoming" | "completed"; daysOverdue: number } {
+  if (callStatus === "completed") return { fuStatus: "completed", daysOverdue: 0 };
+  if (!nextFollowUpDate) return { fuStatus: "upcoming", daysOverdue: 0 };
+  const today = new Date().toISOString().slice(0, 10);
+  if (nextFollowUpDate === today) return { fuStatus: "due_today", daysOverdue: 0 };
+  if (nextFollowUpDate < today) return { fuStatus: "overdue", daysOverdue: Math.floor((new Date(today).getTime() - new Date(nextFollowUpDate).getTime()) / 86400000) };
+  return { fuStatus: "upcoming", daysOverdue: 0 };
+}
 import { requireRole } from "../middlewares/auth.js";
 import { logAction } from "../utils/audit.js";
 import crypto from "crypto";
@@ -1318,6 +1334,77 @@ router.get("/admin/audit-logs", adminOnly, async (req, res) => {
     .limit(200);
 
   res.json(logs);
+});
+
+// ── Student CRM Profile (BTL CRM data for any student) ────────────────────
+router.get("/admin/students/:id/crm", adminOnly, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [student] = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    phone: usersTable.phone, grade: usersTable.grade, school: usersTable.school,
+    lastLoginDate: usersTable.lastLoginDate, isActive: usersTable.isActive,
+    leadStage: usersTable.leadStage, parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
+  }).from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+
+  if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+
+  const [hwCounts, testCounts, attCounts, mentorRows, timeline, followUps] = await Promise.all([
+    db.select({ total: sql<number>`count(*)`, done: sql<number>`count(*) filter (where status != 'pending')` })
+      .from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.studentId, studentId)),
+    db.select({ total: sql<number>`count(*)` })
+      .from(testSubmissionsTable).where(eq(testSubmissionsTable.studentId, studentId)),
+    db.select({ total: sql<number>`count(*)`, present: sql<number>`count(*) filter (where status = 'present')` })
+      .from(mentorAttendanceTable).where(eq(mentorAttendanceTable.studentId, studentId)),
+    db.select({ mentorId: mentorStudentAssignmentsTable.mentorId, mentorName: usersTable.name, mentorEmail: usersTable.email })
+      .from(mentorStudentAssignmentsTable)
+      .leftJoin(usersTable, eq(usersTable.id, mentorStudentAssignmentsTable.mentorId))
+      .where(and(eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true)))
+      .limit(1),
+    db.select({
+      id: studentTimelineTable.id, noteType: studentTimelineTable.noteType,
+      remark: studentTimelineTable.remark, followUpDate: studentTimelineTable.followUpDate,
+      actionTaken: studentTimelineTable.actionTaken, createdAt: studentTimelineTable.createdAt,
+      createdByName: studentTimelineTable.createdByName, createdByRole: studentTimelineTable.createdByRole,
+    }).from(studentTimelineTable).where(eq(studentTimelineTable.studentId, studentId))
+      .orderBy(desc(studentTimelineTable.createdAt)).limit(50),
+    db.select({
+      id: mentorFollowUpsTable.id, noteType: mentorFollowUpsTable.noteType,
+      note: mentorFollowUpsTable.note, callStatus: mentorFollowUpsTable.callStatus,
+      nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate, createdAt: mentorFollowUpsTable.createdAt,
+      leadStatus: mentorFollowUpsTable.leadStatus,
+    }).from(mentorFollowUpsTable).where(eq(mentorFollowUpsTable.studentId, studentId))
+      .orderBy(desc(mentorFollowUpsTable.createdAt)).limit(50),
+  ]);
+
+  const hwTotal = Number(hwCounts[0]?.total ?? 0);
+  const hwDone = Number(hwCounts[0]?.done ?? 0);
+  const hwPct = hwTotal > 0 ? Math.round((hwDone / hwTotal) * 100) : 100;
+  const { healthScore, riskLevel, daysSinceLogin } = computeCrmHealth({ lastLoginDate: student.lastLoginDate, hwPct, testTotal: Number(testCounts[0]?.total ?? 0) });
+  const attTotal = Number(attCounts[0]?.total ?? 0);
+  const attendancePct = attTotal > 0 ? Math.round((Number(attCounts[0]?.present ?? 0) / attTotal) * 100) : null;
+
+  res.json({
+    student: { ...student, healthScore, riskLevel, daysSinceLogin, hwCompletion: hwPct, attendancePct },
+    assignedMentor: mentorRows[0] ?? null,
+    timeline,
+    followUps: followUps.map(f => ({ ...f, ...computeCrmFuStatus(f.nextFollowUpDate, f.callStatus) })),
+  });
+});
+
+router.patch("/admin/students/:id/crm", adminOnly, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { leadStage, parentName, parentPhone } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (leadStage !== undefined) updates.leadStage = leadStage || null;
+  if (parentName !== undefined) updates.parentName = parentName || null;
+  if (parentPhone !== undefined) updates.parentPhone = parentPhone || null;
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+  const [row] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning({ id: usersTable.id });
+  if (!row) { res.status(404).json({ error: "Student not found" }); return; }
+  res.json({ ok: true });
 });
 
 export default router;
