@@ -46,7 +46,7 @@ import {
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
   ShieldCheck, Zap, UserCircle,
 } from "lucide-react";
-import braintamLogo from "@assets/image_1780810348206.png";
+import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1126,11 +1126,15 @@ function AdminPageInner() {
       {/* Left Sidebar */}
       <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
         {/* Brand */}
-        <div className="px-5 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-0.5">
-            <img src={braintamLogo} alt="Braintam" className="h-5 w-auto" />
+        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto mb-3" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
+              BTL <span style={{ color: ORANGE }}>CRM</span>
+            </span>
           </div>
-          <span className="font-black text-sm" style={{ color: NAVY }}>BTL CRM</span>
+          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Relationship Management</p>
         </div>
 
         {/* Nav list */}
@@ -1168,7 +1172,8 @@ function AdminPageInner() {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-gray-100 space-y-2">
+        <div className="px-4 py-4 border-t border-gray-100 space-y-2.5">
+          {/* User name */}
           <button onClick={() => setTab("profile")} className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-xl px-1 py-1 transition-colors group">
             <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
               style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
@@ -1181,6 +1186,8 @@ function AdminPageInner() {
               <div className="text-[10px] text-gray-400">My Profile</div>
             </div>
           </button>
+          {/* Check-in compact strip */}
+          <StaffCheckin apiFetch={apiFetch} role="admin" compact />
           <div className="flex items-center gap-2">
             <button onClick={loadAll} className="text-gray-400 hover:text-gray-600 transition-colors" title="Refresh">
               <RotateCcw className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`} />
@@ -1201,8 +1208,6 @@ function AdminPageInner() {
             {TABS.find(t => t.id === tab)?.label ?? ""}
           </span>
         </div>
-        <StaffCheckin apiFetch={apiFetch} role="admin" />
-
       <div className="p-5 space-y-5">
         {/* Toast */}
         {msg && (

@@ -7,7 +7,7 @@ import {
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
 } from "lucide-react";
-import braintamLogo from "@assets/image_1780810348206.png";
+import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { Button } from "@/components/ui/button";
@@ -655,13 +655,25 @@ export default function TeacherPage() {
       </AlertDialog>
 
       {/* Header */}
-      <div className="px-6 py-3 flex items-center justify-between shadow-sm" style={{ background: NAVY }}>
+      <div className="px-5 py-3 flex items-center justify-between shadow-sm" style={{ background: NAVY }}>
         <div className="flex items-center gap-3">
-          <img src={braintamLogo} alt="Braintam" className="h-6 w-auto brightness-0 invert" />
-          <span className="font-black text-white text-lg">BTL CRM</span>
-          <span className="text-white/40 text-sm hidden md:inline">— {student.name}</span>
+          <img src={braintamLogo} alt="Braintam" className="h-7 w-auto" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-0.5 h-5 rounded-full bg-white/30" />
+            <div>
+              <div className="flex items-center gap-1">
+                <span className="font-black text-white tracking-wide" style={{ fontSize: "14px", letterSpacing: "0.04em" }}>
+                  BTL <span style={{ color: "#FF6B1A" }}>CRM</span>
+                </span>
+              </div>
+              <div className="text-white/40 text-[9px] tracking-wider uppercase">Relationship Management</div>
+            </div>
+          </div>
+          <span className="text-white/30 text-xs hidden md:inline">· {student.name}</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Compact check-in inline */}
+          <StaffCheckin apiFetch={apiFetch} role="teacher" compact />
           <button onClick={() => setTab("profile")} className="flex items-center gap-1.5 group" title="My Profile">
             <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold border-2 border-white/30 group-hover:border-white/60 transition-colors"
               style={{ background: student.avatarUrl ? "transparent" : "rgba(255,255,255,0.2)" }}>
@@ -693,8 +705,6 @@ export default function TeacherPage() {
           );
         })}
       </div>
-
-      <StaffCheckin apiFetch={apiFetch} role="teacher" />
 
       <div className="p-5 space-y-5">
         {msg && (
