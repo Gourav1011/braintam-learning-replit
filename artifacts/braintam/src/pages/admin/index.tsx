@@ -865,12 +865,36 @@ function AdminPageInner() {
     setCheckingIn(true);
     try {
       const r = await apiFetch("/staff/checkin", { method: "POST" });
-      if (r.ok) { setTodayCheckin(await r.json()); flash("Checked in successfully!"); }
-    } finally { setCheckingIn(false); }
+      if (r.ok) {
+        setTodayCheckin(await r.json());
+        flash("Checked in successfully!");
+      }
+    } finally {
+      setCheckingIn(false);
+    }
   }
 
-  function confirm(dialog: ConfirmDialog) { setConfirmDialog(dialog); }
+  async function doCheckOut() {
+    try {
+      const r = await apiFetch("/staff/checkin/checkout", {
+        method: "PATCH",
+        body: JSON.stringify({}),
+      });
 
+      if (r.ok) {
+        setTodayCheckin(await r.json());
+        flash("Checked out successfully!");
+      } else {
+        flash("Checkout failed", false);
+      }
+    } catch {
+      flash("Checkout failed", false);
+    }
+  }
+
+  function confirm(dialog: ConfirmDialog) {
+    setConfirmDialog(dialog);
+    }
   // ── Filtered + Sorted Users ─────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
     let list = users.filter(u => u.role === "student");
@@ -1390,8 +1414,13 @@ function AdminPageInner() {
                       <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                       Checked in at {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
                     </div>
-                    <button onClick={() => { setProfileDropOpen(false); setTab("employee-attendance"); }}
-                      className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1.5">
+                    <button
+                      onClick={async () => {
+                        setProfileDropOpen(false);
+                        await doCheckOut();
+                      }}
+                      className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1.5"
+                    >
                       <LogOut className="w-3 h-3" /> Check Out
                     </button>
                   </div>
