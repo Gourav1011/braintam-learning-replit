@@ -264,4 +264,195 @@ router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
   res.json(enriched);
 });
 
+router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
+  const now = new Date();
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  const startOfThisWeek = new Date(now); startOfThisWeek.setDate(now.getDate() - 6); startOfThisWeek.setHours(0,0,0,0);
+
+  const [allEnrollments, allSessions, allBatches] = await Promise.all([
+    db.select({
+      id: demoBatchEnrollmentsTable.id,
+      batchId: demoBatchEnrollmentsTable.batchId,
+      studentId: demoBatchEnrollmentsTable.studentId,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+      lastDayAttended: demoBatchEnrollmentsTable.lastDayAttended,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
+      enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+      studentName: usersTable.name,
+      studentPhone: usersTable.phone,
+      parentPhone: usersTable.parentPhone,
+      grade: usersTable.grade,
+      leadStage: usersTable.leadStage,
+      interestLevel: usersTable.interestLevel,
+      callStatus: usersTable.callStatus,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))
+    .orderBy(desc(demoBatchEnrollmentsTable.enrolledAt)),
+    db.select().from(demoSessionsTable).orderBy(desc(demoSessionsTable.scheduledAt)),
+    db.select().from(demoBatchesTable),
+  ]);
+
+  const batchMap = Object.fromEntries(allBatches.map(b => [b.id, b]));
+
+  const isThisMonth = (d: Date | null) => d && d >= startOfThisMonth && d <= now;
+  const isLastMonth = (d: Date | null) => d && d >= startOfLastMonth && d <= endOfLastMonth;
+  const isThisWeek = (d: Date | null) => d && d >= startOfThisWeek && d <= now;
+
+  // ── Leads KPIs ──
+  const leadsLifetime = allEnrollments.length;
+  const leadsThisMonth = allEnrollments.filter(e => isThisMonth(e.enrolledAt)).length;
+  const leadsThisWeek = allEnrollments.filter(e => isThisWeek(e.enrolledAt)).length;
+  const leadsLastMonth = allEnrollments.filter(e => isLastMonth(e.enrolledAt)).length;
+
+  // ── Conversion KPIs ──
+  const converted = allEnrollments.filter(e => e.enrollmentStatus === "converted");
+  const convLifetime = converted.length;
+  const convThisMonth = converted.filter(e => isThisMonth(e.enrolledAt)).length;
+  const convThisWeek = converted.filter(e => isThisWeek(e.enrolledAt)).length;
+  const convLastMonth = converted.filter(e => isLastMonth(e.enrolledAt)).length;
+
+  const pct = (n: number, d: number) => d > 0 ? Math.round((n / d) * 100 * 10) / 10 : 0;
+  const convPctOverall = pct(convLifetime, leadsLifetime);
+  const convPctMonthly = pct(convThisMonth, leadsThisMonth);
+  const convPctWeekly = pct(convThisWeek, leadsThisWeek);
+
+  // ── Classes KPIs ──
+  const completedSessions = allSessions.filter(s => s.status === "completed");
+  const classesLifetime = completedSessions.length;
+  const classesThisMonth = completedSessions.filter(s => isThisMonth(s.scheduledAt)).length;
+  const classesThisWeek = completedSessions.filter(s => isThisWeek(s.scheduledAt)).length;
+  const classesLastMonth = completedSessions.filter(s => isLastMonth(s.scheduledAt)).length;
+
+  // ── Funnel ──
+  const demoAttended = allEnrollments.filter(e => (e.lastDayAttended ?? 0) >= 1).length;
+  const interested = allEnrollments.filter(e =>
+    e.leadStage === "Interested" || e.leadStage === "Very Interested" || e.interestLevel === "High" || e.interestLevel === "Very High"
+  ).length;
+  const funnel = [
+    { stage: "Leads Enrolled", count: leadsLifetime, color: "#3B82F6" },
+    { stage: "Demo Attended", count: demoAttended, color: "#8B5CF6" },
+    { stage: "Interested", count: interested, color: "#F59E0B" },
+    { stage: "Converted", count: convLifetime, color: "#22C55E" },
+  ];
+
+  // ── Grade-wise ──
+  const gradeMap: Record<number, { leads: number; converted: number }> = {};
+  for (const e of allEnrollments) {
+    const g = e.grade ?? 0;
+    if (!gradeMap[g]) gradeMap[g] = { leads: 0, converted: 0 };
+    gradeMap[g].leads += 1;
+    if (e.enrollmentStatus === "converted") gradeMap[g].converted += 1;
+  }
+  const gradeWise = Object.entries(gradeMap)
+    .map(([g, v]) => ({ grade: Number(g), leads: v.leads, converted: v.converted, conversionPct: pct(v.converted, v.leads) }))
+    .sort((a, b) => a.grade - b.grade);
+
+  // ── Teacher Impact ──
+  const teacherMap: Record<string, { classes: number; students: Set<number>; conversions: number }> = {};
+  for (const s of allSessions) {
+    const b = batchMap[s.batchId];
+    const teacher = b?.teacherName ?? "Unknown";
+    if (!teacherMap[teacher]) teacherMap[teacher] = { classes: 0, students: new Set(), conversions: 0 };
+    teacherMap[teacher].classes += 1;
+  }
+  for (const e of allEnrollments) {
+    const b = batchMap[e.batchId];
+    const teacher = b?.teacherName ?? "Unknown";
+    if (!teacherMap[teacher]) teacherMap[teacher] = { classes: 0, students: new Set(), conversions: 0 };
+    teacherMap[teacher].students.add(e.studentId);
+    if (e.enrollmentStatus === "converted") teacherMap[teacher].conversions += 1;
+  }
+  const teacherImpact = Object.entries(teacherMap)
+    .map(([teacher, v]) => ({
+      teacher, classes: v.classes, students: v.students.size,
+      conversions: v.conversions, conversionPct: pct(v.conversions, v.students.size),
+    }))
+    .sort((a, b) => b.conversionPct - a.conversionPct);
+
+  // ── Counselor Performance ──
+  const counselorMap: Record<string, { leads: number; converted: number }> = {};
+  for (const e of allEnrollments) {
+    const mentor = e.assignedMentorName ?? "Unassigned";
+    if (!counselorMap[mentor]) counselorMap[mentor] = { leads: 0, converted: 0 };
+    counselorMap[mentor].leads += 1;
+    if (e.enrollmentStatus === "converted") counselorMap[mentor].converted += 1;
+  }
+  const counselorPerf = Object.entries(counselorMap)
+    .map(([counselor, v]) => ({ counselor, leads: v.leads, converted: v.converted, conversionPct: pct(v.converted, v.leads) }))
+    .sort((a, b) => b.conversionPct - a.conversionPct);
+
+  // ── Monthly Trend (last 12 months) ──
+  const monthlyTrend: Record<string, { leads: number; conversions: number; classes: number }> = {};
+  const monthKey = (d: Date | null) => {
+    if (!d) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const k = monthKey(d)!;
+    monthlyTrend[k] = { leads: 0, conversions: 0, classes: 0 };
+  }
+  for (const e of allEnrollments) {
+    const k = monthKey(e.enrolledAt);
+    if (k && monthlyTrend[k]) {
+      monthlyTrend[k].leads += 1;
+      if (e.enrollmentStatus === "converted") monthlyTrend[k].conversions += 1;
+    }
+  }
+  for (const s of completedSessions) {
+    const k = monthKey(s.scheduledAt);
+    if (k && monthlyTrend[k]) monthlyTrend[k].classes += 1;
+  }
+  const trend = Object.entries(monthlyTrend).map(([month, v]) => {
+    const [y, m] = month.split("-");
+    const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    return { month: label, ...v };
+  });
+
+  // ── Lead Stage Breakdown ──
+  const stageMap: Record<string, number> = {};
+  for (const e of allEnrollments) {
+    const stage = e.leadStage ?? "Not Set";
+    stageMap[stage] = (stageMap[stage] ?? 0) + 1;
+  }
+  const leadStage = Object.entries(stageMap).map(([stage, count]) => ({ stage, count })).sort((a, b) => b.count - a.count);
+
+  // ── Recent Leads ──
+  const recentLeads = allEnrollments.slice(0, 50).map(e => ({
+    id: e.id,
+    studentName: e.studentName,
+    grade: e.grade,
+    phone: e.studentPhone,
+    parentPhone: e.parentPhone,
+    enrolledAt: e.enrolledAt,
+    enrollmentStatus: e.enrollmentStatus,
+    lastDayAttended: e.lastDayAttended,
+    assignedMentorName: e.assignedMentorName,
+    leadStage: e.leadStage,
+    interestLevel: e.interestLevel,
+    batchTitle: batchMap[e.batchId]?.title ?? `Batch #${e.batchId}`,
+    batchGrade: batchMap[e.batchId]?.grade ?? null,
+    teacherName: batchMap[e.batchId]?.teacherName ?? null,
+  }));
+
+  res.json({
+    kpis: {
+      leads: { lifetime: leadsLifetime, thisMonth: leadsThisMonth, thisWeek: leadsThisWeek, lastMonth: leadsLastMonth },
+      conversions: { lifetime: convLifetime, thisMonth: convThisMonth, thisWeek: convThisWeek, lastMonth: convLastMonth },
+      classes: { lifetime: classesLifetime, thisMonth: classesThisMonth, thisWeek: classesThisWeek, lastMonth: classesLastMonth },
+      conversionPct: { overall: convPctOverall, monthly: convPctMonthly, weekly: convPctWeekly },
+    },
+    funnel,
+    gradeWise,
+    teacherImpact,
+    counselorPerf,
+    trend,
+    leadStage,
+    recentLeads,
+  });
+});
+
 export default router;

@@ -1,0 +1,374 @@
+Create a NEW Admin Menu called "Ignite Analytics" similar in UI/UX to Mastery Analytics, but completely independent.
+
+STRICT RULES:
+- Show ONLY Ignite Program data.
+- Do NOT show any Mastery data.
+- Do NOT include Long-Term Program users.
+- Do NOT reuse Mastery calculations.
+- Use separate APIs, services, queries, and database filters.
+- No data leakage between Mastery and Ignite.
+
+====================================================
+IGNITE ANALYTICS DASHBOARD
+====================================================
+
+Create a professional BI dashboard with drill-down reports, charts, filters, exports, and detailed views.
+
+====================================================
+1. EXECUTIVE SUMMARY KPI CARDS
+====================================================
+
+Display:
+
+1. Total Leads (Lifetime)
+2. Total Leads (This Month)
+3. Total Leads (This Week)
+4. Total Leads (Last Month)
+
+5. Total Conversions (Lifetime)
+6. Total Conversions (This Month)
+7. Total Conversions (This Week)
+8. Total Conversions (Last Month)
+
+9. Overall Conversion %
+10. Monthly Conversion %
+11. Weekly Conversion %
+
+12. Total Classes Conducted (Lifetime)
+13. Total Classes Conducted (This Month)
+14. Total Classes Conducted (This Week)
+15. Total Classes Conducted (Last Month)
+
+Every KPI card must have:
+- View Details
+- Export Excel
+- Export CSV
+- Export PDF
+
+====================================================
+2. LEAD ANALYTICS
+====================================================
+
+Track Ignite Leads only.
+
+Show:
+
+- Total Leads Lifetime
+- This Month Leads
+- This Week Leads
+- Last Month Leads
+
+Detailed View Columns:
+
+- Student Name
+- Parent Name
+- Mobile Number
+- Grade
+- Lead Source
+- Lead Date
+- Demo Status
+- Counselor Assigned
+- Current Status
+
+Features:
+
+- Search
+- Sort
+- Filters
+- Export
+
+Charts:
+
+- Leads Trend
+- Monthly Leads
+- Weekly Leads
+- Grade-wise Leads
+- Source-wise Leads
+
+====================================================
+3. CONVERSION ANALYTICS
+====================================================
+
+Show:
+
+- Converted Leads Lifetime
+- Converted Leads This Month
+- Converted Leads This Week
+- Converted Leads Last Month
+
+Calculate:
+
+Conversion % = Converted Leads / Total Leads × 100
+
+Detailed View:
+
+- Student Name
+- Grade
+- Lead Date
+- Demo Date
+- Conversion Date
+- Enrollment Amount
+- Counselor
+- Teacher
+
+Charts:
+
+- Conversion Trend
+- Monthly Conversion
+- Weekly Conversion
+- Grade-wise Conversion
+
+====================================================
+4. CLASS ANALYTICS
+====================================================
+
+Show:
+
+- Total Classes Lifetime
+- Classes This Month
+- Classes This Week
+- Classes Last Month
+
+Detailed View:
+
+- Class Name
+- Teacher
+- Grade
+- Date
+- Attendance Count
+- Attendance %
+
+Metrics:
+
+- Average Attendance
+- Highest Attendance Class
+- Lowest Attendance Class
+
+Charts:
+
+- Class Trend
+- Attendance Trend
+- Teacher Performance
+
+====================================================
+5. IGNITE FUNNEL ANALYTICS
+====================================================
+
+Build Funnel:
+
+Leads
+↓
+Demo Registered
+↓
+Demo Attended
+↓
+Converted
+
+Show:
+
+- Count at each stage
+- Drop-off %
+- Conversion %
+- Funnel Visualization
+
+Allow:
+
+- Lifetime
+- Monthly
+- Weekly
+
+Views
+
+====================================================
+6. GRADE-WISE CONVERSION ANALYTICS
+====================================================
+
+Overall Lifetime
+
+Table:
+
+Grade
+Leads
+Converted
+Conversion %
+
+Automatically identify:
+
+- Top Performing Grade
+- Weakest Grade
+
+Repeat same analysis for:
+
+- This Month
+- This Week
+
+Charts:
+
+- Grade Comparison
+- Conversion Ranking
+
+====================================================
+7. LEAD SOURCE ANALYTICS
+====================================================
+
+Track Sources:
+
+- Instagram
+- Facebook
+- WhatsApp
+- Website
+- Referral
+- Offline Event
+- Other
+
+Table:
+
+Source
+Leads
+Converted
+Conversion %
+
+Show:
+
+- Best Source
+- Weakest Source
+
+Charts:
+
+- Source Pie Chart
+- Source Conversion Chart
+
+====================================================
+8. TEACHER IMPACT ANALYTICS
+====================================================
+
+For Ignite Demo Classes.
+
+Show:
+
+Teacher
+Classes Taken
+Students Attended
+Conversions Generated
+Conversion %
+
+Identify:
+
+- Top Conversion Teacher
+- Lowest Conversion Teacher
+
+Charts:
+
+- Teacher Conversion Ranking
+- Teacher Performance Trend
+
+====================================================
+9. COUNSELOR PERFORMANCE ANALYTICS
+====================================================
+
+Show:
+
+Counselor
+Leads Assigned
+Converted
+Conversion %
+
+Identify:
+
+- Best Counselor
+- Lowest Performing Counselor
+
+Charts:
+
+- Counselor Ranking
+- Monthly Performance
+
+====================================================
+10. GLOBAL FILTER SYSTEM
+====================================================
+
+Dashboard-wide filters:
+
+- Date Range
+- Grade
+- Teacher
+- Counselor
+- Lead Source
+- Conversion Status
+- Demo Status
+
+All widgets update instantly.
+
+====================================================
+11. DRILL-DOWN REPORTS
+====================================================
+
+Every card must contain:
+
+"View Details"
+
+On click:
+
+Open detailed report page/table with:
+
+- Search
+- Sort
+- Pagination
+- Filters
+- Export
+
+====================================================
+12. EXPORT CENTER
+====================================================
+
+Every report must support:
+
+- Excel Export
+- CSV Export
+- PDF Export
+- Print
+
+====================================================
+13. CHARTS
+====================================================
+
+Use:
+
+- KPI Cards
+- Bar Charts
+- Line Charts
+- Pie Charts
+- Funnel Charts
+- Trend Charts
+
+Professional BI appearance.
+
+====================================================
+14. PERFORMANCE REQUIREMENTS
+====================================================
+
+- Fast loading
+- Server-side pagination
+- Optimized queries
+- Real-time calculations
+- Responsive design
+- Dark mode compatible
+- Mobile compatible
+
+====================================================
+15. DATA INTEGRITY
+====================================================
+
+VERY IMPORTANT:
+
+Only fetch records where Program Type = Ignite.
+
+Never show:
+- Mastery users
+- Long-Term Program users
+- Mastery conversions
+- Mastery classes
+
+All APIs, queries, reports, exports, and charts must be Ignite-only.
+
+Build this as a complete standalone Ignite Business Intelligence Dashboard with premium admin-level analytics and reporting.

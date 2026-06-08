@@ -70,6 +70,7 @@ import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
 import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
 import { AssessmentsTab } from "./assessments-tab";
+import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -106,6 +107,7 @@ type Tab =
   | "settings"
   | "revenue-analytics"
   | "assessments"
+  | "ignite-analytics"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1223,6 +1225,7 @@ function AdminPageInner() {
             { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
             { label: "Teachers", icon: GradCap, tab: "teacher-analytics" },
             { label: "Mastery Analytics", icon: BarChart3, tab: "analytics" },
+            { label: "Ignite Analytics", icon: Zap, tab: "ignite-analytics" },
             { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
           ],
         },
@@ -2900,6 +2903,9 @@ function AdminPageInner() {
 
         {/* ── Assessments ──────────────────────────────────────────────── */}
         {tab === "assessments" && <AssessmentsTab flash={flash} />}
+
+        {/* ── Ignite Analytics ─────────────────────────────────────────── */}
+        {tab === "ignite-analytics" && <IgniteAnalyticsTab />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}
