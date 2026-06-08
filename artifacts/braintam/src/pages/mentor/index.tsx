@@ -1131,7 +1131,7 @@ export default function BTLCRMPage() {
               color: isSales ? "#D97706" : "#059669",
               border: `1px solid ${isSales ? "#FCD34D" : "#6EE7B7"}`,
             }}>
-            {isSales ? "💼 Sales SSM" : "📚 Academic"}
+            {isSales ? "💼 Sales SSM" : "📚 Academic Mentor"}
           </span>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
