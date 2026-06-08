@@ -1295,9 +1295,6 @@ function AdminPageInner() {
       {resetPasswordUser && <PasswordResetModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} flash={flash} />}
       {/* Access Management Modal */}
       {accessUser && <AccessModal user={accessUser} onClose={() => setAccessUser(null)} flash={flash} />}
-      {/* Student 360 Full Page */}
-      {student360Id && <Student360Page userId={student360Id} onBack={() => setStudent360Id(null)} />}
-
       {/* ── Global Header ──────────────────────────────────────────────────────── */}
       <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">
         <img src={braintamLogo} alt="Braintam" className="h-7 w-auto shrink-0" />
@@ -1521,7 +1518,12 @@ function AdminPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 overflow-auto" style={{ background: "#F5F7FF" }}>
+      <div className="flex-1 min-w-0 overflow-auto relative" style={{ background: "#F5F7FF" }}>
+      {student360Id && (
+        <div className="absolute inset-0 z-20 overflow-auto flex flex-col" style={{ background: "#F5F7FF" }}>
+          <Student360Page userId={student360Id} onBack={() => setStudent360Id(null)} />
+        </div>
+      )}
       <div className="p-5 space-y-5">
         {/* Toast */}
         {msg && (
