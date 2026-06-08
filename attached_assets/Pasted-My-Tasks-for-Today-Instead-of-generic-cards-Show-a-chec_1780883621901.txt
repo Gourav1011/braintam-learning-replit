@@ -1,0 +1,165 @@
+My Tasks for Today
+
+Instead of generic cards.
+
+Show a checklist.
+
+□ Call Ramchi Kamchi
+   Last Contact: Never
+   Priority: High
+
+□ Contact Sourav Manhas
+   Attendance 42%
+   Priority: High
+
+□ Parent Callback - Riya
+   Requested Yesterday
+
+□ Review Grade 6 Health Alerts
+
+□ Submit EOD Report
+
+When completed:
+
+✅ Mark Done
+
+Overdue Tasks Section
+
+Most important section.
+
+⚠️ OVERDUE TASKS
+
+Ramchi Kamchi
+No contact for 12 days
+
+Sourav Manhas
+Attendance alert pending for 5 days
+
+Riya
+Parent callback pending for 3 days
+
+Red color.
+
+Always visible.
+
+Students Requiring Attention
+
+Rank students by urgency.
+
+Student	Risk	Last Contact	Action
+Ramchi	High	Never	Call
+Sourav	High	12 Days	Call
+Riya	Medium	8 Days	Follow-Up
+
+Single click actions.
+
+Contact Queue
+
+Mentor should be able to call continuously.
+
+1. Ramchi Kamchi
+[Call]
+
+2. Sourav Manhas
+[Call]
+
+3. Riya
+[Call]
+
+After call:
+
+Outcome:
+○ Connected
+○ Not Picked
+○ Call Back
+○ Interested
+○ Parent Busy
+
+Save
+Next Student →
+
+This alone can improve mentor productivity dramatically.
+
+Attendance Alerts
+
+Show only problematic students.
+
+Attendance Below 70%
+
+Ramchi - 55%
+Sourav - 48%
+
+Action:
+
+Contact Parent
+Homework Alerts
+Homework Completion Below 50%
+
+Grade 6
+Sourav - 35%
+
+Grade 5
+Riya - 42%
+
+Action:
+
+Assign Follow-Up
+Upcoming Sessions Today
+Live Classes: 3
+Doubt Sessions: 2
+Parent Meetings: 1
+
+With join buttons.
+
+Health Score Alerts
+Critical Health Score (<60)
+
+Ramchi 52%
+Sourav 58%
+
+Action:
+
+Create Intervention Plan
+End Of Day Progress
+
+Visible throughout the day.
+
+Today's Target
+
+Calls Required: 15
+Calls Done: 9
+
+Follow-Ups Required: 10
+Completed: 7
+
+Parent Calls Required: 4
+Completed: 2
+
+Progress: 72%
+
+Mentors immediately know where they stand.
+
+Ideal Layout
+------------------------------------------------
+TODAY'S TASKS
+------------------------------------------------
+
+[Critical Tasks Cards]
+
+[My Task Checklist]
+
+[Overdue Tasks]
+
+[Students Requiring Attention]
+
+[One Click Contact Queue]
+
+[Attendance Alerts]
+
+[Homework Alerts]
+
+[Today's Schedule]
+
+[EOD Progress]
+
+This turns the page from a passive dashboard into a daily command center where mentors know exactly what to do next, which is usually what drives actual completion rates. For Braintam, I'd make Overdue Tasks, Contact Queue, and Today's Target Progress the most prominent sections because those directly impact student retention and engagement.

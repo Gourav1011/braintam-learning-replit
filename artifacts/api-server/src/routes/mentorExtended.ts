@@ -150,7 +150,70 @@ router.get("/mentor/today-tasks", mentorAuth, async (req, res) => {
     .filter(r => r.avgScore < 60)
     .sort((a, b) => a.avgScore - b.avgScore);
 
-  res.json({ followUpsToday, contactPending, homeworkAlerts, attendanceAlerts, testAlerts });
+  // 6. Health alerts (score < 60%)
+  const hlStudents = await db.select({
+    id: usersTable.id, lastLoginDate: usersTable.lastLoginDate,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
+  const hwForHealth = await db.select({
+    studentId: homeworkSubmissionsTable.studentId,
+    total: sql<number>`count(*)::int`,
+    pending: sql<number>`count(*) filter (where ${homeworkSubmissionsTable.status} = 'pending')::int`,
+  }).from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
+  const testForHealth = await db.select({
+    studentId: testSubmissionsTable.studentId,
+    cnt: sql<number>`count(*)::int`,
+  }).from(testSubmissionsTable).where(inArray(testSubmissionsTable.studentId, studentIds)).groupBy(testSubmissionsTable.studentId);
+  const hwHMap = Object.fromEntries(hwForHealth.map(r => [r.studentId, r]));
+  const testHMap = Object.fromEntries(testForHealth.map(r => [r.studentId, r]));
+
+  const healthAlerts = hlStudents.map(s => {
+    const hw = hwHMap[s.id];
+    const hwTotal = Number(hw?.total ?? 0);
+    const hwPct = hwTotal > 0 ? Math.round(((hwTotal - Number(hw?.pending ?? 0)) / hwTotal) * 100) : 100;
+    const daysSince = s.lastLoginDate ? Math.floor((Date.now() - new Date(s.lastLoginDate).getTime()) / 86400000) : 999;
+    const loginScore = daysSince <= 1 ? 100 : daysSince <= 3 ? 80 : daysSince <= 7 ? 60 : 30;
+    const healthScore = Math.round((hwPct * 0.5) + (loginScore * 0.3) + (Number(testHMap[s.id]?.cnt ?? 0) > 0 ? 20 : 0));
+    return { studentId: s.id, name: sMap[s.id]?.name ?? "Unknown", grade: sMap[s.id]?.grade ?? 0, healthScore };
+  }).filter(s => s.healthScore < 60).sort((a, b) => a.healthScore - b.healthScore);
+
+  // 7. Today's schedule (live classes + doubt sessions for today)
+  const todayStart = new Date(today + "T00:00:00.000+05:30");
+  const todayEnd = new Date(today + "T23:59:59.999+05:30");
+  const grades = [...new Set(students.map(s => s.grade).filter((g): g is number => g !== null))];
+  const todayLiveClasses = grades.length > 0 ? await db.select({
+    id: liveClassesTable.id, title: liveClassesTable.title, grade: liveClassesTable.grade,
+    scheduledAt: liveClassesTable.scheduledAt, joinUrl: liveClassesTable.joinUrl, status: liveClassesTable.status,
+  }).from(liveClassesTable).where(and(
+    inArray(liveClassesTable.grade, grades),
+    gte(liveClassesTable.scheduledAt, todayStart),
+    lte(liveClassesTable.scheduledAt, todayEnd),
+    eq(liveClassesTable.isPublished, true),
+  )).orderBy(liveClassesTable.scheduledAt) : [];
+
+  const todayDoubtSessions = await db.select({
+    id: doubtSessionsTable.id, title: doubtSessionsTable.title,
+    scheduledTime: doubtSessionsTable.scheduledTime, meetingLink: doubtSessionsTable.meetingLink, status: doubtSessionsTable.status,
+  }).from(doubtSessionsTable).where(and(
+    eq(doubtSessionsTable.mentorId, mentorId),
+    eq(doubtSessionsTable.scheduledDate, today),
+  )).orderBy(doubtSessionsTable.scheduledTime);
+
+  // 8. EOD progress for today
+  const todayFUs = await db.select({ callStatus: mentorFollowUpsTable.callStatus, studentId: mentorFollowUpsTable.studentId })
+    .from(mentorFollowUpsTable)
+    .where(and(eq(mentorFollowUpsTable.mentorId, mentorId), gte(mentorFollowUpsTable.createdAt, todayStart), lte(mentorFollowUpsTable.createdAt, todayEnd)));
+  const eodProgress = {
+    callsCompleted: todayFUs.filter(f => f.callStatus === "called" || f.callStatus === "connected").length,
+    followUpsCompleted: todayFUs.filter(f => f.callStatus === "completed").length,
+    studentsContacted: new Set(todayFUs.map(f => f.studentId)).size,
+    callsRequired: Math.max(5, contactPending.filter(s => s.urgency === "red").length + 3),
+    followUpsRequired: followUpsToday.length + 3,
+    parentCallsRequired: Math.max(2, Math.ceil(attendanceAlerts.length / 2)),
+    parentCallsCompleted: todayFUs.filter(f => f.callStatus === "called").length,
+  };
+
+  res.json({ followUpsToday, contactPending, homeworkAlerts, attendanceAlerts, testAlerts, healthAlerts, todaySchedule: { liveClasses: todayLiveClasses, doubtSessions: todayDoubtSessions }, eodProgress });
 });
 
 // ── Observer: Live Classes (read-only) ────────────────────────────────────
