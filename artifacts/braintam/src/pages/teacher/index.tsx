@@ -809,28 +809,6 @@ export default function TeacherPage() {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-4 border-t border-gray-100 space-y-2.5">
-          <button onClick={() => setTab("profile")} className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-xl px-1 py-1 transition-colors">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
-              {student.avatarUrl
-                ? <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
-                : (student.name?.[0] ?? "T")}
-            </div>
-            <div className="min-w-0 text-left">
-              <div className="text-xs text-gray-700 font-semibold truncate">{student.name}</div>
-              <div className="text-[10px] text-gray-400">My Profile</div>
-            </div>
-          </button>
-          <StaffCheckin apiFetch={apiFetch} role="teacher" compact />
-          <div className="flex items-center gap-2">
-            <a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Site</a>
-            <button onClick={logout} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto">
-              <LogOut className="w-3.5 h-3.5" /> Logout
-            </button>
-          </div>
-        </div>
       </div>
 
       <div className="flex-1 min-w-0 overflow-auto" style={{ background: "#F5F7FF" }}>
