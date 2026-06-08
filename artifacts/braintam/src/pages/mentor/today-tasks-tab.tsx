@@ -82,22 +82,27 @@ function CircularProgress({ pct }: { pct: number }) {
   );
 }
 
-function StatCard({ icon: Icon, count, label, sub, color, bg }: {
+function StatCard({ icon: Icon, count, label, sub, color, bg, badge, badgeBg }: {
   icon: typeof Phone; count: number; label: string; sub?: string; color: string; bg: string;
+  badge?: string; badgeBg?: string;
 }) {
   return (
     <div className="flex-1 min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-start gap-2 mb-2">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
-          <Icon className="w-4.5 h-4.5" style={{ color }} />
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+          <Icon className="w-4 h-4" style={{ color }} />
         </div>
         <span className="text-3xl font-black leading-none" style={{ color }}>{count}</span>
       </div>
       <div className="text-xs font-bold text-gray-700 leading-snug">{label}</div>
       {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
-      <button className="mt-3 text-[10px] font-bold text-blue-600 flex items-center gap-0.5 hover:underline">
-        View Students <ChevronRight className="w-3 h-3" />
-      </button>
+      {badge && (
+        <div className="mt-3">
+          <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{ background: badgeBg ?? bg, color }}>
+            {badge}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -289,17 +294,75 @@ export function TodayTasksTab({ apiFetch, onFollowUpStudent }: {
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1">
           <StatCard icon={Phone} count={overdueFollowUps.length + notContactedRed.length}
-            label="Overdue Follow-Ups" color={RED} bg="#FEE2E2" />
+            label="Overdue follow-ups" color={RED} bg="#FEE2E2" badge="Action now" badgeBg="#FEE2E2" />
           <StatCard icon={Users} count={notContactedRed.length}
-            label="Not Contacted" sub="> 7 Days" color={ORANGE} bg="#FEF3C7" />
+            label="Not contacted >7d" color={ORANGE} bg="#FEF3C7" badge="At risk" badgeBg="#FEF3C7" />
           <StatCard icon={Calendar} count={attendanceIssues.length}
-            label="Attendance Issues" color={YELLOW} bg="#FEF9C3" />
+            label="Attendance issues" color={YELLOW} bg="#FEF9C3" badge="Below limit" badgeBg="#FEF9C3" />
           <StatCard icon={Phone} count={parentCallbackPending.length}
-            label="Parent Callback Pending" color="#7C3AED" bg="#EDE9FE" />
+            label="Parent callback" color="#7C3AED" bg="#EDE9FE" badge="Pending" badgeBg="#EDE9FE" />
           <StatCard icon={Video} count={data.todaySchedule.doubtSessions.length}
-            label="Doubt Sessions Today" color={GREEN} bg="#D1FAE5" />
+            label="Doubt sessions" color={GREEN} bg="#D1FAE5" badge="Today" badgeBg="#D1FAE5" />
         </div>
       </div>
+
+      {/* ── Today's Progress Strip ── */}
+      {(() => {
+        const totalCompleted = eod.callsCompleted + eod.followUpsCompleted + eod.parentCallsCompleted + completedCount;
+        const totalRequired = eod.callsRequired + eod.followUpsRequired + eod.parentCallsRequired + totalTasks;
+        const stripPct = Math.min(100, totalRequired > 0 ? Math.round((totalCompleted / totalRequired) * 100) : 0);
+        const stripLabel = stripPct >= 80 ? "Excellent!" : stripPct >= 60 ? "Good progress!" : stripPct >= 40 ? "Keep going!" : "Just started";
+        const stripLabelColor = stripPct >= 60 ? GREEN : stripPct >= 30 ? ORANGE : RED;
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-6">
+            {/* Big % */}
+            <div className="flex-shrink-0">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Today's progress</div>
+              <div className="text-4xl font-black leading-none" style={{ color: NAVY }}>{stripPct}%</div>
+            </div>
+
+            {/* Bar + label */}
+            <div className="flex-1 min-w-0">
+              <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-1.5">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${stripPct}%`, background: `linear-gradient(90deg, ${NAVY} 0%, #2563EB 100%)` }}
+                />
+              </div>
+              <div className="text-[11px] text-gray-400 font-medium">
+                {completedCount} of {totalTasks} tasks completed
+              </div>
+            </div>
+
+            {/* 4 metric chips */}
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {[
+                { done: eod.callsCompleted, req: eod.callsRequired, label: "Calls", color: NAVY },
+                { done: eod.followUpsCompleted, req: eod.followUpsRequired, label: "Follow-ups", color: ORANGE },
+                { done: eod.parentCallsCompleted, req: eod.parentCallsRequired, label: "Parent calls", color: "#7C3AED" },
+                { done: completedCount, req: totalTasks, label: "Tasks", color: GREEN },
+              ].map(m => (
+                <div key={m.label} className="text-center">
+                  <div className="text-base font-black leading-tight">
+                    <span style={{ color: m.color }}>{m.done}</span>
+                    <span className="text-gray-300 font-normal">/</span>
+                    <span className="text-gray-500 text-sm font-bold">{m.req}</span>
+                  </div>
+                  <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Status badge */}
+            <div className="flex-shrink-0">
+              <span className="text-xs font-black px-4 py-2 rounded-full border-2"
+                style={{ color: stripLabelColor, borderColor: stripLabelColor, background: `${stripLabelColor}12` }}>
+                {stripLabel}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Row 2: My Tasks | Overdue Tasks | Students Requiring Attention ── */}
       <div className="grid grid-cols-3 gap-4">
