@@ -638,7 +638,28 @@ export default function BTLCRMPage() {
   const { student, role, isLoading, logout } = useAuth();
   const [now, setNow] = useState(new Date());
   const [profileDropOpen, setProfileDropOpen] = useState(false);
+  const [todayCheckin, setTodayCheckin] = useState<{ checkInTime: string | null; checkOutTime: string | null } | null | undefined>(undefined);
+  const [checkingIn, setCheckingIn] = useState(false);
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
+  useEffect(() => {
+    apiFetch("/staff/checkin/today").then(r => r.ok ? r.json() : null).then(setTodayCheckin).catch(() => setTodayCheckin(null));
+  }, []);
+
+  async function doCheckIn() {
+    setCheckingIn(true);
+    try {
+      const r = await apiFetch("/staff/checkin", { method: "POST" });
+      if (r.ok) setTodayCheckin(await r.json());
+    } finally { setCheckingIn(false); }
+  }
+
+  async function doCheckOut() {
+    setCheckingIn(true);
+    try {
+      const r = await apiFetch("/staff/checkin/checkout", { method: "PATCH" });
+      if (r.ok) setTodayCheckin(await r.json());
+    } finally { setCheckingIn(false); }
+  }
   const [tab, setTab] = useState<Tab>(() => {
     const stored = localStorage.getItem("braintam_mentor_portal_type");
     localStorage.removeItem("braintam_mentor_portal_type");
@@ -1099,6 +1120,45 @@ export default function BTLCRMPage() {
                     {student.email && <div className="text-[10px] text-gray-400 truncate">{student.email}</div>}
                   </div>
                 </div>
+              </div>
+              {/* ── Check In / Check Out ── */}
+              <div className="px-4 py-3 border-b border-gray-50">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Attendance</div>
+                {todayCheckin === undefined ? (
+                  <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Loading…
+                  </div>
+                ) : todayCheckin?.checkInTime && !todayCheckin?.checkOutTime ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      Checked in at {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <button onClick={() => { doCheckOut(); }}
+                      disabled={checkingIn}
+                      className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors flex items-center gap-1.5 disabled:opacity-60">
+                      {checkingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
+                      {checkingIn ? "Checking out…" : "Check Out"}
+                    </button>
+                  </div>
+                ) : todayCheckin?.checkInTime && todayCheckin?.checkOutTime ? (
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" /> Completed today
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      {new Date(todayCheckin.checkInTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                      {" → "}
+                      {new Date(todayCheckin.checkOutTime).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => doCheckIn()} disabled={checkingIn}
+                    className="w-full px-3 py-1.5 rounded-lg text-[11px] font-bold text-green-700 bg-green-50 hover:bg-green-100 transition-colors flex items-center gap-1.5 disabled:opacity-60">
+                    {checkingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    {checkingIn ? "Checking in…" : "Check In"}
+                  </button>
+                )}
               </div>
               <div className="py-1">
                 <button onClick={() => { setProfileDropOpen(false); setTab("profile"); }}
