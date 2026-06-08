@@ -2034,32 +2034,30 @@ function AdminPageInner() {
                 <span className="w-8 shrink-0" />
                 <span className="flex-1 min-w-[130px] cursor-pointer select-none flex items-center gap-1" onClick={() => toggleSort("name")}>Student <SortIcon field="name" /></span>
                 <span className="w-14 shrink-0 cursor-pointer select-none flex items-center gap-1" onClick={() => toggleSort("grade")}>Grade <SortIcon field="grade" /></span>
-                <span className="w-24 shrink-0">School</span>
                 <span className="w-28 shrink-0">Mentor</span>
                 <span className="w-16 shrink-0 text-center">Health</span>
                 <span className="w-16 shrink-0 text-center">Attend.</span>
                 <span className="w-16 shrink-0 text-center">Assess.</span>
-                <span className="w-14 shrink-0 text-center">Courses</span>
+                <span className="w-12 shrink-0 text-center">Courses</span>
                 <span className="w-12 shrink-0 text-center">Tasks</span>
                 <span className="w-20 shrink-0">Last Active</span>
                 <span className="w-20 shrink-0">Status</span>
-                <span className="w-16 shrink-0 text-right">Actions</span>
+                <span className="w-32 shrink-0 text-right">Actions</span>
               </div>
               {dataLoading && [1,2,3,4,5].map(i => (
                 <div key={i} className="flex items-center px-4 py-3.5 border-b border-gray-50 gap-2 animate-pulse">
                   <div className="w-5 shrink-0" /><div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
                   <div className="flex-1 min-w-[130px] space-y-1"><div className="h-3.5 bg-gray-200 rounded w-28" /><div className="h-2.5 bg-gray-100 rounded w-16" /></div>
                   <div className="w-14 h-3 bg-gray-100 rounded shrink-0" />
-                  <div className="w-24 h-3 bg-gray-100 rounded shrink-0" />
                   <div className="w-28 h-3 bg-gray-100 rounded shrink-0" />
                   <div className="w-16 h-8 rounded-full bg-gray-100 shrink-0" />
                   <div className="w-16 h-3 bg-gray-100 rounded shrink-0" />
                   <div className="w-16 h-3 bg-gray-100 rounded shrink-0" />
-                  <div className="w-14 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-12 h-3 bg-gray-100 rounded shrink-0" />
                   <div className="w-12 h-5 bg-gray-100 rounded-full shrink-0" />
                   <div className="w-20 h-3 bg-gray-100 rounded shrink-0" />
                   <div className="w-20 h-5 bg-gray-100 rounded-full shrink-0" />
-                  <div className="w-16 h-6 bg-gray-100 rounded shrink-0 ml-auto" />
+                  <div className="w-32 h-6 bg-gray-100 rounded shrink-0 ml-auto" />
                 </div>
               ))}
               {!dataLoading && pagedUsers.map(u => {
@@ -2139,9 +2137,6 @@ function AdminPageInner() {
                           : <span className="text-gray-300 text-xs">—</span>}
                       </div>
 
-                      {/* School */}
-                      <div className="w-24 shrink-0 text-[11px] text-gray-500 truncate">{u.school ?? <span className="text-gray-300">—</span>}</div>
-
                       {/* Mentor */}
                       <div className="w-28 shrink-0">
                         {mentor ? (
@@ -2187,7 +2182,7 @@ function AdminPageInner() {
                       </div>
 
                       {/* Courses */}
-                      <div className="w-14 shrink-0 text-center">
+                      <div className="w-12 shrink-0 text-center">
                         <span className="text-sm font-semibold text-gray-700">{userCourseCount}</span>
                       </div>
 
@@ -2209,16 +2204,50 @@ function AdminPageInner() {
                       </div>
 
                       {/* Actions */}
-                      <div className="w-16 shrink-0 flex items-center justify-end gap-0.5">
+                      <div className="w-32 shrink-0 flex items-center justify-end gap-0.5">
                         <button
                           onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="View 360">
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        {u.role === "student" && (
+                          <button onClick={() => setAccessUser(u)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Course Access">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => setResetPasswordUser(u)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors" title="Reset Password">
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+                        {u.isActive ? (
+                          <button onClick={() => confirm({
+                            title: "Deactivate User",
+                            message: `Deactivate ${u.name}? They will lose access immediately.`,
+                            confirmLabel: "Deactivate",
+                            onConfirm: () => deactivateUser(u.id),
+                          })} className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors" title="Deactivate">
+                            <UserX className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button onClick={() => reactivateUser(u.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-green-500 hover:bg-green-50 transition-colors" title="Reactivate">
+                            <UserCheck2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => confirm({
+                          title: "Permanently Delete",
+                          message: `This will permanently remove ${u.name} from the database. This cannot be undone.`,
+                          confirmLabel: "Delete Forever",
+                          danger: true,
+                          onConfirm: () => permanentDeleteUser(u.id),
+                        })} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => toggleUserExpand(u.id)}
                           className={`p-1.5 rounded-lg transition-colors ${isExpanded ? "bg-blue-100 text-blue-500" : "text-gray-300 hover:text-gray-500 hover:bg-gray-100"}`}
-                          title="Details / Edit">
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <MoreVertical className="w-3.5 h-3.5" />}
+                          title="Expand details">
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
