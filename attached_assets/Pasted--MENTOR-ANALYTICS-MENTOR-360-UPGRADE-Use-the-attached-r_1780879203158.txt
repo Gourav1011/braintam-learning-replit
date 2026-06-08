@@ -1,0 +1,165 @@
+# MENTOR ANALYTICS & MENTOR 360 UPGRADE
+
+Use the attached reference image layout and follow the same visual design language as Assessments.
+
+==================================================
+MENTOR ANALYTICS DASHBOARD
+==================================================
+
+Create dashboard cards:
+
+- Total Mentors
+- Active Students
+- Average Attendance %
+- Average Assessment Score
+- Average Learning Health Score
+- At-Risk Students
+
+==================================================
+MENTOR PERFORMANCE TABLE
+==================================================
+
+Columns:
+
+Mentor Name
+Students Assigned
+Attendance %
+Assessment %
+Learning Health Score
+Follow-Ups Completed
+Risk Students
+Performance Score
+Status
+
+==================================================
+PERFORMANCE SCORE
+==================================================
+
+Calculate from:
+
+Attendance
+Assessment Results
+Learning Health
+Follow-Up Completion
+Student Retention
+
+Color Codes:
+
+Green = Excellent
+Blue = Good
+Yellow = Average
+Red = Needs Attention
+
+==================================================
+MENTOR 360 PAGE
+==================================================
+
+When clicking View Mentor:
+
+Open full Mentor Profile.
+
+Tabs:
+
+Overview
+Students
+Attendance
+Assessments
+Learning Health
+Follow-Ups
+Performance
+Notes
+
+==================================================
+OVERVIEW
+==================================================
+
+Show:
+
+Photo
+Name
+Email
+Phone
+Joining Date
+Students Assigned
+Performance Score
+
+==================================================
+STUDENTS TAB
+==================================================
+
+Show:
+
+Student
+Grade
+Course
+Attendance %
+Assessment %
+Health Score
+Status
+
+==================================================
+ATTENDANCE TAB
+==================================================
+
+Monthly Attendance Trends
+
+Top Performing Students
+
+Low Attendance Students
+
+==================================================
+ASSESSMENTS TAB
+==================================================
+
+Average Scores
+
+Top Performers
+
+Low Performers
+
+Assessment Completion %
+
+==================================================
+LEARNING HEALTH TAB
+==================================================
+
+Healthy Students
+
+Attention Needed
+
+High Risk Students
+
+==================================================
+FOLLOW-UPS TAB
+==================================================
+
+Pending Follow-Ups
+
+Completed Follow-Ups
+
+Next Scheduled Follow-Ups
+
+==================================================
+PERFORMANCE TAB
+==================================================
+
+Attendance Score
+Assessment Score
+Retention Score
+Health Score
+Overall Mentor Score
+
+==================================================
+GOAL
+==================================================
+
+Mentors should become the bridge between Academics, Student Success and Retention.
+
+The Academic Head should be able to identify:
+
+- Best Mentors
+- Weak Mentors
+- At-Risk Students
+- Retention Risks
+
+from a single screen.

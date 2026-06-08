@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, User, Phone, Edit2, Save, Loader2, Target } from "lucide-react";
+import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, User, Phone, Edit2, Save, Loader2, Target, ClipboardList, Trophy, FileText } from "lucide-react";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -132,13 +132,22 @@ function CheckInStatusBadge({ status, daysOverdue }: { status: string; daysOverd
   return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">Upcoming</span>;
 }
 
-type InnerTab = "overview" | "courses" | "activity" | "xp" | "crm";
+type InnerTab = "overview" | "courses" | "activity" | "xp" | "crm" | "assessments" | "homework-tab" | "test-results" | "rankings";
+
+type StudentAssessments = {
+  homework: { id: number; title: string; grade: number; maxMarks: number; marks: number | null; scorePct: number | null; status: string; submittedAt: string; chapterId?: number | null; topicId?: number | null; liveClassId?: number | null }[];
+  assignments: { id: number; title: string; grade: number; maxMarks: number; marks: number | null; scorePct: number | null; status: string; submittedAt: string }[];
+  tests: { id: number; title: string; grade: number; maxMarks: number; score: number | null; maxScore: number | null; scorePct: number | null; submittedAt: string; testType: string | null }[];
+  summary: { totalSubmissions: number; avgScore: number; pendingCount: number; rank: number };
+};
 
 export function Student360Modal({ userId, userName, userEmail, onClose }: { userId: number; userName: string; userEmail: string | null; onClose: () => void }) {
   const [data, setData] = useState<Student360Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [innerTab, setInnerTab] = useState<InnerTab>("overview");
+  const [assessmentData, setAssessmentData] = useState<StudentAssessments | null>(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
 
   // CRM tab state
   const [crmData, setCrmData] = useState<CrmData | null>(null);
@@ -176,8 +185,19 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
       .finally(() => setCrmLoading(false));
   }
 
+  function loadAssessments() {
+    if (assessmentLoading) return;
+    setAssessmentLoading(true);
+    apiFetch(`/admin/students/${userId}/assessments`)
+      .then(async r => { if (r.ok) return r.json() as Promise<StudentAssessments>; throw new Error(`Error ${r.status}`); })
+      .then(d => setAssessmentData(d))
+      .catch(() => {})
+      .finally(() => setAssessmentLoading(false));
+  }
+
   useEffect(() => { loadAcademic(); }, [userId]);
   useEffect(() => { if (innerTab === "crm" && !crmData && !crmLoading) loadCrm(); }, [innerTab]);
+  useEffect(() => { if (["assessments", "homework-tab", "test-results", "rankings"].includes(innerTab) && !assessmentData && !assessmentLoading) loadAssessments(); }, [innerTab]);
 
   async function saveCrmField(field: "stage" | "parent") {
     setCrmSaving(true);
@@ -294,13 +314,18 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
               { key: "courses", label: "Courses" },
               { key: "activity", label: "Activity" },
               { key: "xp", label: "XP History" },
+              { key: "assessments", label: "Assessments", icon: ClipboardList },
+              { key: "homework-tab", label: "Homework", icon: BookOpen },
+              { key: "test-results", label: "Test Results", icon: FileText },
+              { key: "rankings", label: "Rankings", icon: Trophy },
               { key: "crm", label: "Customer Success", icon: Target },
             ] as { key: InnerTab; label: string; icon?: typeof Target }[]).map(t => {
               const Icon = t.icon;
+              const isAssessmentTab = ["assessments", "homework-tab", "test-results", "rankings"].includes(t.key);
               return (
                 <button key={t.key} onClick={() => setInnerTab(t.key)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
-                  style={innerTab === t.key ? { background: t.key === "crm" ? ORANGE : NAVY, color: "white" } : { color: "#6B7280" }}>
+                  style={innerTab === t.key ? { background: t.key === "crm" ? ORANGE : isAssessmentTab ? "#059669" : NAVY, color: "white" } : { color: "#6B7280" }}>
                   {Icon && <Icon className="w-3 h-3" />}
                   {t.label}
                 </button>
@@ -545,7 +570,7 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
           )}
 
           {/* ── ACADEMIC TABS ─────────────────────────────────────────── */}
-          {innerTab !== "crm" && (
+          {!["crm", "assessments", "homework-tab", "test-results", "rankings"].includes(innerTab) && (
             loading ? (
               <div className="space-y-3 animate-pulse">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}</div>
             ) : !data ? (
@@ -704,6 +729,190 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </>
+            )
+          )}
+
+          {/* ── ASSESSMENT TABS ─────────────────────────────────────────── */}
+          {["assessments", "homework-tab", "test-results", "rankings"].includes(innerTab) && (
+            assessmentLoading ? (
+              <div className="space-y-3 animate-pulse">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}</div>
+            ) : !assessmentData ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <ClipboardList className="w-8 h-8 text-gray-200" />
+                <div className="text-sm font-semibold text-gray-700">No assessment data</div>
+                <button onClick={loadAssessments} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">Retry</button>
+              </div>
+            ) : (
+              <>
+                {/* Summary row */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {[
+                    { label: "Total Submissions", value: assessmentData.summary.totalSubmissions, icon: <ClipboardList className="w-4 h-4" />, color: "#0B2B6B" },
+                    { label: "Avg Score", value: `${assessmentData.summary.avgScore}%`, icon: <Activity className="w-4 h-4" />, color: "#3B82F6" },
+                    { label: "Pending", value: assessmentData.summary.pendingCount, icon: <Clock className="w-4 h-4" />, color: "#FF6B1A" },
+                    { label: "Rank", value: assessmentData.summary.rank > 0 ? `#${assessmentData.summary.rank}` : "—", icon: <Trophy className="w-4 h-4" />, color: "#F59E0B" },
+                  ].map(s => (
+                    <div key={s.label} className="bg-gray-50 rounded-xl p-2.5 text-center">
+                      <div className="flex justify-center mb-1" style={{ color: s.color }}>{s.icon}</div>
+                      <div className="text-sm font-black" style={{ color: s.color }}>{s.value}</div>
+                      <div className="text-[9px] text-gray-400 leading-tight">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Assessments: all submissions combined */}
+                {innerTab === "assessments" && (
+                  <div className="space-y-2">
+                    {[
+                      ...assessmentData.homework.map(h => ({ ...h, type: "Homework", color: "#3B82F6" })),
+                      ...assessmentData.assignments.map(a => ({ ...a, type: "Assignment", color: "#8B5CF6" })),
+                      ...assessmentData.tests.map(t => ({ ...t, type: t.testType === "quiz" ? "Quiz" : "Test", color: t.testType === "quiz" ? "#FF6B1A" : "#0B2B6B", marks: t.score, scorePct: t.scorePct, status: "completed" })),
+                    ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+                      .map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ background: item.color }}>
+                            {item.type[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold truncate" style={{ color: "#0B2B6B" }}>{item.title}</div>
+                            <div className="text-[10px] text-gray-400">{item.type} · {new Date(item.submittedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {item.scorePct != null ? (
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${item.scorePct >= 90 ? "bg-green-100 text-green-700" : item.scorePct >= 70 ? "bg-blue-100 text-blue-700" : item.scorePct >= 50 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                                {item.scorePct}%
+                              </span>
+                            ) : (
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${item.status === "graded" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>{item.status}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    {assessmentData.homework.length === 0 && assessmentData.assignments.length === 0 && assessmentData.tests.length === 0 && (
+                      <div className="py-8 text-center text-gray-400 text-sm">No submissions yet</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Homework tab — with chapter/topic/live class reference */}
+                {innerTab === "homework-tab" && (
+                  <div className="space-y-2">
+                    {assessmentData.homework.length === 0 ? (
+                      <div className="py-8 text-center text-gray-400 text-sm flex flex-col items-center gap-2">
+                        <BookOpen className="w-8 h-8 text-gray-200" /><span>No homework submitted</span>
+                      </div>
+                    ) : assessmentData.homework.map(h => (
+                      <div key={h.id} className="p-3 rounded-xl border border-gray-100 hover:bg-gray-50 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-xs font-semibold" style={{ color: "#0B2B6B" }}>{h.title}</div>
+                            <div className="text-[10px] text-gray-400">{new Date(h.submittedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} · Max: {h.maxMarks}m</div>
+                          </div>
+                          <div className="shrink-0">
+                            {h.scorePct != null ? (
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${h.scorePct >= 90 ? "bg-green-100 text-green-700" : h.scorePct >= 70 ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                {h.marks}/{h.maxMarks} ({h.scorePct}%)
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{h.status}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {h.chapterId && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 font-medium">Ch #{h.chapterId}</span>}
+                          {h.topicId && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-600 font-medium">Topic #{h.topicId}</span>}
+                          {h.liveClassId && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 font-medium">📺 Live Class #{h.liveClassId}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Test Results tab */}
+                {innerTab === "test-results" && (
+                  <div className="space-y-2">
+                    {assessmentData.tests.length === 0 ? (
+                      <div className="py-8 text-center text-gray-400 text-sm flex flex-col items-center gap-2">
+                        <FileText className="w-8 h-8 text-gray-200" /><span>No test results yet</span>
+                      </div>
+                    ) : assessmentData.tests.map(t => {
+                      const pct = t.scorePct;
+                      return (
+                        <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ background: t.testType === "quiz" ? "#FF6B1A" : "#0B2B6B" }}>
+                            {t.testType === "quiz" ? "Q" : "T"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold truncate" style={{ color: "#0B2B6B" }}>{t.title}</div>
+                            <div className="text-[10px] text-gray-400">{new Date(t.submittedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} · {t.score ?? "—"}/{t.maxScore ?? t.maxMarks} questions</div>
+                          </div>
+                          {pct != null ? (
+                            <div className="text-right shrink-0">
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${pct >= 90 ? "bg-green-100 text-green-700" : pct >= 70 ? "bg-blue-100 text-blue-700" : pct >= 50 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                                {pct}%
+                              </span>
+                              <div className="w-16 h-1.5 bg-gray-100 rounded-full mt-1">
+                                <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: pct >= 70 ? "#10B981" : "#FF6B1A" }} />
+                              </div>
+                            </div>
+                          ) : <span className="text-gray-400 text-xs">—</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Rankings tab */}
+                {innerTab === "rankings" && (
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded-2xl text-center ${assessmentData.summary.rank <= 3 ? "bg-yellow-50 border border-yellow-100" : "bg-gray-50 border border-gray-100"}`}>
+                      <div className="text-3xl mb-1">{assessmentData.summary.rank === 1 ? "🥇" : assessmentData.summary.rank === 2 ? "🥈" : assessmentData.summary.rank === 3 ? "🥉" : "🏅"}</div>
+                      <div className="text-2xl font-black" style={{ color: "#0B2B6B" }}>
+                        {assessmentData.summary.rank > 0 ? `Rank #${assessmentData.summary.rank}` : "Unranked"}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">Based on avg score across all assessments</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="text-gray-400 text-[10px] mb-0.5">Avg Score</div>
+                        <div className="font-black text-lg" style={{ color: "#0B2B6B" }}>{assessmentData.summary.avgScore}%</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="text-gray-400 text-[10px] mb-0.5">Total Submissions</div>
+                        <div className="font-black text-lg" style={{ color: "#0B2B6B" }}>{assessmentData.summary.totalSubmissions}</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="text-gray-400 text-[10px] mb-0.5">Homework Done</div>
+                        <div className="font-black text-lg" style={{ color: "#0B2B6B" }}>{assessmentData.homework.length}</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="text-gray-400 text-[10px] mb-0.5">Tests Taken</div>
+                        <div className="font-black text-lg" style={{ color: "#0B2B6B" }}>{assessmentData.tests.length}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Score Breakdown</div>
+                      {[
+                        { label: "Homework", items: assessmentData.homework, scoreKey: "scorePct" as const },
+                        { label: "Assignments", items: assessmentData.assignments, scoreKey: "scorePct" as const },
+                        { label: "Tests", items: assessmentData.tests.map(t => ({ ...t, marks: t.score, status: "completed" as string })), scoreKey: "scorePct" as const },
+                      ].map(cat => {
+                        const scored = cat.items.filter(i => i.scorePct != null);
+                        const avg = scored.length > 0 ? Math.round(scored.reduce((a, b) => a + (b.scorePct ?? 0), 0) / scored.length) : null;
+                        return (
+                          <div key={cat.label} className="flex items-center gap-3 py-2 border-b border-gray-50">
+                            <div className="w-20 text-xs text-gray-600">{cat.label}</div>
+                            <div className="flex-1 h-2 bg-gray-100 rounded-full">
+                              <div className="h-2 rounded-full transition-all" style={{ width: avg != null ? `${avg}%` : "0%", background: avg != null && avg >= 70 ? "#10B981" : "#FF6B1A" }} />
+                            </div>
+                            <div className="text-xs font-bold text-gray-700 w-10 text-right">{avg != null ? `${avg}%` : "—"}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </>

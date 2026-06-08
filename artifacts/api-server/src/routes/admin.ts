@@ -1618,6 +1618,281 @@ router.get("/admin/teachers/:id/detail", adminOnly, async (req, res) => {
   });
 });
 
+// ── Assessments Module ────────────────────────────────────────────
+
+router.get("/admin/assessments/summary", allStaffAuth, async (_req, res) => {
+  const [hwTotal, asgnTotal, testTotal, hwPending, asgnPending] = await Promise.all([
+    db.select({ c: sql<number>`count(*)` }).from(homeworkSubmissionsTable),
+    db.select({ c: sql<number>`count(*)` }).from(assignmentSubmissionsTable),
+    db.select({ c: sql<number>`count(*)` }).from(testSubmissionsTable),
+    db.select({ c: sql<number>`count(*)` }).from(homeworkSubmissionsTable).where(eq(homeworkSubmissionsTable.status, "submitted")),
+    db.select({ c: sql<number>`count(*)` }).from(assignmentSubmissionsTable).where(eq(assignmentSubmissionsTable.status, "submitted")),
+  ]);
+
+  const totalAssessments = Number(hwTotal[0]?.c ?? 0) + Number(asgnTotal[0]?.c ?? 0) + Number(testTotal[0]?.c ?? 0);
+  const pendingEvaluations = Number(hwPending[0]?.c ?? 0) + Number(asgnPending[0]?.c ?? 0);
+
+  const [hwAvg, asgnAvg, testAvg] = await Promise.all([
+    db.select({ v: sql<string>`COALESCE(ROUND(AVG(${homeworkSubmissionsTable.marks} / NULLIF(${homeworkTable.maxMarks}, 0) * 100)), 0)` })
+      .from(homeworkSubmissionsTable)
+      .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(sql`${homeworkSubmissionsTable.marks} IS NOT NULL`),
+    db.select({ v: sql<string>`COALESCE(ROUND(AVG(${assignmentSubmissionsTable.marks} / NULLIF(${assignmentsTable.maxMarks}, 0) * 100)), 0)` })
+      .from(assignmentSubmissionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+      .where(sql`${assignmentSubmissionsTable.marks} IS NOT NULL`),
+    db.select({ v: sql<string>`COALESCE(ROUND(AVG(${testSubmissionsTable.score} / NULLIF(${testSubmissionsTable.maxScore}, 0) * 100)), 0)` })
+      .from(testSubmissionsTable)
+      .where(sql`${testSubmissionsTable.score} IS NOT NULL AND ${testSubmissionsTable.maxScore} IS NOT NULL`),
+  ]);
+
+  const allAvgs = [Number(hwAvg[0]?.v ?? 0), Number(asgnAvg[0]?.v ?? 0), Number(testAvg[0]?.v ?? 0)].filter(s => s > 0);
+  const avgScore = allAvgs.length > 0 ? Math.round(allAvgs.reduce((a, b) => a + b, 0) / allAvgs.length) : 0;
+
+  const submissionRate = totalAssessments > 0 ? Math.round(((totalAssessments - pendingEvaluations) / totalAssessments) * 100) : 0;
+
+  const topPerformRows = await db.execute<{ c: string }>(sql`
+    SELECT COUNT(DISTINCT student_id)::text AS c FROM (
+      SELECT student_id, AVG(score_pct) AS avg_pct FROM (
+        SELECT hs.student_id, (hs.marks / NULLIF(h.max_marks, 0) * 100) AS score_pct
+        FROM homework_submissions hs JOIN homework h ON hs.homework_id = h.id WHERE hs.marks IS NOT NULL
+        UNION ALL
+        SELECT asub.student_id, (asub.marks / NULLIF(a.max_marks, 0) * 100) AS score_pct
+        FROM assignment_submissions asub JOIN assignments a ON asub.assignment_id = a.id WHERE asub.marks IS NOT NULL
+        UNION ALL
+        SELECT ts.student_id, (ts.score / NULLIF(ts.max_score, 0) * 100) AS score_pct
+        FROM test_submissions ts WHERE ts.score IS NOT NULL AND ts.max_score IS NOT NULL
+      ) all_scores GROUP BY student_id
+    ) student_avgs WHERE avg_pct >= 90
+  `);
+  const topPerformers = Number((topPerformRows.rows?.[0] as { c?: string } | undefined)?.c ?? 0);
+
+  const typeDist = {
+    homework: Number(hwTotal[0]?.c ?? 0),
+    assignments: Number(asgnTotal[0]?.c ?? 0),
+    tests: Number(testTotal[0]?.c ?? 0),
+  };
+
+  res.json({ totalAssessments, pendingEvaluations, avgScore, submissionRate, topPerformers, typeDist });
+});
+
+router.get("/admin/assessments/submissions", allStaffAuth, async (req, res) => {
+  const typeFilter = (req.query.type as string) || "all";
+  const gradeFilter = req.query.grade ? Number(req.query.grade) : null;
+  const statusFilter = (req.query.status as string) || "all";
+  const q = (req.query.q as string || "").toLowerCase().trim();
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = 20;
+
+  const [hwRows, asgnRows, testRows] = await Promise.all([
+    (typeFilter === "all" || typeFilter === "homework") ? db.select({
+      subId: homeworkSubmissionsTable.id,
+      studentId: homeworkSubmissionsTable.studentId,
+      studentName: usersTable.name,
+      grade: homeworkTable.grade,
+      courseId: homeworkTable.courseId,
+      assessmentTitle: homeworkTable.title,
+      maxMarks: homeworkTable.maxMarks,
+      marks: homeworkSubmissionsTable.marks,
+      status: homeworkSubmissionsTable.status,
+      submittedAt: homeworkSubmissionsTable.submittedAt,
+      chapterId: homeworkTable.chapterId,
+      topicId: homeworkTable.topicId,
+      liveClassId: homeworkTable.liveClassId,
+      teacherId: homeworkTable.teacherId,
+    }).from(homeworkSubmissionsTable)
+      .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .innerJoin(usersTable, eq(homeworkSubmissionsTable.studentId, usersTable.id))
+      .orderBy(desc(homeworkSubmissionsTable.submittedAt))
+      .limit(300) : Promise.resolve([]),
+
+    (typeFilter === "all" || typeFilter === "assignment") ? db.select({
+      subId: assignmentSubmissionsTable.id,
+      studentId: assignmentSubmissionsTable.studentId,
+      studentName: usersTable.name,
+      grade: assignmentsTable.grade,
+      courseId: assignmentsTable.courseId,
+      assessmentTitle: assignmentsTable.title,
+      maxMarks: assignmentsTable.maxMarks,
+      marks: assignmentSubmissionsTable.marks,
+      status: assignmentSubmissionsTable.status,
+      submittedAt: assignmentSubmissionsTable.submittedAt,
+    }).from(assignmentSubmissionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+      .innerJoin(usersTable, eq(assignmentSubmissionsTable.studentId, usersTable.id))
+      .orderBy(desc(assignmentSubmissionsTable.submittedAt))
+      .limit(300) : Promise.resolve([]),
+
+    (typeFilter === "all" || typeFilter === "test" || typeFilter === "quiz") ? db.select({
+      subId: testSubmissionsTable.id,
+      studentId: testSubmissionsTable.studentId,
+      studentName: usersTable.name,
+      grade: testsTable.grade,
+      courseId: testsTable.courseId,
+      assessmentTitle: testsTable.title,
+      maxMarks: testsTable.totalQuestions,
+      marks: testSubmissionsTable.score,
+      status: sql<string>`'completed'`,
+      submittedAt: testSubmissionsTable.submittedAt,
+      testType: testsTable.testType,
+    }).from(testSubmissionsTable)
+      .innerJoin(testsTable, eq(testSubmissionsTable.testId, testsTable.id))
+      .innerJoin(usersTable, eq(testSubmissionsTable.studentId, usersTable.id))
+      .orderBy(desc(testSubmissionsTable.submittedAt))
+      .limit(300) : Promise.resolve([]),
+  ]);
+
+  const courseIds = [...new Set([
+    ...hwRows.map(r => r.courseId), ...asgnRows.map(r => r.courseId), ...testRows.map(r => r.courseId),
+  ].filter(Boolean) as number[])];
+
+  const courseTitles: Record<number, string> = {};
+  if (courseIds.length > 0) {
+    const crows = await db.select({ id: coursesTable.id, title: coursesTable.title }).from(coursesTable).where(inArray(coursesTable.id, courseIds));
+    crows.forEach(c => { courseTitles[c.id] = c.title; });
+  }
+
+  type Row = {
+    id: string; type: string; studentId: number; studentName: string;
+    grade: number; courseTitle: string | null; assessmentTitle: string;
+    maxMarks: number; marks: number | null; scorePct: number | null;
+    status: string; submittedAt: Date | string;
+    chapterId?: number | null; topicId?: number | null; liveClassId?: number | null; teacherId?: number | null;
+  };
+
+  const combined: Row[] = [
+    ...hwRows.map(r => ({
+      id: `hw-${r.subId}`, type: "Homework", studentId: r.studentId, studentName: r.studentName,
+      grade: r.grade, courseTitle: r.courseId ? (courseTitles[r.courseId] ?? null) : null,
+      assessmentTitle: r.assessmentTitle, maxMarks: r.maxMarks,
+      marks: r.marks ?? null,
+      scorePct: r.marks != null && r.maxMarks > 0 ? Math.round((r.marks / r.maxMarks) * 100) : null,
+      status: r.status === "graded" ? "Graded" : "Submitted",
+      submittedAt: r.submittedAt,
+      chapterId: r.chapterId, topicId: r.topicId, liveClassId: r.liveClassId, teacherId: r.teacherId,
+    })),
+    ...asgnRows.map(r => ({
+      id: `asgn-${r.subId}`, type: "Assignment", studentId: r.studentId, studentName: r.studentName,
+      grade: r.grade, courseTitle: r.courseId ? (courseTitles[r.courseId] ?? null) : null,
+      assessmentTitle: r.assessmentTitle, maxMarks: r.maxMarks,
+      marks: r.marks ?? null,
+      scorePct: r.marks != null && r.maxMarks > 0 ? Math.round((r.marks / r.maxMarks) * 100) : null,
+      status: r.status === "graded" ? "Graded" : "Submitted",
+      submittedAt: r.submittedAt,
+    })),
+    ...testRows.map(r => ({
+      id: `test-${r.subId}`, type: (r as typeof r & { testType?: string | null }).testType === "quiz" ? "Quiz" : "Test",
+      studentId: r.studentId, studentName: r.studentName,
+      grade: r.grade, courseTitle: r.courseId ? (courseTitles[r.courseId] ?? null) : null,
+      assessmentTitle: r.assessmentTitle, maxMarks: Number(r.maxMarks),
+      marks: r.marks ?? null,
+      scorePct: r.marks != null && Number(r.maxMarks) > 0 ? Math.round((Number(r.marks) / Number(r.maxMarks)) * 100) : null,
+      status: "Completed",
+      submittedAt: r.submittedAt,
+    })),
+  ];
+
+  let filtered = combined;
+  if (typeFilter === "quiz") filtered = combined.filter(r => r.type === "Quiz");
+  if (gradeFilter) filtered = filtered.filter(r => r.grade === gradeFilter);
+  if (statusFilter !== "all") filtered = filtered.filter(r => r.status.toLowerCase() === statusFilter.toLowerCase());
+  if (q) filtered = filtered.filter(r => r.studentName.toLowerCase().includes(q) || r.assessmentTitle.toLowerCase().includes(q) || (r.courseTitle ?? "").toLowerCase().includes(q));
+
+  filtered.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+
+  const total = filtered.length;
+  const rows = filtered.slice((page - 1) * limit, page * limit);
+  res.json({ rows, total, page, limit, pages: Math.ceil(total / limit) });
+});
+
+router.get("/admin/assessments/top-performers", allStaffAuth, async (_req, res) => {
+  const rows = await db.execute<{ student_id: number; student_name: string; avg_pct: string; total_subs: string }>(sql`
+    SELECT student_id, student_name, ROUND(AVG(score_pct))::int AS avg_pct, COUNT(*)::int AS total_subs FROM (
+      SELECT hs.student_id, u.name AS student_name, (hs.marks / NULLIF(h.max_marks, 0) * 100) AS score_pct
+      FROM homework_submissions hs JOIN homework h ON hs.homework_id = h.id JOIN users u ON hs.student_id = u.id WHERE hs.marks IS NOT NULL
+      UNION ALL
+      SELECT asub.student_id, u.name AS student_name, (asub.marks / NULLIF(a.max_marks, 0) * 100) AS score_pct
+      FROM assignment_submissions asub JOIN assignments a ON asub.assignment_id = a.id JOIN users u ON asub.student_id = u.id WHERE asub.marks IS NOT NULL
+      UNION ALL
+      SELECT ts.student_id, u.name AS student_name, (ts.score / NULLIF(ts.max_score, 0) * 100) AS score_pct
+      FROM test_submissions ts JOIN users u ON ts.student_id = u.id WHERE ts.score IS NOT NULL AND ts.max_score IS NOT NULL
+    ) all_scores
+    GROUP BY student_id, student_name
+    ORDER BY avg_pct DESC
+    LIMIT 20
+  `);
+  res.json((rows.rows ?? []).map((r, i) => ({ rank: i + 1, studentId: r.student_id, studentName: r.student_name, avgScore: Number(r.avg_pct), totalSubmissions: Number(r.total_subs) })));
+});
+
+router.get("/admin/students/:id/assessments", allStaffAuth, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [hwSubs, asgnSubs, testSubs] = await Promise.all([
+    db.select({
+      id: homeworkSubmissionsTable.id, title: homeworkTable.title, grade: homeworkTable.grade,
+      maxMarks: homeworkTable.maxMarks, marks: homeworkSubmissionsTable.marks,
+      status: homeworkSubmissionsTable.status, submittedAt: homeworkSubmissionsTable.submittedAt,
+      chapterId: homeworkTable.chapterId, topicId: homeworkTable.topicId, liveClassId: homeworkTable.liveClassId,
+      courseId: homeworkTable.courseId,
+    }).from(homeworkSubmissionsTable)
+      .innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id))
+      .where(eq(homeworkSubmissionsTable.studentId, studentId))
+      .orderBy(desc(homeworkSubmissionsTable.submittedAt)).limit(50),
+
+    db.select({
+      id: assignmentSubmissionsTable.id, title: assignmentsTable.title, grade: assignmentsTable.grade,
+      maxMarks: assignmentsTable.maxMarks, marks: assignmentSubmissionsTable.marks,
+      status: assignmentSubmissionsTable.status, submittedAt: assignmentSubmissionsTable.submittedAt,
+      courseId: assignmentsTable.courseId,
+    }).from(assignmentSubmissionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id))
+      .where(eq(assignmentSubmissionsTable.studentId, studentId))
+      .orderBy(desc(assignmentSubmissionsTable.submittedAt)).limit(50),
+
+    db.select({
+      id: testSubmissionsTable.id, title: testsTable.title, grade: testsTable.grade,
+      totalQuestions: testsTable.totalQuestions, score: testSubmissionsTable.score,
+      maxScore: testSubmissionsTable.maxScore, submittedAt: testSubmissionsTable.submittedAt,
+      courseId: testsTable.courseId, testType: testsTable.testType,
+    }).from(testSubmissionsTable)
+      .innerJoin(testsTable, eq(testSubmissionsTable.testId, testsTable.id))
+      .where(eq(testSubmissionsTable.studentId, studentId))
+      .orderBy(desc(testSubmissionsTable.submittedAt)).limit(50),
+  ]);
+
+  const allScores: number[] = [
+    ...hwSubs.filter(h => h.marks != null && h.maxMarks > 0).map(h => (h.marks! / h.maxMarks) * 100),
+    ...asgnSubs.filter(a => a.marks != null && a.maxMarks > 0).map(a => (a.marks! / a.maxMarks) * 100),
+    ...testSubs.filter(t => t.score != null && t.maxScore && t.maxScore > 0).map(t => (t.score! / t.maxScore!) * 100),
+  ];
+  const avgScore = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+  const pendingCount = hwSubs.filter(h => h.status === "submitted").length + asgnSubs.filter(a => a.status === "submitted").length;
+
+  // Rankings: get student's rank among all students
+  const rankRow = await db.execute<{ rank: string }>(sql`
+    SELECT rank FROM (
+      SELECT student_id, RANK() OVER (ORDER BY avg_pct DESC) AS rank FROM (
+        SELECT student_id, AVG(score_pct) AS avg_pct FROM (
+          SELECT student_id, marks / NULLIF(max_marks, 0) * 100 AS score_pct FROM homework_submissions hs JOIN homework h ON hs.homework_id = h.id WHERE hs.marks IS NOT NULL
+          UNION ALL
+          SELECT student_id, marks / NULLIF(max_marks, 0) * 100 AS score_pct FROM assignment_submissions asub JOIN assignments a ON asub.assignment_id = a.id WHERE asub.marks IS NOT NULL
+          UNION ALL
+          SELECT student_id, score / NULLIF(max_score, 0) * 100 AS score_pct FROM test_submissions WHERE score IS NOT NULL AND max_score IS NOT NULL
+        ) sc GROUP BY student_id
+      ) sq
+    ) ranked WHERE student_id = ${studentId}
+  `);
+  const rank = Number((rankRow.rows?.[0] as { rank?: string } | undefined)?.rank ?? 0);
+
+  res.json({
+    homework: hwSubs.map(h => ({ id: h.id, title: h.title, grade: h.grade, maxMarks: h.maxMarks, marks: h.marks, scorePct: h.marks != null && h.maxMarks > 0 ? Math.round((h.marks / h.maxMarks) * 100) : null, status: h.status, submittedAt: h.submittedAt, chapterId: h.chapterId, topicId: h.topicId, liveClassId: h.liveClassId })),
+    assignments: asgnSubs.map(a => ({ id: a.id, title: a.title, grade: a.grade, maxMarks: a.maxMarks, marks: a.marks, scorePct: a.marks != null && a.maxMarks > 0 ? Math.round((a.marks / a.maxMarks) * 100) : null, status: a.status, submittedAt: a.submittedAt })),
+    tests: testSubs.map(t => ({ id: t.id, title: t.title, grade: t.grade, maxMarks: t.totalQuestions, score: t.score, maxScore: t.maxScore, scorePct: t.score != null && t.maxScore && t.maxScore > 0 ? Math.round((t.score / t.maxScore) * 100) : null, submittedAt: t.submittedAt, testType: t.testType })),
+    summary: { totalSubmissions: hwSubs.length + asgnSubs.length + testSubs.length, avgScore, pendingCount, rank },
+  });
+});
+
 // ── Teacher Notes (add) ───────────────────────────────────────────
 router.post("/admin/teachers/:id/notes", adminOnly, async (req, res) => {
   const teacherId = parseInt(String(req.params.id), 10);

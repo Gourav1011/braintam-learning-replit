@@ -44,7 +44,7 @@ import {
   CheckSquare, Square, AlertTriangle, UserX, UserCheck2, Key, FileText,
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
-  ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User,
+  ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User, ClipboardList,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -69,6 +69,7 @@ import { StaffCheckin } from "@/components/staff-checkin";
 import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
 import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
+import { AssessmentsTab } from "./assessments-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -104,6 +105,7 @@ type Tab =
   | "ignite"
   | "settings"
   | "revenue-analytics"
+  | "assessments"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1206,6 +1208,7 @@ function AdminPageInner() {
           { label: "Live Classes", icon: Video, tab: "liveclasses" },
           { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
           { label: "Mentors", icon: UserCheck2, tab: "mentors" },
+          { label: "Assessments", icon: ClipboardList, tab: "assessments" },
           { label: "Announcements", icon: Bell, tab: "announcements" },
           { label: "Attendance", icon: CheckSquare, tab: "health" },
         ],
@@ -2824,6 +2827,9 @@ function AdminPageInner() {
 
         {/* ── Learning Health ───────────────────────────────────────────── */}
         {tab === "health" && <HealthTab />}
+
+        {/* ── Assessments ──────────────────────────────────────────────── */}
+        {tab === "assessments" && <AssessmentsTab flash={flash} />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}
