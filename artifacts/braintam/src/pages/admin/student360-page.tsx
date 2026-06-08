@@ -262,7 +262,7 @@ function StatChip({ icon, label, value, sub, color }: { icon: React.ReactNode; l
       </div>
       <div className="min-w-0">
         <div className="text-xs text-gray-400 font-medium">{label}</div>
-        <div className="text-lg font-black leading-tight" style={{ color }}>{value}</div>
+        <div className="text-sm font-black leading-tight" style={{ color }}>{value}</div>
         <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>
       </div>
     </div>

@@ -45,6 +45,7 @@ import {
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
   ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User, ClipboardList,
+  Mail, Phone,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -1518,7 +1519,7 @@ function AdminPageInner() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 overflow-auto relative" style={{ background: "#F5F7FF" }}>
+      <div className={`flex-1 min-w-0 relative ${student360Id ? "overflow-hidden" : "overflow-auto"}`} style={{ background: "#F5F7FF" }}>
       {student360Id && (
         <div className="absolute inset-0 z-20 overflow-auto flex flex-col" style={{ background: "#F5F7FF" }}>
           <Student360Page userId={student360Id} onBack={() => setStudent360Id(null)} />
@@ -2023,231 +2024,267 @@ function AdminPageInner() {
               </div>
             )}
 
-            {/* Users Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
-                    <th className="px-4 py-3 w-8">
-                      <button onClick={toggleSelectAll}>
-                        {allPageSelected ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-300" />}
-                      </button>
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs cursor-pointer select-none" onClick={() => toggleSort("name")}>
-                      <span className="flex items-center gap-1">Name <SortIcon field="name" /></span>
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Contact</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">School</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs cursor-pointer select-none" onClick={() => toggleSort("grade")}>
-                      <span className="flex items-center gap-1">Grade <SortIcon field="grade" /></span>
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs">Enrolled</th>
-                    <th className="px-4 py-3 font-semibold text-gray-500 text-xs text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dataLoading && [1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
-                  {!dataLoading && pagedUsers.map(u => (
-                    <Fragment key={u.id}>
-                      <tr className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${!u.isActive ? "opacity-60" : ""} ${expandedUserId === u.id ? "bg-blue-50/30" : ""}`}>
-                        <td className="px-4 py-3">
-                          <button onClick={() => toggleSelect(u.id)}>
-                            {selectedIds.has(u.id) ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-300" />}
+            {/* Students Card Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dataLoading && [1,2,3,4,5,6].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 animate-pulse">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gray-200 shrink-0" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="h-3 bg-gray-100 rounded" />
+                    <div className="h-3 bg-gray-100 rounded w-2/3" />
+                  </div>
+                </div>
+              ))}
+              {!dataLoading && pagedUsers.map(u => {
+                const userCourseCount = enrollments.filter(e => e.studentId === u.id).length;
+                const mentor = mentorStudentMap[u.id];
+                const isExpanded = expandedUserId === u.id;
+                const isEditing = inlineEditUserId === u.id;
+                const gradeColor = u.grade <= 3 ? "#059669" : u.grade <= 6 ? NAVY : u.grade <= 8 ? "#7C3AED" : "#DC2626";
+                const userCourses = expandedUserData[u.id];
+                const enrolledCourses = userCourses ? userCourses.filter(c => c.enrolled) : null;
+                const lastLoginLog = auditLogs
+                  .filter(l => l.actorId === u.id && l.action.includes("login"))
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+                return (
+                  <div key={u.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${!u.isActive ? "opacity-70" : ""} ${isExpanded ? "border-blue-200 ring-1 ring-blue-100" : "border-gray-200"}`}>
+                    <div className="p-4">
+                      {/* Header row */}
+                      <div className="flex items-start gap-3">
+                        <div className="relative shrink-0">
+                          <button onClick={() => toggleSelect(u.id)} className="absolute -top-1 -left-1 z-10 bg-white rounded-sm shadow-sm">
+                            {selectedIds.has(u.id) ? <CheckSquare className="w-3.5 h-3.5 text-orange-500" /> : <Square className="w-3.5 h-3.5 text-gray-300" />}
                           </button>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => setProfileUser(u)}
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
-                              style={{ background: NAVY }}>{u.name[0]?.toUpperCase()}</button>
-                            <div>
-                              <button onClick={() => setProfileUser(u)} className="font-semibold hover:underline text-left" style={{ color: NAVY }}>{u.name}</button>
-                              {!u.isActive && <span className="ml-1 text-xs text-red-400">(inactive)</span>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
-                          <div>{u.email ?? "—"}</div>
-                          {u.phone && <div className="text-gray-400">{u.phone}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs max-w-36 truncate">{u.school ?? "—"}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{u.grade > 0 ? `Grade ${u.grade}` : "—"}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
-                          {(() => {
-                            const count = enrollments.filter(e => e.studentId === u.id).length;
-                            return count > 0
-                              ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#EEF2FF", color: "#3730A3" }}>{count} course{count !== 1 ? "s" : ""}</span>
-                              : <span className="text-gray-300 text-xs">None</span>;
-                          })()}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => toggleUserExpand(u.id)} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Expand details">
-                              {expandedUserId === u.id ? <ChevronUp className="w-4 h-4 text-blue-500" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
+                          <button
+                            onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
+                            className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-black hover:opacity-90 transition-opacity shadow-sm"
+                            style={{ background: `linear-gradient(135deg,${gradeColor}bb,${gradeColor})` }}
+                          >
+                            {u.name[0]?.toUpperCase()}
+                          </button>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-1">
                             <button
                               onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
-                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                              title={u.role === "student" ? "Student 360 Profile" : "View Profile"}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setResetPasswordUser(u)} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Reset Password">
-                              <Key className="w-4 h-4" />
-                            </button>
-                            {u.role === "student" && (
-                              <button onClick={() => setAccessUser(u)} className="p-1 text-gray-400 hover:text-green-600 transition-colors" title="Manage Access">
-                                <ShieldCheck className="w-4 h-4" />
-                              </button>
-                            )}
-                            {u.isActive ? (
-                              <button onClick={() => confirm({
-                                title: "Deactivate User",
-                                message: `Deactivate ${u.name}? They will lose access immediately.`,
-                                confirmLabel: "Deactivate",
-                                onConfirm: () => deactivateUser(u.id),
-                              })} className="p-1 text-gray-400 hover:text-orange-500 transition-colors" title="Deactivate">
-                                <UserX className="w-4 h-4" />
-                              </button>
-                            ) : (
-                              <button onClick={() => reactivateUser(u.id)} className="p-1 text-gray-400 hover:text-green-500 transition-colors" title="Reactivate">
-                                <UserCheck2 className="w-4 h-4" />
-                              </button>
-                            )}
-                            <button onClick={() => confirm({
-                              title: "Permanently Delete",
-                              message: `This will permanently remove ${u.name} from the database. This cannot be undone.`,
-                              confirmLabel: "Delete Forever",
-                              danger: true,
-                              onConfirm: () => permanentDeleteUser(u.id),
-                            })} className="p-1 text-gray-400 hover:text-red-600 transition-colors" title="Permanent Delete">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              className="font-bold text-sm hover:underline text-left leading-tight truncate max-w-[150px]"
+                              style={{ color: NAVY }}
+                            >{u.name}</button>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${u.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                              {u.isActive ? "Active" : "Inactive"}
+                            </span>
                           </div>
-                        </td>
-                      </tr>
-                      {expandedUserId === u.id && (() => {
-                        const userCourses = expandedUserData[u.id];
-                        const enrolledCourses = userCourses ? userCourses.filter(c => c.enrolled) : null;
-                        const lastLoginLog = auditLogs
-                          .filter(l => l.actorId === u.id && l.action.includes("login"))
-                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-                        const isEditing = inlineEditUserId === u.id;
-                        return (
-                          <tr className="bg-blue-50/20 border-b border-blue-100">
-                            <td colSpan={7} className="px-6 py-4">
-                              <div className="space-y-3">
-                                {/* Stats row */}
-                                <div className="flex flex-wrap gap-6">
-                                  <div>
-                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Enrolled Courses</p>
-                                    {userCourses === undefined ? (
-                                      <p className="text-xs text-gray-400">Loading…</p>
-                                    ) : enrolledCourses!.length === 0 ? (
-                                      <p className="text-xs text-gray-400 italic">No courses enrolled</p>
-                                    ) : (
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {enrolledCourses!.map(c => (
-                                          <span key={c.id} className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-700 font-medium">
-                                            {c.title} <span className="text-gray-400">· Gr {c.grade}</span>
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Enrolled</p>
-                                    <p className="text-sm font-bold" style={{ color: NAVY }}>
-                                      {userCourses === undefined ? "…" : `${enrolledCourses!.length} / ${userCourses.length}`}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Last Login</p>
-                                    <p className="text-xs text-gray-700">
-                                      {lastLoginLog
-                                        ? new Date(lastLoginLog.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-                                        : <span className="italic text-gray-400">Never logged in</span>}
-                                    </p>
-                                  </div>
-                                  {u.role === "student" && u.school && !isEditing && (
-                                    <div>
-                                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">School</p>
-                                      <p className="text-xs text-gray-700">{u.school}</p>
-                                    </div>
-                                  )}
-                                  {u.role === "student" && mentorStudentMap[u.id] && !isEditing && (
-                                    <div>
-                                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Assigned Mentor</p>
-                                      <div className="flex items-center gap-1.5">
-                                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0"
-                                          style={{ background: "linear-gradient(135deg,#059669,#047857)" }}>
-                                          {mentorStudentMap[u.id].mentorName.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="text-xs text-gray-700 font-semibold">{mentorStudentMap[u.id].mentorName}</span>
-                                        {mentorStudentMap[u.id].mentorPhone && (
-                                          <span className="text-xs text-green-600">· {mentorStudentMap[u.id].mentorPhone}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {/* Quick-edit toggle */}
-                                  {!isEditing && (
-                                    <div className="ml-auto self-start">
-                                      <button
-                                        onClick={() => { setInlineEditUserId(u.id); setInlineEditForm({ name: u.name, grade: String(u.grade ?? ""), school: u.school ?? "", email: u.email ?? "" }); }}
-                                        className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5"
-                                      >
-                                        <Edit2 className="w-3 h-3" /> Edit
-                                      </button>
-                                    </div>
-                                  )}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {u.grade > 0 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: gradeColor }}>
+                                Gr {u.grade}
+                              </span>
+                            )}
+                            {u.school && <span className="text-[11px] text-gray-400 truncate">{u.school}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contact */}
+                      <div className="mt-3 space-y-1">
+                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                          <Mail className="w-3 h-3 text-gray-300 shrink-0" />
+                          <span className="truncate">{u.email ?? "—"}</span>
+                        </div>
+                        {u.phone && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                            <Phone className="w-3 h-3 text-gray-300 shrink-0" />
+                            <span>{u.phone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stats chips */}
+                      <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold"
+                          style={{ background: userCourseCount > 0 ? "#EEF2FF" : "#F3F4F6", color: userCourseCount > 0 ? "#3730A3" : "#9CA3AF" }}>
+                          <BookOpen className="w-3 h-3" />
+                          {userCourseCount > 0 ? `${userCourseCount} course${userCourseCount > 1 ? "s" : ""}` : "No courses"}
+                        </span>
+                        {mentor && (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-50 text-[10px] text-green-700">
+                            <div className="w-3.5 h-3.5 rounded-full bg-green-200 flex items-center justify-center text-[8px] font-black text-green-800">
+                              {mentor.mentorName.charAt(0)}
+                            </div>
+                            <span className="truncate max-w-[80px]">{mentor.mentorName}</span>
+                          </div>
+                        )}
+                        <span className="ml-auto text-[9px] text-gray-300 font-mono">STU{String(u.id).padStart(4,"0")}</span>
+                      </div>
+
+                      {/* Enrollment progress bar */}
+                      <div className="mt-2.5">
+                        <div className="w-full bg-gray-100 rounded-full h-1">
+                          <div className="h-1 rounded-full transition-all"
+                            style={{ width: `${Math.min((userCourseCount / 3) * 100, 100)}%`, background: gradeColor }} />
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-1">
+                        <button
+                          onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white hover:opacity-90 transition-opacity shrink-0"
+                          style={{ background: NAVY }}
+                          title="Student 360"
+                        >
+                          <Eye className="w-3 h-3" /> View 360
+                        </button>
+                        <button onClick={() => toggleUserExpand(u.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${isExpanded ? "bg-blue-100 text-blue-600" : "text-gray-400 hover:bg-gray-100"}`}
+                          title="Details">
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => setResetPasswordUser(u)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition-colors" title="Reset Password">
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+                        {u.role === "student" && (
+                          <button onClick={() => setAccessUser(u)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors" title="Access">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <div className="flex-1" />
+                        {u.isActive ? (
+                          <button onClick={() => confirm({
+                            title: "Deactivate User",
+                            message: `Deactivate ${u.name}? They will lose access immediately.`,
+                            confirmLabel: "Deactivate",
+                            onConfirm: () => deactivateUser(u.id),
+                          })} className="p-1.5 rounded-lg text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition-colors" title="Deactivate">
+                            <UserX className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button onClick={() => reactivateUser(u.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:bg-green-50 hover:text-green-500 transition-colors" title="Reactivate">
+                            <UserCheck2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => confirm({
+                          title: "Permanently Delete",
+                          message: `This will permanently remove ${u.name} from the database. This cannot be undone.`,
+                          confirmLabel: "Delete Forever",
+                          danger: true,
+                          onConfirm: () => permanentDeleteUser(u.id),
+                        })} className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expand panel */}
+                    {isExpanded && (
+                      <div className="border-t border-blue-100 bg-blue-50/30 px-4 py-3 space-y-3">
+                        <div className="flex flex-wrap gap-4">
+                          <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Enrolled Courses</p>
+                            {userCourses === undefined ? (
+                              <p className="text-xs text-gray-400">Loading…</p>
+                            ) : enrolledCourses!.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic">No courses enrolled</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {enrolledCourses!.map(c => (
+                                  <span key={c.id} className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-700 font-medium">
+                                    {c.title} <span className="text-gray-400">· Gr {c.grade}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Last Login</p>
+                            <p className="text-xs text-gray-700">
+                              {lastLoginLog
+                                ? new Date(lastLoginLog.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                                : <span className="italic text-gray-400">Never logged in</span>}
+                            </p>
+                          </div>
+                          {u.role === "student" && mentorStudentMap[u.id] && !isEditing && (
+                            <div>
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Assigned Mentor</p>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0"
+                                  style={{ background: "linear-gradient(135deg,#059669,#047857)" }}>
+                                  {mentorStudentMap[u.id].mentorName.charAt(0).toUpperCase()}
                                 </div>
-                                {/* Inline edit form */}
-                                {isEditing && (
-                                  <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-3">
-                                    <p className="text-xs font-semibold text-gray-500">Quick Edit — {u.name}</p>
-                                    <div className="grid sm:grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="text-[10px] text-gray-400 uppercase tracking-wide">Name *</label>
-                                        <Input value={inlineEditForm.name} onChange={e => setInlineEditForm(p => ({ ...p, name: e.target.value }))} className="mt-1 h-8 text-sm" />
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] text-gray-400 uppercase tracking-wide">Login Email (Google / Clerk)</label>
-                                        <Input type="email" placeholder="e.g. aan@gmail.com" value={inlineEditForm.email} onChange={e => setInlineEditForm(p => ({ ...p, email: e.target.value }))} className="mt-1 h-8 text-sm" />
-                                      </div>
-                                      {u.role === "student" && (
-                                        <div>
-                                          <label className="text-[10px] text-gray-400 uppercase tracking-wide">Grade</label>
-                                          <Input type="number" min="0" max="10" value={inlineEditForm.grade} onChange={e => setInlineEditForm(p => ({ ...p, grade: e.target.value }))} className="mt-1 h-8 text-sm" />
-                                        </div>
-                                      )}
-                                      {u.role === "student" && (
-                                        <div>
-                                          <label className="text-[10px] text-gray-400 uppercase tracking-wide">School</label>
-                                          <Input value={inlineEditForm.school} onChange={e => setInlineEditForm(p => ({ ...p, school: e.target.value }))} className="mt-1 h-8 text-sm" />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button size="sm" onClick={() => saveInlineEdit(u.id)} disabled={busy} className="h-7 text-xs text-white px-4" style={{ background: NAVY }}>
-                                        {busy ? "Saving…" : "Save"}
-                                      </Button>
-                                      <Button size="sm" variant="ghost" onClick={() => setInlineEditUserId(null)} className="h-7 text-xs px-3">Cancel</Button>
-                                    </div>
-                                  </div>
+                                <span className="text-xs text-gray-700 font-semibold">{mentorStudentMap[u.id].mentorName}</span>
+                                {mentorStudentMap[u.id].mentorPhone && (
+                                  <span className="text-xs text-green-600">· {mentorStudentMap[u.id].mentorPhone}</span>
                                 )}
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })()}
-                    </Fragment>
-                  ))}
-                  {!dataLoading && pagedUsers.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-sm">No students found</td></tr>
-                  )}
-                </tbody>
-              </table>
+                            </div>
+                          )}
+                          {!isEditing && (
+                            <div className="ml-auto self-start">
+                              <button
+                                onClick={() => { setInlineEditUserId(u.id); setInlineEditForm({ name: u.name, grade: String(u.grade ?? ""), school: u.school ?? "", email: u.email ?? "" }); }}
+                                className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                              >
+                                <Edit2 className="w-3 h-3" /> Edit
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {isEditing && (
+                          <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-3">
+                            <p className="text-xs font-semibold text-gray-500">Quick Edit — {u.name}</p>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-gray-400 uppercase tracking-wide">Name *</label>
+                                <Input value={inlineEditForm.name} onChange={e => setInlineEditForm(p => ({ ...p, name: e.target.value }))} className="mt-1 h-8 text-sm" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-400 uppercase tracking-wide">Login Email</label>
+                                <Input type="email" value={inlineEditForm.email} onChange={e => setInlineEditForm(p => ({ ...p, email: e.target.value }))} className="mt-1 h-8 text-sm" />
+                              </div>
+                              {u.role === "student" && (
+                                <div>
+                                  <label className="text-[10px] text-gray-400 uppercase tracking-wide">Grade</label>
+                                  <Input type="number" min="0" max="10" value={inlineEditForm.grade} onChange={e => setInlineEditForm(p => ({ ...p, grade: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                </div>
+                              )}
+                              {u.role === "student" && (
+                                <div>
+                                  <label className="text-[10px] text-gray-400 uppercase tracking-wide">School</label>
+                                  <Input value={inlineEditForm.school} onChange={e => setInlineEditForm(p => ({ ...p, school: e.target.value }))} className="mt-1 h-8 text-sm" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => saveInlineEdit(u.id)} disabled={busy} className="h-7 text-xs text-white px-4" style={{ background: NAVY }}>
+                                {busy ? "Saving…" : "Save"}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setInlineEditUserId(null)} className="h-7 text-xs px-3">Cancel</Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {!dataLoading && pagedUsers.length === 0 && (
+                <div className="col-span-3 py-16 text-center">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <User className="w-6 h-6 text-gray-300" />
+                  </div>
+                  <div className="text-sm font-medium text-gray-400">No students found</div>
+                  <div className="text-xs text-gray-300 mt-1">Try adjusting filters or search terms</div>
+                </div>
+              )}
             </div>
 
             {/* Pagination */}
