@@ -4,7 +4,7 @@ import { Redirect } from "wouter";
 import {
   Users, MessageSquare, Bell, LogOut, Home, Search, AlertTriangle,
   CheckCircle2, Phone, BookOpen, Plus, RefreshCw,
-  Calendar, X, Loader2, Clock, ClipboardList,
+  Calendar, X, Loader2, Clock, ClipboardList, ChevronDown,
   PhoneCall, PhoneOff, PhoneMissed, PhoneIncoming,
   Edit2, Save, UserCircle, FileText, Activity,
   Target, CheckSquare, History, ExternalLink, Video, Trash2,
@@ -636,6 +636,9 @@ function Student360({ detail, onClose, onTimelineAdded, onFollowUpAdded, onLeadS
 // ── Main BTL CRM Component ───────────────────────────────────────────────
 export default function BTLCRMPage() {
   const { student, role, isLoading, logout } = useAuth();
+  const [now, setNow] = useState(new Date());
+  const [profileDropOpen, setProfileDropOpen] = useState(false);
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
   const [tab, setTab] = useState<Tab>(() => {
     const stored = localStorage.getItem("braintam_mentor_portal_type");
     localStorage.removeItem("braintam_mentor_portal_type");
@@ -1037,7 +1040,7 @@ export default function BTLCRMPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F8FAFF", fontFamily: "Poppins, sans-serif" }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
 
       {profileLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
@@ -1052,27 +1055,84 @@ export default function BTLCRMPage() {
           onParentSaved={handleParentSaved} />
       )}
 
+      {/* ── Global Header ── */}
+      <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">
+        <img src={braintamLogo} alt="Braintam" className="h-7 w-auto shrink-0" />
+        <div className="flex items-center gap-1.5 pl-1">
+          <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+          <div>
+            <div className="font-black leading-tight" style={{ fontSize: "13px", color: NAVY, letterSpacing: "0.04em" }}>BTL <span style={{ color: ORANGE }}>CRM</span></div>
+            <div className="text-[9px] text-gray-400 leading-tight">Mentor Portal</div>
+          </div>
+        </div>
+        <div className="flex-1" />
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs shrink-0">
+          <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+          <span className="text-gray-500 whitespace-nowrap">{now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}</span>
+          <span className="font-mono font-semibold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}</span>
+        </div>
+        <div className="relative shrink-0">
+          <button onClick={() => setProfileDropOpen(o => !o)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0 overflow-hidden"
+              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+              {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" /> : (student.name?.[0] ?? "M")}
+            </div>
+            <div className="hidden sm:block text-left">
+              <div className="text-xs font-bold leading-tight" style={{ color: NAVY }}>{student.name}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: isSales ? "#D97706" : GREEN }}>{isSales ? "Sales SSM" : "Academic"}</div>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${profileDropOpen ? "rotate-180" : ""}`} />
+          </button>
+          {profileDropOpen && (
+            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              style={{ boxShadow: "0 8px 32px rgba(11,43,107,0.13)" }}>
+              <div className="px-4 py-3 border-b border-gray-50" style={{ background: "#F8FAFF" }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0 overflow-hidden"
+                    style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+                    {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" /> : (student.name?.[0] ?? "M")}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-black truncate" style={{ color: NAVY }}>{student.name}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: isSales ? "#D97706" : GREEN }}>{isSales ? "Sales SSM" : "Academic"}</div>
+                    {student.email && <div className="text-[10px] text-gray-400 truncate">{student.email}</div>}
+                  </div>
+                </div>
+              </div>
+              <div className="py-1">
+                <button onClick={() => { setProfileDropOpen(false); setTab("profile"); }}
+                  className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                  <UserCircle className="w-3.5 h-3.5 text-gray-400" /> My Profile
+                </button>
+                <a href="/" className="block px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">← Back to Site</a>
+                <div className="border-t border-gray-50 mt-1 pt-1">
+                  <button onClick={() => { setProfileDropOpen(false); logout(); window.location.href = "/mentor/login"; }}
+                    className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors font-semibold">
+                    <LogOut className="w-3.5 h-3.5" /> Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Body ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
       {/* ── Sidebar ── */}
-      <aside className="w-52 flex-shrink-0 hidden md:flex flex-col border-r border-gray-100 bg-white" style={{ position: "sticky", top: 0, height: "100vh" }}>
-        {/* Brand */}
-        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto mb-3" />
-          <div className="flex items-center gap-1.5">
-            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
-            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
-              BTL <span style={{ color: ORANGE }}>CRM</span>
-            </span>
-          </div>
-          <div className="mt-1.5 pl-3">
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{
-                background: isSales ? "#FFFBEB" : "#ECFDF5",
-                color: isSales ? "#D97706" : "#059669",
-                border: `1px solid ${isSales ? "#FCD34D" : "#6EE7B7"}`,
-              }}>
-              {isSales ? "💼 Sales SSM" : "📚 Academic"}
-            </span>
-          </div>
+      <aside className="w-56 flex-shrink-0 hidden md:flex flex-col border-r border-gray-100 bg-white overflow-y-auto">
+        {/* Mentor type badge */}
+        <div className="px-4 pt-3 pb-2 border-b border-gray-100">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{
+              background: isSales ? "#FFFBEB" : "#ECFDF5",
+              color: isSales ? "#D97706" : "#059669",
+              border: `1px solid ${isSales ? "#FCD34D" : "#6EE7B7"}`,
+            }}>
+            {isSales ? "💼 Sales SSM" : "📚 Academic"}
+          </span>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
           {tabs.map(t => {
@@ -1082,10 +1142,9 @@ export default function BTLCRMPage() {
               <button key={t.key} onClick={() => setTab(t.key)}
                 className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
                 style={{
-                  color: active ? ORANGE : "#6B7280",
-                  background: active ? "#FFF4EE" : "transparent",
+                  color: active ? NAVY : "#6B7280",
+                  background: active ? "#EEF2FF" : "transparent",
                   fontWeight: active ? 600 : 400,
-                  borderRight: active ? `3px solid ${ORANGE}` : "3px solid transparent",
                 }}>
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="text-xs">{t.label}</span>
@@ -1123,28 +1182,8 @@ export default function BTLCRMPage() {
         </div>
       </aside>
 
-      {/* ── Mobile header ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-100 shadow-sm">
-        <div className="font-black text-sm" style={{ color: NAVY }}>BTL CRM</div>
-        <div className="flex gap-0.5">
-          {tabs.map(t => {
-            const Icon = t.icon;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className="p-1.5 rounded-lg transition-all relative"
-                style={{ background: tab === t.key ? `${GREEN}15` : "transparent", color: tab === t.key ? GREEN : "#9CA3AF" }}>
-                <Icon className="w-4 h-4" />
-                {t.key === "students" && alertCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-white text-[8px] flex items-center justify-center font-black" style={{ background: "#DC2626" }}>{alertCount}</span>}
-                {t.key === "follow-ups" && (fuCounts.due_today + fuCounts.overdue) > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-white text-[8px] flex items-center justify-center font-black" style={{ background: ORANGE }}>{fuCounts.due_today + fuCounts.overdue}</span>}
-              </button>
-            );
-          })}
-          <button onClick={() => { logout(); window.location.href = "/mentor/login"; }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500"><LogOut className="w-4 h-4" /></button>
-        </div>
-      </div>
-
       {/* ── Main ── */}
-      <div className="flex-1 overflow-auto md:pt-0 pt-14">
+      <div className="flex-1 overflow-auto" style={{ background: "#F5F7FF" }}>
 
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (
@@ -2588,6 +2627,7 @@ export default function BTLCRMPage() {
             ? <SalesLeaderboardTab myId={student.id} />
             : <LeaderboardTab myId={student.id} />
         )}
+      </div>
       </div>
     </div>
   );

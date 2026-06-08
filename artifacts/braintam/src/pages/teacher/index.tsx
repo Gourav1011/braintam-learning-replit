@@ -6,7 +6,7 @@ import {
   BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
-  Phone, CheckCircle2, XCircle, Timer,
+  Phone, CheckCircle2, XCircle, Timer, Calendar, Bell, ChevronDown,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -76,6 +76,9 @@ function newTfQuestion(): HwQuestion {
 export default function TeacherPage() {
   const { student, role, isLoading, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [now, setNow] = useState(new Date());
+  const [profileDropOpen, setProfileDropOpen] = useState(false);
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
 
   const [dash, setDash] = useState<DashStats | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -685,7 +688,7 @@ export default function TeacherPage() {
   ];
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F8F9FF", fontFamily: "Poppins, sans-serif" }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: "#F5F7FF", fontFamily: "Poppins, sans-serif" }}>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={open => { if (!open) setDeleteConfirm(null); }}>
@@ -715,20 +718,74 @@ export default function TeacherPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Left Sidebar ── */}
-      <div className="w-52 shrink-0 min-h-screen bg-white border-r border-gray-100 flex flex-col sticky top-0 h-screen z-30">
-        {/* Brand */}
-        <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto mb-3" />
-          <div className="flex items-center gap-1.5">
-            <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
-            <span className="font-black tracking-wide" style={{ fontSize: "15px", color: NAVY, letterSpacing: "0.04em" }}>
-              BTL <span style={{ color: ORANGE }}>CRM</span>
-            </span>
+      {/* ── Global Header ── */}
+      <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">
+        <img src={braintamLogo} alt="Braintam" className="h-7 w-auto shrink-0" />
+        <div className="flex items-center gap-1.5 pl-1">
+          <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
+          <div>
+            <div className="font-black leading-tight" style={{ fontSize: "13px", color: NAVY, letterSpacing: "0.04em" }}>BTL <span style={{ color: ORANGE }}>CRM</span></div>
+            <div className="text-[9px] text-gray-400 leading-tight">Teacher Portal</div>
           </div>
-          <p className="text-[10px] text-gray-400 mt-0.5 pl-3">Education Operations Platform by Braintam</p>
         </div>
+        <div className="flex-1" />
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs shrink-0">
+          <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+          <span className="text-gray-500 whitespace-nowrap">{now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}</span>
+          <span className="font-mono font-semibold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}</span>
+        </div>
+        <div className="relative shrink-0">
+          <button onClick={() => setProfileDropOpen(o => !o)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0 overflow-hidden"
+              style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+              {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" /> : (student.name?.[0] ?? "T")}
+            </div>
+            <div className="hidden sm:block text-left">
+              <div className="text-xs font-bold leading-tight" style={{ color: NAVY }}>{student.name}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: ORANGE }}>Teacher</div>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${profileDropOpen ? "rotate-180" : ""}`} />
+          </button>
+          {profileDropOpen && (
+            <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+              style={{ boxShadow: "0 8px 32px rgba(11,43,107,0.13)" }}>
+              <div className="px-4 py-3 border-b border-gray-50" style={{ background: "#F8FAFF" }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0 overflow-hidden"
+                    style={{ background: student.avatarUrl ? "transparent" : NAVY }}>
+                    {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" /> : (student.name?.[0] ?? "T")}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-black truncate" style={{ color: NAVY }}>{student.name}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: ORANGE }}>Teacher</div>
+                    {student.email && <div className="text-[10px] text-gray-400 truncate">{student.email}</div>}
+                  </div>
+                </div>
+              </div>
+              <div className="py-1">
+                <button onClick={() => { setProfileDropOpen(false); setTab("profile"); }}
+                  className="w-full px-4 py-2 text-left text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">
+                  <UserCircle className="w-3.5 h-3.5 text-gray-400" /> My Profile
+                </button>
+                <a href="/" className="block px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2.5 transition-colors">← Back to Site</a>
+                <div className="border-t border-gray-50 mt-1 pt-1">
+                  <button onClick={logout}
+                    className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors font-semibold">
+                    <LogOut className="w-3.5 h-3.5" /> Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
+      {/* ── Body ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+      {/* ── Left Sidebar ── */}
+      <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
         {/* Nav */}
         <nav className="flex-1 py-2 overflow-y-auto">
           {TABS.map(t => {
@@ -738,10 +795,9 @@ export default function TeacherPage() {
               <button key={t.id} onClick={() => setTab(t.id)}
                 className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
                 style={{
-                  color: isActive ? ORANGE : "#6B7280",
-                  background: isActive ? "#FFF4EE" : "transparent",
+                  color: isActive ? NAVY : "#6B7280",
+                  background: isActive ? "#EEF2FF" : "transparent",
                   fontWeight: isActive ? 600 : 400,
-                  borderRight: isActive ? `3px solid ${ORANGE}` : "3px solid transparent",
                 }}>
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-xs">{t.label}</span>
@@ -777,8 +833,8 @@ export default function TeacherPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 overflow-auto">
-      <div className="p-4 space-y-4">
+      <div className="flex-1 min-w-0 overflow-auto" style={{ background: "#F5F7FF" }}>
+      <div className="p-5 space-y-5">
         {msg && (
           <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-between ${msg.ok ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
             <span>{msg.text}</span>
@@ -1971,6 +2027,7 @@ export default function TeacherPage() {
           />
         </div>
       )}
+      </div>
       </div>
     </div>
   );
