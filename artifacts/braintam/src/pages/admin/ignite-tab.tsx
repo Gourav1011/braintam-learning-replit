@@ -7,6 +7,7 @@ import {
   Bell, CreditCard, ChevronUp,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
+import { DemoBatchesTab } from "./demo-batches-tab";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const NAVY = "#0B2B6B";
@@ -2194,7 +2195,7 @@ export function IgniteContentArea({
     case "dashboard": return <DashboardView setView={setView} />;
     case "leads": return <LeadsView flash={flash} />;
     case "overview": return <OverviewView setView={setView} />;
-    case "demo-batches": return <DemoBatchesView flash={flash} />;
+    case "demo-batches": return <DemoBatchesTab flash={flash} />;
     case "demo-students": return <DemoStudentsView flash={flash} />;
     case "attendance": return <AttendanceView flash={flash} />;
     case "homework": return <HomeworkView flash={flash} />;
@@ -2222,7 +2223,7 @@ export function IgniteTab({
       case "dashboard": return <DashboardView setView={setView} />;
       case "leads": return <LeadsView flash={flash} />;
       case "overview": return <OverviewView setView={setView} />;
-      case "demo-batches": return <DemoBatchesView flash={flash} />;
+      case "demo-batches": return <DemoBatchesTab flash={flash} />;
       case "demo-students": return <DemoStudentsView flash={flash} />;
       case "attendance": return <AttendanceView flash={flash} />;
       case "homework": return <HomeworkView flash={flash} />;

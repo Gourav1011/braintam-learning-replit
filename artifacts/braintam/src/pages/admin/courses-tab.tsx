@@ -129,7 +129,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       setCourses(Array.isArray(crs) ? crs : []);
     } catch { flash("Failed to load data", false); }
     setLoading(false);
-  }, [flash]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => { loadBase(); }, [loadBase]);
 
