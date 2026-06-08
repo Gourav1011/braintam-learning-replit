@@ -54,7 +54,7 @@ router.patch("/staff/checkin/checkout", staffAuth, async (req, res) => {
     .where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
   if (!existing) { res.status(404).json({ error: "No check-in found for today" }); return; }
 
-  const { workSummary, challenges, pendingTasks, tomorrowPriorities } = req.body;
+  const { workSummary, challenges, pendingTasks, tomorrowPriorities } = req.body || {};
   const now = new Date();
   const [row] = await db.update(employeeCheckinsTable).set({
     checkOutTime: now, updatedAt: now,
