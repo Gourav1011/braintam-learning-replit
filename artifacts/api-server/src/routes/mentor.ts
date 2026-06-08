@@ -191,6 +191,45 @@ router.get("/mentor/students", mentorAuth, async (req, res) => {
   res.json({ students: result, total: result.length });
 });
 
+// ── Mentor: Student health summary (bucketed) ─────────────────────────────
+// NOTE: must be defined BEFORE /mentor/students/:id or Express will match "health-summary" as :id
+router.get("/mentor/students/health-summary", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const studentIds = await getMentorStudentIds(mentorId);
+  if (studentIds.length === 0) {
+    res.json({ green: [], yellow: [], red: [], critical: [], total: 0 });
+    return;
+  }
+
+  const students = await db.select({
+    id: usersTable.id, name: usersTable.name, grade: usersTable.grade,
+    lastLoginDate: usersTable.lastLoginDate, leadStage: usersTable.leadStage,
+  }).from(usersTable).where(inArray(usersTable.id, studentIds));
+
+  const hwCounts = await db.select({ studentId: homeworkSubmissionsTable.studentId, total: sql<number>`count(*)`, pending: sql<number>`count(*) filter (where status = 'pending')` })
+    .from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
+  const testCounts = await db.select({ studentId: testSubmissionsTable.studentId, total: sql<number>`count(*)` })
+    .from(testSubmissionsTable).where(inArray(testSubmissionsTable.studentId, studentIds)).groupBy(testSubmissionsTable.studentId);
+  const hwMap = Object.fromEntries(hwCounts.map(r => [r.studentId, r]));
+  const testMap = Object.fromEntries(testCounts.map(r => [r.studentId, r]));
+
+  const buckets: Record<"green" | "yellow" | "red" | "critical", Array<{ id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }>> = { green: [], yellow: [], red: [], critical: [] };
+
+  for (const s of students) {
+    const hw = hwMap[s.id];
+    const hwTotal = Number(hw?.total ?? 0);
+    const hwPct = hwTotal > 0 ? Math.round(((hwTotal - Number(hw?.pending ?? 0)) / hwTotal) * 100) : 100;
+    const { healthScore, daysSinceLogin } = computeHealth({ lastLoginDate: s.lastLoginDate, hwPct, testTotal: Number(testMap[s.id]?.total ?? 0) });
+    const entry = { id: s.id, name: s.name, grade: s.grade, healthScore, daysSinceLogin, leadStage: s.leadStage };
+    if (healthScore >= 75) buckets.green.push(entry);
+    else if (healthScore >= 50) buckets.yellow.push(entry);
+    else if (healthScore >= 25) buckets.red.push(entry);
+    else buckets.critical.push(entry);
+  }
+
+  res.json({ ...buckets, total: students.length });
+});
+
 // ── Student detail ───────────────────────────────────────────────────────
 router.get("/mentor/students/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
@@ -1055,44 +1094,6 @@ router.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
     .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
 
   res.json(ranked);
-});
-
-// ── Mentor: Student health summary (bucketed) ─────────────────────────────
-router.get("/mentor/students/health-summary", mentorAuth, async (req, res) => {
-  const mentorId = req.authUser!.id;
-  const studentIds = await getMentorStudentIds(mentorId);
-  if (studentIds.length === 0) {
-    res.json({ green: [], yellow: [], red: [], critical: [], total: 0 });
-    return;
-  }
-
-  const students = await db.select({
-    id: usersTable.id, name: usersTable.name, grade: usersTable.grade,
-    lastLoginDate: usersTable.lastLoginDate, leadStage: usersTable.leadStage,
-  }).from(usersTable).where(inArray(usersTable.id, studentIds));
-
-  const hwCounts = await db.select({ studentId: homeworkSubmissionsTable.studentId, total: sql<number>`count(*)`, pending: sql<number>`count(*) filter (where status = 'pending')` })
-    .from(homeworkSubmissionsTable).where(inArray(homeworkSubmissionsTable.studentId, studentIds)).groupBy(homeworkSubmissionsTable.studentId);
-  const testCounts = await db.select({ studentId: testSubmissionsTable.studentId, total: sql<number>`count(*)` })
-    .from(testSubmissionsTable).where(inArray(testSubmissionsTable.studentId, studentIds)).groupBy(testSubmissionsTable.studentId);
-  const hwMap = Object.fromEntries(hwCounts.map(r => [r.studentId, r]));
-  const testMap = Object.fromEntries(testCounts.map(r => [r.studentId, r]));
-
-  const buckets: Record<"green" | "yellow" | "red" | "critical", Array<{ id: number; name: string; grade: number; healthScore: number; daysSinceLogin: number; leadStage: string | null }>> = { green: [], yellow: [], red: [], critical: [] };
-
-  for (const s of students) {
-    const hw = hwMap[s.id];
-    const hwTotal = Number(hw?.total ?? 0);
-    const hwPct = hwTotal > 0 ? Math.round(((hwTotal - Number(hw?.pending ?? 0)) / hwTotal) * 100) : 100;
-    const { healthScore, daysSinceLogin } = computeHealth({ lastLoginDate: s.lastLoginDate, hwPct, testTotal: Number(testMap[s.id]?.total ?? 0) });
-    const entry = { id: s.id, name: s.name, grade: s.grade, healthScore, daysSinceLogin, leadStage: s.leadStage };
-    if (healthScore >= 75) buckets.green.push(entry);
-    else if (healthScore >= 50) buckets.yellow.push(entry);
-    else if (healthScore >= 25) buckets.red.push(entry);
-    else buckets.critical.push(entry);
-  }
-
-  res.json({ ...buckets, total: students.length });
 });
 
 // ── Mentor: Dashboard (extend to include mentorType) ─────────────────────
