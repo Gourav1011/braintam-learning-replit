@@ -57,7 +57,7 @@ import { CourseManagementTab } from "./courses-tab";
 import { DemoBatchesTab } from "./demo-batches-tab";
 import { MentorsTab } from "./mentors-tab";
 import { DashboardTab } from "./dashboard-tab";
-import { Student360Modal } from "./student360-modal";
+import { Student360Page } from "./student360-page";
 import { CourseAnalyticsTab } from "./course-analytics-tab";
 import { TeacherAnalyticsTab } from "./teacher-analytics-tab";
 import { HealthTab } from "./health-tab";
@@ -1295,8 +1295,8 @@ function AdminPageInner() {
       {resetPasswordUser && <PasswordResetModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} flash={flash} />}
       {/* Access Management Modal */}
       {accessUser && <AccessModal user={accessUser} onClose={() => setAccessUser(null)} flash={flash} />}
-      {/* Student 360 Modal */}
-      {student360Id && <Student360Modal userId={student360Id} userName={users.find(u => u.id === student360Id)?.name ?? ""} userEmail={users.find(u => u.id === student360Id)?.email ?? null} onClose={() => setStudent360Id(null)} />}
+      {/* Student 360 Full Page */}
+      {student360Id && <Student360Page userId={student360Id} onBack={() => setStudent360Id(null)} />}
 
       {/* ── Global Header ──────────────────────────────────────────────────────── */}
       <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">

@@ -1502,6 +1502,33 @@ router.patch("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Student Attendance ────────────────────────────────────────────
+router.get("/admin/students/:id/attendance", allStaffAuth, async (req, res) => {
+  const studentId = parseInt(String(req.params.id), 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const records = await db.select({
+    id: mentorAttendanceTable.id,
+    attendanceDate: mentorAttendanceTable.attendanceDate,
+    status: mentorAttendanceTable.status,
+    remark: mentorAttendanceTable.remark,
+    calledByName: mentorAttendanceTable.calledByName,
+    createdAt: mentorAttendanceTable.createdAt,
+  }).from(mentorAttendanceTable)
+    .where(eq(mentorAttendanceTable.studentId, studentId))
+    .orderBy(desc(mentorAttendanceTable.createdAt))
+    .limit(90);
+
+  const total = records.length;
+  const present = records.filter(r => r.status === "present").length;
+  const absent = records.filter(r => r.status === "absent").length;
+  const late = records.filter(r => r.status === "late").length;
+  const leave = records.filter(r => r.status === "leave").length;
+  const presentPct = total > 0 ? Math.round((present / total) * 100) : 0;
+
+  res.json({ records, summary: { total, present, absent, late, leave, presentPct } });
+});
+
 // ── Teachers: Summary Stats ───────────────────────────────────────
 router.get("/admin/teachers/summary-stats", adminOnly, async (_req, res) => {
   const today = new Date(); today.setHours(0, 0, 0, 0);
