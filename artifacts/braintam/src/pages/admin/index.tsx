@@ -1222,7 +1222,7 @@ function AdminPageInner() {
           items: [
             { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
             { label: "Teachers", icon: GradCap, tab: "teacher-analytics" },
-            { label: "Ignite Analytics", icon: Zap, tab: "analytics" },
+            { label: "Mastery Analytics", icon: BarChart3, tab: "analytics" },
             { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
           ],
         },
@@ -1532,11 +1532,27 @@ function AdminPageInner() {
         {tab === "analytics" && analytics && (() => {
           const studentList = users.filter(u => u.role === "student");
           const teacherList = users.filter(u => u.role === "teacher");
+          const mentorList = users.filter(u => u.role === "mentor");
+
+          // Mentor stats
+          const assignedStudentIds = new Set(Object.keys(mentorStudentMap).map(Number));
+          const assignedCount = assignedStudentIds.size;
+          const unassignedCount = studentList.length - assignedCount;
+          const mentorRatio = mentorList.length > 0 ? (studentList.length / mentorList.length).toFixed(1) : "—";
+
+          // Per-mentor student count
+          const mentorStudentCounts: Record<string, { name: string; count: number }> = {};
+          for (const { mentorName } of Object.values(mentorStudentMap)) {
+            if (!mentorStudentCounts[mentorName]) mentorStudentCounts[mentorName] = { name: mentorName, count: 0 };
+            mentorStudentCounts[mentorName].count += 1;
+          }
+          const mentorRows = Object.values(mentorStudentCounts).sort((a, b) => b.count - a.count);
 
           // Grade-wise breakdown
           const gradeBreakdown = (() => {
             let src = analyticsUserTypeFilter === "teacher" ? teacherList
               : analyticsUserTypeFilter === "admin" ? users.filter(u => u.role === "admin")
+              : analyticsUserTypeFilter === "mentor" ? mentorList
               : studentList;
             if (analyticsYearFilter !== "all") {
               const yearCourseIds = new Set(courses.filter(c => String(c.academicYearId) === analyticsYearFilter).map(c => c.id));
@@ -1560,20 +1576,25 @@ function AdminPageInner() {
             return true;
           });
 
-          void analyticsUserTypeFilter; // used via gradeBreakdown/filteredTopStudents
-
           return (
           <div className="space-y-5">
+            {/* Page header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black" style={{ color: NAVY }}>Mastery Analytics</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Academic performance — students, courses, mentors & submissions</p>
+              </div>
+            </div>
+
             {/* Filter bar */}
             <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-wrap gap-3 items-center">
               <span className="text-xs font-semibold text-gray-500">Filters:</span>
               <Select value={analyticsUserTypeFilter} onValueChange={setAnalyticsUserTypeFilter}>
                 <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="User Type" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  <SelectItem value="student">Students</SelectItem>
+                  <SelectItem value="all">Students</SelectItem>
                   <SelectItem value="teacher">Teachers</SelectItem>
-                  <SelectItem value="admin">Admins</SelectItem>
+                  <SelectItem value="mentor">Mentors</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={analyticsGradeFilter} onValueChange={setAnalyticsGradeFilter}>
@@ -1609,19 +1630,68 @@ function AdminPageInner() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* KPI cards — strictly Mastery metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
               {[
-                { label: "Total Users", value: analytics.totals.users, color: NAVY },
                 { label: "Students", value: analytics.totals.students, color: "#22C55E" },
                 { label: "Teachers", value: analytics.totals.teachers, color: "#3B82F6" },
+                { label: "Mentors", value: mentorList.length, color: "#8B5CF6" },
                 { label: "Courses", value: analytics.totals.courses, color: ORANGE },
-                { label: "Enrollments", value: analytics.totals.enrollments, color: "#8B5CF6" },
+                { label: "Enrollments", value: analytics.totals.enrollments, color: NAVY },
+                { label: "Live Classes", value: analytics.liveClasses.upcoming + analytics.liveClasses.live, color: "#F59E0B" },
               ].map(s => (
                 <div key={s.label} className="rounded-2xl p-4 bg-white shadow-sm border border-gray-100 text-center">
                   <div className="text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
                   <div className="text-xs text-gray-500 font-medium mt-0.5">{s.label}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Mentor Overview */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: NAVY }}>
+                <UserCheck2 className="w-4 h-4" style={{ color: "#8B5CF6" }} /> Mentor Overview
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                {[
+                  { label: "Total Mentors", value: mentorList.length, color: "#8B5CF6" },
+                  { label: "Assigned Students", value: assignedCount, color: "#22C55E" },
+                  { label: "Unassigned", value: unassignedCount, color: ORANGE },
+                  { label: "Student : Mentor", value: mentorRatio, color: NAVY },
+                ].map(s => (
+                  <div key={s.label} className="bg-gray-50 rounded-xl p-3 text-center">
+                    <div className="text-xl font-black" style={{ color: s.color }}>{s.value}</div>
+                    <div className="text-[10px] text-gray-400 font-medium mt-0.5">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {mentorList.length === 0 ? (
+                <div className="text-center py-4 text-sm text-gray-400">No mentors added yet. Add mentors from Mastery → Mentors.</div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Mentor Load</p>
+                  {mentorList.map(m => {
+                    const count = mentorRows.find(r => r.name === m.name)?.count ?? 0;
+                    const maxCount = Math.max(...mentorRows.map(r => r.count), 1);
+                    return (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0" style={{ background: "#8B5CF6" }}>
+                          {m.name?.[0]?.toUpperCase() ?? "M"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-medium text-gray-700 truncate">{m.name}</span>
+                            <span className="font-bold ml-2 shrink-0" style={{ color: "#8B5CF6" }}>{count} students</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-gray-100">
+                            <div className="h-1.5 rounded-full transition-all" style={{ background: "#8B5CF6", width: `${count === 0 ? 0 : Math.max(4, (count / maxCount) * 100)}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
