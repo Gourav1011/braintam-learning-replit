@@ -1,0 +1,647 @@
+STUDENT 360 REDESIGN
+
+COMPLETE RESTRUCTURE
+
+before and after image attached 
+
+Current Student 360 focuses too much on profile information and static graphs.
+
+
+
+It should become a mentor operating dashboard.
+
+
+
+The first screen must answer:
+
+
+
+How is this student doing?
+
+What needs attention?
+
+What should the mentor do next?
+
+SECTION 1: HERO HEADER
+
+
+
+Display:
+
+
+
+Student Photo
+
+
+
+Student Name
+
+
+
+Grade
+
+
+
+School
+
+
+
+Mentor
+
+
+
+Enrollment Date
+
+
+
+Student ID
+
+
+
+Student Health Score
+
+
+
+Example:
+
+
+
+Health Score: 91 / 100
+
+
+
+Status: On Track
+
+
+
+SECTION 2: AI STUDENT SUMMARY
+
+
+
+Place directly below header.
+
+
+
+Large highlighted insight card.
+
+
+
+Example:
+
+
+
+Student is performing well overall.
+
+
+
+Attendance improved by 8% this month.
+
+
+
+Homework completion dropped during the last 2 weeks.
+
+
+
+Parent follow-up recommended.
+
+
+
+Assessment scheduled in 5 days.
+
+
+
+This should be the first thing mentors see.
+
+
+
+SECTION 3: ACTION CENTER (MOST IMPORTANT)
+
+
+
+Prominent section.
+
+
+
+Show pending tasks.
+
+
+
+Examples:
+
+
+
+☐ Parent Call Due
+
+
+
+☐ Homework Follow-up
+
+
+
+☐ Assessment Due
+
+
+
+☐ Payment Reminder
+
+
+
+☐ Learning Health Review
+
+
+
+Each task should have:
+
+
+
+Priority
+
+
+
+Due Date
+
+
+
+Quick Action Button
+
+
+
+Mentors should spend most of their time here.
+
+
+
+SECTION 4: PERFORMANCE OVERVIEW
+
+
+
+Replace radar chart completely.
+
+
+
+Radar charts are difficult to understand and provide little operational value.
+
+
+
+Use clean progress bars and KPIs.
+
+
+
+Show:
+
+
+
+Attendance
+
+
+
+Assessment
+
+
+
+Homework
+
+
+
+Engagement
+
+
+
+Learning Health
+
+
+
+Example:
+
+
+
+Attendance 92%
+
+
+
+Assessment 84%
+
+
+
+Homework 67%
+
+
+
+Engagement 78%
+
+
+
+Learning Health 89%
+
+
+
+Include trend indicators:
+
+
+
+↑ improving
+
+
+
+↓ declining
+
+
+
+→ stable
+
+
+
+SECTION 5: PERFORMANCE TRENDS
+
+
+
+Use line charts instead of radar charts.
+
+
+
+Charts:
+
+
+
+Attendance Trend
+
+
+
+Assessment Trend
+
+
+
+Homework Trend
+
+
+
+Engagement Trend
+
+
+
+Time ranges:
+
+
+
+30 Days
+
+
+
+90 Days
+
+
+
+6 Months
+
+
+
+1 Year
+
+
+
+Charts should be modern, responsive, and easy to read.
+
+
+
+SECTION 6: MENTOR TIMELINE
+
+
+
+Chronological activity feed.
+
+
+
+Examples:
+
+
+
+Today
+
+
+
+Parent called
+
+
+
+Yesterday
+
+
+
+Homework reminder sent
+
+
+
+3 days ago
+
+
+
+Assessment completed
+
+
+
+7 days ago
+
+
+
+Class attended
+
+
+
+This creates a complete student story.
+
+
+
+SECTION 7: PARENT RELATIONSHIP PANEL
+
+
+
+Display:
+
+
+
+Last Parent Call
+
+
+
+Call Frequency This Month
+
+
+
+Parent Satisfaction
+
+
+
+Next Follow-up Date
+
+
+
+Recent Notes
+
+
+
+Example:
+
+
+
+Last Call: 3 Days Ago
+
+
+
+Calls This Month: 2
+
+
+
+Sentiment: Positive
+
+
+
+Next Follow-up: Friday
+
+
+
+SECTION 8: LEARNING HEALTH
+
+
+
+Dedicated section.
+
+
+
+Show:
+
+
+
+Concept Mastery
+
+
+
+Attention Level
+
+
+
+Consistency Score
+
+
+
+Weak Areas
+
+
+
+Strength Areas
+
+
+
+Risk Indicators
+
+
+
+Display recommendations.
+
+
+
+Example:
+
+
+
+Focus on fractions.
+
+
+
+Reading comprehension improving.
+
+
+
+No intervention required.
+
+
+
+SECTION 9: COURSE PROGRESS
+
+
+
+Show active courses.
+
+
+
+For each course:
+
+
+
+Progress %
+
+
+
+Completion %
+
+
+
+Last Activity
+
+
+
+Upcoming Milestone
+
+
+
+Assessment Status
+
+
+
+SECTION 10: ACHIEVEMENTS
+
+
+
+Certificates
+
+
+
+Badges
+
+
+
+Competition Results
+
+
+
+Milestones
+
+
+
+Leaderboard Position
+
+
+
+SECTION 11: DOCUMENTS
+
+
+
+Student Documents
+
+
+
+Report Cards
+
+
+
+Certificates
+
+
+
+Parent Forms
+
+
+
+ID Proofs
+
+
+
+Upload and preview support.
+
+
+
+SECTION 12: PROFILE INFORMATION
+
+
+
+Move low-frequency information into a separate Profile tab.
+
+
+
+Include:
+
+
+
+Date of Birth
+
+
+
+Gender
+
+
+
+Blood Group
+
+
+
+Address
+
+
+
+Father Name
+
+
+
+Mother Name
+
+
+
+Emergency Contact
+
+
+
+Do NOT show this on the main dashboard.
+
+
+
+DESIGN REQUIREMENTS
+
+
+
+Use a modern dashboard style.
+
+
+
+Inspired by:
+
+
+
+HubSpot CRM
+
+Salesforce Education Cloud
+
+Linear
+
+Notion
+
+Stripe Dashboard
+
+
+
+Requirements:
+
+
+
+Minimal scrolling
+
+High information density
+
+Clear visual hierarchy
+
+Mentor-first workflow
+
+Mobile responsive
+
+Fast loading
+
+Clean cards
+
+Soft shadows
+
+Consistent spacing
+
+Professional EdTech appearance
+
+
+
+The final Student 360 should feel like a Mentor Command Center, not a student profile page.
+
+
+
+Primary hierarchy:
+
+
+
+HEALTH SCORE → AI INSIGHTS → ACTION CENTER → PERFORMANCE → TIMELINE → PARENT RELATIONSHIP → PROFILE DATA
+
+
+
+Profile data should be the least important section.

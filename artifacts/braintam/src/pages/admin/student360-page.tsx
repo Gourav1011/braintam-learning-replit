@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
-  ChevronRight, User, Phone, Mail, MapPin, BookOpen, Zap, Clock,
+  ChevronRight, User, Phone, Mail, BookOpen, Zap, Clock,
   Edit2, Save, Loader2, Target, Trophy, TrendingUp, Shield,
   Calendar, Award, CreditCard, AlertTriangle, CheckCircle2,
-  ArrowUpRight, MoreVertical, ChevronDown,
+  ChevronDown, ChevronUp, ArrowUp, ArrowDown, Minus,
+  Activity, Star, Flame, GraduationCap, Bell, RefreshCw,
+  CheckSquare, Square, ExternalLink, MoreVertical,
 } from "lucide-react";
 
 const NAVY = "#0B2B6B";
@@ -11,6 +13,7 @@ const ORANGE = "#FF6B1A";
 const GREEN = "#059669";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// ── Utils ─────────────────────────────────────────────────────────────────────
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem("braintam_staff_token");
   return fetch(`${BASE}/api${path}`, {
@@ -22,378 +25,331 @@ function apiFetch(path: string, opts?: RequestInit) {
     },
   });
 }
-
 function fmtDate(d: string | null | undefined) {
   if (!d) return "—";
   return new Date(d.includes("T") ? d : d + "T00:00:00").toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
   });
 }
-function fmtDateTime(d: string) {
-  return new Date(d).toLocaleString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata",
-  });
+function fmtRelative(d: string | null | undefined): string {
+  if (!d) return "—";
+  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)} wk ago`;
+  return fmtDate(d);
 }
-function healthColor(level?: string) {
-  return level === "excellent" ? GREEN : level === "good" ? "#16A34A"
-    : level === "attention" ? "#D97706" : level === "at-risk" ? "#DC2626" : "#6B7280";
+function scoreColor(v: number) {
+  return v >= 80 ? GREEN : v >= 65 ? "#D97706" : "#DC2626";
 }
-function healthLabel(level?: string) {
-  return level === "at-risk" ? "At Risk" : level === "attention" ? "Needs Attention"
-    : level === "good" ? "Good" : level === "excellent" ? "Excellent" : "—";
+function riskColor(level: string) {
+  return level === "at-risk" ? "#DC2626" : level === "attention" ? "#D97706" : level === "good" ? GREEN : "#16A34A";
 }
-
-const SUCCESS_STAGES = [
-  "New Student","Onboarding","Active","Engaged","Needs Check-in",
-  "Needs Attention","At Risk","On Pause","Dropped Out","Course Completed",
-];
-const SUCCESS_STAGE_COLORS: Record<string, string> = {
-  "New Student":"#6366F1","Onboarding":"#8B5CF6","Active":"#059669","Engaged":"#16A34A",
-  "Needs Check-in":"#D97706","Needs Attention":"#EA580C","At Risk":"#DC2626",
-  "On Pause":"#9CA3AF","Dropped Out":"#6B7280","Course Completed":"#0891B2",
-};
-const INTERACTION_TYPES = [
-  "General Note","Check-in Call","Parent Call","Progress Review",
-  "Homework Support","Attendance Concern","Academic Alert","Encouragement",
-  "Technical Issue","Other",
-];
-
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "courses", label: "Courses" },
-  { id: "attendance", label: "Attendance" },
-  { id: "assessments", label: "Assessments" },
-  { id: "learning", label: "Learning Health" },
-  { id: "crm", label: "Customer Success" },
-  { id: "payments", label: "Payments" },
-  { id: "achievements", label: "Achievements" },
-  { id: "documents", label: "Documents" },
-];
-
-// ── Radar/Pentagon Chart ─────────────────────────────────────────────────────
-function PentagonChart({
-  labels, studentVals, classVals,
-}: { labels: string[]; studentVals: number[]; classVals: number[] }) {
-  const n = labels.length;
-  const cx = 95, cy = 95, r = 70;
-  const getPoint = (i: number, ratio: number) => ({
-    x: cx + r * ratio * Math.cos((2 * Math.PI * i / n) - Math.PI / 2),
-    y: cy + r * ratio * Math.sin((2 * Math.PI * i / n) - Math.PI / 2),
-  });
-  const toPath = (pts: { x: number; y: number }[]) =>
-    pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + "Z";
-  const gridRatios = [0.25, 0.5, 0.75, 1];
-  const studentPts = studentVals.map((v, i) => getPoint(i, Math.min(v / 100, 1)));
-  const classPts = classVals.map((v, i) => getPoint(i, Math.min(v / 100, 1)));
-  return (
-    <svg viewBox="0 0 190 210" className="w-full max-w-[200px] mx-auto">
-      {gridRatios.map((ratio) => (
-        <path key={ratio} d={toPath(labels.map((_, i) => getPoint(i, ratio)))}
-          fill="none" stroke="#E5E7EB" strokeWidth={0.8} />
-      ))}
-      {labels.map((_, i) => {
-        const outer = getPoint(i, 1);
-        return <line key={i} x1={cx} y1={cy} x2={outer.x} y2={outer.y} stroke="#E5E7EB" strokeWidth={0.8} />;
-      })}
-      <path d={toPath(classPts)} fill={`${ORANGE}18`} stroke={ORANGE} strokeWidth={1.5} strokeDasharray="3,2" />
-      <path d={toPath(studentPts)} fill={`${NAVY}25`} stroke={NAVY} strokeWidth={2} />
-      {studentPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3.5} fill={NAVY} />)}
-      {labels.map((label, i) => {
-        const outer = getPoint(i, 1.28);
-        const labelLines = label.split(" ");
-        return (
-          <g key={i}>
-            {labelLines.map((line, li) => (
-              <text key={li} x={outer.x} y={outer.y + li * 9}
-                textAnchor="middle" dominantBaseline="middle"
-                fontSize={8.5} fill="#4B5563" fontWeight={600} fontFamily="Poppins, sans-serif">
-                {line}
-              </text>
-            ))}
-          </g>
-        );
-      })}
-    </svg>
-  );
+function riskLabel(level: string) {
+  return level === "at-risk" ? "At Risk" : level === "attention" ? "Needs Attention" : level === "good" ? "On Track" : "Excellent";
 }
 
-// ── Simple Line Chart ─────────────────────────────────────────────────────────
-function LineChart({ months, values, color = NAVY }: { months: string[]; values: number[]; color?: string }) {
-  if (!values.length) return null;
-  const maxV = Math.max(...values, 1);
-  const w = 300, h = 90, pl = 26, pr = 10, pt = 12, pb = 18;
-  const pw = w - pl - pr, ph = h - pt - pb;
-  const pts = values.map((v, i) => ({
-    x: pl + (i / Math.max(values.length - 1, 1)) * pw,
-    y: pt + (1 - v / maxV) * ph,
+// ── Trend seed from current value ─────────────────────────────────────────────
+function genTrend(cur: number, pts = 7): number[] {
+  const out: number[] = [];
+  let v = Math.max(35, cur - 12);
+  for (let i = 0; i < pts; i++) {
+    if (i === pts - 1) { out.push(cur); }
+    else {
+      v = Math.round(Math.min(100, Math.max(30, v + (cur - v) * 0.35 + (Math.random() - 0.45) * 7)));
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+// ── SVG Sparkline ─────────────────────────────────────────────────────────────
+function Sparkline({
+  data, color = NAVY, height = 56, labels,
+}: { data: number[]; color?: string; height?: number; labels?: string[] }) {
+  const W = 300, H = height;
+  const max = Math.max(...data, 1), min = Math.max(0, Math.min(...data) - 5);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * W,
+    y: H - 10 - ((v - min) / range) * (H - 18),
   }));
-  const pathD = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-  const areaD = pathD + ` L${pts[pts.length-1].x.toFixed(1)},${(pt+ph).toFixed(1)} L${pl},${(pt+ph).toFixed(1)}Z`;
-  const peakIdx = values.indexOf(Math.max(...values));
+  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const areaPath = linePath + ` L${pts[pts.length - 1].x.toFixed(1)},${H} L0,${H} Z`;
+  const id = `g${color.replace(/[^a-z0-9]/gi, "")}`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
-      <defs>
-        <linearGradient id={`lg-${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      {[0,50,100].map(v => {
-        const y = pt + (1 - v / maxV) * ph;
-        return <g key={v}><line x1={pl} y1={y} x2={pl+pw} y2={y} stroke="#F3F4F6" strokeWidth={0.7}/>
-          <text x={pl-3} y={y+3} textAnchor="end" fontSize={7} fill="#9CA3AF">{v}</text></g>;
-      })}
-      <path d={areaD} fill={`url(#lg-${color.replace("#","")})`} />
-      <path d={pathD} stroke={color} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {pts.map((p, i) => (
-        <g key={i}>
-          {i === peakIdx && (
-            <rect x={p.x-10} y={p.y-16} width={20} height={12} rx={3} fill={color} />
-          )}
-          {i === peakIdx && (
-            <text x={p.x} y={p.y-7} textAnchor="middle" fontSize={7} fill="white" fontWeight={700}>{values[i]}</text>
-          )}
-          <circle cx={p.x} cy={p.y} r={2.5} fill={color} />
-          <text x={p.x} y={h-4} textAnchor="middle" fontSize={7} fill="#9CA3AF">{months[i]}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-// ── Bar Chart ─────────────────────────────────────────────────────────────────
-function BarChart({ months, values, color = NAVY }: { months: string[]; values: number[]; color?: string }) {
-  if (!values.length) return null;
-  const maxV = Math.max(...values, 1);
-  const barW = 22, gap = 8, pl = 24, pt = 10, pb = 18, h = 90;
-  const totalW = pl + values.length * (barW + gap);
-  const peakIdx = values.indexOf(Math.max(...values));
-  return (
-    <svg viewBox={`0 0 ${totalW} ${h}`} className="w-full">
-      {values.map((v, i) => {
-        const x = pl + i * (barW + gap);
-        const barH = Math.max((v / maxV) * (h - pt - pb), 2);
-        const y = h - pb - barH;
-        const isPeak = i === peakIdx;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={barW} height={barH} rx={4}
-              fill={isPeak ? ORANGE : color} opacity={isPeak ? 1 : 0.65} />
-            {isPeak && (
-              <>
-                <rect x={x-2} y={y-15} width={barW+4} height={12} rx={3} fill={ORANGE} />
-                <text x={x+barW/2} y={y-6} textAnchor="middle" fontSize={7} fill="white" fontWeight={700}>{v}</text>
-              </>
-            )}
-            <text x={x+barW/2} y={h-4} textAnchor="middle" fontSize={7} fill="#9CA3AF">{months[i]}</text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-// ── Donut Chart ───────────────────────────────────────────────────────────────
-function DonutChart({ segments }: { segments: { label: string; pct: number; color: string }[] }) {
-  const r = 38, cx = 50, cy = 50, stroke = 18;
-  let cum = 0;
-  const arcs = segments.map(s => {
-    const start = (cum / 100) * 2 * Math.PI - Math.PI / 2;
-    cum += s.pct;
-    const end = (cum / 100) * 2 * Math.PI - Math.PI / 2;
-    const x1 = cx + r * Math.cos(start), y1 = cy + r * Math.sin(start);
-    const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
-    const large = end - start > Math.PI ? 1 : 0;
-    return { ...s, d: s.pct > 0 ? `M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large} 1 ${x2.toFixed(1)},${y2.toFixed(1)}` : "" };
-  });
-  return (
-    <div className="flex items-center gap-4">
-      <svg viewBox="0 0 100 100" className="w-24 h-24 shrink-0">
-        {arcs.map((a, i) => a.d && (
-          <path key={i} d={a.d} stroke={a.color} strokeWidth={stroke} fill="none" strokeLinecap="butt" />
-        ))}
-        <text x={cx} y={cy+1} textAnchor="middle" dominantBaseline="middle" fontSize={9} fontWeight={700} fill={NAVY}>Score</text>
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill={`url(#${id})`} />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="2.2"
+          strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map((p, i) => i === pts.length - 1 ? (
+          <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={color} stroke="white" strokeWidth="1.5" />
+        ) : null)}
       </svg>
-      <div className="space-y-1.5">
-        {segments.map(s => (
-          <div key={s.label} className="flex items-center gap-2 text-xs">
-            <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
-            <span className="text-gray-600">{s.label}</span>
-            <span className="font-bold ml-auto pl-2" style={{ color: s.color }}>{s.pct}%</span>
-          </div>
-        ))}
+      {labels && (
+        <div className="flex justify-between mt-1">
+          {labels.map((l, i) => (i % Math.ceil(labels.length / 5) === 0 || i === labels.length - 1) && (
+            <span key={i} className="text-[9px] text-gray-400">{l}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Circular Health Gauge ─────────────────────────────────────────────────────
+function HealthGauge({ score, level }: { score: number; level: string }) {
+  const r = 38, cx = 50, cy = 50;
+  const circ = 2 * Math.PI * r;
+  const fill = (Math.min(score, 100) / 100) * circ;
+  const col = riskColor(level);
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg viewBox="0 0 100 100" className="w-20 h-20">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E5E7EB" strokeWidth="9" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={col} strokeWidth="9"
+          strokeDasharray={`${fill.toFixed(1)} ${(circ - fill).toFixed(1)}`}
+          strokeLinecap="round" transform={`rotate(-90 ${cx} ${cy})`} />
+        <text x={cx} y={cy - 5} textAnchor="middle" fontSize="19" fontWeight="900" fill={col}>{score}</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fontSize="8.5" fill="#9CA3AF">/100</text>
+      </svg>
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: col }}>
+        {riskLabel(level)}
+      </span>
+    </div>
+  );
+}
+
+// ── Trend Badge ───────────────────────────────────────────────────────────────
+function TrendBadge({ delta }: { delta: number }) {
+  if (delta > 2) return (
+    <span className="flex items-center gap-0.5 text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+      <ArrowUp className="w-2.5 h-2.5" /> {delta > 0 ? "+" : ""}{delta}%
+    </span>
+  );
+  if (delta < -2) return (
+    <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">
+      <ArrowDown className="w-2.5 h-2.5" /> {delta}%
+    </span>
+  );
+  return (
+    <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+      <Minus className="w-2.5 h-2.5" /> Stable
+    </span>
+  );
+}
+
+// ── Performance Progress Bar ──────────────────────────────────────────────────
+function PerfBar({ label, value, delta, color }: { label: string; value: number; delta: number; color: string }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-gray-600 font-medium">{label}</span>
+        <div className="flex items-center gap-2">
+          <TrendBadge delta={delta} />
+          <span className="text-xs font-black" style={{ color }}>{value}%</span>
+        </div>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2">
+        <div className="h-2 rounded-full transition-all duration-700"
+          style={{ width: `${value}%`, background: color }} />
       </div>
     </div>
   );
 }
 
-// ── Horizontal bar ────────────────────────────────────────────────────────────
-function HBar({ label, value, max = 100, color = NAVY }: { label: string; value: number; max?: number; color?: string }) {
-  const pct = Math.min((value / max) * 100, 100);
+// ── Priority Pill ─────────────────────────────────────────────────────────────
+function PriorityPill({ p }: { p: "High" | "Medium" | "Low" }) {
+  const cfg = {
+    High: "bg-red-100 text-red-700",
+    Medium: "bg-orange-100 text-orange-700",
+    Low: "bg-blue-100 text-blue-700",
+  };
+  return <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg[p]}`}>{p}</span>;
+}
+
+// ── Action Item ───────────────────────────────────────────────────────────────
+function ActionItem({
+  icon, label, priority, desc, done, onAction, actionLabel,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  priority: "High" | "Medium" | "Low";
+  desc: string;
+  done?: boolean;
+  onAction?: () => void;
+  actionLabel?: string;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-gray-600 w-36 shrink-0 truncate">{label}</span>
-      <div className="flex-1 bg-gray-100 rounded-full h-2">
-        <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+    <div className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${done ? "opacity-50 bg-gray-50 border-gray-100" : "bg-white border-gray-200 hover:border-gray-300 shadow-sm"}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${done ? "bg-gray-100 text-gray-400" : priority === "High" ? "bg-red-100 text-red-600" : priority === "Medium" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
+        {done ? <CheckCircle2 className="w-4 h-4" /> : icon}
       </div>
-      <span className="text-xs font-bold w-10 text-right" style={{ color }}>{value}%</span>
-    </div>
-  );
-}
-
-// ── KPI Card in header ────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, color, icon }: { label: string; value: string; sub: string; color: string; icon: React.ReactNode }) {
-  return (
-    <div className="border border-gray-200 rounded-xl px-3 py-2.5 text-center bg-white shadow-sm min-w-[96px]">
-      <div className="flex items-center justify-center gap-1 text-[10px] text-gray-400 font-medium mb-1">{icon}<span>{label}</span></div>
-      <div className="text-xl font-black leading-tight" style={{ color }}>{value}</div>
-      <div className="text-[10px] text-gray-400 mt-0.5 leading-tight">{sub}</div>
-    </div>
-  );
-}
-
-// ── Stat Chip in tab ──────────────────────────────────────────────────────────
-function StatChip({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string; sub: string; color: string }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-start gap-2.5 shadow-sm">
-      <div className="p-1.5 rounded-lg" style={{ background: `${color}18` }}>
-        <div style={{ color }}>{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-xs font-bold ${done ? "line-through text-gray-400" : "text-gray-800"}`}>{label}</span>
+          <PriorityPill p={priority} />
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5 truncate">{desc}</p>
       </div>
-      <div className="min-w-0">
-        <div className="text-xs text-gray-400 font-medium">{label}</div>
-        <div className="text-sm font-black leading-tight" style={{ color }}>{value}</div>
-        <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>
+      {!done && onAction && (
+        <button onClick={onAction}
+          className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg text-white whitespace-nowrap"
+          style={{ background: priority === "High" ? "#DC2626" : NAVY }}>
+          {actionLabel ?? "Action"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Timeline Entry ────────────────────────────────────────────────────────────
+function TimelineEntry({ item }: { item: Record<string, unknown> }) {
+  const noteType = String(item.noteType ?? item.type ?? "Note");
+  const remark = String(item.remark ?? item.note ?? item.notes ?? "—");
+  const date = String(item.createdAt ?? "");
+  const by = String(item.createdByName ?? item.calledByName ?? "");
+  const typeColor: Record<string, string> = {
+    "Check-in Call": GREEN, "Parent Call": ORANGE, "Progress Review": NAVY,
+    "Homework Support": "#8B5CF6", "Attendance Concern": "#DC2626",
+    "Academic Alert": "#DC2626", "Encouragement": GREEN, "General Note": "#6B7280",
+    "Follow-up": ORANGE,
+  };
+  const col = typeColor[noteType] ?? "#6B7280";
+  return (
+    <div className="flex gap-2.5 group">
+      <div className="flex flex-col items-center">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
+          style={{ background: col }}>
+          {noteType.charAt(0)}
+        </div>
+        <div className="flex-1 w-px bg-gray-100 mt-1" />
+      </div>
+      <div className="flex-1 pb-3 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold" style={{ color: col }}>{noteType}</span>
+          <span className="text-[10px] text-gray-400">{fmtRelative(date)}</span>
+          {by && <span className="text-[10px] text-gray-400 ml-auto">by {by}</span>}
+        </div>
+        <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{remark}</p>
+        {Boolean(item.followUpDate) && (
+          <span className="mt-1 inline-block text-[10px] text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+            📅 Follow-up: {fmtDate(String(item.followUpDate))}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Info table row ────────────────────────────────────────────────────────────
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
+// ── Section Card ──────────────────────────────────────────────────────────────
+function SCard({ title, icon, children, className = "" }: {
+  title: string; icon: React.ReactNode; children: React.ReactNode; className?: string;
+}) {
   return (
-    <div className="flex gap-2 py-2 border-b border-gray-50 last:border-0">
-      <span className="text-xs text-gray-400 w-28 shrink-0">{label}</span>
-      <span className="text-xs text-gray-700 font-medium flex-1">{value || "—"}</span>
+    <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden ${className}`}>
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+        <div style={{ color: NAVY }}>{icon}</div>
+        <h3 className="text-sm font-bold" style={{ color: NAVY }}>{title}</h3>
+      </div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Main Component
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Info Row ──────────────────────────────────────────────────────────────────
+function InfoRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="flex items-start justify-between py-1 border-b border-gray-50 last:border-0">
+      <span className="text-[11px] text-gray-400 font-medium shrink-0 mr-2">{label}</span>
+      <span className="text-[11px] text-gray-700 text-right">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STUDENT 360 — MENTOR OPERATING DASHBOARD
+// ─────────────────────────────────────────────────────────────────────────────
 export function Student360Page({ userId, onBack }: { userId: number; onBack: () => void }) {
+
+  // ── State ──────────────────────────────────────────────────────────────────
   const [data360, setData360] = useState<Record<string, unknown> | null>(null);
-  const [crm, setCrm] = useState<Record<string, unknown> | null>(null);
+  const [crm, setCrm]         = useState<Record<string, unknown> | null>(null);
   const [attendance, setAttendance] = useState<Record<string, unknown> | null>(null);
   const [assessments, setAssessments] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [trendRange, setTrendRange] = useState<"30d" | "90d" | "6m">("90d");
+  const [timelineOpen, setTimelineOpen] = useState(true);
+  const [actionsDone, setActionsDone] = useState<Set<string>>(new Set());
 
-  // CRM editing state
   const [editingParent, setEditingParent] = useState(false);
-  const [parentDraft, setParentDraft] = useState({ parentName: "", parentPhone: "", parentEmail: "" });
-  const [editingStage, setEditingStage] = useState(false);
-  const [stageDraft, setStageDraft] = useState("");
+  const [parentDraft, setParentDraft] = useState({ parentName: "", parentPhone: "" });
   const [savingCrm, setSavingCrm] = useState(false);
-  const [interactionForm, setInteractionForm] = useState({ type: "", notes: "", callDuration: "" });
-  const [savingInteraction, setSavingInteraction] = useState(false);
 
-  const tabBarRef = useRef<HTMLDivElement>(null);
+  const [noteForm, setNoteForm] = useState({ type: "General Note", notes: "" });
+  const [savingNote, setSavingNote] = useState(false);
 
-  // Load 360 + CRM eagerly
+  // ── Load all data eagerly ─────────────────────────────────────────────────
   useEffect(() => {
     setLoading(true);
     Promise.all([
       apiFetch(`/admin/students/${userId}/360`).then(r => r.json()).catch(() => ({})),
       apiFetch(`/admin/students/${userId}/crm`).then(r => r.json()).catch(() => ({})),
-    ]).then(([d360, dcrm]) => {
+      apiFetch(`/admin/students/${userId}/attendance`).then(r => r.json()).catch(() => ({})),
+      apiFetch(`/admin/students/${userId}/assessments`).then(r => r.json()).catch(() => ({})),
+    ]).then(([d360, dcrm, datt, dass]) => {
       setData360(d360 as Record<string, unknown>);
-      const c = dcrm as Record<string, unknown>;
-      setCrm(c);
-      setParentDraft({ parentName: String(c.parentName ?? ""), parentPhone: String(c.parentPhone ?? ""), parentEmail: String(c.parentEmail ?? "") });
-      setStageDraft(String(c.successStage ?? "Active"));
+      setCrm(dcrm as Record<string, unknown>);
+      setAttendance(datt as Record<string, unknown>);
+      setAssessments(dass as Record<string, unknown>);
+      const s = (dcrm as Record<string, unknown>)?.student as Record<string, unknown> ?? {};
+      setParentDraft({ parentName: String(s.parentName ?? ""), parentPhone: String(s.parentPhone ?? "") });
       setLoading(false);
     });
   }, [userId]);
 
-  // Load attendance lazily
-  useEffect(() => {
-    if (activeTab !== "attendance" || attendance) return;
-    apiFetch(`/admin/students/${userId}/attendance`).then(r => r.json()).then(d => setAttendance(d as Record<string, unknown>)).catch(() => setAttendance({}));
-  }, [activeTab, attendance, userId]);
-
-  // Load assessments lazily
-  useEffect(() => {
-    if (activeTab !== "assessments" || assessments) return;
-    apiFetch(`/admin/students/${userId}/assessments`).then(r => r.json()).then(d => setAssessments(d as Record<string, unknown>)).catch(() => setAssessments({}));
-  }, [activeTab, assessments, userId]);
-
-  const p = data360?.profile as Record<string, unknown> | undefined;
-  const courses = (data360?.enrolledCourses as unknown[]) ?? [];
-  const xpHistory = (data360?.xpHistory as unknown[]) ?? [];
-  const spaceLevel = data360?.spaceLevel as string | undefined;
-
-  // Derived KPIs from attendance + assessments + CRM
-  const attSummary = attendance?.summary as Record<string, unknown> | undefined;
-  const attendancePct = attSummary?.presentPct != null ? `${Math.round(Number(attSummary.presentPct))}%` : (crm ? "89%" : "—");
-  const hwPct = crm?.hwCompletion != null ? `${crm.hwCompletion}%` : "—";
-  const healthScore = crm?.healthScore != null ? `${crm.healthScore}/100` : "—";
-  const courseProgress = courses.length > 0 ? "65%" : "—";
-
-  // Assessments derived
-  const allTests = (assessments?.tests as Record<string, unknown>[]) ?? [];
-  const allHw = (assessments?.homeworks as Record<string, unknown>[]) ?? [];
-  const allAssignments = (assessments?.assignments as Record<string, unknown>[]) ?? [];
-  const scoredTests = allTests.filter(t => t.score != null && t.maxScore != null);
-  const avgScore = scoredTests.length > 0
-    ? Math.round(scoredTests.reduce((a, t) => a + (Number(t.score) / Number(t.maxScore)) * 100, 0) / scoredTests.length)
-    : 85;
-
-  // Months for charts
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-  const attendanceTrend = [80, 78, 85, 88, 90, 89, 91];
-  const healthTrend = [72, 75, 78, 80, 84, 86, 88];
-
-  // ── CRM helpers ─────────────────────────────────────────────────────────────
+  // ── CRM save ─────────────────────────────────────────────────────────────
   async function saveParent() {
     setSavingCrm(true);
     try {
       await apiFetch(`/admin/students/${userId}/crm`, {
         method: "PATCH",
-        body: JSON.stringify(parentDraft),
+        body: JSON.stringify({ parentName: parentDraft.parentName, parentPhone: parentDraft.parentPhone }),
       });
-      setCrm(prev => prev ? { ...prev, ...parentDraft } : prev);
+      setCrm(prev => {
+        if (!prev) return prev;
+        const s = (prev.student as Record<string,unknown>) ?? {};
+        return { ...prev, student: { ...s, parentName: parentDraft.parentName, parentPhone: parentDraft.parentPhone } };
+      });
       setEditingParent(false);
     } finally { setSavingCrm(false); }
   }
-  async function saveStage() {
-    setSavingCrm(true);
-    try {
-      await apiFetch(`/admin/students/${userId}/crm`, {
-        method: "PATCH",
-        body: JSON.stringify({ successStage: stageDraft }),
-      });
-      setCrm(prev => prev ? { ...prev, successStage: stageDraft } : prev);
-      setEditingStage(false);
-    } finally { setSavingCrm(false); }
-  }
-  async function logInteraction() {
-    if (!interactionForm.notes.trim()) return;
-    setSavingInteraction(true);
+
+  async function saveNote() {
+    if (!noteForm.notes.trim()) return;
+    setSavingNote(true);
     try {
       const res = await apiFetch(`/admin/students/${userId}/crm/interactions`, {
         method: "POST",
-        body: JSON.stringify(interactionForm),
+        body: JSON.stringify(noteForm),
       });
       if (res.ok) {
         const updated = await apiFetch(`/admin/students/${userId}/crm`).then(r => r.json());
-        setCrm(updated as Record<string, unknown>);
-        setInteractionForm({ type: "", notes: "", callDuration: "" });
+        setCrm(updated as Record<string,unknown>);
+        setNoteForm({ type: "General Note", notes: "" });
       }
-    } finally { setSavingInteraction(false); }
+    } finally { setSavingNote(false); }
   }
 
+  // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -403,876 +359,578 @@ export function Student360Page({ userId, onBack }: { userId: number; onBack: () 
     );
   }
 
-  const studentId = `STU${String(userId).padStart(4, "0")}`;
-  const studentName = String(p?.name ?? "Student");
-  const grade = p?.grade ? `Grade ${p.grade}` : "";
-  const school = String(p?.school ?? "");
-  const board = String(p?.board ?? "");
-  const mentorName = String(crm?.mentorName ?? "—");
-  const teacherName = String(crm?.teacherName ?? "—");
-  const enrolledDate = fmtDate(String(courses[0] ? (courses[0] as Record<string,unknown>).createdAt as string ?? "" : ""));
-  const courseName = String(courses[0] ? (courses[0] as Record<string,unknown>).title as string ?? "" : "");
-  const initials = studentName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
-  const successStage = String(crm?.successStage ?? "Active");
-  const stageColor = (crm?.successStage ? (SUCCESS_STAGE_COLORS[String(crm.successStage)] ?? GREEN) : GREEN);
+  // ── Data derivations ─────────────────────────────────────────────────────
+  const profile   = (data360?.profile   as Record<string, unknown>) ?? {};
+  const courses   = (data360?.enrolledCourses as Record<string, unknown>[]) ?? [];
+  const recentTests = (data360?.recentTests as Record<string, unknown>[]) ?? [];
+  const xpHistory = (data360?.xpHistory  as Record<string, unknown>[]) ?? [];
+  const spaceLevel = data360?.spaceLevel as string | undefined;
 
-  // Interaction log entries from CRM
-  const interactionLog = (crm?.interactionLog as Record<string, unknown>[]) ?? [];
+  const crmStudent  = (crm?.student    as Record<string, unknown>) ?? {};
+  const mentor      = crm?.assignedMentor as Record<string, unknown> | null | undefined;
+  const timeline    = (crm?.timeline   as Record<string, unknown>[]) ?? [];
+  const followUps   = (crm?.followUps  as Record<string, unknown>[]) ?? [];
+
+  const attSummary  = (attendance?.summary as Record<string, unknown>) ?? {};
+
+  const allTests        = (assessments?.tests        as Record<string, unknown>[]) ?? [];
+  const allHw           = (assessments?.homeworks     as Record<string, unknown>[]) ?? [];
+  const allAssignments  = (assessments?.assignments   as Record<string, unknown>[]) ?? [];
+
+  // KPIs
+  const attendancePct  = attSummary.presentPct != null
+    ? Math.round(Number(attSummary.presentPct))
+    : (crmStudent.attendancePct != null ? Number(crmStudent.attendancePct) : 89);
+  const hwPct          = crmStudent.hwCompletion != null ? Number(crmStudent.hwCompletion) : 85;
+  const healthScore    = crmStudent.healthScore  != null ? Number(crmStudent.healthScore)  : 85;
+  const riskLevel      = String(crmStudent.riskLevel ?? "good");
+  const daysSinceLogin = crmStudent.daysSinceLogin != null ? Number(crmStudent.daysSinceLogin) : 0;
+
+  const scoredTests = allTests.filter(t => t.score != null && t.maxScore != null);
+  const avgScore = scoredTests.length > 0
+    ? Math.round(scoredTests.reduce((a, t) => a + (Number(t.score) / Number(t.maxScore)) * 100, 0) / scoredTests.length)
+    : 85;
+
+  const engagementScore = Math.round((attendancePct * 0.3 + hwPct * 0.4 + avgScore * 0.3));
+
+  // Trend data (7 pts over the selected range)
+  const RANGE_LABELS: Record<string, string[]> = {
+    "30d": ["W1","W2","W3","W4","W5","W6","Now"],
+    "90d": ["Feb","Mar","Apr","May","Jun","Jul","Now"],
+    "6m":  ["Jan","Feb","Mar","Apr","May","Jun","Now"],
+  };
+  const labels = RANGE_LABELS[trendRange];
+  const trendAtt  = genTrend(attendancePct);
+  const trendAss  = genTrend(avgScore);
+  const trendHw   = genTrend(hwPct);
+  const trendEng  = genTrend(engagementScore);
+
+  const attDelta  = trendAtt[trendAtt.length - 1] - trendAtt[trendAtt.length - 2];
+  const assDelta  = trendAss[trendAss.length - 1] - trendAss[trendAss.length - 2];
+  const hwDelta   = trendHw[trendHw.length - 1]   - trendHw[trendHw.length - 2];
+  const engDelta  = trendEng[trendEng.length - 1]  - trendEng[trendEng.length - 2];
+
+  // Student info
+  const studentId   = `STU${String(userId).padStart(4, "0")}`;
+  const studentName = String(profile.name   ?? "Student");
+  const grade       = profile.grade ? `Grade ${profile.grade}` : "";
+  const school      = String(profile.school ?? "");
+  const initials    = studentName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+  const mentorName  = String(mentor?.mentorName ?? "—");
+  const parentName  = String(crmStudent.parentName  ?? "—");
+  const parentPhone = String(crmStudent.parentPhone ?? "—");
+  const enrolledDate = courses.length > 0 ? fmtDate(String(courses[0].enrolledAt ?? "")) : "—";
+  const streakDays  = Number(profile.streakDays ?? 0);
+  const totalXP     = xpHistory.reduce((a, x) => a + Number(x.amount ?? 0), 0);
+
+  // AI insights
+  const aiInsights: string[] = [];
+  if (healthScore >= 80) aiInsights.push("Student is performing well overall.");
+  else if (healthScore < 60) aiInsights.push("⚠️ Student is underperforming — immediate attention needed.");
+  else aiInsights.push("Student performance needs closer monitoring.");
+  if (attendancePct >= 85) aiInsights.push(`Attendance excellent at ${attendancePct}% — up this month.`);
+  else if (attendancePct < 70) aiInsights.push(`Attendance concern — only ${attendancePct}% this month.`);
+  else aiInsights.push(`Attendance at ${attendancePct}% — within acceptable range.`);
+  if (hwPct < 70) aiInsights.push("Homework completion has dropped — follow-up recommended.");
+  else aiInsights.push("Homework completion is strong and consistent.");
+  if (daysSinceLogin > 7) aiInsights.push(`Not logged in for ${daysSinceLogin} days — engagement concern.`);
+  else if (daysSinceLogin <= 1) aiInsights.push("Logged in recently — actively engaged.");
+  const upcoming = followUps.find(f => String(f.callStatus) !== "done" && f.nextFollowUpDate);
+  if (upcoming?.nextFollowUpDate) aiInsights.push(`Next parent follow-up: ${fmtDate(String(upcoming.nextFollowUpDate))}.`);
+
+  // Action items
+  type Priority = "High" | "Medium" | "Low";
+  interface ActionDef { id: string; icon: React.ReactNode; label: string; priority: Priority; desc: string; actionLabel: string; }
+  const actionItems: ActionDef[] = [];
+  const pendingFu = followUps.find(f => String(f.callStatus) !== "done");
+  actionItems.push({
+    id: "parent-call",
+    icon: <Phone className="w-4 h-4" />,
+    label: "Parent Call Due",
+    priority: pendingFu ? "High" : "Low",
+    desc: pendingFu?.nextFollowUpDate ? `Due ${fmtDate(String(pendingFu.nextFollowUpDate))}` : parentName !== "—" ? `Call ${parentName}` : "Schedule a parent call",
+    actionLabel: "Call Now",
+  });
+  actionItems.push({
+    id: "hw-followup",
+    icon: <BookOpen className="w-4 h-4" />,
+    label: "Homework Follow-up",
+    priority: hwPct < 70 ? "High" : hwPct < 80 ? "Medium" : "Low",
+    desc: `Completion at ${hwPct}% — ${hwPct >= 80 ? "on track" : "needs improvement"}`,
+    actionLabel: "Review",
+  });
+  actionItems.push({
+    id: "assessment",
+    icon: <Target className="w-4 h-4" />,
+    label: "Assessment Due",
+    priority: avgScore < 60 ? "High" : "Medium",
+    desc: allTests.length > 0 ? `Last score: ${avgScore}% · ${allTests.length} tests taken` : "No recent assessments",
+    actionLabel: "Schedule",
+  });
+  actionItems.push({
+    id: "payment",
+    icon: <CreditCard className="w-4 h-4" />,
+    label: "Payment Reminder",
+    priority: "Low",
+    desc: "Check next fee payment status",
+    actionLabel: "Check",
+  });
+  if (riskLevel === "at-risk" || riskLevel === "attention") {
+    actionItems.push({
+      id: "learning",
+      icon: <Shield className="w-4 h-4" />,
+      label: "Learning Health Review",
+      priority: riskLevel === "at-risk" ? "High" : "Medium",
+      desc: riskLevel === "at-risk" ? "Immediate intervention required" : "Schedule a learning review",
+      actionLabel: "Review",
+    });
+  }
+
+  // Merged timeline (timeline + followUps), sorted by date
+  const allTimeline = ([...timeline, ...followUps.map(f => ({
+    ...f,
+    noteType: String(f.noteType ?? "Follow-up"),
+    remark: String(f.note ?? ""),
+  }))] as Record<string, unknown>[]).sort((a, b) =>
+    new Date(String(b.createdAt ?? "")).getTime() - new Date(String(a.createdAt ?? "")).getTime()
+  ).slice(0, 20);
+
+  // Parent call stats from followUps
+  const callsThisMonth = followUps.filter(f => {
+    const d = new Date(String(f.createdAt ?? ""));
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  const lastCall = followUps[0];
+  const nextFollowUp = followUps.find(f => f.nextFollowUpDate && String(f.callStatus) !== "done");
 
   return (
-    <div className="flex flex-col h-full min-h-0" style={{ background: "#F5F7FF" }}>
+    <div className="flex flex-col h-full min-h-0" style={{ fontFamily: "Poppins, sans-serif", background: "#F5F7FF" }}>
 
-      {/* ── Breadcrumb bar ───────────────────────────────────────────────────── */}
+      {/* ── Breadcrumb ──────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-gray-200 px-5 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5 text-sm">
           <button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium transition-colors">Students</button>
           <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-          <span className="font-semibold" style={{ color: NAVY }}>Student 360</span>
+          <span className="font-bold" style={{ color: NAVY }}>Student 360</span>
+          <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+          <span className="text-gray-500">{studentName}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
-            Student ID: <span className="font-bold text-gray-600">{studentId}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+            {studentId}
           </span>
-          <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50 transition-colors" style={{ color: NAVY }}>
+          <button className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 bg-white shadow-sm hover:bg-gray-50"
+            style={{ color: NAVY }}>
             Actions <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* ── Student Header Card ──────────────────────────────────────────────── */}
+      {/* ── Hero Header ─────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-gray-200 shadow-sm shrink-0">
-        <div className="px-5 py-4 flex items-stretch gap-5">
+        <div className="px-5 py-4 flex items-start gap-4">
 
-          {/* Photo / Avatar */}
-          <div className="w-[72px] h-[88px] rounded-xl overflow-hidden shrink-0 shadow-sm border border-gray-200"
-            style={{ background: `linear-gradient(135deg, ${NAVY}22, ${NAVY}44)` }}>
-            <div className="w-full h-full flex items-center justify-center text-3xl font-black"
-              style={{ color: NAVY }}>
-              {initials || <User className="w-8 h-8" />}
-            </div>
+          {/* Avatar */}
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shrink-0 shadow-sm"
+            style={{ background: `linear-gradient(135deg, ${NAVY}cc, ${NAVY})` }}>
+            {initials || <User className="w-7 h-7" />}
           </div>
 
-          {/* Name + Info */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
+          {/* Info */}
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-[18px] font-black leading-tight" style={{ color: NAVY }}>{studentName}</h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">Active</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border"
-                style={{ background: `${stageColor}15`, color: stageColor, borderColor: `${stageColor}40` }}>
-                {successStage}
+              <h1 className="text-lg font-black leading-tight" style={{ color: NAVY }}>{studentName}</h1>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700 border border-green-200">Active</span>
+              {riskLevel !== "good" && riskLevel !== "excellent" && (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold text-white"
+                  style={{ background: riskColor(riskLevel) }}>
+                  {riskLabel(riskLevel)}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-gray-500 mt-0.5 font-medium">{[grade, school].filter(Boolean).join(" · ")}</div>
+            <div className="flex items-center gap-4 mt-1.5 flex-wrap text-[11px] text-gray-400">
+              {mentorName !== "—" && <span>Mentor: <span className="text-gray-700 font-semibold">{mentorName}</span></span>}
+              <span>ID: <span className="font-mono text-gray-600">{studentId}</span></span>
+              {enrolledDate !== "—" && <span>Enrolled: <span className="text-gray-600">{enrolledDate}</span></span>}
+              {parentName !== "—" && <span>Parent: <span className="text-gray-600">{parentName}</span></span>}
+            </div>
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700">
+                <BookOpen className="w-3 h-3" /> {courses.length} Course{courses.length !== 1 ? "s" : ""}
               </span>
-            </div>
-            <div className="text-xs text-gray-500 mt-1 font-medium">
-              {[grade, school, board].filter(Boolean).join(" · ")}
-            </div>
-            {courseName && (
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                  {courseName}
+              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-orange-50 text-orange-700">
+                <Flame className="w-3 h-3" /> {streakDays} Day Streak
+              </span>
+              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-yellow-50 text-yellow-700">
+                <Zap className="w-3 h-3" /> {totalXP} XP · {spaceLevel ?? "Earth Explorer"}
+              </span>
+              {daysSinceLogin >= 0 && (
+                <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg ${daysSinceLogin <= 1 ? "bg-green-50 text-green-700" : daysSinceLogin > 7 ? "bg-red-50 text-red-600" : "bg-gray-50 text-gray-500"}`}>
+                  <Clock className="w-3 h-3" /> Login {daysSinceLogin === 0 ? "Today" : `${daysSinceLogin}d ago`}
                 </span>
-                <span className="text-gray-300 text-xs">→</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                  {spaceLevel ?? "Earth Explorer"}
-                </span>
-              </div>
-            )}
-            <div className="text-[11px] text-gray-400 mt-1.5">
-              <span>Mentor: <span className="text-gray-600 font-medium">{mentorName}</span></span>
-              {teacherName !== "—" && <><span className="mx-1.5 text-gray-200">·</span>
-                <span>Teacher: <span className="text-gray-600 font-medium">{teacherName}</span></span></>}
-            </div>
-            {enrolledDate !== "—" && (
-              <div className="text-[11px] text-gray-400 mt-0.5">
-                Enrolled on: <span className="text-gray-600 font-medium">{enrolledDate}</span>
-              </div>
-            )}
-          </div>
-
-          {/* KPI group 1 */}
-          <div className="flex gap-2 shrink-0 items-start">
-            <KpiCard label="Attendance" value={attendancePct} sub="↑ 1% this month" color={GREEN}
-              icon={<TrendingUp className="w-3 h-3" />} />
-            <KpiCard label="Assessment" value={`${avgScore}%`} sub="↑ 7.5% this month" color={GREEN}
-              icon={<Target className="w-3 h-3" />} />
-            <KpiCard label="Homework" value={hwPct} sub="↑ 8% this month" color={GREEN}
-              icon={<BookOpen className="w-3 h-3" />} />
-          </div>
-
-          {/* KPI group 2 */}
-          <div className="flex gap-2 shrink-0 items-start">
-            <KpiCard label="Learning Health" value={healthScore} sub={healthLabel(crm?.riskLevel as string)}
-              color={healthColor(crm?.riskLevel as string)} icon={<Shield className="w-3 h-3" />} />
-            <KpiCard label="Course Progress" value={courseProgress} sub="On Track"
-              color={ORANGE} icon={<Target className="w-3 h-3" />} />
-            <KpiCard label="Payment Status" value="Paid" sub="Next due: 02 Jul 2026"
-              color={GREEN} icon={<CreditCard className="w-3 h-3" />} />
-          </div>
-        </div>
-
-        {/* Quick Notes + Next Follow-up */}
-        <div className="px-5 pb-3 flex gap-3">
-          <div className="flex-1 border border-green-200 rounded-lg p-2.5 bg-green-50">
-            <div className="text-[10px] font-bold text-green-700 mb-1 uppercase tracking-wide">Quick Notes</div>
-            <div className="text-xs text-gray-600">
-              {String(crm?.quickNotes ?? crm?.notes ?? "Showing good consistency in class participation and homework.")}
+              )}
             </div>
           </div>
-          <div className="flex-1 border border-blue-200 rounded-lg p-2.5 bg-blue-50">
-            <div className="text-[10px] font-bold text-blue-700 mb-1 uppercase tracking-wide">Next Follow-up</div>
-            <div className="text-xs text-gray-600">
-              {crm?.nextFollowUpDate
-                ? <>{fmtDate(String(crm.nextFollowUpDate))} — {String(crm.nextFollowUpNote ?? "Review test performance")}</>
-                : "Not scheduled — Review test performance"}
+
+          {/* Health Gauge */}
+          <HealthGauge score={healthScore} level={riskLevel} />
+
+          {/* AI Summary */}
+          <div className="w-56 shrink-0 rounded-2xl p-3 border border-blue-200"
+            style={{ background: "linear-gradient(135deg,#EFF6FF,#DBEAFE)" }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Activity className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-[10px] font-black text-blue-800 uppercase tracking-wide">AI Student Summary</span>
             </div>
+            <ul className="space-y-1">
+              {aiInsights.slice(0, 4).map((ins, i) => (
+                <li key={i} className="flex items-start gap-1.5">
+                  <span className="text-blue-400 mt-0.5 shrink-0">·</span>
+                  <span className="text-[10px] text-blue-900 leading-relaxed">{ins}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
 
-      {/* ── Tab Bar ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-200 shrink-0" ref={tabBarRef}>
-        <div className="px-5 flex gap-0 overflow-x-auto scrollbar-hide">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className="px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors shrink-0"
-              style={{
-                borderBottomColor: activeTab === t.id ? NAVY : "transparent",
-                color: activeTab === t.id ? NAVY : "#6B7280",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Tab Content ──────────────────────────────────────────────────────── */}
+      {/* ── Main Content ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-5">
+        <div className="p-4 grid grid-cols-5 gap-4">
 
-          {/* ═══════════════ OVERVIEW ═══════════════ */}
-          {activeTab === "overview" && (
-            <div className="grid grid-cols-3 gap-4">
+          {/* ══════════════════ LEFT COLUMN (3/5) ══════════════════ */}
+          <div className="col-span-3 space-y-4">
 
-              {/* Personal Information */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <User className="w-4 h-4" style={{ color: NAVY }} />
-                  <h3 className="text-sm font-bold" style={{ color: NAVY }}>Personal Information</h3>
+            {/* Action Center */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100"
+                style={{ background: `linear-gradient(135deg, ${NAVY}08, ${NAVY}04)` }}>
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white"
+                  style={{ background: NAVY }}>
+                  <Bell className="w-3.5 h-3.5" />
                 </div>
-                <InfoRow label="Date of Birth" value={p?.dateOfBirth ? fmtDate(String(p.dateOfBirth)) : p?.dob ? fmtDate(String(p.dob)) : "—"} />
-                <InfoRow label="Gender" value={String(p?.gender ?? "—")} />
-                <InfoRow label="Blood Group" value={String(p?.bloodGroup ?? "—")} />
-                <InfoRow label="Father Name" value={String(p?.fatherName ?? crm?.parentName ?? "—")} />
-                <InfoRow label="Mother Name" value={String(p?.motherName ?? "—")} />
-                <InfoRow label="Contact" value={String(p?.phone ?? "—")} />
-                <InfoRow label="Email" value={String(p?.email ?? "—")} />
-                <InfoRow label="Address" value={[p?.city, p?.state, "India"].filter(Boolean).map(String).join(", ") || "—"} />
+                <h3 className="text-sm font-black" style={{ color: NAVY }}>Action Center</h3>
+                <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                  style={{ background: ORANGE }}>
+                  {actionItems.filter(a => !actionsDone.has(a.id)).length}
+                </span>
+                <span className="ml-auto text-[10px] text-gray-400">Most important — act first</span>
               </div>
-
-              {/* Parent / Guardian Details */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4" style={{ color: NAVY }} />
-                    <h3 className="text-sm font-bold" style={{ color: NAVY }}>Parent / Guardian Details</h3>
-                  </div>
-                  {!editingParent ? (
-                    <button onClick={() => setEditingParent(true)}
-                      className="text-xs flex items-center gap-1 text-gray-400 hover:text-gray-600">
-                      <Edit2 className="w-3 h-3" /> Edit
-                    </button>
-                  ) : (
-                    <div className="flex gap-1">
-                      <button onClick={saveParent} disabled={savingCrm}
-                        className="text-xs flex items-center gap-1 px-2 py-0.5 rounded font-semibold"
-                        style={{ background: NAVY, color: "white" }}>
-                        {savingCrm ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
-                      </button>
-                      <button onClick={() => setEditingParent(false)} className="text-xs text-gray-400 hover:text-gray-600 px-1">✕</button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Father */}
-                <div className="mb-3 pb-3 border-b border-gray-100">
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Father</div>
-                  <InfoRow label="Name" value={editingParent ? undefined : String(crm?.parentName ?? "—")} />
-                  {editingParent && (
-                    <input value={parentDraft.parentName} onChange={e => setParentDraft(d => ({ ...d, parentName: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1 text-xs mb-1" placeholder="Father name" />
-                  )}
-                  <InfoRow label="Relation" value="Father" />
-                  <InfoRow label="Contact" value={editingParent ? undefined : String(crm?.parentPhone ?? p?.phone ?? "—")} />
-                  {editingParent && (
-                    <input value={parentDraft.parentPhone} onChange={e => setParentDraft(d => ({ ...d, parentPhone: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1 text-xs mb-1" placeholder="Contact number" />
-                  )}
-                  <InfoRow label="Email" value={editingParent ? undefined : String(crm?.parentEmail ?? "—")} />
-                  {editingParent && (
-                    <input value={parentDraft.parentEmail} onChange={e => setParentDraft(d => ({ ...d, parentEmail: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1 text-xs" placeholder="Email address" />
-                  )}
-                </div>
-
-                {/* Mentor */}
-                <div className="mb-3 pb-3 border-b border-gray-100">
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Mentor</div>
-                  <InfoRow label="Name" value={mentorName} />
-                  <InfoRow label="Contact" value={String(crm?.mentorPhone ?? "—")} />
-                </div>
-
-                {/* Student Status */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Student Status</div>
-                    {!editingStage ? (
-                      <button onClick={() => setEditingStage(true)}
-                        className="text-xs text-gray-400 hover:text-gray-600"><Edit2 className="w-3 h-3 inline" /></button>
-                    ) : (
-                      <div className="flex gap-1">
-                        <button onClick={saveStage} disabled={savingCrm}
-                          className="text-xs px-2 py-0.5 rounded font-semibold" style={{ background: NAVY, color: "white" }}>
-                          {savingCrm ? "…" : "Save"}
-                        </button>
-                        <button onClick={() => setEditingStage(false)} className="text-xs text-gray-400">✕</button>
-                      </div>
-                    )}
-                  </div>
-                  {editingStage ? (
-                    <select value={stageDraft} onChange={e => setStageDraft(e.target.value)}
-                      className="w-full border border-gray-200 rounded px-2 py-1 text-xs">
-                      {SUCCESS_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  ) : (
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold border"
-                      style={{ background: `${stageColor}18`, color: stageColor, borderColor: `${stageColor}40` }}>
-                      {successStage}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Academic Snapshot */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col">
-                <div className="flex items-center gap-2 mb-3">
-                  <Award className="w-4 h-4" style={{ color: NAVY }} />
-                  <h3 className="text-sm font-bold" style={{ color: NAVY }}>Academic Snapshot</h3>
-                </div>
-                <div className="flex-1 flex flex-col items-center justify-center">
-                  <PentagonChart
-                    labels={["Attendance", "Assessment", "Learning", "Homework", "Progress"]}
-                    studentVals={[
-                      attSummary?.presentPct ? Number(attSummary.presentPct) : 89,
-                      avgScore,
-                      crm?.healthScore ? Number(crm.healthScore) : 88,
-                      crm?.hwCompletion ? Number(crm.hwCompletion) : 92,
-                      65,
-                    ]}
-                    classVals={[75, 72, 78, 80, 70]}
+              <div className="p-3 space-y-2">
+                {actionItems.map(item => (
+                  <ActionItem
+                    key={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    priority={item.priority}
+                    desc={item.desc}
+                    actionLabel={item.actionLabel}
+                    done={actionsDone.has(item.id)}
+                    onAction={() => setActionsDone(p => { const n = new Set(p); n.has(item.id) ? n.delete(item.id) : n.add(item.id); return n; })}
                   />
-                  <div className="flex items-center gap-4 mt-2 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-0.5 rounded" style={{ background: NAVY }} />
-                      <span className="text-gray-500">Student</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-0.5 rounded border-t-2 border-dashed" style={{ borderColor: ORANGE }} />
-                      <span className="text-gray-500">Class Avg</span>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* ═══════════════ COURSES ═══════════════ */}
-          {activeTab === "courses" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
-                <h3 className="text-sm font-bold" style={{ color: NAVY }}>Enrolled Courses</h3>
-                <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{courses.length} courses</span>
-              </div>
-              {courses.length === 0 ? (
-                <div className="py-12 text-center text-sm text-gray-400">No courses enrolled yet</div>
-              ) : (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      {["Course", "Grade", "Teacher", "Enrolled", "Status"].map(h => (
-                        <th key={h} className="px-4 py-2 text-left font-semibold text-gray-500">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(courses as Record<string, unknown>[]).map((c, i) => (
-                      <tr key={i} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>{String(c.title ?? "—")}</td>
-                        <td className="px-4 py-3 text-gray-500">Grade {String(c.grade ?? p?.grade ?? "—")}</td>
-                        <td className="px-4 py-3 text-gray-500">{String(c.teacherName ?? "—")}</td>
-                        <td className="px-4 py-3 text-gray-500">{fmtDate(String(c.createdAt ?? ""))}</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">Active</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          {/* ═══════════════ ATTENDANCE ═══════════════ */}
-          {activeTab === "attendance" && (
-            <div className="space-y-4">
-              {!attSummary && !attendance ? (
-                <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
-              ) : (
-                <>
-                  {/* Stat chips */}
-                  <div className="grid grid-cols-5 gap-3">
-                    <StatChip icon={<CheckCircle2 className="w-4 h-4" />} label="Present"
-                      value={String(attSummary?.present ?? 44)} sub={`${attSummary?.presentPct ? Math.round(Number(attSummary.presentPct)) : 89}%`} color={GREEN} />
-                    <StatChip icon={<AlertTriangle className="w-4 h-4" />} label="Absent"
-                      value={String(attSummary?.absent ?? 4)} sub="10%" color="#DC2626" />
-                    <StatChip icon={<Clock className="w-4 h-4" />} label="Late"
-                      value={String(attSummary?.late ?? 2)} sub="1%" color="#D97706" />
-                    <StatChip icon={<Calendar className="w-4 h-4" />} label="Leave"
-                      value={String(attSummary?.leave ?? 1)} sub="Leave taken" color="#6B7280" />
-                    <StatChip icon={<TrendingUp className="w-4 h-4" />} label="This Month"
-                      value={`${attSummary?.presentPct ? Math.round(Number(attSummary.presentPct)) : 89}%`}
-                      sub="↑ 0.6% from last month" color={NAVY} />
-                  </div>
-
-                  {/* Total classes summary */}
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 flex items-center gap-6">
-                    {[
-                      { label: "Total Classes", value: attSummary?.total ?? 51 },
-                      { label: "Attended", value: attSummary?.present ?? 44 },
-                      { label: "Absent", value: attSummary?.absent ?? 5 },
-                      { label: "Late", value: attSummary?.late ?? 2 },
-                    ].map(item => (
-                      <div key={item.label} className="text-center">
-                        <div className="text-lg font-black" style={{ color: NAVY }}>{String(item.value)}</div>
-                        <div className="text-[10px] text-gray-400">{item.label}</div>
-                      </div>
-                    ))}
-                    <div className="flex-1" />
-                    <div className="text-right">
-                      <div className="text-2xl font-black" style={{ color: GREEN }}>{attSummary?.presentPct ? `${Math.round(Number(attSummary.presentPct))}%` : "89%"}</div>
-                      <div className="text-xs text-gray-400">↑ 0.6% from last month</div>
-                    </div>
-                    <div className="text-xs text-gray-400">This Month Attendance</div>
-                  </div>
-
-                  {/* 3-column charts */}
-                  <div className="grid grid-cols-3 gap-4">
-                    {/* Monthly Trend */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 col-span-1">
-                      <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Monthly Attendance Trend</h4>
-                      <LineChart months={months} values={attendanceTrend} color={NAVY} />
-                    </div>
-
-                    {/* Subject-wise */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 col-span-1">
-                      <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Subject-wise Attendance</h4>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-gray-400">
-                            <th className="text-left pb-1 font-medium">Subject</th>
-                            <th className="text-right pb-1 font-medium">Att.</th>
-                            <th className="text-right pb-1 font-medium">Total</th>
-                            <th className="text-right pb-1 font-medium">%</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[
-                            { sub: "Math", att: 18, total: 20 },
-                            { sub: "Science", att: 18, total: 20 },
-                            { sub: "English", att: 19, total: 20 },
-                            { sub: "EVS", att: 16, total: 20 },
-                            { sub: "General Knowledge", att: 16, total: 20 },
-                          ].map(r => (
-                            <tr key={r.sub} className="border-t border-gray-50">
-                              <td className="py-1.5 text-gray-700 font-medium">{r.sub}</td>
-                              <td className="py-1.5 text-right text-gray-500">{r.att}</td>
-                              <td className="py-1.5 text-right text-gray-500">{r.total}</td>
-                              <td className="py-1.5 text-right">
-                                <span className="font-bold" style={{ color: GREEN }}>{Math.round(r.att/r.total*100)}%</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Calendar + insight */}
-                    <div className="col-span-1 space-y-3">
-                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                        <h4 className="text-xs font-bold mb-2" style={{ color: NAVY }}>Attendance Calendar — June 2026</h4>
-                        <div className="grid grid-cols-7 gap-0.5 text-center text-[10px]">
-                          {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
-                            <div key={d} className="text-gray-400 font-semibold py-0.5">{d}</div>
-                          ))}
-                          {[...Array(2)].map((_, i) => <div key={`e${i}`} />)}
-                          {[...Array(30)].map((_, i) => {
-                            const day = i + 1;
-                            const isPresent = ![7,8,14,15,21,22,28,29].includes(day) && day <= 30;
-                            const isWeekend = (i + 2) % 7 === 0 || (i + 2) % 7 === 6;
-                            const color = isWeekend ? "bg-gray-50 text-gray-300"
-                              : isPresent ? "bg-green-100 text-green-700 font-semibold"
-                              : "bg-red-100 text-red-600 font-semibold";
-                            return <div key={day} className={`rounded py-0.5 text-center ${color}`}>{day}</div>;
-                          })}
-                        </div>
-                        <div className="flex gap-3 mt-2 text-[10px] text-gray-400">
-                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-green-100" />Present</div>
-                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-red-100" />Absent</div>
-                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-gray-100" />Holiday</div>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-start gap-3">
-                        <Trophy className="w-8 h-8 text-yellow-500 shrink-0" />
-                        <div>
-                          <div className="text-xs font-bold text-gray-700">Keep it up!</div>
-                          <div className="text-[11px] text-gray-500 mt-0.5">{studentName} is maintaining excellent attendance.</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recent Attendance Logs */}
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                      <Calendar className="w-4 h-4" style={{ color: NAVY }} />
-                      <h4 className="text-xs font-bold" style={{ color: NAVY }}>Recent Attendance Logs</h4>
-                    </div>
-                    {((attendance?.records as Record<string,unknown>[]) ?? []).length === 0 ? (
-                      <div className="py-6 text-center text-xs text-gray-400">No attendance records found</div>
-                    ) : (
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            {["Date","Class","Subject","Status","Marked By"].map(h => (
-                              <th key={h} className="px-4 py-2 text-left font-semibold text-gray-500">{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {((attendance?.records as Record<string,unknown>[]) ?? []).slice(0,10).map((r, i) => (
-                            <tr key={i} className="border-t border-gray-50 hover:bg-gray-50">
-                              <td className="px-4 py-2.5 text-gray-600">{String(r.attendanceDate ?? "—")}</td>
-                              <td className="px-4 py-2.5 text-gray-600">Live Class</td>
-                              <td className="px-4 py-2.5 text-gray-600">{String(r.subject ?? "—")}</td>
-                              <td className="px-4 py-2.5">
-                                <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${
-                                  r.status === "present" ? "bg-green-100 text-green-700"
-                                  : r.status === "absent" ? "bg-red-100 text-red-700"
-                                  : r.status === "late" ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-gray-100 text-gray-600"
-                                }`}>
-                                  {String(r.status ?? "—")}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 text-gray-500">{String(r.calledByName ?? "—")}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ═══════════════ ASSESSMENTS ═══════════════ */}
-          {activeTab === "assessments" && (
-            <div className="space-y-4">
-              {!assessments ? (
-                <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
-              ) : (
-                <>
-                  {/* Stat chips */}
-                  <div className="grid grid-cols-5 gap-3">
-                    <StatChip icon={<TrendingUp className="w-4 h-4" />} label="Average Score"
-                      value={`${avgScore}%`} sub="↑ 7% this month" color={GREEN} />
-                    <StatChip icon={<Target className="w-4 h-4" />} label="Tests"
-                      value={String(allTests.length || 4)} sub="Completed" color={NAVY} />
-                    <StatChip icon={<BookOpen className="w-4 h-4" />} label="Assignments"
-                      value={String(allAssignments.length || 6)} sub="Submitted" color={ORANGE} />
-                    <StatChip icon={<Zap className="w-4 h-4" />} label="Quizzes"
-                      value={String(allHw.length || 5)} sub="Completed" color="#8B5CF6" />
-                    <StatChip icon={<Trophy className="w-4 h-4" />} label="Rank in Batch"
-                      value="3 / 25" sub="Top student" color="#D97706" />
-                  </div>
-
-                  {/* Filters */}
-                  <div className="flex items-center gap-2">
-                    {["All Types", "All Subjects", "Last 3 Months"].map(f => (
-                      <button key={f} className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 text-gray-600">
-                        {f} <ChevronDown className="w-3 h-3" />
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* 2-col: table + charts */}
-                  <div className="grid grid-cols-5 gap-4">
-                    {/* Assessment table */}
-                    <div className="col-span-3 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            {["Assessment","Type","Subject","Score","Percentage","Date","Status"].map(h => (
-                              <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500">{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(allTests.length > 0 ? allTests : [
-                            { title: "Unit 2: Plants & Animals", type: "Test", subject: "Science", score: 18, maxScore: 20, percentage: 90, date: "07 Jun 2026", status: "Graded" },
-                            { title: "Fractions Homework", type: "Homework", subject: "Math", score: 8, maxScore: 10, percentage: 80, date: "06 Jun 2026", status: "Completed" },
-                            { title: "Water Cycle Quiz", type: "Quiz", subject: "Science", score: 6, maxScore: 10, percentage: 60, date: "06 Jun 2026", status: "Graded" },
-                            { title: "Our Earth Assignment", type: "Assignment", subject: "EVS", score: null, maxScore: 10, percentage: null, date: "05 Jun 2026", status: "Submitted" },
-                            { title: "Motion & Force Test", type: "Test", subject: "Science", score: 14, maxScore: 20, percentage: 80, date: "05 Jun 2026", status: "Graded" },
-                            { title: "Grammar Quiz", type: "Quiz", subject: "English", score: 9, maxScore: 10, percentage: 90, date: "04 Jun 2026", status: "Graded" },
-                          ] as Record<string,unknown>[]).slice(0, 8).map((t, i) => {
-                            const pct = t.percentage != null ? Number(t.percentage)
-                              : (t.score != null && t.maxScore != null ? Math.round(Number(t.score) / Number(t.maxScore) * 100) : null);
-                            const statusColor = String(t.status) === "Graded" ? "bg-green-100 text-green-700"
-                              : String(t.status) === "Submitted" ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-600";
-                            return (
-                              <tr key={i} className="border-t border-gray-50 hover:bg-gray-50">
-                                <td className="px-3 py-2.5 font-medium text-gray-700 max-w-[140px] truncate">{String(t.title ?? t.testTitle ?? "—")}</td>
-                                <td className="px-3 py-2.5 text-gray-500">{String(t.type ?? "Test")}</td>
-                                <td className="px-3 py-2.5 text-gray-500">{String(t.subject ?? t.subjectName ?? "—")}</td>
-                                <td className="px-3 py-2.5 text-gray-600">{t.score != null ? `${t.score}/${t.maxScore ?? 10}` : "—"}</td>
-                                <td className="px-3 py-2.5">
-                                  {pct != null ? (
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-12 bg-gray-100 rounded-full h-1.5">
-                                        <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: pct >= 75 ? GREEN : pct >= 50 ? "#D97706" : "#DC2626" }} />
-                                      </div>
-                                      <span className="font-semibold">{pct}%</span>
-                                    </div>
-                                  ) : "—"}
-                                </td>
-                                <td className="px-3 py-2.5 text-gray-500">{String(t.date ?? fmtDate(String(t.submittedAt ?? "")))}</td>
-                                <td className="px-3 py-2.5">
-                                  <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${statusColor}`}>{String(t.status ?? "—")}</span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Charts */}
-                    <div className="col-span-2 space-y-4">
-                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                        <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Performance by Subject</h4>
-                        <div className="space-y-2">
-                          {[
-                            { label: "Math", value: 65 },
-                            { label: "Science", value: 77 },
-                            { label: "EVS", value: 71 },
-                            { label: "English", value: 80 },
-                          ].map(s => (
-                            <div key={s.label} className="flex items-center gap-2 text-xs">
-                              <span className="w-16 text-gray-500 shrink-0">{s.label}</span>
-                              <div className="flex-1 bg-gray-100 rounded-full h-2">
-                                <div className="h-2 rounded-full" style={{ width: `${s.value}%`, background: NAVY }} />
-                              </div>
-                              <span className="font-bold w-8 text-right" style={{ color: NAVY }}>{s.value}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                        <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Score Distribution</h4>
-                        <DonutChart segments={[
-                          { label: "90–100%", pct: 40, color: GREEN },
-                          { label: "75–89%", pct: 40, color: NAVY },
-                          { label: "60–74%", pct: 20, color: "#D97706" },
-                          { label: "Below 60%", pct: 0, color: "#DC2626" },
-                        ]} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recent Achievements */}
-                  <div>
-                    <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Recent Achievements in Assessments</h4>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { icon: "🏆", title: "Scored 90% in Unit 2: Plants & Animals", sub: "07 Jun 2026", color: "#F59E0B" },
-                        { icon: "📚", title: "Completed 6 homeworks on time", sub: "This month", color: GREEN },
-                        { icon: "⭐", title: "Ranked Top 12% in Math", sub: "This month", color: NAVY },
-                      ].map((a, i) => (
-                        <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
-                          <div className="text-2xl">{a.icon}</div>
-                          <div>
-                            <div className="text-xs font-semibold text-gray-700">{a.title}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5">{a.sub}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ═══════════════ LEARNING HEALTH ═══════════════ */}
-          {activeTab === "learning" && (
-            <div className="space-y-4">
-              {/* Stat chips */}
-              <div className="grid grid-cols-5 gap-3">
-                <StatChip icon={<Shield className="w-4 h-4" />} label="Health Score"
-                  value={healthScore} sub={healthLabel(crm?.riskLevel as string)} color={healthColor(crm?.riskLevel as string)} />
-                <StatChip icon={<Zap className="w-4 h-4" />} label="Engagement Score"
-                  value={crm?.hwCompletion != null ? `${crm.hwCompletion}/100` : "82/100"}
-                  sub={Number(crm?.hwCompletion ?? 82) >= 80 ? "Good" : "Needs work"} color={NAVY} />
-                <StatChip icon={<AlertTriangle className="w-4 h-4" />} label="Risk Level"
-                  value={crm?.riskLevel === "at-risk" ? "High Risk" : crm?.riskLevel === "attention" ? "Medium" : "Low Risk"}
-                  sub={crm?.riskLevel === "at-risk" ? "Immediate action" : "Safe"} color={healthColor(crm?.riskLevel as string)} />
-                <StatChip icon={<Clock className="w-4 h-4" />} label="Last Login"
-                  value={crm?.daysSinceLogin != null && Number(crm.daysSinceLogin) < 999 ? `${crm.daysSinceLogin}d ago` : "07 Jun 2026"}
-                  sub="10:50 AM" color={Number(crm?.daysSinceLogin ?? 1) <= 3 ? GREEN : "#D97706"} />
-                <StatChip icon={<Award className="w-4 h-4" />} label="Streak"
-                  value={crm?.streakDays ? `${crm.streakDays} Days` : "12 Days"}
-                  sub="Keep it up!" color={ORANGE} />
-              </div>
-
-              {/* 3-col layout */}
-              <div className="grid grid-cols-3 gap-4">
-                {/* Health overview bars */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Learning Health Overview</h4>
-                  <div className="space-y-2.5">
-                    <HBar label="Engagement" value={93} color={GREEN} />
-                    <HBar label="Homework Completion" value={crm?.hwCompletion ? Number(crm.hwCompletion) : 90} color={GREEN} />
-                    <HBar label="Assessment Completion" value={100} color={GREEN} />
-                    <HBar label="Class Participation" value={85} color={NAVY} />
-                    <HBar label="Concept Understanding" value={60} color={ORANGE} />
-                  </div>
-                </div>
-
-                {/* Health Trend */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>Health Trend</h4>
-                  <BarChart months={months} values={healthTrend} color={NAVY} />
-                </div>
-
-                {/* At Risk + Recommendations */}
-                <div className="space-y-3">
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                    <h4 className="text-xs font-bold mb-3" style={{ color: NAVY }}>At Risk Indicators</h4>
-                    <div className="space-y-2">
-                      {[
-                        { label: "Low Attendance", risk: false },
-                        { label: "Missing Homework", risk: false },
-                        { label: "Low Scores", risk: false },
-                        { label: "Low Engagement", risk: false },
-                        { label: "Irregular Login", risk: false },
-                      ].map(item => (
-                        <div key={item.label} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-600">{item.label}</span>
-                          <span className={`font-bold ${item.risk ? "text-red-600" : "text-green-600"}`}>
-                            {item.risk ? "Yes" : "No"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                    <h4 className="text-xs font-bold mb-2" style={{ color: NAVY }}>Recommendations</h4>
-                    <div className="space-y-2">
-                      {[
-                        { icon: "🏆", title: "Keep it up!", text: "Doing great. Maintain the momentum." },
-                        { icon: "🎯", title: "Focus Area", text: "Keep practicing Math problems for better speed." },
-                        { icon: "📝", title: "Suggested Action", text: "Attempt more quizzes to strengthen concepts." },
-                        { icon: "👩‍🏫", title: "Mentor Note", text: String(crm?.mentorNote ?? "Showing consistent improvement in assessments.") },
-                      ].map((r, i) => (
-                        <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-gray-50">
-                          <span className="text-base">{r.icon}</span>
-                          <div>
-                            <div className="text-[10px] font-bold text-gray-700">{r.title}</div>
-                            <div className="text-[10px] text-gray-500 mt-0.5">{r.text}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+            {/* Performance Trends */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                <TrendingUp className="w-4 h-4" style={{ color: NAVY }} />
+                <h3 className="text-sm font-bold" style={{ color: NAVY }}>Performance Trends</h3>
+                <div className="ml-auto flex gap-1">
+                  {(["30d", "90d", "6m"] as const).map(r => (
+                    <button key={r} onClick={() => setTrendRange(r)}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${trendRange === r ? "text-white" : "text-gray-400 hover:text-gray-600"}`}
+                      style={trendRange === r ? { background: NAVY } : {}}>
+                      {r}
+                    </button>
+                  ))}
                 </div>
               </div>
+              <div className="p-4 grid grid-cols-2 gap-4">
+                {[
+                  { label: "Attendance", data: trendAtt, color: GREEN },
+                  { label: "Assessment", data: trendAss, color: NAVY },
+                  { label: "Homework", data: trendHw, color: ORANGE },
+                  { label: "Engagement", data: trendEng, color: "#8B5CF6" },
+                ].map(({ label, data, color }) => (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-gray-600">{label}</span>
+                      <span className="text-xs font-black" style={{ color }}>{data[data.length - 1]}%</span>
+                    </div>
+                    <Sparkline data={data} color={color} height={52} labels={labels} />
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
 
-          {/* ═══════════════ CUSTOMER SUCCESS ═══════════════ */}
-          {activeTab === "crm" && (
-            <div className="space-y-4">
-              {/* Log Interaction */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <h4 className="text-sm font-bold mb-3" style={{ color: NAVY }}>Log Interaction</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Interaction Type</label>
-                    <select value={interactionForm.type} onChange={e => setInteractionForm(f => ({ ...f, type: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs">
-                      <option value="">Select type…</option>
-                      {INTERACTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Call Duration (mins)</label>
-                    <input value={interactionForm.callDuration}
-                      onChange={e => setInteractionForm(f => ({ ...f, callDuration: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs" placeholder="e.g. 15" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Notes</label>
+            {/* Mentor Timeline */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <button
+                className="w-full flex items-center gap-2 px-4 py-3 border-b border-gray-100 text-left hover:bg-gray-50 transition-colors"
+                onClick={() => setTimelineOpen(o => !o)}>
+                <Clock className="w-4 h-4" style={{ color: NAVY }} />
+                <h3 className="text-sm font-bold flex-1" style={{ color: NAVY }}>Mentor Timeline</h3>
+                <span className="text-[10px] text-gray-400 mr-2">{allTimeline.length} entries</span>
+                {timelineOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              </button>
+              {timelineOpen && (
+                <div className="p-4">
+                  {/* Quick note form */}
+                  <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">Log Quick Note</div>
                     <div className="flex gap-2">
-                      <input value={interactionForm.notes}
-                        onChange={e => setInteractionForm(f => ({ ...f, notes: e.target.value }))}
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs" placeholder="Add notes…" />
-                      <button onClick={logInteraction} disabled={savingInteraction || !interactionForm.notes.trim()}
-                        className="px-3 py-2 rounded-lg text-xs font-bold text-white transition-colors disabled:opacity-50"
+                      <select value={noteForm.type} onChange={e => setNoteForm(f => ({ ...f, type: e.target.value }))}
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 shrink-0">
+                        {["General Note","Check-in Call","Parent Call","Progress Review","Homework Support","Attendance Concern","Encouragement"].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      <input value={noteForm.notes} placeholder="Add a note…"
+                        onChange={e => setNoteForm(f => ({ ...f, notes: e.target.value }))}
+                        className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5" />
+                      <button onClick={saveNote} disabled={savingNote || !noteForm.notes.trim()}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50 shrink-0"
                         style={{ background: NAVY }}>
-                        {savingInteraction ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+                        {savingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
                       </button>
                     </div>
                   </div>
+                  {allTimeline.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-gray-400">No interactions logged yet</div>
+                  ) : (
+                    <div>
+                      {allTimeline.map((item, i) => <TimelineEntry key={i} item={item} />)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Achievements */}
+            <SCard title="Achievements" icon={<Trophy className="w-4 h-4" />}>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="text-center p-3 rounded-xl bg-gradient-to-b from-yellow-50 to-white border border-yellow-100">
+                  <div className="text-3xl mb-1">🚀</div>
+                  <div className="text-xs font-black" style={{ color: NAVY }}>{spaceLevel ?? "Earth Explorer"}</div>
+                  <div className="text-[9px] text-gray-400 mt-0.5">Space Level</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-gradient-to-b from-orange-50 to-white border border-orange-100">
+                  <div className="text-2xl font-black mb-1" style={{ color: ORANGE }}>{totalXP}</div>
+                  <div className="text-xs font-bold text-gray-600">Total XP</div>
+                  <div className="text-[9px] text-gray-400 mt-0.5">{xpHistory.length} activities</div>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-gradient-to-b from-red-50 to-white border border-red-100">
+                  <div className="text-2xl font-black mb-1 text-red-500">{streakDays}</div>
+                  <div className="text-xs font-bold text-gray-600">Day Streak</div>
+                  <div className="text-[9px] text-gray-400 mt-0.5">🔥 Keep going!</div>
                 </div>
               </div>
+              {/* Badge row */}
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { icon: "🏆", label: "Top Performer", color: "#F59E0B" },
+                  { icon: "📅", label: "Attendance Star", color: GREEN },
+                  { icon: "⚡", label: "Quick Learner", color: NAVY },
+                ].map((b, i) => (
+                  <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-100 bg-gray-50">
+                    <span className="text-base">{b.icon}</span>
+                    <span className="text-[10px] font-bold text-gray-600">{b.label}</span>
+                  </div>
+                ))}
+              </div>
+            </SCard>
+          </div>
 
-              {/* Interaction log */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Clock className="w-4 h-4" style={{ color: NAVY }} />
-                  <h4 className="text-sm font-bold" style={{ color: NAVY }}>Interaction Log</h4>
-                  <span className="ml-auto text-xs text-gray-400">{interactionLog.length} entries</span>
-                </div>
-                {interactionLog.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-gray-400">No interactions logged yet</div>
+          {/* ══════════════════ RIGHT COLUMN (2/5) ══════════════════ */}
+          <div className="col-span-2 space-y-4">
+
+            {/* Performance Overview */}
+            <SCard title="Performance Overview" icon={<Activity className="w-4 h-4" />}>
+              <div className="space-y-3">
+                <PerfBar label="Attendance"     value={attendancePct} delta={attDelta} color={scoreColor(attendancePct)} />
+                <PerfBar label="Assessment"     value={avgScore}       delta={assDelta} color={scoreColor(avgScore)} />
+                <PerfBar label="Homework"       value={hwPct}          delta={hwDelta}  color={scoreColor(hwPct)} />
+                <PerfBar label="Engagement"     value={engagementScore} delta={engDelta} color={scoreColor(engagementScore)} />
+                <PerfBar label="Learning Health" value={healthScore}   delta={Math.round(engDelta * 0.5)} color={riskColor(riskLevel)} />
+              </div>
+            </SCard>
+
+            {/* Parent Relationship */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                <Phone className="w-4 h-4" style={{ color: NAVY }} />
+                <h3 className="text-sm font-bold flex-1" style={{ color: NAVY }}>Parent Relationship</h3>
+                {!editingParent ? (
+                  <button onClick={() => setEditingParent(true)} className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Edit
+                  </button>
                 ) : (
-                  <div className="divide-y divide-gray-50">
-                    {interactionLog.slice(0, 15).map((entry, i) => (
-                      <div key={i} className="px-4 py-3 flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <User className="w-3 h-3 text-gray-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-semibold text-gray-700">{String(entry.type ?? "Note")}</span>
-                            {entry.callDuration != null && (
-                              <span className="text-[10px] text-gray-400">· {String(entry.callDuration)} mins</span>
-                            )}
-                            <span className="text-[10px] text-gray-400 ml-auto">{fmtDateTime(String(entry.createdAt ?? ""))}</span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-0.5">{String(entry.notes ?? "—")}</p>
-                          {entry.calledBy != null && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">by {String(entry.calledBy)}</p>
-                          )}
-                        </div>
+                  <div className="flex gap-1">
+                    <button onClick={saveParent} disabled={savingCrm}
+                      className="text-[10px] px-2 py-0.5 rounded font-bold text-white" style={{ background: NAVY }}>
+                      {savingCrm ? "…" : <span className="flex items-center gap-0.5"><Save className="w-3 h-3" /> Save</span>}
+                    </button>
+                    <button onClick={() => setEditingParent(false)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">✕</button>
+                  </div>
+                )}
+              </div>
+              <div className="p-4 space-y-3">
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                    <div className="text-xs font-black" style={{ color: NAVY }}>
+                      {lastCall ? fmtRelative(String(lastCall.createdAt ?? "")) : "—"}
+                    </div>
+                    <div className="text-[9px] text-gray-400 mt-0.5">Last Call</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                    <div className="text-xs font-black" style={{ color: NAVY }}>{callsThisMonth}</div>
+                    <div className="text-[9px] text-gray-400 mt-0.5">Calls This Month</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                    <div className="text-xs font-black text-green-600">Positive</div>
+                    <div className="text-[9px] text-gray-400 mt-0.5">Sentiment</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                    <div className="text-xs font-black" style={{ color: ORANGE }}>
+                      {nextFollowUp?.nextFollowUpDate ? fmtDate(String(nextFollowUp.nextFollowUpDate)) : "Not set"}
+                    </div>
+                    <div className="text-[9px] text-gray-400 mt-0.5">Next Follow-up</div>
+                  </div>
+                </div>
+
+                {/* Contact info */}
+                {editingParent ? (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[9px] text-gray-400 uppercase tracking-wide">Parent Name</label>
+                      <input value={parentDraft.parentName}
+                        onChange={e => setParentDraft(d => ({ ...d, parentName: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs mt-0.5" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-400 uppercase tracking-wide">Phone</label>
+                      <input value={parentDraft.parentPhone}
+                        onChange={e => setParentDraft(d => ({ ...d, parentPhone: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs mt-0.5" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <InfoRow label="Parent" value={parentName} />
+                    <InfoRow label="Contact" value={parentPhone} />
+                  </div>
+                )}
+
+                {/* Recent notes */}
+                {followUps.length > 0 && (
+                  <div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Recent Notes</div>
+                    {followUps.slice(0, 2).map((f, i) => (
+                      <div key={i} className="text-[10px] text-gray-600 mb-1 p-2 bg-gray-50 rounded-lg leading-relaxed">
+                        <span className="font-semibold text-gray-400 mr-1">{fmtRelative(String(f.createdAt ?? ""))}:</span>
+                        {String(f.note ?? "—").slice(0, 80)}{String(f.note ?? "").length > 80 ? "…" : ""}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
-          )}
 
-          {/* ═══════════════ PAYMENTS ═══════════════ */}
-          {activeTab === "payments" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
-              <CreditCard className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <div className="text-sm font-semibold text-gray-400">Payment history coming soon</div>
-              <div className="text-xs text-gray-300 mt-1">Fee records and transaction history will appear here</div>
-            </div>
-          )}
-
-          {/* ═══════════════ ACHIEVEMENTS ═══════════════ */}
-          {activeTab === "achievements" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                {/* Space Level */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 text-center">
-                  <div className="text-4xl mb-2">🚀</div>
-                  <div className="text-base font-black" style={{ color: NAVY }}>{spaceLevel ?? "Earth Explorer"}</div>
-                  <div className="text-xs text-gray-400 mt-1">Current Space Level</div>
-                </div>
-                {/* XP */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 text-center">
-                  <div className="text-4xl mb-2">⚡</div>
-                  <div className="text-3xl font-black" style={{ color: ORANGE }}>
-                    {data360?.totalXP != null
-                      ? String(Number(data360.totalXP))
-                      : String((xpHistory as Record<string,unknown>[]).reduce((a, x) => a + Number(x.points ?? 0), 0) || "—")}
+            {/* Learning Health */}
+            <SCard title="Learning Health" icon={<Shield className="w-4 h-4" />}>
+              <div className="space-y-2.5">
+                {[
+                  { label: "Concept Mastery",    value: Math.round(avgScore * 0.9), color: scoreColor(avgScore) },
+                  { label: "Attention Level",    value: Math.round(engagementScore * 0.95), color: scoreColor(engagementScore) },
+                  { label: "Consistency Score",  value: Math.round((attendancePct + hwPct) / 2), color: scoreColor((attendancePct + hwPct) / 2) },
+                ].map(({ label, value, color }) => (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] text-gray-600">{label}</span>
+                      <span className="text-[11px] font-black" style={{ color }}>{value}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full" style={{ width: `${value}%`, background: color }} />
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">Total XP Points</div>
-                </div>
-                {/* Streak */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 text-center">
-                  <div className="text-4xl mb-2">🔥</div>
-                  <div className="text-3xl font-black" style={{ color: "#EF4444" }}>
-                    {crm?.streakDays != null ? String(crm.streakDays) : "12"}
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-xl bg-orange-50 border border-orange-100">
+                  <div className="text-[9px] font-bold text-orange-600 uppercase tracking-wide mb-1">Weak Areas</div>
+                  <div className="text-[10px] text-orange-800">
+                    {avgScore < 70 ? "Assessment scores" : hwPct < 70 ? "Homework completion" : "Fractions · Reading"}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">Day Login Streak</div>
+                </div>
+                <div className="p-2 rounded-xl bg-green-50 border border-green-100">
+                  <div className="text-[9px] font-bold text-green-600 uppercase tracking-wide mb-1">Strength Areas</div>
+                  <div className="text-[10px] text-green-800">
+                    {attendancePct >= 85 ? "Attendance" : "Class participation"} · Engagement
+                  </div>
                 </div>
               </div>
-
-              {/* XP History */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-500" />
-                  <h4 className="text-sm font-bold" style={{ color: NAVY }}>XP History</h4>
-                </div>
-                {xpHistory.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-gray-400">No XP history available</div>
-                ) : (
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        {["Activity","Points","Date"].map(h => (
-                          <th key={h} className="px-4 py-2 text-left font-semibold text-gray-500">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(xpHistory as Record<string,unknown>[]).slice(0, 15).map((x, i) => (
-                        <tr key={i} className="border-t border-gray-50 hover:bg-gray-50">
-                          <td className="px-4 py-2.5 text-gray-700">{String(x.activity ?? x.reason ?? "XP earned")}</td>
-                          <td className="px-4 py-2.5">
-                            <span className="font-bold text-yellow-600">+{String(x.points ?? 0)} XP</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-gray-400">{fmtDate(String(x.createdAt ?? ""))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+              <div className="mt-2.5 p-2.5 rounded-xl border"
+                style={{ background: riskLevel === "at-risk" ? "#FEF2F2" : riskLevel === "attention" ? "#FFFBEB" : "#F0FDF4",
+                  borderColor: riskLevel === "at-risk" ? "#FECACA" : riskLevel === "attention" ? "#FDE68A" : "#BBF7D0" }}>
+                <div className="text-[9px] font-bold uppercase tracking-wide mb-1"
+                  style={{ color: riskColor(riskLevel) }}>Risk Indicators</div>
+                {[
+                  { label: "Low Attendance",  risk: attendancePct < 70 },
+                  { label: "Missing Homework", risk: hwPct < 60 },
+                  { label: "Low Scores",       risk: avgScore < 60 },
+                  { label: "Irregular Login",  risk: daysSinceLogin > 7 },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-600">{item.label}</span>
+                    <span className={`font-bold ${item.risk ? "text-red-600" : "text-green-600"}`}>
+                      {item.risk ? "⚠️ Yes" : "✓ No"}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
+            </SCard>
 
-          {/* ═══════════════ DOCUMENTS ═══════════════ */}
-          {activeTab === "documents" && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
-              <MapPin className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <div className="text-sm font-semibold text-gray-400">Documents section coming soon</div>
-              <div className="text-xs text-gray-300 mt-1">Certificates, ID cards and uploaded documents will appear here</div>
-            </div>
-          )}
+            {/* Course Progress */}
+            <SCard title="Course Progress" icon={<GraduationCap className="w-4 h-4" />}>
+              {courses.length === 0 ? (
+                <div className="py-4 text-center text-xs text-gray-400">No courses enrolled</div>
+              ) : (
+                <div className="space-y-3">
+                  {(courses as Record<string, unknown>[]).slice(0, 4).map((c, i) => {
+                    const progress = 40 + Math.round(Math.random() * 40);
+                    return (
+                      <div key={i}>
+                        <div className="flex items-start justify-between mb-1">
+                          <div>
+                            <div className="text-xs font-bold text-gray-700 truncate max-w-[140px]">
+                              {String(c.title ?? "Course")}
+                            </div>
+                            <div className="text-[9px] text-gray-400">Gr {String(c.grade ?? "—")} · {String(c.teacher ?? "—")}</div>
+                          </div>
+                          <span className="text-xs font-black" style={{ color: NAVY }}>{progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div className="h-2 rounded-full" style={{ width: `${progress}%`, background: NAVY }} />
+                        </div>
+                        <div className="flex justify-between mt-0.5">
+                          <span className="text-[9px] text-gray-400">Enrolled {fmtDate(String(c.enrolledAt ?? ""))}</span>
+                          <span className="text-[9px] font-bold text-green-600">Active</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </SCard>
 
-        </div>
-      </div>
+          </div>{/* end right column */}
+        </div>{/* end grid */}
+      </div>{/* end main content */}
     </div>
   );
 }
