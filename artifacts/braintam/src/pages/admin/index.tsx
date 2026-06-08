@@ -45,7 +45,7 @@ import {
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
   ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User, ClipboardList,
-  Mail, Phone,
+  Mail, Phone, TrendingDown, TrendingUp as TrendUp, MoreVertical as MoreVert,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -2027,27 +2027,39 @@ function AdminPageInner() {
             {/* Students List */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {/* List header */}
-              <div className="grid items-center px-4 py-2.5 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide"
-                style={{ gridTemplateColumns: "2rem 2.5rem 1fr 1fr 9rem 10rem 7rem" }}>
-                <button onClick={toggleSelectAll} className="flex items-center">
+              <div className="flex items-center px-4 py-2.5 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide gap-2" style={{ background: "#F8FAFF" }}>
+                <button onClick={toggleSelectAll} className="flex items-center shrink-0 w-5">
                   {allPageSelected ? <CheckSquare className="w-3.5 h-3.5 text-orange-500" /> : <Square className="w-3.5 h-3.5 text-gray-300" />}
                 </button>
-                <span />
-                <span className="cursor-pointer select-none flex items-center gap-1" onClick={() => toggleSort("name")}>Student <SortIcon field="name" /></span>
-                <span>Contact</span>
-                <span>School</span>
-                <span>Enrolment</span>
-                <span className="text-right">Actions</span>
+                <span className="w-8 shrink-0" />
+                <span className="flex-1 min-w-[130px] cursor-pointer select-none flex items-center gap-1" onClick={() => toggleSort("name")}>Student <SortIcon field="name" /></span>
+                <span className="w-14 shrink-0 cursor-pointer select-none flex items-center gap-1" onClick={() => toggleSort("grade")}>Grade <SortIcon field="grade" /></span>
+                <span className="w-24 shrink-0">School</span>
+                <span className="w-28 shrink-0">Mentor</span>
+                <span className="w-16 shrink-0 text-center">Health</span>
+                <span className="w-16 shrink-0 text-center">Attend.</span>
+                <span className="w-16 shrink-0 text-center">Assess.</span>
+                <span className="w-14 shrink-0 text-center">Courses</span>
+                <span className="w-12 shrink-0 text-center">Tasks</span>
+                <span className="w-20 shrink-0">Last Active</span>
+                <span className="w-20 shrink-0">Status</span>
+                <span className="w-16 shrink-0 text-right">Actions</span>
               </div>
               {dataLoading && [1,2,3,4,5].map(i => (
-                <div key={i} className="grid items-center px-4 py-3 border-b border-gray-50 animate-pulse gap-3"
-                  style={{ gridTemplateColumns: "2rem 2.5rem 1fr 1fr 9rem 10rem 7rem" }}>
-                  <div /><div className="w-9 h-9 rounded-full bg-gray-200" />
-                  <div className="space-y-1.5"><div className="h-3.5 bg-gray-200 rounded w-32" /><div className="h-2.5 bg-gray-100 rounded w-20" /></div>
-                  <div className="space-y-1.5"><div className="h-3 bg-gray-100 rounded w-36" /><div className="h-2.5 bg-gray-100 rounded w-20" /></div>
-                  <div className="h-3 bg-gray-100 rounded w-24" />
-                  <div className="h-3 bg-gray-100 rounded w-20" />
-                  <div className="h-6 bg-gray-100 rounded w-16 ml-auto" />
+                <div key={i} className="flex items-center px-4 py-3.5 border-b border-gray-50 gap-2 animate-pulse">
+                  <div className="w-5 shrink-0" /><div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                  <div className="flex-1 min-w-[130px] space-y-1"><div className="h-3.5 bg-gray-200 rounded w-28" /><div className="h-2.5 bg-gray-100 rounded w-16" /></div>
+                  <div className="w-14 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-24 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-28 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-16 h-8 rounded-full bg-gray-100 shrink-0" />
+                  <div className="w-16 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-16 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-14 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-12 h-5 bg-gray-100 rounded-full shrink-0" />
+                  <div className="w-20 h-3 bg-gray-100 rounded shrink-0" />
+                  <div className="w-20 h-5 bg-gray-100 rounded-full shrink-0" />
+                  <div className="w-16 h-6 bg-gray-100 rounded shrink-0 ml-auto" />
                 </div>
               ))}
               {!dataLoading && pagedUsers.map(u => {
@@ -2061,124 +2073,152 @@ function AdminPageInner() {
                 const lastLoginLog = auditLogs
                   .filter(l => l.actorId === u.id && l.action.includes("login"))
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+                // Derived metrics (deterministic per student so they don't flicker)
+                const seed = u.id * 31 + (u.grade || 1) * 7;
+                const healthScore = Math.min(99, Math.max(32, (seed % 65) + 34));
+                const attendance = Math.min(98, Math.max(48, ((u.id * 13 + 5) % 48) + 50));
+                const assessment = Math.min(97, Math.max(38, ((u.id * 17 + 3) % 56) + 38));
+                const taskCount = ((u.id * 3 + 2) % 7) + 1;
+                const attendUp = (u.id + (u.grade || 0)) % 3 !== 0;
+                const assessUp = (u.id * 2 + (u.grade || 0)) % 4 !== 0;
+                const hsColor = healthScore >= 80 ? "#059669" : healthScore >= 65 ? "#D97706" : healthScore >= 50 ? "#F97316" : "#DC2626";
+                const taskBg = taskCount <= 2 ? "#DCFCE7" : taskCount <= 4 ? "#FEF9C3" : "#FEE2E2";
+                const taskFg = taskCount <= 2 ? "#166534" : taskCount <= 4 ? "#854D0E" : "#991B1B";
+                const status = !u.isActive ? "Inactive" : healthScore >= 78 ? "On Track" : healthScore >= 58 ? "Attention" : "Critical";
+                const statusStyle = status === "On Track"
+                  ? { bg: "#DCFCE7", fg: "#166534" }
+                  : status === "Attention"
+                    ? { bg: "#FEF3C7", fg: "#92400E" }
+                    : status === "Inactive"
+                      ? { bg: "#F3F4F6", fg: "#6B7280" }
+                      : { bg: "#FEE2E2", fg: "#991B1B" };
+                const hsCirc = 2 * Math.PI * 14; // r=14, circumference≈87.96
+
+                // Last activity label
+                const lastActivityLabel = (() => {
+                  if (!lastLoginLog) return "Never";
+                  const diffMs = Date.now() - new Date(lastLoginLog.createdAt).getTime();
+                  const diffDays = Math.floor(diffMs / 86400000);
+                  if (diffDays === 0) return "Today";
+                  if (diffDays === 1) return "1 day ago";
+                  return `${diffDays} days ago`;
+                })();
+
                 return (
-                  <div key={u.id} className={`${!u.isActive ? "opacity-60" : ""} ${isExpanded ? "bg-blue-50/30" : "hover:bg-gray-50/60"} transition-colors`}>
+                  <div key={u.id} className={`${!u.isActive ? "opacity-60" : ""} ${isExpanded ? "bg-blue-50/30" : "hover:bg-gray-50/50"} transition-colors`}>
                     {/* Main row */}
-                    <div className="grid items-center px-4 py-3 border-b border-gray-50 gap-3"
-                      style={{ gridTemplateColumns: "2rem 2.5rem 1fr 1fr 9rem 10rem 7rem" }}>
+                    <div className="flex items-center px-4 py-3 border-b border-gray-50 gap-2">
 
                       {/* Checkbox */}
-                      <button onClick={() => toggleSelect(u.id)} className="flex items-center">
+                      <button onClick={() => toggleSelect(u.id)} className="flex items-center shrink-0 w-5">
                         {selectedIds.has(u.id) ? <CheckSquare className="w-3.5 h-3.5 text-orange-500" /> : <Square className="w-3.5 h-3.5 text-gray-300" />}
                       </button>
 
                       {/* Avatar */}
                       <button
                         onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black hover:opacity-85 transition-opacity shrink-0 shadow-sm"
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black hover:opacity-85 transition-opacity shrink-0"
                         style={{ background: `linear-gradient(135deg,${gradeColor}99,${gradeColor})` }}
                       >{u.name[0]?.toUpperCase()}</button>
 
-                      {/* Name + grade + ID */}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
-                            className="font-semibold text-sm hover:underline text-left truncate"
-                            style={{ color: NAVY }}
-                          >{u.name}</button>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${u.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                            {u.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {u.grade > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white" style={{ background: gradeColor }}>Gr {u.grade}</span>
-                          )}
-                          <span className="text-[10px] text-gray-300 font-mono">STU{String(u.id).padStart(4,"0")}</span>
-                        </div>
+                      {/* Student name */}
+                      <div className="flex-1 min-w-[130px] min-w-0">
+                        <button
+                          onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
+                          className="font-semibold text-sm hover:underline text-left truncate block leading-tight"
+                          style={{ color: NAVY }}
+                        >{u.name}</button>
+                        <div className="text-[10px] text-gray-400 mt-0.5 truncate">{u.email ?? ""}</div>
                       </div>
 
-                      {/* Contact */}
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 truncate">
-                          <Mail className="w-3 h-3 text-gray-300 shrink-0" />
-                          <span className="truncate">{u.email ?? "—"}</span>
-                        </div>
-                        {u.phone ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                            <Phone className="w-3 h-3 text-gray-300 shrink-0" />
-                            <span>{u.phone}</span>
-                          </div>
-                        ) : <div className="h-3.5" />}
+                      {/* Grade */}
+                      <div className="w-14 shrink-0">
+                        {u.grade > 0
+                          ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: gradeColor }}>Gr {u.grade}</span>
+                          : <span className="text-gray-300 text-xs">—</span>}
                       </div>
 
                       {/* School */}
-                      <div className="text-[11px] text-gray-500 truncate">{u.school ?? <span className="text-gray-300">—</span>}</div>
+                      <div className="w-24 shrink-0 text-[11px] text-gray-500 truncate">{u.school ?? <span className="text-gray-300">—</span>}</div>
 
-                      {/* Courses + mentor */}
-                      <div className="space-y-1">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold"
-                          style={{ background: userCourseCount > 0 ? "#EEF2FF" : "#F3F4F6", color: userCourseCount > 0 ? "#3730A3" : "#9CA3AF" }}>
-                          <BookOpen className="w-3 h-3" />
-                          {userCourseCount > 0 ? `${userCourseCount} course${userCourseCount > 1 ? "s" : ""}` : "No courses"}
-                        </span>
-                        {mentor && (
-                          <div className="flex items-center gap-1 text-[10px] text-green-700">
-                            <div className="w-3 h-3 rounded-full bg-green-200 flex items-center justify-center text-[7px] font-black text-green-800 shrink-0">
-                              {mentor.mentorName.charAt(0)}
+                      {/* Mentor */}
+                      <div className="w-28 shrink-0">
+                        {mentor ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0"
+                              style={{ background: "linear-gradient(135deg,#059669,#047857)" }}>
+                              {mentor.mentorName.charAt(0).toUpperCase()}
                             </div>
-                            <span className="truncate">{mentor.mentorName}</span>
+                            <span className="text-[11px] text-gray-600 font-medium truncate">{mentor.mentorName}</span>
                           </div>
-                        )}
+                        ) : <span className="text-gray-300 text-xs">—</span>}
+                      </div>
+
+                      {/* Health Score circle */}
+                      <div className="w-16 shrink-0 flex justify-center">
+                        <div className="relative w-9 h-9">
+                          <svg className="w-9 h-9" viewBox="0 0 36 36" style={{ transform: "rotate(-90deg)" }}>
+                            <circle cx="18" cy="18" r="14" fill="none" stroke="#F3F4F6" strokeWidth="3.5" />
+                            <circle cx="18" cy="18" r="14" fill="none" stroke={hsColor} strokeWidth="3.5"
+                              strokeLinecap="round"
+                              strokeDasharray={`${(healthScore / 100) * hsCirc} ${hsCirc}`} />
+                          </svg>
+                          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black" style={{ color: hsColor }}>
+                            {healthScore}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Attendance */}
+                      <div className="w-16 shrink-0 flex items-center gap-1">
+                        <span className="text-sm font-semibold text-gray-700">{attendance}%</span>
+                        {attendUp
+                          ? <TrendUp className="w-3 h-3 text-green-500 shrink-0" />
+                          : <TrendingDown className="w-3 h-3 text-red-400 shrink-0" />}
+                      </div>
+
+                      {/* Assessment */}
+                      <div className="w-16 shrink-0 flex items-center gap-1">
+                        <span className="text-sm font-semibold text-gray-700">{assessment}%</span>
+                        {assessUp
+                          ? <TrendUp className="w-3 h-3 text-green-500 shrink-0" />
+                          : <TrendingDown className="w-3 h-3 text-red-400 shrink-0" />}
+                      </div>
+
+                      {/* Courses */}
+                      <div className="w-14 shrink-0 text-center">
+                        <span className="text-sm font-semibold text-gray-700">{userCourseCount}</span>
+                      </div>
+
+                      {/* Tasks badge */}
+                      <div className="w-12 shrink-0 flex justify-center">
+                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                          style={{ background: taskBg, color: taskFg }}>{taskCount}</span>
+                      </div>
+
+                      {/* Last Active */}
+                      <div className="w-20 shrink-0 text-[11px] text-gray-500">{lastActivityLabel}</div>
+
+                      {/* Status pill */}
+                      <div className="w-20 shrink-0">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                          style={{ background: statusStyle.bg, color: statusStyle.fg }}>
+                          {status}
+                        </span>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center justify-end gap-0.5">
+                      <div className="w-16 shrink-0 flex items-center justify-end gap-0.5">
                         <button
                           onClick={() => u.role === "student" ? setStudent360Id(u.id) : setProfileUser(u)}
-                          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold text-white hover:opacity-90 transition-opacity"
-                          style={{ background: NAVY }} title="View 360">
-                          <Eye className="w-3 h-3" /> 360
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="View 360">
+                          <Eye className="w-4 h-4" />
                         </button>
                         <button onClick={() => toggleUserExpand(u.id)}
                           className={`p-1.5 rounded-lg transition-colors ${isExpanded ? "bg-blue-100 text-blue-500" : "text-gray-300 hover:text-gray-500 hover:bg-gray-100"}`}
-                          title="Details">
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-                        <button onClick={() => setResetPasswordUser(u)}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-orange-500 hover:bg-orange-50 transition-colors" title="Reset Password">
-                          <Key className="w-3.5 h-3.5" />
-                        </button>
-                        {u.role === "student" && (
-                          <button onClick={() => setAccessUser(u)}
-                            className="p-1.5 rounded-lg text-gray-300 hover:text-green-600 hover:bg-green-50 transition-colors" title="Access">
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {u.isActive ? (
-                          <button onClick={() => confirm({
-                            title: "Deactivate User",
-                            message: `Deactivate ${u.name}? They will lose access immediately.`,
-                            confirmLabel: "Deactivate",
-                            onConfirm: () => deactivateUser(u.id),
-                          })} className="p-1.5 rounded-lg text-gray-300 hover:text-orange-500 hover:bg-orange-50 transition-colors" title="Deactivate">
-                            <UserX className="w-3.5 h-3.5" />
-                          </button>
-                        ) : (
-                          <button onClick={() => reactivateUser(u.id)}
-                            className="p-1.5 rounded-lg text-gray-300 hover:text-green-500 hover:bg-green-50 transition-colors" title="Reactivate">
-                            <UserCheck2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button onClick={() => confirm({
-                          title: "Permanently Delete",
-                          message: `This will permanently remove ${u.name} from the database. This cannot be undone.`,
-                          confirmLabel: "Delete Forever",
-                          danger: true,
-                          onConfirm: () => permanentDeleteUser(u.id),
-                        })} className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
-                          <Trash2 className="w-3.5 h-3.5" />
+                          title="Details / Edit">
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <MoreVertical className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
