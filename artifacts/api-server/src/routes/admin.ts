@@ -172,15 +172,28 @@ router.post("/admin/users/:id/convert-to-paid", adminOnly, async (req, res) => {
   await logAction({ actorId: req.authUser!.id, actorName: req.authUser!.name, action: "convert_to_paid", targetType: "user", targetId: id, targetName: updated.name });
   res.json(updated);
 });
-
 router.post("/admin/users", adminOnly, async (req, res) => {
-  const { name, email, phone, password, role, grade, school } = req.body;
+  const {
+    name,
+    email,
+    phone,
+    password,
+    role,
+    grade,
+    school,
+    accountType,
+    leadStage,
+    parentName,
+    parentPhone,
+    city,
+    state,
+  } = req.body;
   if (!name || !role) {
     res.status(400).json({ error: "name and role are required" });
     return;
   }
-  if (!["admin", "teacher", "student"].includes(role)) {
-    res.status(400).json({ error: "role must be admin, teacher, or student" });
+  if (!["admin", "teacher", "student", "mentor"].includes(role)) {
+    res.status(400).json({ error: "role must be admin, teacher, student, or mentor" });
     return;
   }
   if (!email && !phone) {
@@ -200,9 +213,21 @@ router.post("/admin/users", adminOnly, async (req, res) => {
     email: email ?? null,
     phone: phone ?? null,
     passwordHash: password ? hashPassword(password) : null,
+
     role,
+
+    accountType: accountType ?? null,
+    leadStage: leadStage ?? null,
+
+    parentName: parentName ?? null,
+    parentPhone: parentPhone ?? null,
+
+    city: city ?? null,
+    state: state ?? null,
+
     grade: grade ?? 0,
     school: school ?? null,
+
     points: 0,
     streakDays: 0,
   }).returning();

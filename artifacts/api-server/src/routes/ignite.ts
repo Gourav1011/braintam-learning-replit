@@ -117,6 +117,30 @@ router.get("/admin/ignite/demo-students", adminOnly, async (_req, res) => {
     batchGrade: batchMap[r.batchId]?.grade ?? null,
   })));
 });
+router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
+  const leads = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      grade: usersTable.grade,
+      school: usersTable.school,
+      city: usersTable.city,
+      parentPhone: usersTable.parentPhone,
+      leadStage: usersTable.leadStage,
+      interestLevel: usersTable.interestLevel,
+      callStatus: usersTable.callStatus,
+      nextFollowUpAt: usersTable.nextFollowUpAt,
+      lastCallAt: usersTable.lastCallAt,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.accountType, "lead"))
+    .orderBy(desc(usersTable.createdAt));
+
+  res.json(leads);
+});
 
 router.get("/admin/ignite/attendance/:batchId", adminOnly, async (req, res) => {
   const batchId = Number(req.params.batchId);

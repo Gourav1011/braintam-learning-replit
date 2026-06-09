@@ -704,7 +704,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const PER = 12;
 
   useEffect(() => {
-    apiFetch("/admin/ignite/demo-students")
+    apiFetch("/admin/ignite/leads")
       .then((r) => r.json())
       .then(setStudents)
       .catch(() => flash("Failed to load leads", false))
