@@ -701,6 +701,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [mentorF, setMentorF] = useState("All Mentors");
   const [page, setPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<StudentRow | null>(null);
+  const [showAddLead, setShowAddLead] = useState(false);
   const PER = 12;
 
   useEffect(() => {
@@ -740,10 +741,13 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Leads</h1>
           <p className="text-xs text-gray-500">Manage all incoming leads through the sales pipeline</p>
         </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
-          style={{ background: ORANGE }}>
-          <Plus className="w-3.5 h-3.5" /> Add Lead
-        </button>
+      <button
+  onClick={() => setShowAddLead(true)}
+  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
+  style={{ background: ORANGE }}
+>
+  <Plus className="w-3.5 h-3.5" /> Add Lead
+</button>
       </div>
 
       {/* Stage pipeline tabs */}
