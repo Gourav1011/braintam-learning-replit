@@ -252,12 +252,11 @@ function LoadingScreen() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="flex flex-col items-center">
         <div className="mb-6 animate-pulse">
-          <div
-            className="w-20 h-20 rounded-3xl flex items-center justify-center text-white text-4xl font-black shadow-lg"
-            style={{ background: "#0B1F4D" }}
-          >
-            🧠
-          </div>
+          <img
+            src={braintamLogo}
+            alt="Braintam"
+            className="w-28 h-auto object-contain"
+          />
         </div>
 
         <h1
