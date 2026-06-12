@@ -249,11 +249,44 @@ const queryClient = new QueryClient({
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="space-y-3 w-64">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-8 w-1/2" />
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="flex flex-col items-center">
+        <div className="mb-6 animate-pulse">
+          <div
+            className="w-20 h-20 rounded-3xl flex items-center justify-center text-white text-4xl font-black shadow-lg"
+            style={{ background: "#0B1F4D" }}
+          >
+            🧠
+          </div>
+        </div>
+
+        <h1
+          className="text-4xl font-black tracking-tight"
+          style={{ color: "#0B1F4D" }}
+        >
+          Braintam
+        </h1>
+
+        <p className="mt-3 text-lg font-semibold text-center">
+          <span style={{ color: "#0B1F4D" }}>Smarter Minds.</span>{" "}
+          <span style={{ color: "#F97316" }}>Brighter Futures.</span>
+        </p>
+
+        <div className="mt-8 w-56">
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full animate-pulse"
+              style={{
+                width: "70%",
+                background: "#F97316",
+              }}
+            />
+          </div>
+        </div>
+
+        <p className="mt-4 text-sm text-gray-500 font-medium">
+          Loading...
+        </p>
       </div>
     </div>
   );

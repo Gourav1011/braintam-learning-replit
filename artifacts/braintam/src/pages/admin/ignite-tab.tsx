@@ -735,7 +735,70 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       {selectedLead && (
         <LeadProfileModal lead={selectedLead} onClose={() => setSelectedLead(null)} flash={flash} />
       )}
+      {showAddLead && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddLead(false);
+          }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black">Add New Lead</h2>
+              <button
+                onClick={() => setShowAddLead(false)}
+                className="text-gray-500"
+              >
+                ✕
+              </button>
+            </div>
 
+            <div className="space-y-3">
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Student Name"
+              />
+
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Parent Name"
+              />
+
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Parent Mobile"
+              />
+
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Student Mobile"
+              />
+
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Grade"
+              />
+
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="School"
+              />
+
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="City"
+              />
+
+              <button
+                className="w-full py-2 rounded-lg text-white font-semibold"
+                style={{ background: ORANGE }}
+              >
+                Save Lead
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Leads</h1>
