@@ -9,7 +9,7 @@ const ORANGE = "#FF6B1A";
 const sections = [
   {
     title: "1. Acceptance of Terms & Modification",
-    content: `By accessing or using the Braintam platform (www.braintam.com), the Braintam mobile application, or any associated services operated by Braintam Learning LLP ("Braintam", "we", "us", "our"), you ("User", "you") acknowledge that you have read, understood, and agree to be bound by this Platform User Agreement ("Agreement"), as well as our Privacy Policy and all applicable policies incorporated herein by reference.
+    content: `By accessing or using the Braintam platform (www.braintam.com), the Braintam mobile application, or any associated services operated by Braintam Learning ("Braintam", "we", "us", "our"), you ("User", "you") acknowledge that you have read, understood, and agree to be bound by this Platform User Agreement ("Agreement"), as well as our Privacy Policy and all applicable policies incorporated herein by reference.
 
 If you are enrolling a child or minor, you confirm that you are the student's parent or legal guardian and accept this Agreement on their behalf. If you do not agree with any part of this Agreement, please discontinue access to the platform immediately.
 
@@ -19,7 +19,7 @@ Users may request access to this Agreement or any platform policy in any languag
   },
   {
     title: "2. Description of Platform & Services",
-    content: `Braintam Learning LLP operates an online educational platform designed for school students in Grades 1–10, offering live classes, recorded video lessons, homework, assignments, chapter tests, animated explainer videos, leaderboard-based gamification, and supporting study materials. Our curriculum aligns with CBSE, ICSE, and IB frameworks.
+    content: `Braintam Learning operates an online educational platform designed for school students in Grades 1–10, offering live classes, recorded video lessons, homework, assignments, chapter tests, animated explainer videos, leaderboard-based gamification, and supporting study materials. Our curriculum aligns with CBSE, ICSE, and IB frameworks.
 
 The Platform is intended for access by Indian residents. Although the Platform may be technically accessible from other regions, content, pricing, and services are designed for users in India. Use from outside India is at the User's own risk and is subject to any applicable local laws in that jurisdiction. Braintam makes no representation that its content is appropriate or lawful for access in locations outside India.`,
   },
@@ -68,7 +68,7 @@ Braintam does not store your payment card or banking details. All payment data i
   },
   {
     title: "8. Intellectual Property & Ownership",
-    content: `All content on the Braintam platform — including but not limited to course videos, animated lessons, worksheets, test questions, written materials, logos, user interface designs, software, and source code — is the exclusive intellectual property of Braintam Learning LLP or its duly licensed content partners, and is protected by applicable Indian copyright law and international intellectual property law.
+    content: `All content on the Braintam platform — including but not limited to course videos, animated lessons, worksheets, test questions, written materials, logos, user interface designs, software, and source code — is the exclusive intellectual property of Braintam Learning or its duly licensed content partners, and is protected by applicable Indian copyright law and international intellectual property law.
 
 You are granted a limited, non-exclusive, non-transferable, revocable licence to access and use course content solely for personal, non-commercial educational purposes during your active subscription or enrolment period. You do not acquire any ownership rights by using the platform.
 
@@ -101,13 +101,13 @@ Inappropriate conduct by any User — whether a student, parent, or educator —
 Braintam will acknowledge User queries and complaints within 24 hours and endeavour to resolve grievances within 15 days of receipt. Complaints relating to content removal under Section 4 of this Agreement will be addressed within 72 hours.
 
 Grievance Officer: Braintam Support Team
-Braintam Learning LLP
+Braintam Learning
 Email: support@braintam.com
 Grievance Contact: support@braintam.com (Subject: "Grievance – [Your Issue]")`,
   },
   {
     title: "13. Breach & Account Suspension",
-    content: `Without prejudice to any other remedies available under this Agreement or applicable law, Braintam may — at its sole discretion and without prior notice where warranted — warn Users, limit platform activity, temporarily or permanently suspend access, and/or refuse future access if a User is found to be in breach of this Agreement. Braintam reserves the right to initiate appropriate legal proceedings for any breach that causes or risks causing harm to the platform, its users, or to Braintam Learning LLP.`,
+    content: `Without prejudice to any other remedies available under this Agreement or applicable law, Braintam may — at its sole discretion and without prior notice where warranted — warn Users, limit platform activity, temporarily or permanently suspend access, and/or refuse future access if a User is found to be in breach of this Agreement. Braintam reserves the right to initiate appropriate legal proceedings for any breach that causes or risks causing harm to the platform, its users, or to Braintam Learning.`,
   },
   {
     title: "14. Privacy & Data Protection",
@@ -119,7 +119,7 @@ Grievance Contact: support@braintam.com (Subject: "Grievance – [Your Issue]")`
 
 Braintam's total liability for any direct claim arising from your use of the Platform is limited to the fees paid by you for the relevant course in the three months preceding the claim.
 
-You agree to indemnify, defend, and hold harmless Braintam Learning LLP, its affiliates, directors, officers, employees, and authorised service providers from any losses, liabilities, claims, damages, costs, and legal fees arising from: (a) your use of the Platform in violation of this Agreement; (b) your violation of any applicable law; (c) your infringement of any third-party intellectual property or other rights.`,
+You agree to indemnify, defend, and hold harmless Braintam Learning, its affiliates, directors, officers, employees, and authorised service providers from any losses, liabilities, claims, damages, costs, and legal fees arising from: (a) your use of the Platform in violation of this Agreement; (b) your violation of any applicable law; (c) your infringement of any third-party intellectual property or other rights.`,
   },
   {
     title: "16. Severability",
@@ -137,7 +137,7 @@ You agree to indemnify, defend, and hold harmless Braintam Learning LLP, its aff
     title: "19. Contact",
     content: `For questions, concerns, or requests relating to these Terms & Conditions, please contact:
 
-Braintam Learning LLP
+Braintam Learning
 Email: support@braintam.com
 Subject: "Terms Query – [Your Name]"
 
@@ -163,7 +163,7 @@ export default function TermsPage() {
         <FileText className="w-12 h-12 mx-auto mb-4 opacity-80" />
         <h1 className="text-4xl font-black mb-3">Terms & Conditions</h1>
         <p className="text-blue-200 max-w-2xl mx-auto">
-          This Platform User Agreement governs your access to and use of the Braintam platform and all associated services operated by Braintam Learning LLP.
+          This Platform User Agreement governs your access to and use of the Braintam platform and all associated services operated by Braintam Learning.
         </p>
         <p className="text-xs text-blue-300 mt-3">Last updated: June 2026 · Effective immediately</p>
       </div>
@@ -174,7 +174,7 @@ export default function TermsPage() {
         <div className="rounded-2xl p-5 mb-8 border" style={{ background: "rgba(11,43,107,0.04)", borderColor: "rgba(11,43,107,0.12)" }}>
           <p className="text-sm font-bold mb-1" style={{ color: NAVY }}>📋 About This Agreement</p>
           <p className="text-sm text-gray-600 leading-relaxed">
-            This Agreement is between you (or you as parent/guardian of a student) and <strong>Braintam Learning LLP</strong>, the company operating the Braintam platform at www.braintam.com. By using the platform you confirm you have read and accepted all terms below. Questions? Email{" "}
+            This Agreement is between you (or you as parent/guardian of a student) and <strong>Braintam Learning</strong>, the company operating the Braintam platform at www.braintam.com. By using the platform you confirm you have read and accepted all terms below. Questions? Email{" "}
             <a href="mailto:support@braintam.com" className="font-bold underline" style={{ color: ORANGE }}>support@braintam.com</a>.
           </p>
         </div>

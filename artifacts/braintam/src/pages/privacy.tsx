@@ -9,9 +9,9 @@ const ORANGE = "#FF6B1A";
 const sections = [
   {
     title: "1. Introduction & Our Commitment",
-    content: `Braintam Learning LLP ("Braintam", "we", "us", "our") values the trust you place in us when you provide personal information about yourself or your child. In order to honour that trust, Braintam adheres to ethical standards in gathering, using, and safeguarding all information provided to us.
+    content: `Braintam Learning ("Braintam", "we", "us", "our") values the trust you place in us when you provide personal information about yourself or your child. In order to honour that trust, Braintam adheres to ethical standards in gathering, using, and safeguarding all information provided to us.
 
-This Privacy Policy ("Policy") governs your use of the Braintam website (www.braintam.com), the Braintam mobile application, and all associated services managed by Braintam Learning LLP ("Services"). Please read this Policy carefully before registering or using the platform. Your continued use of the Services constitutes acceptance of this Policy. If you do not agree with any provision, please refrain from using the platform.`,
+This Privacy Policy ("Policy") governs your use of the Braintam website (www.braintam.com), the Braintam mobile application, and all associated services managed by Braintam Learning ("Services"). Please read this Policy carefully before registering or using the platform. Your continued use of the Services constitutes acceptance of this Policy. If you do not agree with any provision, please refrain from using the platform.`,
   },
   {
     title: "2. Information We Collect",
@@ -150,7 +150,7 @@ To exercise any of these rights, email support@braintam.com with the subject "Da
     content: `If you have any concerns, complaints, or queries relating to the processing of your personal Information, or wish to report a privacy issue, please contact our Grievance Officer. Braintam will make all reasonable efforts to address your grievance at the earliest opportunity and no later than one month from the date of receipt of your complaint.
 
 Grievance Officer: Braintam Data & Privacy Team
-Company: Braintam Learning LLP
+Company: Braintam Learning
 Email: support@braintam.com (Subject: "Privacy Grievance – [Your Name]")
 
 For general support queries, you may also reach us at support@braintam.com.`,
@@ -175,7 +175,7 @@ export default function PrivacyPage() {
         <Lock className="w-12 h-12 mx-auto mb-4 opacity-80" />
         <h1 className="text-4xl font-black mb-3">Privacy Policy</h1>
         <p className="text-blue-200 max-w-2xl mx-auto">
-          Braintam Learning LLP values your trust. We handle your child's data with honesty, purpose, and absolute respect for their privacy.
+          Braintam Learning values your trust. We handle your child's data with honesty, purpose, and absolute respect for their privacy.
         </p>
         <p className="text-xs text-blue-300 mt-3">Last updated: June 2026</p>
       </div>

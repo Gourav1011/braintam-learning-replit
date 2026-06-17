@@ -407,7 +407,7 @@ function PublicLiveClassesView() {
       </section>
 
       <div className="bg-black/90 text-white/40 text-center py-4 text-xs">
-        © 2026 Braintam Learning LLP · India's Premium EdTech Platform
+        © 2026 Braintam Learning · India's Premium EdTech Platform
       </div>
     </div>
   );

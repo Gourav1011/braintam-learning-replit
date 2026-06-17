@@ -123,7 +123,7 @@ export default function OnboardingPage() {
             </div>
           ))}
         </div>
-        <div className="text-white/30 text-xs relative z-10">© 2026 Braintam Learning LLP. All Rights Reserved.</div>
+        <div className="text-white/30 text-xs relative z-10">© 2026 Braintam Learning. All Rights Reserved.</div>
       </div>
 
       {/* Right — profile form */}
