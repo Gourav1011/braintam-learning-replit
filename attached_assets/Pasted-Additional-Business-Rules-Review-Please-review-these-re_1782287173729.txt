@@ -1,0 +1,113 @@
+Additional Business Rules Review
+
+Please review these requirements and tell me if they fit the existing architecture. Do not start implementation yet.
+
+1. Weekly Lead Cycle
+
+* Demo classes run Monday to Saturday.
+* Every Sunday new leads are assigned to mentors.
+* Current week leads should be shown by default.
+* Old leads should move to Historical Data automatically.
+* Historical data should support:
+
+  * Week Filter
+  * Month Filter
+  * Grade Filter
+  * Mentor Filter
+  * Conversion Status Filter
+  * Search by Student Name, Mobile Number, Lead ID
+
+2. Conversion Tracking
+
+For every lead store:
+
+* Assignment Week
+* Assignment Month
+* Converted (Yes/No)
+* Converted Date
+* Conversion Source
+* Converted By
+
+Conversion Source examples:
+
+* Live Class
+* Mentor Payment Link
+* Website Direct
+* Admin Conversion
+* Referral
+
+3. Mentor Payments Module
+
+Mentor Dashboard should contain a separate Payments menu.
+
+Mentors should be able to:
+
+* Generate Full Payment Link
+* Generate Partial Payment Link
+* View Payment Status
+* View Payment History
+
+Mentors should NOT be able to:
+
+* Mark payment as paid manually
+* Edit paid payments
+* Delete payment records
+
+4. Payment Approval Logic
+
+Razorpay Payments:
+
+* Auto Approved
+* No manual verification required
+
+Manual Payments:
+
+* Screenshot Upload
+* UTR Upload
+* Bank Transfer
+* Cash Receipt
+
+These require:
+
+* Admin Approval
+* Finance Approval
+
+5. Celebration Feed
+
+Do not use popups.
+
+Use a small sliding ticker notification.
+
+Examples:
+
+🎉 Gourav got a new payment. Great job!
+
+🎉 Rahul got a new payment. Great job!
+
+Rules:
+
+* Trigger only after approved conversion.
+* Do not show amount.
+* Do not show student name.
+* Do not show partial payments.
+* Do not show pending payments.
+* Only show successful approved admissions.
+
+6. Reporting Requirements
+
+Need reporting by:
+
+* Week
+* Month
+* Grade
+* Mentor
+* Conversion Source
+* Payment Status
+
+Please review these requirements and identify:
+
+1. Any conflicts with the proposed database design.
+2. Any scalability concerns.
+3. Any better architecture suggestions.
+4. Whether this should be implemented now or in later phases.
+5. Any additional fields we should store from Day 1.
