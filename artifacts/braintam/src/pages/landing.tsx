@@ -745,7 +745,7 @@ export default function LandingPage() {
 
             {/* ── 5-Day Trial CTA ── */}
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}>
-              <a href={RAZORPAY_TRIAL_URL} target="_blank" rel="noopener noreferrer"
+              <a href="/enroll"
                 className="inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all hover:scale-[1.02] group"
                 style={{ background: `linear-gradient(135deg, #fff8f3, #fff3ea)`,
                          border: `2px solid rgba(255,107,26,0.35)`,
@@ -757,8 +757,8 @@ export default function LandingPage() {
                 <div>
                   <div className="text-xs font-semibold" style={{ color: ORANGE }}>LIMITED OFFER</div>
                   <div className="font-black text-sm leading-tight" style={{ color: TEXT }}>
-                    5-Day Live Class —{" "}
-                    <span style={{ color: ORANGE }}>₹99 only</span>
+                    5-Day Ignite Course —{" "}
+                    <span style={{ color: ORANGE }}>from ₹39 only</span>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
@@ -1011,7 +1011,7 @@ export default function LandingPage() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-5 md:mb-8 space-y-2">
             <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Programs</div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>Premium live learning programs</h2>
-            <p className="text-sm" style={{ color: MUTED }}>EMI available · Demo class at ₹99 · Enroll directly</p>
+            <p className="text-sm" style={{ color: MUTED }}>EMI available · Ignite Course from ₹39 · Enroll directly</p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-5">
@@ -1059,10 +1059,10 @@ export default function LandingPage() {
                     Enroll Now {p.price}
                   </a>
                   <div className="flex gap-2">
-                    <a href={RAZORPAY_DEMO_URL} target="_blank" rel="noopener noreferrer"
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:bg-gray-100"
-                      style={{ background: "#F1F5F9", border: `1px solid ${BORDER2}`, color: TEXT }}>
-                      Demo ₹99
+                    <a href="/enroll"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:bg-orange-50"
+                      style={{ background: "#FFF7F0", border: `1px solid rgba(255,107,26,0.25)`, color: ORANGE }}>
+                      Ignite ₹39+
                     </a>
                     <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I'm%20interested%20in%20this%20plan!"
                       target="_blank" rel="noopener noreferrer"

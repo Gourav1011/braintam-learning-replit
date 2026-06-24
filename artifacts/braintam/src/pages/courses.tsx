@@ -35,7 +35,7 @@ const GRADE_DATA: Record<number, GradeCourseData> = {
         full: { subjects: ["Numbers", "English", "EVS"],        desc: "Complete Grade 1 syllabus with tests & mentor support.",  price: "₹39,999" } },
   2:  { specialty: "Times Tables Speed Mastery",       specialtyIcon: "⚡", bubbleColor: "#3B82F6",
         demoHighlights: ["Fast Calculation", "Short Tricks", "Quick Recall", "Mind Maps"],
-        demo: { topics: ["Multiplication Basics", "Story Writing", "Maps & Globe"],          desc: "Core concepts in an engaging 6-day camp." },
+        demo: { topics: ["Multiplication Basics", "Story Writing", "Maps & Globe"],          desc: "Core concepts in an engaging 5-day camp." },
         full: { subjects: ["Maths", "English", "EVS"],          desc: "Structured full-year program with live classes daily.",   price: "₹39,999" } },
   3:  { specialty: "Vedic Maths Shortcuts",            specialtyIcon: "🔢", bubbleColor: "#8B5CF6",
         demoHighlights: ["Vedic Shortcuts", "Concept Clarity", "Speed Maths", "Mind Mapping"],
@@ -51,7 +51,7 @@ const GRADE_DATA: Record<number, GradeCourseData> = {
         full: { subjects: ["Maths", "English", "Science"],      desc: "Complete CBSE/ICSE syllabus + Olympiad prep built in.",   price: "₹49,999" } },
   6:  { specialty: "Algebra Thinking & Logic",         specialtyIcon: "📐", bubbleColor: "#EC4899",
         demoHighlights: ["Algebra Shortcuts", "Fast Calculation", "Logic Building", "Mind Maps"],
-        demo: { topics: ["Integers & Ratios", "Creative Writing", "Living World"],           desc: "Middle-school concepts demystified in 6 days." },
+        demo: { topics: ["Integers & Ratios", "Creative Writing", "Living World"],           desc: "Middle-school concepts demystified in 5 days." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Live classes 5–6×/week with weekly mock exams.",         price: "₹49,999" } },
   7:  { specialty: "IQ & Olympiad Prep",               specialtyIcon: "🏆", bubbleColor: "#06B6D4",
         demoHighlights: ["Equation Tricks", "Fast Formulae", "IQ Hacks", "Concept Clarity"],
@@ -59,7 +59,7 @@ const GRADE_DATA: Record<number, GradeCourseData> = {
         full: { subjects: ["Maths", "English", "Science"],      desc: "Comprehensive coverage + dedicated Olympiad modules.",    price: "₹59,999" } },
   8:  { specialty: "Board Exam Strategy",              specialtyIcon: "📋", bubbleColor: "#6366F1",
         demoHighlights: ["Short Tricks", "Rapid Recall", "Answer Mapping", "Fast Calculation"],
-        demo: { topics: ["Quadratic Basics", "Literature Analysis", "Cell Biology"],         desc: "Board-prep strategies unlocked in 6 days." },
+        demo: { topics: ["Quadratic Basics", "Literature Analysis", "Cell Biology"],         desc: "Board-prep strategies unlocked in 5 days." },
         full: { subjects: ["Maths", "English", "Science"],      desc: "Board-aligned syllabus + full mock test series.",        price: "₹59,999" } },
   9:  { specialty: "JEE / NEET Foundation",            specialtyIcon: "🚀", bubbleColor: "#EF4444",
         demoHighlights: ["Polynomial Tricks", "Fast Derivation", "Concept Clarity", "Mind Mapping"],
@@ -151,11 +151,24 @@ function GradeTabs({ active, onChange }: { active: number; onChange: (g: number)
   );
 }
 
-// ── Demo Card ─────────────────────────────────────────────────
+// ── Grade-based Ignite pricing (mirrors backend + enroll page) ─
+const IGNITE_PRICE: Record<number, number> = {
+  1: 99, 2: 99,
+  3: 39, 4: 39, 5: 39, 6: 39, 7: 39, 8: 39,
+  9: 89, 10: 89,
+};
+const IGNITE_MRP = 599;
+const getIgnitePrice = (g: number) => IGNITE_PRICE[g] ?? 39;
+const getIgniteDisc  = (g: number) =>
+  Math.round(((IGNITE_MRP - getIgnitePrice(g)) / IGNITE_MRP) * 100);
+
+// ── Ignite Course Card (was Demo Card) ────────────────────────
 function DemoCard({ grade, data, demoHighlights, bubbleColor }: {
   grade: number; data: GradeCourseData["demo"];
   demoHighlights: string[]; bubbleColor: string;
 }) {
+  const price = getIgnitePrice(grade);
+  const disc  = getIgniteDisc(grade);
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
@@ -177,9 +190,9 @@ function DemoCard({ grade, data, demoHighlights, bubbleColor }: {
       <div className="flex items-start justify-between relative z-10">
         <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full"
           style={{ background: "rgba(255,107,26,0.12)", color: ORANGE }}>
-          ⚡ 6-Day Demo
+          ⚡ 5-Day Ignite
         </span>
-        <span className="text-xs text-gray-400 font-medium">Short preview</span>
+        <span className="text-xs text-gray-400 font-medium">Try before you invest</span>
       </div>
 
       {/* Demo highlights chips */}
@@ -194,7 +207,7 @@ function DemoCard({ grade, data, demoHighlights, bubbleColor }: {
 
       <div className="relative z-10">
         <h3 className="text-xl font-black leading-tight" style={{ color: NAVY }}>
-          6-Day Core Concepts — Grade {grade}
+          5-Day Ignite Course — Grade {grade}
         </h3>
         <p className="text-gray-500 text-sm mt-1">{data.desc}</p>
       </div>
@@ -214,21 +227,24 @@ function DemoCard({ grade, data, demoHighlights, bubbleColor }: {
       </div>
 
       <div className="border-t border-gray-100 pt-3 flex items-center gap-2 relative z-10">
-        <span className="font-black text-2xl" style={{ color: ORANGE }}>₹99</span>
-        <span className="text-xs text-gray-400 font-medium">6-Day program</span>
+        <span className="font-black text-2xl" style={{ color: ORANGE }}>₹{price}</span>
+        <span className="text-sm text-gray-400 line-through">₹{IGNITE_MRP}</span>
+        <span className="text-xs font-extrabold px-2 py-0.5 rounded-full"
+          style={{ background: "#dcfce7", color: "#16a34a" }}>{disc}% OFF</span>
+        <span className="text-xs text-gray-400 font-medium ml-auto">5-Day program</span>
       </div>
 
       <div className="flex items-center gap-3 relative z-10">
-        <Link href="/sign-up" className="flex-1">
+        <Link href="/enroll" className="flex-1">
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             className="w-full py-3 rounded-xl font-black text-sm text-white transition-all"
-            style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)`, boxShadow: `0 4px 16px rgba(11,43,107,0.3)` }}>
-            Join Demo
+            style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 4px 16px rgba(255,107,26,0.35)` }}>
+            Enroll Now — ₹{price}
           </motion.button>
         </Link>
         <Link href="/connect">
           <button className="text-xs font-semibold whitespace-nowrap hover:underline" style={{ color: NAVY }}>
-            Why this demo?
+            Why Ignite?
           </button>
         </Link>
       </div>
@@ -459,11 +475,11 @@ function PublicCoursesView() {
             </div>
 
             <div className="flex flex-wrap gap-3 justify-center">
-              <Link href="/sign-up">
+              <Link href="/enroll">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                   className="px-8 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 4px 24px rgba(255,107,26,0.45)` }}>
-                  Book Demo Class — ₹99 <ArrowRight className="w-4 h-4" />
+                  Enroll in Ignite Course <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
               <Link href="/sign-in">
@@ -562,18 +578,18 @@ function PublicCoursesView() {
                   <span className="text-white font-black text-base">Get an exclusive discount!</span>
                 </div>
                 <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.65)" }}>
-                  Join a demo class <span style={{ color: "rgba(255,255,255,0.4)" }}>·</span> or contact our team — mention this page and unlock a special price on the Full Year plan.
+                  Try the Ignite Course <span style={{ color: "rgba(255,255,255,0.4)" }}>·</span> or contact our team — mention this page and unlock a special price on the Full Year plan.
                 </p>
               </div>
             </div>
 
             {/* Right: CTAs */}
             <div className="flex items-center gap-2.5 flex-shrink-0 w-full sm:w-auto">
-              <Link href="/sign-up" className="flex-1 sm:flex-initial">
+              <Link href="/enroll" className="flex-1 sm:flex-initial">
                 <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                   className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 4px 18px rgba(255,107,26,0.45)` }}>
-                  ⚡ Join Demo — ₹99
+                  ⚡ Enroll — Ignite Course
                 </motion.button>
               </Link>
               <Link href="/connect" className="flex-1 sm:flex-initial">
@@ -660,11 +676,11 @@ function PublicCoursesView() {
           <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Ready to become a topper?</h2>
           <p className="text-white/60 mb-8 text-lg">430+ guided sessions per grade · CBSE · ICSE · IB hybrid curriculum</p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/sign-up">
+            <Link href="/enroll">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                 className="px-10 py-4 rounded-full font-black text-white text-lg flex items-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 8px 32px rgba(255,107,26,0.5)" }}>
-                Book a FREE Demo Class <ArrowRight className="w-5 h-5" />
+                Enroll in Ignite Course <ArrowRight className="w-5 h-5" />
               </motion.button>
             </Link>
           </div>
