@@ -170,7 +170,7 @@ const activityColors: Record<string, string> = {
   course:      "text-indigo-500 bg-indigo-50",
 };
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 function apiFetch(path: string, opts?: RequestInit) {
   const staffToken   = localStorage.getItem(STAFF_TOKEN_KEY);

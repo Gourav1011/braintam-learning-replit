@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses, useListSubjects, getListCoursesQueryKey } from "@workspace/api-client-react";
+import { API_BASE } from "@/lib/api-base";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -829,7 +830,7 @@ function AuthCoursesView() {
   useEffect(() => {
     const token = localStorage.getItem(STUDENT_TOKEN_KEY);
     if (!token) { setDemoLoading(false); return; }
-    fetch("/api/student/my-demo-batches", {
+    fetch(`${API_BASE}/api/student/my-demo-batches`, {
       headers: { "Authorization": `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : [])

@@ -32,7 +32,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 export const STAFF_TOKEN_KEY = "braintam_staff_token";
 export const STUDENT_TOKEN_KEY = "braintam_student_token";
 

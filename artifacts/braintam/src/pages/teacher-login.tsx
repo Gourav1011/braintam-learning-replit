@@ -6,7 +6,7 @@ import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const TEAL = "#0891B2";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 const perks = [
   { icon: Video,         title: "Manage Live Classes",  desc: "Schedule, start and monitor your live sessions" },

@@ -15,7 +15,7 @@ import { STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 export default function OnboardingPage() {
   const { user } = useUser();

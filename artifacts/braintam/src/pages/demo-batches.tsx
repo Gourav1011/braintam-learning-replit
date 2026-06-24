@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Clock, Users, Play, ChevronRight, Zap } from "lucide-react";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 interface DemoBatch {
   id: number; title: string; description: string | null;

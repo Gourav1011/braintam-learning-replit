@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Clock, Video, BookOpen, ChevronLeft, ExternalLink, Play } from "lucide-react";
 import { useLocation } from "wouter";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 interface DemoBatch {
   id: number; title: string; description: string | null;

@@ -19,7 +19,7 @@ import {
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { PointsHub } from "@/components/points-hub";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 

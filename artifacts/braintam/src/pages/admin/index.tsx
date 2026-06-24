@@ -73,7 +73,7 @@ import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
 import { AssessmentsTab } from "./assessments-tab";
 import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 

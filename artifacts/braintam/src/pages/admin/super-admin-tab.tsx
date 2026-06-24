@@ -16,7 +16,7 @@ import { exportCSV } from "./index";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const GREEN = "#059669";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 const ALL_MODULES = [
   "Dashboard","Analytics","Course Analytics","Teacher Analytics","Learning Health",

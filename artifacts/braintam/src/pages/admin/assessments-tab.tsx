@@ -9,7 +9,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, LineChart, Line, XAx
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem("braintam_staff_token");

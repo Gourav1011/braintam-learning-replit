@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { TrendingUp, TrendingDown, Users, Video, RefreshCw, Download, Search, Filter, ChevronDown, ChevronUp, Award, Star, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 

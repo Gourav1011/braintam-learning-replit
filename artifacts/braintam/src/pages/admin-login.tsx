@@ -6,7 +6,7 @@ import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const RED = "#DC2626";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 const perks = [
   { icon: BarChart3, title: "Platform Analytics",  desc: "Real-time stats on users, enrollments and submissions" },

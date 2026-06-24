@@ -11,7 +11,7 @@ import {
   CheckSquare, FileText, Clock,
 } from "lucide-react";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+import { API_BASE as BASE } from "@/lib/api-base";
 
 interface ContentItem {
   id: number; contentType: string; title: string;

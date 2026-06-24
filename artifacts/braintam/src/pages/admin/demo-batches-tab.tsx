@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { API_BASE } from "@/lib/api-base";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -16,7 +17,7 @@ const GREEN = "#059669";
 
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem("braintam_staff_token");
-  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  const base = API_BASE;
   return fetch(`${base}/api${path}`, {
     ...opts,
     headers: {

@@ -2,9 +2,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import { API_BASE } from "@/lib/api-base";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-setBaseUrl(`${BASE}`);
+setBaseUrl(API_BASE);
 
 setAuthTokenGetter(() => {
   const path = window.location.pathname;

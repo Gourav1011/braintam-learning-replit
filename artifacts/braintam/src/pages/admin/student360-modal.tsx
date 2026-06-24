@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, User, Phone, Edit2, Save, Loader2, Target, ClipboardList, Trophy, FileText } from "lucide-react";
+import { API_BASE } from "@/lib/api-base";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -7,7 +8,7 @@ const GREEN = "#059669";
 
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem("braintam_staff_token");
-  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  const base = API_BASE;
   return fetch(`${base}/api${path}`, {
     ...opts,
     headers: {
