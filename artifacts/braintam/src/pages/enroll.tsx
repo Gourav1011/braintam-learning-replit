@@ -362,8 +362,11 @@ export default function EnrollPage() {
 
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto" />
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src={braintamLogo} alt="Braintam" className="h-10 w-auto" />
+            <span className="hidden sm:block font-extrabold text-lg tracking-tight" style={{ color: NAVY }}>Braintam</span>
+          </div>
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-gray-600">
             {[
               { icon: GraduationCap, label: "IIT/NIT Teachers" },
@@ -444,28 +447,13 @@ export default function EnrollPage() {
               <span className="text-green-300">S***a from Rajasthan just enrolled</span>
             </motion.div>
 
-            {/* Student photo — visible on mobile below text, hidden on desktop (form is on right) */}
-            <div className="md:hidden flex justify-center mt-2">
-              <img src={studentHeroImg} alt="Braintam student"
-                className="w-48 h-auto object-contain"
-                style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.35))" }} />
             </div>
-          </div>
 
-          {/* Student photo — desktop decoration alongside form */}
-          <div className="hidden md:flex flex-col items-center justify-end gap-4">
-            {/* Photo floated left of form */}
-            <div className="absolute left-1/2 -translate-x-[140%] bottom-0 z-10 pointer-events-none hidden lg:block">
-              <img src={studentHeroImg} alt="Braintam student"
-                className="w-44 h-auto object-contain"
-                style={{ filter: "drop-shadow(0 8px 28px rgba(0,0,0,0.4))" }} />
-            </div>
-            <EnrollForm
-              grade={grade} setGrade={setGrade}
-              phone={phone} setPhone={setPhone}
-              loading={loading} error={error} accountNote={accountNote}
-              onSubmit={handleEnroll}
-            />
+          {/* Right column — girl photo, all screen sizes */}
+          <div className="flex items-end justify-center">
+            <img src={studentHeroImg} alt="Braintam student"
+              className="w-64 sm:w-72 md:w-80 h-auto object-contain"
+              style={{ filter: "drop-shadow(0 12px 36px rgba(0,0,0,0.45))" }} />
           </div>
 
         </div>
@@ -531,8 +519,8 @@ export default function EnrollPage() {
             </div>
           </div>
 
-          {/* Form — mobile only (desktop form is in hero) */}
-          <div className="md:hidden">
+          {/* Form — all screen sizes */}
+          <div>
             <EnrollForm
               grade={grade} setGrade={setGrade}
               phone={phone} setPhone={setPhone}
