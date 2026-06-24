@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import braintamLogo from "@assets/logo_transparent-Photoroom_1782323218278.png";
 import expertCardImg   from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
 import brandedStudentImg from "@assets/ChatGPT_Image_May_29,_2026,_09_13_20_PM_1780069417528.png";
 import poonamPhoto from "@assets/poonam_cofounder.png";
@@ -676,7 +676,7 @@ export default function LandingPage() {
                  boxShadow: scrolled ? "0 2px 20px rgba(11,43,107,0.08)" : "none" }}>
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center">
-            <img src={braintamLogo} alt="Braintam" className="w-24 h-24 object-contain" />
+            <img src={braintamLogo} alt="Braintam" className="h-11 w-auto object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: MUTED }}>
             {([["Courses","/courses"],["Live Classes","/live-classes"],["Leaderboard","/leaderboard"]] as [string,string][]).map(([l, href]) => (
@@ -706,7 +706,7 @@ export default function LandingPage() {
       <section className="relative flex items-center pt-20 pb-6 md:pt-24 md:pb-10 px-6 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] rounded-full opacity-10 blur-[120px] pointer-events-none"
           style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
-        <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
+        <div className="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-6 md:gap-10 lg:gap-12 items-center">
           <div className="space-y-5 md:space-y-7 relative z-10">
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0}
               className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full"
@@ -781,7 +781,7 @@ export default function LandingPage() {
             </div>
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[260px] sm:h-[380px] lg:h-[440px] block">
+            transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[300px] md:h-[400px] lg:h-[440px] block">
             <HeroVisual />
           </motion.div>
         </div>
@@ -1398,7 +1398,7 @@ export default function LandingPage() {
             {/* Left: brand block */}
             <div className="flex-shrink-0 md:w-56 space-y-2">
               {/* Logo */}
-              <img src={braintamLogo} alt="Braintam" className="w-12 h-12 object-contain" />
+              <img src={braintamLogo} alt="Braintam" className="h-10 w-auto object-contain" />
               <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
                 <span style={{ color: "rgba(255,107,26,0.8)" }}>Brain + Talent Advancement Mission</span><br />
                 Advancing young minds through innovative learning, mentorship & skill-building for Grades 1–10.
