@@ -307,7 +307,7 @@ function HeroVisual() {
           src={expertCardImg}
           alt="Braintam student"
           className="h-full w-auto object-contain block"
-          style={{ filter: "drop-shadow(0 12px 36px rgba(11,43,107,0.22))", maxWidth: "280px" }}
+          style={{ filter: "drop-shadow(0 12px 36px rgba(11,43,107,0.22))", maxWidth: "280px", position: "relative", zIndex: 40 }}
         />
 
         {/* ── Left floating card: Ananya ── */}
