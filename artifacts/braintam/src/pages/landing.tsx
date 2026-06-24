@@ -1118,7 +1118,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
                   style={{ background: "rgba(11,43,107,0.06)", color: NAVY }}>
-                  👨‍👩‍👧 10,00,000+ Families Trust Us
+                  👨‍👩‍👧 Trusted by India's Best Students
                 </div>
               </div>
             </div>

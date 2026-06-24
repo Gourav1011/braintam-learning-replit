@@ -431,7 +431,7 @@ export default function EnrollPage() {
                 ))}
               </div>
               <span className="text-blue-200 text-sm">
-                Trusted by <strong className="text-white">10,00,000+</strong> Parents & Students
+                Trusted by <strong className="text-white">India's Best</strong> Students & Parents
               </span>
             </div>
 
@@ -683,7 +683,7 @@ export default function EnrollPage() {
       <section className="py-8 px-4" style={{ background: NAVY }}>
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { icon: Users,    value: "10,00,000+", label: "Happy Learners"     },
+            { icon: Users,    value: "India's Best", label: "Students & Parents" },
             { icon: Award,    value: "500+",        label: "Top IIT/NIT Teachers" },
             { icon: BookOpen, value: "50+",         label: "Core Concepts"       },
             { icon: Target,   value: "300+",        label: "Quizzes & Tests"     },
