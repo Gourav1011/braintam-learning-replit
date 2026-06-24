@@ -4,8 +4,7 @@ import { API_BASE } from "@/lib/api-base";
 import { CheckCircle2, Shield, Star, ChevronRight, X } from "lucide-react";
 
 import studentHeroImg from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
-
-const braintamLogo = "/logo.svg";
+import braintamLogoImg from "@assets/logo_transparent-Photoroom_1782323218278.png";
 
 const NAVY   = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -47,16 +46,15 @@ function useRazorpay() {
 }
 
 // ── Countdown ───────────────────────────────────────────────
-function useCountdown(initialSeconds = 53845) {
+function useCountdown(initialSeconds = 870) {
   const [secs, setSecs] = useState(initialSeconds);
   useEffect(() => {
     const id = setInterval(() => setSecs(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(id);
   }, []);
-  const h = String(Math.floor(secs / 3600)).padStart(2, "0");
-  const m = String(Math.floor((secs % 3600) / 60)).padStart(2, "0");
+  const m = String(Math.floor(secs / 60)).padStart(2, "0");
   const s = String(secs % 60).padStart(2, "0");
-  return { h, m, s, str: `${m}:${s}` };
+  return { h: "00", m, s, str: `${m}:${s}` };
 }
 
 // ── Rolling enrollment notifications ────────────────────────
@@ -381,10 +379,9 @@ export default function EnrollPage() {
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={braintamLogo} alt="Braintam" className="h-9 w-auto" />
-            <span className="font-extrabold text-base tracking-tight" style={{ color: NAVY }}>Braintam</span>
+        <div className="max-w-4xl mx-auto px-6 py-2.5 flex items-center justify-between">
+          <div className="flex items-center">
+            <img src={braintamLogoImg} alt="Braintam" className="h-10 w-auto" />
           </div>
           <button onClick={() => setModal(true)}
             className="text-xs font-extrabold px-4 py-2 rounded-full text-white"
@@ -394,7 +391,7 @@ export default function EnrollPage() {
         </div>
       </header>
 
-      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-32 space-y-4">
+      <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-4 pb-32 space-y-4">
 
         {/* ── Hero Banner ── */}
         <div className="rounded-2xl overflow-hidden relative"
@@ -404,26 +401,10 @@ export default function EnrollPage() {
           <div className="absolute inset-0 opacity-5 pointer-events-none"
             style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
-          {/* Floating math symbols */}
+          {/* Floating math symbols + rocket */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-            {[
-              { t: "π",  top: "8%",  left: "62%", sz: 18, op: 0.18 },
-              { t: "∑",  top: "22%", left: "55%", sz: 14, op: 0.15 },
-              { t: "×",  top: "5%",  left: "78%", sz: 22, op: 0.20 },
-              { t: "√",  top: "35%", left: "50%", sz: 13, op: 0.13 },
-              { t: "÷",  top: "48%", left: "70%", sz: 16, op: 0.16 },
-              { t: "∞",  top: "15%", left: "90%", sz: 14, op: 0.12 },
-              { t: "²",  top: "28%", left: "85%", sz: 12, op: 0.14 },
-              { t: "+",  top: "42%", left: "58%", sz: 20, op: 0.13 },
-              { t: "=",  top: "55%", left: "82%", sz: 15, op: 0.12 },
-              { t: "✦",  top: "12%", left: "48%", sz: 10, op: 0.25 },
-              { t: "✦",  top: "60%", left: "93%", sz: 8,  op: 0.20 },
-            ].map(({ t, top, left, sz, op }, i) => (
-              <span key={i} className="absolute font-bold text-white"
-                style={{ top, left, fontSize: sz, opacity: op }}>{t}</span>
-            ))}
-            {/* Rocket SVG */}
-            <svg className="absolute" style={{ top: "-2%", right: "2%", width: 52, opacity: 0.85 }}
+            {/* Rocket — top-left, tilted 45° launching up-right, away from girl */}
+            <svg className="absolute" style={{ top: "4%", left: "3%", width: 46, opacity: 0.82, transform: "rotate(45deg)" }}
               viewBox="0 0 60 100" fill="none">
               <ellipse cx="30" cy="55" rx="12" ry="22" fill="#e2e8f0" opacity="0.9"/>
               <path d="M30 10 C18 28 18 44 30 56 C42 44 42 28 30 10Z" fill="#f1f5f9"/>
@@ -433,6 +414,24 @@ export default function EnrollPage() {
               <path d="M24 70 C24 82 36 82 36 70" fill="#f97316" opacity="0.9"/>
               <path d="M26 72 C26 86 34 86 34 72" fill="#fbbf24" opacity="0.7"/>
             </svg>
+            {/* Math symbols spread across whole hero */}
+            {[
+              { t: "π",  top: "10%", left: "30%", sz: 18, op: 0.18 },
+              { t: "∑",  top: "55%", left: "8%",  sz: 14, op: 0.15 },
+              { t: "×",  top: "6%",  left: "55%", sz: 20, op: 0.18 },
+              { t: "√",  top: "38%", left: "42%", sz: 13, op: 0.14 },
+              { t: "÷",  top: "50%", left: "62%", sz: 16, op: 0.15 },
+              { t: "∞",  top: "18%", left: "72%", sz: 14, op: 0.13 },
+              { t: "²",  top: "30%", left: "20%", sz: 12, op: 0.16 },
+              { t: "+",  top: "70%", left: "35%", sz: 20, op: 0.13 },
+              { t: "=",  top: "22%", left: "88%", sz: 14, op: 0.12 },
+              { t: "✦",  top: "14%", left: "45%", sz: 10, op: 0.25 },
+              { t: "✦",  top: "65%", left: "78%", sz: 8,  op: 0.20 },
+              { t: "△",  top: "42%", left: "15%", sz: 13, op: 0.13 },
+            ].map(({ t, top, left, sz, op }, i) => (
+              <span key={i} className="absolute font-bold text-white"
+                style={{ top, left, fontSize: sz, opacity: op }}>{t}</span>
+            ))}
           </div>
 
           <div className="relative z-10 flex items-end">
@@ -480,22 +479,14 @@ export default function EnrollPage() {
               </AnimatePresence>
 
               {/* Countdown inside hero */}
-              <div className="mt-3 flex items-center gap-1.5 p-2.5 rounded-xl"
-                style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <span className="text-xs text-blue-300 mr-1">⏱ Offer ends in</span>
-                {[
-                  { val: timer.h, label: "HRS" },
-                  { val: timer.m, label: "MINS" },
-                  { val: timer.s, label: "SECS" },
-                ].map(({ val, label }, i) => (
-                  <div key={label} className="flex items-center gap-1">
-                    <div className="text-center">
-                      <div className="text-lg font-black tabular-nums text-white leading-none">{val}</div>
-                      <div className="text-[9px] text-blue-400 font-semibold">{label}</div>
-                    </div>
-                    {i < 2 && <span className="text-white font-black text-base pb-2">:</span>}
-                  </div>
-                ))}
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl"
+                style={{ background: "rgba(220,38,38,0.25)", border: "1px solid rgba(220,38,38,0.5)" }}>
+                <span className="text-sm animate-pulse">🔥</span>
+                <span className="text-xs font-semibold text-red-300">Offer ends in</span>
+                <span className="text-xl font-black tabular-nums text-white tracking-widest">
+                  {timer.m}<span className="text-red-400 animate-pulse">:</span>{timer.s}
+                </span>
+                <span className="text-[9px] text-red-300 font-bold uppercase">mins</span>
               </div>
             </div>
 
