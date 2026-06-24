@@ -46,16 +46,17 @@ function useRazorpay() {
   return ready;
 }
 
-// ── Countdown (15 min) ──────────────────────────────────────
-function useCountdown(initialSeconds = 900) {
+// ── Countdown ───────────────────────────────────────────────
+function useCountdown(initialSeconds = 53845) {
   const [secs, setSecs] = useState(initialSeconds);
   useEffect(() => {
     const id = setInterval(() => setSecs(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(id);
   }, []);
+  const h = String(Math.floor(secs / 3600)).padStart(2, "0");
   const m = String(Math.floor((secs % 3600) / 60)).padStart(2, "0");
   const s = String(secs % 60).padStart(2, "0");
-  return `${m}:${s}`;
+  return { h, m, s, str: `${m}:${s}` };
 }
 
 // ── Rolling enrollment notifications ────────────────────────
@@ -88,7 +89,7 @@ function BookingModal({ grade, onConfirm, onClose }: {
   const [waiting]           = useState(() => Math.floor(Math.random() * 6) + 3);
   const price               = getPrice(grade);
   const disc                = getDisc(grade);
-  const timerStr            = useCountdown(595);
+  const modalTimer          = useCountdown(595);
   const inputRef            = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -167,7 +168,7 @@ function BookingModal({ grade, onConfirm, onClose }: {
                 </div>
                 <div className="ml-auto text-right">
                   <p className="text-xs text-gray-500">Offer ends in</p>
-                  <p className="text-lg font-black tabular-nums" style={{ color: "red" }}>{timerStr}</p>
+                  <p className="text-lg font-black tabular-nums" style={{ color: "red" }}>{modalTimer.str}</p>
                 </div>
               </div>
 
@@ -255,7 +256,7 @@ function BookingModal({ grade, onConfirm, onClose }: {
                 Trusted by India's best students & parents
               </p>
               <p className="text-xs text-center font-bold mb-4" style={{ color: "red" }}>
-                Limited Discount Ends In: {timerStr}
+                Limited Discount Ends In: {modalTimer.str}
               </p>
 
               <button
@@ -324,7 +325,7 @@ export default function EnrollPage() {
   const [error, setError]     = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const razorpayReady         = useRazorpay();
-  const timerStr              = useCountdown(900);
+  const timer                 = useCountdown();
   const [seats]               = useState(() => Math.floor(Math.random() * 5) + 8);
   const enrolleeText          = useRollingText(ENROLLEES);
 
@@ -401,31 +402,65 @@ export default function EnrollPage() {
 
           {/* dot grid */}
           <div className="absolute inset-0 opacity-5 pointer-events-none"
-            style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+            style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+
+          {/* Floating math symbols */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+            {[
+              { t: "π",  top: "8%",  left: "62%", sz: 18, op: 0.18 },
+              { t: "∑",  top: "22%", left: "55%", sz: 14, op: 0.15 },
+              { t: "×",  top: "5%",  left: "78%", sz: 22, op: 0.20 },
+              { t: "√",  top: "35%", left: "50%", sz: 13, op: 0.13 },
+              { t: "÷",  top: "48%", left: "70%", sz: 16, op: 0.16 },
+              { t: "∞",  top: "15%", left: "90%", sz: 14, op: 0.12 },
+              { t: "²",  top: "28%", left: "85%", sz: 12, op: 0.14 },
+              { t: "+",  top: "42%", left: "58%", sz: 20, op: 0.13 },
+              { t: "=",  top: "55%", left: "82%", sz: 15, op: 0.12 },
+              { t: "✦",  top: "12%", left: "48%", sz: 10, op: 0.25 },
+              { t: "✦",  top: "60%", left: "93%", sz: 8,  op: 0.20 },
+            ].map(({ t, top, left, sz, op }, i) => (
+              <span key={i} className="absolute font-bold text-white"
+                style={{ top, left, fontSize: sz, opacity: op }}>{t}</span>
+            ))}
+            {/* Rocket SVG */}
+            <svg className="absolute" style={{ top: "-2%", right: "2%", width: 52, opacity: 0.85 }}
+              viewBox="0 0 60 100" fill="none">
+              <ellipse cx="30" cy="55" rx="12" ry="22" fill="#e2e8f0" opacity="0.9"/>
+              <path d="M30 10 C18 28 18 44 30 56 C42 44 42 28 30 10Z" fill="#f1f5f9"/>
+              <circle cx="30" cy="42" r="7" fill="#93c5fd"/>
+              <path d="M18 54 L10 70 L22 64Z" fill="#fbbf24"/>
+              <path d="M42 54 L50 70 L38 64Z" fill="#fbbf24"/>
+              <path d="M24 70 C24 82 36 82 36 70" fill="#f97316" opacity="0.9"/>
+              <path d="M26 72 C26 86 34 86 34 72" fill="#fbbf24" opacity="0.7"/>
+            </svg>
+          </div>
 
           <div className="relative z-10 flex items-end">
-            <div className="flex-1 p-5 pb-4">
+            <div className="flex-1 p-4 pb-3">
               {/* Live pill */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-3"
-                style={{ background: "rgba(255,107,26,0.2)", border: "1px solid rgba(255,107,26,0.5)" }}>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-2"
+                style={{ background: "rgba(255,107,26,0.25)", border: "1px solid rgba(255,107,26,0.6)" }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
                 <span className="text-xs font-bold text-orange-300">IGNITE COURSE · LIMITED SEATS</span>
               </div>
 
-              <h1 className="text-xl font-extrabold text-white leading-snug mb-3">
+              <h1 className="text-xl font-extrabold text-white leading-snug mb-1">
                 Unlock Your Child's<br />
                 <span style={{ color: ORANGE }}>Full Potential</span>
               </h1>
+              <p className="text-xs text-blue-200 mb-2 leading-relaxed">
+                A 5-Day Live Program to Build Concepts,<br/>Confidence &amp; Champions! ✨
+              </p>
 
-              <ul className="space-y-1.5 mb-3">
+              <ul className="space-y-1 mb-2">
                 {[
                   "Maths, Science & Olympiads",
-                  "50+ Core Concepts",
-                  "50+ Solving Skills",
-                  "IIT/NIT Teachers",
+                  "30+ Core Concepts",
+                  "40+ Solving Skills",
+                  "IIT/NIT Expert Teachers",
                 ].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-blue-100">
-                    <span className="text-orange-400">▶</span> {f}
+                  <li key={f} className="flex items-center gap-1.5 text-xs text-blue-100">
+                    <span className="text-orange-400 text-xs">▶</span> {f}
                   </li>
                 ))}
               </ul>
@@ -434,30 +469,42 @@ export default function EnrollPage() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={enrolleeText}
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold"
+                  exit={{ opacity: 0, y: -4 }}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold"
                   style={{ background: "rgba(255,255,255,0.12)" }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                   <span className="text-green-300">{enrolleeText}</span>
                 </motion.div>
               </AnimatePresence>
+
+              {/* Countdown inside hero */}
+              <div className="mt-3 flex items-center gap-1.5 p-2.5 rounded-xl"
+                style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <span className="text-xs text-blue-300 mr-1">⏱ Offer ends in</span>
+                {[
+                  { val: timer.h, label: "HRS" },
+                  { val: timer.m, label: "MINS" },
+                  { val: timer.s, label: "SECS" },
+                ].map(({ val, label }, i) => (
+                  <div key={label} className="flex items-center gap-1">
+                    <div className="text-center">
+                      <div className="text-lg font-black tabular-nums text-white leading-none">{val}</div>
+                      <div className="text-[9px] text-blue-400 font-semibold">{label}</div>
+                    </div>
+                    {i < 2 && <span className="text-white font-black text-base pb-2">:</span>}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Girl photo */}
-            <div className="flex-shrink-0 self-end pr-2">
+            {/* Girl photo — large, flush to bottom */}
+            <div className="flex-shrink-0 self-end" style={{ marginRight: -4 }}>
               <img src={studentHeroImg} alt="Braintam student"
-                className="w-36 h-auto object-contain"
-                style={{ filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))" }} />
+                className="h-56 w-auto object-contain"
+                style={{ filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.5))" }} />
             </div>
-          </div>
-
-          {/* Course info strip */}
-          <div className="relative z-10 px-5 py-2.5 flex items-center justify-between"
-            style={{ background: "rgba(0,0,0,0.25)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-            <span className="text-xs text-blue-200 font-semibold">Ignite Course · 5-Day Live Program</span>
-            <span className="text-xs text-blue-300">⏱ Offer ends: {timerStr}</span>
           </div>
         </div>
 
@@ -471,24 +518,37 @@ export default function EnrollPage() {
           <div className="grid grid-cols-4 gap-2.5">
             {Array.from({ length: 10 }, (_, i) => i + 1).map(g => {
               const isSelected = grade === g;
+              const isFull     = g === 9 || g === 10;
               return (
-                <button key={g} onClick={() => setGrade(g)}
-                  className="py-3 rounded-xl text-sm font-bold transition-all border-2 relative"
+                <button key={g}
+                  onClick={() => !isFull && setGrade(g)}
+                  disabled={isFull}
+                  className="py-2.5 rounded-xl text-xs font-bold transition-all border-2 relative flex flex-col items-center justify-center gap-0.5"
                   style={{
-                    background:   isSelected ? ORANGE : "#f8faff",
-                    color:        isSelected ? "#fff" : NAVY,
-                    borderColor:  isSelected ? ORANGE : "#e2e8f0",
-                    boxShadow:    isSelected ? "0 4px 14px rgba(255,107,26,0.4)" : "none",
-                    transform:    isSelected ? "scale(1.06)" : "scale(1)",
+                    background:   isFull     ? "#f1f5f9" : isSelected ? ORANGE : "#f8faff",
+                    color:        isFull     ? "#94a3b8" : isSelected ? "#fff"  : NAVY,
+                    borderColor:  isFull     ? "#e2e8f0" : isSelected ? ORANGE  : "#e2e8f0",
+                    boxShadow:    isSelected && !isFull ? "0 4px 14px rgba(255,107,26,0.4)" : "none",
+                    transform:    isSelected && !isFull ? "scale(1.06)" : "scale(1)",
+                    cursor:       isFull ? "not-allowed" : "pointer",
                   }}>
-                  Class {g}
+                  <span className="flex items-center gap-1">
+                    {isSelected && !isFull && <span className="text-[10px]">✓</span>}
+                    <span>Class {g}</span>
+                  </span>
+                  {isFull && (
+                    <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-sm"
+                      style={{ background: "#fee2e2", color: "#dc2626", letterSpacing: "0.03em" }}>
+                      SEATS FULL
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
-          <p className="text-xs text-center text-gray-400 mt-3">
-            ✅ Classes 1–10 open · Batch starts soon
+          <p className="text-xs text-center text-gray-500 mt-3 flex items-center justify-center gap-1.5">
+            <span className="text-green-500">✅</span> Classes 1–8 open · Batch starts soon
           </p>
         </div>
 
@@ -556,29 +616,39 @@ export default function EnrollPage() {
 
       {/* ── Fixed Bottom Price Bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-4">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black" style={{ color: ORANGE }}>₹{price}</span>
-              <span className="text-sm text-gray-400 line-through">₹{MRP}</span>
-              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full"
-                style={{ background: "#dcfce7", color: "#16a34a" }}>{disc}% OFF</span>
+        <div className="max-w-2xl mx-auto px-4 pt-2.5 pb-1.5">
+          <div className="flex items-center gap-3 mb-1.5">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-black" style={{ color: ORANGE }}>₹{price}</span>
+                <span className="text-sm text-gray-400 line-through">₹{MRP}</span>
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full"
+                  style={{ background: "#dcfce7", color: "#16a34a" }}>{disc}% OFF</span>
+              </div>
+              <p className="text-xs text-gray-400">
+                Only <strong className="text-red-500">{seats} seats</strong> left · Class {grade} selected
+              </p>
             </div>
-            <p className="text-xs text-gray-400">
-              Only <strong className="text-red-500">{seats} seats</strong> left · Class {grade} selected
-            </p>
+            <button
+              onClick={() => { setError(null); setModal(true); }}
+              disabled={loading}
+              className="flex-1 py-3.5 rounded-xl font-extrabold text-white text-base flex items-center justify-center gap-2 active:scale-95 transition-all"
+              style={{
+                background: `linear-gradient(90deg,${ORANGE},#e85d12)`,
+                boxShadow: "0 6px 20px rgba(255,107,26,0.45)",
+              }}>
+              {loading ? "Processing…" : "Enroll Now"}
+              {!loading && <ChevronRight className="w-5 h-5" />}
+            </button>
           </div>
-          <button
-            onClick={() => { setError(null); setModal(true); }}
-            disabled={loading}
-            className="flex-1 py-3.5 rounded-xl font-extrabold text-white text-base flex items-center justify-center gap-2 active:scale-95 transition-all"
-            style={{
-              background: `linear-gradient(90deg,${ORANGE},#e85d12)`,
-              boxShadow: "0 6px 20px rgba(255,107,26,0.45)",
-            }}>
-            {loading ? "Processing…" : "Enroll Now"}
-            {!loading && <ChevronRight className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center justify-center gap-4 pb-1">
+            <span className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+              <Shield className="w-3 h-3 text-blue-500" /> Safe &amp; Secure Payments
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+              ⚡ Instant Confirmation
+            </span>
+          </div>
         </div>
       </div>
 
