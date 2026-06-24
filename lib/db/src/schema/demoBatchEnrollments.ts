@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, timestamp, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, timestamp, text, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -11,7 +11,7 @@ export const demoBatchEnrollmentsTable = pgTable("demo_batch_enrollments", {
   lastDayAttended: integer("last_day_attended").default(0),
   assignedMentorId: integer("assigned_mentor_id"),
   assignedMentorName: text("assigned_mentor_name"),
-});
+}, (t) => [unique("demo_batch_enrollments_batch_student_unique").on(t.batchId, t.studentId)]);
 
 export const insertDemoBatchEnrollmentSchema = createInsertSchema(demoBatchEnrollmentsTable).omit({
   id: true,

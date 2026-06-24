@@ -26,6 +26,7 @@ import superAdminRouter from "./superAdmin";
 import permissionsRouter from "./permissions";
 import mentorAdminRouter from "./mentorAdmin";
 import igniteRouter from "./ignite";
+import paymentsRouter from "./payments";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(superAdminRouter);
 router.use(permissionsRouter);
 router.use(mentorAdminRouter);
 router.use(igniteRouter);
+router.use(paymentsRouter);
 
 export default router;

@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const paymentsTable = pgTable("payments", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id"),
+  phone: text("phone"),
   razorpayOrderId: text("razorpay_order_id").unique(),
   razorpayPaymentId: text("razorpay_payment_id").unique(),
   razorpaySignature: text("razorpay_signature"),
