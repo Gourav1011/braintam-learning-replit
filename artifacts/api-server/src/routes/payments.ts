@@ -35,8 +35,13 @@ function getRazorpay(): Razorpay {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
-// ── Amount ────────────────────────────────────────────────────
-const DEMO_AMOUNT_PAISE = 4900; // ₹49
+// ── Grade-based pricing ───────────────────────────────────────
+// Grade 1–2: ₹99, Grade 3–8: ₹39, Grade 9–10: ₹89
+function getDemoAmountPaise(grade: number): number {
+  if (grade <= 2) return 9900;  // ₹99
+  if (grade <= 8) return 3900;  // ₹39
+  return 8900;                  // ₹89 (grades 9–10)
+}
 
 // ── POST /api/payments/create-order ──────────────────────────
 // Public endpoint — no auth required.
@@ -89,6 +94,9 @@ router.post("/payments/create-order", async (req, res) => {
     // (lead re-engaging, dropped student re-enrolling, etc.)
   }
 
+  // Grade-based amount
+  const amountPaise = getDemoAmountPaise(grade);
+
   // Create Razorpay order
   let razorpay: Razorpay;
   try {
@@ -102,7 +110,7 @@ router.post("/payments/create-order", async (req, res) => {
   let order: any;
   try {
     order = await razorpay.orders.create({
-      amount: DEMO_AMOUNT_PAISE,
+      amount: amountPaise,
       currency: "INR",
       receipt: `btl_demo_${Date.now()}`,
       notes: { phone, grade: String(grade) },
@@ -113,12 +121,12 @@ router.post("/payments/create-order", async (req, res) => {
     return;
   }
 
-  // Store pending payment row — phone and grade are anchored here for the webhook
+  // Store pending payment row — phone, grade and amount anchored here for the webhook
   await db.insert(paymentsTable).values({
     phone,
     grade,
     razorpayOrderId: order.id,
-    amount: DEMO_AMOUNT_PAISE,
+    amount: amountPaise,
     currency: "INR",
     paymentType: "demo_enrollment",
     status: "created",
@@ -127,7 +135,7 @@ router.post("/payments/create-order", async (req, res) => {
 
   res.json({
     orderId: order.id,
-    amount: DEMO_AMOUNT_PAISE,
+    amount: amountPaise,
     currency: "INR",
     keyId: process.env.RAZORPAY_KEY_ID,
     // Surfaced to allow frontend to show context if account already exists
@@ -220,22 +228,14 @@ router.post("/payments/webhook", async (req, res) => {
     return;
   }
 
-  // ── 4. Amount verification ────────────────────────────────
-  if (capturedAmount !== undefined && capturedAmount !== DEMO_AMOUNT_PAISE) {
-    await logEnrolmentError({
-      errorType: "amount_mismatch",
-      errorMessage: `Expected ${DEMO_AMOUNT_PAISE} paise, got ${capturedAmount}`,
-      razorpayPaymentId,
-      razorpayOrderId: orderId,
-      rawPayload: req.body,
-    });
-    res.sendStatus(200);
-    return;
-  }
-
-  // ── 5. Load phone + grade from the payments row ───────────
+  // ── 4. Load phone + grade + stored amount from the payments row ─
   const [paymentRow] = await db
-    .select({ phone: paymentsTable.phone, grade: paymentsTable.grade, id: paymentsTable.id })
+    .select({
+      phone: paymentsTable.phone,
+      grade: paymentsTable.grade,
+      id: paymentsTable.id,
+      amount: paymentsTable.amount,
+    })
     .from(paymentsTable)
     .where(eq(paymentsTable.razorpayOrderId, orderId))
     .limit(1);
