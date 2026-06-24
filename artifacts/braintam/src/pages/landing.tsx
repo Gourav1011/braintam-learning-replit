@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
-import expertCardImg from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
+import expertCardImg   from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
+import brandedStudentImg from "@assets/ChatGPT_Image_May_29,_2026,_09_13_20_PM_1780069417528.png";
 import poonamPhoto from "@assets/poonam_cofounder.png";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -289,9 +290,9 @@ function HeroVisual() {
 
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 65% 30%, rgba(255,107,26,0.10) 0%, transparent 55%)" }} />
+        style={{ background: "radial-gradient(ellipse at 60% 40%, rgba(255,107,26,0.13) 0%, transparent 60%)" }} />
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 30% 75%, rgba(11,43,107,0.08) 0%, transparent 55%)" }} />
+        style={{ background: "radial-gradient(ellipse at 35% 70%, rgba(11,43,107,0.10) 0%, transparent 55%)" }} />
 
       {/* ── Floating toppers badge ── */}
       <div className="bt-float absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full"
@@ -300,90 +301,87 @@ function HeroVisual() {
         <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
       </div>
 
-      {/* ── Three student cards ── */}
-      <div className="relative z-10 flex items-end gap-2 sm:gap-4 mt-6">
+      {/* ── Main student photo ── */}
+      <div className="relative z-10 flex items-end justify-center mt-6" style={{ height: "340px" }}>
+        <img
+          src={expertCardImg}
+          alt="Braintam student"
+          className="h-full w-auto object-contain block"
+          style={{ filter: "drop-shadow(0 12px 36px rgba(11,43,107,0.22))", maxWidth: "280px" }}
+        />
 
-        {/* Card: Ananya — left */}
+        {/* ── Left floating card: Ananya ── */}
         {(() => { const s = toppers[2]; return (
-          <div key={s.name}
-            className="bt-float-a rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
+          <div className="bt-float-a absolute left-0 top-1/4 rounded-2xl p-2.5 w-[96px] sm:w-32 flex-shrink-0"
             style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
-                     boxShadow: "0 12px 32px rgba(11,43,107,0.12)" }}>
-            <div className="relative mb-2 sm:mb-3">
-              <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-white text-sm sm:text-xl font-black"
+                     boxShadow: "0 12px 32px rgba(11,43,107,0.14)" }}>
+            <div className="relative mb-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto text-white text-xs sm:text-sm font-black"
                 style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 6px 14px ${s.avatarFrom}40` }}>
+                         boxShadow: `0 4px 10px ${s.avatarFrom}40` }}>
                 {s.initial}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-sm sm:text-lg leading-none">{s.medal}</div>
+              <div className="absolute -bottom-1 -right-1 text-xs sm:text-sm leading-none">{s.medal}</div>
             </div>
-            <div className="font-bold text-center mb-0.5 truncate" style={{ color: TEXT, fontSize: 9 }}>{s.name}</div>
-            <div className="text-center mb-1.5 truncate" style={{ color: MUTED, fontSize: 8 }}>{s.grade}</div>
-            <div className="flex justify-center mb-1.5">
-              <span className="font-bold px-1.5 py-0.5 rounded-full truncate" style={{ background: s.tagBg, color: s.tagColor, fontSize: 8 }}>{s.tag}</span>
+            <div className="font-bold text-center truncate" style={{ color: TEXT, fontSize: 8 }}>{s.name}</div>
+            <div className="text-center truncate mb-1" style={{ color: MUTED, fontSize: 7 }}>{s.grade}</div>
+            <div className="flex justify-center mb-1">
+              <span className="font-bold px-1.5 py-0.5 rounded-full truncate" style={{ background: s.tagBg, color: s.tagColor, fontSize: 7 }}>{s.tag}</span>
             </div>
-            <div className="text-center">
-              <div className="font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
-            </div>
-            <div className="flex justify-center gap-0.5 mt-1.5">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
+            <div className="text-center font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
+            <div className="flex justify-center gap-0.5 mt-1">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 7 }}>★</span>)}
             </div>
           </div>
         ); })()}
 
-        {/* Card: Kaniahya — center, featured */}
-        {(() => { const s = toppers[0]; return (
-          <div key={s.name}
-            className="bt-float-b rounded-2xl sm:rounded-3xl p-3 sm:p-5 w-[118px] sm:w-44 flex-shrink-0 relative"
-            style={{ background: "#fff", border: `2px solid rgba(255,107,26,0.2)`,
-                     boxShadow: "0 20px 50px rgba(11,43,107,0.18), 0 0 0 3px rgba(255,107,26,0.06)" }}>
-            <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 text-lg sm:text-2xl">👑</div>
-            <div className="relative mb-2 sm:mb-3 mt-1">
-              <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-white text-lg sm:text-2xl font-black"
-                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 8px 18px ${s.avatarFrom}50` }}>
-                {s.initial}
-              </div>
-              <div className="absolute -bottom-1 -right-1 text-base sm:text-xl leading-none">{s.medal}</div>
-            </div>
-            <div className="font-bold text-center mb-0.5 truncate" style={{ color: TEXT, fontSize: 10 }}>{s.name}</div>
-            <div className="text-center mb-1.5 truncate" style={{ color: MUTED, fontSize: 8 }}>{s.grade}</div>
-            <div className="flex justify-center mb-2">
-              <span className="font-bold px-2 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 8 }}>{s.tag}</span>
-            </div>
-            <div className="text-center mb-1">
-              <div className="font-black" style={{ color: s.tagColor, fontSize: 18 }}>{s.score}</div>
-            </div>
-            <div className="text-center italic hidden sm:block px-1" style={{ color: MUTED, fontSize: 10 }}>"{s.quote}"</div>
-            <div className="flex justify-center gap-0.5 mt-1.5">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 9 }}>★</span>)}
-            </div>
-          </div>
-        ); })()}
-
-        {/* Card: Rohan — right */}
+        {/* ── Right floating card: Rohan ── */}
         {(() => { const s = toppers[1]; return (
-          <div key={s.name}
-            className="bt-float-c rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 w-[100px] sm:w-40 flex-shrink-0"
+          <div className="bt-float-c absolute right-0 top-1/4 rounded-2xl p-2.5 w-[96px] sm:w-32 flex-shrink-0"
             style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
-                     boxShadow: "0 12px 32px rgba(11,43,107,0.12)" }}>
-            <div className="relative mb-2 sm:mb-3">
-              <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-white text-sm sm:text-xl font-black"
+                     boxShadow: "0 12px 32px rgba(11,43,107,0.14)" }}>
+            <div className="relative mb-1.5">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto text-white text-xs sm:text-sm font-black"
                 style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 6px 14px ${s.avatarFrom}40` }}>
+                         boxShadow: `0 4px 10px ${s.avatarFrom}40` }}>
                 {s.initial}
               </div>
-              <div className="absolute -bottom-1 -right-1 text-sm sm:text-lg leading-none">{s.medal}</div>
+              <div className="absolute -bottom-1 -right-1 text-xs sm:text-sm leading-none">{s.medal}</div>
             </div>
-            <div className="font-bold text-center mb-0.5 truncate" style={{ color: TEXT, fontSize: 9 }}>{s.name}</div>
-            <div className="text-center mb-1.5 truncate" style={{ color: MUTED, fontSize: 8 }}>{s.grade}</div>
-            <div className="flex justify-center mb-1.5">
-              <span className="font-bold px-1.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 8 }}>{s.tag}</span>
+            <div className="font-bold text-center truncate" style={{ color: TEXT, fontSize: 8 }}>{s.name}</div>
+            <div className="text-center truncate mb-1" style={{ color: MUTED, fontSize: 7 }}>{s.grade}</div>
+            <div className="flex justify-center mb-1">
+              <span className="font-bold px-1.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 7 }}>{s.tag}</span>
             </div>
-            <div className="text-center">
-              <div className="font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
+            <div className="text-center font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
+            <div className="flex justify-center gap-0.5 mt-1">
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 7 }}>★</span>)}
             </div>
-            <div className="flex justify-center gap-0.5 mt-1.5">
+          </div>
+        ); })()}
+
+        {/* ── Top featured card: Kaniahya ── */}
+        {(() => { const s = toppers[0]; return (
+          <div className="bt-float-b absolute -top-4 right-8 sm:right-16 z-30 rounded-2xl p-2.5 sm:p-3.5 w-[110px] sm:w-36"
+            style={{ background: "#fff", border: `2px solid rgba(255,107,26,0.25)`,
+                     boxShadow: "0 16px 40px rgba(11,43,107,0.18), 0 0 0 2px rgba(255,107,26,0.08)" }}>
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-base sm:text-lg">👑</div>
+            <div className="relative mb-1.5 mt-0.5">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mx-auto text-white text-sm sm:text-base font-black"
+                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
+                         boxShadow: `0 6px 14px ${s.avatarFrom}50` }}>
+                {s.initial}
+              </div>
+              <div className="absolute -bottom-1 -right-1 text-sm leading-none">{s.medal}</div>
+            </div>
+            <div className="font-bold text-center truncate" style={{ color: TEXT, fontSize: 9 }}>{s.name}</div>
+            <div className="text-center truncate mb-1" style={{ color: MUTED, fontSize: 7 }}>{s.grade}</div>
+            <div className="flex justify-center mb-1">
+              <span className="font-bold px-1.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 7 }}>{s.tag}</span>
+            </div>
+            <div className="text-center font-black" style={{ color: s.tagColor, fontSize: 16 }}>{s.score}</div>
+            <div className="text-center italic hidden sm:block px-0.5" style={{ color: MUTED, fontSize: 8 }}>"{s.quote}"</div>
+            <div className="flex justify-center gap-0.5 mt-1">
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
             </div>
           </div>
@@ -1099,10 +1097,37 @@ export default function LandingPage() {
       {/* ── TESTIMONIALS LOOP ── */}
       <section className="py-6 md:py-12 px-6" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-4 md:mb-7 space-y-2">
-            <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Reviews</div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>What families say about Braintam</h2>
-            <p className="text-sm" style={{ color: MUTED }}>Real experiences from our learning community</p>
+          {/* Header with student photo */}
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center gap-6 mb-6 md:mb-8">
+            {/* Student photo — branded */}
+            <div className="flex-shrink-0 hidden md:block">
+              <img src={brandedStudentImg} alt="Braintam student"
+                className="w-48 rounded-2xl object-cover shadow-lg"
+                style={{ border: `3px solid rgba(255,107,26,0.2)` }} />
+            </div>
+            <div className="text-center md:text-left space-y-2 flex-1">
+              <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Reviews</div>
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>What families say about Braintam</h2>
+              <p className="text-sm" style={{ color: MUTED }}>Real experiences from our learning community</p>
+              {/* Trust row */}
+              <div className="flex items-center gap-3 justify-center md:justify-start flex-wrap pt-1">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ background: "rgba(255,107,26,0.08)", color: ORANGE }}>
+                  <Star className="w-3 h-3 fill-current" /> 4.9/5 Parent Rating
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ background: "rgba(11,43,107,0.06)", color: NAVY }}>
+                  👨‍👩‍👧 10,00,000+ Families Trust Us
+                </div>
+              </div>
+            </div>
+            {/* Mobile: show transparent cutout photo */}
+            <div className="md:hidden flex justify-center">
+              <img src={expertCardImg} alt="Braintam student"
+                className="w-32 h-auto object-contain"
+                style={{ filter: "drop-shadow(0 4px 16px rgba(11,43,107,0.18))" }} />
+            </div>
           </motion.div>
           <TestimonialsLoop />
         </div>

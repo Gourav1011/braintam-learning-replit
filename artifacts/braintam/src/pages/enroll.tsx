@@ -7,6 +7,9 @@ import {
   GraduationCap, Phone, ChevronRight, Award,
 } from "lucide-react";
 
+import studentHeroImg from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
+import brandedKidImg  from "@assets/ChatGPT_Image_May_29,_2026,_09_13_20_PM_1780069417528.png";
+
 const braintamLogo = "/logo.svg";
 
 // ── Brand ─────────────────────────────────────────────────────
@@ -440,10 +443,23 @@ export default function EnrollPage() {
               <span className="w-2 h-2 rounded-full bg-green-400" />
               <span className="text-green-300">S***a from Rajasthan just enrolled</span>
             </motion.div>
+
+            {/* Student photo — visible on mobile below text, hidden on desktop (form is on right) */}
+            <div className="md:hidden flex justify-center mt-2">
+              <img src={studentHeroImg} alt="Braintam student"
+                className="w-48 h-auto object-contain"
+                style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.35))" }} />
+            </div>
           </div>
 
-          {/* Right — enrollment form (desktop) */}
-          <div className="hidden md:block">
+          {/* Student photo — desktop decoration alongside form */}
+          <div className="hidden md:flex flex-col items-center justify-end gap-4">
+            {/* Photo floated left of form */}
+            <div className="absolute left-1/2 -translate-x-[140%] bottom-0 z-10 pointer-events-none hidden lg:block">
+              <img src={studentHeroImg} alt="Braintam student"
+                className="w-44 h-auto object-contain"
+                style={{ filter: "drop-shadow(0 8px 28px rgba(0,0,0,0.4))" }} />
+            </div>
             <EnrollForm
               grade={grade} setGrade={setGrade}
               phone={phone} setPhone={setPhone}
@@ -451,6 +467,7 @@ export default function EnrollPage() {
               onSubmit={handleEnroll}
             />
           </div>
+
         </div>
       </section>
 
