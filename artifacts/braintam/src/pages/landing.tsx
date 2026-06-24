@@ -286,44 +286,51 @@ const toppers = [
 
 function TopperCard({ s, featured }: { s: typeof toppers[number]; featured?: boolean }) {
   return (
-    <div className="rounded-2xl p-4 flex flex-col items-center gap-2 w-full"
+    <div className="rounded-2xl flex flex-col items-center w-full h-full"
       style={{
         background: "#fff",
-        border: featured ? `2px solid rgba(255,107,26,0.35)` : `1px solid rgba(11,43,107,0.08)`,
+        border: featured ? `2px solid rgba(255,107,26,0.4)` : `1px solid rgba(11,43,107,0.09)`,
         boxShadow: featured
-          ? "0 16px 40px rgba(11,43,107,0.14), 0 0 0 3px rgba(255,107,26,0.08)"
-          : "0 6px 20px rgba(11,43,107,0.08)",
+          ? "0 20px 50px rgba(11,43,107,0.16), 0 0 0 4px rgba(255,107,26,0.07)"
+          : "0 8px 24px rgba(11,43,107,0.09)",
+        padding: featured ? "20px 16px" : "16px 12px",
+        gap: featured ? 10 : 8,
+        justifyContent: "center",
       }}>
-      {featured && (
-        <div className="text-lg leading-none -mb-1">👑</div>
-      )}
+      {featured && <div className="text-xl leading-none">👑</div>}
       {/* Avatar */}
-      <div className="relative">
-        <div className={`${featured ? "w-14 h-14" : "w-10 h-10"} rounded-2xl flex items-center justify-center text-white font-black`}
+      <div className="relative flex-shrink-0">
+        <div className="rounded-2xl flex items-center justify-center text-white font-black"
           style={{
+            width: featured ? 64 : 48,
+            height: featured ? 64 : 48,
             background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-            boxShadow: `0 6px 16px ${s.avatarFrom}55`,
-            fontSize: featured ? 20 : 15,
+            boxShadow: `0 8px 20px ${s.avatarFrom}55`,
+            fontSize: featured ? 24 : 18,
           }}>
           {s.initial}
         </div>
-        <span className="absolute -bottom-1.5 -right-1.5 text-base leading-none">{s.medal}</span>
+        <span className="absolute -bottom-2 -right-2 leading-none" style={{ fontSize: featured ? 18 : 14 }}>{s.medal}</span>
       </div>
       {/* Info */}
       <div className="text-center">
-        <div className="font-bold leading-tight truncate" style={{ color: TEXT, fontSize: featured ? 13 : 11 }}>{s.name}</div>
-        <div className="truncate" style={{ color: MUTED, fontSize: featured ? 10 : 9 }}>{s.grade}</div>
+        <div className="font-bold leading-tight" style={{ color: TEXT, fontSize: featured ? 14 : 11 }}>{s.name}</div>
+        <div style={{ color: MUTED, fontSize: featured ? 11 : 9 }}>{s.grade}</div>
       </div>
       {/* Tag */}
-      <span className="px-2 py-0.5 rounded-full font-bold" style={{ background: s.tagBg, color: s.tagColor, fontSize: 9 }}>{s.tag}</span>
+      <span className="px-2.5 py-0.5 rounded-full font-bold"
+        style={{ background: s.tagBg, color: s.tagColor, fontSize: featured ? 10 : 9 }}>{s.tag}</span>
       {/* Score */}
-      <div className="font-black tabular-nums" style={{ color: s.tagColor, fontSize: featured ? 22 : 17 }}>{s.score}</div>
+      <div className="font-black tabular-nums"
+        style={{ color: s.tagColor, fontSize: featured ? 28 : 20, lineHeight: 1 }}>{s.score}</div>
       {featured && (
-        <div className="text-center italic px-2" style={{ color: MUTED, fontSize: 9 }}>"{s.quote}"</div>
+        <div className="text-center italic px-1" style={{ color: MUTED, fontSize: 10 }}>"{s.quote}"</div>
       )}
       {/* Stars */}
       <div className="flex gap-0.5">
-        {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: featured ? 10 : 8 }}>★</span>)}
+        {[...Array(5)].map((_, i) => (
+          <span key={i} style={{ color: "#FBBF24", fontSize: featured ? 11 : 9 }}>★</span>
+        ))}
       </div>
     </div>
   );
@@ -331,45 +338,41 @@ function TopperCard({ s, featured }: { s: typeof toppers[number]; featured?: boo
 
 function HeroVisual() {
   return (
-    <div className="w-full h-full flex flex-col justify-between select-none py-2">
-
+    <div className="w-full h-full flex flex-col select-none" style={{ gap: 10 }}>
       {/* Top badge */}
-      <div className="flex justify-center">
+      <div className="flex justify-center flex-shrink-0">
         <div className="bt-float inline-flex items-center gap-2 px-4 py-2 rounded-full"
           style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
-          <span className="text-sm">🏆</span>
+          <span>🏆</span>
           <span className="text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
         </div>
       </div>
 
-      {/* Cards row */}
-      <div className="flex items-stretch gap-2 flex-1 my-3 px-1">
-        {/* Left: Ananya */}
+      {/* Cards row — fills remaining height */}
+      <div className="flex items-stretch gap-2 flex-1 min-h-0">
         <div className="flex-1 min-w-0 bt-float-a">
           <TopperCard s={toppers[2]} />
         </div>
-        {/* Centre: Kaniahya — featured, slightly taller */}
-        <div className="flex-1 min-w-0 bt-float-b" style={{ marginTop: -8, marginBottom: -8 }}>
+        <div className="flex-1 min-w-0 bt-float-b" style={{ marginTop: -10, marginBottom: -10 }}>
           <TopperCard s={toppers[0]} featured />
         </div>
-        {/* Right: Rohan */}
         <div className="flex-1 min-w-0 bt-float-c">
           <TopperCard s={toppers[1]} />
         </div>
       </div>
 
       {/* Bottom badge */}
-      <div className="flex justify-center">
+      <div className="flex justify-center flex-shrink-0">
         <div className="bt-float-down inline-flex items-center gap-2 px-4 py-2 rounded-xl"
           style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
                    boxShadow: "0 8px 28px rgba(11,43,107,0.12)" }}>
-          <div className="flex -space-x-1.5">
+          <div className="flex -space-x-2">
             {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
               <div key={i} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-bold"
                 style={{ background: c, fontSize: 9 }}>{"PRA"[i]}</div>
             ))}
           </div>
-          <div className="font-semibold" style={{ color: TEXT, fontSize: 11 }}>
+          <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 12 }}>
             <span className="font-black" style={{ color: ORANGE }}>4,200+</span> Classes Every Year
           </div>
         </div>
@@ -675,18 +678,19 @@ export default function LandingPage() {
         </div>
       </motion.nav>
       {/* ── HERO ── */}
-      <section className="relative flex items-center pt-20 pb-6 md:pt-24 md:pb-10 px-6 overflow-hidden">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] rounded-full opacity-10 blur-[120px] pointer-events-none"
+      <section className="relative flex items-center pt-16 pb-0 md:pt-20 md:pb-0 px-6 overflow-hidden">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-10 blur-[100px] pointer-events-none"
           style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
-        <div className="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-6 md:gap-10 lg:gap-12 items-center">
-          <div className="space-y-5 md:space-y-7 relative z-10">
+        <div className="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-4 md:gap-6 lg:gap-8 items-center">
+          {/* ── Left ── */}
+          <div className="space-y-4 md:space-y-5 relative z-10">
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0}
               className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full"
               style={{ background: "rgba(255,107,26,0.1)", border: `1px solid rgba(255,107,26,0.3)`, color: ORANGE }}>
               <Sparkles className="w-3 h-3" /> India's most advanced learning platform
             </motion.div>
             <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
-              className="text-4xl sm:text-5xl lg:text-[4.25rem] font-black leading-[1.05] tracking-tight">
+              className="text-4xl sm:text-5xl lg:text-[4rem] font-black leading-[1.05] tracking-tight">
               The future of{" "}
               <span className="block" style={{ background: `linear-gradient(135deg, ${ORANGE} 0%, #FFA040 60%, #FF6B1A 100%)`,
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
@@ -712,52 +716,57 @@ export default function LandingPage() {
                 </button>
               </Link>
             </motion.div>
-
             {/* ── 5-Day Trial CTA ── */}
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}>
               <a href="/enroll"
-                className="inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all hover:scale-[1.02] group"
+                className="inline-flex items-center gap-3 px-4 py-3 rounded-2xl transition-all hover:scale-[1.02] group"
                 style={{ background: `linear-gradient(135deg, #fff8f3, #fff3ea)`,
                          border: `2px solid rgba(255,107,26,0.35)`,
-                         boxShadow: "0 4px 24px rgba(255,107,26,0.15)" }}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                         boxShadow: "0 4px 24px rgba(255,107,26,0.12)" }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>
-                  <GraduationCap className="w-5 h-5 text-white" />
+                  <GraduationCap className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <div className="text-xs font-semibold" style={{ color: ORANGE }}>LIMITED OFFER</div>
                   <div className="font-black text-sm leading-tight" style={{ color: TEXT }}>
-                    5-Day Ignite Course —{" "}
-                    <span style={{ color: ORANGE }}>from ₹39 only</span>
+                    5-Day Ignite Course — <span style={{ color: ORANGE }}>from ₹39 only</span>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
               </a>
             </motion.div>
-            {/* ── Hero Stat Cards ── */}
-            <div className="grid grid-cols-2 gap-2.5 max-w-sm">
-              {[
-                { emoji: "📚", value: "430+", label: "Sessions per Grade / Year", accent: ORANGE },
-                { emoji: "🚀", value: "4,200+", label: "Total Sessions Across Grades", accent: "#7C3AED" },
-                { emoji: "📅", value: "52 Weeks", label: "Structured Year-Round Learning", accent: "#0EA5E9" },
-                { emoji: "🎯", value: "CBSE·ICSE·IB", label: "Hybrid Curriculum", accent: "#10B981" },
-              ].map((s, i) => (
-                <motion.div key={s.label} variants={fadeUp} initial="hidden" animate="show" custom={4 + i * 0.3}
-                  className="rounded-xl p-3 flex flex-col gap-1"
-                  style={{ background: SURFACE, border: `1px solid rgba(11,43,107,0.1)`, boxShadow: "0 2px 12px rgba(11,43,107,0.06)" }}>
-                  <div className="text-base leading-none">{s.emoji}</div>
-                  <div className="text-sm font-black leading-tight" style={{ color: s.accent }}>{s.value}</div>
-                  <div className="leading-snug" style={{ color: MUTED, fontSize: 10 }}>{s.label}</div>
-                </motion.div>
-              ))}
-            </div>
           </div>
+
+          {/* ── Right: Achievement cards ── */}
           <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[300px] md:h-[400px] lg:h-[440px] block">
+            transition={{ duration: 1, delay: 0.3, ease }} className="relative h-[280px] md:h-[360px] lg:h-[400px] block">
             <HeroVisual />
           </motion.div>
         </div>
       </section>
+
+      {/* ── HERO STATS ROW ── */}
+      <div className="max-w-6xl mx-auto w-full px-6 pt-5 pb-4 md:pt-6 md:pb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { emoji: "📚", value: "430+", label: "Sessions per Grade / Year", accent: ORANGE },
+            { emoji: "🚀", value: "4,200+", label: "Total Sessions Across Grades", accent: "#7C3AED" },
+            { emoji: "📅", value: "52 Weeks", label: "Structured Year-Round Learning", accent: "#0EA5E9" },
+            { emoji: "🎯", value: "CBSE·ICSE·IB", label: "Hybrid Curriculum", accent: "#10B981" },
+          ].map((s, i) => (
+            <motion.div key={s.label} variants={fadeUp} initial="hidden" animate="show" custom={5 + i * 0.2}
+              className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: SURFACE, border: `1px solid rgba(11,43,107,0.1)`, boxShadow: "0 2px 12px rgba(11,43,107,0.06)" }}>
+              <div className="text-2xl leading-none flex-shrink-0">{s.emoji}</div>
+              <div>
+                <div className="text-base font-black leading-tight" style={{ color: s.accent }}>{s.value}</div>
+                <div className="leading-snug mt-0.5" style={{ color: MUTED, fontSize: 11 }}>{s.label}</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
 
       {/* ── STATS TICKER ── */}
       <StatsTicker />
