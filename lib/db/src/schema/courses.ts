@@ -9,6 +9,7 @@ export const coursesTable = pgTable("courses", {
   grade: integer("grade").notNull(),
   board: text("board"),
   academicYearId: integer("academic_year_id"),
+  courseType: text("course_type").notNull().default("mastery"),
   totalLessons: integer("total_lessons").notNull().default(0),
   thumbnailUrl: text("thumbnail_url").notNull(),
   description: text("description"),

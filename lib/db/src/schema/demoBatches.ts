@@ -21,6 +21,8 @@ export const demoBatchesTable = pgTable("demo_batches", {
   subject: text("subject"),
   totalDays: integer("total_days").notNull().default(5),
   batchCode: text("batch_code"),
+  weekNumber: integer("week_number"),
+  academicYear: text("academic_year"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

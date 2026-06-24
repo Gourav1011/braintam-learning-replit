@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -7,6 +7,8 @@ export const enrollmentsTable = pgTable("enrollments", {
   studentId: integer("student_id").notNull(),
   courseId: integer("course_id").notNull(),
   enrolledBy: integer("enrolled_by"),
+  enrollmentType: text("enrollment_type").notNull().default("mastery"),
+  academicYear: text("academic_year"),
   enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
 }, (t) => [unique().on(t.studentId, t.courseId)]);
 

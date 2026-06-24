@@ -35,3 +35,8 @@ export * from "./doubtSessions";
 export * from "./mentorEodReports";
 export * from "./employeeCheckins";
 export * from "./adminPermissions";
+export * from "./payments";
+export * from "./paymentLinks";
+export * from "./manualPayments";
+export * from "./duplicateAlerts";
+export * from "./enrolmentErrors";
