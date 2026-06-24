@@ -284,122 +284,94 @@ const toppers = [
   },
 ] as const;
 
+function TopperCard({ s, featured }: { s: typeof toppers[number]; featured?: boolean }) {
+  return (
+    <div className="rounded-2xl p-4 flex flex-col items-center gap-2 w-full"
+      style={{
+        background: "#fff",
+        border: featured ? `2px solid rgba(255,107,26,0.35)` : `1px solid rgba(11,43,107,0.08)`,
+        boxShadow: featured
+          ? "0 16px 40px rgba(11,43,107,0.14), 0 0 0 3px rgba(255,107,26,0.08)"
+          : "0 6px 20px rgba(11,43,107,0.08)",
+      }}>
+      {featured && (
+        <div className="text-lg leading-none -mb-1">👑</div>
+      )}
+      {/* Avatar */}
+      <div className="relative">
+        <div className={`${featured ? "w-14 h-14" : "w-10 h-10"} rounded-2xl flex items-center justify-center text-white font-black`}
+          style={{
+            background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
+            boxShadow: `0 6px 16px ${s.avatarFrom}55`,
+            fontSize: featured ? 20 : 15,
+          }}>
+          {s.initial}
+        </div>
+        <span className="absolute -bottom-1.5 -right-1.5 text-base leading-none">{s.medal}</span>
+      </div>
+      {/* Info */}
+      <div className="text-center">
+        <div className="font-bold leading-tight truncate" style={{ color: TEXT, fontSize: featured ? 13 : 11 }}>{s.name}</div>
+        <div className="truncate" style={{ color: MUTED, fontSize: featured ? 10 : 9 }}>{s.grade}</div>
+      </div>
+      {/* Tag */}
+      <span className="px-2 py-0.5 rounded-full font-bold" style={{ background: s.tagBg, color: s.tagColor, fontSize: 9 }}>{s.tag}</span>
+      {/* Score */}
+      <div className="font-black tabular-nums" style={{ color: s.tagColor, fontSize: featured ? 22 : 17 }}>{s.score}</div>
+      {featured && (
+        <div className="text-center italic px-2" style={{ color: MUTED, fontSize: 9 }}>"{s.quote}"</div>
+      )}
+      {/* Stars */}
+      <div className="flex gap-0.5">
+        {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: featured ? 10 : 8 }}>★</span>)}
+      </div>
+    </div>
+  );
+}
+
 function HeroVisual() {
   return (
-    <div className="relative w-full h-full flex items-center justify-center select-none">
+    <div className="w-full h-full flex flex-col justify-between select-none py-2">
 
-      {/* Ambient glows */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 60% 40%, rgba(255,107,26,0.13) 0%, transparent 60%)" }} />
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 35% 70%, rgba(11,43,107,0.10) 0%, transparent 55%)" }} />
-
-      {/* ── Floating toppers badge ── */}
-      <div className="bt-float absolute top-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full"
-        style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
-        <span className="text-xs sm:text-sm">🏆</span>
-        <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
-      </div>
-
-      {/* ── Main student photo ── */}
-      <div className="relative z-10 flex items-end justify-center mt-6" style={{ height: "340px" }}>
-        <img
-          src={expertCardImg}
-          alt="Braintam student"
-          className="h-full w-auto object-contain block"
-          style={{ filter: "drop-shadow(0 12px 36px rgba(11,43,107,0.22))", maxWidth: "280px", position: "relative", zIndex: 40 }}
-        />
-
-        {/* ── Left floating card: Ananya ── */}
-        {(() => { const s = toppers[2]; return (
-          <div className="bt-float-a absolute left-0 top-1/4 rounded-2xl p-2.5 w-[96px] sm:w-32 flex-shrink-0"
-            style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
-                     boxShadow: "0 12px 32px rgba(11,43,107,0.14)" }}>
-            <div className="relative mb-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto text-white text-xs sm:text-sm font-black"
-                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 4px 10px ${s.avatarFrom}40` }}>
-                {s.initial}
-              </div>
-              <div className="absolute -bottom-1 -right-1 text-xs sm:text-sm leading-none">{s.medal}</div>
-            </div>
-            <div className="font-bold text-center truncate" style={{ color: TEXT, fontSize: 8 }}>{s.name}</div>
-            <div className="text-center truncate mb-1" style={{ color: MUTED, fontSize: 7 }}>{s.grade}</div>
-            <div className="flex justify-center mb-1">
-              <span className="font-bold px-1.5 py-0.5 rounded-full truncate" style={{ background: s.tagBg, color: s.tagColor, fontSize: 7 }}>{s.tag}</span>
-            </div>
-            <div className="text-center font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
-            <div className="flex justify-center gap-0.5 mt-1">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 7 }}>★</span>)}
-            </div>
-          </div>
-        ); })()}
-
-        {/* ── Right floating card: Rohan ── */}
-        {(() => { const s = toppers[1]; return (
-          <div className="bt-float-c absolute right-0 top-1/4 rounded-2xl p-2.5 w-[96px] sm:w-32 flex-shrink-0"
-            style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.08)`,
-                     boxShadow: "0 12px 32px rgba(11,43,107,0.14)" }}>
-            <div className="relative mb-1.5">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto text-white text-xs sm:text-sm font-black"
-                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 4px 10px ${s.avatarFrom}40` }}>
-                {s.initial}
-              </div>
-              <div className="absolute -bottom-1 -right-1 text-xs sm:text-sm leading-none">{s.medal}</div>
-            </div>
-            <div className="font-bold text-center truncate" style={{ color: TEXT, fontSize: 8 }}>{s.name}</div>
-            <div className="text-center truncate mb-1" style={{ color: MUTED, fontSize: 7 }}>{s.grade}</div>
-            <div className="flex justify-center mb-1">
-              <span className="font-bold px-1.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 7 }}>{s.tag}</span>
-            </div>
-            <div className="text-center font-black" style={{ color: s.tagColor, fontSize: 13 }}>{s.score}</div>
-            <div className="flex justify-center gap-0.5 mt-1">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 7 }}>★</span>)}
-            </div>
-          </div>
-        ); })()}
-
-        {/* ── Top featured card: Kaniahya ── */}
-        {(() => { const s = toppers[0]; return (
-          <div className="bt-float-b absolute -top-4 right-8 sm:right-16 z-30 rounded-2xl p-2.5 sm:p-3.5 w-[110px] sm:w-36"
-            style={{ background: "#fff", border: `2px solid rgba(255,107,26,0.25)`,
-                     boxShadow: "0 16px 40px rgba(11,43,107,0.18), 0 0 0 2px rgba(255,107,26,0.08)" }}>
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-base sm:text-lg">👑</div>
-            <div className="relative mb-1.5 mt-0.5">
-              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mx-auto text-white text-sm sm:text-base font-black"
-                style={{ background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-                         boxShadow: `0 6px 14px ${s.avatarFrom}50` }}>
-                {s.initial}
-              </div>
-              <div className="absolute -bottom-1 -right-1 text-sm leading-none">{s.medal}</div>
-            </div>
-            <div className="font-bold text-center truncate" style={{ color: TEXT, fontSize: 9 }}>{s.name}</div>
-            <div className="text-center truncate mb-1" style={{ color: MUTED, fontSize: 7 }}>{s.grade}</div>
-            <div className="flex justify-center mb-1">
-              <span className="font-bold px-1.5 py-0.5 rounded-full" style={{ background: s.tagBg, color: s.tagColor, fontSize: 7 }}>{s.tag}</span>
-            </div>
-            <div className="text-center font-black" style={{ color: s.tagColor, fontSize: 16 }}>{s.score}</div>
-            <div className="text-center italic hidden sm:block px-0.5" style={{ color: MUTED, fontSize: 8 }}>"{s.quote}"</div>
-            <div className="flex justify-center gap-0.5 mt-1">
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 8 }}>★</span>)}
-            </div>
-          </div>
-        ); })()}
-      </div>
-
-      {/* ── Bottom badge ── */}
-      <div className="bt-float-down absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl"
-        style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
-                 boxShadow: "0 8px 28px rgba(11,43,107,0.13)" }}>
-        <div className="flex -space-x-1.5">
-          {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
-            <div key={i} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-bold"
-              style={{ background: c, fontSize: 9 }}>{"PRA"[i]}</div>
-          ))}
+      {/* Top badge */}
+      <div className="flex justify-center">
+        <div className="bt-float inline-flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
+          <span className="text-sm">🏆</span>
+          <span className="text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
         </div>
-        <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 10 }}>
-          <span className="font-black" style={{ color: ORANGE }}>4,200+</span> Classes Every Year
+      </div>
+
+      {/* Cards row */}
+      <div className="flex items-stretch gap-2 flex-1 my-3 px-1">
+        {/* Left: Ananya */}
+        <div className="flex-1 min-w-0 bt-float-a">
+          <TopperCard s={toppers[2]} />
+        </div>
+        {/* Centre: Kaniahya — featured, slightly taller */}
+        <div className="flex-1 min-w-0 bt-float-b" style={{ marginTop: -8, marginBottom: -8 }}>
+          <TopperCard s={toppers[0]} featured />
+        </div>
+        {/* Right: Rohan */}
+        <div className="flex-1 min-w-0 bt-float-c">
+          <TopperCard s={toppers[1]} />
+        </div>
+      </div>
+
+      {/* Bottom badge */}
+      <div className="flex justify-center">
+        <div className="bt-float-down inline-flex items-center gap-2 px-4 py-2 rounded-xl"
+          style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
+                   boxShadow: "0 8px 28px rgba(11,43,107,0.12)" }}>
+          <div className="flex -space-x-1.5">
+            {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
+              <div key={i} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-bold"
+                style={{ background: c, fontSize: 9 }}>{"PRA"[i]}</div>
+            ))}
+          </div>
+          <div className="font-semibold" style={{ color: TEXT, fontSize: 11 }}>
+            <span className="font-black" style={{ color: ORANGE }}>4,200+</span> Classes Every Year
+          </div>
         </div>
       </div>
     </div>
