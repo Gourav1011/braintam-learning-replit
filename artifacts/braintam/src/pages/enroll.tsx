@@ -401,33 +401,59 @@ export default function EnrollPage() {
           <div className="absolute inset-0 opacity-5 pointer-events-none"
             style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
-          {/* Floating math symbols + rocket */}
+          {/* Background elements — rocket + stars + math */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-            {/* Rocket — top-left, tilted 45° launching up-right, away from girl */}
-            <svg className="absolute" style={{ top: "4%", left: "3%", width: 46, opacity: 0.82, transform: "rotate(45deg)" }}
-              viewBox="0 0 60 100" fill="none">
-              <ellipse cx="30" cy="55" rx="12" ry="22" fill="#e2e8f0" opacity="0.9"/>
-              <path d="M30 10 C18 28 18 44 30 56 C42 44 42 28 30 10Z" fill="#f1f5f9"/>
-              <circle cx="30" cy="42" r="7" fill="#93c5fd"/>
-              <path d="M18 54 L10 70 L22 64Z" fill="#fbbf24"/>
-              <path d="M42 54 L50 70 L38 64Z" fill="#fbbf24"/>
-              <path d="M24 70 C24 82 36 82 36 70" fill="#f97316" opacity="0.9"/>
-              <path d="M26 72 C26 86 34 86 34 72" fill="#fbbf24" opacity="0.7"/>
+
+            {/* ── Proper coloured rocket — top-right, above girl, tilted 20° ── */}
+            <svg className="absolute" style={{ top: "3%", right: "3%", width: 64, opacity: 0.95, transform: "rotate(20deg)", filter: "drop-shadow(0 4px 12px rgba(255,107,26,0.6))" }}
+              viewBox="0 0 80 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Nose cone */}
+              <path d="M40 4 C28 20 22 36 22 52 L58 52 C58 36 52 20 40 4Z" fill="#ef4444"/>
+              <path d="M40 4 C34 20 32 36 32 52 L40 52 L40 4Z" fill="#dc2626"/>
+              {/* Body */}
+              <rect x="22" y="52" width="36" height="38" rx="3" fill="#f8fafc"/>
+              <rect x="22" y="52" width="18" height="38" rx="3" fill="#f1f5f9"/>
+              {/* Window */}
+              <circle cx="40" cy="68" r="9" fill="#93c5fd"/>
+              <circle cx="40" cy="68" r="6" fill="#3b82f6"/>
+              <circle cx="37" cy="65" r="2" fill="rgba(255,255,255,0.5)"/>
+              {/* Red band */}
+              <rect x="22" y="82" width="36" height="5" fill="#ef4444"/>
+              {/* Left fin */}
+              <path d="M22 70 L6 95 L22 90 Z" fill="#ef4444"/>
+              <path d="M22 70 L14 90 L22 90 Z" fill="#dc2626"/>
+              {/* Right fin */}
+              <path d="M58 70 L74 95 L58 90 Z" fill="#ef4444"/>
+              <path d="M58 70 L66 90 L58 90 Z" fill="#dc2626"/>
+              {/* Nozzle */}
+              <rect x="32" y="90" width="16" height="6" rx="2" fill="#cbd5e1"/>
+              {/* Flame outer */}
+              <ellipse cx="40" cy="106" rx="10" ry="14" fill="#f97316" opacity="0.95"/>
+              {/* Flame mid */}
+              <ellipse cx="40" cy="108" rx="6" ry="11" fill="#fbbf24" opacity="0.9"/>
+              {/* Flame inner */}
+              <ellipse cx="40" cy="112" rx="3" ry="7" fill="#fef3c7" opacity="0.85"/>
             </svg>
-            {/* Math symbols spread across whole hero */}
+
+            {/* Stars around the rocket */}
             {[
-              { t: "π",  top: "10%", left: "30%", sz: 18, op: 0.18 },
-              { t: "∑",  top: "55%", left: "8%",  sz: 14, op: 0.15 },
-              { t: "×",  top: "6%",  left: "55%", sz: 20, op: 0.18 },
-              { t: "√",  top: "38%", left: "42%", sz: 13, op: 0.14 },
-              { t: "÷",  top: "50%", left: "62%", sz: 16, op: 0.15 },
-              { t: "∞",  top: "18%", left: "72%", sz: 14, op: 0.13 },
-              { t: "²",  top: "30%", left: "20%", sz: 12, op: 0.16 },
-              { t: "+",  top: "70%", left: "35%", sz: 20, op: 0.13 },
-              { t: "=",  top: "22%", left: "88%", sz: 14, op: 0.12 },
-              { t: "✦",  top: "14%", left: "45%", sz: 10, op: 0.25 },
-              { t: "✦",  top: "65%", left: "78%", sz: 8,  op: 0.20 },
-              { t: "△",  top: "42%", left: "15%", sz: 13, op: 0.13 },
+              { t: "✦", top: "2%",  right: "22%", sz: 10, op: 0.8 },
+              { t: "✦", top: "10%", right: "10%", sz: 7,  op: 0.6 },
+              { t: "★", top: "18%", right: "18%", sz: 8,  op: 0.5 },
+              { t: "✦", top: "6%",  right: "30%", sz: 6,  op: 0.5 },
+            ].map(({ t, top, right, sz, op }, i) => (
+              <span key={i} className="absolute font-bold text-yellow-300"
+                style={{ top, right, fontSize: sz, opacity: op }}>{t}</span>
+            ))}
+
+            {/* Math symbols on the left side only */}
+            {[
+              { t: "π",  top: "12%", left: "28%", sz: 16, op: 0.16 },
+              { t: "∑",  top: "55%", left: "8%",  sz: 14, op: 0.14 },
+              { t: "√",  top: "38%", left: "40%", sz: 13, op: 0.13 },
+              { t: "²",  top: "30%", left: "18%", sz: 12, op: 0.15 },
+              { t: "+",  top: "68%", left: "33%", sz: 18, op: 0.12 },
+              { t: "△",  top: "45%", left: "14%", sz: 12, op: 0.13 },
             ].map(({ t, top, left, sz, op }, i) => (
               <span key={i} className="absolute font-bold text-white"
                 style={{ top, left, fontSize: sz, opacity: op }}>{t}</span>
@@ -464,22 +490,25 @@ export default function EnrollPage() {
                 ))}
               </ul>
 
-              {/* Live enrollment ticker */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={enrolleeText}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold"
-                  style={{ background: "rgba(255,255,255,0.12)" }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                  <span className="text-green-300">{enrolleeText}</span>
-                </motion.div>
-              </AnimatePresence>
+              {/* Live enrollment ticker — fixed height so timer never shifts */}
+              <div style={{ height: 28, overflow: "hidden" }}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={enrolleeText}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25 }}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold"
+                    style={{ background: "rgba(255,255,255,0.12)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                    <span className="text-green-300 truncate">{enrolleeText}</span>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-              {/* Countdown inside hero */}
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl"
+              {/* Countdown inside hero — pinned below ticker, never moves */}
+              <div className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl"
                 style={{ background: "rgba(220,38,38,0.25)", border: "1px solid rgba(220,38,38,0.5)" }}>
                 <span className="text-sm animate-pulse">🔥</span>
                 <span className="text-xs font-semibold text-red-300">Offer ends in</span>
