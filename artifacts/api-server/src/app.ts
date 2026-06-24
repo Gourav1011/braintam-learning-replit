@@ -6,6 +6,8 @@ import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import path from "node:path";
+import fs from "node:fs";
 
 const app: Express = express();
 
@@ -50,5 +52,26 @@ app.use("/api", (_req, res, next) => {
 });
 
 app.use("/api", router);
+
+// ── Serve frontend static files ──────────────────────────────
+// Resolves to artifacts/braintam/dist/public relative to the compiled server
+const staticDir = process.env["STATIC_DIR"] ??
+  path.resolve(__dirname, "../../braintam/dist/public");
+
+if (fs.existsSync(staticDir)) {
+  logger.info({ staticDir }, "Serving frontend static files");
+
+  // Hashed assets (JS/CSS/images) — cache aggressively
+  app.use(express.static(staticDir, { maxAge: "1y", index: false }));
+
+  // All non-API routes → serve index.html (SPA client-side routing)
+  // index.html must NOT be cached so browsers always fetch the latest version
+  app.get("/*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
+} else {
+  logger.warn({ staticDir }, "Frontend static dir not found — skipping static serving");
+}
 
 export default app;
