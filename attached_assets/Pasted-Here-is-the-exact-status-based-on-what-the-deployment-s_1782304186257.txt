@@ -1,0 +1,54 @@
+Here is the exact status based on what the deployment service returned:
+
+Deployment Status
+Field	Value	Meaning
+isDeployed	true	A deployment slot exists — the URL is reserved
+hasSuccessfulBuild	false	No build has ever completed successfully
+primaryUrl	braintam-learning.replit.app	URL is allocated but serving nothing
+deploymentType	autoscale	Correct type for an API + frontend
+Logs	None	The server has never started in production
+Diagnosis
+The deployment was created at some point, but a working build has never been published.
+
+"This app isn't live yet" is the exact Replit message for a deployment slot that exists with no successful build behind it. The URL is reserved, but there is nothing to serve.
+
+This is not a build failure with error logs — a build failure would have logs. There are zero logs, which means either:
+
+Publish was never clicked after the deployment was created, or
+A publish attempt was started but abandoned before completing
+Exact steps to make it live
+Step 1 — Set required secrets first (before publishing)
+In Replit, open Secrets (the padlock icon in the left sidebar) and confirm these exist:
+
+Secret	Required for
+NEON_DATABASE_URL	Database — the API server will crash without this
+SESSION_SECRET	Session signing
+CLERK_SECRET_KEY	Student auth
+CLERK_PUBLISHABLE_KEY	Student auth
+RAZORPAY_KEY_ID	Payment routes
+RAZORPAY_KEY_SECRET	Payment routes
+RAZORPAY_WEBHOOK_SECRET	Webhook signature verification
+The first two (NEON_DATABASE_URL, SESSION_SECRET) are already marked as available in your environment. Confirm the Clerk and Razorpay secrets are set before publishing — a missing secret will cause the API server to start but malfunction silently.
+
+Step 2 — Click Publish
+In Replit, click the Publish button (top-right, rocket icon or "Deploy" button). Select:
+
+Deployment type: Autoscale (already configured)
+No other settings need to change
+This triggers the build:
+
+pnpm --filter @workspace/api-server run build → compiles the Express server
+pnpm --filter @workspace/braintam run build → compiles the React frontend
+Health check hits /api/healthz — if it returns 200, the deployment goes live
+Step 3 — Watch the build log
+The Publish panel shows a live build log. The build takes approximately 60–90 seconds. A successful build ends with the health check passing and the URL going green.
+
+Step 4 — Verify
+Once live, test:
+
+https://braintam-learning.replit.app/api/healthz
+
+Should return 200 OK. If it does, the backend is live and ready for Razorpay webhook configuration.
+
+Nothing in the code is blocking deployment
+The build config in artifact.toml is correct, the TypeScript passes clean, and both workflows run without errors in development. The only action needed is clicking Publish.
