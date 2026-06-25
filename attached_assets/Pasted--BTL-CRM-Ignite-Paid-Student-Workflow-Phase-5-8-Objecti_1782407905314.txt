@@ -1,0 +1,365 @@
+# BTL CRM – Ignite Paid Student Workflow (Phase 5–8)
+
+## Objective
+
+Implement the complete Ignite Paid Student lifecycle in BTL CRM.
+
+Do not break existing functionality:
+
+* Razorpay order creation
+* Razorpay webhook verification
+* Payment idempotency
+* Existing Ignite dashboards
+* Existing lead management
+
+The recently created `ignite_paid_students` table will become the source of truth for paid Ignite students.
+
+---
+
+# Business Flow
+
+Website Lead
+↓
+Student pays ₹39 / ₹99
+↓
+Razorpay Webhook
+↓
+Payment Captured
+↓
+Create/Update User
+↓
+accountType = demo_student
+leadStage = Payment Completed
+↓
+Create ignite_paid_students record
+assignmentStatus = unassigned
+↓
+Ignite → Paid Students → Unassigned
+↓
+Admin assigns IC/Mentor
+↓
+assignmentStatus = assigned
+↓
+Student appears in IC Dashboard
+↓
+IC contacts parent
+↓
+IC assigns Demo Batch
+↓
+assignmentStatus = batch_assigned
+↓
+Student attends demo
+↓
+assignmentStatus = demo_started
+↓
+Student completes demo
+↓
+assignmentStatus = demo_completed
+↓
+IC converts student to Mastery
+↓
+assignmentStatus = converted
+OR
+assignmentStatus = dropped
+
+---
+
+# Assignment Statuses
+
+Use these statuses:
+
+unassigned
+assigned
+batch_assigned
+demo_started
+demo_completed
+converted
+dropped
+
+These statuses should be reusable throughout the CRM.
+
+---
+
+# Sidebar Structure
+
+Ignite
+├── Dashboard
+├── Leads
+├── Demo Management
+├── Conversion Center
+├── Paid Students
+│     ├── Unassigned
+│     ├── Assigned
+│     ├── Batch Assigned
+│     ├── Demo Started
+│     ├── Demo Completed
+│     ├── Converted
+│     └── Dropped
+├── Payments
+└── Sales Mentors
+
+---
+
+# Phase 5.3 – Assignment System
+
+## Backend
+
+Create endpoints:
+
+GET /api/admin/ignite/paid-students/assignable-mentors
+
+Return:
+
+* id
+* name
+* email
+* role
+* active student count
+
+POST /api/admin/ignite/paid-students/:id/assign
+
+Request:
+
+{
+mentorId: number
+}
+
+Validation:
+
+* Paid student exists
+* Mentor exists
+* Prevent duplicate assignment
+
+Update:
+
+assignedMentorId
+assignedMentorName
+assignedById
+assignedAt
+assignmentStatus = assigned
+
+Preserve audit history.
+
+---
+
+# Admin UI
+
+Screen:
+
+Ignite
+→ Paid Students
+→ Unassigned
+
+Enable:
+
+Assign IC button
+
+Flow:
+
+Assign IC
+↓
+Open modal
+↓
+Select mentor
+↓
+Confirm assignment
+↓
+Refresh table
+
+After assignment:
+Student disappears from Unassigned.
+
+Student appears in:
+Paid Students → Assigned.
+
+---
+
+# Assigned Screen
+
+Create:
+
+Ignite
+→ Paid Students
+→ Assigned
+
+Display:
+
+Student Name
+Phone
+Grade
+Amount Paid
+Payment Date
+Assigned Mentor
+Assigned Date
+Lead Stage
+Status
+
+Actions:
+
+Call Parent
+WhatsApp Parent
+View Details
+Assign Demo Batch
+
+Search
+Filters
+Pagination
+Loading state
+Empty state
+
+Reuse existing Ignite components.
+
+---
+
+# IC Dashboard
+
+Create:
+
+Ignite
+→ My Paid Students
+
+IC should see only students assigned to them.
+
+Display:
+
+Name
+Phone
+Grade
+Amount Paid
+Payment Date
+Status
+Notes
+
+Actions:
+
+Call Parent
+WhatsApp Parent
+Add Notes
+Assign Demo Batch
+Mark Demo Started
+Mark Demo Completed
+Convert to Mastery
+Mark Dropped
+
+---
+
+# Demo Batch Assignment
+
+Create endpoint:
+
+POST /api/ignite/paid-students/:id/assign-batch
+
+Request:
+
+{
+batchId: number
+}
+
+Validation:
+
+* Student exists
+* Batch exists
+* Batch active
+
+Create:
+
+demo_batch_enrollments record
+
+Update:
+
+assignedBatchId
+assignmentStatus = batch_assigned
+
+Store:
+assignedAt
+assignedById
+
+---
+
+# Demo Progress
+
+Endpoints:
+
+POST /api/ignite/paid-students/:id/demo-start
+POST /api/ignite/paid-students/:id/demo-complete
+POST /api/ignite/paid-students/:id/drop
+POST /api/ignite/paid-students/:id/convert
+
+Update assignmentStatus accordingly.
+
+---
+
+# Conversion
+
+Convert action should:
+
+1. Preserve Ignite history
+2. Mark:
+   assignmentStatus = converted
+3. Prepare student for Mastery onboarding flow
+4. Do not delete Ignite records
+
+---
+
+# Notifications
+
+Create hooks for future notifications:
+
+Admin:
+New payment received.
+
+IC:
+New student assigned.
+
+Parent:
+Batch assigned.
+
+Keep notification services abstract for future WhatsApp/SMS integration.
+
+---
+
+# Analytics Preparation
+
+Expose queries for:
+
+Total Paid Students
+Unassigned
+Assigned
+Demo Started
+Demo Completed
+Converted
+Dropped
+Revenue
+Mentor Conversion %
+Grade-wise Distribution
+
+No charts needed yet.
+
+---
+
+# Technical Requirements
+
+1. Reuse existing Ignite dashboard patterns.
+2. Reuse current design system.
+3. Keep backend idempotent.
+4. Keep payment flow unchanged.
+5. Do not break existing APIs.
+6. Keep changes modular.
+7. Prefer extending current files instead of creating unnecessary files.
+
+---
+
+# Execution Instructions
+
+Do NOT implement everything at once.
+
+Provide:
+
+1. Architecture plan
+2. Files to modify
+3. Database changes
+4. API endpoints
+5. Component plan
+6. Implementation order
+
+Then implement incrementally in safe phases with typecheck after each phase.
