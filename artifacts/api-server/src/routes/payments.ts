@@ -116,8 +116,8 @@ router.post("/payments/create-order", async (req, res) => {
       notes: { phone, grade: String(grade) },
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    res.status(502).json({ error: "Failed to create payment order. Please try again.", detail: msg });
+    console.error("RAZORPAY CREATE ORDER ERROR:", err);
+    res.status(502).json({ error: "Failed to create payment order. Please try again.", detail: err instanceof Error ? err.message : String(err) });
     return;
   }
 
