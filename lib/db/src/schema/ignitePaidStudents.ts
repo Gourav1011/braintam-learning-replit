@@ -15,6 +15,7 @@ export const ignitePaidStudentsTable = pgTable("ignite_paid_students", {
   assignedMentorId:   integer("assigned_mentor_id"),
   assignedMentorName: text("assigned_mentor_name"),
   assignedById:       integer("assigned_by_id"),
+  assignedAt:         timestamp("assigned_at"),
   notes:              text("notes"),
   courseType:         text("course_type").notNull().default("ignite"),
   leadSource:         text("lead_source"),

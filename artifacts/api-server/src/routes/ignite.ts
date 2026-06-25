@@ -9,7 +9,7 @@ import {
   ignitePaidStudentsTable,
   paymentsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, count, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, desc, sql, count, inArray, isNotNull, notInArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -501,6 +501,7 @@ router.get("/admin/ignite/paid-students", adminOnly, async (req, res) => {
       assignedMentorId: ignitePaidStudentsTable.assignedMentorId,
       assignedMentorName: ignitePaidStudentsTable.assignedMentorName,
       assignedById: ignitePaidStudentsTable.assignedById,
+      assignedAt: ignitePaidStudentsTable.assignedAt,
       notes: ignitePaidStudentsTable.notes,
       courseType: ignitePaidStudentsTable.courseType,
       leadSource: ignitePaidStudentsTable.leadSource,
@@ -562,6 +563,118 @@ router.get("/admin/ignite/paid-students/unassigned", adminOnly, async (_req, res
     .orderBy(desc(ignitePaidStudentsTable.paidAt));
 
   res.json(rows);
+});
+
+// ── GET /admin/ignite/paid-students/assignable-mentors ────────────────────────
+// Returns staff members who can be assigned as ICs, with their current load.
+router.get("/admin/ignite/paid-students/assignable-mentors", adminOnly, async (_req, res) => {
+  const ASSIGNABLE_ROLES = ["mentor", "teacher", "admin", "super_admin"];
+
+  // All staff members eligible to be ICs
+  const staff = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      role: usersTable.role,
+    })
+    .from(usersTable)
+    .where(inArray(usersTable.role, ASSIGNABLE_ROLES))
+    .orderBy(usersTable.name);
+
+  if (staff.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Count active students (not converted / dropped) per mentor
+  const INACTIVE_STATUSES = ["converted", "dropped"];
+  const loadRows = await db
+    .select({
+      mentorId: ignitePaidStudentsTable.assignedMentorId,
+      activeCount: count(ignitePaidStudentsTable.id),
+    })
+    .from(ignitePaidStudentsTable)
+    .where(
+      and(
+        isNotNull(ignitePaidStudentsTable.assignedMentorId),
+        notInArray(ignitePaidStudentsTable.assignmentStatus, INACTIVE_STATUSES),
+      ),
+    )
+    .groupBy(ignitePaidStudentsTable.assignedMentorId);
+
+  const loadMap = new Map(loadRows.map((r) => [r.mentorId!, Number(r.activeCount)]));
+
+  const result = staff.map((s) => ({
+    id: s.id,
+    name: s.name,
+    email: s.email,
+    role: s.role,
+    activeStudentCount: loadMap.get(s.id) ?? 0,
+  }));
+
+  res.json(result);
+});
+
+// ── POST /admin/ignite/paid-students/:id/assign ───────────────────────────────
+// Assign an IC/mentor to a paid student.
+router.post("/admin/ignite/paid-students/:id/assign", adminOnly, async (req, res) => {
+  const recordId = Number(req.params.id);
+  const { mentorId } = req.body as { mentorId: number };
+
+  if (!recordId || !mentorId) {
+    res.status(400).json({ error: "recordId and mentorId are required" });
+    return;
+  }
+
+  // Validate paid student record exists
+  const [record] = await db
+    .select()
+    .from(ignitePaidStudentsTable)
+    .where(eq(ignitePaidStudentsTable.id, recordId))
+    .limit(1);
+
+  if (!record) {
+    res.status(404).json({ error: "Paid student record not found" });
+    return;
+  }
+
+  // Prevent duplicate assignment (already assigned to an IC)
+  if (record.assignedMentorId !== null && record.assignmentStatus !== "unassigned") {
+    res.status(409).json({ error: "Student is already assigned to an IC", currentMentorId: record.assignedMentorId });
+    return;
+  }
+
+  // Validate mentor exists
+  const [mentor] = await db
+    .select({ id: usersTable.id, name: usersTable.name, role: usersTable.role })
+    .from(usersTable)
+    .where(eq(usersTable.id, mentorId))
+    .limit(1);
+
+  if (!mentor) {
+    res.status(404).json({ error: "Mentor not found" });
+    return;
+  }
+
+  const assignedById = (req as unknown as { user?: { id: number } }).user?.id ?? null;
+  const now = new Date();
+
+  await db
+    .update(ignitePaidStudentsTable)
+    .set({
+      assignedMentorId:   mentor.id,
+      assignedMentorName: mentor.name,
+      assignedById:       assignedById,
+      assignedAt:         now,
+      assignmentStatus:   "assigned",
+      updatedAt:          now,
+    })
+    .where(eq(ignitePaidStudentsTable.id, recordId));
+
+  req.log.info({ recordId, mentorId, assignedById }, "Ignite paid student assigned");
+
+  res.json({ ok: true, assignedMentorId: mentor.id, assignedMentorName: mentor.name, assignedAt: now });
 });
 
 export default router;

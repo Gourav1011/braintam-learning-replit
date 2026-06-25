@@ -43,6 +43,7 @@ export type IgniteView =
   | "conversion"
   | "sales-mentors"
   | "paid-students-unassigned"
+  | "paid-students-assigned"
   | "payments";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
@@ -1936,6 +1937,7 @@ const NAV_ITEMS: NavItem[] = [
     id: "paid-students-unassigned", label: "Paid Students", icon: CreditCard,
     children: [
       { id: "paid-students-unassigned", label: "Unassigned" },
+      { id: "paid-students-assigned",   label: "Assigned" },
     ],
   },
   { id: "payments", label: "Payments", icon: CreditCard },
@@ -1949,7 +1951,7 @@ function IgniteSidebar({
   setView: (v: IgniteView) => void;
 }) {
   const demoManagementViews: IgniteView[] = ["overview", "demo-batches", "demo-students", "attendance", "homework", "follow-ups"];
-  const paidStudentsViews: IgniteView[] = ["paid-students-unassigned"];
+  const paidStudentsViews: IgniteView[] = ["paid-students-unassigned", "paid-students-assigned"];
   const isDemoManagement = demoManagementViews.includes(view);
   const isPaidStudents = paidStudentsViews.includes(view);
   const [demoOpen, setDemoOpen] = useState(isDemoManagement);
@@ -2281,6 +2283,9 @@ interface IgnitePaidStudentRow {
   amountPaise: number;
   paidAt: string;
   assignmentStatus: string;
+  assignedMentorId: number | null;
+  assignedMentorName: string | null;
+  assignedAt: string | null;
   courseType: string;
   leadSource: string | null;
   name: string;
@@ -2292,6 +2297,14 @@ interface IgnitePaidStudentRow {
   accountType: string;
   paymentStatus: string;
   razorpayPaymentId: string | null;
+}
+
+interface AssignableMentor {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  activeStudentCount: number;
 }
 
 function PaymentStatusBadge({ status }: { status: string }) {
@@ -2332,6 +2345,14 @@ function PaidStudentsUnassignedView() {
   const [page, setPage] = useState(1);
   const PER = 15;
 
+  // Assign IC modal state
+  const [assigningRow, setAssigningRow] = useState<IgnitePaidStudentRow | null>(null);
+  const [mentors, setMentors] = useState<AssignableMentor[]>([]);
+  const [mentorsLoading, setMentorsLoading] = useState(false);
+  const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState("");
+
   const load = useCallback(() => {
     setLoading(true);
     apiFetch("/admin/ignite/paid-students/unassigned")
@@ -2342,6 +2363,36 @@ function PaidStudentsUnassignedView() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const openAssignModal = (row: IgnitePaidStudentRow) => {
+    setAssigningRow(row);
+    setSelectedMentorId(null);
+    setAssignError("");
+    setMentorsLoading(true);
+    apiFetch("/admin/ignite/paid-students/assignable-mentors")
+      .then((r) => r.json())
+      .then((data) => setMentors(Array.isArray(data) ? data : []))
+      .catch(() => setMentors([]))
+      .finally(() => setMentorsLoading(false));
+  };
+
+  const confirmAssign = () => {
+    if (!assigningRow || !selectedMentorId) return;
+    setAssigning(true);
+    setAssignError("");
+    apiFetch(`/admin/ignite/paid-students/${assigningRow.id}/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mentorId: selectedMentorId }),
+    })
+      .then(async (r) => {
+        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error((d as { error?: string }).error ?? "Assignment failed"); }
+        setAssigningRow(null);
+        load();
+      })
+      .catch((e: unknown) => setAssignError(e instanceof Error ? e.message : "Assignment failed"))
+      .finally(() => setAssigning(false));
+  };
 
   const filtered = rows.filter((r) => {
     const q = search.toLowerCase();
@@ -2508,10 +2559,10 @@ function PaidStudentsUnassignedView() {
                   {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 flex-wrap">
-                      <button disabled
-                        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg opacity-40 cursor-not-allowed"
-                        style={{ background: "#EEF2FF", color: NAVY }}
-                        title="Coming soon">
+                      <button
+                        onClick={() => openAssignModal(r)}
+                        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-opacity hover:opacity-80"
+                        style={{ background: "#EEF2FF", color: NAVY }}>
                         Assign IC
                       </button>
                       <a href={`tel:${r.phone}`}
@@ -2528,6 +2579,316 @@ function PaidStudentsUnassignedView() {
                         className="w-6 h-6 rounded-lg flex items-center justify-center opacity-40 cursor-not-allowed"
                         style={{ background: "#F3F4F6" }} title="View Details — coming soon">
                         <Eye className="w-3 h-3 text-gray-500" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setPage(p)}
+                  className="w-7 h-7 rounded-lg text-xs font-semibold"
+                  style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Assign IC Modal ───────────────────────────────────────── */}
+      {assigningRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between"
+              style={{ background: "#F8FAFF" }}>
+              <div>
+                <h3 className="text-sm font-black" style={{ color: NAVY }}>Assign Ignite Counsellor</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {assigningRow.name} · Grade {assigningRow.grade} · ₹{(assigningRow.amountPaise / 100).toLocaleString("en-IN")}
+                </p>
+              </div>
+              <button onClick={() => setAssigningRow(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400">
+                ✕
+              </button>
+            </div>
+
+            {/* Mentor list */}
+            <div className="px-6 py-4 max-h-72 overflow-y-auto space-y-2">
+              {mentorsLoading ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-gray-400">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span className="text-xs">Loading counsellors…</span>
+                </div>
+              ) : mentors.length === 0 ? (
+                <p className="text-center py-8 text-xs text-gray-400">No assignable counsellors found.</p>
+              ) : mentors.map((m) => (
+                <button key={m.id} onClick={() => setSelectedMentorId(m.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all"
+                  style={selectedMentorId === m.id
+                    ? { borderColor: NAVY, background: "#EEF2FF" }
+                    : { borderColor: "#E5E7EB", background: "#fff" }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      style={{ background: selectedMentorId === m.id ? NAVY : "#94A3B8" }}>
+                      {(m.name?.[0] ?? "?").toUpperCase()}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-semibold" style={{ color: NAVY }}>{m.name}</div>
+                      <div className="text-[10px] text-gray-400 capitalize">{m.role.replace("_", " ")}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-bold" style={{ color: m.activeStudentCount >= 20 ? "#DC2626" : "#16A34A" }}>
+                      {m.activeStudentCount}
+                    </div>
+                    <div className="text-[10px] text-gray-400">active</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Error */}
+            {assignError && (
+              <div className="mx-6 mb-2 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs">{assignError}</div>
+            )}
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button onClick={() => setAssigningRow(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={confirmAssign}
+                disabled={!selectedMentorId || assigning}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white transition-opacity disabled:opacity-40"
+                style={{ background: NAVY }}>
+                {assigning ? "Assigning…" : "Confirm Assignment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Paid Students — Assigned View ─────────────────────────────────────────────
+
+function PaidStudentsAssignedView() {
+  const [rows, setRows] = useState<IgnitePaidStudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [gradeF, setGradeF] = useState("All Grades");
+  const [page, setPage] = useState(1);
+  const PER = 15;
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiFetch("/admin/ignite/paid-students?status=assigned")
+      .then((r) => r.json())
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter((r) => {
+    const q = search.toLowerCase();
+    if (q && !(r.name ?? "").toLowerCase().includes(q) && !(r.phone ?? "").includes(q) && !(r.assignedMentorName ?? "").toLowerCase().includes(q)) return false;
+    if (gradeF !== "All Grades" && String(r.grade) !== gradeF.replace("Grade ", "")) return false;
+    return true;
+  });
+
+  const paged = filtered.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.ceil(filtered.length / PER);
+  const totalRevenue = rows.reduce((sum, r) => sum + (r.amountPaise ?? 0), 0);
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-xs text-gray-400 font-medium">Paid Students</span>
+            <ChevronRight className="w-3 h-3 text-gray-300" />
+            <span className="text-xs font-semibold" style={{ color: "#1D4ED8" }}>Assigned</span>
+          </div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>Assigned Paid Students</h1>
+          <p className="text-xs text-gray-500">Students assigned to an Ignite Counsellor, awaiting demo batch</p>
+        </div>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+        </button>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Assigned</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#DBEAFE" }}>
+              <Users className="w-4 h-4 text-blue-600" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-blue-700">{rows.length}</div>
+          <div className="text-[10px] text-gray-400 mt-1">With an IC</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Revenue</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+              <CreditCard className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-green-600">₹{(totalRevenue / 100).toLocaleString("en-IN")}</div>
+          <div className="text-[10px] text-gray-400 mt-1">From assigned students</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">ICs Active</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <Award className="w-4 h-4" style={{ color: NAVY }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>
+            {new Set(rows.map((r) => r.assignedMentorId).filter(Boolean)).size}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">Distinct counsellors</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Grades</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>
+            {new Set(rows.map((r) => r.grade)).size}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">Distinct grades</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text" placeholder="Search name, phone or IC…" value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-1 w-52"
+            style={{ "--tw-ring-color": NAVY } as React.CSSProperties}
+          />
+        </div>
+        <select value={gradeF} onChange={(e) => { setGradeF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          <option>All Grades</option>
+          {[1,2,3,4,5,6,7,8,9,10].map((g) => <option key={g}>Grade {g}</option>)}
+        </select>
+        <span className="text-xs text-gray-400 ml-auto">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+              <tr>
+                {["Student Name", "Phone", "Grade", "Amount Paid", "Payment Date", "Assigned Mentor", "Assigned Date", "Lead Stage", "Status", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="text-center py-16 text-gray-400">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
+                    <div className="text-xs">Loading…</div>
+                  </td>
+                </tr>
+              ) : paged.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="text-center py-16">
+                    <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "#DBEAFE" }}>
+                      <Users className="w-7 h-7 text-blue-500" />
+                    </div>
+                    <div className="text-sm font-semibold text-gray-500">No assigned students yet.</div>
+                    <div className="text-xs text-gray-400 mt-1">Assign ICs from the Unassigned screen.</div>
+                  </td>
+                </tr>
+              ) : paged.map((r) => (
+                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  {/* Student Name */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: NAVY }}>{(r.name?.[0] ?? "?").toUpperCase()}</div>
+                      <div>
+                        <div className="font-semibold text-gray-800 text-xs">{r.name}</div>
+                        <div className="text-gray-400 text-[10px]">{r.school ?? r.city ?? "–"}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs font-mono whitespace-nowrap">{r.phone}</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ background: "#EEF2FF", color: NAVY }}>Gr {r.grade}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-black text-green-700">₹{(r.amountPaise / 100).toLocaleString("en-IN")}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(r.paidAt)}</td>
+                  {/* Assigned Mentor */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                        style={{ background: "#1D4ED8" }}>
+                        {(r.assignedMentorName?.[0] ?? "?").toUpperCase()}
+                      </div>
+                      <span className="text-xs text-gray-700 font-medium">{r.assignedMentorName ?? "–"}</span>
+                    </div>
+                  </td>
+                  {/* Assigned Date */}
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedAt ? fmt(r.assignedAt) : "–"}</td>
+                  <td className="px-4 py-3"><StageBadge stage={r.leadStage} /></td>
+                  <td className="px-4 py-3"><AssignmentStatusBadge status={r.assignmentStatus} /></td>
+                  {/* Actions */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <a href={`tel:${r.phone}`}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+                        style={{ background: "#D1FAE5" }} title="Call Parent">
+                        <Phone className="w-3 h-3 text-green-700" />
+                      </a>
+                      <a href={`https://wa.me/91${r.phone}`} target="_blank" rel="noreferrer"
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+                        style={{ background: "#D1FAE5" }} title="WhatsApp Parent">
+                        <Bell className="w-3 h-3 text-green-700" />
+                      </a>
+                      <button disabled
+                        className="w-6 h-6 rounded-lg flex items-center justify-center opacity-40 cursor-not-allowed"
+                        style={{ background: "#F3F4F6" }} title="View Details — coming soon">
+                        <Eye className="w-3 h-3 text-gray-500" />
+                      </button>
+                      <button disabled
+                        className="text-[10px] font-semibold px-2 py-1 rounded-lg opacity-40 cursor-not-allowed"
+                        style={{ background: "#FFF7ED", color: ORANGE }}
+                        title="Assign Demo Batch — coming soon">
+                        Batch
                       </button>
                     </div>
                   </td>
@@ -2576,6 +2937,7 @@ export function IgniteContentArea({
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
     case "paid-students-unassigned": return <PaidStudentsUnassignedView />;
+    case "paid-students-assigned":   return <PaidStudentsAssignedView />;
     case "payments": return <PaymentsView flash={flash} />;
     default: return <DashboardView setView={setView} />;
   }
@@ -2605,6 +2967,7 @@ export function IgniteTab({
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
       case "paid-students-unassigned": return <PaidStudentsUnassignedView />;
+      case "paid-students-assigned":   return <PaidStudentsAssignedView />;
       case "payments": return <PaymentsView flash={flash} />;
       default: return <DashboardView setView={setView} />;
     }
