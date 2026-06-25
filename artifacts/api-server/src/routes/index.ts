@@ -30,6 +30,7 @@ import paymentsRouter from "./payments";
 import commandCenterRouter from "./commandCenter";
 import adminMentorsRouter from "./adminMentors";
 import adminTeachersRouter from "./adminTeachers";
+import adminRolesRouter from "./adminRoles";
 
 const router: IRouter = Router();
 
@@ -64,5 +65,6 @@ router.use(paymentsRouter);
 router.use(commandCenterRouter);
 router.use(adminMentorsRouter);
 router.use(adminTeachersRouter);
+router.use(adminRolesRouter);
 
 export default router;

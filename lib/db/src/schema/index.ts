@@ -41,3 +41,6 @@ export * from "./manualPayments";
 export * from "./duplicateAlerts";
 export * from "./enrolmentErrors";
 export * from "./ignitePaidStudents";
+export * from "./roles";
+export * from "./rbacPermissions";
+export * from "./rolePermissions";

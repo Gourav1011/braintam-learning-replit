@@ -1,0 +1,394 @@
+# BTL CRM – Phase D – Step 5
+
+Command Center → Roles & Permissions
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+OBJECTIVE
+=========
+
+Build a production-ready, database-driven Role & Permission system.
+
+This system will become the central authorization engine for the entire platform.
+
+Modules that will use it:
+
+Admin Portal
+Command Center
+Ignite CRM
+Mastery
+Payments
+Students
+Teachers
+Mentors
+Reports
+Settings
+
+NO hardcoded permissions going forward.
+
+====================================================
+IMPORTANT
+=========
+
+Do NOT break:
+
+* Authentication
+* Existing users
+* Existing roles
+* Existing dashboards
+* Existing APIs
+* Existing staff management
+* Existing mentor management
+* Existing teacher management
+* Existing Ignite CRM
+
+Prefer extending existing architecture.
+
+====================================================
+ROLE HIERARCHY
+==============
+
+Super Admin
+↓
+Admin
+↓
+Manager
+↓
+Assistant Manager
+↓
+Sales Mentor
+↓
+Academic Mentor
+↓
+Teacher
+↓
+Student
+
+====================================================
+SYSTEM ROLES
+============
+
+super_admin
+admin
+manager
+assistant_manager
+sales_mentor
+academic_mentor
+teacher
+student
+
+Roles should be manageable.
+
+====================================================
+MODULES
+=======
+
+Dashboard
+Students
+Courses
+Live Classes
+Payments
+Reports
+Settings
+Command Center
+Staff Management
+Mentor Management
+Teacher Management
+Ignite
+Mastery
+Leads
+Demo Batches
+Audit Logs
+
+====================================================
+PERMISSIONS
+===========
+
+view
+create
+edit
+delete
+assign
+approve
+export
+manage
+
+====================================================
+DATABASE DESIGN
+===============
+
+Create only if missing.
+
+Prefer:
+
+roles
+permissions
+role_permissions
+
+Reuse users.role.
+
+No duplicate user tables.
+
+Suggested:
+
+## roles
+
+id
+name
+description
+isSystem
+createdAt
+updatedAt
+
+## permissions
+
+id
+module
+action
+description
+createdAt
+
+## role_permissions
+
+id
+roleId
+permissionId
+createdAt
+
+====================================================
+SUPER ADMIN RULES
+=================
+
+Super Admin always has:
+
+Full access.
+
+Cannot remove own access.
+
+Cannot remove last Super Admin.
+
+====================================================
+COMMAND CENTER
+==============
+
+Command Center
+→ Roles & Permissions
+
+Sections:
+
+Roles
+Permissions Matrix
+Role Details
+Audit History
+
+====================================================
+ROLES LIST
+==========
+
+Display:
+
+Role Name
+Description
+System Role
+Users Count
+Created Date
+
+Actions:
+
+View
+Edit
+Clone
+Deactivate
+
+System roles cannot be deleted.
+
+====================================================
+PERMISSIONS MATRIX
+==================
+
+Rows:
+
+Modules
+
+Columns:
+
+View
+Create
+Edit
+Delete
+Assign
+Approve
+Export
+Manage
+
+Checkbox matrix.
+
+Changes should autosave or save explicitly.
+
+====================================================
+ROLE DETAILS
+============
+
+Display:
+
+Role Information
+Assigned Users
+Permissions
+Audit Timeline
+
+====================================================
+CREATE ROLE
+===========
+
+Fields:
+
+Role Name
+Description
+Clone From Existing Role (optional)
+
+====================================================
+EDIT ROLE
+=========
+
+Editable:
+
+Name
+Description
+Permissions
+
+====================================================
+CLONE ROLE
+==========
+
+Copy:
+
+Permissions
+Description
+
+Do not copy users.
+
+====================================================
+BACKEND
+=======
+
+Create only if missing.
+
+Routes:
+
+GET /api/admin/roles
+GET /api/admin/roles/:id
+GET /api/admin/permissions
+
+POST /api/admin/roles
+PATCH /api/admin/roles/:id
+POST /api/admin/roles/:id/clone
+POST /api/admin/permissions/update
+
+====================================================
+PERMISSION RESOLUTION
+=====================
+
+Create helper:
+
+hasPermission(
+userId,
+module,
+action
+)
+
+Future modules should use:
+
+hasPermission()
+
+instead of:
+
+if (role === "admin")
+
+Prepare helper only.
+
+Do not refactor all modules yet.
+
+====================================================
+AUDIT LOGS
+==========
+
+Create:
+
+role_created
+role_updated
+role_cloned
+permission_updated
+
+Store:
+
+who
+what
+when
+old value
+new value
+
+====================================================
+LOADING STATES
+==============
+
+Loading skeleton
+Error state
+No data state
+Empty state
+
+====================================================
+RESPONSIVE
+==========
+
+Desktop:
+Matrix.
+
+Mobile:
+Cards.
+
+====================================================
+TESTING
+=======
+
+1. Run migrations
+2. Typecheck
+3. Build frontend
+4. Restart API
+5. Verify APIs
+6. Verify create role
+7. Verify clone role
+8. Verify permission updates
+9. Verify last-super-admin guard
+10. Verify audit logs
+11. Verify responsive layouts
+12. Verify loading states
+13. Verify no console errors
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Database changes
+Routes added
+Components added
+Screens added
+Helper functions added
+Audit events added
+Screenshots if possible
+
+Stop after completion.
+
+Do NOT start:
+
+Audit Logs module
+Ignite status screens
+Batch Assignment
+IC Dashboard
+Demo Tracking
+Mastery conversion
+
+Wait for approval.
