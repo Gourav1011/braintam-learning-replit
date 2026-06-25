@@ -337,19 +337,45 @@ function TopperCard({ s, featured }: { s: typeof toppers[number]; featured?: boo
 }
 
 function HeroVisual() {
-  return (
-    <div className="w-full h-full flex flex-col select-none" style={{ gap: 10 }}>
-      {/* Top badge */}
-      <div className="flex justify-center flex-shrink-0">
-        <div className="bt-float inline-flex items-center gap-2 px-4 py-2 rounded-full"
-          style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
-          <span>🏆</span>
-          <span className="text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
+  const topBadge = (
+    <div className="flex justify-center flex-shrink-0">
+      <div className="bt-float inline-flex items-center gap-2 px-4 py-2 rounded-full"
+        style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
+        <span>🏆</span>
+        <span className="text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
+      </div>
+    </div>
+  );
+
+  const bottomBadge = (
+    <div className="flex justify-center flex-shrink-0">
+      <div className="bt-float-down inline-flex items-center gap-2 px-4 py-2 rounded-xl"
+        style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
+                 boxShadow: "0 8px 28px rgba(11,43,107,0.12)" }}>
+        <div className="flex -space-x-2">
+          {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
+            <div key={i} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-bold"
+              style={{ background: c, fontSize: 9 }}>{"PRA"[i]}</div>
+          ))}
+        </div>
+        <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 12 }}>
+          <span className="font-black" style={{ color: ORANGE }}>4,200+</span> Classes Every Year
         </div>
       </div>
+    </div>
+  );
 
-      {/* Cards row — fills remaining height */}
-      <div className="flex items-stretch gap-2 flex-1 min-h-0">
+  return (
+    <div className="w-full h-full flex flex-col select-none" style={{ gap: 10 }}>
+      {topBadge}
+
+      {/* ── Mobile: single featured card ── */}
+      <div className="flex-1 min-h-0 md:hidden">
+        <TopperCard s={toppers[0]} featured />
+      </div>
+
+      {/* ── Desktop (md+): 3-column cards ── */}
+      <div className="hidden md:flex items-stretch gap-2 flex-1 min-h-0">
         <div className="flex-1 min-w-0 bt-float-a">
           <TopperCard s={toppers[2]} />
         </div>
@@ -361,22 +387,7 @@ function HeroVisual() {
         </div>
       </div>
 
-      {/* Bottom badge */}
-      <div className="flex justify-center flex-shrink-0">
-        <div className="bt-float-down inline-flex items-center gap-2 px-4 py-2 rounded-xl"
-          style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
-                   boxShadow: "0 8px 28px rgba(11,43,107,0.12)" }}>
-          <div className="flex -space-x-2">
-            {["#FF6B1A","#3B82F6","#10B981"].map((c, i) => (
-              <div key={i} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white font-bold"
-                style={{ background: c, fontSize: 9 }}>{"PRA"[i]}</div>
-            ))}
-          </div>
-          <div className="font-semibold whitespace-nowrap" style={{ color: TEXT, fontSize: 12 }}>
-            <span className="font-black" style={{ color: ORANGE }}>4,200+</span> Classes Every Year
-          </div>
-        </div>
-      </div>
+      {bottomBadge}
     </div>
   );
 }
