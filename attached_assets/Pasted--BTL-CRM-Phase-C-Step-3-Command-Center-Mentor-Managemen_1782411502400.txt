@@ -1,0 +1,389 @@
+# BTL CRM – Phase C – Step 3
+
+Command Center → Mentor Management
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+OBJECTIVE
+=========
+
+Build a production-ready Mentor Management module.
+
+This is NOT a duplicate staff table.
+
+Mentor Management should become the operational control center for:
+
+Sales Mentors
+Academic Mentors
+
+Future scalability:
+Ignite counsellors
+Mastery counsellors
+Academic coordinators
+
+Reuse Staff Management architecture where possible.
+
+====================================================
+IMPORTANT
+=========
+
+Do NOT break:
+
+* Existing users
+* Existing mentor assignments
+* Existing Ignite CRM
+* Existing dashboards
+* Existing APIs
+* Existing audit logs
+* Existing permissions
+
+Reuse users table.
+
+Avoid duplicate mentor tables.
+
+====================================================
+MENTOR TYPES
+============
+
+sales_mentor
+academic_mentor
+
+====================================================
+COMMAND CENTER
+==============
+
+Command Center
+→ Mentor Management
+
+Live module.
+
+No placeholders.
+
+====================================================
+KPIs
+====
+
+Cards:
+
+Total Mentors
+Active Mentors
+Sales Mentors
+Academic Mentors
+Assigned Students
+Conversion Rate
+
+====================================================
+TABLE
+=====
+
+Columns:
+
+Photo
+Name
+Phone
+Email
+Mentor Type
+Department
+Status
+Assigned Students
+Active Students
+Conversion %
+Joined Date
+Last Active
+
+====================================================
+SEARCH
+======
+
+Search:
+
+Name
+Phone
+Email
+
+====================================================
+FILTERS
+=======
+
+Mentor Type
+Department
+Status
+
+====================================================
+SORTING
+=======
+
+Name
+Assigned Students
+Conversion %
+Joined Date
+Last Active
+
+====================================================
+PAGINATION
+==========
+
+15 records per page.
+
+Reuse pagination component.
+
+====================================================
+ROW ACTIONS
+===========
+
+View Profile
+Edit Mentor
+Activate
+Deactivate
+Manage Permissions
+View Assigned Students
+Change Mentor Type
+
+====================================================
+MENTOR PROFILE
+==============
+
+Sections:
+
+Basic Information
+Performance
+Students
+Permissions
+Activity Timeline
+
+====================================================
+PERFORMANCE KPIs
+================
+
+Assigned Students
+Active Students
+Converted Students
+Revenue Generated
+Conversion %
+Attendance %
+Last Active
+
+====================================================
+ASSIGNED STUDENTS
+=================
+
+Display:
+
+Student Name
+Phone
+Grade
+Course
+Status
+Assigned Date
+
+Search
+Filters
+Pagination
+
+====================================================
+CHANGE MENTOR TYPE
+==================
+
+Allowed:
+
+sales_mentor
+academic_mentor
+
+Create audit log:
+
+mentor_type_changed
+
+Store:
+
+who
+what
+when
+old value
+new value
+
+====================================================
+PERMISSIONS
+===========
+
+Display permissions matrix.
+
+Read-only for now.
+
+Will become editable in Phase D.
+
+====================================================
+BACKEND
+=======
+
+Create only if missing.
+
+Reuse users table.
+
+Endpoints:
+
+GET /api/admin/mentors
+
+Supports:
+
+search
+page
+limit
+type
+department
+status
+sort
+
+Response:
+
+items
+total
+page
+pageSize
+totalPages
+kpis
+
+---
+
+GET /api/admin/mentors/:id
+
+Returns:
+
+profile
+performance
+permissions
+activity
+
+---
+
+GET /api/admin/mentors/:id/students
+
+Returns:
+
+assigned students
+pagination
+
+---
+
+PATCH /api/admin/mentors/:id
+
+Update:
+
+name
+phone
+department
+status
+
+---
+
+POST /api/admin/mentors/:id/change-type
+
+Request:
+
+{
+type: "sales_mentor"
+}
+
+====================================================
+PERFORMANCE CALCULATIONS
+========================
+
+Sales Mentor:
+
+Assigned Students
+Converted Students
+Conversion %
+
+Academic Mentor:
+
+Assigned Students
+Attendance %
+Homework Completion %
+
+If data unavailable:
+Return zero values.
+
+Prepare hooks for future analytics.
+
+====================================================
+AUDIT LOGS
+==========
+
+Create:
+
+mentor_updated
+mentor_activated
+mentor_deactivated
+mentor_type_changed
+
+Store:
+
+who
+what
+when
+old value
+new value
+
+====================================================
+LOADING STATES
+==============
+
+Loading skeleton
+Error state
+No results state
+Empty database state
+
+====================================================
+RESPONSIVE
+==========
+
+Desktop:
+Full table.
+
+Mobile:
+Cards.
+
+====================================================
+TESTING
+=======
+
+1. Typecheck
+2. Build frontend
+3. Restart API
+4. Verify APIs
+5. Verify search
+6. Verify filters
+7. Verify pagination
+8. Verify profile modal
+9. Verify assigned students
+10. Verify mentor type change
+11. Verify audit logs
+12. Verify loading states
+13. Verify responsive layouts
+14. Verify no console errors
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Routes added
+Database changes
+Components added
+Screens added
+Audit events added
+Screenshots if possible
+
+Stop after completion.
+
+Do NOT start:
+
+Teacher Management
+Roles & Permissions
+Ignite status screens
+Batch Assignment
+IC Dashboard
+
+Wait for approval.

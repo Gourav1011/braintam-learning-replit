@@ -7,6 +7,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { StaffManagementView } from "./command-center-staff-tab";
+import { MentorManagementView } from "./command-center-mentors-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const NAVY   = "#0B2B6B";
@@ -327,7 +328,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { key: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, description: "Operational overview across all modules",    status: "live"        },
   { key: "staff-management",   label: "Staff Management",    icon: Users,           description: "Manage all staff accounts and roles",         status: "live"        },
-  { key: "mentor-management",  label: "Mentor Management",   icon: UserCheck2,      description: "IC assignments, workload, and performance",   status: "coming-soon" },
+  { key: "mentor-management",  label: "Mentor Management",   icon: UserCheck2,      description: "IC assignments, workload, and performance",   status: "live"        },
   { key: "teacher-management", label: "Teacher Management",  icon: GraduationCap,   description: "Teacher schedules, classes, assignments",     status: "coming-soon" },
   { key: "roles-permissions",  label: "Roles & Permissions", icon: ShieldCheck,     description: "Database-driven role and permission system",  status: "in-dev"      },
   { key: "audit-logs",         label: "Audit Logs",          icon: FileText,        description: "Full trail of all system actions",            status: "coming-soon" },
@@ -476,8 +477,9 @@ export function CommandCenterTab() {
           </div>
         )}
         {view === "dashboard"        && <DashboardView />}
-        {view === "staff-management" && <StaffManagementView flash={flash} />}
-        {view !== "dashboard" && view !== "staff-management" && <ComingSoonView view={view} />}
+        {view === "staff-management"  && <StaffManagementView flash={flash} />}
+        {view === "mentor-management" && <MentorManagementView flash={flash} />}
+        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && <ComingSoonView view={view} />}
       </div>
     </div>
   );

@@ -28,6 +28,7 @@ import mentorAdminRouter from "./mentorAdmin";
 import igniteRouter from "./ignite";
 import paymentsRouter from "./payments";
 import commandCenterRouter from "./commandCenter";
+import adminMentorsRouter from "./adminMentors";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use(mentorAdminRouter);
 router.use(igniteRouter);
 router.use(paymentsRouter);
 router.use(commandCenterRouter);
+router.use(adminMentorsRouter);
 
 export default router;
