@@ -1,0 +1,301 @@
+# BTL CRM – Phase E – Step 6
+
+Command Center → Audit Logs
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+OBJECTIVE
+=========
+
+Build a production-ready Audit Logs module.
+
+Audit Logs will become the central activity timeline for the entire platform.
+
+Existing modules already generate logs:
+
+Staff Management
+Mentor Management
+Teacher Management
+Roles & Permissions
+
+Future modules:
+
+Ignite CRM
+Mastery
+Payments
+Students
+Settings
+
+must also write logs here.
+
+====================================================
+IMPORTANT
+=========
+
+Do NOT break:
+
+* Existing audit log inserts
+* Existing users
+* Existing APIs
+* Existing dashboards
+* Existing permissions
+
+Reuse existing audit_logs table.
+
+Do NOT create duplicate audit tables.
+
+====================================================
+COMMAND CENTER
+==============
+
+Command Center
+→ Audit Logs
+
+Live module.
+
+No placeholders.
+
+====================================================
+KPIs
+====
+
+Cards:
+
+Total Events
+Today Events
+Role Changes
+Permission Changes
+Staff Changes
+System Events
+
+====================================================
+TABLE
+=====
+
+Columns:
+
+Date & Time
+Actor
+Role
+Action
+Module
+Target
+Description
+
+====================================================
+ACTION TYPES
+============
+
+Examples:
+
+staff_updated
+staff_activated
+staff_deactivated
+
+mentor_updated
+mentor_activated
+mentor_type_changed
+
+teacher_updated
+teacher_activated
+
+role_created
+role_updated
+role_cloned
+permission_updated
+
+Future:
+
+payment_created
+payment_captured
+student_assigned
+batch_assigned
+conversion_completed
+
+Table must support any action string.
+
+====================================================
+SEARCH
+======
+
+Search:
+
+Actor
+Target
+Action
+Description
+
+====================================================
+FILTERS
+=======
+
+Date Range
+Role
+Action
+Module
+
+====================================================
+SORTING
+=======
+
+Date
+Actor
+Action
+Module
+
+====================================================
+PAGINATION
+==========
+
+25 records per page.
+
+====================================================
+ROW DETAILS
+===========
+
+View Details modal.
+
+Display:
+
+Event Information
+Actor Information
+Target Information
+Old Value
+New Value
+Timestamp
+
+Render JSON cleanly.
+
+====================================================
+TIMELINE VIEW
+=============
+
+Add toggle:
+
+Table View
+Timeline View
+
+Timeline:
+
+Date
+↓
+Event
+↓
+Description
+
+====================================================
+BACKEND
+=======
+
+Reuse existing table.
+
+Create only if missing:
+
+GET /api/admin/audit-logs
+
+Supports:
+
+search
+page
+limit
+role
+action
+module
+dateFrom
+dateTo
+sort
+
+Response:
+
+items
+total
+page
+pageSize
+totalPages
+kpis
+
+---
+
+GET /api/admin/audit-logs/:id
+
+Returns:
+
+event
+actor
+target
+oldValue
+newValue
+
+====================================================
+PERFORMANCE
+===========
+
+Use indexes if missing:
+
+createdAt
+action
+actorId
+actorRole
+
+====================================================
+LOADING STATES
+==============
+
+Loading skeleton
+Error state
+No results state
+Empty state
+
+====================================================
+RESPONSIVE
+==========
+
+Desktop:
+Table.
+
+Mobile:
+Cards.
+
+====================================================
+TESTING
+=======
+
+1. Typecheck
+2. Build frontend
+3. Restart API
+4. Verify APIs
+5. Verify search
+6. Verify filters
+7. Verify pagination
+8. Verify timeline mode
+9. Verify details modal
+10. Verify JSON rendering
+11. Verify responsive layouts
+12. Verify no console errors
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Routes added
+Database changes
+Components added
+Screens added
+Indexes added
+Screenshots if possible
+
+Stop after completion.
+
+Do NOT start:
+
+Ignite status screens
+Batch assignment
+IC dashboard
+Demo tracking
+Mastery conversion
+
+Wait for approval.

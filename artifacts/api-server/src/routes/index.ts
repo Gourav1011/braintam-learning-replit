@@ -31,6 +31,7 @@ import commandCenterRouter from "./commandCenter";
 import adminMentorsRouter from "./adminMentors";
 import adminTeachersRouter from "./adminTeachers";
 import adminRolesRouter from "./adminRoles";
+import adminAuditLogsRouter from "./adminAuditLogs";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(commandCenterRouter);
 router.use(adminMentorsRouter);
 router.use(adminTeachersRouter);
 router.use(adminRolesRouter);
+router.use(adminAuditLogsRouter);
 
 export default router;

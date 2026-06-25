@@ -10,6 +10,7 @@ import { StaffManagementView } from "./command-center-staff-tab";
 import { MentorManagementView } from "./command-center-mentors-tab";
 import { TeacherManagementView } from "./command-center-teachers-tab";
 import { RolesPermissionsView } from "./command-center-roles-tab";
+import { AuditLogsView } from "./command-center-audit-logs-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const NAVY   = "#0B2B6B";
@@ -333,7 +334,7 @@ const NAV: NavItem[] = [
   { key: "mentor-management",  label: "Mentor Management",   icon: UserCheck2,      description: "IC assignments, workload, and performance",   status: "live"        },
   { key: "teacher-management", label: "Teacher Management",  icon: GraduationCap,   description: "Teacher schedules, classes, assignments",     status: "live"        },
   { key: "roles-permissions",  label: "Roles & Permissions", icon: ShieldCheck,     description: "Database-driven role and permission system",  status: "live"        },
-  { key: "audit-logs",         label: "Audit Logs",          icon: FileText,        description: "Full trail of all system actions",            status: "coming-soon" },
+  { key: "audit-logs",         label: "Audit Logs",          icon: FileText,        description: "Full trail of all system actions",            status: "live"        },
   { key: "settings",           label: "Settings",            icon: Settings,        description: "Platform-wide configuration and preferences", status: "coming-soon" },
 ];
 
@@ -483,7 +484,8 @@ export function CommandCenterTab() {
         {view === "mentor-management"  && <MentorManagementView  flash={flash} />}
         {view === "teacher-management"  && <TeacherManagementView  flash={flash} />}
         {view === "roles-permissions"   && <RolesPermissionsView   flash={flash} />}
-        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && view !== "teacher-management" && view !== "roles-permissions" && <ComingSoonView view={view} />}
+        {view === "audit-logs"          && <AuditLogsView          flash={flash} />}
+        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && view !== "teacher-management" && view !== "roles-permissions" && view !== "audit-logs" && <ComingSoonView view={view} />}
       </div>
     </div>
   );
