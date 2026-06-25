@@ -1,0 +1,561 @@
+# BTL CRM – Ignite CRM + Command Center Completion Specification
+
+Version: Phase 2 Development Sprint
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+IMPORTANT INSTRUCTIONS
+======================
+
+This is a LIVE production project.
+
+DO NOT BREAK:
+
+* Authentication
+* Clerk integration
+* Existing users
+* Existing payments
+* Razorpay webhooks
+* Existing APIs
+* Existing dashboards
+* Existing database records
+* Existing student records
+
+Before making any change:
+
+1. Read the entire codebase.
+2. Understand existing architecture.
+3. Reuse existing components.
+4. Reuse existing patterns.
+5. Do not create duplicate functionality.
+6. Extend existing modules whenever possible.
+
+====================================================
+PROJECT OVERVIEW
+================
+
+BTL CRM has two business verticals:
+
+1. Ignite
+   Demo Program
+   ₹39 / ₹99 entry payments
+   Lead nurturing
+   Demo batches
+   Conversion pipeline
+
+2. Mastery
+   Long-term paid students
+   Full learning platform
+   Reports
+   Classes
+   Homework
+   Payments
+   Renewals
+
+====================================================
+ROLES & HIERARCHY
+=================
+
+Super Admin
+↓
+Admin
+↓
+Manager
+↓
+Assistant Manager
+↓
+Sales Mentor
+↓
+Academic Mentor
+↓
+Teacher
+↓
+Student
+
+====================================================
+ROLE RESPONSIBILITIES
+=====================
+
+SUPER ADMIN
+Can:
+
+* Everything
+* Create roles
+* Manage permissions
+* Assign batches
+* Manage staff
+* Access all reports
+* Override permissions
+* System settings
+* Audit logs
+
+ADMIN
+Can:
+
+* Manage operations
+* Manage leads
+* Manage students
+* Manage staff
+* Assign batches
+* Reports
+* Payments
+* Demo management
+
+MANAGER
+Can:
+
+* Manage operations
+* Assign batches
+* Manage mentors
+* Reports
+* Student operations
+
+ASSISTANT MANAGER
+Permissions configurable by Super Admin.
+
+SALES MENTOR
+Can:
+
+* View assigned students
+* Call parents
+* WhatsApp parents
+* Add notes
+* Follow-ups
+* Update lead statuses
+* View batch details
+
+Cannot:
+
+* Assign batches
+* Change batches
+* Delete records
+* Manage permissions
+
+ACADEMIC MENTOR
+Can:
+
+* View assigned students
+* Homework
+* Attendance
+* Reports
+* Batch details
+
+Cannot:
+
+* Assign batches
+* Change batches
+* Manage staff
+
+TEACHER
+Can:
+
+* Classes
+* Attendance
+* Homework
+* Recordings
+
+Cannot:
+
+* Assign batches
+* Manage students
+* Manage permissions
+
+====================================================
+COMMAND CENTER
+==============
+
+Command Center
+├── Dashboard
+├── Staff Management
+├── Mentor Management
+├── Teacher Management
+├── Roles & Permissions
+├── Announcements
+├── Notifications
+├── Audit Logs
+├── System Settings
+
+====================================================
+MENTOR MANAGEMENT
+=================
+
+Create:
+
+Command Center
+→ Mentor Management
+
+Display:
+
+* Name
+* Phone
+* Email
+* Role
+* Status
+* Assigned Students
+* Active Students
+* Joined Date
+* Last Active
+
+Actions:
+
+View
+Edit
+Activate
+Deactivate
+Reset Password
+Change Role
+Manage Permissions
+
+Search
+Filters
+Pagination
+Loading
+Empty state
+
+====================================================
+PERMISSIONS SYSTEM
+==================
+
+Permissions must be database-driven.
+
+NO hardcoded permissions.
+
+Permissions:
+
+View
+Create
+Edit
+Delete
+Assign
+Approve
+Export
+Manage
+
+Modules:
+
+Dashboard
+Leads
+Payments
+Demo Batches
+Students
+Mentors
+Teachers
+Reports
+Settings
+Command Center
+
+Super Admin can modify permissions.
+
+====================================================
+ADMIN PORTAL AUDIT
+==================
+
+Perform complete audit.
+
+Find:
+
+Broken Tabs
+Broken Routes
+Missing Render Cases
+Missing APIs
+Unwired Buttons
+Empty Pages
+Navigation Issues
+
+Generate report:
+
+Module
+Issue
+Root Cause
+Files Affected
+Fix Required
+
+All sidebar items must function.
+
+====================================================
+IGNITE CRM FLOW
+===============
+
+Website Lead
+↓
+Payment
+↓
+Payment Captured
+↓
+User Created
+↓
+accountType = demo_student
+↓
+leadStage = Payment Completed
+↓
+ignite_paid_students record
+↓
+Paid Students → Unassigned
+↓
+Admin Assigns IC
+↓
+Paid Students → Assigned
+↓
+Admin/Manager Assigns Demo Batch
+↓
+Batch Assigned
+↓
+Demo Started
+↓
+Demo Completed
+↓
+Converted
+OR
+Dropped
+
+====================================================
+IGNITE STATUSES
+===============
+
+unassigned
+assigned
+batch_assigned
+demo_started
+demo_completed
+converted
+dropped
+
+====================================================
+PAID STUDENTS SIDEBAR
+=====================
+
+Ignite
+├── Dashboard
+├── Leads
+├── Demo Management
+├── Conversion Center
+├── Paid Students
+│     ├── Unassigned
+│     ├── Assigned
+│     ├── Batch Assigned
+│     ├── Demo Started
+│     ├── Demo Completed
+│     ├── Converted
+│     └── Dropped
+├── Payments
+└── Sales Mentors
+
+====================================================
+UNASSIGNED SCREEN
+=================
+
+Display:
+
+Student Name
+Phone
+Grade
+Amount Paid
+Payment Date
+Payment Status
+Lead Stage
+Assignment Status
+
+Actions:
+
+Assign IC
+Call Parent
+WhatsApp Parent
+View Details
+
+====================================================
+ASSIGNED SCREEN
+===============
+
+Display:
+
+Student Name
+Phone
+Grade
+Amount
+Payment Date
+Assigned Mentor
+Assigned Date
+Status
+
+Actions:
+
+Assign Demo Batch
+Call Parent
+WhatsApp Parent
+View Details
+
+====================================================
+BATCH ASSIGNMENT PERMISSIONS
+============================
+
+ONLY:
+
+super_admin
+admin
+manager
+
+can:
+
+Assign Batch
+Change Batch
+Remove Batch
+Reassign Batch
+
+NOT ALLOWED:
+
+assistant_manager
+sales_mentor
+academic_mentor
+teacher
+
+Return:
+
+403 Forbidden
+
+"You do not have permission to assign demo batches."
+
+====================================================
+MENTOR WORKFLOW
+===============
+
+Mentors can:
+
+Call Parent
+WhatsApp Parent
+Add Notes
+Record Preferred Timings
+Record Follow-ups
+View Batch Details
+
+Mentors cannot:
+
+Assign batches
+Change batches
+Convert students
+Manage permissions
+
+====================================================
+BATCH ASSIGNMENT FLOW
+=====================
+
+Assigned
+↓
+Assign Batch
+↓
+Create demo_batch_enrollment
+↓
+Update ignite_paid_students
+↓
+assignmentStatus = batch_assigned
+↓
+Parent receives batch information later
+
+Prepare notification hooks only.
+
+Do not implement SMS/WhatsApp integration.
+
+====================================================
+IC DASHBOARD
+============
+
+Ignite
+→ My Students
+
+Show only assigned students.
+
+Actions:
+
+Call Parent
+WhatsApp Parent
+Add Notes
+Update Follow-up Status
+View Batch Details
+View Student Details
+
+====================================================
+AUDIT LOGS
+==========
+
+Track:
+
+Student Assigned
+Batch Assigned
+Batch Changed
+Status Changed
+Role Changed
+Permission Changed
+
+Store:
+
+Who
+What
+When
+Old Value
+New Value
+
+No hard deletes.
+
+====================================================
+TESTING REQUIREMENTS
+====================
+
+After EVERY phase:
+
+1. Run migrations
+2. Run typecheck
+3. Build frontend
+4. Restart API
+5. Verify APIs manually
+6. Verify permissions
+7. Verify navigation
+8. Verify loading states
+9. Verify empty states
+10. Verify search and pagination
+11. Verify role restrictions
+
+Generate report:
+
+Files Changed
+Database Changes
+Routes Added
+Components Added
+APIs Added
+Screens Added
+Permissions Added
+Screenshots if possible
+
+====================================================
+IMPLEMENTATION ORDER
+====================
+
+PHASE A
+Admin Portal Audit
+Fix broken tabs
+Fix navigation
+
+PHASE B
+Command Center completion
+
+PHASE C
+Mentor Management
+
+PHASE D
+Database-driven Roles & Permissions
+
+PHASE E
+Paid Students remaining screens
+
+PHASE F
+Batch Assignment system
+
+PHASE G
+IC Dashboard
+
+PHASE H
+Audit Logs
+
+STOP after each phase.
+Provide implementation report.
+Wait for approval before proceeding to next phase.
+Do NOT implement everything in one massive commit.
+Typecheck and test after every phase.
