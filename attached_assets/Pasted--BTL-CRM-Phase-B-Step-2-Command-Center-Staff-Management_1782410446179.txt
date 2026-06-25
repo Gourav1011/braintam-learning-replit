@@ -1,0 +1,392 @@
+# BTL CRM – Phase B – Step 2
+
+Command Center → Staff Management
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+OBJECTIVE
+=========
+
+Build a production-ready Staff Management module.
+
+This module will become the master directory for:
+
+Super Admin
+Admin
+Manager
+Assistant Manager
+Sales Mentor
+Academic Mentor
+Teacher
+
+All future modules must reuse this staff directory.
+
+Do not create duplicate staff systems.
+
+====================================================
+IMPORTANT
+=========
+
+Do NOT break:
+
+* Authentication
+* Existing users
+* Existing mentor records
+* Existing teacher records
+* Existing roles
+* Existing dashboards
+* Existing APIs
+* Existing permissions
+
+Reuse existing users table if possible.
+
+Avoid duplicate tables.
+
+====================================================
+STAFF MANAGEMENT
+================
+
+Command Center
+→ Staff Management
+
+This should be a live page.
+
+No placeholders.
+
+====================================================
+DISPLAY
+=======
+
+Table Columns:
+
+Photo
+Name
+Phone
+Email
+Role
+Department
+Status
+Joined Date
+Last Active
+
+====================================================
+DEPARTMENT VALUES
+=================
+
+Administration
+Operations
+Ignite
+Mastery
+Teaching
+Support
+
+====================================================
+STATUS VALUES
+=============
+
+active
+inactive
+suspended
+
+Use status badges.
+
+====================================================
+KPIs
+====
+
+Cards:
+
+Total Staff
+Active Staff
+Inactive Staff
+Mentors
+Teachers
+Managers
+
+====================================================
+SEARCH
+======
+
+Search by:
+
+Name
+Phone
+Email
+
+====================================================
+FILTERS
+=======
+
+Role Filter
+Department Filter
+Status Filter
+
+====================================================
+SORTING
+=======
+
+Sort by:
+
+Name
+Role
+Joined Date
+Last Active
+
+====================================================
+PAGINATION
+==========
+
+15 records per page.
+
+Reusable pagination component.
+
+====================================================
+ACTIONS
+=======
+
+Each row:
+
+View
+Edit
+Activate
+Deactivate
+Reset Password
+Change Role
+
+Use dropdown actions menu.
+
+====================================================
+VIEW STAFF
+==========
+
+Modal:
+
+Profile Photo
+Name
+Phone
+Email
+Role
+Department
+Status
+Joined Date
+Last Active
+
+Sections:
+
+Basic Information
+System Information
+Activity Information
+
+====================================================
+EDIT STAFF
+==========
+
+Editable:
+
+Name
+Phone
+Department
+Status
+
+Not editable:
+
+Email
+Created Date
+
+====================================================
+ACTIVATE / DEACTIVATE
+=====================
+
+Confirmation Modal.
+
+Track:
+
+Who changed status.
+When changed.
+
+Create audit log entry.
+
+====================================================
+RESET PASSWORD
+==============
+
+For now:
+
+Confirmation modal only.
+
+Prepare API hook.
+
+No email integration yet.
+
+====================================================
+CHANGE ROLE
+===========
+
+Role selector modal.
+
+Allowed roles:
+
+super_admin
+admin
+manager
+assistant_manager
+sales_mentor
+academic_mentor
+teacher
+
+Validation:
+
+Prevent removing the last super_admin.
+
+Create audit log.
+
+====================================================
+BACKEND
+=======
+
+Create only if missing.
+
+Prefer reusing users table.
+
+API:
+
+GET /api/admin/staff
+
+Supports:
+
+search
+page
+limit
+role
+department
+status
+sort
+
+Response:
+
+items
+total
+page
+pageSize
+totalPages
+
+---
+
+GET /api/admin/staff/:id
+
+Returns:
+
+profile
+activity
+systemInfo
+
+---
+
+PATCH /api/admin/staff/:id
+
+Update:
+
+name
+phone
+department
+status
+
+---
+
+POST /api/admin/staff/:id/change-role
+
+Request:
+
+{
+role: "manager"
+}
+
+---
+
+POST /api/admin/staff/:id/reset-password
+
+Placeholder endpoint.
+
+====================================================
+AUDIT LOGS
+==========
+
+Create entries:
+
+Staff Updated
+Role Changed
+Status Changed
+Password Reset Requested
+
+Store:
+
+who
+what
+when
+old value
+new value
+
+No hard deletes.
+
+====================================================
+LOADING STATES
+==============
+
+Loading skeleton
+Error state
+No results state
+Empty database state
+
+====================================================
+RESPONSIVE
+==========
+
+Desktop:
+Full table.
+
+Mobile:
+Cards.
+
+====================================================
+TESTING
+=======
+
+1. Typecheck
+2. Build frontend
+3. Restart API
+4. Verify APIs
+5. Verify search
+6. Verify filters
+7. Verify pagination
+8. Verify role changes
+9. Verify audit logs
+10. Verify responsive layouts
+11. Verify loading states
+12. Verify empty states
+13. Verify no console errors
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Routes added
+Database changes
+Components added
+Screens added
+Audit events added
+Screenshots if possible
+
+Stop after completion.
+
+Do NOT start:
+
+Mentor Management
+Teacher Management
+Roles & Permissions
+Ignite Status Screens
+
+Wait for approval.

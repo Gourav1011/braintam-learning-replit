@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import {
   LayoutDashboard, Users, UserCheck2, GraduationCap, ShieldCheck,
   FileText, Settings, ChevronRight, TrendingUp, Activity,
-  Clock, CheckCircle2, AlertCircle, Zap, Cpu,
-  RefreshCw, Loader2, AlertTriangle, XCircle, Building2,
-  UserX, Bell, ArrowRight,
+  Clock, CheckCircle2, AlertCircle, Zap,
+  RefreshCw, Loader2, AlertTriangle, XCircle,
+  ArrowRight,
 } from "lucide-react";
+import { StaffManagementView } from "./command-center-staff-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const NAVY   = "#0B2B6B";
@@ -325,7 +326,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { key: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, description: "Operational overview across all modules",    status: "live"        },
-  { key: "staff-management",   label: "Staff Management",    icon: Users,           description: "Manage all staff accounts and roles",         status: "coming-soon" },
+  { key: "staff-management",   label: "Staff Management",    icon: Users,           description: "Manage all staff accounts and roles",         status: "live"        },
   { key: "mentor-management",  label: "Mentor Management",   icon: UserCheck2,      description: "IC assignments, workload, and performance",   status: "coming-soon" },
   { key: "teacher-management", label: "Teacher Management",  icon: GraduationCap,   description: "Teacher schedules, classes, assignments",     status: "coming-soon" },
   { key: "roles-permissions",  label: "Roles & Permissions", icon: ShieldCheck,     description: "Database-driven role and permission system",  status: "in-dev"      },
@@ -424,6 +425,12 @@ function ComingSoonView({ view }: { view: Exclude<CCView, "dashboard"> }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export function CommandCenterTab() {
   const [view, setView] = useState<CCView>("dashboard");
+  const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  function flash(text: string, ok = true) {
+    setFlashMsg({ text, ok });
+    setTimeout(() => setFlashMsg(null), 3500);
+  }
 
   return (
     <div className="flex gap-4 min-h-[calc(100vh-120px)]">
@@ -460,9 +467,17 @@ export function CommandCenterTab() {
       </aside>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        {view === "dashboard"          && <DashboardView />}
-        {view !== "dashboard"          && <ComingSoonView view={view} />}
+      <div className="flex-1 min-w-0 relative">
+        {/* Flash toast */}
+        {flashMsg && (
+          <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold text-white flex items-center gap-2 transition-all ${flashMsg.ok ? "bg-green-500" : "bg-red-500"}`}>
+            {flashMsg.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+            {flashMsg.text}
+          </div>
+        )}
+        {view === "dashboard"        && <DashboardView />}
+        {view === "staff-management" && <StaffManagementView flash={flash} />}
+        {view !== "dashboard" && view !== "staff-management" && <ComingSoonView view={view} />}
       </div>
     </div>
   );

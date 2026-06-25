@@ -45,6 +45,7 @@ export const usersTable = pgTable("users", {
   archivedBy: integer("archived_by"),
   organizationId: integer("organization_id"),
   phoneVerified: boolean("phone_verified").notNull().default(false),
+  department: text("department"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
