@@ -1,0 +1,185 @@
+Proceed with Phase A fixes only.
+
+Do NOT start Phase E yet.
+
+====================================================
+PHASE A – ADMIN PORTAL STABILIZATION
+====================================
+
+Goal:
+Ensure all existing admin navigation works correctly before building new features.
+
+Do not modify:
+
+* Razorpay
+* Ignite payments
+* Existing APIs
+* Existing database records
+* Existing role logic
+
+====================================================
+TASK 1 – FIX CRM TAB
+====================
+
+Current:
+Tab exists in Tab type and sidebar but never renders.
+
+Requirements:
+
+1. Audit intended purpose of CRM tab.
+2. If BTL CRM already replaces CRM:
+
+   * Remove duplicate CRM tab references safely.
+3. If CRM should exist:
+
+   * Render proper CRM landing screen.
+
+No blank white screens.
+
+====================================================
+TASK 2 – FIX PROFILE TAB
+========================
+
+Current:
+Profile tab renders incorrectly and redirects.
+
+Requirements:
+
+Create:
+
+Profile
+├── Personal Information
+├── Role
+├── Email
+├── Phone
+├── Last Login
+├── Change Password
+├── Notification Preferences
+
+Use current admin styling.
+
+Add:
+Loading state
+Empty state
+Error state
+
+====================================================
+TASK 3 – PLACEHOLDER SCREENS
+============================
+
+Current placeholders:
+
+Fees
+Payments
+Certificates
+Revenue Analytics
+
+Do not remove them.
+
+Convert all placeholders into proper module pages.
+
+Each page must have:
+
+Header
+Description
+Status card
+Coming Soon illustration
+Roadmap section
+
+No blank screens.
+No inline text only.
+
+====================================================
+TASK 4 – NAVIGATION AUDIT
+=========================
+
+Requirements:
+
+Verify:
+
+Sidebar item
+↓
+Route
+↓
+Component
+↓
+API
+↓
+Render
+
+Every navigation item must:
+
+Render successfully
+Show loading state
+Show empty state
+Handle errors gracefully
+
+Generate report:
+
+Module
+Route
+API Used
+Status
+Issues Found
+Fix Applied
+
+====================================================
+TASK 5 – COMMAND CENTER PREPARATION
+===================================
+
+Prepare Command Center architecture.
+
+Do not fully implement yet.
+
+Create navigation placeholders:
+
+Command Center
+├── Dashboard
+├── Staff Management
+├── Mentor Management
+├── Teacher Management
+├── Roles & Permissions
+├── Audit Logs
+├── Settings
+
+Each page:
+
+Header
+Description
+Statistics cards
+Coming Soon state
+
+Navigation should work.
+
+====================================================
+TESTING
+=======
+
+After implementation:
+
+1. Typecheck
+2. Build frontend
+3. Verify all sidebar items
+4. Verify all routes
+5. Verify no blank pages
+6. Verify no console errors
+7. Verify loading states
+8. Verify empty states
+9. Verify responsive layout
+
+Provide:
+
+Files changed
+Routes fixed
+Components added
+Screenshots if possible
+
+Stop after completion.
+
+Do NOT implement Ignite status screens yet.
+Wait for approval before moving to:
+
+Phase B – Command Center
+Phase C – Mentor Management
+Phase D – Roles & Permissions
+Phase E – Remaining Ignite Paid Student screens

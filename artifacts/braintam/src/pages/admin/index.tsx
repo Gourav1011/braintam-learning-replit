@@ -71,6 +71,7 @@ import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
 import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
 import { AssessmentsTab } from "./assessments-tab";
+import { CommandCenterTab } from "./command-center-tab";
 import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
@@ -93,8 +94,8 @@ type Tab =
   | "fees"
   | "audit"
   | "payments"
-  | "crm"
   | "certificates"
+  | "command-center"
   | "course-analytics"
   | "teacher-analytics"
   | "health"
@@ -475,33 +476,83 @@ function SkeletonRow() {
 }
 
 // ── Placeholder Tab ──────────────────────────────────────────────────────────
-function PlaceholderTab({ icon: Icon, title, description, features }: {
+function ModulePage({ icon: Icon, title, description, roadmap, emoji = "🚧", statusLabel = "Coming Soon", statusColor = "orange" }: {
   icon: React.ElementType;
   title: string;
   description: string;
-  features: string[];
+  emoji?: string;
+  statusLabel?: string;
+  statusColor?: "orange" | "purple" | "blue";
+  roadmap: { phase: string; items: string[] }[];
 }) {
+  const colorMap = {
+    orange: { bg: "bg-orange-100", text: "text-orange-600", dot: ORANGE, cardBg: `${ORANGE}15` },
+    purple: { bg: "bg-purple-100", text: "text-purple-700", dot: "#8B5CF6", cardBg: "#8B5CF615" },
+    blue:   { bg: "bg-blue-100",   text: "text-blue-700",   dot: "#3B82F6", cardBg: "#3B82F615" },
+  };
+  const c = colorMap[statusColor];
   return (
-    <div className="flex flex-col items-center justify-center py-16 space-y-4">
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `${NAVY}15` }}>
-        <Icon className="w-8 h-8" style={{ color: NAVY }} />
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: c.cardBg }}>
+              <Icon className="w-6 h-6" style={{ color: c.dot }} />
+            </div>
+            <div>
+              <h2 className="text-lg font-black" style={{ color: NAVY }}>{title}</h2>
+              <p className="text-sm text-gray-400 mt-0.5">{description}</p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${c.bg} ${c.text}`}>{statusLabel}</span>
+        </div>
       </div>
-      <div className="text-center">
-        <h3 className="font-black text-base" style={{ color: NAVY }}>{title}</h3>
-        <p className="text-sm text-gray-400 mt-1 max-w-sm">{description}</p>
+
+      {/* Status card */}
+      <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col items-center gap-3">
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl" style={{ background: `${NAVY}08` }}>{emoji}</div>
+        <div className="text-center">
+          <p className="font-black text-base" style={{ color: NAVY }}>This module is under construction</p>
+          <p className="text-sm text-gray-400 mt-1 max-w-sm">
+            {title} is being developed for an upcoming sprint. The data model and API contracts are already being designed.
+          </p>
+        </div>
+        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${c.bg} ${c.text}`} style={{ borderColor: `${c.dot}30` }}>
+          <Clock className="w-3.5 h-3.5" />
+          <span className="text-xs font-semibold">Planned for upcoming sprint</span>
+        </div>
       </div>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 max-w-sm w-full">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Coming Features</p>
-        <ul className="space-y-2">
-          {features.map(f => (
-            <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
-              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
-              {f}
-            </li>
+
+      {/* Roadmap */}
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: NAVY }}>
+          <TrendingUp className="w-4 h-4" style={{ color: ORANGE }} /> Planned Features
+        </h3>
+        <div className="space-y-4">
+          {roadmap.map((phase, pi) => (
+            <div key={pi} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0" style={{ background: pi === 0 ? c.dot : "#CBD5E1" }}>
+                  {pi + 1}
+                </div>
+                {pi < roadmap.length - 1 && <div className="w-px flex-1 mt-1" style={{ background: "#E2E8F0" }} />}
+              </div>
+              <div className="pb-4">
+                <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: pi === 0 ? c.dot : "#94A3B8" }}>{phase.phase}</p>
+                <ul className="space-y-1.5">
+                  {phase.items.map(item => (
+                    <li key={item} className="flex items-center gap-2 text-xs text-gray-600">
+                      <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: pi === 0 ? c.dot : "#CBD5E1" }} />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
-      <span className="text-xs px-3 py-1 rounded-full font-semibold bg-orange-100 text-orange-600">Coming Soon</span>
     </div>
   );
 }
@@ -1259,6 +1310,7 @@ function AdminPageInner() {
           items: [
             { label: "Teachers", icon: GradCap, tab: "assignments" },
             { label: "Gamification", icon: Zap, tab: "gamification" },
+            { label: "Command Center", icon: ShieldCheck, tab: "command-center" },
             { label: "Operations Center", icon: Cpu, tab: "operations-command-center" },
             { label: "Super Admin", icon: ShieldCheck, tab: "super-admin", superAdminOnly: true },
             { label: "Overview", icon: Activity, tab: "overview" },
@@ -1850,11 +1902,18 @@ function AdminPageInner() {
 
         {/* ── Revenue Analytics ────────────────────────────────────────── */}
         {tab === "revenue-analytics" && (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: "#F5F3FF" }}>💰</div>
-            <div className="text-lg font-bold" style={{ color: NAVY }}>Revenue Analytics</div>
-            <div className="text-sm text-gray-400 text-center max-w-xs">Fee collection, payment trends, and revenue forecasting coming soon.</div>
-          </div>
+          <ModulePage
+            icon={DollarSign}
+            title="Revenue Analytics"
+            description="Fee collection trends, payment forecasting, and Razorpay reconciliation reports."
+            emoji="💰"
+            statusLabel="Coming Soon"
+            statusColor="purple"
+            roadmap={[
+              { phase: "Phase 1", items: ["Total collections vs pending overview", "Monthly revenue trend chart", "Razorpay order reconciliation", "Per-course revenue breakdown"] },
+              { phase: "Phase 2", items: ["Subscription & renewal tracking", "Overdue payment alerts", "Revenue forecasting model", "Export to CSV / PDF"] },
+            ]}
+          />
         )}
 
         {/* ── Overview ─────────────────────────────────────────────────── */}
@@ -2957,50 +3016,48 @@ function AdminPageInner() {
 
         {/* ── Fees (Placeholder) ────────────────────────────────────────── */}
         {tab === "fees" && (
-          <PlaceholderTab
+          <ModulePage
             icon={DollarSign}
             title="Fee Management"
             description="Track student fee payments, installments, overdue amounts, and integrate with Razorpay for seamless collections."
-            features={[
-              "Total fees collected vs pending",
-              "Per-student installment tracking",
-              "Overdue student alerts",
-              "Payment history per course",
-              "Razorpay auto-reconciliation",
-              "Fee analytics by grade / course",
-              "Export receipts as PDF",
+            emoji="🧾"
+            statusLabel="Coming Soon"
+            statusColor="orange"
+            roadmap={[
+              { phase: "Phase 1", items: ["Total fees collected vs pending", "Per-student installment tracking", "Overdue student alerts", "Payment history per course"] },
+              { phase: "Phase 2", items: ["Razorpay auto-reconciliation", "Fee analytics by grade / course", "Export receipts as PDF", "Automated overdue reminders"] },
             ]}
           />
         )}
 
         {/* ── Payments (Placeholder) ────────────────────────────────────── */}
         {tab === "payments" && (
-          <PlaceholderTab
+          <ModulePage
             icon={CreditCard}
             title="Payment Gateway"
             description="Centralized payment dashboard with Razorpay webhooks, refund management, and revenue reporting."
-            features={[
-              "Razorpay order & webhook integration",
-              "Refund management",
-              "Revenue by course / teacher",
-              "Transaction history export",
-              "Subscription plan tracking",
+            emoji="💳"
+            statusLabel="Coming Soon"
+            statusColor="orange"
+            roadmap={[
+              { phase: "Phase 1", items: ["Razorpay order & webhook integration", "Transaction history with search + filter", "Refund management workflow"] },
+              { phase: "Phase 2", items: ["Revenue by course / teacher", "Subscription plan tracking", "Transaction history export (CSV/PDF)"] },
             ]}
           />
         )}
 
         {/* ── Certificates (Placeholder) ────────────────────────────────── */}
         {tab === "certificates" && (
-          <PlaceholderTab
+          <ModulePage
             icon={Award}
             title="Certificates"
-            description="Auto-generate and issue course completion certificates with custom branding."
-            features={[
-              "Auto-generate on course completion",
-              "Custom certificate templates",
-              "Bulk issue by grade / course",
-              "QR code verification",
-              "Student self-download portal",
+            description="Auto-generate and issue course completion certificates with custom Braintam branding."
+            emoji="🏆"
+            statusLabel="Coming Soon"
+            statusColor="blue"
+            roadmap={[
+              { phase: "Phase 1", items: ["Auto-generate on course completion", "Custom Braintam certificate templates", "Bulk issue by grade / course"] },
+              { phase: "Phase 2", items: ["QR code verification", "Student self-download portal", "Certificate analytics dashboard"] },
             ]}
           />
         )}
@@ -3009,6 +3066,9 @@ function AdminPageInner() {
         {tab === "ignite" && (
           <IgniteContentArea view={igniteView} setView={setIgniteView} flash={flash} />
         )}
+
+        {/* ── Command Center ───────────────────────────────────────────── */}
+        {tab === "command-center" && <CommandCenterTab />}
 
         {/* ── BTL CRM ──────────────────────────────────────────────────── */}
         {tab === "btl-crm" && <BtlCrmTab users={users} />}
