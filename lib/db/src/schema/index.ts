@@ -40,3 +40,4 @@ export * from "./paymentLinks";
 export * from "./manualPayments";
 export * from "./duplicateAlerts";
 export * from "./enrolmentErrors";
+export * from "./ignitePaidStudents";

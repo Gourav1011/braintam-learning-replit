@@ -5,11 +5,10 @@ import { db } from "@workspace/db";
 import {
   usersTable,
   paymentsTable,
-  demoBatchesTable,
-  demoBatchEnrollmentsTable,
   enrolmentErrorsTable,
+  ignitePaidStudentsTable,
 } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -61,38 +60,12 @@ router.post("/payments/create-order", async (req, res) => {
     return;
   }
 
-  // Check existing account status
+  // Check existing account — surface for context only, do not block payment
   const [existingUser] = await db
     .select({ id: usersTable.id, accountType: usersTable.accountType, name: usersTable.name })
     .from(usersTable)
     .where(eq(usersTable.phone, phone))
     .limit(1);
-
-  if (existingUser) {
-    // Check if already in an active demo batch
-    const activeBatchEnrollment = await db
-      .select({ id: demoBatchEnrollmentsTable.id })
-      .from(demoBatchEnrollmentsTable)
-      .where(
-        and(
-          eq(demoBatchEnrollmentsTable.studentId, existingUser.id),
-          inArray(demoBatchEnrollmentsTable.enrollmentStatus, ["active", "converted"]),
-        ),
-      )
-      .limit(1);
-
-    if (activeBatchEnrollment.length > 0) {
-      res.status(409).json({
-        error: "already_enrolled",
-        message: "This mobile number is already enrolled in an active demo batch. Please contact support.",
-        accountType: existingUser.accountType,
-      });
-      return;
-    }
-
-    // Exists but not in an active batch — surface for review, allow payment
-    // (lead re-engaging, dropped student re-enrolling, etc.)
-  }
 
   // Grade-based amount
   const amountPaise = getDemoAmountPaise(grade);
@@ -116,8 +89,8 @@ router.post("/payments/create-order", async (req, res) => {
       notes: { phone, grade: String(grade) },
     });
   } catch (err: unknown) {
-    console.error("RAZORPAY CREATE ORDER ERROR:", JSON.stringify(err, null, 2));
-    res.status(502).json({ error: "Failed to create payment order. Please try again.", detail: JSON.stringify(err, null, 2) });
+    req.log.error({ err }, "RAZORPAY CREATE ORDER ERROR");
+    res.status(502).json({ error: "Failed to create payment order. Please try again." });
     return;
   }
 
@@ -202,7 +175,6 @@ router.post("/payments/webhook", async (req, res) => {
   const orderId: string | undefined = paymentEntity?.order_id;
   const razorpayPaymentId: string | undefined = paymentEntity?.id;
   const razorpaySignature = receivedSignature;
-  const capturedAmount: number | undefined = paymentEntity?.amount;
 
   if (!orderId || !razorpayPaymentId) {
     await logEnrolmentError({
@@ -255,7 +227,7 @@ router.post("/payments/webhook", async (req, res) => {
   const { phone, grade } = paymentRow;
   let studentId: number;
 
-  // ── 6. Find or create student ─────────────────────────────
+  // ── 5. Find or create student ─────────────────────────────
   try {
     // INSERT ... ON CONFLICT DO NOTHING handles race conditions safely
     await db
@@ -281,7 +253,7 @@ router.post("/payments/webhook", async (req, res) => {
     if (!student) throw new Error("Student not found after insert");
     studentId = student.id;
 
-    // Ensure demo_student status on re-enrolling accounts (e.g. lead → demo_student)
+    // Ensure demo_student status on re-engaging accounts (e.g. lead → demo_student)
     await db
       .update(usersTable)
       .set({ accountType: "demo_student", phoneVerified: true })
@@ -298,50 +270,37 @@ router.post("/payments/webhook", async (req, res) => {
     return;
   }
 
-  // ── 7. Find active batch for the grade ────────────────────
-  let batchId: number | null = null;
+  // ── 6. Set leadStage + create Ignite paid student record ──
   try {
-    const [batch] = await db
-      .select({ id: demoBatchesTable.id })
-      .from(demoBatchesTable)
-      .where(
-        and(
-          eq(demoBatchesTable.grade, grade),
-          eq(demoBatchesTable.isActive, true),
-          inArray(demoBatchesTable.status, ["upcoming", "active"]),
-        ),
-      )
-      .orderBy(demoBatchesTable.startDate, demoBatchesTable.createdAt)
-      .limit(1);
+    await db
+      .update(usersTable)
+      .set({ leadStage: "Payment Completed", updatedAt: new Date() })
+      .where(eq(usersTable.id, studentId));
 
-    if (batch) {
-      batchId = batch.id;
-      // Enroll — ON CONFLICT DO NOTHING handles already-enrolled students safely
-      await db
-        .insert(demoBatchEnrollmentsTable)
-        .values({ batchId, studentId, enrollmentStatus: "active" })
-        .onConflictDoNothing();
-    } else {
-      // No active batch — log for admin resolution, student account still created
-      await logEnrolmentError({
-        errorType: "no_active_batch",
-        errorMessage: `No active demo batch found for grade ${grade}`,
-        razorpayPaymentId,
-        razorpayOrderId: orderId,
-        rawPayload: { grade, phone, studentId },
-      });
-    }
+    await db
+      .insert(ignitePaidStudentsTable)
+      .values({
+        studentId,
+        paymentId: paymentRow.id,
+        grade,
+        phone,
+        amountPaise: paymentRow.amount,
+        paidAt: new Date(),
+        assignmentStatus: "unassigned",
+        courseType: "ignite",
+      })
+      .onConflictDoNothing();
   } catch (err: unknown) {
     await logEnrolmentError({
-      errorType: "enroll_fail",
-      errorMessage: err instanceof Error ? err.message : "Unknown error during batch enrollment",
+      errorType: "ignite_record_fail",
+      errorMessage: err instanceof Error ? err.message : "Unknown error creating Ignite paid student record",
       razorpayPaymentId,
       razorpayOrderId: orderId,
       rawPayload: req.body,
     });
   }
 
-  // ── 8. Mark payment as captured ───────────────────────────
+  // ── 7. Mark payment as captured ───────────────────────────
   await db
     .update(paymentsTable)
     .set({
@@ -350,7 +309,6 @@ router.post("/payments/webhook", async (req, res) => {
       razorpayPaymentId,
       razorpaySignature,
       studentId,
-      batchId,
       rawWebhookPayload: req.body,
       updatedAt: new Date(),
     })

@@ -6,6 +6,8 @@ import {
   demoBatchEnrollmentsTable,
   usersTable,
   mentorFollowUpsTable,
+  ignitePaidStudentsTable,
+  paymentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -477,6 +479,89 @@ router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
     leadStage,
     recentLeads,
   });
+});
+
+// ── GET /admin/ignite/paid-students ──────────────────────────
+// Returns all Ignite paid students.
+// Optional query param: ?status=unassigned|assigned|active|dropped|all (default: all)
+router.get("/admin/ignite/paid-students", adminOnly, async (req, res) => {
+  const status = (req.query.status as string | undefined) ?? "all";
+
+  const rows = await db
+    .select({
+      id: ignitePaidStudentsTable.id,
+      studentId: ignitePaidStudentsTable.studentId,
+      paymentId: ignitePaidStudentsTable.paymentId,
+      grade: ignitePaidStudentsTable.grade,
+      phone: ignitePaidStudentsTable.phone,
+      amountPaise: ignitePaidStudentsTable.amountPaise,
+      paidAt: ignitePaidStudentsTable.paidAt,
+      assignmentStatus: ignitePaidStudentsTable.assignmentStatus,
+      assignedBatchId: ignitePaidStudentsTable.assignedBatchId,
+      assignedMentorId: ignitePaidStudentsTable.assignedMentorId,
+      assignedMentorName: ignitePaidStudentsTable.assignedMentorName,
+      assignedById: ignitePaidStudentsTable.assignedById,
+      notes: ignitePaidStudentsTable.notes,
+      courseType: ignitePaidStudentsTable.courseType,
+      leadSource: ignitePaidStudentsTable.leadSource,
+      createdAt: ignitePaidStudentsTable.createdAt,
+      name: usersTable.name,
+      school: usersTable.school,
+      city: usersTable.city,
+      leadStage: usersTable.leadStage,
+      callStatus: usersTable.callStatus,
+      nextFollowUpAt: usersTable.nextFollowUpAt,
+      accountType: usersTable.accountType,
+      paymentStatus: paymentsTable.status,
+      razorpayPaymentId: paymentsTable.razorpayPaymentId,
+    })
+    .from(ignitePaidStudentsTable)
+    .innerJoin(usersTable, eq(ignitePaidStudentsTable.studentId, usersTable.id))
+    .innerJoin(paymentsTable, eq(ignitePaidStudentsTable.paymentId, paymentsTable.id))
+    .where(
+      status !== "all"
+        ? eq(ignitePaidStudentsTable.assignmentStatus, status)
+        : undefined,
+    )
+    .orderBy(desc(ignitePaidStudentsTable.paidAt));
+
+  res.json(rows);
+});
+
+// ── GET /admin/ignite/paid-students/unassigned ────────────────
+// Shorthand — equivalent to ?status=unassigned
+router.get("/admin/ignite/paid-students/unassigned", adminOnly, async (_req, res) => {
+  const rows = await db
+    .select({
+      id: ignitePaidStudentsTable.id,
+      studentId: ignitePaidStudentsTable.studentId,
+      paymentId: ignitePaidStudentsTable.paymentId,
+      grade: ignitePaidStudentsTable.grade,
+      phone: ignitePaidStudentsTable.phone,
+      amountPaise: ignitePaidStudentsTable.amountPaise,
+      paidAt: ignitePaidStudentsTable.paidAt,
+      assignmentStatus: ignitePaidStudentsTable.assignmentStatus,
+      notes: ignitePaidStudentsTable.notes,
+      courseType: ignitePaidStudentsTable.courseType,
+      leadSource: ignitePaidStudentsTable.leadSource,
+      createdAt: ignitePaidStudentsTable.createdAt,
+      name: usersTable.name,
+      school: usersTable.school,
+      city: usersTable.city,
+      leadStage: usersTable.leadStage,
+      callStatus: usersTable.callStatus,
+      nextFollowUpAt: usersTable.nextFollowUpAt,
+      accountType: usersTable.accountType,
+      paymentStatus: paymentsTable.status,
+      razorpayPaymentId: paymentsTable.razorpayPaymentId,
+    })
+    .from(ignitePaidStudentsTable)
+    .innerJoin(usersTable, eq(ignitePaidStudentsTable.studentId, usersTable.id))
+    .innerJoin(paymentsTable, eq(ignitePaidStudentsTable.paymentId, paymentsTable.id))
+    .where(eq(ignitePaidStudentsTable.assignmentStatus, "unassigned"))
+    .orderBy(desc(ignitePaidStudentsTable.paidAt));
+
+  res.json(rows);
 });
 
 export default router;
