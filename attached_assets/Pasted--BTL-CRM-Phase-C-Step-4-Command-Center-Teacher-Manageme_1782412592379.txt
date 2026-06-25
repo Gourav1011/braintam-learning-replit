@@ -1,0 +1,338 @@
+# BTL CRM – Phase C – Step 4
+
+Command Center → Teacher Management
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+OBJECTIVE
+=========
+
+Build a production-ready Teacher Management module.
+
+This is NOT a duplicate staff table.
+
+Teacher Management should become the operational control center for all teachers.
+
+Reuse architecture from:
+
+* Staff Management
+* Mentor Management
+
+Avoid duplicate systems.
+
+====================================================
+IMPORTANT
+=========
+
+Do NOT break:
+
+* Existing users
+* Existing teacher assignments
+* Existing classes
+* Existing dashboards
+* Existing APIs
+* Existing audit logs
+* Existing permissions
+
+Reuse users table.
+
+Avoid duplicate teacher tables.
+
+====================================================
+COMMAND CENTER
+==============
+
+Command Center
+→ Teacher Management
+
+Live module.
+
+No placeholders.
+
+====================================================
+KPIs
+====
+
+Cards:
+
+Total Teachers
+Active Teachers
+Inactive Teachers
+Assigned Classes
+Assigned Subjects
+Average Attendance
+
+If attendance data unavailable:
+Return zero values.
+
+====================================================
+TABLE
+=====
+
+Columns:
+
+Photo
+Name
+Phone
+Email
+Department
+Subjects Count
+Classes Count
+Status
+Joined Date
+Last Active
+
+====================================================
+SEARCH
+======
+
+Search:
+
+Name
+Phone
+Email
+
+====================================================
+FILTERS
+=======
+
+Department
+Status
+
+====================================================
+SORTING
+=======
+
+Name
+Subjects Count
+Classes Count
+Joined Date
+Last Active
+
+====================================================
+PAGINATION
+==========
+
+15 records per page.
+
+Reuse existing pagination.
+
+====================================================
+ROW ACTIONS
+===========
+
+View Profile
+Edit Teacher
+Activate
+Deactivate
+Assign Subject
+Assign Class
+View Classes
+
+====================================================
+TEACHER PROFILE
+===============
+
+Sections:
+
+Basic Information
+Subjects
+Classes
+Attendance
+Permissions
+Activity Timeline
+
+====================================================
+PERFORMANCE KPIs
+================
+
+Classes Assigned
+Subjects Assigned
+Attendance %
+Homework Completion %
+Last Active
+
+Return zero values if data unavailable.
+
+Prepare hooks for future analytics.
+
+====================================================
+SUBJECTS
+========
+
+Prepare structure:
+
+Maths
+Science
+English
+Hindi
+Social Science
+Computer Science
+Physics
+Chemistry
+Biology
+French
+Sanskrit
+Drawing
+Chess
+Phonics
+Mental Ability
+Spoken English
+
+Do not over-engineer.
+
+Reuse existing assignments if available.
+
+====================================================
+CLASSES
+=======
+
+Prepare hooks only.
+
+No scheduling engine yet.
+
+====================================================
+BACKEND
+=======
+
+Create only if missing.
+
+Prefer:
+
+/api/admin/cc/teachers
+
+Endpoints:
+
+GET /api/admin/cc/teachers
+
+Supports:
+
+search
+page
+limit
+department
+status
+sort
+
+Response:
+
+items
+total
+page
+pageSize
+totalPages
+kpis
+
+---
+
+GET /api/admin/cc/teachers/:id
+
+Returns:
+
+profile
+performance
+permissions
+activity
+
+---
+
+GET /api/admin/cc/teachers/:id/classes
+
+Returns:
+
+assigned classes
+pagination
+
+---
+
+PATCH /api/admin/cc/teachers/:id
+
+Update:
+
+name
+phone
+department
+status
+
+====================================================
+AUDIT LOGS
+==========
+
+Create:
+
+teacher_updated
+teacher_activated
+teacher_deactivated
+subject_assigned
+class_assigned
+
+Store:
+
+who
+what
+when
+old value
+new value
+
+====================================================
+LOADING STATES
+==============
+
+Loading skeleton
+Error state
+No results state
+Empty database state
+
+====================================================
+RESPONSIVE
+==========
+
+Desktop:
+Table.
+
+Mobile:
+Cards.
+
+====================================================
+TESTING
+=======
+
+1. Typecheck
+2. Build frontend
+3. Restart API
+4. Verify APIs
+5. Verify search
+6. Verify filters
+7. Verify pagination
+8. Verify profile modal
+9. Verify classes endpoint
+10. Verify audit logs
+11. Verify loading states
+12. Verify responsive layouts
+13. Verify no console errors
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Routes added
+Database changes
+Components added
+Screens added
+Audit events added
+Screenshots if possible
+
+Stop after completion.
+
+Do NOT start:
+
+Roles & Permissions
+Ignite Status Screens
+Batch Assignment
+IC Dashboard
+
+Wait for approval.
