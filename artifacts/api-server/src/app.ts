@@ -66,7 +66,7 @@ if (fs.existsSync(staticDir)) {
 
   // All non-API routes → serve index.html (SPA client-side routing)
   // index.html must NOT be cached so browsers always fetch the latest version
-  app.get("/*", (_req, res) => {
+  app.use((_req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.sendFile(path.join(staticDir, "index.html"));
   });
