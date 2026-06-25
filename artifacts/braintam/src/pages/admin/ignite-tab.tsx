@@ -42,6 +42,7 @@ export type IgniteView =
   | "follow-ups"
   | "conversion"
   | "sales-mentors"
+  | "paid-students-unassigned"
   | "payments";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
@@ -1931,6 +1932,12 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { id: "conversion", label: "Conversion Center", icon: TrendingUp },
+  {
+    id: "paid-students-unassigned", label: "Paid Students", icon: CreditCard,
+    children: [
+      { id: "paid-students-unassigned", label: "Unassigned" },
+    ],
+  },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
 ];
@@ -1942,10 +1949,23 @@ function IgniteSidebar({
   setView: (v: IgniteView) => void;
 }) {
   const demoManagementViews: IgniteView[] = ["overview", "demo-batches", "demo-students", "attendance", "homework", "follow-ups"];
+  const paidStudentsViews: IgniteView[] = ["paid-students-unassigned"];
   const isDemoManagement = demoManagementViews.includes(view);
+  const isPaidStudents = paidStudentsViews.includes(view);
   const [demoOpen, setDemoOpen] = useState(isDemoManagement);
+  const [paidOpen, setPaidOpen] = useState(isPaidStudents);
 
   const isActive = (id: IgniteView) => view === id;
+
+  const getGroupOpen = (id: IgniteView) => {
+    if (id === "overview") return demoOpen;
+    if (id === "paid-students-unassigned") return paidOpen;
+    return false;
+  };
+  const toggleGroup = (id: IgniteView) => {
+    if (id === "overview") setDemoOpen((v) => !v);
+    else if (id === "paid-students-unassigned") setPaidOpen((v) => !v);
+  };
 
   return (
     <div className="w-52 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto z-20" style={{ height: "calc(100vh - 56px)" }}>
@@ -1959,19 +1979,20 @@ function IgniteSidebar({
         {NAV_ITEMS.map((item, idx) => {
           if (item.children) {
             const isParentActive = item.children.some((c) => isActive(c.id));
+            const open = getGroupOpen(item.id);
             return (
               <div key={`${item.id}-${idx}`}>
                 <button
-                  onClick={() => setDemoOpen(!demoOpen)}
+                  onClick={() => toggleGroup(item.id)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors hover:bg-gray-50"
                   style={isParentActive ? { color: NAVY } : { color: "#6B7280" }}>
                   <div className="flex items-center gap-2.5">
                     <item.icon className="w-4 h-4 shrink-0" />
                     <span>{item.label}</span>
                   </div>
-                  {demoOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
-                {demoOpen && (
+                {open && (
                   <div className="ml-3 mt-0.5 mb-1 space-y-0.5 border-l-2 pl-3" style={{ borderColor: "#E5E7EB" }}>
                     {item.children.map((child) => (
                       <button key={child.id} onClick={() => setView(child.id)}
@@ -2249,6 +2270,291 @@ function OverviewView({ setView }: { setView: (v: IgniteView) => void }) {
   );
 }
 
+// ── Paid Students — Unassigned View ──────────────────────────────────────────
+
+interface IgnitePaidStudentRow {
+  id: number;
+  studentId: number;
+  paymentId: number;
+  grade: number;
+  phone: string;
+  amountPaise: number;
+  paidAt: string;
+  assignmentStatus: string;
+  courseType: string;
+  leadSource: string | null;
+  name: string;
+  school: string | null;
+  city: string | null;
+  leadStage: string | null;
+  callStatus: string | null;
+  nextFollowUpAt: string | null;
+  accountType: string;
+  paymentStatus: string;
+  razorpayPaymentId: string | null;
+}
+
+function PaymentStatusBadge({ status }: { status: string }) {
+  const s = (status ?? "").toLowerCase();
+  const map: Record<string, { bg: string; text: string; label: string }> = {
+    captured: { bg: "#D1FAE5", text: "#065F46", label: "Captured" },
+    created:  { bg: "#FEF3C7", text: "#92400E", label: "Pending" },
+    failed:   { bg: "#FEE2E2", text: "#991B1B", label: "Failed" },
+    refunded: { bg: "#F3F4F6", text: "#374151", label: "Refunded" },
+  };
+  const cfg = map[s] ?? { bg: "#F3F4F6", text: "#374151", label: status || "–" };
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
+      style={{ background: cfg.bg, color: cfg.text }}>{cfg.label}</span>
+  );
+}
+
+function AssignmentStatusBadge({ status }: { status: string }) {
+  const s = (status ?? "").toLowerCase();
+  const map: Record<string, { bg: string; text: string; label: string }> = {
+    unassigned: { bg: "#FFF7ED", text: "#C2410C", label: "Unassigned" },
+    assigned:   { bg: "#DBEAFE", text: "#1D4ED8", label: "Assigned" },
+    active:     { bg: "#D1FAE5", text: "#065F46", label: "Active" },
+    dropped:    { bg: "#FEE2E2", text: "#991B1B", label: "Dropped" },
+  };
+  const cfg = map[s] ?? { bg: "#F3F4F6", text: "#374151", label: status || "–" };
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
+      style={{ background: cfg.bg, color: cfg.text }}>{cfg.label}</span>
+  );
+}
+
+function PaidStudentsUnassignedView() {
+  const [rows, setRows] = useState<IgnitePaidStudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [gradeF, setGradeF] = useState("All Grades");
+  const [page, setPage] = useState(1);
+  const PER = 15;
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiFetch("/admin/ignite/paid-students/unassigned")
+      .then((r) => r.json())
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter((r) => {
+    const q = search.toLowerCase();
+    if (q && !(r.name ?? "").toLowerCase().includes(q) && !(r.phone ?? "").includes(q)) return false;
+    if (gradeF !== "All Grades" && String(r.grade) !== gradeF.replace("Grade ", "")) return false;
+    return true;
+  });
+
+  const paged = filtered.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.ceil(filtered.length / PER);
+  const totalRevenue = rows.reduce((sum, r) => sum + (r.amountPaise ?? 0), 0);
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-xs text-gray-400 font-medium">Paid Students</span>
+            <ChevronRight className="w-3 h-3 text-gray-300" />
+            <span className="text-xs font-semibold" style={{ color: ORANGE }}>Unassigned</span>
+          </div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>Unassigned Paid Students</h1>
+          <p className="text-xs text-gray-500">Students who have paid for Ignite but not yet assigned to a batch or IC</p>
+        </div>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+        </button>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Unassigned</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#FFF7ED" }}>
+              <Users className="w-4 h-4" style={{ color: ORANGE }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>{rows.length}</div>
+          <div className="text-[10px] text-gray-400 mt-1">Need IC assignment</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Revenue</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+              <CreditCard className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-green-600">
+            ₹{(totalRevenue / 100).toLocaleString("en-IN")}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">From unassigned students</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Grades</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>
+            {new Set(rows.map((r) => r.grade)).size}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">Distinct grades</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Captured</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-green-600">
+            {rows.filter((r) => r.paymentStatus === "captured").length}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">Verified payments</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text" placeholder="Search name or phone…" value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-1 w-48"
+            style={{ "--tw-ring-color": NAVY } as React.CSSProperties}
+          />
+        </div>
+        <select value={gradeF} onChange={(e) => { setGradeF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          <option>All Grades</option>
+          {[1,2,3,4,5,6,7,8,9,10].map((g) => <option key={g}>Grade {g}</option>)}
+        </select>
+        <span className="text-xs text-gray-400 ml-auto">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+              <tr>
+                {["Student Name", "Phone", "Grade", "Amount Paid", "Payment Date", "Payment Status", "Lead Stage", "Assignment", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-16 text-gray-400">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
+                    <div className="text-xs">Loading…</div>
+                  </td>
+                </tr>
+              ) : paged.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-16">
+                    <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "#FFF7ED" }}>
+                      <Users className="w-7 h-7" style={{ color: ORANGE }} />
+                    </div>
+                    <div className="text-sm font-semibold text-gray-500">No unassigned paid students found.</div>
+                    <div className="text-xs text-gray-400 mt-1">New Ignite payments will appear here.</div>
+                  </td>
+                </tr>
+              ) : paged.map((r) => (
+                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  {/* Student Name */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: NAVY }}>{(r.name?.[0] ?? "?").toUpperCase()}</div>
+                      <div>
+                        <div className="font-semibold text-gray-800 text-xs">{r.name}</div>
+                        <div className="text-gray-400 text-[10px]">{r.school ?? r.city ?? "–"}</div>
+                      </div>
+                    </div>
+                  </td>
+                  {/* Phone */}
+                  <td className="px-4 py-3 text-gray-600 text-xs font-mono whitespace-nowrap">{r.phone}</td>
+                  {/* Grade */}
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ background: "#EEF2FF", color: NAVY }}>Gr {r.grade}</span>
+                  </td>
+                  {/* Amount Paid */}
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-black text-green-700">
+                      ₹{(r.amountPaise / 100).toLocaleString("en-IN")}
+                    </span>
+                  </td>
+                  {/* Payment Date */}
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(r.paidAt)}</td>
+                  {/* Payment Status */}
+                  <td className="px-4 py-3"><PaymentStatusBadge status={r.paymentStatus} /></td>
+                  {/* Lead Stage */}
+                  <td className="px-4 py-3"><StageBadge stage={r.leadStage} /></td>
+                  {/* Assignment Status */}
+                  <td className="px-4 py-3"><AssignmentStatusBadge status={r.assignmentStatus} /></td>
+                  {/* Actions */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <button disabled
+                        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg opacity-40 cursor-not-allowed"
+                        style={{ background: "#EEF2FF", color: NAVY }}
+                        title="Coming soon">
+                        Assign IC
+                      </button>
+                      <a href={`tel:${r.phone}`}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+                        style={{ background: "#D1FAE5" }} title="Call Parent">
+                        <Phone className="w-3 h-3 text-green-700" />
+                      </a>
+                      <a href={`https://wa.me/91${r.phone}`} target="_blank" rel="noreferrer"
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+                        style={{ background: "#D1FAE5" }} title="WhatsApp Parent">
+                        <Bell className="w-3 h-3 text-green-700" />
+                      </a>
+                      <button disabled
+                        className="w-6 h-6 rounded-lg flex items-center justify-center opacity-40 cursor-not-allowed"
+                        style={{ background: "#F3F4F6" }} title="View Details — coming soon">
+                        <Eye className="w-3 h-3 text-gray-500" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setPage(p)}
+                  className="w-7 h-7 rounded-lg text-xs font-semibold"
+                  style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Ignite Content Area (used by admin portal — no own header/sidebar) ────────
 
 export function IgniteContentArea({
@@ -2269,6 +2575,7 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    case "paid-students-unassigned": return <PaidStudentsUnassignedView />;
     case "payments": return <PaymentsView flash={flash} />;
     default: return <DashboardView setView={setView} />;
   }
@@ -2297,6 +2604,7 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
+      case "paid-students-unassigned": return <PaidStudentsUnassignedView />;
       case "payments": return <PaymentsView flash={flash} />;
       default: return <DashboardView setView={setView} />;
     }
