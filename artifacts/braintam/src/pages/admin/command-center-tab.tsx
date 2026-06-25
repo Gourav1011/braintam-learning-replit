@@ -1,14 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   LayoutDashboard, Users, UserCheck2, GraduationCap, ShieldCheck,
-  FileText, Settings, ChevronRight, TrendingUp, Activity, BarChart3,
-  Lock, Clock, CheckCircle2, AlertCircle, Zap,
+  FileText, Settings, ChevronRight, TrendingUp, Activity,
+  Clock, CheckCircle2, AlertCircle, Zap, Cpu,
+  RefreshCw, Loader2, AlertTriangle, XCircle, Building2,
+  UserX, Bell, ArrowRight,
 } from "lucide-react";
+import { API_BASE as BASE } from "@/lib/api-base";
 
-const NAVY = "#0B2B6B";
+const NAVY   = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const PURPLE = "#8B5CF6";
+const GREEN  = "#059669";
 
+function apiFetch(path: string, opts?: RequestInit) {
+  const token = localStorage.getItem("braintam_staff_token");
+  return fetch(`${BASE}/api${path}`, {
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    credentials: "include",
+    ...opts,
+  });
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 type CCView =
   | "dashboard"
   | "staff-management"
@@ -18,6 +32,289 @@ type CCView =
   | "audit-logs"
   | "settings";
 
+interface DashboardData {
+  kpis: {
+    totalStaff: number;
+    activeStaff: number;
+    activeMentors: number;
+    activeTeachers: number;
+    totalStudents: number;
+    activeDemoBatches: number;
+    todayCheckins: number;
+    paidUnassigned: number;
+  };
+  staffDistribution: { role: string; total: number; active: number }[];
+  recentActivity: {
+    id: number;
+    actorName: string;
+    actorRole: string | null;
+    action: string;
+    actionLabel: string | null;
+    module: string | null;
+    targetName: string;
+    targetType: string;
+    createdAt: string;
+  }[];
+  pendingActions: { label: string; count: number; priority: "high" | "medium" | "low" }[];
+  systemHealth: { api: string; db: string; checkedAt: string };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function roleLabel(role: string) {
+  const map: Record<string, string> = {
+    super_admin: "Super Admin",
+    admin: "Admin",
+    manager: "Manager",
+    assistant_manager: "Asst. Manager",
+    sales_mentor: "Sales Mentor",
+    academic_mentor: "Academic Mentor",
+    mentor: "Mentor",
+    teacher: "Teacher",
+  };
+  return map[role] ?? role;
+}
+
+function roleBadgeStyle(role: string): { bg: string; text: string } {
+  const map: Record<string, { bg: string; text: string }> = {
+    super_admin:       { bg: "#FEF3C7", text: "#92400E" },
+    admin:             { bg: "#EDE9FE", text: "#5B21B6" },
+    manager:           { bg: "#DBEAFE", text: "#1E40AF" },
+    assistant_manager: { bg: "#D1FAE5", text: "#065F46" },
+    sales_mentor:      { bg: "#FEE2E2", text: "#991B1B" },
+    academic_mentor:   { bg: "#DCFCE7", text: "#166534" },
+    mentor:            { bg: "#F3E8FF", text: "#6B21A8" },
+    teacher:           { bg: "#E0F2FE", text: "#0C4A6E" },
+  };
+  return map[role] ?? { bg: "#F1F5F9", text: "#475569" };
+}
+
+function timeAgo(iso: string) {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, icon, color, bg, sub }: {
+  label: string; value: number | string; icon: string;
+  color: string; bg: string; sub?: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <div className="flex items-start justify-between mb-2">
+        <div className="text-xl">{icon}</div>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+        </div>
+      </div>
+      <div className="text-2xl font-black" style={{ color }}>{value}</div>
+      <div className="text-xs font-semibold text-gray-500 mt-0.5">{label}</div>
+      {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+// ── Dashboard View ────────────────────────────────────────────────────────────
+function DashboardView() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await apiFetch("/admin/command-center/dashboard");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setData(await r.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-3">
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: PURPLE }} />
+      <p className="text-sm text-gray-400">Loading Command Center…</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-3">
+      <XCircle className="w-10 h-10 text-red-400" />
+      <p className="text-sm font-semibold text-red-600">Failed to load dashboard</p>
+      <p className="text-xs text-gray-400">{error}</p>
+      <button onClick={load} className="mt-2 px-4 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5" style={{ background: PURPLE }}>
+        <RefreshCw className="w-3 h-3" /> Retry
+      </button>
+    </div>
+  );
+
+  if (!data) return null;
+
+  const { kpis, staffDistribution, recentActivity, pendingActions, systemHealth } = data;
+  const maxRole = Math.max(...staffDistribution.map(r => r.total), 1);
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black" style={{ color: NAVY }}>Command Center</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Operational overview across all Braintam modules</p>
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors">
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
+      </div>
+
+      {/* System Health */}
+      <div className="bg-white rounded-2xl px-4 py-2.5 border border-gray-100 shadow-sm flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs font-semibold text-green-700">System Healthy</span>
+        </div>
+        <div className="w-px h-3 bg-gray-200" />
+        <span className="text-[10px] text-gray-400">API: {systemHealth.api.toUpperCase()}</span>
+        <div className="w-px h-3 bg-gray-200" />
+        <span className="text-[10px] text-gray-400">DB: {systemHealth.db.toUpperCase()}</span>
+        <div className="w-px h-3 bg-gray-200" />
+        <span className="text-[10px] text-gray-400">Checked: {new Date(systemHealth.checkedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}</span>
+      </div>
+
+      {/* Pending Actions */}
+      {pendingActions.length > 0 && (
+        <div className="space-y-2">
+          {pendingActions.map((a, i) => (
+            <div key={i} className={`flex items-center justify-between rounded-xl px-4 py-2.5 border text-sm font-medium ${a.priority === "high" ? "bg-red-50 border-red-200 text-red-700" : a.priority === "medium" ? "bg-orange-50 border-orange-200 text-orange-700" : "bg-blue-50 border-blue-200 text-blue-700"}`}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="text-xs font-semibold">{a.label}</span>
+              </div>
+              <span className="text-xs font-black">{a.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* KPI Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Total Staff"    value={kpis.totalStaff}        icon="👥" color={NAVY}     bg={`${NAVY}15`}     sub={`${kpis.activeStaff} active`} />
+        <KpiCard label="Mentors"        value={kpis.activeMentors}      icon="🎓" color={PURPLE}   bg="#8B5CF620"       sub="active now" />
+        <KpiCard label="Teachers"       value={kpis.activeTeachers}     icon="📚" color="#3B82F6"  bg="#3B82F620"       sub="active now" />
+        <KpiCard label="Students"       value={kpis.totalStudents}      icon="🏫" color={GREEN}    bg={`${GREEN}20`}    sub="Mastery enrolled" />
+        <KpiCard label="Demo Batches"   value={kpis.activeDemoBatches}  icon="🚀" color={ORANGE}   bg={`${ORANGE}20`}   sub="active batches" />
+        <KpiCard label="Today's Check-ins" value={kpis.todayCheckins}   icon="✅" color="#0EA5E9"  bg="#0EA5E920"       sub="staff checked in" />
+        <KpiCard label="Unassigned Paid" value={kpis.paidUnassigned}    icon="⚡" color={kpis.paidUnassigned > 0 ? "#EF4444" : GREEN} bg={kpis.paidUnassigned > 0 ? "#FEE2E2" : "#DCFCE7"} sub="needs IC assignment" />
+        <KpiCard label="System Health"  value="OK"                      icon="🟢" color={GREEN}    bg="#DCFCE7"         sub="all services up" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Staff Distribution */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: NAVY }}>
+            <Users className="w-4 h-4" style={{ color: PURPLE }} /> Staff Distribution
+          </h3>
+          {staffDistribution.length === 0 ? (
+            <div className="text-center py-8 text-sm text-gray-400">No staff data available</div>
+          ) : (
+            <div className="space-y-3">
+              {staffDistribution.map(row => {
+                const s = roleBadgeStyle(row.role);
+                const pct = row.total === 0 ? 0 : Math.max(4, (row.total / maxRole) * 100);
+                return (
+                  <div key={row.role} className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full w-28 text-center flex-shrink-0" style={{ background: s.bg, color: s.text }}>
+                      {roleLabel(row.role)}
+                    </span>
+                    <div className="flex-1">
+                      <div className="h-2 rounded-full bg-gray-100">
+                        <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: s.text }} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-black w-5 text-right flex-shrink-0" style={{ color: s.text }}>{row.total}</span>
+                    <span className="text-[10px] text-gray-400 w-12 text-right flex-shrink-0">{row.active} active</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: NAVY }}>
+            <Activity className="w-4 h-4" style={{ color: ORANGE }} /> Recent Activity
+          </h3>
+          {recentActivity.length === 0 ? (
+            <div className="flex flex-col items-center py-8 gap-2 text-gray-400">
+              <FileText className="w-6 h-6 text-gray-200" />
+              <p className="text-sm">No activity logs yet</p>
+              <p className="text-xs text-gray-300">Actions will appear here as staff use the system</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {recentActivity.slice(0, 8).map(log => (
+                <div key={log.id} className="flex items-start gap-2.5">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black flex-shrink-0 mt-0.5" style={{ background: PURPLE }}>
+                    {(log.actorName?.[0] ?? "?").toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      <span className="font-semibold">{log.actorName}</span>
+                      {" "}
+                      <span className="text-gray-500">{log.actionLabel ?? log.action}</span>
+                      {" "}
+                      <span className="font-medium">{log.targetName}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(log.createdAt)} · {log.module ?? log.targetType}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: NAVY }}>
+          <Zap className="w-4 h-4" style={{ color: ORANGE }} /> Quick Actions
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Staff Management",    icon: Users,         desc: "View & manage all staff",         color: PURPLE, bg: "#8B5CF615" },
+            { label: "Mentor Management",   icon: UserCheck2,    desc: "Mentor assignments & workload",    color: GREEN,  bg: `${GREEN}15`  },
+            { label: "Teacher Management",  icon: GraduationCap, desc: "Teacher classes & schedules",     color: "#3B82F6", bg: "#3B82F615" },
+            { label: "Roles & Permissions", icon: ShieldCheck,   desc: "Configure access controls",       color: ORANGE, bg: `${ORANGE}15` },
+          ].map(qa => {
+            const Icon = qa.icon;
+            return (
+              <div key={qa.label} className="rounded-xl p-3 border border-gray-100 hover:shadow-sm transition-shadow cursor-default" style={{ background: qa.bg }}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Icon className="w-4 h-4" style={{ color: qa.color }} />
+                  <span className="text-xs font-bold" style={{ color: qa.color }}>{qa.label}</span>
+                </div>
+                <p className="text-[10px] text-gray-500">{qa.desc}</p>
+                <div className="flex items-center gap-1 mt-2 text-[10px] font-semibold" style={{ color: qa.color }}>
+                  Coming soon <ArrowRight className="w-2.5 h-2.5" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Coming-Soon Module ────────────────────────────────────────────────────────
 interface NavItem {
   key: CCView;
   label: string;
@@ -27,54 +324,22 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { key: "dashboard",         label: "Dashboard",          icon: LayoutDashboard, description: "Operational overview across all modules",     status: "coming-soon" },
-  { key: "staff-management",  label: "Staff Management",   icon: Users,           description: "Manage all staff accounts and roles",          status: "coming-soon" },
-  { key: "mentor-management", label: "Mentor Management",  icon: UserCheck2,      description: "IC assignments, workload, and performance",    status: "coming-soon" },
-  { key: "teacher-management",label: "Teacher Management", icon: GraduationCap,   description: "Teacher schedules, classes, and assignments",  status: "coming-soon" },
-  { key: "roles-permissions", label: "Roles & Permissions",icon: ShieldCheck,     description: "Database-driven role and permission system",   status: "in-dev" },
-  { key: "audit-logs",        label: "Audit Logs",         icon: FileText,        description: "Full trail of all system actions",             status: "coming-soon" },
-  { key: "settings",          label: "Settings",           icon: Settings,        description: "Platform-wide configuration and preferences",  status: "coming-soon" },
+  { key: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, description: "Operational overview across all modules",    status: "live"        },
+  { key: "staff-management",   label: "Staff Management",    icon: Users,           description: "Manage all staff accounts and roles",         status: "coming-soon" },
+  { key: "mentor-management",  label: "Mentor Management",   icon: UserCheck2,      description: "IC assignments, workload, and performance",   status: "coming-soon" },
+  { key: "teacher-management", label: "Teacher Management",  icon: GraduationCap,   description: "Teacher schedules, classes, assignments",     status: "coming-soon" },
+  { key: "roles-permissions",  label: "Roles & Permissions", icon: ShieldCheck,     description: "Database-driven role and permission system",  status: "in-dev"      },
+  { key: "audit-logs",         label: "Audit Logs",          icon: FileText,        description: "Full trail of all system actions",            status: "coming-soon" },
+  { key: "settings",           label: "Settings",            icon: Settings,        description: "Platform-wide configuration and preferences", status: "coming-soon" },
 ];
 
-const ROADMAPS: Record<CCView, { phase: string; items: string[] }[]> = {
-  "dashboard": [
-    { phase: "Phase B", items: ["Live operational metrics", "Staff online/offline status", "Today's class & batch summary", "Pending action items feed"] },
-    { phase: "Phase C+", items: ["Revenue snapshot widget", "Conversion funnel overview", "Alert & escalation center"] },
-  ],
-  "staff-management": [
-    { phase: "Phase B", items: ["List all staff with role + status", "Create / edit / deactivate staff", "Assign & change roles", "Reset passwords"] },
-    { phase: "Phase D", items: ["Role-based permission overrides", "Custom permission sets per user", "Activity timeline per staff member"] },
-  ],
-  "mentor-management": [
-    { phase: "Phase C", items: ["IC profile cards with active student count", "Assign/re-assign students to ICs", "Workload heatmap", "Performance scores"] },
-    { phase: "Phase G", items: ["IC dashboard with personal student list", "Follow-up pipeline per IC", "Call & WhatsApp log per IC"] },
-  ],
-  "teacher-management": [
-    { phase: "Phase C", items: ["Teacher roster with class load", "Subject–teacher mapping", "Class schedule overview", "Attendance submission tracking"] },
-    { phase: "Phase C+", items: ["Teacher performance metrics", "Student feedback per teacher", "Recording library per teacher"] },
-  ],
-  "roles-permissions": [
-    { phase: "Phase D", items: ["DB-driven roles table", "Per-module action permissions (View / Create / Edit / Delete / Assign)", "Super Admin permission editor UI", "Role hierarchy enforcement"] },
-    { phase: "Phase D+", items: ["Permission inheritance", "Custom role creation", "Audit log of permission changes"] },
-  ],
-  "audit-logs": [
-    { phase: "Phase H", items: ["Who changed what and when", "Old value → new value diffs", "Filter by user, module, date", "Export to CSV"] },
-    { phase: "Phase H+", items: ["Real-time audit stream", "Alert on suspicious actions", "Compliance report exports"] },
-  ],
-  "settings": [
-    { phase: "Phase B", items: ["Platform name & branding", "Academic year configuration", "SMS / WhatsApp integration toggle", "Session timeout settings"] },
-    { phase: "Phase B+", items: ["Email notification templates", "Feature flags", "Maintenance mode toggle"] },
-  ],
-};
-
-const KPI_CARDS: Record<CCView, { label: string; value: string; icon: string; color: string }[]> = {
-  "dashboard":          [{ label: "Staff Online", value: "—", icon: "🟢", color: "#22C55E" }, { label: "Pending Actions", value: "—", icon: "⚡", color: ORANGE }, { label: "Today's Classes", value: "—", icon: "📅", color: NAVY }],
-  "staff-management":   [{ label: "Total Staff", value: "—", icon: "👥", color: PURPLE }, { label: "Active", value: "—", icon: "✅", color: "#22C55E" }, { label: "Deactivated", value: "—", icon: "🚫", color: "#EF4444" }],
-  "mentor-management":  [{ label: "Total Mentors", value: "—", icon: "👤", color: PURPLE }, { label: "Assigned Students", value: "—", icon: "🎓", color: "#22C55E" }, { label: "Avg Load", value: "—", icon: "📊", color: ORANGE }],
-  "teacher-management": [{ label: "Teachers", value: "—", icon: "🎓", color: "#3B82F6" }, { label: "Active Classes", value: "—", icon: "📹", color: "#22C55E" }, { label: "Avg Classes/Week", value: "—", icon: "📅", color: ORANGE }],
-  "roles-permissions":  [{ label: "Roles", value: "8", icon: "🛡️", color: PURPLE }, { label: "Modules", value: "10", icon: "🗂️", color: NAVY }, { label: "Permissions", value: "80+", icon: "🔐", color: ORANGE }],
-  "audit-logs":         [{ label: "Events Today", value: "—", icon: "📋", color: NAVY }, { label: "Assignments", value: "—", icon: "👤", color: PURPLE }, { label: "Role Changes", value: "—", icon: "🔄", color: ORANGE }],
-  "settings":           [{ label: "Config Keys", value: "—", icon: "⚙️", color: NAVY }, { label: "Active Flags", value: "—", icon: "🚩", color: "#22C55E" }, { label: "Integrations", value: "—", icon: "🔌", color: ORANGE }],
+const ROADMAPS: Record<Exclude<CCView, "dashboard">, { phase: string; items: string[] }[]> = {
+  "staff-management":   [{ phase: "Phase B Step 2", items: ["List all staff by role & status", "Create / edit / deactivate staff", "Assign & change roles", "Bulk actions", "Reset passwords"] }, { phase: "Phase D", items: ["Role-based permission overrides", "Activity timeline per staff member"] }],
+  "mentor-management":  [{ phase: "Phase C Step 3", items: ["Mentor roster with active student count", "Assign/re-assign students", "Workload heatmap", "Performance scores", "Conversion %"] }, { phase: "Phase G", items: ["IC personal dashboard", "Follow-up pipeline per IC", "Call & WhatsApp log"] }],
+  "teacher-management": [{ phase: "Phase C Step 4", items: ["Teacher roster with class load", "Subject–teacher mapping", "Attendance submission tracking", "Schedule overview"] }, { phase: "Phase C+", items: ["Teacher performance metrics", "Student feedback per teacher"] }],
+  "roles-permissions":  [{ phase: "Phase D Step 5", items: ["DB-driven roles table", "Per-module action permissions (View/Create/Edit/Delete/Assign)", "Super Admin permission editor UI", "Role hierarchy enforcement"] }, { phase: "Phase D+", items: ["Permission inheritance", "Custom role creation", "Audit log of permission changes"] }],
+  "audit-logs":         [{ phase: "Phase H Step 6", items: ["Who changed what and when", "Old value → new value diffs", "Filter by user, module, date", "Export to CSV"] }, { phase: "Phase H+", items: ["Real-time audit stream", "Alert on suspicious actions"] }],
+  "settings":           [{ phase: "Phase B+", items: ["Platform name & branding", "Academic year configuration", "Session timeout settings", "Feature flags"] }, { phase: "Later", items: ["Email notification templates", "Maintenance mode toggle", "Integration toggles"] }],
 };
 
 function StatusBadge({ status }: { status: NavItem["status"] }) {
@@ -95,77 +360,54 @@ function StatusBadge({ status }: { status: NavItem["status"] }) {
   );
 }
 
-function ModuleComingSoon({ view }: { view: CCView }) {
+function ComingSoonView({ view }: { view: Exclude<CCView, "dashboard"> }) {
   const nav = NAV.find(n => n.key === view)!;
   const Icon = nav.icon;
   const roadmap = ROADMAPS[view];
-  const kpis = KPI_CARDS[view];
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: `${PURPLE}18` }}>
-              <Icon className="w-6 h-6" style={{ color: PURPLE }} />
-            </div>
-            <div>
-              <h2 className="text-lg font-black" style={{ color: NAVY }}>{nav.label}</h2>
-              <p className="text-sm text-gray-400 mt-0.5">{nav.description}</p>
-            </div>
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-start justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: `${PURPLE}15` }}>
+            <Icon className="w-6 h-6" style={{ color: PURPLE }} />
           </div>
-          <StatusBadge status={nav.status} />
+          <div>
+            <h2 className="text-lg font-black" style={{ color: NAVY }}>{nav.label}</h2>
+            <p className="text-sm text-gray-400 mt-0.5">{nav.description}</p>
+          </div>
         </div>
+        <StatusBadge status={nav.status} />
       </div>
 
-      {/* KPI cards — placeholder */}
-      <div className="grid grid-cols-3 gap-3">
-        {kpis.map(k => (
-          <div key={k.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-            <div className="text-2xl mb-1">{k.icon}</div>
-            <div className="text-xl font-black text-gray-300">{k.value}</div>
-            <div className="text-xs text-gray-400 font-medium mt-0.5">{k.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Coming soon illustration */}
       <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col items-center gap-3">
-        <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl" style={{ background: `${PURPLE}12` }}>
-          🚧
-        </div>
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl" style={{ background: `${NAVY}08` }}>🚧</div>
         <div className="text-center">
-          <p className="font-black text-base" style={{ color: NAVY }}>This module is under construction</p>
-          <p className="text-sm text-gray-400 mt-1 max-w-sm">
-            {nav.label} will be available in an upcoming phase. The architecture and data model are already being prepared.
-          </p>
+          <p className="font-black text-base" style={{ color: NAVY }}>Under construction</p>
+          <p className="text-sm text-gray-400 mt-1 max-w-sm">This module is being built in the next development sprint.</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-50 border border-purple-100">
           <AlertCircle className="w-3.5 h-3.5 text-purple-500" />
-          <span className="text-xs font-semibold text-purple-600">Planned for next development sprint</span>
+          <span className="text-xs font-semibold text-purple-600">Planned for upcoming phase</span>
         </div>
       </div>
 
-      {/* Roadmap */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
         <h3 className="font-bold text-sm mb-4 flex items-center gap-2" style={{ color: NAVY }}>
-          <TrendingUp className="w-4 h-4" style={{ color: ORANGE }} /> Roadmap
+          <TrendingUp className="w-4 h-4" style={{ color: ORANGE }} /> Planned Features
         </h3>
         <div className="space-y-4">
           {roadmap.map((phase, pi) => (
             <div key={pi} className="flex gap-4">
               <div className="flex flex-col items-center">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0" style={{ background: pi === 0 ? PURPLE : "#CBD5E1" }}>
-                  {pi + 1}
-                </div>
-                {pi < roadmap.length - 1 && <div className="w-px flex-1 mt-1" style={{ background: "#E2E8F0" }} />}
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0" style={{ background: pi === 0 ? PURPLE : "#CBD5E1" }}>{pi + 1}</div>
+                {pi < roadmap.length - 1 && <div className="w-px flex-1 mt-1 bg-slate-200" />}
               </div>
               <div className="pb-4">
                 <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: pi === 0 ? PURPLE : "#94A3B8" }}>{phase.phase}</p>
                 <ul className="space-y-1">
                   {phase.items.map(item => (
                     <li key={item} className="flex items-center gap-2 text-xs text-gray-600">
-                      <div className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />
+                      <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: pi === 0 ? PURPLE : "#CBD5E1" }} />
                       {item}
                     </li>
                   ))}
@@ -179,9 +421,9 @@ function ModuleComingSoon({ view }: { view: CCView }) {
   );
 }
 
+// ── Main Component ────────────────────────────────────────────────────────────
 export function CommandCenterTab() {
   const [view, setView] = useState<CCView>("dashboard");
-  const current = NAV.find(n => n.key === view)!;
 
   return (
     <div className="flex gap-4 min-h-[calc(100vh-120px)]">
@@ -190,7 +432,7 @@ export function CommandCenterTab() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100" style={{ background: `${PURPLE}0D` }}>
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: PURPLE }}>Command Center</p>
-            <p className="text-[9px] text-gray-400 mt-0.5">Administration & Control</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">Administration &amp; Control</p>
           </div>
           <nav className="py-1">
             {NAV.map(item => {
@@ -200,13 +442,16 @@ export function CommandCenterTab() {
                 <button
                   key={item.key}
                   onClick={() => setView(item.key)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors group ${active ? "bg-purple-50" : "hover:bg-gray-50"}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${active ? "bg-purple-50" : "hover:bg-gray-50"}`}
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: active ? PURPLE : "#9CA3AF" }} />
                   <span className={`text-xs font-semibold flex-1 ${active ? "" : "text-gray-600"}`} style={active ? { color: PURPLE } : {}}>
                     {item.label}
                   </span>
-                  {active && <ChevronRight className="w-3 h-3" style={{ color: PURPLE }} />}
+                  {item.status === "live" && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                  )}
+                  {active && <ChevronRight className="w-3 h-3 flex-shrink-0" style={{ color: PURPLE }} />}
                 </button>
               );
             })}
@@ -216,7 +461,8 @@ export function CommandCenterTab() {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <ModuleComingSoon view={view} />
+        {view === "dashboard"          && <DashboardView />}
+        {view !== "dashboard"          && <ComingSoonView view={view} />}
       </div>
     </div>
   );

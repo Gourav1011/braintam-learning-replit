@@ -1,0 +1,479 @@
+# BTL CRM – Phase B + C + D
+
+Command Center + Mentor Management + Roles & Permissions
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+IMPORTANT
+=========
+
+This is a LIVE production system.
+
+Do NOT break:
+
+* Authentication
+* Existing users
+* Existing payments
+* Razorpay
+* Existing dashboards
+* Existing APIs
+* Existing permissions
+* Existing student data
+* Existing mentor assignments
+* Ignite CRM
+
+Follow existing architecture.
+
+Reuse existing components and patterns.
+
+Typecheck after every step.
+
+====================================================
+GOAL
+====
+
+Build the operational foundation of BTL CRM.
+
+This phase must create:
+
+Command Center
+├── Dashboard
+├── Staff Management
+├── Mentor Management
+├── Teacher Management
+├── Roles & Permissions
+├── Audit Logs
+└── Settings
+
+This will become the operating system of Braintam.
+
+====================================================
+ROLE HIERARCHY
+==============
+
+Super Admin
+↓
+Admin
+↓
+Manager
+↓
+Assistant Manager
+↓
+Sales Mentor
+↓
+Academic Mentor
+↓
+Teacher
+↓
+Student
+
+====================================================
+ROLE RESPONSIBILITIES
+=====================
+
+SUPER ADMIN
+
+Can:
+Everything.
+
+ADMIN
+
+Can:
+Manage operations.
+Manage staff.
+Manage students.
+Assign batches.
+Manage permissions.
+
+MANAGER
+
+Can:
+Manage students.
+Manage mentors.
+Assign batches.
+View reports.
+
+ASSISTANT MANAGER
+
+Permissions configurable.
+
+SALES MENTOR
+
+Can:
+View assigned students.
+Call parents.
+WhatsApp parents.
+Add notes.
+Follow-ups.
+
+Cannot:
+Assign batches.
+Manage permissions.
+Delete records.
+
+ACADEMIC MENTOR
+
+Can:
+Attendance.
+Homework.
+Reports.
+View assigned students.
+
+Cannot:
+Assign batches.
+Manage staff.
+
+TEACHER
+
+Can:
+Classes.
+Attendance.
+Homework.
+Recordings.
+
+Cannot:
+Manage operations.
+
+====================================================
+COMMAND CENTER DASHBOARD
+========================
+
+Create:
+
+Command Center
+→ Dashboard
+
+Cards:
+
+Total Staff
+Active Mentors
+Active Teachers
+Students
+Today's Attendance
+Revenue
+Active Demo Batches
+System Health
+
+Widgets:
+
+Staff Distribution
+Role Distribution
+Quick Actions
+Recent Activity
+Pending Approvals
+
+Loading state
+Empty state
+Error state
+
+====================================================
+STAFF MANAGEMENT
+================
+
+Create:
+
+Command Center
+→ Staff Management
+
+Display:
+
+Photo
+Name
+Phone
+Email
+Role
+Status
+Department
+Joined Date
+Last Active
+
+Actions:
+
+View
+Edit
+Activate
+Deactivate
+Reset Password
+Change Role
+
+Features:
+
+Search
+Filters
+Pagination
+Bulk Actions
+
+====================================================
+MENTOR MANAGEMENT
+=================
+
+Create:
+
+Command Center
+→ Mentor Management
+
+Display:
+
+Photo
+Name
+Phone
+Email
+Role
+Status
+Assigned Students
+Active Students
+Conversion %
+Joined Date
+Last Active
+
+Actions:
+
+View
+Edit
+Activate
+Deactivate
+Reset Password
+Change Role
+Manage Permissions
+View Assigned Students
+
+Search
+Filters
+Pagination
+Loading
+Empty State
+
+====================================================
+MENTOR PROFILE
+==============
+
+Mentor Profile Page
+
+Sections:
+
+Profile
+Performance
+Students
+Conversions
+Attendance
+Permissions
+Activity Timeline
+
+KPIs:
+
+Assigned Students
+Active Students
+Conversions
+Revenue Generated
+Attendance %
+Last Active
+
+====================================================
+TEACHER MANAGEMENT
+==================
+
+Create:
+
+Command Center
+→ Teacher Management
+
+Display:
+
+Photo
+Name
+Phone
+Email
+Subjects
+Classes
+Status
+Attendance
+Last Active
+
+Actions:
+
+View
+Edit
+Assign Subject
+Assign Class
+Activate
+Deactivate
+
+====================================================
+ROLES & PERMISSIONS
+===================
+
+Permissions must be database-driven.
+
+NO hardcoded permissions.
+
+Create:
+
+Command Center
+→ Roles & Permissions
+
+====================================================
+MODULES
+=======
+
+Dashboard
+Leads
+Payments
+Students
+Courses
+Live Classes
+Mentors
+Teachers
+Reports
+Settings
+Command Center
+Ignite
+Mastery
+Demo Batches
+Assignments
+Audit Logs
+
+====================================================
+PERMISSIONS
+===========
+
+View
+Create
+Edit
+Delete
+Assign
+Approve
+Export
+Manage
+
+Each role can have different permissions.
+
+Example:
+
+Manager:
+
+Dashboard
+View ✅
+
+Students
+View ✅
+Edit ✅
+
+Payments
+View ✅
+Edit ❌
+
+Demo Batches
+Assign ✅
+
+====================================================
+SUPER ADMIN
+===========
+
+Can:
+
+Create Role
+Edit Role
+Delete Role
+Clone Role
+Assign Permissions
+
+====================================================
+AUDIT LOGS
+==========
+
+Track:
+
+Role Created
+Role Edited
+Permissions Changed
+Staff Activated
+Staff Deactivated
+Mentor Assigned
+Teacher Assigned
+
+Store:
+
+Who
+What
+When
+Old Value
+New Value
+
+No hard deletes.
+
+====================================================
+API REQUIREMENTS
+================
+
+Create only if missing.
+
+Reuse existing APIs whenever possible.
+
+Endpoints:
+
+GET /admin/staff
+GET /admin/mentors
+GET /admin/teachers
+GET /admin/roles
+GET /admin/permissions
+
+POST /admin/staff
+PATCH /admin/staff/:id
+
+POST /admin/roles
+PATCH /admin/roles/:id
+
+POST /admin/permissions/update
+
+====================================================
+TESTING
+=======
+
+After every sub-phase:
+
+1. Typecheck
+2. Build frontend
+3. Restart API
+4. Verify APIs manually
+5. Verify all navigation
+6. Verify loading states
+7. Verify empty states
+8. Verify responsive layouts
+9. Verify permissions
+10. Verify no console errors
+
+====================================================
+IMPLEMENTATION ORDER
+====================
+
+Step 1
+Command Center Dashboard
+
+Step 2
+Staff Management
+
+Step 3
+Mentor Management
+
+Step 4
+Teacher Management
+
+Step 5
+Roles & Permissions
+
+Step 6
+Audit Logs
+
+STOP after each step.
+
+Provide:
+
+Files changed
+Routes added
+Database changes
+Screens added
+Permissions added
+Screenshots if possible
+
+Do NOT proceed to Ignite CRM Phase E until this foundation is complete.
