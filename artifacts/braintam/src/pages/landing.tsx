@@ -137,8 +137,8 @@ const programs = [
     name: "Foundation Program",
     tag: "Early Edge",
     grades: "Grades 1–3",
-    price: "₹39,999",
-    enrollLink: "/enroll-full?program=foundation",
+    price: "from ₹29,998",
+    enrollLink: "/enroll-full?grade=1",
     period: "/ year",
     freq: "3–4 live classes weekly • Maths, English & Science",
     features: ["Concept-first teaching","Reading + phonics","Mental maths drills","Weekly worksheets","Doubt rooms"],
@@ -150,8 +150,8 @@ const programs = [
     name: "Mastery Program",
     tag: "Boards + Olympiads",
     grades: "Grades 4–6",
-    price: "₹49,999",
-    enrollLink: "/enroll-full?program=mastery",
+    price: "from ₹35,998",
+    enrollLink: "/enroll-full?grade=4",
     period: "/ year",
     freq: "4–5 live classes weekly • Full NCERT coverage",
     features: ["Complete syllabus","Advanced problems","Weekly tests","Doubt solving","Mock exams"],
@@ -163,14 +163,28 @@ const programs = [
     icon: "🏆",
     name: "Elite Program",
     tag: "JEE · NEET",
-    grades: "Grades 7-9",
-    price: "₹59,999",
-    enrollLink: "/enroll-full?program=elite",
+    grades: "Grades 7–8",
+    price: "from ₹43,998",
+    enrollLink: "/enroll-full?grade=7",
     period: "/ year",
     freq: "6–7 live classes weekly • Boards + Exam-Ready Prep",
     features: ["Boards + JEE/NEET plan","Mock tests","Daily targets","Doubt rooms","Personal mentor"],
     color: "#a78bfa",
     demo: true,
+  },
+  {
+    icon: "🔒",
+    name: "Advanced Program",
+    tag: "Grade 9 & 10",
+    grades: "Grades 9–10",
+    price: "Batch Full",
+    enrollLink: "",
+    period: "",
+    freq: "New batch opening soon — join the waitlist",
+    features: ["Boards + JEE/NEET foundation","Full syllabus coverage","Mock tests & PYQs","Personal mentor sessions","Priority doubt resolution"],
+    color: "#6B7280",
+    batchFull: true,
+    demo: false,
   },
 ];
 
@@ -1053,8 +1067,17 @@ export default function LandingPage() {
                 </div>
                 {/* Price */}
                 <div>
-                  <span className="text-3xl font-black" style={{ color: p.color }}>{p.price}</span>
-                  <span className="text-sm ml-1" style={{ color: MUTED }}>{p.period}</span>
+                  {(p as { batchFull?: boolean }).batchFull ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-black"
+                      style={{ background: "#F3F4F6", color: "#6B7280" }}>
+                      🔒 Batch Full
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-black" style={{ color: p.color }}>{p.price}</span>
+                      <span className="text-sm ml-1" style={{ color: MUTED }}>{p.period}</span>
+                    </>
+                  )}
                   <div className="text-xs mt-1" style={{ color: MUTED }}>{p.freq}</div>
                 </div>
                 {/* Features */}
@@ -1067,25 +1090,36 @@ export default function LandingPage() {
                 </ul>
                 {/* Actions */}
                 <div className="space-y-2 pt-2">
-                  <a href={p.enrollLink}
-                    className="block w-full py-3 rounded-xl font-bold text-sm text-white text-center transition-all hover:opacity-90"
-                    style={{ background: p.popular ? `linear-gradient(135deg, ${ORANGE}, #c94e00)` : NAVY,
-                             boxShadow: p.popular ? `0 0 24px rgba(255,107,26,0.3)` : "none" }}>
-                    Enroll Now {p.price}
-                  </a>
-                  <div className="flex gap-2">
-                    <a href="/enroll"
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:bg-orange-50"
-                      style={{ background: "#FFF7F0", border: `1px solid rgba(255,107,26,0.25)`, color: ORANGE }}>
-                      Ignite ₹39+
-                    </a>
-                    <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I'm%20interested%20in%20this%20plan!"
+                  {(p as { batchFull?: boolean }).batchFull ? (
+                    <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I%27d%20like%20to%20join%20the%20waitlist%20for%20Grade%209%2F10%20batch!"
                       target="_blank" rel="noopener noreferrer"
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
-                      style={{ background: "#25D366", color: "#fff" }}>
-                      <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                      className="block w-full py-3 rounded-xl font-bold text-sm text-white text-center transition-all hover:opacity-90"
+                      style={{ background: "#25D366" }}>
+                      Join Waitlist on WhatsApp
                     </a>
-                  </div>
+                  ) : (
+                    <>
+                      <a href={p.enrollLink}
+                        className="block w-full py-3 rounded-xl font-bold text-sm text-white text-center transition-all hover:opacity-90"
+                        style={{ background: (p as { popular?: boolean }).popular ? `linear-gradient(135deg, ${ORANGE}, #c94e00)` : NAVY,
+                                 boxShadow: (p as { popular?: boolean }).popular ? `0 0 24px rgba(255,107,26,0.3)` : "none" }}>
+                        Enroll Now →
+                      </a>
+                      <div className="flex gap-2">
+                        <a href="/enroll"
+                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:bg-orange-50"
+                          style={{ background: "#FFF7F0", border: `1px solid rgba(255,107,26,0.25)`, color: ORANGE }}>
+                          Ignite ₹39+
+                        </a>
+                        <a href="https://wa.me/918492944473?text=Hi%20Braintam%2C%20I'm%20interested%20in%20this%20plan!"
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
+                          style={{ background: "#25D366", color: "#fff" }}>
+                          <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                        </a>
+                      </div>
+                    </>
+                  )}
                 </div>
               </motion.div>
             ))}

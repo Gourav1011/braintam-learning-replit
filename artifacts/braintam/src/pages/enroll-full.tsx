@@ -34,26 +34,37 @@ function normalizePhone(raw: string): string {
 }
 const isValidPhone = (r: string) => /^[6-9]\d{9}$/.test(normalizePhone(r));
 
+const GRADE_PRICES: Record<number, { price: string; amountPaise: number }> = {
+  1: { price: "₹29,998", amountPaise: 2999800 },
+  2: { price: "₹31,998", amountPaise: 3199800 },
+  3: { price: "₹33,998", amountPaise: 3399800 },
+  4: { price: "₹35,998", amountPaise: 3599800 },
+  5: { price: "₹37,998", amountPaise: 3799800 },
+  6: { price: "₹41,998", amountPaise: 4199800 },
+  7: { price: "₹43,998", amountPaise: 4399800 },
+  8: { price: "₹49,998", amountPaise: 4999800 },
+};
+
 const PROGRAMS: Record<string, {
   name: string; icon: string; grades: string; price: string; amountPaise: number;
   color: string; tag: string; features: string[];
 }> = {
   foundation: {
     name: "Foundation Program",
-    icon: "🌱", grades: "Grades 1–3", price: "₹39,999",
-    amountPaise: 3999900, color: "#22c55e", tag: "Early Edge",
+    icon: "🌱", grades: "Grades 1–3", price: "₹29,998",
+    amountPaise: 2999800, color: "#22c55e", tag: "Early Edge",
     features: ["Concept-first teaching","Reading + phonics","Mental maths drills","Weekly worksheets","Doubt rooms"],
   },
   mastery: {
     name: "Mastery Program",
-    icon: "🚀", grades: "Grades 4–6", price: "₹49,999",
-    amountPaise: 4999900, color: ORANGE, tag: "Boards + Olympiads",
+    icon: "🚀", grades: "Grades 4–6", price: "₹35,998",
+    amountPaise: 3599800, color: ORANGE, tag: "Boards + Olympiads",
     features: ["Complete syllabus","Advanced problems","Weekly tests","Doubt solving","Mock exams"],
   },
   elite: {
     name: "Elite Program",
-    icon: "🏆", grades: "Grades 7–9", price: "₹59,999",
-    amountPaise: 5999900, color: "#a78bfa", tag: "JEE · NEET",
+    icon: "🏆", grades: "Grades 7–8", price: "₹43,998",
+    amountPaise: 4399800, color: "#a78bfa", tag: "JEE · NEET",
     features: ["Boards + JEE/NEET plan","Mock tests","Daily targets","Doubt rooms","Personal mentor"],
   },
 };
@@ -61,13 +72,13 @@ const PROGRAMS: Record<string, {
 const GRADE_RANGES: Record<string, number[]> = {
   foundation: [1,2,3],
   mastery:    [4,5,6],
-  elite:      [7,8,9],
+  elite:      [7,8],
 };
 
 const GRADE_TO_PROGRAM: Record<number, string> = {
   1: "foundation", 2: "foundation", 3: "foundation",
   4: "mastery",    5: "mastery",    6: "mastery",
-  7: "elite",      8: "elite",      9: "elite",
+  7: "elite",      8: "elite",
 };
 
 function SuccessScreen({ program, grade, phone }: { program: string; grade: number; phone: string }) {
@@ -117,7 +128,7 @@ export default function EnrollFullPage() {
 
   const [name,  setName]  = useState("");
   const [phone, setPhone] = useState("");
-  const [grade, setGrade] = useState(gradeParam >= 1 && gradeParam <= 9 ? gradeParam : validGrades[0]);
+  const [grade, setGrade] = useState(gradeParam >= 1 && gradeParam <= 8 ? gradeParam : validGrades[0]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -135,6 +146,9 @@ export default function EnrollFullPage() {
     const newProg = GRADE_TO_PROGRAM[g];
     if (newProg) { setProgramKey(newProg); setGrade(g); }
   };
+
+  // Grade-specific price (overrides program default)
+  const gradePrice = GRADE_PRICES[grade] ?? { price: program.price, amountPaise: program.amountPaise };
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,8 +222,8 @@ export default function EnrollFullPage() {
               <h1 className="text-2xl font-black text-white mb-1">{program.name}</h1>
               <p className="text-white/60 text-sm mb-3">{program.grades} · Full Year Program</p>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-black" style={{ color: ORANGE }}>{program.price}</span>
-                <span className="text-white/50 text-sm">/ year</span>
+                <span className="text-4xl font-black" style={{ color: ORANGE }}>{gradePrice.price}</span>
+                <span className="text-white/50 text-sm">/ year · Grade {grade}</span>
               </div>
               <div className="space-y-2">
                 {program.features.map(f => (
@@ -297,10 +311,11 @@ export default function EnrollFullPage() {
                     onFocus={e => (e.currentTarget.style.borderColor = ORANGE)}
                     onBlur={e => (e.currentTarget.style.borderColor = "#E5E7EB")}
                   >
-                    {[1,2,3,4,5,6,7,8,9].map(g => (
-                      <option key={g} value={g}>Grade {g}</option>
+                    {[1,2,3,4,5,6,7,8].map(g => (
+                      <option key={g} value={g}>Grade {g} — {GRADE_PRICES[g].price}</option>
                     ))}
-                    <option value={10} disabled>Grade 10 — Coming Soon</option>
+                    <option value={9} disabled>Grade 9 — Batch Full</option>
+                    <option value={10} disabled>Grade 10 — Batch Full</option>
                   </select>
                   <p className="text-[11px] mt-1" style={{ color: "#9CA3AF" }}>
                     Program auto-selected: <span className="font-semibold" style={{ color: NAVY }}>{program.name}</span>
@@ -317,7 +332,7 @@ export default function EnrollFullPage() {
                   className="w-full py-4 rounded-xl font-black text-white text-base transition-all"
                   style={{ background: loading ? "#9CA3AF" : `linear-gradient(135deg,${ORANGE},#c94e00)`,
                            boxShadow: loading ? "none" : "0 4px 20px rgba(255,107,26,0.35)" }}>
-                  {loading ? "Opening Payment…" : `Pay ${program.price} Securely`}
+                  {loading ? "Opening Payment…" : `Pay ${gradePrice.price} Securely`}
                 </button>
 
                 <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
