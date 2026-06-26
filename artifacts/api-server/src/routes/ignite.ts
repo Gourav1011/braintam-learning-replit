@@ -1163,7 +1163,7 @@ router.patch("/admin/ignite/leads/:id/restore", adminOnly, async (req, res) => {
 // ── POST /admin/ignite/deploy ─────────────────────────────────────────────────
 // Distributes all unassigned pending leads (optionally filtered by grade) across active sales mentors.
 router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
-  const { grade } = req.body as { grade?: number | null };
+  const { grade, mentorIds: requestedMentorIds } = req.body as { grade?: number | null; mentorIds?: number[] };
   const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
 
   const pendingLeads = await db.select({ id: usersTable.id, grade: usersTable.grade, leadStage: usersTable.leadStage })
@@ -1184,14 +1184,16 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
     return;
   }
 
-  const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
+  const mentorsQuery = db.select({ id: usersTable.id, name: usersTable.name })
     .from(usersTable)
     .where(and(
       eq(usersTable.role, "mentor"),
       eq(usersTable.mentorType, "sales"),
       eq(usersTable.isActive, true),
       eq(usersTable.isDeleted, false),
+      ...(requestedMentorIds?.length ? [inArray(usersTable.id, requestedMentorIds)] : []),
     ));
+  const mentors = await mentorsQuery;
 
   if (mentors.length === 0) {
     res.json({ ok: false, message: "No active sales mentors available", deployed: 0 });

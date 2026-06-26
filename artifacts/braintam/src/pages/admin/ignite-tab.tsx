@@ -1209,14 +1209,39 @@ function DeployModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ deployed: number; mentorsUsed: number; groups: { mentorName: string; count: number }[] } | null>(null);
   const [err, setErr] = useState("");
+  const [allMentors, setAllMentors] = useState<{ id: number; name: string }[]>([]);
+  const [selectedMentorIds, setSelectedMentorIds] = useState<Set<number>>(new Set());
+  const [mentorsLoading, setMentorsLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/sales-mentors")
+      .then(r => r.json())
+      .then((ms: { id: number; name: string }[]) => {
+        setAllMentors(ms);
+        setSelectedMentorIds(new Set(ms.map(m => m.id)));
+      })
+      .catch(() => {})
+      .finally(() => setMentorsLoading(false));
+  }, []);
+
+  const allSelected = allMentors.length > 0 && allMentors.every(m => selectedMentorIds.has(m.id));
+
+  function toggleMentor(id: number) {
+    setSelectedMentorIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
 
   async function deploy() {
+    if (selectedMentorIds.size === 0) { setErr("Select at least one mentor"); return; }
     setSaving(true); setErr("");
     try {
-      const r = await apiFetch("/admin/ignite/deploy", {
-        method: "POST",
-        body: JSON.stringify(grade === "all" ? {} : { grade: Number(grade) }),
-      });
+      const body: Record<string, unknown> = {};
+      if (grade !== "all") body.grade = Number(grade);
+      body.mentorIds = [...selectedMentorIds];
+      const r = await apiFetch("/admin/ignite/deploy", { method: "POST", body: JSON.stringify(body) });
       const d = await r.json();
       if (!d.ok) { setErr(d.message ?? "Deployment failed"); return; }
       setResult(d);
@@ -1226,7 +1251,7 @@ function DeployModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 
   return (
     <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" style={{ fontFamily: "Poppins, sans-serif" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <Rocket className="w-4 h-4" style={{ color: ORANGE }} />
@@ -1237,37 +1262,115 @@ function DeployModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         <div className="p-5 space-y-4">
           {result ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-green-700 font-black text-sm"><CheckCircle className="w-4 h-4" /> Deployment Complete</div>
-              <div className="bg-green-50 rounded-xl p-3 text-xs text-green-800">
-                <div className="font-bold mb-2">{result.deployed} leads distributed across {result.mentorsUsed} mentors</div>
-                <div className="space-y-1 max-h-48 overflow-y-auto">
+              <div className="flex items-center gap-2 text-green-700 font-black text-sm">
+                <CheckCircle className="w-5 h-5" /> Deployment Complete!
+              </div>
+              <div className="rounded-xl p-4 border border-green-100" style={{ background: "#F0FDF4" }}>
+                <div className="text-sm font-black mb-3" style={{ color: "#15803D" }}>
+                  {result.deployed} leads distributed across {result.mentorsUsed} mentor{result.mentorsUsed !== 1 ? "s" : ""}
+                </div>
+                <div className="space-y-2 max-h-52 overflow-y-auto">
                   {result.groups.map((g, i) => (
-                    <div key={i} className="flex justify-between"><span>{g.mentorName}</span><span className="font-bold">{g.count} leads</span></div>
+                    <div key={i} className="flex items-center justify-between py-2 px-3 bg-white rounded-lg border border-green-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: "#1D4ED8" }}>
+                          {(g.mentorName?.[0] ?? "?").toUpperCase()}
+                        </div>
+                        <span className="text-xs font-semibold text-gray-800">{g.mentorName}</span>
+                      </div>
+                      <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: "#DCFCE7", color: "#15803D" }}>
+                        {g.count} leads
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>
-              <button onClick={onClose} className="w-full py-2.5 rounded-xl text-xs font-black text-white" style={{ background: NAVY }}>Close</button>
+              <button onClick={onClose} className="w-full py-2.5 rounded-xl text-xs font-black text-white" style={{ background: NAVY }}>Done</button>
             </div>
           ) : (
             <>
+              {/* Grade filter */}
               <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Grade Pool</label>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1.5">GRADE POOL</label>
                 <select value={grade} onChange={e => setGrade(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none" style={{ color: NAVY }}>
-                  <option value="all">All Grades (deploy everything pending)</option>
-                  {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>Grade {g} Pool only</option>)}
+                  <option value="all">All Grades — deploy everything pending</option>
+                  {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>Grade {g} pool only</option>)}
                 </select>
               </div>
-              <div className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
-                System will find all unassigned leads, distribute them equally across all active sales mentors, and log the deployment.
+
+              {/* Mentor selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold text-gray-500">ASSIGN TO MENTORS</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setSelectedMentorIds(new Set(allMentors.map(m => m.id)))}
+                      className="text-[10px] font-bold hover:underline" style={{ color: NAVY }}>
+                      Select All
+                    </button>
+                    <span className="text-gray-300">·</span>
+                    <button onClick={() => setSelectedMentorIds(new Set())}
+                      className="text-[10px] font-bold text-gray-400 hover:underline">
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  {/* Select-all header row */}
+                  <label className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 cursor-pointer hover:bg-gray-50"
+                    style={{ background: "#F8FAFF" }}>
+                    <input type="checkbox"
+                      className="w-3.5 h-3.5 rounded accent-blue-600"
+                      checked={allSelected}
+                      onChange={e => setSelectedMentorIds(e.target.checked ? new Set(allMentors.map(m => m.id)) : new Set())} />
+                    <span className="text-xs font-black" style={{ color: NAVY }}>
+                      {allSelected ? "All mentors selected" : `${selectedMentorIds.size} of ${allMentors.length} selected`}
+                    </span>
+                  </label>
+
+                  {/* Individual mentor rows */}
+                  <div className="max-h-40 overflow-y-auto divide-y divide-gray-50">
+                    {mentorsLoading ? (
+                      <div className="flex items-center justify-center py-6 gap-2 text-gray-400">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span className="text-xs">Loading mentors…</span>
+                      </div>
+                    ) : allMentors.length === 0 ? (
+                      <div className="text-center py-5 text-xs text-gray-400">No sales mentors found</div>
+                    ) : allMentors.map(m => (
+                      <label key={m.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                        <input type="checkbox"
+                          className="w-3.5 h-3.5 rounded accent-blue-600"
+                          checked={selectedMentorIds.has(m.id)}
+                          onChange={() => toggleMentor(m.id)} />
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: "#1D4ED8" }}>
+                          {m.name[0].toUpperCase()}
+                        </div>
+                        <span className="text-xs font-semibold text-gray-800">{m.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedMentorIds.size > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    Leads will be split equally across {selectedMentorIds.size} mentor{selectedMentorIds.size !== 1 ? "s" : ""}
+                  </p>
+                )}
               </div>
-              {err && <p className="text-[10px] text-red-500">{err}</p>}
+
+              {err && <p className="text-[10px] text-red-500 font-semibold">{err}</p>}
+
               <div className="flex gap-2 pt-1">
-                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button onClick={deploy} disabled={saving}
+                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button onClick={deploy} disabled={saving || selectedMentorIds.size === 0}
                   className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50 flex items-center justify-center gap-1.5"
                   style={{ background: ORANGE }}>
-                  <Rocket className="w-3.5 h-3.5" />{saving ? "Deploying…" : "Deploy Now"}
+                  <Rocket className="w-3.5 h-3.5" />
+                  {saving ? "Deploying…" : `Deploy to ${selectedMentorIds.size} Mentor${selectedMentorIds.size !== 1 ? "s" : ""}`}
                 </button>
               </div>
             </>
