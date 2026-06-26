@@ -122,11 +122,15 @@ interface User {
   email: string | null;
   phone: string | null;
   role: string;
+  accountType?: string | null;
   grade: number;
   school: string | null;
   isActive: boolean;
   createdAt?: string;
 }
+const IGNITE_ACCOUNT_TYPES = ["lead", "demo_student", "paid_student"];
+const isMasteryStudent = (u: User) =>
+  u.role === "student" && !IGNITE_ACCOUNT_TYPES.includes(u.accountType ?? "");
 interface Course { id: number; title: string; subjectName: string; subjectId?: number; grade: number; teacher: string | null; academicYearId?: number | null; }
 interface AcademicYear { id: number; name: string; isActive: boolean; }
 interface TeacherAssignment { id: number; teacherId: number; teacherName: string; courseId: number; courseTitle: string; assignedAt: string; }
@@ -810,7 +814,7 @@ function AdminPageInner() {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const teachers = useMemo(() => users.filter(u => u.role === "teacher"), [users]);
-  const students = useMemo(() => users.filter(u => u.role === "student"), [users]);
+  const students = useMemo(() => users.filter(isMasteryStudent), [users]);
 
   useEffect(() => { if (!isLoading && (role === "admin" || role === "super_admin")) loadAll(); }, [isLoading, role]);
 
@@ -948,7 +952,7 @@ function AdminPageInner() {
     }
   // ── Filtered + Sorted Users ─────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
-    let list = users.filter(u => u.role === "student");
+    let list = users.filter(isMasteryStudent);
 
     if (userSubTab === "active") list = list.filter(u => u.isActive);
     else if (userSubTab === "deactivated") list = list.filter(u => !u.isActive);
@@ -1617,7 +1621,7 @@ function AdminPageInner() {
 
         {/* ── Analytics ───────────────────────────────────────────────── */}
         {tab === "analytics" && analytics && (() => {
-          const studentList = users.filter(u => u.role === "student");
+          const studentList = users.filter(isMasteryStudent);
           const teacherList = users.filter(u => u.role === "teacher");
           const mentorList = users.filter(u => u.role === "mentor");
 
@@ -3192,7 +3196,7 @@ function AdminPageInner() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map(g => {
-                  const count = users.filter(u => u.role === "student" && u.isActive && u.grade === g).length;
+                  const count = users.filter(u => isMasteryStudent(u) && u.isActive && u.grade === g).length;
                   return (
                     <div key={g} className="flex flex-col items-center justify-center rounded-xl px-3 py-2 min-w-[52px]"
                       style={{ background: count > 0 ? "#EEF2FF" : "#F9FAFB" }}>
