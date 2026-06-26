@@ -51,7 +51,19 @@ app.use("/api", (_req, res, next) => {
   next();
 });
 
+// ── Temporary request logging — remove after VPS diagnostics ─
+app.use((req, _res, next) => {
+  console.log("[REQ]", req.method, req.originalUrl);
+  next();
+});
+
 app.use("/api", router);
+
+// ── API 404 guard — must come before SPA catch-all ────────────
+// Ensures unmatched /api/* routes return JSON 404, never index.html
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "API route not found" });
+});
 
 // ── Serve frontend static files ──────────────────────────────
 // Resolves to artifacts/braintam/dist/public relative to the compiled server
