@@ -884,6 +884,31 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
 
   const conv = isConverted(lead);
 
+  async function saveInfo() {
+    setInfoSaving(true);
+    try {
+      const r = await apiFetch(`/mentor/students/${lead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          displayName: editDisplayName,
+          altPhone: editAltPhone,
+          weakSubject: editWeak,
+          strongSubject: editStrong,
+          interestLevel: editInterest,
+          referenceGrade: editRefGrade ? Number(editRefGrade) : null,
+          notes: editNotes,
+        }),
+      });
+      if (r.ok) {
+        onLeadUpdated({ displayName: editDisplayName, altPhone: editAltPhone, weakSubject: editWeak, strongSubject: editStrong, interestLevel: editInterest, referenceGrade: editRefGrade ? Number(editRefGrade) : null });
+        setInfoSaveOk(true);
+        setTimeout(() => setInfoSaveOk(false), 2500);
+      }
+    } finally {
+      setInfoSaving(false);
+    }
+  }
+
   useEffect(() => {
     (async () => {
       setLoadingRemarks(true);
@@ -1191,6 +1216,20 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                   </select>
                 </div>
               </div>
+
+              {/* Save Information button */}
+              {infoSaveOk && <p className="text-[10px] text-green-600 mb-2">✓ Information saved</p>}
+              <div className="flex justify-end mb-3">
+                <button onClick={saveInfo} disabled={infoSaving}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-white transition-all"
+                  style={{ background: infoSaving ? "#9CA3AF" : `linear-gradient(90deg,${ORANGE},#e05a10)` }}>
+                  {infoSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                  Save Information
+                </button>
+              </div>
+
+              {/* Divider before remarks */}
+              <div className="border-t border-gray-100 mb-3" />
 
               {/* Remarks — single textarea */}
               <div className="mb-3">
