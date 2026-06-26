@@ -5,6 +5,7 @@ import {
   CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
+import { StaffCheckin } from "@/components/staff-checkin";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -1253,6 +1254,9 @@ export function SalesMentorPortal({ user, onLogout }: {
           </div>
         </div>
       </div>
+
+      {/* ── Attendance banner ── */}
+      <StaffCheckin apiFetch={apiFetch} role="mentor" />
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-hidden flex flex-col">
