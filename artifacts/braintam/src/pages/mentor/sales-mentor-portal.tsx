@@ -870,6 +870,20 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   async function saveRemarks() {
     if (!remarkText.trim()) { setSaveError("Remark is required"); return; }
     setSaving(true); setSaveError("");
+    // Silently save mentor-editable fields alongside the remark
+    await apiFetch(`/mentor/students/${lead.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        displayName: editDisplayName,
+        altPhone: editAltPhone,
+        weakSubject: editWeak,
+        strongSubject: editStrong,
+        interestLevel: editInterest,
+        referenceGrade: editRefGrade ? Number(editRefGrade) : null,
+        notes: "",
+      }),
+    });
+    onLeadUpdated({ displayName: editDisplayName, altPhone: editAltPhone, weakSubject: editWeak, strongSubject: editStrong, interestLevel: editInterest, referenceGrade: editRefGrade ? Number(editRefGrade) : null });
     const r = await apiFetch(`/mentor/sales/call-outcome/${lead.id}`, {
       method: "POST",
       body: JSON.stringify({
@@ -887,32 +901,10 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
       if (r2.ok) setRemarks(await r2.json());
       onLeadUpdated({ callStatus, nextFollowUpAt: nextDate || lead.nextFollowUpAt, nextFollowUpTime: nextTime || lead.nextFollowUpTime, lastCallAt: new Date().toISOString() });
     } else {
-      const d = await r.json().catch(() => ({}));
+      const d = await r.json().catch(() => ({})) as { error?: string };
       setSaveError(d.error ?? "Failed to save");
     }
     setSaving(false);
-  }
-
-  async function saveInfo() {
-    setInfoSaving(true);
-    const r = await apiFetch(`/mentor/students/${lead.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        displayName: editDisplayName,
-        altPhone: editAltPhone,
-        weakSubject: editWeak,
-        strongSubject: editStrong,
-        interestLevel: editInterest,
-        referenceGrade: editRefGrade ? Number(editRefGrade) : null,
-        notes: editNotes,
-      }),
-    });
-    if (r.ok) {
-      setInfoSaveOk(true);
-      setTimeout(() => setInfoSaveOk(false), 2500);
-      onLeadUpdated({ displayName: editDisplayName, altPhone: editAltPhone, weakSubject: editWeak, strongSubject: editStrong, interestLevel: editInterest, referenceGrade: editRefGrade ? Number(editRefGrade) : null, notes: editNotes });
-    }
-    setInfoSaving(false);
   }
 
   const CALL_WHO = ["Student", "Mother", "Father", "Brother", "Sister", "Other"];
@@ -1089,99 +1081,30 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         {/* ── RIGHT PANEL ── */}
         <div className="space-y-4">
 
-          {/* 1. Student Information */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Student Information</div>
-
-            {/* Read-only fields */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-4 pb-4 border-b border-gray-100">
+          {/* 1. Student Information — compact 4-field */}
+          <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               {[
-                { label: "System Name",   value: lead.name },
-                { label: "Mobile",        value: lead.phone ?? "—" },
-                { label: "Email",         value: lead.email ?? "—" },
-                { label: "School",        value: lead.school ?? "—" },
-                { label: "Actual Grade",  value: `Grade ${lead.grade}` },
-                { label: "City",          value: lead.city ?? "—" },
-                { label: "Lead Source",   value: lead.leadSource ?? "Ignite Demo" },
-                { label: "Lead ID",       value: padLeadId(lead.id) },
+                { label: "Name",     value: lead.name },
+                { label: "Mobile",   value: lead.phone ?? "—" },
+                { label: "Grade",    value: `Grade ${lead.grade}` },
+                { label: "Lead ID",  value: padLeadId(lead.id) },
               ].map(f => (
-                <div key={f.label}>
-                  <div className="text-[10px] text-gray-400 uppercase tracking-wide">{f.label}</div>
-                  <div className="text-xs font-semibold mt-0.5 break-words" style={{ color: NAVY }}>{f.value}</div>
+                <div key={f.label} className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-gray-400 w-10 flex-shrink-0">{f.label}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: NAVY }}>{f.value}</span>
                 </div>
               ))}
             </div>
-
-            {/* Mentor-editable fields */}
-            <div className="font-bold text-[11px] mb-2" style={{ color: NAVY }}>Mentor Editable</div>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Display Name</label>
-                <input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
-                  style={{ color: NAVY }} placeholder={lead.name} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Additional Mobile</label>
-                <input value={editAltPhone} onChange={e => setEditAltPhone(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
-                  style={{ color: NAVY }} placeholder="Alt phone number" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Reference Grade <span className="text-gray-300 font-normal">(notes only)</span></label>
-                <select value={editRefGrade} onChange={e => setEditRefGrade(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
-                  <option value="">— Select —</option>
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map(g => <option key={g} value={g}>Grade {g}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Interest Level</label>
-                <select value={editInterest} onChange={e => setEditInterest(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
-                  <option value="">— Select —</option>
-                  {INTEREST_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Weak Subject</label>
-                <select value={editWeak} onChange={e => setEditWeak(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
-                  <option value="">— Select —</option>
-                  {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Strong Subject</label>
-                <select value={editStrong} onChange={e => setEditStrong(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
-                  <option value="">— Select —</option>
-                  {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Mentor Notes</label>
-                <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2}
-                  placeholder="Internal notes for this lead..."
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none" style={{ color: NAVY }} />
-              </div>
-            </div>
-            {infoSaveOk && <p className="text-[10px] text-green-600 mb-2">✓ Information updated</p>}
-            <div className="flex justify-end">
-              <button onClick={saveInfo} disabled={infoSaving || conv}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white"
-                style={{ background: infoSaving || conv ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
-                {infoSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Save Info
-              </button>
-            </div>
           </div>
 
-          {/* 2. Call Details */}
+          {/* 2. Call Details + Mentor Editable — ONE combined card */}
           {!conv && (
             <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
               <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Call Details</div>
+
               <div className="grid grid-cols-2 gap-3 mb-3">
+                {/* Who picked / Call Status */}
                 <div className={calledBy === "Other" ? "col-span-2" : ""}>
                   <label className="text-[10px] font-bold text-gray-500 block mb-1">Who Picked the Call?</label>
                   <select value={calledBy} onChange={e => setCalledBy(e.target.value)}
@@ -1204,6 +1127,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                     {CALL_STATUSES.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
+                {/* Follow-up date / time */}
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Date</label>
                   <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)}
@@ -1215,15 +1139,70 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                     className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-100 my-3" />
+
+              {/* Mentor-editable fields */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Display Name</label>
+                  <input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
+                    style={{ color: NAVY }} placeholder={lead.name} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Additional Mobile</label>
+                  <input value={editAltPhone} onChange={e => setEditAltPhone(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
+                    style={{ color: NAVY }} placeholder="Alt phone number" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Reference Grade</label>
+                  <select value={editRefGrade} onChange={e => setEditRefGrade(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                    <option value="">— Select —</option>
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map(g => <option key={g} value={g}>Grade {g}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Interest Level</label>
+                  <select value={editInterest} onChange={e => setEditInterest(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                    <option value="">— Select —</option>
+                    {INTEREST_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Weak Subject</label>
+                  <select value={editWeak} onChange={e => setEditWeak(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                    <option value="">— Select —</option>
+                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Strong Subject</label>
+                  <select value={editStrong} onChange={e => setEditStrong(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                    <option value="">— Select —</option>
+                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Remarks — single textarea */}
               <div className="mb-3">
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Call Remarks *</label>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Remarks *</label>
                 <textarea value={remarkText} onChange={e => setRemarkText(e.target.value)} rows={3}
-                  placeholder="Add your call remarks here..."
+                  placeholder="Add your remarks here..."
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none"
                   style={{ color: NAVY }} />
               </div>
+
               {saveError && <p className="text-[10px] text-red-500 mb-2">{saveError}</p>}
-              {saveOk && <p className="text-[10px] text-green-600 mb-2">✓ Remarks saved successfully</p>}
+              {saveOk && <p className="text-[10px] text-green-600 mb-2">✓ Saved successfully</p>}
+
               <div className="flex justify-end">
                 <button onClick={saveRemarks} disabled={saving || !remarkText.trim()}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white transition-all"
