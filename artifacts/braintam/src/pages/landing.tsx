@@ -138,6 +138,7 @@ const programs = [
     tag: "Early Edge",
     grades: "Grades 1–3",
     price: "₹39,999",
+    enrollLink: "/enroll-full?program=foundation",
     period: "/ year",
     freq: "3–4 live classes weekly • Maths, English & Science",
     features: ["Concept-first teaching","Reading + phonics","Mental maths drills","Weekly worksheets","Doubt rooms"],
@@ -150,6 +151,7 @@ const programs = [
     tag: "Boards + Olympiads",
     grades: "Grades 4–6",
     price: "₹49,999",
+    enrollLink: "/enroll-full?program=mastery",
     period: "/ year",
     freq: "4–5 live classes weekly • Full NCERT coverage",
     features: ["Complete syllabus","Advanced problems","Weekly tests","Doubt solving","Mock exams"],
@@ -163,6 +165,7 @@ const programs = [
     tag: "JEE · NEET",
     grades: "Grades 7-9",
     price: "₹59,999",
+    enrollLink: "/enroll-full?program=elite",
     period: "/ year",
     freq: "6–7 live classes weekly • Boards + Exam-Ready Prep",
     features: ["Boards + JEE/NEET plan","Mock tests","Daily targets","Doubt rooms","Personal mentor"],
@@ -1064,7 +1067,7 @@ export default function LandingPage() {
                 </ul>
                 {/* Actions */}
                 <div className="space-y-2 pt-2">
-                  <a href="/enroll"
+                  <a href={p.enrollLink}
                     className="block w-full py-3 rounded-xl font-bold text-sm text-white text-center transition-all hover:opacity-90"
                     style={{ background: p.popular ? `linear-gradient(135deg, ${ORANGE}, #c94e00)` : NAVY,
                              boxShadow: p.popular ? `0 0 24px rgba(255,107,26,0.3)` : "none" }}>

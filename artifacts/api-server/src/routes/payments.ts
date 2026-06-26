@@ -397,6 +397,89 @@ router.post("/payments/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
+// ── POST /api/payments/create-full-order ─────────────────────
+// Self-service full-year course enrollment checkout.
+// program: "foundation" | "mastery" | "elite"
+const FULL_PROGRAM_PRICES: Record<string, { amountPaise: number; name: string }> = {
+  foundation: { amountPaise: 3999900, name: "Foundation Program" }, // ₹39,999
+  mastery:    { amountPaise: 4999900, name: "Mastery Program" },    // ₹49,999
+  elite:      { amountPaise: 5999900, name: "Elite Program" },      // ₹59,999
+};
+
+router.post("/payments/create-full-order", async (req, res) => {
+  const { phone: rawPhone, grade: rawGrade, program: rawProgram, name: rawName } = req.body as {
+    phone?: string; grade?: unknown; program?: string; name?: string;
+  };
+
+  const phone = normalizePhone(String(rawPhone ?? ""));
+  if (!phone) {
+    res.status(400).json({ error: "Invalid mobile number. Enter a 10-digit Indian mobile number." });
+    return;
+  }
+  const grade = Number(rawGrade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Grade must be between 1 and 10." });
+    return;
+  }
+  const program = String(rawProgram ?? "").toLowerCase();
+  const programInfo = FULL_PROGRAM_PRICES[program];
+  if (!programInfo) {
+    res.status(400).json({ error: "Invalid program. Must be foundation, mastery, or elite." });
+    return;
+  }
+
+  const [existingUser] = await db
+    .select({ id: usersTable.id, accountType: usersTable.accountType, name: usersTable.name })
+    .from(usersTable)
+    .where(eq(usersTable.phone, phone))
+    .limit(1);
+
+  let razorpay: Razorpay;
+  try {
+    razorpay = getRazorpay();
+  } catch {
+    res.status(503).json({ error: "Payment service is not configured. Please try again later." });
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let order: any;
+  try {
+    order = await razorpay.orders.create({
+      amount: programInfo.amountPaise,
+      currency: "INR",
+      receipt: `btl_full_${Date.now()}`,
+      notes: { phone, grade: String(grade), program, studentName: rawName ?? "" },
+    });
+  } catch (err: unknown) {
+    req.log.error({ err }, "RAZORPAY CREATE FULL ORDER ERROR");
+    res.status(502).json({ error: "Failed to create payment order. Please try again." });
+    return;
+  }
+
+  await db.insert(paymentsTable).values({
+    phone,
+    grade,
+    razorpayOrderId: order.id,
+    amount: programInfo.amountPaise,
+    currency: "INR",
+    paymentType: "full_enrollment",
+    status: "created",
+    studentId: existingUser?.id ?? null,
+  });
+
+  res.json({
+    orderId: order.id,
+    amount: programInfo.amountPaise,
+    currency: "INR",
+    keyId: process.env.RAZORPAY_KEY_ID,
+    programName: programInfo.name,
+    existingAccount: existingUser
+      ? { accountType: existingUser.accountType, name: existingUser.name }
+      : null,
+  });
+});
+
 // ── Helper: log enrolment errors ──────────────────────────────
 async function logEnrolmentError(opts: {
   errorType: string;

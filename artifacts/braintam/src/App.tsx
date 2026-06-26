@@ -51,6 +51,7 @@ import MentorPage from "@/pages/mentor";
 import MentorLoginPage from "@/pages/mentor-login";
 import LoginPage from "@/pages/login";
 import EnrollPage from "@/pages/enroll";
+import EnrollFullPage from "@/pages/enroll-full";
 import DownloadAppPage from "@/pages/download-app";
 import SpaceJourneyPage from "@/pages/space-journey";
 
@@ -412,6 +413,7 @@ function Router() {
       <Route path="/refund" component={RefundPage} />
       <Route path="/student-protection" component={StudentProtectionPage} />
       <Route path="/enroll" component={EnrollPage} />
+      <Route path="/enroll-full" component={EnrollFullPage} />
       <Route path="/download-app" component={DownloadAppPage} />
 
       {/* Clerk auth routes (Google SSO / email students) */}
