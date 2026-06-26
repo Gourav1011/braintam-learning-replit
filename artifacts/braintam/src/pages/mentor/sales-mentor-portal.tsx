@@ -1487,20 +1487,13 @@ function PaymentStatusView() {
                       </td>
 
                       {/* Type */}
-                      <td className="px-4 py-3">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: isFull ? "#EEF2FF" : "#FFF7ED", color: isFull ? "#4F46E5" : "#C2410C" }}>
-                          {isFull ? "Full" : "Partial"}
-                        </span>
+                      <td className="px-4 py-3 text-[11px] text-gray-700 font-medium">
+                        {isFull ? "Full" : "Partial"}
                       </td>
 
                       {/* Status */}
-                      <td className="px-4 py-3">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-bold text-[11px] uppercase tracking-wide"
-                          style={{ background: cfg.bg, borderColor: cfg.border, color: cfg.color }}>
-                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
-                          {cfg.label}
-                        </div>
+                      <td className="px-4 py-3 text-[11px] text-gray-700 font-medium">
+                        {cfg.label}
                       </td>
 
                       {/* Created + Expiry stacked */}
