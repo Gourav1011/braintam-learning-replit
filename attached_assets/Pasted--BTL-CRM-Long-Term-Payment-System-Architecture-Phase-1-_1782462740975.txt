@@ -1,0 +1,444 @@
+# BTL CRM – Long Term Payment System Architecture (Phase 1)
+
+IMPORTANT
+
+Read the existing payment flow, Razorpay integration, mentor portal, admin portal, student profile, and CRM tables before making changes.
+
+Do NOT break:
+
+* Ignite demo payments
+* Existing Razorpay integration
+* Existing webhook verification
+* Existing payment tracking
+* Existing notifications
+* Existing student records
+* Existing conversion flow
+
+This phase is only to prepare the Long Term Payment System.
+
+---
+
+## BUSINESS FLOW
+
+Student is already an Ignite lead.
+
+Admin assigns:
+
+Grade
+Mentor
+Reporting hierarchy
+
+Example:
+
+Sales Head
+↓
+Unit Manager
+↓
+Manager
+↓
+Team Lead
+↓
+Mentor
+
+Mentor:
+
+Test Mentor
+
+Assigned Grades:
+
+Grade 3
+Grade 4
+
+Lead:
+
+Priya Sharma
+Grade 3
+
+Because Priya is Grade 3:
+
+System automatically picks:
+
+Grade 3 price.
+
+Mentor should NEVER:
+
+Select price
+Remember price
+Calculate scholarship
+Choose grade
+
+Everything should come automatically.
+
+---
+
+## LONG TERM COURSE TYPES
+
+Only one course type:
+
+Long Term Course
+
+No duration.
+
+No monthly plans.
+
+No installments.
+
+No packages.
+
+Future courses may come later.
+
+Do NOT build now.
+
+---
+
+## LONG TERM PRICES
+
+Grade 1
+₹14,999
+
+Grade 2
+₹15,999
+
+Grade 3
+₹16,999
+
+Grade 4
+₹17,999
+
+Grade 5
+₹18,999
+
+Grade 6
+₹20,999
+
+Grade 7
+₹21,999
+
+Grade 8
+₹24,999
+
+Grade 9
+Not Available
+
+Grade 10
+Not Available
+
+---
+
+## COURSE PRICING MASTER
+
+Create admin configuration.
+
+Command Center
+→ Course Pricing Master
+
+Fields:
+
+Grade
+Full Price
+Scholarship %
+Final Price
+Status
+
+Only:
+
+Super Admin
+Admin
+
+can modify.
+
+Managers and mentors cannot.
+
+---
+
+## PAYMENT CARD
+
+Inside Student Details page.
+
+Card title:
+
+Payment Link
+
+---
+
+## FULL PAYMENT FLOW
+
+Mentor clicks:
+
+Launch Full Payment
+
+Small popup opens.
+
+Only show:
+
+Grade 3
+
+₹16,999
+
+Button:
+
+Launch Payment Link
+
+Nothing else.
+
+No extra fields.
+
+No calculations.
+
+No price editing.
+
+---
+
+## PARTIAL PAYMENT FLOW
+
+Mentor clicks:
+
+Launch Partial Payment
+
+Popup:
+
+Partial Amount
+
+Input:
+
+[ ₹________ ]
+
+Button:
+
+Launch Payment Link
+
+Nothing else.
+
+---
+
+## AFTER LINK GENERATION
+
+Show:
+
+Congratulations!
+
+You can enroll Priya Sharma by clicking the link below.
+
+https://rzp....
+
+Buttons:
+
+Copy
+WhatsApp
+
+WhatsApp button should directly open:
+
+Parent mobile number.
+
+---
+
+## PAYMENT TRACKING
+
+Every payment link generated must be stored.
+
+Statuses:
+
+CREATED
+OPENED
+PAID
+FAILED
+EXPIRED
+CANCELLED
+
+Examples:
+
+Rahul created order
+Rahul opened payment page
+Rahul completed payment
+Rahul payment failed
+
+These statuses must be visible later inside Payment Status module.
+
+---
+
+## PAYMENT STATUS SCREEN
+
+Keep architecture ready.
+
+Columns:
+
+Student Name
+Grade
+Payment ID
+Amount
+Status
+Created Date
+Mentor
+
+Filters:
+
+Status
+Grade
+Date
+
+Search:
+
+Student Name
+Phone
+Payment ID
+
+Actions:
+
+View Details
+
+Do not fully build this screen now.
+
+Only prepare APIs and database structure.
+
+---
+
+## MANUAL PAYMENT FLOW (PHASE 2)
+
+Do NOT fully build now.
+
+Prepare architecture only.
+
+Student Profile
+↓
+
+Payment section
+
+Button:
+
+Upload Payment
+
+Fields:
+
+Payment Screenshot
+UTR / Transaction ID
+Amount
+Remarks
+
+Submit
+
+Status:
+
+Pending Approval
+
+---
+
+## ADMIN APPROVAL FLOW
+
+Admin Screen:
+
+Pending Payments
+
+Columns:
+
+Student
+Amount
+UTR
+Screenshot
+Submitted By
+Date
+Status
+
+Actions:
+
+Approve
+Reject
+Mark Duplicate
+
+---
+
+## DUPLICATE PAYMENT DETECTION
+
+System should later detect:
+
+Same UTR
+Same amount
+Same student
+Same timestamp range
+
+Status:
+
+Duplicate
+
+Do NOT implement now.
+
+Only keep architecture ready.
+
+---
+
+## CONVERSION FLOW
+
+Long Term Payment Successful
+↓
+
+Payment Status = PAID
+↓
+
+conversionStatus = converted
+↓
+
+Lead removed from:
+
+All
+Pending Calls
+Busy
+Call Later
+
+Lead moved into:
+
+Converted
+
+---
+
+## NOTIFICATIONS
+
+Mentor generated payment:
+
+🟡 Priya Sharma created order.
+
+Student opened payment page:
+
+🟡 Priya Sharma opened payment page.
+
+Payment successful:
+
+🟢 Priya Sharma completed payment successfully.
+
+Payment failed:
+
+🔴 Priya Sharma payment failed.
+
+---
+
+## BEFORE APPLYING
+
+Show:
+
+Files to modify
+Routes impacted
+Components impacted
+Database changes required
+
+Do NOT apply immediately.
+
+---
+
+## AFTER IMPLEMENTATION
+
+Run:
+
+pnpm typecheck
+pnpm build
+
+Verify:
+
+Existing Ignite payments still work
+Razorpay webhooks still work
+Mentor portal works
+Student profile works
+Notifications work
+Payment statuses save correctly
+Conversion flow still works
+
+Provide screenshots.
+
+STOP and wait for approval.

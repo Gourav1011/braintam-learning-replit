@@ -224,9 +224,27 @@ function NotificationPanel({ notifications, onClose, onNotifClick }: {
 }
 
 // ── Payment Link Popup ─────────────────────────────────────────────────────
+function defaultValidTill() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setSeconds(0, 0);
+  return d.toISOString().slice(0, 16);
+}
+
+function fmtValidTill(dt: string) {
+  if (!dt) return "";
+  const d = new Date(dt + ":00+05:30");
+  return d.toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
 function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const [mode, setMode] = useState<"choose" | "partial" | "generated">("choose");
   const [amount, setAmount] = useState("5000");
+  const [validTill, setValidTill] = useState(defaultValidTill());
   const [generating, setGenerating] = useState(false);
   const [link, setLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -248,9 +266,26 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 
   function whatsappParent() {
     const ph = (lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "");
-    const msg = encodeURIComponent(`नमस्ते ${lead.parentName ?? ""}! ${lead.name} के Braintam long-term course का payment यहाँ से करें: ${link}`);
+    const expiry = validTill ? ` (valid till ${fmtValidTill(validTill)})` : "";
+    const msg = encodeURIComponent(
+      `नमस्ते ${lead.parentName ?? ""}! ${lead.name} के Braintam long-term course का payment यहाँ से करें: ${link}${expiry}`
+    );
     window.open(`https://wa.me/91${ph}?text=${msg}`, "_blank");
   }
+
+  const validTillField = (
+    <div>
+      <label className="text-[10px] font-bold text-gray-500 block mb-1">Link Valid Till</label>
+      <input type="datetime-local" value={validTill} onChange={e => setValidTill(e.target.value)}
+        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-orange-300"
+        style={{ color: NAVY }} />
+      {validTill && (
+        <div className="text-[10px] text-orange-500 font-semibold mt-1">
+          ⏰ Expires: {fmtValidTill(validTill)}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -262,8 +297,8 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
         </div>
 
         {mode === "choose" && (
-          <div className="p-5">
-            <p className="text-xs text-gray-500 mb-4">Select payment type for <strong>{lead.name}</strong></p>
+          <div className="p-5 space-y-4">
+            <p className="text-xs text-gray-500">Select payment type for <strong>{lead.name}</strong></p>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={generate}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all">
@@ -278,6 +313,7 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
                 <div className="text-[10px] text-gray-400 text-center">Custom amount</div>
               </button>
             </div>
+            {validTillField}
           </div>
         )}
 
@@ -290,6 +326,7 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300"
                 style={{ color: NAVY }} />
             </div>
+            {validTillField}
             <button onClick={generate} disabled={!amount || generating}
               className="w-full py-3 rounded-xl font-black text-white text-sm transition-all"
               style={{ background: amount ? `linear-gradient(90deg,${NAVY},#1a4ba8)` : "#9CA3AF" }}>
@@ -316,6 +353,12 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
+            {validTill && (
+              <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold"
+                style={{ background: "#FFF7ED", color: ORANGE }}>
+                ⏰ Valid till {fmtValidTill(validTill)}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button onClick={copyLink}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold"
@@ -328,7 +371,6 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
                 <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
               </button>
             </div>
-            <div className="text-[10px] text-gray-400">Valid for 48 hours · ₹39 Ignite or long-term amount</div>
             <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600">Close</button>
           </div>
         )}
