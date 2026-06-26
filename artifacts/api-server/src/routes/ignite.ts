@@ -505,6 +505,27 @@ router.get("/admin/ignite/paid-students", adminOnly, async (req, res) => {
       notes: ignitePaidStudentsTable.notes,
       courseType: ignitePaidStudentsTable.courseType,
       leadSource: ignitePaidStudentsTable.leadSource,
+      // batch_assigned
+      batchName: ignitePaidStudentsTable.batchName,
+      batchStartDate: ignitePaidStudentsTable.batchStartDate,
+      teacherName: ignitePaidStudentsTable.teacherName,
+      assignedByName: ignitePaidStudentsTable.assignedByName,
+      // demo_started / demo_completed
+      demoStartDate: ignitePaidStudentsTable.demoStartDate,
+      attendancePct: ignitePaidStudentsTable.attendancePct,
+      classesAttended: ignitePaidStudentsTable.classesAttended,
+      homeworkPct: ignitePaidStudentsTable.homeworkPct,
+      // demo_completed
+      completionDate: ignitePaidStudentsTable.completionDate,
+      conversionRecommendation: ignitePaidStudentsTable.conversionRecommendation,
+      // converted
+      convertedDate: ignitePaidStudentsTable.convertedDate,
+      coursePurchased: ignitePaidStudentsTable.coursePurchased,
+      courseValue: ignitePaidStudentsTable.courseValue,
+      convertedBy: ignitePaidStudentsTable.convertedBy,
+      // dropped
+      droppedDate: ignitePaidStudentsTable.droppedDate,
+      dropReason: ignitePaidStudentsTable.dropReason,
       createdAt: ignitePaidStudentsTable.createdAt,
       name: usersTable.name,
       school: usersTable.school,

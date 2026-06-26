@@ -19,6 +19,27 @@ export const ignitePaidStudentsTable = pgTable("ignite_paid_students", {
   notes:              text("notes"),
   courseType:         text("course_type").notNull().default("ignite"),
   leadSource:         text("lead_source"),
+  // batch_assigned stage
+  batchName:          text("batch_name"),
+  batchStartDate:     timestamp("batch_start_date"),
+  teacherName:        text("teacher_name"),
+  assignedByName:     text("assigned_by_name"),
+  // demo_started / demo_completed stage
+  demoStartDate:      timestamp("demo_start_date"),
+  attendancePct:      integer("attendance_pct"),
+  classesAttended:    integer("classes_attended"),
+  homeworkPct:        integer("homework_pct"),
+  // demo_completed stage
+  completionDate:     timestamp("completion_date"),
+  conversionRecommendation: text("conversion_recommendation"),
+  // converted stage
+  convertedDate:      timestamp("converted_date"),
+  coursePurchased:    text("course_purchased"),
+  courseValue:        integer("course_value"),
+  convertedBy:        text("converted_by"),
+  // dropped stage
+  droppedDate:        timestamp("dropped_date"),
+  dropReason:         text("drop_reason"),
   createdAt:          timestamp("created_at").defaultNow().notNull(),
   updatedAt:          timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [

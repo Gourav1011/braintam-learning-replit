@@ -44,6 +44,11 @@ export type IgniteView =
   | "sales-mentors"
   | "paid-students-unassigned"
   | "paid-students-assigned"
+  | "paid-students-batch-assigned"
+  | "paid-students-demo-started"
+  | "paid-students-demo-completed"
+  | "paid-students-converted"
+  | "paid-students-dropped"
   | "payments";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
@@ -1936,8 +1941,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "paid-students-unassigned", label: "Paid Students", icon: CreditCard,
     children: [
-      { id: "paid-students-unassigned", label: "Unassigned" },
-      { id: "paid-students-assigned",   label: "Assigned" },
+      { id: "paid-students-unassigned",    label: "Unassigned"    },
+      { id: "paid-students-assigned",      label: "Assigned"      },
+      { id: "paid-students-batch-assigned", label: "Batch Assigned" },
+      { id: "paid-students-demo-started",  label: "Demo Started"  },
+      { id: "paid-students-demo-completed", label: "Demo Completed" },
+      { id: "paid-students-converted",     label: "Converted"     },
+      { id: "paid-students-dropped",       label: "Dropped"       },
     ],
   },
   { id: "payments", label: "Payments", icon: CreditCard },
@@ -1951,7 +1961,7 @@ function IgniteSidebar({
   setView: (v: IgniteView) => void;
 }) {
   const demoManagementViews: IgniteView[] = ["overview", "demo-batches", "demo-students", "attendance", "homework", "follow-ups"];
-  const paidStudentsViews: IgniteView[] = ["paid-students-unassigned", "paid-students-assigned"];
+  const paidStudentsViews: IgniteView[] = ["paid-students-unassigned", "paid-students-assigned", "paid-students-batch-assigned", "paid-students-demo-started", "paid-students-demo-completed", "paid-students-converted", "paid-students-dropped"];
   const isDemoManagement = demoManagementViews.includes(view);
   const isPaidStudents = paidStudentsViews.includes(view);
   const [demoOpen, setDemoOpen] = useState(isDemoManagement);
@@ -2297,6 +2307,27 @@ interface IgnitePaidStudentRow {
   accountType: string;
   paymentStatus: string;
   razorpayPaymentId: string | null;
+  // batch_assigned
+  batchName: string | null;
+  batchStartDate: string | null;
+  teacherName: string | null;
+  assignedByName: string | null;
+  // demo stages
+  demoStartDate: string | null;
+  attendancePct: number | null;
+  classesAttended: number | null;
+  homeworkPct: number | null;
+  // demo_completed
+  completionDate: string | null;
+  conversionRecommendation: string | null;
+  // converted
+  convertedDate: string | null;
+  coursePurchased: string | null;
+  courseValue: number | null;
+  convertedBy: string | null;
+  // dropped
+  droppedDate: string | null;
+  dropReason: string | null;
 }
 
 interface AssignableMentor {
@@ -2325,10 +2356,14 @@ function PaymentStatusBadge({ status }: { status: string }) {
 function AssignmentStatusBadge({ status }: { status: string }) {
   const s = (status ?? "").toLowerCase();
   const map: Record<string, { bg: string; text: string; label: string }> = {
-    unassigned: { bg: "#FFF7ED", text: "#C2410C", label: "Unassigned" },
-    assigned:   { bg: "#DBEAFE", text: "#1D4ED8", label: "Assigned" },
-    active:     { bg: "#D1FAE5", text: "#065F46", label: "Active" },
-    dropped:    { bg: "#FEE2E2", text: "#991B1B", label: "Dropped" },
+    unassigned:     { bg: "#FFF7ED", text: "#C2410C",  label: "Unassigned"     },
+    assigned:       { bg: "#DBEAFE", text: "#1D4ED8",  label: "Assigned"       },
+    batch_assigned: { bg: "#EDE9FE", text: "#5B21B6",  label: "Batch Assigned" },
+    demo_started:   { bg: "#FEF3C7", text: "#92400E",  label: "Demo Started"   },
+    demo_completed: { bg: "#D1FAE5", text: "#065F46",  label: "Demo Completed" },
+    converted:      { bg: "#BBF7D0", text: "#14532D",  label: "Converted"      },
+    dropped:        { bg: "#FEE2E2", text: "#991B1B",  label: "Dropped"        },
+    active:         { bg: "#D1FAE5", text: "#065F46",  label: "Active"         },
   };
   const cfg = map[s] ?? { bg: "#F3F4F6", text: "#374151", label: status || "–" };
   return (
@@ -2683,6 +2718,436 @@ function PaidStudentsUnassignedView() {
   );
 }
 
+// ── Paid Students — shared action buttons ─────────────────────────────────────
+
+function PaidStudentActions({ phone }: { phone: string }) {
+  return (
+    <div className="flex items-center gap-1">
+      <a href={`tel:${phone}`}
+        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+        style={{ background: "#D1FAE5" }} title="Call">
+        <Phone className="w-3 h-3 text-green-700" />
+      </a>
+      <a href={`https://wa.me/91${phone}`} target="_blank" rel="noreferrer"
+        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+        style={{ background: "#D1FAE5" }} title="WhatsApp">
+        <Bell className="w-3 h-3 text-green-700" />
+      </a>
+      <button disabled
+        className="w-6 h-6 rounded-lg flex items-center justify-center opacity-40 cursor-not-allowed"
+        style={{ background: "#F3F4F6" }} title="View Details">
+        <Eye className="w-3 h-3 text-gray-500" />
+      </button>
+    </div>
+  );
+}
+
+// ── Paid Students — generic status view ───────────────────────────────────────
+
+interface PsStatusViewConfig {
+  status: string;
+  label: string;
+  labelColor: string;
+  description: string;
+  extraHeaders: string[];
+  renderExtraCells: (r: IgnitePaidStudentRow) => React.ReactNode;
+  kpi1Label: string;
+  kpi1Value: (rows: IgnitePaidStudentRow[]) => React.ReactNode;
+  kpi1Sub: string;
+  kpi1Bg: string;
+  kpi1IconColor: string;
+}
+
+function PaidStudentsStatusView({ cfg }: { cfg: PsStatusViewConfig }) {
+  const [rows, setRows] = useState<IgnitePaidStudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [search, setSearch] = useState("");
+  const [gradeF, setGradeF] = useState("All Grades");
+  const [page, setPage] = useState(1);
+  const PER = 15;
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    apiFetch(`/admin/ignite/paid-students?status=${cfg.status}`)
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => { setError(true); setRows([]); })
+      .finally(() => setLoading(false));
+  }, [cfg.status]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter((r) => {
+    const q = search.toLowerCase();
+    if (q && !(r.name ?? "").toLowerCase().includes(q) && !(r.phone ?? "").includes(q) && !(r.assignedMentorName ?? "").toLowerCase().includes(q)) return false;
+    if (gradeF !== "All Grades" && String(r.grade) !== gradeF.replace("Grade ", "")) return false;
+    return true;
+  });
+
+  const paged = filtered.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.ceil(filtered.length / PER);
+  const totalRevenue = rows.reduce((sum, r) => sum + (r.amountPaise ?? 0), 0);
+
+  const COMMON_HEADERS = ["Student Name", "Phone", "Grade", "Amount Paid", "Payment Date", "Assigned Mentor", "Assigned Date", "Lead Stage", "Status"];
+  const allHeaders = [...COMMON_HEADERS, ...cfg.extraHeaders, "Actions"];
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-xs text-gray-400 font-medium">Paid Students</span>
+            <ChevronRight className="w-3 h-3 text-gray-300" />
+            <span className="text-xs font-semibold" style={{ color: cfg.labelColor }}>{cfg.label}</span>
+          </div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>{cfg.label} Students</h1>
+          <p className="text-xs text-gray-500">{cfg.description}</p>
+        </div>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+        </button>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">{cfg.kpi1Label}</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: cfg.kpi1Bg }}>
+              <Users className="w-4 h-4" style={{ color: cfg.kpi1IconColor }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: cfg.kpi1IconColor }}>{cfg.kpi1Value(rows)}</div>
+          <div className="text-[10px] text-gray-400 mt-1">{cfg.kpi1Sub}</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Revenue</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+              <CreditCard className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-green-600">₹{(totalRevenue / 100).toLocaleString("en-IN")}</div>
+          <div className="text-[10px] text-gray-400 mt-1">Total paid amount</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">ICs Active</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <Award className="w-4 h-4" style={{ color: NAVY }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>
+            {new Set(rows.map((r) => r.assignedMentorId).filter(Boolean)).size}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">Distinct counsellors</div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500">Grades</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
+            </div>
+          </div>
+          <div className="text-3xl font-black" style={{ color: NAVY }}>
+            {new Set(rows.map((r) => r.grade)).size}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-1">Distinct grades</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input type="text" placeholder="Search name, phone or IC…" value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-1 w-52"
+            style={{ "--tw-ring-color": NAVY } as React.CSSProperties} />
+        </div>
+        <select value={gradeF} onChange={(e) => { setGradeF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          <option>All Grades</option>
+          {[1,2,3,4,5,6,7,8,9,10].map((g) => <option key={g}>Grade {g}</option>)}
+        </select>
+        <span className="text-xs text-gray-400 ml-auto">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+              <tr>
+                {allHeaders.map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={allHeaders.length} className="text-center py-16 text-gray-400">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
+                    <div className="text-xs">Loading…</div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={allHeaders.length} className="text-center py-16">
+                    <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                    <div className="text-sm font-semibold text-gray-500">Failed to load data.</div>
+                    <button onClick={load} className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      style={{ background: NAVY, color: "#fff" }}>Retry</button>
+                  </td>
+                </tr>
+              ) : paged.length === 0 ? (
+                <tr>
+                  <td colSpan={allHeaders.length} className="text-center py-16">
+                    <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                      style={{ background: cfg.kpi1Bg }}>
+                      <Users className="w-7 h-7" style={{ color: cfg.kpi1IconColor }} />
+                    </div>
+                    <div className="text-sm font-semibold text-gray-500">
+                      {search || gradeF !== "All Grades" ? "No matching students." : `No ${cfg.label.toLowerCase()} students yet.`}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">{cfg.description}</div>
+                  </td>
+                </tr>
+              ) : paged.map((r) => (
+                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: NAVY }}>{(r.name?.[0] ?? "?").toUpperCase()}</div>
+                      <div>
+                        <div className="font-semibold text-gray-800 text-xs">{r.name}</div>
+                        <div className="text-gray-400 text-[10px]">{r.school ?? r.city ?? "–"}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs font-mono whitespace-nowrap">{r.phone}</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ background: "#EEF2FF", color: NAVY }}>Gr {r.grade}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-black text-green-700">₹{(r.amountPaise / 100).toLocaleString("en-IN")}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(r.paidAt)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                        style={{ background: "#1D4ED8" }}>
+                        {(r.assignedMentorName?.[0] ?? "?").toUpperCase()}
+                      </div>
+                      <span className="text-xs text-gray-700 font-medium">{r.assignedMentorName ?? "–"}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedAt ? fmt(r.assignedAt) : "–"}</td>
+                  <td className="px-4 py-3"><StageBadge stage={r.leadStage} /></td>
+                  <td className="px-4 py-3"><AssignmentStatusBadge status={r.assignmentStatus} /></td>
+                  {cfg.renderExtraCells(r)}
+                  <td className="px-4 py-3"><PaidStudentActions phone={r.phone} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setPage(p)}
+                  className="w-7 h-7 rounded-lg text-xs font-semibold"
+                  style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Paid Students — Batch Assigned ────────────────────────────────────────────
+
+function PaidStudentsBatchAssignedView() {
+  return (
+    <PaidStudentsStatusView cfg={{
+      status: "batch_assigned",
+      label: "Batch Assigned",
+      labelColor: "#5B21B6",
+      description: "Students assigned to a demo batch, pending demo start",
+      extraHeaders: ["Batch Name", "Batch Start Date", "Teacher", "Assigned By"],
+      renderExtraCells: (r) => (
+        <>
+          <td className="px-4 py-3 text-gray-700 text-xs font-medium whitespace-nowrap">{r.batchName ?? "–"}</td>
+          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.batchStartDate ? fmt(r.batchStartDate) : "–"}</td>
+          <td className="px-4 py-3 text-gray-700 text-xs">{r.teacherName ?? "–"}</td>
+          <td className="px-4 py-3 text-gray-700 text-xs">{r.assignedByName ?? "–"}</td>
+        </>
+      ),
+      kpi1Label: "Batch Assigned",
+      kpi1Value: (rows) => rows.length,
+      kpi1Sub: "Awaiting demo start",
+      kpi1Bg: "#EDE9FE",
+      kpi1IconColor: "#5B21B6",
+    }} />
+  );
+}
+
+// ── Paid Students — Demo Started ──────────────────────────────────────────────
+
+function PaidStudentsDemoStartedView() {
+  return (
+    <PaidStudentsStatusView cfg={{
+      status: "demo_started",
+      label: "Demo Started",
+      labelColor: "#92400E",
+      description: "Students whose demo classes are currently in progress",
+      extraHeaders: ["Demo Start Date", "Attendance %", "Classes Attended", "Homework %"],
+      renderExtraCells: (r) => (
+        <>
+          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.demoStartDate ? fmt(r.demoStartDate) : "–"}</td>
+          <td className="px-4 py-3">
+            {r.attendancePct !== null
+              ? <span className="font-semibold text-xs" style={{ color: (r.attendancePct ?? 0) >= 75 ? GREEN : ORANGE }}>{r.attendancePct}%</span>
+              : <span className="text-xs text-gray-400">–</span>}
+          </td>
+          <td className="px-4 py-3 text-gray-700 text-xs text-center">{r.classesAttended ?? "–"}</td>
+          <td className="px-4 py-3">
+            {r.homeworkPct !== null
+              ? <span className="font-semibold text-xs" style={{ color: (r.homeworkPct ?? 0) >= 75 ? GREEN : ORANGE }}>{r.homeworkPct}%</span>
+              : <span className="text-xs text-gray-400">–</span>}
+          </td>
+        </>
+      ),
+      kpi1Label: "Demo Started",
+      kpi1Value: (rows) => rows.length,
+      kpi1Sub: "Currently in demo",
+      kpi1Bg: "#FEF3C7",
+      kpi1IconColor: "#92400E",
+    }} />
+  );
+}
+
+// ── Paid Students — Demo Completed ────────────────────────────────────────────
+
+function PaidStudentsDemoCompletedView() {
+  return (
+    <PaidStudentsStatusView cfg={{
+      status: "demo_completed",
+      label: "Demo Completed",
+      labelColor: "#065F46",
+      description: "Students who have completed their demo — pending conversion decision",
+      extraHeaders: ["Completion Date", "Attendance %", "Homework %", "Conversion Recommendation"],
+      renderExtraCells: (r) => (
+        <>
+          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.completionDate ? fmt(r.completionDate) : "–"}</td>
+          <td className="px-4 py-3">
+            {r.attendancePct !== null
+              ? <span className="font-semibold text-xs" style={{ color: (r.attendancePct ?? 0) >= 75 ? GREEN : ORANGE }}>{r.attendancePct}%</span>
+              : <span className="text-xs text-gray-400">–</span>}
+          </td>
+          <td className="px-4 py-3">
+            {r.homeworkPct !== null
+              ? <span className="font-semibold text-xs" style={{ color: (r.homeworkPct ?? 0) >= 75 ? GREEN : ORANGE }}>{r.homeworkPct}%</span>
+              : <span className="text-xs text-gray-400">–</span>}
+          </td>
+          <td className="px-4 py-3">
+            {r.conversionRecommendation
+              ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                  style={{ background: r.conversionRecommendation.toLowerCase() === "yes" ? "#BBF7D0" : "#FEE2E2",
+                           color:      r.conversionRecommendation.toLowerCase() === "yes" ? "#14532D" : "#991B1B" }}>
+                  {r.conversionRecommendation}
+                </span>
+              : <span className="text-xs text-gray-400">–</span>}
+          </td>
+        </>
+      ),
+      kpi1Label: "Demo Completed",
+      kpi1Value: (rows) => rows.length,
+      kpi1Sub: "Awaiting conversion",
+      kpi1Bg: "#D1FAE5",
+      kpi1IconColor: "#065F46",
+    }} />
+  );
+}
+
+// ── Paid Students — Converted ─────────────────────────────────────────────────
+
+function PaidStudentsConvertedView() {
+  return (
+    <PaidStudentsStatusView cfg={{
+      status: "converted",
+      label: "Converted",
+      labelColor: "#14532D",
+      description: "Students who have converted to a paid Braintam course",
+      extraHeaders: ["Converted Date", "Course Purchased", "Course Value", "Converted By"],
+      renderExtraCells: (r) => (
+        <>
+          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.convertedDate ? fmt(r.convertedDate) : "–"}</td>
+          <td className="px-4 py-3 text-gray-700 text-xs font-medium">{r.coursePurchased ?? "–"}</td>
+          <td className="px-4 py-3">
+            {r.courseValue
+              ? <span className="text-xs font-black text-green-700">₹{(r.courseValue / 100).toLocaleString("en-IN")}</span>
+              : <span className="text-xs text-gray-400">–</span>}
+          </td>
+          <td className="px-4 py-3 text-gray-700 text-xs">{r.convertedBy ?? "–"}</td>
+        </>
+      ),
+      kpi1Label: "Converted",
+      kpi1Value: (rows) => rows.length,
+      kpi1Sub: "Successfully converted",
+      kpi1Bg: "#BBF7D0",
+      kpi1IconColor: "#14532D",
+    }} />
+  );
+}
+
+// ── Paid Students — Dropped ───────────────────────────────────────────────────
+
+function PaidStudentsDroppedView() {
+  return (
+    <PaidStudentsStatusView cfg={{
+      status: "dropped",
+      label: "Dropped",
+      labelColor: "#991B1B",
+      description: "Students who did not convert after completing the demo",
+      extraHeaders: ["Dropped Date", "Drop Reason", "Last Follow-up", "Assigned Mentor"],
+      renderExtraCells: (r) => (
+        <>
+          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.droppedDate ? fmt(r.droppedDate) : "–"}</td>
+          <td className="px-4 py-3 text-gray-700 text-xs max-w-[160px] truncate" title={r.dropReason ?? ""}>{r.dropReason ?? "–"}</td>
+          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{r.nextFollowUpAt ? fmt(r.nextFollowUpAt) : "–"}</td>
+          <td className="px-4 py-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                style={{ background: "#991B1B" }}>
+                {(r.assignedMentorName?.[0] ?? "?").toUpperCase()}
+              </div>
+              <span className="text-xs text-gray-700">{r.assignedMentorName ?? "–"}</span>
+            </div>
+          </td>
+        </>
+      ),
+      kpi1Label: "Dropped",
+      kpi1Value: (rows) => rows.length,
+      kpi1Sub: "Did not convert",
+      kpi1Bg: "#FEE2E2",
+      kpi1IconColor: "#991B1B",
+    }} />
+  );
+}
+
 // ── Paid Students — Assigned View ─────────────────────────────────────────────
 
 function PaidStudentsAssignedView() {
@@ -2936,8 +3401,13 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
-    case "paid-students-unassigned": return <PaidStudentsUnassignedView />;
-    case "paid-students-assigned":   return <PaidStudentsAssignedView />;
+    case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
+    case "paid-students-assigned":      return <PaidStudentsAssignedView />;
+    case "paid-students-batch-assigned": return <PaidStudentsBatchAssignedView />;
+    case "paid-students-demo-started":  return <PaidStudentsDemoStartedView />;
+    case "paid-students-demo-completed": return <PaidStudentsDemoCompletedView />;
+    case "paid-students-converted":     return <PaidStudentsConvertedView />;
+    case "paid-students-dropped":       return <PaidStudentsDroppedView />;
     case "payments": return <PaymentsView flash={flash} />;
     default: return <DashboardView setView={setView} />;
   }
@@ -2966,8 +3436,13 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
-      case "paid-students-unassigned": return <PaidStudentsUnassignedView />;
-      case "paid-students-assigned":   return <PaidStudentsAssignedView />;
+      case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
+      case "paid-students-assigned":      return <PaidStudentsAssignedView />;
+      case "paid-students-batch-assigned": return <PaidStudentsBatchAssignedView />;
+      case "paid-students-demo-started":  return <PaidStudentsDemoStartedView />;
+      case "paid-students-demo-completed": return <PaidStudentsDemoCompletedView />;
+      case "paid-students-converted":     return <PaidStudentsConvertedView />;
+      case "paid-students-dropped":       return <PaidStudentsDroppedView />;
       case "payments": return <PaymentsView flash={flash} />;
       default: return <DashboardView setView={setView} />;
     }

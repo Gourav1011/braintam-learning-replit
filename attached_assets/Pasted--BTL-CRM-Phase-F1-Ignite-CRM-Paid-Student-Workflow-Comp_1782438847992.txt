@@ -1,0 +1,319 @@
+# BTL CRM – Phase F1
+
+Ignite CRM – Paid Student Workflow Completion
+
+Project: Braintam Learning Platform (BTL CRM)
+
+====================================================
+OBJECTIVE
+=========
+
+Complete the remaining Ignite paid-student workflow.
+
+Current Status:
+
+Payment
+↓
+Webhook
+↓
+leadStage = Payment Completed
+↓
+ignite_paid_students
+↓
+Unassigned
+↓
+Assign IC
+↓
+Assigned
+
+Everything after Assigned is missing.
+
+Build the remaining workflow.
+
+====================================================
+DO NOT BREAK
+============
+
+* Razorpay
+* Payments
+* Webhooks
+* Existing Ignite screens
+* Existing assignments
+* Existing users
+* Existing roles
+* Existing permissions
+* Existing APIs
+
+Reuse existing architecture.
+
+====================================================
+STATUSES
+========
+
+unassigned
+assigned
+batch_assigned
+demo_started
+demo_completed
+converted
+dropped
+
+Do not rename statuses.
+
+====================================================
+SIDEBAR
+=======
+
+Ignite
+→ Paid Students
+
+Children:
+
+Unassigned
+Assigned
+Batch Assigned
+Demo Started
+Demo Completed
+Converted
+Dropped
+
+All screens must work.
+
+====================================================
+SCREEN REQUIREMENTS
+===================
+
+Every status screen must include:
+
+Header
+KPI cards
+Search
+Filters
+Pagination
+Loading
+Empty State
+Responsive layout
+
+====================================================
+COMMON TABLE COLUMNS
+====================
+
+Student Name
+Phone
+Grade
+Amount Paid
+Payment Date
+Assigned Mentor
+Assigned Date
+Lead Stage
+Status
+
+====================================================
+BATCH ASSIGNED
+==============
+
+Extra Columns:
+
+Batch Name
+Batch Start Date
+Teacher
+Assigned By
+
+Actions:
+
+View
+Call
+WhatsApp
+
+====================================================
+DEMO STARTED
+============
+
+Extra Columns:
+
+Demo Start Date
+Attendance %
+Classes Attended
+Homework %
+
+Actions:
+
+View
+Call
+WhatsApp
+
+====================================================
+DEMO COMPLETED
+==============
+
+Extra Columns:
+
+Completion Date
+Attendance %
+Homework %
+Conversion Recommendation
+
+Actions:
+
+View
+Call
+WhatsApp
+
+====================================================
+CONVERTED
+=========
+
+Extra Columns:
+
+Converted Date
+Course Purchased
+Course Value
+Converted By
+
+Actions:
+
+View
+Call
+WhatsApp
+
+====================================================
+DROPPED
+=======
+
+Extra Columns:
+
+Dropped Date
+Drop Reason
+Last Follow-up
+Assigned Mentor
+
+Actions:
+
+View
+Call
+WhatsApp
+
+====================================================
+BACKEND
+=======
+
+Reuse:
+
+ignite_paid_students
+
+Do not create duplicate tables.
+
+Create endpoints only if missing.
+
+GET:
+
+/api/admin/ignite/paid-students
+/api/admin/ignite/paid-students?status=
+
+If current endpoint already supports status:
+
+Reuse it.
+
+Do not duplicate.
+
+====================================================
+PERMISSIONS
+===========
+
+View access:
+
+super_admin
+admin
+manager
+assistant_manager
+sales_mentor
+academic_mentor
+
+====================================================
+IMPORTANT
+=========
+
+Mentors and teachers:
+
+CANNOT assign batches.
+
+CANNOT move students between statuses.
+
+CANNOT convert students.
+
+They only:
+
+View
+Call
+WhatsApp
+Add Notes
+Record Follow-ups
+
+====================================================
+STATUS TRANSITIONS
+==================
+
+Allowed:
+
+unassigned
+→ assigned
+
+assigned
+→ batch_assigned
+
+batch_assigned
+→ demo_started
+
+demo_started
+→ demo_completed
+
+demo_completed
+→ converted
+or
+→ dropped
+
+No skipping.
+
+Enforce validation.
+
+====================================================
+TESTING
+=======
+
+1. Typecheck
+2. Build frontend
+3. Restart API
+4. Verify all status screens
+5. Verify search
+6. Verify filters
+7. Verify pagination
+8. Verify empty states
+9. Verify loading states
+10. Verify responsive layouts
+11. Verify permissions
+12. Verify no console errors
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Routes added
+Components added
+Screens added
+Status validations added
+Screenshots if possible
+
+STOP.
+
+Do NOT implement:
+
+Batch Assignment
+IC Dashboard
+Demo Tracking
+Conversion Pipeline
+Mastery Integration
+
+Wait for approval.
