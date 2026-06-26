@@ -1,0 +1,123 @@
+PHASE 4 – IGNITE LEAD LIFECYCLE COMPLETION
+
+IMPORTANT:
+Do NOT redesign, rebuild, rename, or break any existing CRM functionality. First inspect the current implementation and only add what is genuinely missing.
+
+The following are already built and must remain untouched:
+
+* Lead creation
+* Lifetime lead retention
+* Lead timeline
+* Lead notes
+* Follow-ups
+* Converted leads retention
+* Existing mentor dashboards and APIs
+
+Complete only these missing requirements:
+
+1. Lead Status History
+   Whenever a lead status changes, maintain a history log.
+
+Example:
+New
+→ Connected
+→ Interested
+→ Demo Paid
+→ Demo Attended
+→ Converted
+
+Store:
+
+* lead_id
+* old_status
+* new_status
+* changed_by
+* changed_at
+* remarks (optional)
+
+Do not replace existing status fields. Add history tracking only.
+
+---
+
+2. Old Leads System
+   Create an "Old Leads" classification.
+
+Requirements:
+
+* Leads should never be deleted.
+* Old Leads are only a view/filter/category.
+* admin can reasign that lead if nessosry
+* Admin should be able to see old leads separately.
+* Existing dashboards should continue working.
+
+---
+
+3. Lost Leads System
+   Create a "Lost Lead" stage/category.
+
+Examples:
+
+* Not interested
+* Wrong number
+* No response
+* Joined competitor
+* Budget issue
+
+Requirements:
+
+* Lead remains permanently in Ignite.
+* Lost leads should be filterable.
+* Lost leads can be reopened later.
+
+---
+
+4. Reassignment History
+   Current assignment should continue working.
+
+Add only reassignment history.
+
+Whenever a lead is reassigned:
+
+Store:
+
+* lead_id
+* previous_mentor_id
+* new_mentor_id
+* reassigned_by
+* reassigned_at
+* reason
+
+Admin must be able to see full reassignment history.
+
+---
+
+5. Timeline Integration
+   Status changes and reassignments should automatically appear inside the existing lead timeline/history.
+
+Example:
+
+05 Jun - Lead Created
+06 Jun - Assigned to Mentor A
+07 Jun - Status changed to Interested
+08 Jun - Reassigned to Mentor B
+09 Jun - Status changed to Demo Paid
+
+---
+
+Before coding:
+
+1. Audit existing schemas, APIs and UI.
+2. Reuse existing tables wherever possible.
+3. Add new tables only if absolutely necessary.
+4. Do not change existing routes unless required.
+5. Provide:
+
+   * What already existed
+   * What was added
+   * Schema changes
+   * API changes
+   * UI changes
+   * Migration plan
+
+Goal:
+Complete Phase 4 while keeping all existing CRM behaviour intact.

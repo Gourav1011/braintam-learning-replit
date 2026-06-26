@@ -9,8 +9,12 @@ import {
   ignitePaidStudentsTable,
   paymentsTable,
   auditLogsTable,
+  leadStatusHistoryTable,
+  mentorReassignmentHistoryTable,
+  studentTimelineTable,
+  mentorStudentAssignmentsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne } from "drizzle-orm";
+import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -166,6 +170,8 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
       assignmentWeek: usersTable.assignmentWeek,
       assignmentStatus: usersTable.assignmentStatus,
       isCurrentWeek: usersTable.isCurrentWeek,
+      lostReason: usersTable.lostReason,
+      lostAt: usersTable.lostAt,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -899,6 +905,188 @@ router.post("/admin/ignite/paid-students/:id/assign", adminOnly, async (req, res
   req.log.info({ recordId, mentorId, assignedById }, "Ignite paid student assigned");
 
   res.json({ ok: true, assignedMentorId: mentor.id, assignedMentorName: mentor.name, assignedAt: now });
+});
+
+// ── GET /admin/ignite/leads/:id/status-history ────────────────────────────────
+router.get("/admin/ignite/leads/:id/status-history", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const rows = await db.select().from(leadStatusHistoryTable)
+    .where(eq(leadStatusHistoryTable.leadId, leadId))
+    .orderBy(desc(leadStatusHistoryTable.changedAt))
+    .limit(100);
+  res.json(rows);
+});
+
+// ── GET /admin/ignite/leads/:id/reassignment-history ──────────────────────────
+router.get("/admin/ignite/leads/:id/reassignment-history", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const rows = await db.select().from(mentorReassignmentHistoryTable)
+    .where(eq(mentorReassignmentHistoryTable.leadId, leadId))
+    .orderBy(desc(mentorReassignmentHistoryTable.reassignedAt))
+    .limit(100);
+  res.json(rows);
+});
+
+// ── PATCH /admin/ignite/leads/:id/mark-lost ───────────────────────────────────
+router.patch("/admin/ignite/leads/:id/mark-lost", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const { reason } = req.body as { reason?: string };
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  const [lead] = await db.select({ id: usersTable.id, name: usersTable.name, leadStage: usersTable.leadStage })
+    .from(usersTable).where(eq(usersTable.id, leadId)).limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  const now = new Date();
+  const oldStatus = lead.leadStage;
+
+  await db.update(usersTable).set({
+    leadStage: "Lost",
+    lostReason: reason ?? null,
+    lostAt: now,
+    lostBy: actor.id,
+    updatedAt: now,
+  }).where(eq(usersTable.id, leadId));
+
+  await db.insert(leadStatusHistoryTable).values({
+    leadId,
+    oldStatus,
+    newStatus: "Lost",
+    changedById: actor.id,
+    changedByName: actor.name ?? "Admin",
+    changedByRole: actor.role ?? "admin",
+    remarks: reason ?? null,
+  });
+
+  await db.insert(studentTimelineTable).values({
+    studentId: leadId,
+    createdById: actor.id,
+    createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin",
+    noteType: "status_change",
+    remark: `Lead marked as Lost${reason ? `: ${reason}` : ""}`,
+    actionTaken: "mark_lost",
+  });
+
+  await logLeadAudit(req, "mark_lost", leadId, lead.name, { oldStatus, reason });
+  res.json({ ok: true });
+});
+
+// ── PATCH /admin/ignite/leads/:id/reopen ──────────────────────────────────────
+router.patch("/admin/ignite/leads/:id/reopen", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const { remarks } = req.body as { remarks?: string };
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  const [lead] = await db.select({ id: usersTable.id, name: usersTable.name, leadStage: usersTable.leadStage })
+    .from(usersTable).where(eq(usersTable.id, leadId)).limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  const now = new Date();
+  await db.update(usersTable).set({
+    leadStage: "contacted",
+    lostReason: null,
+    lostAt: null,
+    lostBy: null,
+    updatedAt: now,
+  }).where(eq(usersTable.id, leadId));
+
+  await db.insert(leadStatusHistoryTable).values({
+    leadId,
+    oldStatus: "Lost",
+    newStatus: "contacted",
+    changedById: actor.id,
+    changedByName: actor.name ?? "Admin",
+    changedByRole: actor.role ?? "admin",
+    remarks: remarks ?? "Lead reopened by admin",
+  });
+
+  await db.insert(studentTimelineTable).values({
+    studentId: leadId,
+    createdById: actor.id,
+    createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin",
+    noteType: "status_change",
+    remark: `Lead reopened${remarks ? `: ${remarks}` : ""}`,
+    actionTaken: "reopen",
+  });
+
+  await logLeadAudit(req, "reopen_lead", leadId, lead.name, { remarks });
+  res.json({ ok: true });
+});
+
+// ── POST /admin/ignite/leads/:id/reassign ─────────────────────────────────────
+router.post("/admin/ignite/leads/:id/reassign", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const { newMentorId, reason } = req.body as { newMentorId: number; reason?: string };
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  if (!newMentorId) { res.status(400).json({ error: "newMentorId is required" }); return; }
+
+  const [lead] = await db.select({ id: usersTable.id, name: usersTable.name, assignedMentorId: usersTable.assignedMentorId, assignedAt: usersTable.assignedAt })
+    .from(usersTable).where(eq(usersTable.id, leadId)).limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  const [newMentor] = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, newMentorId)).limit(1);
+  if (!newMentor) { res.status(404).json({ error: "Mentor not found" }); return; }
+
+  let prevMentorName: string | null = null;
+  if (lead.assignedMentorId) {
+    const [pm] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, lead.assignedMentorId)).limit(1);
+    prevMentorName = pm?.name ?? null;
+  }
+
+  const now = new Date();
+
+  await db.update(usersTable).set({
+    assignedMentorId: newMentor.id,
+    assignedAt: now,
+    assignedById: actor.id,
+    updatedAt: now,
+  }).where(eq(usersTable.id, leadId));
+
+  if (lead.assignedMentorId) {
+    await db.update(mentorStudentAssignmentsTable)
+      .set({ isActive: false })
+      .where(and(eq(mentorStudentAssignmentsTable.studentId, leadId), eq(mentorStudentAssignmentsTable.isActive, true)));
+  }
+  await db.insert(mentorStudentAssignmentsTable).values({
+    mentorId: newMentor.id,
+    studentId: leadId,
+    isActive: true,
+  });
+
+  await db.insert(mentorReassignmentHistoryTable).values({
+    leadId,
+    previousMentorId: lead.assignedMentorId ?? null,
+    previousMentorName: prevMentorName,
+    newMentorId: newMentor.id,
+    newMentorName: newMentor.name,
+    reassignedById: actor.id,
+    reassignedByName: actor.name ?? "Admin",
+    reason: reason ?? null,
+  });
+
+  await db.insert(studentTimelineTable).values({
+    studentId: leadId,
+    createdById: actor.id,
+    createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin",
+    noteType: "reassignment",
+    remark: `Reassigned from ${prevMentorName ?? "Unassigned"} to ${newMentor.name}${reason ? ` — Reason: ${reason}` : ""}`,
+    actionTaken: "reassign",
+  });
+
+  await logLeadAudit(req, "reassign_lead", leadId, lead.name, {
+    previousMentorId: lead.assignedMentorId,
+    previousMentorName: prevMentorName,
+    newMentorId: newMentor.id,
+    newMentorName: newMentor.name,
+    reason,
+  });
+
+  res.json({ ok: true, newMentorId: newMentor.id, newMentorName: newMentor.name });
 });
 
 export default router;

@@ -13,6 +13,7 @@ import {
   mentorTasksTable,
   mentorReminderPrefsTable,
   doubtSessionsTable,
+  leadStatusHistoryTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or, lt } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -1214,6 +1215,10 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
   if (!remark?.trim()) { res.status(400).json({ error: "Remark is required" }); return; }
   if (!callOutcome) { res.status(400).json({ error: "callOutcome is required" }); return; }
 
+  const [current] = await db.select({ leadStage: usersTable.leadStage })
+    .from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+  const prevStage = current?.leadStage ?? null;
+
   const now = new Date();
   const updates: Record<string, unknown> = { callStatus: callOutcome, lastCallAt: now, updatedAt: now };
   if (busyReason !== undefined) updates.busyReason = busyReason || null;
@@ -1239,6 +1244,28 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
     leadStatus: leadStatus ?? null,
     nextFollowUpDate: nextFollowUpAt ?? null,
   }).returning();
+
+  if (leadStatus && leadStatus !== prevStage) {
+    await db.insert(leadStatusHistoryTable).values({
+      leadId: studentId,
+      oldStatus: prevStage,
+      newStatus: leadStatus,
+      changedById: actor.id,
+      changedByName: actor.name,
+      changedByRole: actor.role,
+      remarks: remark.trim(),
+    }).catch(() => {});
+
+    await db.insert(studentTimelineTable).values({
+      studentId,
+      createdById: actor.id,
+      createdByName: actor.name,
+      createdByRole: actor.role,
+      noteType: "status_change",
+      remark: `Status changed from "${prevStage ?? "New"}" to "${leadStatus}"`,
+      actionTaken: "status_change",
+    }).catch(() => {});
+  }
 
   res.status(201).json({ ok: true, followUp: fu });
 });

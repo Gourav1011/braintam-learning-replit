@@ -4,7 +4,7 @@ import {
   Phone, TrendingUp, ChevronDown, ChevronRight, Search, Filter,
   Download, Plus, Eye, RefreshCw, Star, Award, Zap, CheckCircle,
   XCircle, Clock, UserCheck, BarChart3, AlertTriangle, Check, X,
-  Bell, CreditCard, ChevronUp,
+  Bell, CreditCard, ChevronUp, UserX, RotateCcw, History, UserCog,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
@@ -709,6 +709,7 @@ interface LeadRow {
   assignedMentorId: number | null; assignedMentorName: string | null;
   assignedAt: string | null; assignmentStatus: string | null;
   notesCount: number; createdAt: string;
+  lostReason: string | null; lostAt: string | null;
 }
 
 const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -999,6 +1000,207 @@ function BulkImportModal({ onClose, onSuccess, flash }: {
   );
 }
 
+// ── MarkLostModal ─────────────────────────────────────────────────────────────
+const LOST_REASONS = ["Not Interested", "Wrong Number", "No Response", "Joined Competitor", "Budget Issue", "Too Young/Old", "Other"];
+
+function MarkLostModal({ lead, onClose, onDone }: { lead: LeadRow; onClose: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState(LOST_REASONS[0]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  async function submit() {
+    setSaving(true); setErr("");
+    try {
+      const r = await apiFetch(`/admin/ignite/leads/${lead.id}/mark-lost`, { method: "PATCH", body: JSON.stringify({ reason }) });
+      if (r.ok) { onDone(); onClose(); }
+      else { const d = await r.json().catch(() => ({})) as { error?: string }; setErr(d.error ?? "Failed"); }
+    } catch { setErr("Network error"); }
+    setSaving(false);
+  }
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center gap-2 mb-4">
+          <UserX className="w-5 h-5" style={{ color: "#DC2626" }} />
+          <div className="font-black text-sm" style={{ color: NAVY }}>Mark as Lost Lead</div>
+        </div>
+        <div className="text-xs text-gray-500 mb-4">
+          <span className="font-semibold" style={{ color: NAVY }}>{lead.name}</span> will be moved to Lost Leads. You can reopen this lead at any time.
+        </div>
+        <div className="mb-4">
+          <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Reason *</label>
+          <select value={reason} onChange={e => setReason(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none" style={{ color: NAVY }}>
+            {LOST_REASONS.map(r => <option key={r}>{r}</option>)}
+          </select>
+        </div>
+        {err && <p className="text-[10px] text-red-500 mb-3">{err}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={submit} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50"
+            style={{ background: "#DC2626" }}>{saving ? "Saving…" : "Mark as Lost"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ReassignModal ──────────────────────────────────────────────────────────────
+function ReassignModal({ lead, onClose, onDone }: { lead: LeadRow; onClose: () => void; onDone: () => void }) {
+  const [mentors, setMentors] = useState<{ id: number; name: string }[]>([]);
+  const [newMentorId, setNewMentorId] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/paid-students/assignable-mentors").then(r => r.json()).then((d: { mentors?: { id: number; name: string }[] }) => setMentors(d.mentors ?? [])).catch(() => {});
+  }, []);
+
+  async function submit() {
+    if (!newMentorId) { setErr("Please select a mentor"); return; }
+    setSaving(true); setErr("");
+    try {
+      const r = await apiFetch(`/admin/ignite/leads/${lead.id}/reassign`, { method: "POST", body: JSON.stringify({ newMentorId: Number(newMentorId), reason: reason.trim() || undefined }) });
+      if (r.ok) { onDone(); onClose(); }
+      else { const d = await r.json().catch(() => ({})) as { error?: string }; setErr(d.error ?? "Failed"); }
+    } catch { setErr("Network error"); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center gap-2 mb-4">
+          <UserCog className="w-5 h-5" style={{ color: NAVY }} />
+          <div className="font-black text-sm" style={{ color: NAVY }}>Reassign Lead</div>
+        </div>
+        <div className="text-xs text-gray-500 mb-4">
+          Reassigning <span className="font-semibold" style={{ color: NAVY }}>{lead.name}</span>
+          {lead.assignedMentorName && <> from <span className="font-semibold">{lead.assignedMentorName}</span></>}
+        </div>
+        <div className="space-y-3 mb-4">
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 block mb-1.5">New Mentor *</label>
+            <select value={newMentorId} onChange={e => setNewMentorId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none" style={{ color: NAVY }}>
+              <option value="">Select Mentor</option>
+              {mentors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Reason (optional)</label>
+            <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Mentor on leave"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300" style={{ color: NAVY }} />
+          </div>
+        </div>
+        {err && <p className="text-[10px] text-red-500 mb-3">{err}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={submit} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50"
+            style={{ background: NAVY }}>{saving ? "Saving…" : "Reassign"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── LeadHistoryModal ──────────────────────────────────────────────────────────
+interface StatusHistoryRow { id: number; oldStatus: string | null; newStatus: string; changedByName: string; changedByRole: string; remarks: string | null; changedAt: string; }
+interface ReassignHistoryRow { id: number; previousMentorName: string | null; newMentorName: string; reassignedByName: string; reason: string | null; reassignedAt: string; }
+
+function LeadHistoryModal({ lead, onClose }: { lead: LeadRow; onClose: () => void }) {
+  const [tab, setTab] = useState<"status" | "reassign">("status");
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryRow[]>([]);
+  const [reassignHistory, setReassignHistory] = useState<ReassignHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      apiFetch(`/admin/ignite/leads/${lead.id}/status-history`).then(r => r.json()),
+      apiFetch(`/admin/ignite/leads/${lead.id}/reassignment-history`).then(r => r.json()),
+    ]).then(([sh, rh]) => { setStatusHistory(sh as StatusHistoryRow[]); setReassignHistory(rh as ReassignHistoryRow[]); })
+      .catch(() => {}).finally(() => setLoading(false));
+  }, [lead.id]);
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <div className="font-black text-sm" style={{ color: NAVY }}>Lead History — {lead.name}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">LDN-{String(lead.id).padStart(6, "0")}</div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+
+        <div className="flex gap-1 px-5 pt-3 border-b border-gray-100">
+          {(["status", "reassign"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className="px-3 py-1.5 rounded-t-lg text-xs font-bold transition-all"
+              style={tab === t ? { background: NAVY, color: "#fff" } : { color: "#6B7280" }}>
+              {t === "status" ? "Status History" : "Reassignment History"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {loading ? (
+            <div className="flex justify-center py-8"><RefreshCw className="w-5 h-5 animate-spin text-gray-300" /></div>
+          ) : tab === "status" ? (
+            statusHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">No status changes recorded yet</div>
+            ) : (
+              <div className="space-y-3">
+                {statusHistory.map((h) => (
+                  <div key={h.id} className="flex gap-3 items-start">
+                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: ORANGE }} />
+                    <div className="flex-1 bg-gray-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        {h.oldStatus && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-600">{h.oldStatus}</span>}
+                        {h.oldStatus && <span className="text-[10px] text-gray-400">→</span>}
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "#DCFCE7", color: "#15803D" }}>{h.newStatus}</span>
+                      </div>
+                      {h.remarks && <div className="text-xs text-gray-600 mb-1">"{h.remarks}"</div>}
+                      <div className="text-[10px] text-gray-400">{h.changedByName} · {h.changedByRole} · {fmt(h.changedAt)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            reassignHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">No reassignments recorded yet</div>
+            ) : (
+              <div className="space-y-3">
+                {reassignHistory.map((h) => (
+                  <div key={h.id} className="flex gap-3 items-start">
+                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: "#6366F1" }} />
+                    <div className="flex-1 bg-gray-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-[10px] font-semibold text-gray-500">{h.previousMentorName ?? "Unassigned"}</span>
+                        <span className="text-[10px] text-gray-400">→</span>
+                        <span className="text-[10px] font-bold" style={{ color: NAVY }}>{h.newMentorName}</span>
+                      </div>
+                      {h.reason && <div className="text-xs text-gray-600 mb-1">Reason: "{h.reason}"</div>}
+                      <div className="text-[10px] text-gray-400">By {h.reassignedByName} · {fmt(h.reassignedAt)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1007,9 +1209,13 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [gradeF, setGradeF] = useState("All Grades");
   const [sourceF, setSourceF] = useState("All Sources");
   const [mentorF, setMentorF] = useState("All Mentors");
+  const [viewMode, setViewMode] = useState<"all" | "old" | "lost">("all");
   const [page, setPage] = useState(1);
   const [showAddLead, setShowAddLead] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [markLostLead, setMarkLostLead] = useState<LeadRow | null>(null);
+  const [reassignLead, setReassignLead] = useState<LeadRow | null>(null);
+  const [historyLead, setHistoryLead] = useState<LeadRow | null>(null);
   const PER = 15;
 
   const load = useCallback(() => {
@@ -1029,7 +1235,17 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const statusCounts: Record<string, number> = { "All Status": leads.length };
   leads.forEach((l) => { const s = l.leadStage ?? "new"; statusCounts[s] = (statusCounts[s] ?? 0) + 1; });
 
+  const OLD_DAYS = 30;
+  const isOldLead = (l: LeadRow) => {
+    const ageMs = Date.now() - new Date(l.createdAt).getTime();
+    return ageMs > OLD_DAYS * 86400000 && l.leadStage !== "Converted" && l.leadStage !== "Lost";
+  };
+
   const filtered = leads.filter((l) => {
+    if (viewMode === "lost") { if (l.leadStage !== "Lost") return false; }
+    else if (viewMode === "old") { if (!isOldLead(l)) return false; }
+    else { if (l.leadStage === "Lost") return false; }
+
     const q = search.toLowerCase();
     if (q && !l.name.toLowerCase().includes(q) && !(l.phone ?? "").includes(q) &&
         !(l.school ?? "").toLowerCase().includes(q) && !(l.city ?? "").toLowerCase().includes(q)) return false;
@@ -1039,6 +1255,9 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
     if (mentorF !== "All Mentors" && l.assignedMentorName !== mentorF) return false;
     return true;
   });
+
+  const lostCount = leads.filter(l => l.leadStage === "Lost").length;
+  const oldCount = leads.filter(isOldLead).length;
 
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
@@ -1071,12 +1290,38 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
     <div className="space-y-4">
       {showAddLead && <AddLeadModal onClose={() => setShowAddLead(false)} onSuccess={load} flash={flash} />}
       {showBulkImport && <BulkImportModal onClose={() => setShowBulkImport(false)} onSuccess={load} flash={flash} />}
+      {markLostLead && <MarkLostModal lead={markLostLead} onClose={() => setMarkLostLead(null)} onDone={load} />}
+      {reassignLead && <ReassignModal lead={reassignLead} onClose={() => setReassignLead(null)} onDone={load} />}
+      {historyLead && <LeadHistoryModal lead={historyLead} onClose={() => setHistoryLead(null)} />}
+
+      {/* View Mode Tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {([
+          { key: "all", label: "All Leads", count: leads.filter(l => l.leadStage !== "Lost").length, color: NAVY, bg: "#EEF2FF" },
+          { key: "old", label: "Old Leads (30+ days)", count: oldCount, color: "#D97706", bg: "#FEF3C7" },
+          { key: "lost", label: "Lost Leads", count: lostCount, color: "#DC2626", bg: "#FEE2E2" },
+        ] as const).map((v) => (
+          <button key={v.key} onClick={() => { setViewMode(v.key); setPage(1); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all"
+            style={viewMode === v.key
+              ? { background: v.color, color: "#fff" }
+              : { background: v.bg, color: v.color, border: `1px solid ${v.color}22` }}>
+            {v.label}
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black"
+              style={{ background: viewMode === v.key ? "rgba(255,255,255,0.25)" : v.color + "22", color: viewMode === v.key ? "#fff" : v.color }}>
+              {v.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-black" style={{ color: NAVY }}>All Leads</h1>
-          <p className="text-xs text-gray-500">{leads.length} total leads in pipeline</p>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>
+            {viewMode === "lost" ? "Lost Leads" : viewMode === "old" ? "Old Leads" : "All Leads"}
+          </h1>
+          <p className="text-xs text-gray-500">{filtered.length} leads {viewMode === "lost" ? "marked as lost" : viewMode === "old" ? "inactive for 30+ days" : "in pipeline"}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={exportCSV}
@@ -1212,15 +1457,32 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
                       : <span className="text-gray-300 text-xs">0</span>}
                   </td>
                   <td className="px-3 py-3">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <a href={`tel:${l.phone}`}
                         className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Call">
                         <Phone className="w-3 h-3 text-green-700" />
                       </a>
-                      <a href={`https://wa.me/91${(l.phone ?? "").replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
-                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="WhatsApp">
-                        <Bell className="w-3 h-3 text-green-700" />
-                      </a>
+                      <button onClick={() => setHistoryLead(l)}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#EEF2FF" }} title="View History">
+                        <History className="w-3 h-3 text-indigo-600" />
+                      </button>
+                      <button onClick={() => setReassignLead(l)}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#F0FDF4" }} title="Reassign">
+                        <UserCog className="w-3 h-3" style={{ color: "#15803D" }} />
+                      </button>
+                      {l.leadStage === "Lost" ? (
+                        <button onClick={async () => {
+                          await apiFetch(`/admin/ignite/leads/${l.id}/reopen`, { method: "PATCH", body: JSON.stringify({}) });
+                          load();
+                        }} className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Reopen Lead">
+                          <RotateCcw className="w-3 h-3 text-green-700" />
+                        </button>
+                      ) : (
+                        <button onClick={() => setMarkLostLead(l)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Mark as Lost">
+                          <UserX className="w-3 h-3 text-red-600" />
+                        </button>
+                      )}
                       <button onClick={() => softDelete(l.id, l.name)}
                         className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Delete">
                         <X className="w-3 h-3 text-red-600" />

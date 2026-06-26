@@ -45,3 +45,5 @@ export * from "./roles";
 export * from "./rbacPermissions";
 export * from "./rolePermissions";
 export * from "./coursePricing";
+export * from "./leadStatusHistory";
+export * from "./mentorReassignmentHistory";
