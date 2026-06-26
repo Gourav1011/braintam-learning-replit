@@ -301,8 +301,15 @@ export function Student360Page({ userId, onBack }: { userId: number; onBack: () 
 
   const tabBarRef = useRef<HTMLDivElement>(null);
 
-  // Load 360 + CRM eagerly
+  // Reset all per-student state when userId changes, then fetch fresh data
   useEffect(() => {
+    setData360(null);
+    setCrm(null);
+    setAttendance(null);
+    setAssessments(null);
+    setActiveTab("overview");
+    setEditingParent(false);
+    setEditingStage(false);
     setLoading(true);
     Promise.all([
       apiFetch(`/admin/students/${userId}/360`).then(r => r.json()).catch(() => ({})),

@@ -1607,7 +1607,7 @@ function AdminPageInner() {
       <div className={`flex-1 min-w-0 relative ${student360Id ? "overflow-hidden" : "overflow-auto"}`} style={{ background: "#F5F7FF" }}>
       {student360Id && (
         <div className="absolute inset-0 z-20 overflow-auto flex flex-col" style={{ background: "#F5F7FF" }}>
-          <Student360Page userId={student360Id} onBack={() => setStudent360Id(null)} />
+          <Student360Page key={student360Id} userId={student360Id} onBack={() => setStudent360Id(null)} />
         </div>
       )}
       <div className="p-5 space-y-5">
