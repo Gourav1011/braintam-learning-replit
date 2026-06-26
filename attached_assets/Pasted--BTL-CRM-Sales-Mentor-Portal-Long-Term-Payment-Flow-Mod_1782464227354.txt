@@ -1,0 +1,619 @@
+# BTL CRM – Sales Mentor Portal & Long Term Payment Flow (Modifications)
+
+I am sharing the reference images separately.
+
+Before applying any changes:
+
+1. Read the existing mentor portal.
+2. Read payment routes.
+3. Read payment_links table.
+4. Read notifications.
+5. Read lead details flow.
+6. Read student profile flow.
+7. Read current mentor CRM implementation.
+
+DO NOT create mock data.
+
+DO NOT hardcode names.
+
+DO NOT use fake students.
+
+DO NOT use test data.
+
+Everything must use REAL student data already present in the database.
+
+Example:
+
+The current UI shows:
+
+Student (Grade 5)
+LDN-undefined
+TestLeadOne
+
+This should never happen.
+
+All student information should come from real lead/student records.
+
+If data is missing, show:
+
+—
+Not Available
+
+Never generate fake values.
+
+---
+
+PHASE 1
+MENTOR PORTAL REDESIGN
+----------------------
+
+Keep navigation simple.
+
+BTL CRM
+
+├── My Leads
+└── Payment Status
+
+Nothing else.
+
+Remove:
+
+Settings
+Revenue
+Students
+Analytics pages
+Reports
+Leaderboard
+Extra dashboards
+
+---
+
+## MY LEADS
+
+Chips:
+
+All
+Pending Calls
+Busy
+Call Later
+Completed Calls
+Converted
+
+Completed Calls:
+
+Call connected
+Counselling completed
+No immediate follow-up required.
+
+Converted:
+
+Long-term payment successful.
+
+---
+
+## LEAD CARD
+
+Student Name
+Grade
+Lead ID
+Mobile
+
+Right side:
+
+Last Call
+Next Follow-up
+
+Badges:
+
+Repeated Lead
+Payment Pending
+Payment Failed
+Converted
+
+Actions:
+
+Call
+WhatsApp
+Details Arrow
+
+---
+
+## STUDENT DETAILS PAGE
+
+Only TWO boxes.
+
+No nested tabs.
+
+No extra pages.
+
+No unnecessary headings.
+
+Keep lightweight.
+
+---
+
+## LEFT BOX
+
+Sections:
+
+Payment Link
+Live Class Activity
+Analytics
+Previous Courses
+
+---
+
+## PAYMENT LINK SECTION
+
+Buttons:
+
+Launch Full Payment
+Launch Partial Payment
+Upload Payment
+
+---
+
+## FULL PAYMENT POPUP
+
+Do NOT show:
+
+Student Name
+Grade
+Course Name
+Extra details
+
+Student profile already knows these values.
+
+Only show:
+
+Amount:
+₹16,999
+
+Link Expiry Date:
+[ Date Picker ]
+
+Link Expiry Time:
+[ Time Picker ]
+
+Button:
+
+Launch Payment Link
+
+Nothing else.
+
+---
+
+## PARTIAL PAYMENT POPUP
+
+Only show:
+
+Enter Amount:
+[ ₹______ ]
+
+Link Expiry Date:
+[ Date Picker ]
+
+Link Expiry Time:
+[ Time Picker ]
+
+Button:
+
+Launch Payment Link
+
+Nothing else.
+
+---
+
+## AFTER LINK GENERATION
+
+Show:
+
+Payment Link Generated
+
+https://rzp....
+
+Buttons:
+
+Copy
+WhatsApp
+
+WhatsApp should automatically open parent number.
+
+Message:
+
+Hi,
+
+Congratulations! 🎉
+
+You can complete your child's enrollment by clicking the link below.
+
+https://rzp....
+
+Regards,
+Braintam Learning
+
+---
+
+## PAYMENT STATUS SCREEN
+
+Once payment links start working, this screen should automatically populate.
+
+Columns:
+
+Student Name
+Payment ID
+Amount
+Status
+Created Date
+Expiry Date
+
+Statuses:
+
+CREATED
+PENDING
+PAID
+FAILED
+EXPIRED
+CANCELLED
+
+Search:
+
+Student Name
+Phone
+Payment ID
+
+Filters:
+
+Status
+Date
+
+Actions:
+
+View Details
+
+---
+
+## PAYMENT STATUS FLOW
+
+Launch Link
+↓
+CREATED
+
+Parent opens link
+↓
+PENDING
+
+Parent pays
+↓
+PAID
+
+Link expires
+↓
+EXPIRED
+
+Payment fails
+↓
+FAILED
+
+Payment cancelled
+↓
+CANCELLED
+
+---
+
+## CONVERSION FLOW
+
+Long-term payment successful
+↓
+
+conversionStatus = converted
+
+Lead automatically removed from:
+
+All
+Pending Calls
+Busy
+Call Later
+Completed Calls
+
+Lead automatically moved into:
+
+Converted
+
+Converted card becomes read only.
+
+---
+
+## UPLOAD PAYMENT
+
+Prepare architecture.
+
+Do not fully build approval flow.
+
+Button:
+
+Upload Payment
+
+Fields:
+
+Amount
+UTR / Transaction ID
+Screenshot Upload
+Remarks
+
+Status:
+
+Pending Approval
+
+Admin will approve later.
+
+---
+
+## RIGHT BOX
+
+Remove unnecessary headings.
+
+Keep clean.
+
+---
+
+## STUDENT INFORMATION
+
+Replace:
+
+Parent Name
+
+with
+
+Student Name
+
+---
+
+## SYSTEM NAME
+
+Show:
+
+System Name
+(Read Only)
+
+This is the original name collected from:
+
+Parent
+Website form
+Import
+Admin entry
+
+Never changes.
+
+---
+
+## DISPLAY NAME
+
+Below System Name:
+
+Display Name
+(Mentor Editable)
+
+This is the name mentor wants to use while calling.
+
+Example:
+
+System Name:
+Priyanshi Sharma
+
+Display Name:
+Priya
+
+---
+
+## READ ONLY FIELDS
+
+System Name
+Mobile
+Email
+School
+City
+Lead Source
+
+---
+
+## MENTOR EDITABLE FIELDS
+
+Display Name
+Additional Mobile
+Reference Grade
+Weak Subject
+Strong Subject
+Mentor Notes
+
+Reference Grade:
+
+Used only as notes.
+
+Must NEVER overwrite actual grade.
+
+---
+
+## CALL DETAILS
+
+Who Picked:
+
+Student
+Mother
+Father
+Brother
+Sister
+Other
+
+If Other:
+
+Name
+Relation
+
+Call Status:
+
+Not Connected
+Busy
+Call Later
+Interested
+Not Interested
+Payment Pending
+Payment Failed
+Payment Completed
+
+Remarks:
+
+Large textbox
+
+Next Follow-up:
+
+Date
+Time
+
+Save Remarks
+
+---
+
+## PREVIOUS REMARKS
+
+Permanent timeline.
+
+Never overwrite.
+
+Every remark stores:
+
+Date
+Time
+Mentor Name
+Remark
+
+---
+
+## LIVE CLASS ACTIVITY
+
+Simple list.
+
+Live Class 1
+Live Class 2
+Live Class 3
+
+Duration
+Attendance %
+
+Green:
+Student Active
+
+Red:
+Student Away
+
+No heavy charts.
+
+---
+
+## ANALYTICS
+
+Simple cards only:
+
+Classes Completed
+Attendance %
+Watch Time
+Homework Completion %
+
+---
+
+## PREVIOUS COURSES
+
+Simple list.
+
+Completed
+Dropped
+No Previous Courses
+
+---
+
+## NOTIFICATION SIDEBAR
+
+Bell icon
+Count badge
+Flag/Arrow icon
+
+Click:
+
+Right sidebar opens.
+
+Click again:
+
+Right sidebar closes.
+
+Simple list only.
+
+Newest on top.
+
+Examples:
+
+🟡 Rahul created order.
+🟢 Priya completed payment successfully.
+🔴 Aarav payment failed.
+🟣 Sumit submitted homework.
+🔵 Kritika edited profile.
+💬 Preety sent you a message.
+
+---
+
+## IMPORTANT
+
+Everything must use REAL data.
+
+No:
+
+TestLeadOne
+Student (Grade 5)
+LDN-undefined
+Hardcoded names
+Fake payment records
+
+If DB has no data:
+
+Show proper empty states.
+
+---
+
+## BEFORE APPLYING
+
+Show:
+
+Files to modify
+Routes impacted
+Components impacted
+Database changes required
+
+DO NOT APPLY IMMEDIATELY.
+
+---
+
+## AFTER IMPLEMENTATION
+
+Run:
+
+pnpm typecheck
+pnpm build
+
+Verify:
+
+Mentor login works
+Lead cards work
+Student details work
+Real student data loads
+No fake data exists
+Payment link generation works
+Copy button works
+WhatsApp works
+Payment status tracking works
+Notification sidebar works
+Upload payment form works
+Completed Calls works
+Converted flow works
+Desktop responsive
+Mobile responsive
+
+Provide screenshots after implementation and stop for approval.
