@@ -1,0 +1,301 @@
+BTL CRM – MODERN ONE-SCREEN IGNITE PORTAL
+
+DESIGN PHILOSOPHY
+
+* Everything important should fit on one desktop screen (1920x1080).
+* Minimize vertical scrolling.
+* Use drawers and modals instead of opening new pages.
+* Clean SaaS design with lots of white space.
+* Use Braintam Blue and Orange as accent colors.
+
+=================================================
+LEFT SIDEBAR
+============
+
+Logo
+BTL CRM
+
+IGNITE
+
+* Dashboard
+* Leads
+* Grade Pools
+* Demo Batches
+* Payments
+* Sales Mentors
+* Reports
+
+MASTERY
+
+* Students
+* Courses
+* Classes
+* Academic Mentors
+
+ADMIN
+
+* Users & Roles
+* Settings
+* Audit Logs
+
+Sidebar should collapse to icons.
+
+=================================================
+TOP HEADER
+==========
+
+Global Search
+Notifications Bell
+Current Date & Time
+Quick Actions (+)
+Profile Dropdown
+
+=================================================
+LEADS PAGE LAYOUT
+=================
+
+ROW 1 – LEAD TABS
+
+All Leads
+Pending Deployment
+Old Leads
+Lost Leads
+Converted Leads
+Disabled Leads
+
+Show count badges.
+
+Everything should fit in one horizontal row.
+
+=================================================
+ROW 2 – KPI CARDS
+
+Total Leads
+Pending Deployment
+Contacted
+In Payment
+Converted
+Lost
+
+Compact cards.
+Single row only.
+
+=================================================
+ROW 3 – ACTION BAR
+
+Export CSV
+Bulk Import
+Deploy Leads
+Redistribute
+Add Lead
+
+Buttons aligned right.
+
+=================================================
+ROW 4 – FILTER BAR
+
+Search
+Status
+Grade
+Source
+Mentor
+
+Single compact row.
+
+=================================================
+ROW 5 – MAIN CONTENT AREA
+
+Split screen:
+
+70%
+Lead Table
+
+30%
+Right Insights Panel
+
+=================================================
+LEFT SIDE – LEAD TABLE
+======================
+
+Columns:
+
+Student
+Phone
+Grade
+Status
+Mentor
+Deployment Status
+Created
+Actions
+
+Actions:
+View
+Edit
+History
+More Menu
+
+Enable:
+Sorting
+Pagination
+Bulk Select
+
+Sticky header.
+
+=================================================
+RIGHT SIDE – INSIGHTS PANEL
+===========================
+
+Card 1
+Grade Pools
+
+Grade 1 – 48 leads
+Grade 2 – 62 leads
+Grade 3 – 75 leads
+
+Card 2
+Recent Deployments
+
+Grade 4
+Week 26
+984 Leads
+
+Grade 5
+Week 26
+612 Leads
+
+Card 3
+Quick Statistics
+
+Total Mentors
+Groups Created
+Average Conversion %
+Revenue Generated
+
+=================================================
+DEPLOY LEADS
+============
+
+Do NOT open new page.
+
+Open a drawer.
+
+Drawer Steps:
+
+Select Grades
+Select Mentors
+Choose Distribution Type
+Preview Distribution
+Deploy
+
+Show preview:
+
+Grade 4
+200 Leads
+4 Mentors
+
+Group 1 → 50
+Group 2 → 50
+Group 3 → 50
+Group 4 → 50
+
+Confirm.
+
+=================================================
+REDISTRIBUTE
+============
+
+Open drawer.
+
+Step 1
+Select Mentor
+
+Step 2
+Select Leads
+
+Step 3
+Choose:
+
+Manual
+Random
+
+Step 4
+Preview
+
+Step 5
+Confirm
+
+=================================================
+LEAD DETAILS
+============
+
+Open right-side drawer.
+
+Sections:
+
+Profile
+Timeline
+Notes
+Follow Ups
+Payments
+Assignment History
+Status History
+
+No separate page.
+
+=================================================
+AUTO GROUP ENGINE
+=================
+
+Groups are temporary.
+
+Do not create permanent group pages.
+
+Example:
+
+1000 leads
+10 mentors
+
+Automatically:
+
+Group 1 → Mentor A → 100
+Group 2 → Mentor B → 100
+...
+Group 10 → Mentor J → 100
+
+Store history only.
+
+=================================================
+RESPONSIVE RULES
+================
+
+Desktop:
+Everything fits on one screen.
+
+Laptop:
+Collapse right panel.
+
+Tablet:
+Right panel becomes drawer.
+
+Mobile:
+Cards become carousels.
+
+=================================================
+IMPORTANT
+=========
+
+Do NOT redesign existing CRM.
+
+Reuse current pages.
+
+Add:
+
+* Pending Deployment Tab
+* Grade Pools panel
+* Recent Deployments panel
+* Deploy Leads drawer
+* Redistribute drawer
+* Lead Detail drawer
+
+Goal:
+Professional SaaS dashboard where admins can manage leads without excessive scrolling.

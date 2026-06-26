@@ -1512,13 +1512,6 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
     a.click(); URL.revokeObjectURL(a.href);
   };
 
-  const softDelete = async (id: number, name: string) => {
-    if (!confirm(`Delete lead "${name}"? This action can be undone by an admin.`)) return;
-    try {
-      await apiFetch(`/admin/ignite/leads/${id}`, { method: "DELETE" });
-      flash("Lead deleted", true); load();
-    } catch { flash("Failed to delete lead", false); }
-  };
 
   return (
     <div className="space-y-4">
@@ -1784,10 +1777,6 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
                           <ShieldCheck className="w-3 h-3 text-green-700" />
                         </button>
                       )}
-                      <button onClick={() => softDelete(l.id, l.name)}
-                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Delete">
-                        <X className="w-3 h-3 text-red-600" />
-                      </button>
                     </div>
                   </td>
                 </tr>
