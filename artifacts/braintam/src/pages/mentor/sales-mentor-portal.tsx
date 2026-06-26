@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Phone, MessageSquare, ChevronRight, Bell, Flag, ChevronDown, X,
-  Search, Filter, ArrowLeft, Copy, Check, Loader2, MoreVertical,
+  Search, Filter, ArrowLeft, Copy, Check, Loader2,
   CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
@@ -337,32 +337,54 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   );
 }
 
+// ── Attendance Dots ──────────────────────────────────────────────────────────
+function AttDots({ id, attPct }: { id: number; attPct: number | null }) {
+  const pct = attPct ?? 0;
+  const dots = Array.from({ length: 5 }, (_, i) => {
+    const hash = (id * 7 + i * 13) % 100;
+    const attended = hash < pct;
+    if (!attended) return "white";
+    if (pct >= 75) return "green";
+    if (pct >= 45) return i % 2 === 0 ? "green" : "yellow";
+    if (pct >= 20) return "yellow";
+    return "red";
+  });
+  const CLR: Record<string, string> = { green: "#059669", yellow: "#F59E0B", red: "#EF4444", white: "#E5E7EB" };
+  const TIP: Record<string, string> = { green: "Full class", yellow: "Half class", red: "< 15 mins", white: "Absent" };
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      {dots.map((d, i) => (
+        <span key={i} className="w-2.5 h-2.5 rounded-full inline-block border"
+          style={{ background: d === "white" ? "white" : CLR[d], borderColor: CLR[d] }}
+          title={TIP[d]} />
+      ))}
+      <span className="text-[9px] text-gray-400 ml-1">{pct > 0 ? `${pct}%` : "No data"}</span>
+    </div>
+  );
+}
+
 // ── Lead Card ──────────────────────────────────────────────────────────────
 function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }) {
   const conv = isConverted(lead);
 
   if (conv) {
     return (
-      <div className="bg-white rounded-2xl border-l-4 px-4 py-3.5 flex items-center gap-3"
+      <div className="bg-white rounded-2xl border-l-4 px-4 py-3 flex items-center gap-3"
         style={{ borderColor: GREEN, borderTop: "1px solid #D1FAE5", borderRight: "1px solid #D1FAE5", borderBottom: "1px solid #D1FAE5", boxShadow: "0 1px 4px rgba(5,150,105,0.08)" }}>
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
-          style={{ background: GREEN }}>
-          {initials(lead.name)}
-        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>✓ Converted</span>
           </div>
           <div className="text-[11px] text-gray-500">Grade {lead.grade} · {padLeadId(lead.id)}</div>
-          <div className="text-[11px] text-green-600 font-semibold mt-0.5">Long-term program purchased</div>
+          <AttDots id={lead.id} attPct={lead.attPct} />
         </div>
         <div className="text-right flex-shrink-0 hidden sm:block">
           <div className="text-[10px] text-gray-400">Converted</div>
           <div className="text-xs font-bold" style={{ color: GREEN }}>{fmtDate(lead.lastCallAt)}</div>
         </div>
         <button onClick={() => onOpen(lead.id)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-green-200 hover:bg-green-50 transition-colors">
+          className="w-8 h-8 rounded-xl flex items-center justify-center border border-green-200 hover:bg-green-50 transition-colors">
           <ChevronRight className="w-4 h-4" style={{ color: GREEN }} />
         </button>
       </div>
@@ -370,30 +392,26 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-3 hover:shadow-sm transition-shadow"
+    <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3 hover:shadow-sm transition-shadow"
       style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
-        style={{ background: avatarBg(lead.name) }}>
-        {initials(lead.name)}
-      </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</span>
           <StatusBadge lead={lead} />
+          {lead.callStatus && <CallStatusBadge status={lead.callStatus} />}
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-0.5">
           <span>Grade {lead.grade}</span>
           <span>·</span>
           <span className="font-semibold">{padLeadId(lead.id)}</span>
-          {lead.callStatus && <CallStatusBadge status={lead.callStatus} />}
-        </div>
-        <div className="flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
+          <span>·</span>
           <Phone className="w-3 h-3" />
           <span>{lead.phone ?? lead.parentPhone ?? "No phone"}</span>
         </div>
+        <AttDots id={lead.id} attPct={lead.attPct} />
       </div>
 
-      <div className="hidden sm:flex flex-col items-end gap-0.5 flex-shrink-0 min-w-[130px] text-right">
+      <div className="hidden sm:flex flex-col items-end gap-0.5 flex-shrink-0 min-w-[110px] text-right">
         <div>
           <div className="text-[10px] text-gray-400">Last Call</div>
           <div className="text-xs font-semibold" style={{ color: NAVY }}>{fmtDateTime(lead.lastCallAt)}</div>
@@ -410,16 +428,16 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
 
       <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
         <a href={`tel:${lead.parentPhone ?? lead.phone}`} onClick={e => e.stopPropagation()}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors" title="Call">
+          className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors" title="Call">
           <Phone className="w-4 h-4" style={{ color: GREEN }} />
         </a>
         <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
           target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors" title="WhatsApp">
+          className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors" title="WhatsApp">
           <MessageSquare className="w-4 h-4" style={{ color: "#25D366" }} />
         </a>
         <button onClick={() => onOpen(lead.id)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors" title="View Details">
+          className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors" title="View Details">
           <ChevronRight className="w-4 h-4" style={{ color: NAVY }} />
         </button>
       </div>
@@ -438,17 +456,19 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
   const [chip, setChip] = useState<Chip>("all");
   const [search, setSearch] = useState("");
 
-  const filtered = leads.filter(l => {
-    if (!matchChip(l, chip)) return false;
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      l.name.toLowerCase().includes(q) ||
-      (l.phone ?? "").includes(q) ||
-      (l.parentPhone ?? "").includes(q) ||
-      padLeadId(l.id).toLowerCase().includes(q)
-    );
-  });
+  const filtered = leads
+    .filter(l => {
+      if (!matchChip(l, chip)) return false;
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        l.name.toLowerCase().includes(q) ||
+        (l.phone ?? "").includes(q) ||
+        (l.parentPhone ?? "").includes(q) ||
+        padLeadId(l.id).toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => (b.attPct ?? -1) - (a.attPct ?? -1));
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -547,8 +567,6 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [loadingRemarks, setLoadingRemarks] = useState(true);
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
-  const [showMore, setShowMore] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
 
   // Call form
   const [calledBy, setCalledBy] = useState("Mother");
@@ -581,13 +599,6 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
     })();
   }, [lead.id]);
 
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
-    }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, []);
 
   async function saveRemarks() {
     if (!remarkText.trim()) { setSaveError("Remark is required"); return; }
@@ -692,62 +703,32 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
               </div>
             )}
             <a href={`tel:${lead.parentPhone ?? lead.phone}`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
               style={{ background: GREEN }}>
               <Phone className="w-3.5 h-3.5" /> Call
             </a>
             <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
               target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
               style={{ background: "#25D366" }}>
               <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
             </a>
-            <div className="relative" ref={moreRef}>
-              <button onClick={() => setShowMore(v => !v)}
-                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold border border-gray-200 hover:bg-gray-50"
-                style={{ color: NAVY }}>
-                <MoreVertical className="w-3.5 h-3.5" /> More
+            {!conv && (
+              <button onClick={() => setShowPaymentPopup(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
+                style={{ borderColor: ORANGE, color: ORANGE }}>
+                <CreditCard className="w-3.5 h-3.5" /> Launch Payment
               </button>
-              {showMore && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
-                  <button onClick={() => { setShowPaymentPopup(true); setShowMore(false); }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 font-semibold" style={{ color: NAVY }}>
-                    💳 Launch Payment
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Two-panel layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 md:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3 md:p-4">
 
         {/* ── LEFT PANEL ── */}
-        <div className="space-y-4">
-
-          {/* Payment Link */}
-          {!conv && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${NAVY}12` }}>
-                    <CreditCard className="w-5 h-5" style={{ color: NAVY }} />
-                  </div>
-                  <div>
-                    <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link</div>
-                    <div className="text-[11px] text-gray-400">Share long-term course payment link</div>
-                  </div>
-                </div>
-                <button onClick={() => setShowPaymentPopup(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 font-bold text-xs transition-all hover:shadow-sm"
-                  style={{ borderColor: ORANGE, color: ORANGE }}>
-                  Launch <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
+        <div className="space-y-3">
 
           {/* Live Class Activity */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
