@@ -809,6 +809,8 @@ export default function BTLCRMPage() {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
   if (!student || (role !== "mentor" && role !== "admin")) return <Redirect to="/mentor/login" />;
+  // Wait for dashboard so we know mentorType before rendering either portal
+  if (!dashboard) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
 
   // ── Derived data ──
   const filteredStudents = students

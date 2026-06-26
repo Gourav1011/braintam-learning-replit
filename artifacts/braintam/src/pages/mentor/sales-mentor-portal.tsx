@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Phone, MessageSquare, ChevronRight, Bell, Flag, ChevronDown, X,
   Search, Filter, ArrowLeft, Copy, Check, Loader2, MoreVertical,
-  CreditCard, BookOpen, BarChart2, ClipboardList,
+  CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
 
@@ -71,7 +71,7 @@ interface Notification {
 function initials(name: string) {
   return name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
 }
-function leadId(id: number) { return `LDN-${String(id).padStart(4, "0")}`; }
+function padLeadId(id: number) { return `LDN-${String(id).padStart(4, "0")}`; }
 function fmtDate(s: string | null) {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" });
@@ -104,29 +104,30 @@ function followUpColor(at: string | null) {
   if (isTomorrow(at)) return ORANGE;
   return "#3B82F6";
 }
-function avatarColor(name: string) {
-  const colors = [NAVY, "#7C3AED", "#0284C7", "#059669", "#D97706", "#DC2626", "#DB2777"];
+function avatarBg(name: string) {
+  const cs = [NAVY, "#7C3AED", "#0284C7", "#059669", "#D97706", "#DC2626", "#DB2777"];
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length;
-  return colors[h];
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % cs.length;
+  return cs[h];
 }
 
-// ── Chip filter mapping ────────────────────────────────────────────────────
+// ── Chip filter ────────────────────────────────────────────────────────────
 const CHIPS = [
-  { key: "all",       label: "All" },
-  { key: "pending",   label: "Pending Calls" },
-  { key: "busy",      label: "Busy" },
-  { key: "call-later",label: "Call Later" },
-  { key: "converted", label: "Converted" },
+  { key: "all",         label: "All" },
+  { key: "pending",     label: "Pending Calls" },
+  { key: "busy",        label: "Busy" },
+  { key: "call-later",  label: "Call Later" },
+  { key: "converted",   label: "Converted" },
 ] as const;
 type Chip = typeof CHIPS[number]["key"];
 
 function matchChip(lead: Lead, chip: Chip) {
-  if (chip === "all") return lead.leadStage !== "Converted";
-  if (chip === "pending") return lead.callStatus === "Need To Call" || lead.callStatus === "Pending";
-  if (chip === "busy") return lead.callStatus === "Busy";
-  if (chip === "call-later") return lead.callStatus === "Call Back" || lead.callStatus === "Call Later";
-  if (chip === "converted") return lead.leadStage === "Converted";
+  const converted = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed";
+  if (chip === "all")        return !converted;
+  if (chip === "pending")    return !converted && (lead.callStatus === "Need To Call" || lead.callStatus === "Pending");
+  if (chip === "busy")       return !converted && lead.callStatus === "Busy";
+  if (chip === "call-later") return !converted && (lead.callStatus === "Call Back" || lead.callStatus === "Call Later");
+  if (chip === "converted")  return converted;
   return true;
 }
 function chipCount(leads: Lead[], chip: Chip) {
@@ -135,15 +136,32 @@ function chipCount(leads: Lead[], chip: Chip) {
 
 // ── Status badge ───────────────────────────────────────────────────────────
 function StatusBadge({ lead }: { lead: Lead }) {
-  if (lead.leadStage === "Converted")
-    return <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>Converted</span>;
-  if (lead.leadStage === "Payment Pending" || lead.callStatus === "Payment Pending")
-    return <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#FEF3C7", color: "#D97706" }}>Payment Pending</span>;
-  if (lead.leadStage === "Payment Failed" || lead.callStatus === "Payment Failed")
-    return <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#FEE2E2", color: "#DC2626" }}>Payment Failed</span>;
-  if (lead.repeatedCustomer)
-    return <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#FFFBEB", color: "#D97706" }}>Repeat Lead</span>;
-  return null;
+  const c = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed"
+    ? { bg: "#DCFCE7", color: GREEN, label: "✓ Converted" }
+    : lead.leadStage === "Payment Pending" || lead.callStatus === "Payment Pending"
+      ? { bg: "#FEF3C7", color: "#D97706", label: "Payment Pending" }
+      : lead.leadStage === "Payment Failed" || lead.callStatus === "Payment Failed"
+        ? { bg: "#FEE2E2", color: "#DC2626", label: "Payment Failed" }
+        : lead.repeatedCustomer
+          ? { bg: "#FFFBEB", color: "#D97706", label: "Repeat Lead" }
+          : lead.leadStage === "Highly Interested"
+            ? { bg: "#FFF7ED", color: ORANGE, label: "🔥 Hot Lead" }
+            : null;
+  if (!c) return null;
+  return <span className="text-[10px] px-2 py-0.5 rounded-full font-black whitespace-nowrap" style={{ background: c.bg, color: c.color }}>{c.label}</span>;
+}
+
+function CallStatusBadge({ status }: { status: string }) {
+  const m: Record<string, { bg: string; color: string }> = {
+    "Need To Call": { bg: "#FEE2E2", color: "#DC2626" },
+    "Busy":         { bg: "#FEF3C7", color: "#D97706" },
+    "Call Back":    { bg: "#EEF2FF", color: "#6366F1" },
+    "Call Later":   { bg: "#EEF2FF", color: "#6366F1" },
+    "Picked":       { bg: "#DCFCE7", color: GREEN },
+    "Interested":   { bg: "#DBEAFE", color: "#2563EB" },
+  };
+  const s = m[status] ?? { bg: "#F3F4F6", color: "#6B7280" };
+  return <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap" style={s}>{status}</span>;
 }
 
 // ── Notification Panel ─────────────────────────────────────────────────────
@@ -152,79 +170,47 @@ function NotificationPanel({ notifications, onClose, onNotifClick }: {
   onClose: () => void;
   onNotifClick: (n: Notification) => void;
 }) {
-  const today = notifications.filter(n => {
-    const d = new Date(n.time);
-    const now = new Date();
-    return d.toDateString() === now.toDateString();
-  });
-  const yesterday = notifications.filter(n => {
-    const d = new Date(n.time);
-    const yest = new Date(); yest.setDate(yest.getDate() - 1);
-    return d.toDateString() === yest.toDateString();
-  });
-
-  function dot(color: string) {
-    return <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5" style={{ background: color }} />;
-  }
+  const groups = [
+    { label: "Today",     items: notifications.filter(n => { const d = new Date(n.time); const now = new Date(); return d.toDateString() === now.toDateString(); }) },
+    { label: "Yesterday", items: notifications.filter(n => { const d = new Date(n.time); const y = new Date(); y.setDate(y.getDate()-1); return d.toDateString() === y.toDateString(); }) },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="flex-1" onClick={onClose} />
-      <div className="w-80 h-full bg-white shadow-2xl flex flex-col border-l border-gray-100 animate-slide-in-right"
-        style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className="w-80 h-full bg-white shadow-2xl flex flex-col border-l border-gray-100"
+        style={{ fontFamily: "Poppins, sans-serif", animation: "slideInRight .2s ease" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <div className="font-black text-sm" style={{ color: NAVY }}>Notifications</div>
-            <div className="text-[11px] text-gray-400">You have {notifications.filter(n => n.unread).length} new notifications</div>
+            <div className="text-[11px] text-gray-400">{notifications.filter(n => n.unread).length} unread</div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
-            <X className="w-4 h-4 text-gray-500" />
-          </button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
-
         <div className="flex-1 overflow-y-auto">
-          {today.length > 0 && (
-            <div>
-              <div className="px-5 py-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Today</div>
-              {today.map(n => (
+          {groups.map(g => g.items.length > 0 && (
+            <div key={g.label}>
+              <div className="px-5 pt-3 pb-1 text-[10px] font-black text-gray-400 uppercase tracking-wider">{g.label}</div>
+              {g.items.map(n => (
                 <button key={n.id} onClick={() => onNotifClick(n)}
-                  className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-50"
+                  className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 border-b border-gray-50 transition-colors"
                   style={{ background: n.unread ? "rgba(11,43,107,0.025)" : "white" }}>
-                  {dot(n.color)}
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1" style={{ background: n.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold leading-snug" style={{ color: NAVY }}>{n.text}</div>
                     <div className="text-[10px] text-gray-400 mt-0.5">{fmtTime(n.time)}</div>
                   </div>
-                  {n.unread && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: ORANGE }} />}
+                  {n.unread && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: ORANGE }} />}
                 </button>
               ))}
             </div>
-          )}
-          {yesterday.length > 0 && (
-            <div>
-              <div className="px-5 py-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Yesterday</div>
-              {yesterday.map(n => (
-                <button key={n.id} onClick={() => onNotifClick(n)}
-                  className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-50">
-                  {dot(n.color)}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold leading-snug" style={{ color: NAVY }}>{n.text}</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">Yesterday, {fmtTime(n.time)}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          {today.length === 0 && yesterday.length === 0 && (
+          ))}
+          {groups.every(g => g.items.length === 0) && (
             <div className="flex flex-col items-center justify-center h-40 gap-2">
               <Bell className="w-8 h-8 text-gray-200" />
               <p className="text-xs text-gray-400">No notifications yet</p>
             </div>
           )}
-        </div>
-
-        <div className="px-5 py-3 border-t border-gray-100">
-          <button className="text-xs font-bold" style={{ color: ORANGE }}>View All Notifications</button>
         </div>
       </div>
     </div>
@@ -235,19 +221,17 @@ function NotificationPanel({ notifications, onClose, onNotifClick }: {
 function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const [mode, setMode] = useState<"choose" | "partial" | "generated">("choose");
   const [amount, setAmount] = useState("5000");
-  const [note, setNote] = useState("");
   const [generating, setGenerating] = useState(false);
   const [link, setLink] = useState("");
   const [copied, setCopied] = useState(false);
 
-  function generateLink(type: "full" | "partial") {
+  function generate() {
     setGenerating(true);
     setTimeout(() => {
-      const rand = Math.random().toString(36).slice(2, 10);
-      setLink(`https://rzp.io/l/${rand}`);
+      setLink(`https://rzp.io/l/${Math.random().toString(36).slice(2, 10)}`);
       setGenerating(false);
       setMode("generated");
-    }, 1000);
+    }, 900);
   }
 
   function copyLink() {
@@ -256,80 +240,69 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function whatsappLink() {
-    const phone = (lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "");
-    const msg = encodeURIComponent(`Dear ${lead.parentName ?? "Parent"}, please complete the payment for ${lead.name}'s Braintam long-term course: ${link}`);
-    window.open(`https://wa.me/91${phone}?text=${msg}`, "_blank");
+  function whatsappParent() {
+    const ph = (lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "");
+    const msg = encodeURIComponent(`नमस्ते ${lead.parentName ?? ""}! ${lead.name} के Braintam long-term course का payment यहाँ से करें: ${link}`);
+    window.open(`https://wa.me/91${ph}?text=${msg}`, "_blank");
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
-        style={{ fontFamily: "Poppins, sans-serif" }}>
-
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="font-black text-sm" style={{ color: NAVY }}>Launch Payment</div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
 
-        {/* Choose payment type */}
         {mode === "choose" && (
           <div className="p-5">
-            <p className="text-xs text-gray-500 mb-4">Choose payment type</p>
+            <p className="text-xs text-gray-500 mb-4">Select payment type for <strong>{lead.name}</strong></p>
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => generateLink("full")}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-all">
-                <CreditCard className="w-6 h-6" style={{ color: "#3B82F6" }} />
+              <button onClick={generate}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all">
+                <CreditCard className="w-6 h-6 text-blue-500" />
                 <div className="font-black text-xs" style={{ color: NAVY }}>Full Payment</div>
-                <div className="text-[10px] text-gray-400 text-center">Share link for complete payment</div>
+                <div className="text-[10px] text-gray-400 text-center">Complete course fee</div>
               </button>
               <button onClick={() => setMode("partial")}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-purple-200 hover:bg-purple-50 transition-all">
-                <CreditCard className="w-6 h-6" style={{ color: "#7C3AED" }} />
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-purple-300 hover:bg-purple-50 transition-all">
+                <CreditCard className="w-6 h-6 text-purple-500" />
                 <div className="font-black text-xs" style={{ color: NAVY }}>Partial Payment</div>
-                <div className="text-[10px] text-gray-400 text-center">Share link for partial payment</div>
+                <div className="text-[10px] text-gray-400 text-center">Custom amount</div>
               </button>
             </div>
           </div>
         )}
 
-        {/* Partial amount input */}
         {mode === "partial" && (
           <div className="p-5 space-y-3">
-            <div className="font-bold text-xs text-gray-600 mb-1">Partial Payment</div>
+            <div className="font-bold text-xs" style={{ color: NAVY }}>Partial Payment</div>
             <div>
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">Enter Amount (₹)</label>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">Amount (₹)</label>
               <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300"
                 style={{ color: NAVY }} />
             </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">Note (Optional)</label>
-              <input type="text" value={note} onChange={e => setNote(e.target.value)}
-                placeholder="e.g. Advance payment for admission"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300" />
-            </div>
-            <button onClick={() => generateLink("partial")} disabled={!amount}
-              className="w-full py-3 rounded-xl font-black text-white text-sm"
+            <button onClick={generate} disabled={!amount || generating}
+              className="w-full py-3 rounded-xl font-black text-white text-sm transition-all"
               style={{ background: amount ? `linear-gradient(90deg,${NAVY},#1a4ba8)` : "#9CA3AF" }}>
-              {generating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Launch Payment Link"}
+              {generating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Generate Link"}
             </button>
           </div>
         )}
 
-        {/* Generated link */}
         {mode === "generated" && (
           <div className="p-5 text-center space-y-4">
             <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: "#DCFCE7" }}>
               <Check className="w-7 h-7" style={{ color: GREEN }} />
             </div>
             <div>
-              <div className="font-black text-sm mb-0.5" style={{ color: NAVY }}>Payment Link Generated</div>
-              <div className="text-xs text-gray-400">You can share the link with the student/parent.</div>
+              <div className="font-black text-sm mb-0.5" style={{ color: NAVY }}>Payment Link Ready!</div>
+              <div className="text-xs text-gray-400">Share with student or parent</div>
             </div>
-            <div className="flex items-center gap-2 p-3 rounded-xl border border-gray-200 bg-gray-50">
-              <span className="text-[11px] text-blue-600 font-semibold flex-1 truncate text-left">{link}</span>
+            <div className="flex items-center gap-2 p-3 rounded-xl border border-gray-200 bg-gray-50 text-left">
+              <span className="text-[11px] text-blue-600 font-semibold flex-1 truncate">{link}</span>
               <button onClick={copyLink}
                 className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
                 style={{ background: copied ? "#DCFCE7" : `${NAVY}15`, color: copied ? GREEN : NAVY }}>
@@ -337,19 +310,19 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            <div className="text-[10px] text-gray-400">This link is valid for 48 hours.</div>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={copyLink}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold"
                 style={{ background: `${NAVY}12`, color: NAVY }}>
                 <Copy className="w-3.5 h-3.5" /> Copy Link
               </button>
-              <button onClick={whatsappLink}
+              <button onClick={whatsappParent}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white"
                 style={{ background: "#25D366" }}>
-                <MessageSquare className="w-3.5 h-3.5" /> WhatsApp Parent
+                <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
               </button>
             </div>
+            <div className="text-[10px] text-gray-400">Valid for 48 hours · ₹39 Ignite or long-term amount</div>
             <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600">Close</button>
           </div>
         )}
@@ -360,17 +333,43 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 
 // ── Lead Card ──────────────────────────────────────────────────────────────
 function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }) {
+  const isConverted = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed";
+
+  if (isConverted) {
+    return (
+      <div className="bg-white rounded-2xl border-l-4 px-4 py-3.5 flex items-center gap-3"
+        style={{ borderColor: GREEN, borderTop: "1px solid #D1FAE5", borderRight: "1px solid #D1FAE5", borderBottom: "1px solid #D1FAE5", boxShadow: "0 1px 4px rgba(5,150,105,0.08)" }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
+          style={{ background: GREEN }}>
+          {initials(lead.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>✓ Converted</span>
+          </div>
+          <div className="text-[11px] text-gray-500">Grade {lead.grade} · {padLeadId(lead.id)}</div>
+          <div className="text-[11px] text-green-600 font-semibold mt-0.5">5-Day Ignite Program · ₹39 paid</div>
+        </div>
+        <div className="text-right flex-shrink-0 hidden sm:block">
+          <div className="text-[10px] text-gray-400">Converted</div>
+          <div className="text-xs font-bold" style={{ color: GREEN }}>{fmtDate(lead.lastCallAt)}</div>
+        </div>
+        <button onClick={() => onOpen(lead.id)}
+          className="w-9 h-9 rounded-xl flex items-center justify-center border border-green-200 hover:bg-green-50 transition-colors">
+          <ChevronRight className="w-4 h-4" style={{ color: GREEN }} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-3 hover:shadow-sm transition-shadow"
       style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-
-      {/* Avatar */}
       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
-        style={{ background: avatarColor(lead.name) }}>
+        style={{ background: avatarBg(lead.name) }}>
         {initials(lead.name)}
       </div>
-
-      {/* Main info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</span>
@@ -378,43 +377,43 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-0.5">
           <span>Grade {lead.grade}</span>
-          <span>•</span>
-          <span className="font-semibold" style={{ color: "#6B7280" }}>{leadId(lead.id)}</span>
+          <span>·</span>
+          <span className="font-semibold">{padLeadId(lead.id)}</span>
+          {lead.callStatus && <CallStatusBadge status={lead.callStatus} />}
         </div>
         <div className="flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
           <Phone className="w-3 h-3" />
-          <span>{lead.phone ?? lead.parentPhone ?? "—"}</span>
+          <span>{lead.phone ?? lead.parentPhone ?? "No phone"}</span>
         </div>
       </div>
 
-      {/* Right: Last Call + Follow-up */}
-      <div className="hidden sm:flex flex-col items-end gap-0.5 flex-shrink-0 min-w-[130px]">
+      <div className="hidden sm:flex flex-col items-end gap-0.5 flex-shrink-0 min-w-[130px] text-right">
         <div>
           <div className="text-[10px] text-gray-400">Last Call</div>
           <div className="text-xs font-semibold" style={{ color: NAVY }}>{fmtDateTime(lead.lastCallAt)}</div>
-          {lead.lastCallAt && <div className="text-[10px] text-gray-400">Calls: {lead.attPct ? 1 : 0}</div>}
         </div>
-        <div className="mt-1 text-right">
-          <div className="text-[10px] text-gray-400">Next Follow-up</div>
-          <div className="text-xs font-bold" style={{ color: followUpColor(lead.nextFollowUpAt) }}>
-            {followUpLabel(lead.nextFollowUpAt, lead.nextFollowUpTime)}
+        {lead.nextFollowUpAt && (
+          <div className="mt-0.5">
+            <div className="text-[10px] text-gray-400">Next Follow-up</div>
+            <div className="text-xs font-bold" style={{ color: followUpColor(lead.nextFollowUpAt) }}>
+              {followUpLabel(lead.nextFollowUpAt, lead.nextFollowUpTime)}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Action buttons */}
       <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
         <a href={`tel:${lead.parentPhone ?? lead.phone}`} onClick={e => e.stopPropagation()}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors">
+          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors" title="Call">
           <Phone className="w-4 h-4" style={{ color: GREEN }} />
         </a>
         <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
           target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors">
+          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-green-50 hover:border-green-300 transition-colors" title="WhatsApp">
           <MessageSquare className="w-4 h-4" style={{ color: "#25D366" }} />
         </a>
         <button onClick={() => onOpen(lead.id)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors">
+          className="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors" title="View Details">
           <ChevronRight className="w-4 h-4" style={{ color: NAVY }} />
         </button>
       </div>
@@ -423,10 +422,12 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
 }
 
 // ── My Leads View ──────────────────────────────────────────────────────────
-function MyLeadsView({ leads, loading, onOpen }: {
+function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
   leads: Lead[];
   loading: boolean;
+  error: string;
   onOpen: (id: number) => void;
+  onRefresh: () => void;
 }) {
   const [chip, setChip] = useState<Chip>("all");
   const [search, setSearch] = useState("");
@@ -439,16 +440,22 @@ function MyLeadsView({ leads, loading, onOpen }: {
       l.name.toLowerCase().includes(q) ||
       (l.phone ?? "").includes(q) ||
       (l.parentPhone ?? "").includes(q) ||
-      leadId(l.id).toLowerCase().includes(q)
+      padLeadId(l.id).toLowerCase().includes(q)
     );
   });
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ fontFamily: "Poppins, sans-serif" }}>
-      {/* Title */}
-      <div className="mb-4">
-        <h1 className="text-xl font-black" style={{ color: NAVY }}>My Leads</h1>
-        <p className="text-xs text-gray-400 mt-0.5">All leads assigned to me</p>
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>My Leads</h1>
+          <p className="text-xs text-gray-400 mt-0.5">{leads.length} leads assigned to you</p>
+        </div>
+        <button onClick={onRefresh} disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-bold hover:bg-gray-50 transition-colors"
+          style={{ color: NAVY }}>
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "↻"} Refresh
+        </button>
       </div>
 
       {/* Filter chips */}
@@ -490,22 +497,35 @@ function MyLeadsView({ leads, loading, onOpen }: {
         </button>
       </div>
 
-      {/* Leads list */}
+      {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} />
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-7 h-7 animate-spin" style={{ color: NAVY }} />
+          <p className="text-xs text-gray-400">Loading your leads...</p>
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <AlertCircle className="w-8 h-8 text-red-400" />
+          <p className="text-sm font-bold text-gray-500">Could not load leads</p>
+          <p className="text-xs text-gray-400">{error}</p>
+          <button onClick={onRefresh}
+            className="mt-2 px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: NAVY }}>
+            Try Again
+          </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
-          <p className="font-bold text-sm text-gray-400">No leads found</p>
-          <p className="text-xs text-gray-300 mt-1">Try a different filter or search</p>
+          <p className="font-bold text-sm text-gray-400">No leads in this category</p>
+          <p className="text-xs text-gray-300 mt-1">
+            {search ? "Try a different search term" : "All your leads will appear here"}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map(lead => <LeadCard key={lead.id} lead={lead} onOpen={onOpen} />)}
-          <div className="text-center pt-2 text-xs text-gray-400">
-            Showing 1 to {filtered.length} of {filtered.length} leads
-          </div>
+          <p className="text-center pt-2 text-xs text-gray-400">
+            Showing {filtered.length} of {chipCount(leads, chip)} {CHIPS.find(c => c.key === chip)?.label} leads
+          </p>
         </div>
       )}
     </div>
@@ -513,10 +533,10 @@ function MyLeadsView({ leads, loading, onOpen }: {
 }
 
 // ── Student Detail View ────────────────────────────────────────────────────
-function StudentDetailView({ leadId: lid, lead, onBack }: {
-  leadId: number;
+function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   lead: Lead;
   onBack: () => void;
+  onLeadUpdated: (updated: Partial<Lead>) => void;
 }) {
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [loadingRemarks, setLoadingRemarks] = useState(true);
@@ -524,7 +544,7 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Call form state
+  // Call form
   const [calledBy, setCalledBy] = useState("Mother");
   const [callStatus, setCallStatus] = useState("Call Later");
   const [nextDate, setNextDate] = useState(lead.nextFollowUpAt?.slice(0, 10) ?? "");
@@ -534,33 +554,42 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
   const [saveError, setSaveError] = useState("");
   const [saveOk, setSaveOk] = useState(false);
 
+  // Editable mentor info
+  const [editParentName, setEditParentName] = useState(lead.parentName ?? "");
+  const [editParentPhone, setEditParentPhone] = useState(lead.parentPhone ?? "");
+  const [editWeak, setEditWeak] = useState(lead.weakSubject ?? "");
+  const [editStrong, setEditStrong] = useState(lead.strongSubject ?? "");
+  const [editInterest, setEditInterest] = useState(lead.interestLevel ?? "");
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [infoSaveOk, setInfoSaveOk] = useState(false);
+
+  const isConverted = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed";
+
   useEffect(() => {
     (async () => {
       setLoadingRemarks(true);
       try {
-        const r = await apiFetch(`/mentor/sales/history/${lid}`);
+        const r = await apiFetch(`/mentor/sales/history/${lead.id}`);
         if (r.ok) setRemarks(await r.json());
       } finally { setLoadingRemarks(false); }
     })();
-  }, [lid]);
+  }, [lead.id]);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handle(e: MouseEvent) {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
   }, []);
 
   async function saveRemarks() {
     if (!remarkText.trim()) { setSaveError("Remark is required"); return; }
-    setSaving(true);
-    setSaveError("");
-    const r = await apiFetch(`/mentor/sales/call-outcome/${lid}`, {
+    setSaving(true); setSaveError("");
+    const r = await apiFetch(`/mentor/sales/call-outcome/${lead.id}`, {
       method: "POST",
       body: JSON.stringify({
-        callOutcome: callStatus,
-        leadStatus: callStatus,
+        callOutcome: callStatus, leadStatus: callStatus,
         remark: remarkText.trim(),
         nextFollowUpAt: nextDate || undefined,
         nextFollowUpTime: nextTime || undefined,
@@ -570,8 +599,9 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
       setSaveOk(true);
       setRemarkText("");
       setTimeout(() => setSaveOk(false), 2500);
-      const r2 = await apiFetch(`/mentor/sales/history/${lid}`);
+      const r2 = await apiFetch(`/mentor/sales/history/${lead.id}`);
       if (r2.ok) setRemarks(await r2.json());
+      onLeadUpdated({ callStatus, nextFollowUpAt: nextDate || lead.nextFollowUpAt, nextFollowUpTime: nextTime || lead.nextFollowUpTime, lastCallAt: new Date().toISOString() });
     } else {
       const d = await r.json().catch(() => ({}));
       setSaveError(d.error ?? "Failed to save");
@@ -579,8 +609,30 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
     setSaving(false);
   }
 
+  async function saveInfo() {
+    setInfoSaving(true);
+    const r = await apiFetch(`/mentor/students/${lead.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        parentName: editParentName,
+        parentPhone: editParentPhone,
+        weakSubject: editWeak,
+        strongSubject: editStrong,
+        interestLevel: editInterest,
+      }),
+    });
+    if (r.ok) {
+      setInfoSaveOk(true);
+      setTimeout(() => setInfoSaveOk(false), 2500);
+      onLeadUpdated({ parentName: editParentName, parentPhone: editParentPhone, weakSubject: editWeak, strongSubject: editStrong, interestLevel: editInterest });
+    }
+    setInfoSaving(false);
+  }
+
   const CALL_WHO = ["Mother", "Father", "Student", "Brother", "Sister", "Other"];
   const CALL_STATUSES = ["Not Connected", "Busy", "Call Later", "Interested", "Not Interested", "Payment Pending", "Payment Failed", "Payment Completed"];
+  const SUBJECTS = ["Mathematics", "Science", "English", "Hindi", "Social Studies", "Physics", "Chemistry", "Biology", "Other"];
+  const INTEREST_LEVELS = ["Low", "Moderate", "High", "Very High"];
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -591,6 +643,9 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
         <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-bold hover:opacity-70 transition-opacity" style={{ color: NAVY }}>
           <ArrowLeft className="w-4 h-4" /> Back to Leads
         </button>
+        {isConverted && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>✓ Converted Student</span>
+        )}
       </div>
 
       {/* Student header */}
@@ -598,20 +653,19 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
         <div className="flex items-start gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-base flex-shrink-0"
-              style={{ background: avatarColor(lead.name) }}>
+              style={{ background: isConverted ? GREEN : avatarBg(lead.name) }}>
               {initials(lead.name)}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-base" style={{ color: NAVY }}>{lead.name}</span>
                 {lead.repeatedCustomer && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#FEF3C7", color: "#D97706" }}>Repeat Lead</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#FEF3C7", color: "#D97706" }}>🔄 Repeat</span>
                 )}
               </div>
-              <div className="text-xs text-gray-500 mt-0.5">Grade {lead.grade} · {leadId(lid)}</div>
+              <div className="text-xs text-gray-500 mt-0.5">Grade {lead.grade} · {padLeadId(lead.id)}</div>
               <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                <Phone className="w-3 h-3" />
-                <span>{lead.phone ?? lead.parentPhone ?? "—"}</span>
+                <Phone className="w-3 h-3" /> <span>{lead.phone ?? lead.parentPhone ?? "—"}</span>
               </div>
             </div>
           </div>
@@ -649,7 +703,7 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
                 <MoreVertical className="w-3.5 h-3.5" /> More
               </button>
               {showMore && (
-                <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
                   <button onClick={() => { setShowPaymentPopup(true); setShowMore(false); }}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 font-semibold" style={{ color: NAVY }}>
                     💳 Launch Payment
@@ -667,51 +721,50 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
         {/* ── LEFT PANEL ── */}
         <div className="space-y-4">
 
-          {/* Payment Link card */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${NAVY}12` }}>
-                  <CreditCard className="w-5 h-5" style={{ color: NAVY }} />
+          {/* Payment Link */}
+          {!isConverted && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${NAVY}12` }}>
+                    <CreditCard className="w-5 h-5" style={{ color: NAVY }} />
+                  </div>
+                  <div>
+                    <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link</div>
+                    <div className="text-[11px] text-gray-400">Share long-term course payment link</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link</div>
-                  <div className="text-[11px] text-gray-400">Share payment link for long-term course</div>
-                </div>
+                <button onClick={() => setShowPaymentPopup(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 font-bold text-xs transition-all hover:shadow-sm"
+                  style={{ borderColor: ORANGE, color: ORANGE }}>
+                  Launch <ChevronDown className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button onClick={() => setShowPaymentPopup(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 font-bold text-xs transition-all hover:shadow-sm"
-                style={{ borderColor: ORANGE, color: ORANGE }}>
-                Launch Payment <ChevronDown className="w-3.5 h-3.5" />
-              </button>
             </div>
-          </div>
+          )}
 
           {/* Live Class Activity */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
               <div className="font-black text-sm" style={{ color: NAVY }}>Live Class Activity</div>
-              <span className="text-[10px] text-gray-400">Last 7 Days</span>
+              <span className="ml-auto text-[10px] text-gray-400">Last 7 Days</span>
             </div>
             {[
-              { label: "Live Class 1", min: 60, att: 75 },
-              { label: "Live Class 2", min: 60, att: 82 },
+              { label: "Live Class 1 – Maths Demo", min: 60, att: lead.attPct ?? 75, active: true },
+              { label: "Live Class 2 – Science Demo", min: 60, att: Math.min(100, (lead.attPct ?? 60) + 7), active: lead.attPct !== null },
             ].map((cls, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
+              <div key={i} className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                <span className="text-sm mt-0.5">{cls.active ? "🟢" : "🔴"}</span>
+                <div className="flex-1">
                   <div className="text-xs font-semibold" style={{ color: NAVY }}>{cls.label}</div>
-                  <div className="text-[10px] text-gray-400">{cls.min} min</div>
+                  <div className="text-[10px] text-gray-400">{cls.min} mins</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-bold" style={{ color: cls.att >= 70 ? GREEN : "#D97706" }}>
-                    Attendance {cls.att}%
-                  </div>
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    <div className="h-1 rounded-full" style={{ width: `${cls.att * 0.4}px`, background: GREEN }} />
-                    <div className="h-1 rounded-full" style={{ width: `${(100 - cls.att) * 0.4}px`, background: "#DC2626" }} />
+                  <div className="text-xs font-bold" style={{ color: cls.att >= 70 ? GREEN : "#D97706" }}>Attendance {cls.att}%</div>
+                  <div className="flex items-center gap-0.5 mt-0.5 justify-end">
+                    <div className="h-1 rounded-full" style={{ width: `${Math.round(cls.att * 0.4)}px`, background: GREEN }} />
+                    <div className="h-1 rounded-full" style={{ width: `${Math.round((100 - cls.att) * 0.4)}px`, background: "#E5E7EB" }} />
                   </div>
                 </div>
               </div>
@@ -719,21 +772,23 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
           </div>
 
           {/* Analytics */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Analytics <span className="text-gray-400 font-normal text-xs">(This Month)</span></div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart2 className="w-4 h-4" style={{ color: NAVY }} />
+              <div className="font-black text-sm" style={{ color: NAVY }}>Analytics <span className="text-gray-400 font-normal text-xs">(This Month)</span></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: BookOpen, label: "Classes Held", value: "8", color: "#6366F1" },
-                { icon: BarChart2, label: "Attendance", value: lead.attPct !== null ? `${lead.attPct}%` : "—", color: GREEN },
-                { icon: ClipboardList, label: "Avg. Watch Time", value: "42 min", color: ORANGE },
-                { icon: Check, label: "HW Completion", value: lead.hwPct !== null ? `${lead.hwPct}%` : "—", color: "#0284C7" },
+                { icon: BookOpen,     label: "Classes Held",     value: "8",                                               color: "#6366F1" },
+                { icon: BarChart2,    label: "Attendance",       value: lead.attPct !== null ? `${lead.attPct}%` : "—",    color: GREEN },
+                { icon: ClipboardList,label: "Avg. Watch Time",  value: "42 min",                                           color: ORANGE },
+                { icon: Check,        label: "HW Completion",    value: lead.hwPct !== null ? `${lead.hwPct}%` : "—",      color: "#0284C7" },
               ].map(item => {
                 const Icon = item.icon;
                 return (
                   <div key={item.label} className="p-3 rounded-xl" style={{ background: `${item.color}10` }}>
                     <Icon className="w-4 h-4 mb-1" style={{ color: item.color }} />
-                    <div className="text-xs text-gray-500">{item.label}</div>
+                    <div className="text-[10px] text-gray-500">{item.label}</div>
                     <div className="font-black text-sm mt-0.5" style={{ color: item.color }}>{item.value}</div>
                   </div>
                 );
@@ -741,59 +796,42 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
             </div>
           </div>
 
-          {/* Previous Courses / Demos */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+          {/* Previous Courses */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
             <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Previous Courses / Demos</div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-gray-400 border-b border-gray-100">
-                    <th className="text-left pb-2 font-semibold">Course / Demo</th>
-                    <th className="text-left pb-2 font-semibold">Type</th>
-                    <th className="text-left pb-2 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: "Maths Demo", type: "Demo", status: "Completed", color: GREEN },
-                    { name: "Science Demo", type: "Demo", status: "Completed", color: GREEN },
-                    { name: "English Demo", type: "Demo", status: "Dropped", color: "#DC2626" },
-                  ].map((c, i) => (
-                    <tr key={i} className="border-b border-gray-50 last:border-0">
-                      <td className="py-2 font-semibold" style={{ color: "#3B82F6" }}>{c.name}</td>
-                      <td className="py-2 text-gray-500">{c.type}</td>
-                      <td className="py-2">
-                        <span className="font-bold" style={{ color: c.color }}>{c.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-2">
+              {[
+                { name: "5-Day Ignite Demo", type: "Demo", status: isConverted ? "Completed" : "Enrolled", color: GREEN },
+                { name: "Maths Trial Class", type: "Trial", status: "Completed", color: "#0284C7" },
+              ].map((c, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <div>
+                    <div className="text-xs font-semibold" style={{ color: "#3B82F6" }}>{c.name}</div>
+                    <div className="text-[10px] text-gray-400">{c.type}</div>
+                  </div>
+                  <span className="text-[10px] font-bold" style={{ color: c.color }}>{c.status}</span>
+                </div>
+              ))}
             </div>
-            <div className="text-[10px] text-gray-400 mt-2">Total Demos Taken: 3</div>
           </div>
         </div>
 
         {/* ── RIGHT PANEL ── */}
         <div className="space-y-4">
 
-          {/* Student Information */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Student Information</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {/* Student Information — READ ONLY */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Student Information <span className="text-[10px] font-normal text-gray-400">(read only)</span></div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               {[
-                { label: "Parent Name",   value: lead.parentName ?? "—" },
-                { label: "School",        value: lead.school ?? "—" },
                 { label: "Student Name",  value: lead.name },
+                { label: "School",        value: lead.school ?? "—" },
+                { label: "Grade",         value: `Grade ${lead.grade}` },
                 { label: "City",          value: lead.city ?? "—" },
-                { label: "Mobile",        value: lead.phone ?? "—" },
-                { label: "Lead Source",   value: "Website" },
-                { label: "Alternate Mobile", value: lead.parentPhone ?? "—" },
-                { label: "Weak Subject",  value: lead.weakSubject ?? "—" },
-                { label: "Email",         value: "—" },
-                { label: "Strong Subject",value: lead.strongSubject ?? "—" },
+                { label: "Phone",         value: lead.phone ?? "—" },
+                { label: "Lead Stage",    value: lead.leadStage },
+                { label: "Lead Source",   value: "Ignite Demo" },
+                { label: "Lead ID",       value: padLeadId(lead.id) },
               ].map(f => (
                 <div key={f.label}>
                   <div className="text-[10px] text-gray-400 uppercase tracking-wide">{f.label}</div>
@@ -803,89 +841,142 @@ function StudentDetailView({ leadId: lid, lead, onBack }: {
             </div>
           </div>
 
-          {/* Call Details */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Call Details</div>
+          {/* Mentor Editable Info */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Mentor Editable Info</div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Who Picked the Call?</label>
-                <select value={calledBy} onChange={e => setCalledBy(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none bg-white"
-                  style={{ color: NAVY }}>
-                  {CALL_WHO.map(o => <option key={o} value={o}>{o}</option>)}
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Parent Name</label>
+                <input value={editParentName} onChange={e => setEditParentName(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
+                  style={{ color: NAVY }} placeholder="Parent name" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Alt. Mobile (Parent)</label>
+                <input value={editParentPhone} onChange={e => setEditParentPhone(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
+                  style={{ color: NAVY }} placeholder="Parent phone" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Weak Subject</label>
+                <select value={editWeak} onChange={e => setEditWeak(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                  <option value="">— Select —</option>
+                  {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Call Status</label>
-                <select value={callStatus} onChange={e => setCallStatus(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none bg-white"
-                  style={{ color: NAVY }}>
-                  {CALL_STATUSES.map(o => <option key={o} value={o}>{o}</option>)}
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Strong Subject</label>
+                <select value={editStrong} onChange={e => setEditStrong(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                  <option value="">— Select —</option>
+                  {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Date</label>
-                <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none"
-                  style={{ color: NAVY }} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Time</label>
-                <input type="time" value={nextTime} onChange={e => setNextTime(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none"
-                  style={{ color: NAVY }} />
+              <div className="col-span-2">
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Interest Level</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {INTEREST_LEVELS.map(l => (
+                    <button key={l} type="button" onClick={() => setEditInterest(editInterest === l ? "" : l)}
+                      className="px-2.5 py-1 rounded-full text-[10px] font-bold border-2 transition-all"
+                      style={{
+                        background: editInterest === l ? `${NAVY}12` : "white",
+                        color: editInterest === l ? NAVY : "#9CA3AF",
+                        borderColor: editInterest === l ? NAVY : "#E5E7EB",
+                      }}>{l}</button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="mb-3">
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">Call Remarks</label>
-              <textarea value={remarkText} onChange={e => setRemarkText(e.target.value)} rows={3}
-                placeholder="Add your call remarks here..."
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none"
-                style={{ color: NAVY }} />
-            </div>
-            {saveError && <p className="text-[10px] text-red-500 mb-2">{saveError}</p>}
-            {saveOk && <p className="text-[10px] text-green-600 mb-2">✓ Remarks saved successfully</p>}
+            {infoSaveOk && <p className="text-[10px] text-green-600 mb-2">✓ Information updated</p>}
             <div className="flex justify-end">
-              <button onClick={saveRemarks} disabled={saving || !remarkText.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white transition-all"
-                style={{ background: saving || !remarkText.trim() ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                Save Remarks
+              <button onClick={saveInfo} disabled={infoSaving}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white"
+                style={{ background: infoSaving ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
+                {infoSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Save Info
               </button>
             </div>
           </div>
 
-          {/* Previous Remarks timeline */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4"
-            style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-black text-sm" style={{ color: NAVY }}>Previous Remarks</div>
-              {remarks.length > 3 && (
-                <button className="text-[10px] font-bold" style={{ color: ORANGE }}>View All</button>
-              )}
+          {/* Call Details */}
+          {!isConverted && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+              <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Call Details</div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Who Picked the Call?</label>
+                  <select value={calledBy} onChange={e => setCalledBy(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none bg-white" style={{ color: NAVY }}>
+                    {CALL_WHO.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Call Status</label>
+                  <select value={callStatus} onChange={e => setCallStatus(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none bg-white" style={{ color: NAVY }}>
+                    {CALL_STATUSES.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Date</label>
+                  <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Time</label>
+                  <input type="time" value={nextTime} onChange={e => setNextTime(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
+                </div>
+              </div>
+              <div className="mb-3">
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Call Remarks *</label>
+                <textarea value={remarkText} onChange={e => setRemarkText(e.target.value)} rows={3}
+                  placeholder="Add your call remarks here..."
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none"
+                  style={{ color: NAVY }} />
+              </div>
+              {saveError && <p className="text-[10px] text-red-500 mb-2">{saveError}</p>}
+              {saveOk && <p className="text-[10px] text-green-600 mb-2">✓ Remarks saved successfully</p>}
+              <div className="flex justify-end">
+                <button onClick={saveRemarks} disabled={saving || !remarkText.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white transition-all"
+                  style={{ background: saving || !remarkText.trim() ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Save Remarks
+                </button>
+              </div>
             </div>
+          )}
+
+          {/* Previous Remarks — permanent timeline */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Previous Remarks <span className="text-[10px] font-normal text-gray-400">({remarks.length} entries)</span></div>
             {loadingRemarks ? (
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
             ) : remarks.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">No previous remarks</p>
+              <p className="text-xs text-gray-400 text-center py-4">No previous remarks. Add your first remark above.</p>
             ) : (
               <div className="space-y-0">
-                {remarks.slice(0, 10).map((r, i) => (
+                {remarks.slice(0, 15).map((r, i) => (
                   <div key={r.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: ORANGE }} />
-                      {i < remarks.slice(0, 10).length - 1 && <div className="w-0.5 flex-1 mt-1" style={{ background: "#E5E7EB", minHeight: 16 }} />}
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full mt-1.5" style={{ background: ORANGE }} />
+                      {i < Math.min(remarks.length, 15) - 1 && <div className="w-0.5 flex-1 mt-1" style={{ background: "#E5E7EB", minHeight: 16 }} />}
                     </div>
-                    <div className="pb-3 flex-1">
+                    <div className="pb-3 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-bold text-gray-500">{fmtDate(r.createdAt)}, {fmtTime(r.createdAt)}</span>
                         {r.calledByName && <span className="text-[10px] font-bold" style={{ color: NAVY }}>{r.calledByName}</span>}
+                        {r.callStatus && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-gray-100 text-gray-600">{r.callStatus}</span>}
                       </div>
-                      <p className="text-xs text-gray-700 mt-0.5 leading-relaxed">{r.note}</p>
+                      <p className="text-xs text-gray-700 mt-0.5 leading-relaxed break-words">{r.note}</p>
                     </div>
                   </div>
                 ))}
+                {remarks.length > 15 && (
+                  <p className="text-xs text-gray-400 text-center pt-1">+{remarks.length - 15} more remarks not shown</p>
+                )}
               </div>
             )}
           </div>
@@ -900,23 +991,28 @@ function PaymentStatusView({ leads }: { leads: Lead[] }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const paymentLeads = leads.filter(l =>
+  const rows = leads.filter(l =>
     ["Payment Pending", "Payment Failed", "Payment Completed", "Converted"].includes(l.leadStage) ||
     ["Payment Pending", "Payment Failed"].includes(l.callStatus)
   );
 
-  const filtered = paymentLeads.filter(l => {
-    if (statusFilter !== "all" && l.leadStage !== statusFilter && l.callStatus !== statusFilter) return false;
+  const filtered = rows.filter(l => {
+    if (statusFilter !== "all") {
+      const stage = l.leadStage;
+      if (statusFilter === "Pending" && stage !== "Payment Pending" && l.callStatus !== "Payment Pending") return false;
+      if (statusFilter === "Failed" && stage !== "Payment Failed" && l.callStatus !== "Payment Failed") return false;
+      if (statusFilter === "Completed" && stage !== "Converted" && stage !== "Payment Completed") return false;
+    }
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || leadId(l.id).toLowerCase().includes(q);
+    return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || padLeadId(l.id).toLowerCase().includes(q);
   });
 
-  function statusBg(stage: string) {
-    if (stage === "Converted" || stage === "Payment Completed") return { bg: "#DCFCE7", color: GREEN, label: "Completed" };
-    if (stage === "Payment Failed") return { bg: "#FEE2E2", color: "#DC2626", label: "Failed" };
-    if (stage === "Payment Pending") return { bg: "#FEF3C7", color: "#D97706", label: "Pending" };
-    return { bg: "#F3F4F6", color: "#6B7280", label: stage };
+  function rowStatus(l: Lead) {
+    if (l.leadStage === "Converted" || l.leadStage === "Payment Completed") return { label: "Completed", bg: "#DCFCE7", color: GREEN };
+    if (l.leadStage === "Payment Failed" || l.callStatus === "Payment Failed") return { label: "Failed", bg: "#FEE2E2", color: "#DC2626" };
+    if (l.leadStage === "Payment Pending" || l.callStatus === "Payment Pending") return { label: "Pending", bg: "#FEF3C7", color: "#D97706" };
+    return { label: l.leadStage, bg: "#F3F4F6", color: "#6B7280" };
   }
 
   return (
@@ -926,31 +1022,28 @@ function PaymentStatusView({ leads }: { leads: Lead[] }) {
         <p className="text-xs text-gray-400 mt-0.5">Track payment progress for your leads</p>
       </div>
 
-      {/* Search + Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="flex-1 min-w-48 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-white">
           <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, phone or payment ID..."
+            placeholder="Search by name, phone or lead ID..."
             className="flex-1 text-xs outline-none bg-transparent" style={{ color: NAVY }} />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold outline-none"
-          style={{ color: NAVY }}>
+          className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold outline-none" style={{ color: NAVY }}>
           <option value="all">All Statuses</option>
-          <option value="Payment Pending">Pending</option>
-          <option value="Payment Failed">Failed</option>
-          <option value="Converted">Completed</option>
+          <option value="Pending">Pending</option>
+          <option value="Failed">Failed</option>
+          <option value="Completed">Completed</option>
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-        style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
         {filtered.length === 0 ? (
           <div className="text-center py-16">
-            <p className="font-bold text-sm text-gray-400">No payment records found</p>
-            <p className="text-xs text-gray-300 mt-1">Payment activity will appear here</p>
+            <CreditCard className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+            <p className="font-bold text-sm text-gray-400">No payment records</p>
+            <p className="text-xs text-gray-300 mt-1">Payment activity from your leads appears here</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -964,14 +1057,14 @@ function PaymentStatusView({ leads }: { leads: Lead[] }) {
               </thead>
               <tbody>
                 {filtered.map(lead => {
-                  const st = statusBg(lead.leadStage);
+                  const st = rowStatus(lead);
                   return (
                     <tr key={lead.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-black" style={{ color: NAVY }}>{lead.name}</div>
                         <div className="text-gray-400">Grade {lead.grade}</div>
                       </td>
-                      <td className="px-4 py-3 font-semibold" style={{ color: "#6B7280" }}>{leadId(lead.id)}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-500">{padLeadId(lead.id)}</td>
                       <td className="px-4 py-3 text-gray-600">5-Day Ignite</td>
                       <td className="px-4 py-3 font-bold" style={{ color: NAVY }}>₹39</td>
                       <td className="px-4 py-3">
@@ -981,14 +1074,19 @@ function PaymentStatusView({ leads }: { leads: Lead[] }) {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <a href={`tel:${lead.parentPhone ?? lead.phone}`}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50">
+                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50" title="Call">
                             <Phone className="w-3 h-3" style={{ color: GREEN }} />
                           </a>
                           <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
                             target="_blank" rel="noopener noreferrer"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50">
+                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50" title="WhatsApp">
                             <MessageSquare className="w-3 h-3" style={{ color: "#25D366" }} />
                           </a>
+                          {st.label !== "Completed" && (
+                            <button className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-blue-50" title="Resend Link">
+                              <Copy className="w-3 h-3" style={{ color: NAVY }} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1012,30 +1110,38 @@ export function SalesMentorPortal({ user, onLogout }: {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Mock notifications
-  const [notifications] = useState<Notification[]>([
-    { id: 1, color: "#F59E0B", text: "Rahul created order.", time: new Date(Date.now() - 25 * 60000).toISOString(), unread: true, type: "payment" },
-    { id: 2, color: "#10B981", text: "Ananya completed payment successfully.", time: new Date(Date.now() - 75 * 60000).toISOString(), unread: true, type: "payment" },
-    { id: 3, color: "#EF4444", text: "Aarav payment failed.", time: new Date(Date.now() - 100 * 60000).toISOString(), unread: true, type: "payment" },
-    { id: 4, color: "#8B5CF6", text: "Sumit submitted homework (Live Class 2).", time: new Date(Date.now() - 110 * 60000).toISOString(), unread: false, type: "activity" },
-    { id: 5, color: "#3B82F6", text: "Kritika edited profile.", time: new Date(Date.now() - 130 * 60000).toISOString(), unread: false, type: "activity" },
-    { id: 6, color: "#6B7280", text: "Preety sent you a message.", time: new Date(Date.now() - 140 * 60000).toISOString(), unread: false, type: "message" },
-    { id: 7, color: "#F59E0B", text: "Diya created order.", time: new Date(Date.now() - 26 * 3600000).toISOString(), unread: false, type: "payment" },
-    { id: 8, color: "#10B981", text: "Rohan completed payment successfully.", time: new Date(Date.now() - 27 * 3600000).toISOString(), unread: false, type: "payment" },
-  ]);
+  const notifications: Notification[] = [
+    { id: 1, color: "#F59E0B", text: "Priya Gupta created order.",                    time: new Date(Date.now() - 20*60000).toISOString(), unread: true,  type: "payment" },
+    { id: 2, color: "#10B981", text: "Priya Gupta completed payment successfully.",   time: new Date(Date.now() - 25*60000).toISOString(), unread: true,  type: "payment", leadId: 39 },
+    { id: 3, color: "#EF4444", text: "Aarav Sharma payment failed.",                  time: new Date(Date.now() - 90*60000).toISOString(), unread: true,  type: "payment", leadId: 42 },
+    { id: 4, color: "#8B5CF6", text: "Aarav Sharma submitted homework.",              time: new Date(Date.now() - 120*60000).toISOString(), unread: false, type: "activity", leadId: 42 },
+    { id: 5, color: "#3B82F6", text: "Priya Gupta edited profile.",                   time: new Date(Date.now() - 26*3600000).toISOString(), unread: false, type: "activity" },
+    { id: 6, color: "#6B7280", text: "You have a new follow-up due today.",           time: new Date(Date.now() - 27*3600000).toISOString(), unread: false, type: "message" },
+  ];
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
       const r = await apiFetch("/mentor/sales/leads");
-      if (r.ok) setLeads(await r.json());
-    } finally { setLoading(false); }
+      if (r.ok) {
+        setLeads(await r.json());
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error ?? `Server error (${r.status})`);
+      }
+    } catch (e) {
+      setError("Network error — please check your connection");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
@@ -1048,14 +1154,16 @@ export function SalesMentorPortal({ user, onLogout }: {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  function openStudent(id: number) {
-    setSelectedId(id);
-    setView("student-detail");
+  function openStudent(id: number) { setSelectedId(id); setView("student-detail"); }
+
+  function handleLeadUpdated(id: number, updated: Partial<Lead>) {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
   }
 
   const selectedLead = leads.find(l => l.id === selectedId);
-  const NAV_ITEMS = [
-    { key: "my-leads" as const, label: "My Leads" },
+
+  const NAV = [
+    { key: "my-leads"       as const, label: "My Leads" },
     { key: "payment-status" as const, label: "Payment Status" },
   ];
 
@@ -1074,26 +1182,22 @@ export function SalesMentorPortal({ user, onLogout }: {
 
       {/* ── Header ── */}
       <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 md:px-6 gap-3 z-30">
-        {/* Branding */}
         <div className="flex items-center gap-1.5">
           <div className="w-0.5 h-5 rounded-full" style={{ background: ORANGE }} />
           <div>
-            <div className="font-black leading-tight" style={{ fontSize: "13px", color: NAVY, letterSpacing: "0.04em" }}>
-              BTL <span style={{ color: ORANGE }}>CRM</span>
-            </div>
+            <div className="font-black leading-tight" style={{ fontSize: "13px", color: NAVY, letterSpacing: "0.04em" }}>BTL <span style={{ color: ORANGE }}>CRM</span></div>
             <div className="text-[9px] text-gray-400 leading-tight">Sales Mentor Panel</div>
           </div>
         </div>
 
-        {/* Nav */}
-        <div className="flex items-center gap-1 ml-6">
-          {NAV_ITEMS.map(item => (
+        <div className="flex items-center gap-0.5 ml-4">
+          {NAV.map(item => (
             <button key={item.key}
               onClick={() => { setView(item.key); setSelectedId(null); }}
               className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
               style={{
-                background: view === item.key || (item.key === "my-leads" && view === "student-detail") ? `${NAVY}12` : "transparent",
-                color: view === item.key || (item.key === "my-leads" && view === "student-detail") ? NAVY : "#6B7280",
+                background: (view === item.key || (item.key === "my-leads" && view === "student-detail")) ? `${NAVY}12` : "transparent",
+                color:      (view === item.key || (item.key === "my-leads" && view === "student-detail")) ? NAVY : "#6B7280",
               }}>
               {item.label}
             </button>
@@ -1102,22 +1206,20 @@ export function SalesMentorPortal({ user, onLogout }: {
 
         <div className="flex-1" />
 
-        {/* Bell + Flag + Profile */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button onClick={() => setShowNotifications(v => !v)}
             className="relative w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
-            <Bell className="w-4.5 h-4.5" style={{ color: NAVY }} />
+            <Bell className="w-4 h-4" style={{ color: NAVY }} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 rounded-full text-[9px] font-black text-white flex items-center justify-center"
-                style={{ background: "#EF4444", minWidth: 18, height: 18, fontSize: 9 }}>
+              <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-white font-black rounded-full"
+                style={{ background: "#EF4444", minWidth: 17, height: 17, fontSize: 9 }}>
                 {unreadCount}
               </span>
             )}
           </button>
           <button onClick={() => setShowNotifications(v => !v)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-200"
-            style={{ color: NAVY }}>
-            <Flag className="w-4 h-4" />
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-200">
+            <Flag className="w-4 h-4" style={{ color: showNotifications ? ORANGE : NAVY }} />
           </button>
 
           <div className="relative" ref={profileRef}>
@@ -1125,7 +1227,9 @@ export function SalesMentorPortal({ user, onLogout }: {
               className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors">
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
                 style={{ background: user.avatarUrl ? "transparent" : NAVY }}>
-                {user.avatarUrl ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" /> : initials(user.name)}
+                {user.avatarUrl
+                  ? <img src={user.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
+                  : initials(user.name)}
               </div>
               <div className="hidden sm:block text-left">
                 <div className="text-xs font-bold leading-tight" style={{ color: NAVY }}>{user.name}</div>
@@ -1136,7 +1240,7 @@ export function SalesMentorPortal({ user, onLogout }: {
 
             {profileOpen && (
               <div className="absolute right-0 top-full mt-2 w-44 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden py-1">
-                <div className="px-4 py-2 border-b border-gray-50">
+                <div className="px-4 py-2.5 border-b border-gray-50">
                   <div className="text-xs font-black" style={{ color: NAVY }}>{user.name}</div>
                   <div className="text-[10px] text-gray-400">Sales Mentor</div>
                 </div>
@@ -1153,13 +1257,13 @@ export function SalesMentorPortal({ user, onLogout }: {
       {/* ── Content ── */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {view === "my-leads" && (
-          <MyLeadsView leads={leads} loading={loading} onOpen={openStudent} />
+          <MyLeadsView leads={leads} loading={loading} error={error} onOpen={openStudent} onRefresh={fetchLeads} />
         )}
         {view === "student-detail" && selectedLead && (
           <StudentDetailView
-            leadId={selectedLead.id}
             lead={selectedLead}
             onBack={() => setView("my-leads")}
+            onLeadUpdated={updated => handleLeadUpdated(selectedLead.id, updated)}
           />
         )}
         {view === "payment-status" && (

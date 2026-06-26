@@ -271,14 +271,19 @@ router.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
     if (!assignment) { res.status(403).json({ error: "Not your assigned student" }); return; }
   }
 
-  const { leadStage, parentName, parentPhone } = req.body;
+  const { leadStage, parentName, parentPhone, weakSubject, strongSubject, interestLevel, repeatedCustomer } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (leadStage !== undefined) updates.leadStage = leadStage || null;
   if (parentName !== undefined) updates.parentName = parentName || null;
   if (parentPhone !== undefined) updates.parentPhone = parentPhone || null;
+  if (weakSubject !== undefined) updates.weakSubject = weakSubject || null;
+  if (strongSubject !== undefined) updates.strongSubject = strongSubject || null;
+  if (interestLevel !== undefined) updates.interestLevel = interestLevel || null;
+  if (repeatedCustomer !== undefined) updates.repeatedCustomer = Boolean(repeatedCustomer);
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning({
     id: usersTable.id, leadStage: usersTable.leadStage, parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
+    weakSubject: usersTable.weakSubject, strongSubject: usersTable.strongSubject, interestLevel: usersTable.interestLevel,
   });
   res.json(updated);
 });

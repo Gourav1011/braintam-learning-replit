@@ -1,0 +1,723 @@
+# BTL CRM – Sales Mentor Portal Final Redesign
+
+Phase: Mentor CRM Completion
+
+IMPORTANT
+
+Study the existing codebase and mentor portal before making changes.
+
+This is NOT a new application.
+
+Modify the existing mentor portal.
+
+Do NOT break:
+
+* Authentication
+* Existing APIs
+* Existing permissions
+* Existing notifications
+* Existing payments
+* Existing student records
+* Existing CRM routes
+* Existing dashboards
+* Existing audit logs
+
+---
+
+## BUSINESS CONTEXT
+
+Braintam Sales Mentors work like:
+
+* ODA Counselors
+* Physics Wallah Counselors
+* CuriousJr Counselors
+
+Their job is simple:
+
+1. See assigned leads
+2. Call parents
+3. Add remarks
+4. Schedule follow-ups
+5. Send long-term payment links
+6. Convert demo students into long-term students
+
+Nothing more.
+
+Portal should feel:
+
+* lightweight
+* fast
+* mobile friendly
+* modern
+* minimum clicks
+
+No heavy dashboards.
+
+---
+
+## REMOVE COMPLETELY
+
+Settings
+My Revenue
+My Students
+Analytics page
+Reports
+Leaderboard
+Admin pages
+Permission pages
+Revenue screens
+Unnecessary charts
+
+---
+
+## FINAL NAVIGATION
+
+BTL CRM
+
+├── My Leads
+└── Payment Status
+
+Nothing else.
+
+---
+
+## MY LEADS
+
+Default page.
+
+Top chips:
+
+ALL
+PENDING CALLS
+BUSY
+CALL LATER
+CONVERTED
+
+No extra menus.
+
+---
+
+## SEARCH
+
+Search:
+
+Student Name
+Mobile Number
+Lead ID
+
+Filter button on right.
+
+---
+
+## LEAD CARDS
+
+Each lead card shows:
+
+Student Name
+Grade
+Lead ID
+Mobile Number
+
+Right Side:
+
+Last Call
+Next Follow-up
+
+Badges:
+
+Repeated Lead
+Payment Pending
+Payment Failed
+Converted
+
+Buttons:
+
+📞 Call
+💬 WhatsApp
+➡️ Details Arrow
+
+Cards:
+
+rounded
+minimal shadows
+lightweight
+fast rendering
+
+---
+
+## CONVERTED FLOW
+
+When LONG-TERM payment succeeds:
+
+conversionStatus = converted
+
+Lead automatically disappears from:
+
+ALL
+PENDING CALLS
+BUSY
+CALL LATER
+
+Lead automatically appears in:
+
+CONVERTED
+
+Card becomes read only.
+
+Card shows:
+
+Student Name
+Program Purchased
+Amount Paid
+Converted Date
+
+Mentor can still open details.
+
+---
+
+## STUDENT DETAILS PAGE
+
+Arrow opens student details.
+
+Only TWO BOXES.
+
+No nested tabs.
+
+No extra pages.
+
+---
+
+## LEFT BOX
+
+Sections:
+
+1. Payment Link
+2. Live Class Activity
+3. Analytics
+4. Previous Courses
+
+Everything in one page.
+
+---
+
+## PAYMENT LINK SECTION
+
+Card:
+
+Payment Link
+
+Subtitle:
+
+Share long-term payment link.
+
+Button:
+
+Launch Payment
+
+Small dropdown beside button.
+
+---
+
+## PAYMENT POPUP
+
+Options:
+
+Full Payment
+Partial Payment
+
+---
+
+## FULL PAYMENT
+
+Generate payment link.
+
+Show:
+
+You can complete the payment by clicking below.
+
+https://rzp....
+
+Buttons:
+
+Copy Link
+WhatsApp Parent
+
+---
+
+## PARTIAL PAYMENT
+
+Popup:
+
+Enter Amount
+
+Button:
+
+Launch Payment
+
+Generate:
+
+https://rzp....
+
+Buttons:
+
+Copy Link
+WhatsApp Parent
+
+---
+
+## LONG TERM PAYMENT NOTIFICATIONS
+
+DO NOT SHOW:
+
+"Rahul created order for Ignite Demo ₹39"
+
+These students already belong to Ignite.
+
+Instead show:
+
+🟡 Rahul created order.
+
+Meaning:
+
+Student clicked long-term payment link but payment not completed.
+
+Successful:
+
+🟢 Ananya completed payment successfully.
+
+Failed:
+
+🔴 Aarav payment failed.
+
+---
+
+## LIVE CLASS ACTIVITY
+
+Simple list.
+
+Example:
+
+Live Class 1
+60 mins
+Attendance 75%
+
+Activity line:
+
+🟢 Student Active
+🔴 Student Away
+
+No heavy graphs.
+
+---
+
+## ANALYTICS
+
+Simple cards:
+
+Classes Completed
+Attendance %
+Watch Time
+Homework Completion %
+
+Small cards only.
+
+---
+
+## PREVIOUS COURSES
+
+Simple list.
+
+Example:
+
+Math Demo
+Completed
+
+Science Demo
+Dropped
+
+English Demo
+Completed
+
+If none:
+
+No Previous Courses
+
+---
+
+## RIGHT BOX
+
+Contains:
+
+Student Information
+Call Details
+Previous Remarks
+
+Everything visible on one page.
+
+---
+
+## STUDENT INFORMATION
+
+READ ONLY:
+
+Parent Name
+Original Name
+Mobile
+Email
+School
+City
+Lead Source
+
+---
+
+## MENTOR EDITABLE FIELDS
+
+Display Name
+Additional Mobile
+Weak Subject
+Strong Subject
+Mentor Notes
+Reference Grade
+
+Reference Grade Example:
+
+Actual Grade:
+3
+
+Mentor Note:
+
+Interested for Grade 4 next year.
+
+Must NOT overwrite actual grade.
+
+---
+
+## CALL DETAILS
+
+Who Picked:
+
+Student
+Mother
+Father
+Brother
+Sister
+Other
+
+If Other:
+
+Name
+Relation
+
+---
+
+## CALL STATUS
+
+Not Connected
+Busy
+Call Later
+Interested
+Not Interested
+Payment Pending
+Payment Failed
+Payment Completed
+
+---
+
+## REMARKS
+
+Large textbox.
+
+---
+
+## NEXT FOLLOW UP
+
+Date
+Time
+
+Button:
+
+Save Remarks
+
+---
+
+## PREVIOUS REMARKS
+
+Permanent timeline.
+
+Never overwrite.
+
+Every remark stores:
+
+Date
+Time
+Mentor Name
+Remark
+
+Example:
+
+26 Jun
+Priya Sharma
+
+Mother interested.
+Asked to call after tuition.
+
+25 Jun
+Rahul Sharma
+
+Father requested fee details.
+
+Everything remains forever.
+
+---
+
+## PAYMENT STATUS MENU
+
+Purpose:
+
+Mentor tracks payment progress.
+
+---
+
+## PAYMENT STATUS TABLE
+
+Columns:
+
+Student Name
+Lead ID
+Payment ID
+Program
+Amount
+Status
+Created Date
+Action
+
+---
+
+## PAYMENT STATUSES
+
+Pending
+Failed
+Abandoned
+Completed
+
+---
+
+## SEARCH
+
+Search:
+
+Student Name
+Phone
+Payment ID
+
+---
+
+## FILTERS
+
+Status
+Program
+Date
+
+---
+
+## ACTIONS
+
+Pending:
+
+📞 Call
+💬 WhatsApp
+🔗 Copy Payment Link
+
+Failed:
+
+📞 Call
+💬 WhatsApp
+🔄 Resend Payment Link
+
+Completed:
+
+👁 View Details
+
+---
+
+## PAYMENT DETAILS DRAWER
+
+Student Name
+Phone
+Parent Name
+Program
+Amount
+Payment ID
+Order ID
+Created On
+Completed On
+Status
+
+If Pending:
+
+Payment Link
+Copy Link
+WhatsApp Parent
+Call Parent
+
+---
+
+## NOTIFICATION SYSTEM
+
+Top right header:
+
+🔔 Bell Icon
+
+Notification count badge.
+
+Beside bell:
+
+🚩 Arrow/Flag icon
+
+Click:
+
+Right sidebar slides open.
+
+Click again:
+
+Right sidebar closes.
+
+---
+
+## NOTIFICATION PANEL
+
+Simple vertical list.
+
+No tabs.
+
+No categories.
+
+Newest on top.
+
+Examples:
+
+🟡 Rahul created order.
+🟢 Ananya completed payment successfully.
+🔴 Aarav payment failed.
+🟣 Sumit submitted homework.
+🔵 Kritika edited profile.
+💬 Preety sent you a message.
+
+Unread notifications highlighted.
+
+Badge count updates automatically.
+
+---
+
+## NOTIFICATION BEHAVIOR
+
+Click notification:
+
+Open:
+
+Student Details
+Payment Details
+Message
+
+depending on notification type.
+
+---
+
+## PERMISSIONS
+
+Sales Mentors can:
+
+View assigned leads
+Call
+WhatsApp
+Add remarks
+Add follow-ups
+Edit limited student information
+View payments
+Generate payment links
+View notifications
+
+Cannot:
+
+Assign leads
+Reassign leads
+Delete leads
+Assign batches
+Manage permissions
+Manage staff
+Edit payments manually
+View company-wide leads
+
+---
+
+## PERFORMANCE REQUIREMENTS
+
+Keep portal extremely lightweight.
+
+Avoid:
+
+Heavy charts
+Multiple pages
+Nested tabs
+Unnecessary API calls
+Complex dashboards
+
+Flow should be:
+
+Open App
+↓
+See Leads
+↓
+Call Parent
+↓
+Add Remark
+↓
+Send Payment Link
+↓
+Receive Notification
+↓
+Convert Student
+
+Done.
+
+---
+
+## BEFORE APPLYING CHANGES
+
+Show:
+
+Files to modify
+Routes impacted
+Components impacted
+DB changes required
+
+Do NOT apply immediately.
+
+---
+
+## AFTER IMPLEMENTATION
+
+Run:
+
+pnpm typecheck
+pnpm build
+
+Verify:
+
+Login works
+Permissions work
+Lead cards work
+Student details work
+Remarks save
+Follow-ups save
+Payment popup works
+Payment links work
+Payment status works
+Notification sidebar opens/closes
+Converted flow works
+Desktop responsive
+Mobile responsive
+
+Provide screenshots after implementation.
+
+STOP and wait for approval.
