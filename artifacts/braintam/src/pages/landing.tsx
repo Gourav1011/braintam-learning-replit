@@ -729,23 +729,48 @@ export default function LandingPage() {
             </motion.div>
             {/* ── 5-Day Trial CTA ── */}
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}>
-              <a href="/enroll"
-                className="inline-flex items-center gap-3 px-4 py-3 rounded-2xl transition-all hover:scale-[1.02] group"
-                style={{ background: `linear-gradient(135deg, #fff8f3, #fff3ea)`,
-                         border: `2px solid rgba(255,107,26,0.35)`,
-                         boxShadow: "0 4px 24px rgba(255,107,26,0.12)" }}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>
-                  <GraduationCap className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold" style={{ color: ORANGE }}>LIMITED OFFER</div>
-                  <div className="font-black text-sm leading-tight" style={{ color: TEXT }}>
-                    5-Day Ignite Course — <span style={{ color: ORANGE }}>from ₹39 only</span>
+              <style>{`
+                @keyframes fireOrbit {
+                  from { offset-distance: 0%; }
+                  to   { offset-distance: 100%; }
+                }
+                .fire-orbit-pill {
+                  position: absolute;
+                  top: 0; left: 0;
+                  width: 18px; height: 18px;
+                  display: flex; align-items: center; justify-content: center;
+                  font-size: 13px;
+                  pointer-events: none;
+                  offset-path: path('M22 2 L298 2 Q318 2 318 22 L318 46 Q318 66 298 66 L22 66 Q2 66 2 46 L2 22 Q2 2 22 2 Z');
+                  offset-rotate: 0deg;
+                  animation: fireOrbit 2.8s linear infinite;
+                }
+              `}</style>
+              <div className="relative" style={{ display: "inline-block" }}>
+                {/* orbiting fires */}
+                {[0, -0.93, -1.87].map((delay, i) => (
+                  <span key={i} className="fire-orbit-pill" style={{ animationDelay: `${delay}s` }}>🔥</span>
+                ))}
+                <a href="/enroll"
+                  className="relative inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all hover:scale-[1.02] group"
+                  style={{ background: `linear-gradient(135deg, #fff8f3, #fff2e6)`,
+                           border: `2px solid ${ORANGE}`,
+                           boxShadow: `0 4px 20px rgba(255,107,26,0.25), 0 0 0 4px rgba(255,107,26,0.08)` }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>
+                    <GraduationCap className="w-5 h-5 text-white" />
                   </div>
-                </div>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
-              </a>
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-wider" style={{ color: ORANGE }}>🔥 Limited Offer</div>
+                    <div className="font-black text-sm leading-snug mt-0.5" style={{ color: TEXT }}>
+                      5-Day Ignite Course —&nbsp;
+                      <span className="line-through text-gray-400 font-semibold">₹599</span>
+                      &nbsp;<span style={{ color: ORANGE }}>₹39 only</span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
+                </a>
+              </div>
             </motion.div>
           </div>
 

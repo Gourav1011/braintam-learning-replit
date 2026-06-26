@@ -76,10 +76,11 @@ function useRollingText(items: string[], interval = 3000) {
 }
 
 // ── Booking urgency modal ────────────────────────────────────
-function BookingModal({ grade, onConfirm, onClose }: {
+function BookingModal({ grade, onConfirm, onClose, timer: modalTimer }: {
   grade: number;
   onConfirm: (phone: string) => void;
   onClose: () => void;
+  timer: ReturnType<typeof useCountdown>;
 }) {
   const [phase, setPhase]   = useState<"phone" | "booking" | "confirm">("phone");
   const [phone, setPhone]   = useState("");
@@ -87,7 +88,6 @@ function BookingModal({ grade, onConfirm, onClose }: {
   const [waiting]           = useState(() => Math.floor(Math.random() * 6) + 3);
   const price               = getPrice(grade);
   const disc                = getDisc(grade);
-  const modalTimer          = useCountdown(595);
   const inputRef            = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -678,6 +678,7 @@ export default function EnrollPage() {
           grade={grade}
           onConfirm={handleConfirm}
           onClose={() => setModal(false)}
+          timer={timer}
         />
       )}
     </div>
