@@ -68,10 +68,6 @@ const TEXT    = "#0B2B6B";
 const MUTED   = "#374151";
 const ease    = [0.25, 0.1, 0.25, 1] as const;
 
-// ── Razorpay payment links (update these when ready) ──────────
-const RAZORPAY_ENROLL_URL = "https://rzp.io/l/braintam-enroll";
-const RAZORPAY_DEMO_URL   = "https://rzp.io/l/braintam-demo";
-const RAZORPAY_TRIAL_URL  = "https://rzp.io/l/braintam-trial";
 
 // ── App store links (update these when ready) ─────────────────
 const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.braintam";
@@ -1068,7 +1064,7 @@ export default function LandingPage() {
                 </ul>
                 {/* Actions */}
                 <div className="space-y-2 pt-2">
-                  <a href={RAZORPAY_ENROLL_URL} target="_blank" rel="noopener noreferrer"
+                  <a href="/enroll"
                     className="block w-full py-3 rounded-xl font-bold text-sm text-white text-center transition-all hover:opacity-90"
                     style={{ background: p.popular ? `linear-gradient(135deg, ${ORANGE}, #c94e00)` : NAVY,
                              boxShadow: p.popular ? `0 0 24px rgba(255,107,26,0.3)` : "none" }}>
