@@ -1399,25 +1399,23 @@ function PaymentStatusView() {
         </button>
       </div>
 
-      {/* ── Excel-style summary boxes ──────────────────────────────────── */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-5">
+      {/* ── Compact summary chips ────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2 mb-4">
         {buckets.map(b => {
           const { count, total } = bucketData(b.key);
           const active = statusFilter === b.key;
           return (
             <button key={b.key}
               onClick={() => setStatusFilter(b.key)}
-              className="rounded-xl border-2 p-3 text-left transition-all hover:shadow-md"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all hover:shadow-sm text-xs font-semibold"
               style={{
-                background: b.bg,
+                background: active ? b.color : b.bg,
                 borderColor: active ? b.color : b.border,
-                boxShadow: active ? `0 0 0 2px ${b.color}33` : undefined,
+                color: active ? "#fff" : b.color,
               }}>
-              <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: b.color }}>{b.label}</div>
-              <div className="text-2xl font-black leading-none" style={{ color: b.color }}>{count}</div>
-              <div className="text-[10px] font-semibold mt-1" style={{ color: b.color }}>
-                ₹{total.toLocaleString("en-IN")}
-              </div>
+              <span className="uppercase tracking-wide font-bold">{b.label}</span>
+              <span className="font-black">{count}</span>
+              <span className="opacity-70">₹{total.toLocaleString("en-IN")}</span>
             </button>
           );
         })}

@@ -8,7 +8,7 @@ import {
   auditLogsTable,
   manualPaymentsTable,
 } from "@workspace/db";
-import { eq, desc, and, ilike, or, inArray } from "drizzle-orm";
+import { eq, desc, and, ilike, or, inArray, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -291,7 +291,7 @@ router.get("/mentor/long-term/payment-links", mentorAuth, async (req, res) => {
     })
     .from(paymentLinksTable)
     .leftJoin(usersTable, eq(paymentLinksTable.studentId, usersTable.id))
-    .where(eq(paymentLinksTable.mentorId, mentorId))
+    .where(or(eq(paymentLinksTable.mentorId, mentorId), isNull(paymentLinksTable.mentorId)))
     .orderBy(desc(paymentLinksTable.createdAt));
 
   res.json(rows.map(r => ({
