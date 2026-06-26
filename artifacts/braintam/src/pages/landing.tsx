@@ -1091,59 +1091,6 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* ── Grade-wise pricing ── */}
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
-            className="mt-8 rounded-2xl overflow-hidden"
-            style={{ border: `1px solid ${BORDER2}` }}>
-            <div className="px-5 py-4 flex items-center justify-between"
-              style={{ background: `linear-gradient(135deg,${NAVY} 0%,#0a3d8c 100%)` }}>
-              <div>
-                <div className="text-white font-black text-base">Full Year · Grade-wise Fees</div>
-                <div className="text-white/60 text-xs mt-0.5">Live classes · Tests · Homework · Recordings · EMI available</div>
-              </div>
-              <div className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "rgba(255,107,26,0.25)", color: "#FFA870" }}>Grades 1–8</div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4">
-              {([
-                { grade: 1, price: "₹29,998" },
-                { grade: 2, price: "₹31,998" },
-                { grade: 3, price: "₹33,998" },
-                { grade: 4, price: "₹35,998" },
-                { grade: 5, price: "₹37,998" },
-                { grade: 6, price: "₹41,998" },
-                { grade: 7, price: "₹43,998" },
-                { grade: 8, price: "₹49,998" },
-              ] as { grade: number; price: string }[]).map((g, idx) => (
-                <div key={g.grade}
-                  className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-orange-50/50"
-                  style={{
-                    borderRight: idx % 4 !== 3 ? `1px solid ${BORDER}` : "none",
-                    borderBottom: idx < 4 ? `1px solid ${BORDER}` : "none",
-                    background: idx % 2 === 0 ? SURFACE : "#fff",
-                  }}>
-                  <div>
-                    <div className="text-xs font-bold" style={{ color: MUTED }}>Grade {g.grade}</div>
-                    <div className="text-base font-black" style={{ color: NAVY }}>{g.price}</div>
-                    <div className="text-[10px]" style={{ color: MUTED }}>/year</div>
-                  </div>
-                  <a href={`/enroll-full?grade=${g.grade}`}
-                    className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-90 whitespace-nowrap"
-                    style={{ background: NAVY, color: "#fff" }}>
-                    Enroll
-                  </a>
-                </div>
-              ))}
-            </div>
-            <div className="px-5 py-3 flex items-center gap-3 flex-wrap"
-              style={{ background: "rgba(255,107,26,0.04)", borderTop: `1px solid ${BORDER}` }}>
-              <span className="text-[11px] font-semibold" style={{ color: MUTED }}>📅 EMI available on all plans</span>
-              <span className="text-[11px] font-semibold" style={{ color: MUTED }}>·</span>
-              <span className="text-[11px] font-semibold" style={{ color: MUTED }}>✅ 100% refund within 7 days</span>
-              <span className="text-[11px] font-semibold" style={{ color: MUTED }}>·</span>
-              <span className="text-[11px]" style={{ color: ORANGE }}>🔜 Grade 9 & 10 — Coming Soon</span>
-            </div>
-          </motion.div>
-
         </div>
       </section>
 
