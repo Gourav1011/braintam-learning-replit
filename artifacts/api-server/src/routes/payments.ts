@@ -187,7 +187,7 @@ router.post("/payments/webhook", async (req, res) => {
     return;
   }
 
-  // ── 3. Idempotency — skip if already processed ────────────
+  // ── 3. Idempotency — skip if already fully processed ─────
   const [existingPayment] = await db
     .select({ id: paymentsTable.id, status: paymentsTable.status })
     .from(paymentsTable)
@@ -195,9 +195,20 @@ router.post("/payments/webhook", async (req, res) => {
     .limit(1);
 
   if (existingPayment?.status === "captured") {
-    // Already fully processed — safe no-op
-    res.sendStatus(200);
-    return;
+    // Payment captured — but only skip if ignite record also exists.
+    // Without this check a failed ignite insert leaves the student invisible.
+    const [igniteRow] = await db
+      .select({ id: ignitePaidStudentsTable.id })
+      .from(ignitePaidStudentsTable)
+      .where(eq(ignitePaidStudentsTable.paymentId, existingPayment.id))
+      .limit(1);
+
+    if (igniteRow) {
+      // Truly fully processed — safe no-op
+      res.sendStatus(200);
+      return;
+    }
+    // Fall through to re-run steps 4-6 so the ignite record is created
   }
 
   // ── 4. Load phone + grade + stored amount from the payments row ─

@@ -1,0 +1,565 @@
+# BTL CRM – Phase F (Critical Stabilization + Missing Features)
+
+Project: Braintam Learning Platform (BTL CRM)
+
+IMPORTANT:
+This is now a production stabilization and feature completion sprint.
+
+DO NOT BREAK:
+
+* Authentication
+* Existing users
+* Existing payments
+* Razorpay
+* Existing webhooks
+* Existing audit logs
+* Existing dashboards
+* Existing permissions
+* Existing APIs
+* Existing data
+
+Before implementing any feature:
+
+1. Read the existing codebase.
+2. Audit data flow.
+3. Verify APIs.
+4. Verify frontend rendering.
+5. Verify permissions.
+6. Verify database records.
+
+====================================================
+PART 1 – CRITICAL BUG FIX
+=========================
+
+Issue:
+
+Yesterday's paid students are not visible inside Ignite CRM.
+
+Before building anything:
+
+Audit complete flow:
+
+Website Payment
+↓
+Razorpay Order
+↓
+Webhook
+↓
+payments table
+↓
+users table
+↓
+ignite_paid_students table
+↓
+API endpoint
+↓
+React state
+↓
+Ignite UI
+
+Find exactly where the breakdown occurs.
+
+Verify:
+
+1. Payment row exists.
+2. User row exists.
+3. ignite_paid_students row exists.
+4. assignmentStatus exists.
+5. API returns student.
+6. Frontend receives data.
+7. Student renders.
+
+Generate report:
+
+Payment ID
+Student ID
+Phone
+Grade
+Assignment Status
+API Response
+Root Cause
+Fix Applied
+
+DO NOT proceed until this is fixed.
+
+====================================================
+PART 2 – LEAD MANAGEMENT OVERHAUL
+=================================
+
+Create separate Lead Management section.
+
+Ignite
+├── Dashboard
+├── Leads
+│   ├── All Leads
+│   ├── Add Lead
+│   ├── Bulk Import
+│   ├── Assigned Leads
+│   ├── Follow Ups
+│   └── Converted Leads
+├── Paid Students
+├── Payments
+└── Sales Mentors
+
+====================================================
+ALL LEADS
+=========
+
+Display:
+
+Name
+Phone
+Grade
+Board
+Parent Name
+Source
+Status
+Assigned Mentor
+Created Date
+Last Follow Up
+
+Actions:
+
+View
+Edit
+Assign
+Call
+WhatsApp
+Delete (soft delete)
+
+Search
+Filters
+Pagination
+Loading
+Empty State
+
+====================================================
+ADD LEAD
+========
+
+Create:
+
+* Add Lead
+
+Form:
+
+Student Name
+Parent Name
+Phone
+Alternate Phone
+Email
+Grade
+Board
+School
+City
+Lead Source
+Notes
+
+Lead Sources:
+
+Website
+Instagram
+Facebook
+WhatsApp
+Walk-in
+Referral
+Manual
+Import
+
+Validation:
+
+Duplicate phone check
+Duplicate email check
+
+Create audit log:
+
+lead_created
+
+====================================================
+BULK IMPORT
+===========
+
+Create:
+
+* Bulk Import
+
+Support:
+
+CSV
+Excel
+
+Columns:
+
+Student Name
+Parent Name
+Phone
+Email
+Grade
+Board
+School
+City
+Lead Source
+
+Features:
+
+Download sample template
+Preview before import
+Show duplicate rows
+Skip duplicates option
+Import summary
+
+Results:
+
+Imported
+Skipped
+Failed
+
+Create audit log:
+
+bulk_import_started
+bulk_import_completed
+
+====================================================
+LEAD STATUSES
+=============
+
+new
+contacted
+follow_up
+interested
+demo_paid
+assigned
+converted
+dropped
+
+====================================================
+LEAD ASSIGNMENT
+===============
+
+Only:
+
+super_admin
+admin
+manager
+assistant_manager
+
+can assign leads.
+
+Mentors cannot self-assign.
+
+====================================================
+PART 3 – STAFF CREATION SYSTEM
+==============================
+
+Do NOT create separate creation systems.
+
+Create:
+
+Command Center
+→ Staff Management
+→ + Create Staff
+
+Dynamic role-based creation.
+
+====================================================
+COMMON FIELDS
+=============
+
+Photo
+Full Name
+Email
+Phone
+Department
+Role
+Status
+Temporary Password
+
+====================================================
+ROLES
+=====
+
+super_admin
+admin
+manager
+assistant_manager
+sales_mentor
+academic_mentor
+teacher
+
+====================================================
+ROLE-SPECIFIC FIELDS
+====================
+
+If Mentor:
+
+Mentor Type
+Preferred Grades
+Notes
+
+If Teacher:
+
+Subjects
+Preferred Grades
+Notes
+
+====================================================
+APIS
+====
+
+POST /api/admin/staff
+GET /api/admin/staff/:id
+
+====================================================
+PROFILE PAGES
+=============
+
+Create proper pages:
+
+/admin/staff/:id
+/admin/mentors/:id
+/admin/teachers/:id
+
+Sections:
+
+Basic Information
+Performance
+Permissions
+Activity Timeline
+
+Actions:
+
+Edit
+Activate
+Deactivate
+Reset Password
+Change Role
+
+====================================================
+AUDIT EVENTS
+============
+
+staff_created
+mentor_created
+teacher_created
+staff_updated
+role_changed
+password_reset_requested
+
+====================================================
+PART 4 – IGNITE CRM COMPLETION
+==============================
+
+Complete workflow:
+
+Lead
+↓
+Payment
+↓
+Paid Student
+↓
+Assign IC
+↓
+Assign Batch
+↓
+Demo Started
+↓
+Demo Completed
+↓
+Converted
+OR
+Dropped
+↓
+Mastery Student
+
+====================================================
+PAID STUDENT STATUSES
+=====================
+
+unassigned
+assigned
+batch_assigned
+demo_started
+demo_completed
+converted
+dropped
+
+====================================================
+STATUS SCREENS
+==============
+
+Unassigned
+Assigned
+Batch Assigned
+Demo Started
+Demo Completed
+Converted
+Dropped
+
+All screens require:
+
+KPIs
+Search
+Filters
+Pagination
+Loading
+Empty State
+Responsive UI
+
+====================================================
+BATCH ASSIGNMENT
+================
+
+ONLY:
+
+super_admin
+admin
+manager
+
+can:
+
+Assign Batch
+Change Batch
+Remove Batch
+Reassign Batch
+
+Return:
+
+403 Forbidden
+
+for mentors and teachers.
+
+====================================================
+IC DASHBOARD
+============
+
+Ignite
+→ My Students
+
+Sections:
+
+New Leads
+Follow Ups
+Demo Students
+Converted
+Dropped
+
+Mentors can:
+
+View
+Call
+WhatsApp
+Add Notes
+Add Follow Ups
+
+Cannot:
+
+Assign batches
+Convert students
+Manage permissions
+
+====================================================
+PART 5 – DEMO TRACKING
+======================
+
+Track:
+
+Attendance %
+Homework %
+Classes Attended
+Completion %
+Mentor Notes
+
+====================================================
+PART 6 – NOTIFICATIONS
+======================
+
+Internal notifications:
+
+Payment Received
+Lead Assigned
+Student Assigned
+Batch Assigned
+Demo Completed
+Conversion Completed
+
+Prepare hooks only.
+
+====================================================
+PART 7 – ANALYTICS
+==================
+
+Ignite Analytics:
+
+Revenue
+Conversion Funnel
+Drop Reasons
+Mentor Leaderboard
+Lead Sources
+Batch Performance
+
+====================================================
+TESTING REQUIREMENTS
+====================
+
+After every phase:
+
+1. Run migrations
+2. Typecheck
+3. Build frontend
+4. Restart API
+5. Verify APIs
+6. Verify permissions
+7. Verify navigation
+8. Verify search
+9. Verify pagination
+10. Verify loading states
+11. Verify empty states
+12. Verify yesterday's payment records appear correctly
+13. Verify audit logs
+
+====================================================
+DELIVERABLE REPORT
+==================
+
+Provide:
+
+Files changed
+Database changes
+Routes added
+Components added
+Screens added
+Audit events added
+Bug fixes applied
+API verification
+Screenshots if possible
+
+STOP after each sub-phase.
+
+Order:
+
+Phase F1:
+Critical bug fix (missing paid students)
+
+Phase F2:
+Lead Management overhaul
+
+Phase F3:
+Staff Creation System
+
+Phase F4:
+Remaining Ignite statuses
+
+Phase F5:
+Batch Assignment
+
+Phase F6:
+IC Dashboard
+
+Phase F7:
+Demo Tracking
+
+Phase F8:
+Analytics & Notifications
+
+Do NOT skip phases.
+Wait for approval after each phase.
