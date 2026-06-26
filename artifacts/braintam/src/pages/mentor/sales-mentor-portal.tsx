@@ -1464,26 +1464,23 @@ function PaymentStatusView() {
 
                       {/* Student name + lead ID + phone */}
                       <td className="px-4 py-3">
-                        <div className="font-black text-[12px]" style={{ color: NAVY }}>{row.studentName ?? "—"}</div>
+                        <div className="text-[12px] font-semibold text-gray-800">{row.studentName ?? "—"}</div>
                         {row.studentId && (
-                          <div className="text-[10px] font-bold mt-0.5" style={{ color: "#6366F1" }}>{padLeadId(row.studentId)}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">{padLeadId(row.studentId)}</div>
                         )}
                         {row.studentPhone && <div className="text-[10px] text-gray-400">{row.studentPhone}</div>}
                       </td>
 
                       {/* Razorpay ID */}
                       <td className="px-4 py-3">
-                        {row.razorpayPaymentLinkId
-                          ? <div className="font-mono text-[10px] font-bold px-2 py-1.5 rounded-lg border select-all cursor-text"
-                              style={{ background: "#FFFBEB", borderColor: "#FCD34D", color: "#92400E" }}>
-                              {row.razorpayPaymentLinkId}
-                            </div>
-                          : <span className="text-gray-300 text-[10px]">—</span>}
+                        <span className="font-mono text-[10px] text-gray-600 select-all">
+                          {row.razorpayPaymentLinkId ?? "—"}
+                        </span>
                       </td>
 
                       {/* Amount */}
-                      <td className="px-4 py-3">
-                        <div className="font-black text-[14px]" style={{ color: NAVY }}>₹{row.amountRupees.toLocaleString("en-IN")}</div>
+                      <td className="px-4 py-3 text-[12px] font-semibold text-gray-800">
+                        ₹{row.amountRupees.toLocaleString("en-IN")}
                       </td>
 
                       {/* Type */}
