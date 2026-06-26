@@ -1473,7 +1473,7 @@ function PaymentStatusView() {
 
                       {/* Razorpay ID */}
                       <td className="px-4 py-3">
-                        <span className="font-mono text-[10px] text-gray-900 select-all">
+                        <span className="font-mono text-[12px] font-semibold text-gray-900 select-all">
                           {row.razorpayPaymentLinkId ?? "—"}
                         </span>
                       </td>
