@@ -1,0 +1,114 @@
+CRITICAL INFRASTRUCTURE INVESTIGATION
+
+Do NOT build any new features. Do NOT modify CRM or payments yet.
+
+Investigation findings from VPS:
+
+1. Code is deployed and up to date:
+   Commit:
+   52aa3c7 - Improve payment link sharing functionality for WhatsApp
+
+2. Router exists:
+
+* longTermPayments.ts exists
+* routes/index.ts contains:
+  import longTermPaymentsRouter from "./longTermPayments";
+  router.use(longTermPaymentsRouter);
+
+3. PM2:
+
+* braintam-api → running
+* braintam-live → running
+
+4. Ports:
+   Port 3000:
+   node --enable-source-maps ./dist/index.mjs
+
+Port 4173:
+node /usr/bin/serve
+
+5. Tests:
+
+curl http://localhost:3000/api/admin/staff
+→ Returns:
+
+<!DOCTYPE html>
+
+curl http://localhost:4173/api/admin/staff
+→ Returns:
+
+<!DOCTYPE html>
+
+curl https://braintam.com/api/admin/staff
+→ Returns:
+
+<!DOCTYPE html>
+
+curl https://braintam.com/api/admin/cc/staff
+→ Returns:
+
+<!DOCTYPE html>
+
+curl https://braintam.com/api/mentor/long-term/payment-links
+→ Returns:
+
+<!DOCTYPE html>
+
+Frontend error:
+Unexpected token '<', "<!DOCTYPE"... is not valid JSON
+
+6. Grep results:
+
+artifacts/api-server/src/app.ts contains:
+
+* "All non-API routes → serve index.html"
+* res.sendFile(path.join(staticDir, "index.html"))
+* app.use("/api", ...)
+* app.use("/api", router)
+
+This means:
+API routes exist but /api/* requests are returning index.html instead of JSON.
+
+This issue may explain:
+
+* Staff Management failing
+* Command Center failing
+* Long Term Payment Links not generating
+* Course Pricing failing
+* CRM inconsistencies
+* JSON parse errors
+
+TASKS:
+
+1. Audit:
+   artifacts/api-server/src/app.ts
+
+2. Determine:
+
+* Middleware order
+* Where index.html is served
+* Whether catch-all is intercepting /api/*
+* Whether app.use("/api", router) executes before or after SPA fallback
+* Whether Vite middleware or static middleware is swallowing API routes
+* Why both ports return HTML
+
+3. Verify:
+   For every endpoint below, explain why HTML is returned instead of JSON:
+
+/api/admin/staff
+/api/admin/cc/staff
+/api/admin/command-center/dashboard
+/api/mentor/long-term/payment-links
+/api/admin/payment-status
+
+4. Deliverables:
+
+* Root cause
+* Exact file and line numbers
+* Whether issue is in app.ts, Vite middleware, static serving, or build configuration
+* Exact fix plan
+* Files to change
+* Any deployment steps required
+
+DO NOT IMPLEMENT.
+STOP AFTER INVESTIGATION REPORT.
