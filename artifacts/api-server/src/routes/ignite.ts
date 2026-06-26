@@ -1228,6 +1228,7 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
       assignedMentorId: g.mentor.id,
       assignedAt: now,
       assignmentStatus: "assigned",
+      deploymentStatus: "Assigned",
       updatedAt: now,
     }).where(inArray(usersTable.id, ids));
 
@@ -1246,12 +1247,22 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
     }
   }
 
+  // Generate batch code BTL-G{grade}-{year}-{seq}
+  const batchYear = new Date().getFullYear();
+  const gradeStr = grade ? `G${grade}` : "GALL";
+  const [{ seqCount }] = await db.select({ seqCount: count() }).from(leadDeploymentsTable);
+  const seq = Number(seqCount) + 1;
+  const batchCode = `BTL-${gradeStr}-${batchYear}-${String(seq).padStart(3, "0")}`;
+
   const [deployment] = await db.insert(leadDeploymentsTable).values({
+    batchCode,
     grade: grade ? Number(grade) : null,
     createdById: actor.id,
     createdByName: actor.name ?? "Admin",
     totalLeads: n,
     mentorCount: groups.length,
+    distributionMethod: "equal",
+    selectedMentorIds: requestedMentorIds?.length ? JSON.stringify(requestedMentorIds) : null,
     status: "completed",
   }).returning();
 
@@ -1266,12 +1277,37 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
     );
   }
 
-  await logLeadAudit(req, "deploy_leads", 0, "batch", { grade, totalLeads: n, mentors: groups.length });
+  // Create timeline entries for every assigned lead
+  const timelineRows = groups.flatMap(g => g.leads.map(lead => ({
+    studentId: lead.id,
+    createdById: actor.id ?? null,
+    createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin",
+    noteType: "deployment",
+    remark: `Lead assigned.\n\nMentor: ${g.mentor.name}\nDeployment Batch: ${batchCode}\nAssigned By: ${actor.name ?? "Admin"}`,
+  })));
+  if (timelineRows.length > 0) {
+    // insert in chunks of 100 to avoid query size limits
+    for (let i = 0; i < timelineRows.length; i += 100) {
+      await db.insert(studentTimelineTable).values(timelineRows.slice(i, i + 100)).catch(() => {});
+    }
+  }
+
+  // Update deploymentBatchId on deployed leads
+  const allDeployedIds = groups.flatMap(g => g.leads.map(l => l.id));
+  if (allDeployedIds.length > 0) {
+    for (let i = 0; i < allDeployedIds.length; i += 500) {
+      await db.update(usersTable).set({ deploymentBatchId: deployment.id }).where(inArray(usersTable.id, allDeployedIds.slice(i, i + 500)));
+    }
+  }
+
+  await logLeadAudit(req, "deploy_leads", 0, "batch", { grade, totalLeads: n, mentors: groups.length, batchCode });
   res.json({
     ok: true,
     deployed: n,
     mentorsUsed: groups.length,
     deploymentId: deployment.id,
+    batchCode,
     groups: groups.map(g => ({ mentorId: g.mentor.id, mentorName: g.mentor.name, count: g.leads.length })),
   });
 });
@@ -1344,6 +1380,97 @@ router.post("/admin/ignite/redistribute", adminOnly, async (req, res) => {
     sourceMentorId, targetMentorIds, movedCount: n,
   });
   res.json({ ok: true, moved: n, mentorsUsed: mentors.length });
+});
+
+// ── GET /admin/ignite/deploy/stats ────────────────────────────────────────────
+router.get("/admin/ignite/deploy/stats", adminOnly, async (req, res) => {
+  const grade = req.query.grade ? Number(req.query.grade) : null;
+
+  const baseWhere = and(
+    inArray(usersTable.accountType, ["lead", "demo_student"]),
+    eq(usersTable.isDeleted, false),
+    eq(usersTable.isActive, true),
+    ...(grade ? [eq(usersTable.grade, grade)] : []),
+  );
+
+  const [undeployedRes, assignedRes, convertedRes, lostRes] = await Promise.all([
+    db.select({ c: count() }).from(usersTable).where(and(baseWhere, isNull(usersTable.assignedMentorId), or(isNull(usersTable.leadStage), notInArray(usersTable.leadStage, ["Lost", "Converted"])))),
+    db.select({ c: count() }).from(usersTable).where(and(baseWhere, isNotNull(usersTable.assignedMentorId))),
+    db.select({ c: count() }).from(usersTable).where(and(baseWhere, eq(usersTable.leadStage, "Converted"))),
+    db.select({ c: count() }).from(usersTable).where(and(baseWhere, eq(usersTable.leadStage, "Lost"))),
+  ]);
+
+  const [activeMentorsRes] = await db.select({ c: count() }).from(usersTable).where(and(
+    eq(usersTable.role, "mentor"),
+    eq(usersTable.mentorType, "sales"),
+    eq(usersTable.isActive, true),
+    eq(usersTable.isDeleted, false),
+    eq(usersTable.isArchived, false),
+  ));
+
+  res.json({
+    undeployedLeads: Number(undeployedRes[0]?.c ?? 0),
+    activeMentors:   Number(activeMentorsRes?.c ?? 0),
+    assignedLeads:   Number(assignedRes[0]?.c ?? 0),
+    convertedLeads:  Number(convertedRes[0]?.c ?? 0),
+    lostLeads:       Number(lostRes[0]?.c ?? 0),
+  });
+});
+
+// ── GET /admin/ignite/deploy/mentors ───────────────────────────────────────────
+router.get("/admin/ignite/deploy/mentors", adminOnly, async (_req, res) => {
+  const mentors = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    isActive: usersTable.isActive, department: usersTable.department,
+    disabledAt: usersTable.disabledAt,
+  }).from(usersTable).where(and(
+    eq(usersTable.role, "mentor"),
+    eq(usersTable.mentorType, "sales"),
+    eq(usersTable.isDeleted, false),
+    eq(usersTable.isArchived, false),
+  ));
+
+  if (!mentors.length) { res.json([]); return; }
+
+  const mentorIds = mentors.map(m => m.id);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const [currentLeadsRes, followUpsRes, convRes] = await Promise.all([
+    db.select({ mentorId: usersTable.assignedMentorId, c: count() })
+      .from(usersTable)
+      .where(and(
+        inArray(usersTable.assignedMentorId, mentorIds),
+        or(isNull(usersTable.leadStage), notInArray(usersTable.leadStage, ["Lost", "Converted"])),
+        eq(usersTable.isDeleted, false),
+      ))
+      .groupBy(usersTable.assignedMentorId),
+    db.select({ mentorId: usersTable.assignedMentorId, c: count() })
+      .from(usersTable)
+      .where(and(
+        inArray(usersTable.assignedMentorId, mentorIds),
+        eq(usersTable.nextFollowUpAt, today.toISOString().slice(0, 10)),
+      ))
+      .groupBy(usersTable.assignedMentorId),
+    db.select({ mentorId: demoBatchEnrollmentsTable.assignedMentorId, total: count(), converted: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus}='converted' THEN 1 ELSE 0 END)` })
+      .from(demoBatchEnrollmentsTable)
+      .where(inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds))
+      .groupBy(demoBatchEnrollmentsTable.assignedMentorId),
+  ]);
+
+  const currentLeadsMap = Object.fromEntries(currentLeadsRes.map(r => [r.mentorId!, Number(r.c)]));
+  const followUpsMap    = Object.fromEntries(followUpsRes.map(r => [r.mentorId!, Number(r.c)]));
+  const convMap         = Object.fromEntries(convRes.map(r => [r.mentorId!, { total: Number(r.total), converted: Number(r.converted) }]));
+
+  res.json(mentors.map(m => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    isActive: m.isActive && !m.disabledAt,
+    status: m.isActive && !m.disabledAt ? "Active" : (m.disabledAt ? "On Leave" : "Inactive"),
+    currentLeads:      currentLeadsMap[m.id] ?? 0,
+    todaysFollowUps:   followUpsMap[m.id] ?? 0,
+    conversionRate:    convMap[m.id] ? Math.round((convMap[m.id].converted / convMap[m.id].total) * 100) : 0,
+  })));
 });
 
 export default router;

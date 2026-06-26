@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
+import { LeadDeploymentView } from "./lead-deployment-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -43,6 +44,7 @@ export type IgniteView =
   | "follow-ups"
   | "conversion"
   | "sales-mentors"
+  | "lead-deployment"
   | "paid-students-unassigned"
   | "paid-students-assigned"
   | "paid-students-batch-assigned"
@@ -3059,6 +3061,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
+  { id: "lead-deployment", label: "Lead Deployment", icon: Rocket },
   {
     id: "overview", label: "Demo Management", icon: Zap,
     children: [
@@ -4534,6 +4537,7 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    case "lead-deployment": return <LeadDeploymentView flash={flash} />;
     case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
     case "paid-students-assigned":      return <PaidStudentsAssignedView />;
     case "paid-students-batch-assigned": return <PaidStudentsBatchAssignedView />;
@@ -4569,6 +4573,7 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
+      case "lead-deployment": return <LeadDeploymentView flash={flash} />;
       case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
       case "paid-students-assigned":      return <PaidStudentsAssignedView />;
       case "paid-students-batch-assigned": return <PaidStudentsBatchAssignedView />;

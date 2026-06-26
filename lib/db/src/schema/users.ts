@@ -67,6 +67,9 @@ export const usersTable = pgTable("users", {
   organizationId: integer("organization_id"),
   phoneVerified: boolean("phone_verified").notNull().default(false),
   department: text("department"),
+  // Lead Deployment Engine
+  deploymentStatus: text("deployment_status"),   // Undeployed | Assigned | Reassigned | Converted
+  deploymentBatchId: integer("deployment_batch_id"),
   // Website enrollment / Meta Ads tracking
   isWebsiteLead: boolean("is_website_lead").notNull().default(false),
   utmSource: text("utm_source"),

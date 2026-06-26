@@ -1,0 +1,753 @@
+# PHASE 5B – IGNITE CRM LEAD DEPLOYMENT & MENTOR DISTRIBUTION ENGINE
+
+## IMPORTANT
+
+This module belongs ONLY to Ignite CRM.
+
+DO NOT modify:
+
+* Mastery CRM
+* Existing Lead Management
+* Payment Module
+* Website Enrollment Flow
+* Follow-ups
+* Notes
+* Timeline History
+* Lost Leads
+* Converted Leads
+* Existing Mentor Dashboard functionality
+
+Extend the current system without breaking anything.
+
+---
+
+# BUSINESS PROBLEM
+
+Every day leads enter from:
+
+* Website Enrollment
+* Meta Ads
+* Google Ads
+* Manual Entry
+* Referrals
+
+Currently admin has to manually assign leads.
+
+This is not scalable.
+
+The system should automatically distribute leads among selected mentors.
+
+---
+
+# CREATE NEW MODULE
+
+Location:
+
+Admin
+→ Ignite
+→ Lead Deployment
+
+Create a completely new deployment center.
+
+---
+
+# DASHBOARD CARDS
+
+Display:
+
+📥 Undeployed Leads
+👨‍🏫 Active Mentors
+📤 Assigned Leads
+🎯 Converted Leads
+❌ Lost Leads
+
+Cards should update in real-time.
+
+---
+
+# FILTER SECTION
+
+Filters:
+
+Grade
+Lead Source
+Date Range
+Website Leads
+Payment Status
+Deployment Status
+
+Deployment Status:
+
+* Undeployed
+* Assigned
+* Reassigned
+* Converted
+
+---
+
+# DEPLOYMENT FLOW
+
+Admin
+→ Lead Deployment
+→ Select Grade
+→ Select Mentors
+→ Preview Distribution
+→ Deploy
+
+Everything should happen from one page.
+
+Avoid excessive scrolling.
+
+---
+
+# STEP 1 – SELECT GRADE
+
+Dropdown:
+
+All Grades
+Grade 1
+Grade 2
+Grade 3
+Grade 4
+Grade 5
+Grade 6
+Grade 7
+Grade 8
+
+After selecting:
+
+Grade: Grade 4
+
+Display:
+
+Undeployed Leads: 983
+Active Mentors: 12
+
+---
+
+# STEP 2 – MENTOR CHECKLIST
+
+This is mandatory.
+
+Admin should NEVER be forced to deploy to all mentors.
+
+Create:
+
+☑ Select All Mentors
+
+Below it display:
+
+☑ Rahul Sharma
+Badge: Active
+Current Leads: 45
+
+☑ Priya Singh
+Badge: Active
+Current Leads: 38
+
+☑ Amit Kumar
+Badge: Active
+Current Leads: 51
+
+☐ Karan Mehta
+Badge: On Leave
+Disabled
+
+☐ Mohit Sharma
+Badge: Inactive
+Disabled
+
+Each mentor row should show:
+
+Profile Photo
+Name
+Status Badge
+Current Assigned Leads
+Current Conversion %
+Today's Follow-ups
+Checkbox
+
+---
+
+# MENTOR ELIGIBILITY
+
+Only show:
+
+Status = Active
+Role = Mentor
+Can Receive Leads = True
+
+Exclude:
+
+Inactive
+On Leave
+Disabled
+Deleted
+
+---
+
+# SELECT ALL FUNCTION
+
+Click:
+
+☑ Select All Mentors
+
+Automatically selects all eligible mentors.
+
+Click again:
+
+☐ Select All Mentors
+
+Removes all selections.
+
+---
+
+# PARTIAL SELECTION
+
+Admin should be able to select:
+
+Example:
+
+☑ Rahul
+☑ Priya
+☐ Amit
+☐ Neha
+☑ Rakesh
+
+Only selected mentors participate in deployment.
+
+---
+
+# VALIDATION
+
+If:
+
+No mentor selected
+
+Show:
+
+Please select at least one mentor.
+
+Do not allow deployment.
+
+---
+
+# STEP 3 – DISTRIBUTION METHOD
+
+Create:
+
+Distribution Method
+
+Options:
+
+(•) Equal Distribution
+
+Future Ready:
+
+( ) Capacity Based Distribution
+( ) Manual Distribution
+
+Only Equal Distribution needs implementation now.
+
+---
+
+# EQUAL DISTRIBUTION ALGORITHM
+
+Difference between mentors should never exceed:
+
+1 lead
+
+---
+
+# EXAMPLES
+
+Example 1
+
+100 Leads
+5 Mentors
+
+Result:
+
+20
+20
+20
+20
+20
+
+---
+
+Example 2
+
+983 Leads
+10 Mentors
+
+Result:
+
+99
+98
+98
+98
+98
+98
+98
+98
+98
+98
+
+---
+
+Example 3
+
+7 Leads
+3 Mentors
+
+Result:
+
+3
+2
+2
+
+---
+
+Example 4
+
+50 Leads
+4 Mentors
+
+Result:
+
+13
+13
+12
+12
+
+Algorithm must always produce nearly equal distribution.
+
+---
+
+# STEP 4 – DEPLOYMENT PREVIEW
+
+Before deployment show:
+
+---
+
+Grade:
+Grade 4
+
+Undeployed Leads:
+983
+
+Selected Mentors:
+5
+
+Distribution Method:
+Equal Distribution
+
+---
+
+Rahul Sharma → 197 Leads
+
+Priya Singh → 197 Leads
+
+Amit Kumar → 197 Leads
+
+Neha Gupta → 196 Leads
+
+Rakesh Verma → 196 Leads
+
+---
+
+Buttons:
+
+Cancel
+Deploy
+
+---
+
+# STEP 5 – DEPLOY
+
+When admin clicks:
+
+Deploy
+
+System should:
+
+STEP 1
+
+Fetch leads:
+
+grade = Grade 4
+paymentStatus = Paid
+isConverted = false
+leadStage != Lost
+deploymentStatus = Undeployed
+
+STEP 2
+
+Fetch selected mentors.
+
+STEP 3
+
+Calculate equal distribution.
+
+STEP 4
+
+Assign leads.
+
+STEP 5
+
+Create deployment batch.
+
+STEP 6
+
+Update lead records.
+
+STEP 7
+
+Create timeline entries.
+
+---
+
+# DATABASE CHANGES
+
+Create:
+
+deployment_batches
+
+Fields:
+
+id
+batchCode
+grade
+totalLeads
+totalMentors
+distributionMethod
+selectedMentorIds
+deployedBy
+deployedAt
+status
+notes
+
+---
+
+# BATCH CODE
+
+Generate:
+
+BTL-G4-2026-001
+BTL-G2-2026-002
+BTL-G6-2026-003
+
+---
+
+# CREATE TABLE
+
+lead_assignments
+
+Fields:
+
+id
+leadId
+mentorId
+batchId
+assignedAt
+assignedBy
+assignmentWeek
+assignmentMonth
+status
+
+---
+
+# UPDATE LEADS TABLE
+
+Add:
+
+assignedMentorId
+deploymentStatus
+assignedAt
+assignedBy
+assignmentWeek
+assignmentMonth
+deploymentBatchId
+
+deploymentStatus:
+
+Undeployed
+Assigned
+Reassigned
+Converted
+
+---
+
+# TIMELINE ENTRY
+
+Every assigned lead should receive:
+
+Lead assigned.
+
+Mentor:
+Rahul Sharma
+
+Deployment Batch:
+BTL-G4-2026-001
+
+Assigned By:
+Super Admin
+
+Date:
+Timestamp
+
+---
+
+# MENTOR DASHBOARD
+
+Add card:
+
+This Week's Leads
+
+Cards:
+
+Assigned Leads
+Pending Calls
+Interested
+Demo Scheduled
+Lost
+Converted
+
+---
+
+# MENTOR LEAD LIST
+
+Display:
+
+Student Name
+Phone
+Grade
+Source
+Assigned Date
+Status
+
+Filters:
+
+Today
+This Week
+Interested
+Pending
+Lost
+Converted
+
+---
+
+# DEPLOYMENT HISTORY
+
+Location:
+
+Admin
+→ Ignite
+→ Lead Deployment
+→ History
+
+Table:
+
+Batch Code
+Grade
+Leads
+Mentors
+Created By
+Created At
+Status
+
+Button:
+
+View Details
+
+---
+
+# VIEW DETAILS
+
+Example:
+
+Batch:
+BTL-G4-2026-001
+
+Grade:
+Grade 4
+
+Leads:
+983
+
+Mentors:
+5
+
+Distribution:
+
+Rahul → 197
+Priya → 197
+Amit → 197
+Neha → 196
+Rakesh → 196
+
+---
+
+# REDEPLOY MODULE
+
+Create:
+
+Redeploy Leads
+
+Reasons:
+
+Mentor Resigned
+Poor Performance
+Temporary Leave
+Sick Leave
+Business Decision
+Other
+
+---
+
+# REDEPLOY OPTIONS
+
+Option 1
+
+Transfer all leads.
+
+Mentor A
+↓
+
+Mentor B
+
+---
+
+Option 2
+
+Redistribute among selected mentors.
+
+Example:
+
+☑ Priya
+☑ Amit
+☑ Rakesh
+
+120 leads
+
+Preview:
+
+Priya → +40
+Amit → +40
+Rakesh → +40
+
+---
+
+Option 3
+
+Transfer selected leads.
+
+Choose:
+
+Leads
+Mentor
+Transfer
+
+---
+
+# REASSIGNMENT TIMELINE
+
+Lead reassigned.
+
+From:
+Rahul Sharma
+
+To:
+Priya Singh
+
+Reason:
+Mentor Resigned
+
+By:
+Super Admin
+
+Date:
+Timestamp
+
+---
+
+# PERMISSIONS
+
+Super Admin:
+
+Deploy
+Redeploy
+Transfer
+Delete Batch
+View History
+
+Manager:
+
+Deploy
+Redeploy
+View History
+
+Mentor:
+
+View Assigned Leads Only
+
+---
+
+# UI REQUIREMENTS
+
+Maintain Braintam Design:
+
+Navy
+Orange
+White
+Glass Cards
+Rounded Corners
+Badges
+Sticky Actions
+
+Use:
+
+Cards
+Tabs
+Drawer Modals
+Progress Bars
+Collapsible Sections
+
+Avoid long scrolling.
+
+Everything should fit into one deployment screen.
+
+---
+
+# FINAL FLOW
+
+Website Lead
+↓
+Ignite CRM
+↓
+Undeployed Queue
+↓
+Select Grade
+↓
+Select Mentors
+↓
+Preview Distribution
+↓
+Deploy
+↓
+Create Batch
+↓
+Assign Leads
+↓
+Update Timelines
+↓
+Mentor Dashboard
+↓
+Follow-ups
+↓
+Conversion
+↓
+Mastery
+
+Build this entire module in production-ready architecture with database migrations, APIs, services, validations, timeline logging, history tracking, mentor checklist selection, equal distribution engine, and responsive UI while preserving all existing Ignite CRM functionality.
