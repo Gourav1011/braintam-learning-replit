@@ -172,20 +172,6 @@ const programs = [
     color: "#a78bfa",
     demo: true,
   },
-  {
-    icon: "🔒",
-    name: "Advanced Program",
-    tag: "Grade 9 & 10",
-    grades: "Grades 9–10",
-    price: "Batch Full",
-    enrollLink: "",
-    period: "",
-    freq: "New batch opening soon — join the waitlist",
-    features: ["Boards + JEE/NEET foundation","Full syllabus coverage","Mock tests & PYQs","Personal mentor sessions","Priority doubt resolution"],
-    color: "#6B7280",
-    batchFull: true,
-    demo: false,
-  },
 ];
 
 const team = [
