@@ -1019,7 +1019,8 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       .then(setLeads)
       .catch(() => flash("Failed to load leads", false))
       .finally(() => setLoading(false));
-  }, [flash]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
