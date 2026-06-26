@@ -138,7 +138,7 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
-    .where(eq(usersTable.accountType, "lead"))
+    .where(inArray(usersTable.accountType, ["lead", "demo_student"]))
     .orderBy(desc(usersTable.createdAt));
 
   res.json(leads);
