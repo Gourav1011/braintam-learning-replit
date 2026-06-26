@@ -1116,12 +1116,12 @@ export default function LandingPage() {
           {/* Header with student photo */}
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="flex flex-col md:flex-row items-center gap-6 mb-6 md:mb-8">
-            <div className="text-center md:text-left space-y-2 flex-1">
+            <div className="text-center space-y-2 flex-1">
               <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Reviews</div>
               <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>What families say about Braintam</h2>
               <p className="text-sm" style={{ color: MUTED }}>Real experiences from our learning community</p>
               {/* Trust row */}
-              <div className="flex items-center gap-3 justify-center md:justify-start flex-wrap pt-1">
+              <div className="flex items-center gap-3 justify-center flex-wrap pt-1">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
                   style={{ background: "rgba(255,107,26,0.08)", color: ORANGE }}>
                   <Star className="w-3 h-3 fill-current" /> 4.9/5 Parent Rating
@@ -1155,10 +1155,9 @@ export default function LandingPage() {
             <p className="text-sm max-w-lg mx-auto leading-relaxed" style={{ color: MUTED }}>
               These are our goals — ambitious targets we are actively working towards. We believe in sharing our vision openly.
             </p>
-            {/* "Future goals" label */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold mx-auto mt-2"
               style={{ background: "rgba(255,107,26,0.08)", border: "1.5px dashed rgba(255,107,26,0.4)", color: ORANGE }}>
-              🎯 These are future goals — not current achievements
+              🎯 Our Goals
             </div>
           </motion.div>
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
