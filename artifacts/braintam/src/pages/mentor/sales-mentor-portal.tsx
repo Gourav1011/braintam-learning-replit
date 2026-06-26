@@ -953,44 +953,50 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-            {lead.lastCallAt && (
-              <div className="text-right hidden md:block">
-                <div className="text-[10px] text-gray-400">Last Call</div>
-                <div className="text-xs font-semibold" style={{ color: NAVY }}>{fmtDateTime(lead.lastCallAt)}</div>
-              </div>
-            )}
-            {lead.nextFollowUpAt && (
-              <div className="text-right hidden md:block">
-                <div className="text-[10px] text-gray-400">Next Follow-up</div>
-                <div className="text-xs font-bold" style={{ color: followUpColor(lead.nextFollowUpAt) }}>
-                  {followUpLabel(lead.nextFollowUpAt, lead.nextFollowUpTime)}
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            {/* Call & WhatsApp row */}
+            <div className="flex items-center gap-2">
+              {lead.lastCallAt && (
+                <div className="text-right hidden md:block">
+                  <div className="text-[10px] text-gray-400">Last Call</div>
+                  <div className="text-xs font-semibold" style={{ color: NAVY }}>{fmtDateTime(lead.lastCallAt)}</div>
                 </div>
-              </div>
-            )}
-            <a href={`tel:${lead.parentPhone ?? lead.phone}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
-              style={{ background: GREEN }}>
-              <Phone className="w-3.5 h-3.5" /> Call
-            </a>
-            <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
-              target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
-              style={{ background: "#25D366" }}>
-              <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
-            </a>
-            {!conv && (
-              <button onClick={() => setShowPaymentPopup("full")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
-                style={{ borderColor: ORANGE, color: ORANGE }}>
-                <CreditCard className="w-3.5 h-3.5" /> Launch Payment
+              )}
+              {lead.nextFollowUpAt && (
+                <div className="text-right hidden md:block">
+                  <div className="text-[10px] text-gray-400">Next Follow-up</div>
+                  <div className="text-xs font-bold" style={{ color: followUpColor(lead.nextFollowUpAt) }}>
+                    {followUpLabel(lead.nextFollowUpAt, lead.nextFollowUpTime)}
+                  </div>
+                </div>
+              )}
+              <a href={`tel:${lead.parentPhone ?? lead.phone}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                style={{ background: GREEN }}>
+                <Phone className="w-3.5 h-3.5" /> Call
+              </a>
+              <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                style={{ background: "#25D366" }}>
+                <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+              </a>
+            </div>
+            {/* Payment actions — smaller row below */}
+            <div className="flex items-center gap-3">
+              {!conv && (
+                <button onClick={() => setShowPaymentPopup("full")}
+                  className="flex items-center gap-1 text-[10px] font-bold transition-colors hover:opacity-80"
+                  style={{ color: ORANGE }}>
+                  <CreditCard className="w-3 h-3" /> Launch Payment
+                </button>
+              )}
+              <button onClick={() => setShowUploadPopup(true)}
+                className="flex items-center gap-1 text-[10px] font-bold transition-colors hover:opacity-80"
+                style={{ color: GREEN }}>
+                <Upload className="w-3 h-3" /> Upload Payment
               </button>
-            )}
-            <button onClick={() => setShowUploadPopup(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
-              style={{ borderColor: GREEN, color: GREEN }}>
-              <Upload className="w-3.5 h-3.5" /> Upload Payment
-            </button>
+            </div>
           </div>
         </div>
       </div>
