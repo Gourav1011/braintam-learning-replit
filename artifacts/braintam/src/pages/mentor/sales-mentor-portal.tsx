@@ -1406,27 +1406,6 @@ function PaymentStatusView() {
         </button>
       </div>
 
-      {/* ── Compact summary chips ────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {buckets.map(b => {
-          const { count, total } = bucketData(b.key);
-          const active = statusFilter === b.key;
-          return (
-            <button key={b.key}
-              onClick={() => setStatusFilter(b.key)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all hover:shadow-sm text-xs font-semibold"
-              style={{
-                background: active ? b.color : b.bg,
-                borderColor: active ? b.color : b.border,
-                color: active ? "#fff" : b.color,
-              }}>
-              <span className="uppercase tracking-wide font-bold">{b.label}</span>
-              <span className="font-black">{count}</span>
-              <span className="opacity-70">₹{total.toLocaleString("en-IN")}</span>
-            </button>
-          );
-        })}
-      </div>
 
       {/* ── Search bar ────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-white mb-4">
