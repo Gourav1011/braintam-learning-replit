@@ -1530,12 +1530,9 @@ function PaymentStatusView() {
               </tbody>
             </table>
 
-            {/* Footer total */}
-            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between" style={{ background: "#F8FAFF" }}>
-              <span className="text-xs font-bold text-gray-400">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
-              <span className="text-xs font-black" style={{ color: NAVY }}>
-                Total: ₹{filtered.reduce((s, r) => s + r.amountRupees, 0).toLocaleString("en-IN")}
-              </span>
+            {/* Footer record count */}
+            <div className="px-4 py-3 border-t border-gray-100" style={{ background: "#F8FAFF" }}>
+              <span className="text-xs text-gray-400">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
             </div>
           </div>
         )}
