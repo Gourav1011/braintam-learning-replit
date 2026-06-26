@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import braintamLogo from "@assets/logo_transparent-Photoroom_1782323218278.png";
 import expertCardImg   from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
-import brandedStudentImg from "@assets/ChatGPT_Image_May_29,_2026,_09_13_20_PM_1780069417528.png";
 import poonamPhoto from "@assets/poonam_cofounder.png";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -1117,12 +1116,6 @@ export default function LandingPage() {
           {/* Header with student photo */}
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="flex flex-col md:flex-row items-center gap-6 mb-6 md:mb-8">
-            {/* Student photo — branded */}
-            <div className="flex-shrink-0 hidden md:block">
-              <img src={brandedStudentImg} alt="Braintam student"
-                className="w-48 rounded-2xl object-cover shadow-lg"
-                style={{ border: `3px solid rgba(255,107,26,0.2)` }} />
-            </div>
             <div className="text-center md:text-left space-y-2 flex-1">
               <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: ORANGE }}>Reviews</div>
               <h2 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: TEXT }}>What families say about Braintam</h2>

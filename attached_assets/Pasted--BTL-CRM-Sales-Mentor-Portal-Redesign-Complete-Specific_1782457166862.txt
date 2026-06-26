@@ -1,0 +1,753 @@
+# BTL CRM – Sales Mentor Portal Redesign (Complete Specification)
+
+I am sharing reference images separately. Study those images carefully before implementing.
+
+IMPORTANT:
+
+This is NOT a new portal.
+
+This is a redesign of the EXISTING Sales Mentor Portal.
+
+Do NOT create a new application.
+
+Modify the current mentor portal.
+
+Do NOT break:
+
+* Authentication
+* Existing APIs
+* Existing routes
+* Existing permissions
+* Existing notifications
+* Existing payments
+* Existing student data
+* Existing CRM flow
+* Existing audit logs
+* Existing dashboards
+
+Read the existing codebase first and then implement.
+
+---
+
+## BUSINESS CONTEXT
+
+Braintam mentors work like:
+
+* ODA Counselors
+* Physics Wallah Counselors
+* CuriousJr Admission Counselors
+
+Their main job is:
+
+1. Call parents
+2. Add remarks
+3. Schedule follow-ups
+4. Send long-term payment links
+5. Convert demo students into long-term students
+
+Mentors are NOT managers.
+
+Mentors are NOT admins.
+
+Mentors do NOT need complicated dashboards.
+
+Portal should be:
+
+* lightweight
+* mobile friendly
+* modern
+* extremely fast
+* minimal clicks
+
+Everything should feel like a calling CRM.
+
+---
+
+## REMOVE THESE MENUS COMPLETELY
+
+Remove:
+
+Settings
+My Revenue
+My Students
+My Analytics
+Reports
+Leaderboard
+Revenue Dashboard
+Admin Modules
+Permission Screens
+
+Sales mentors do not need these.
+
+---
+
+## FINAL NAVIGATION
+
+BTL CRM
+
+├── My Leads
+│
+└── Payment Status
+
+Nothing else.
+
+---
+
+## MY LEADS
+
+This is the default landing page.
+
+Top chips:
+
+ALL
+PENDING CALLS
+BUSY
+CALL LATER
+CONVERTED
+
+No extra tabs.
+
+---
+
+## SEARCH
+
+Search:
+
+* Student Name
+* Mobile
+* Lead ID
+
+Filter button on right.
+
+---
+
+## LEAD CARDS
+
+Each card:
+
+Student Name
+Grade
+Lead ID
+Mobile Number
+
+Right Side:
+
+Last Call
+Next Follow-up
+
+Badges:
+
+Repeated Lead
+Payment Pending
+Payment Failed
+Converted
+
+Buttons:
+
+Call
+WhatsApp
+Arrow
+
+Arrow opens Student Details.
+
+Cards must be:
+
+rounded
+minimal shadows
+lightweight
+mobile responsive
+
+---
+
+## CONVERTED LOGIC
+
+When student completes LONG-TERM payment:
+
+conversionStatus = converted
+
+Lead automatically disappears from:
+
+All
+Pending Calls
+Busy
+Call Later
+
+Lead automatically appears inside:
+
+Converted
+
+Converted cards become read only.
+
+Card shows:
+
+Student Name
+Program Purchased
+Converted Date
+Amount Paid
+
+---
+
+## STUDENT DETAILS PAGE
+
+Arrow opens student details page.
+
+Only TWO boxes.
+
+No complicated tabs.
+
+No homework pages.
+
+No analytics pages.
+
+No extra navigation.
+
+---
+
+## LEFT BOX
+
+Sections:
+
+1. Payment Link
+2. Live Class Activity
+3. Analytics
+4. Previous Courses
+
+---
+
+## PAYMENT LINK SECTION
+
+Card:
+
+Payment Link
+Share payment link for long-term course.
+
+Button:
+
+Launch Payment
+
+Dropdown beside button.
+
+When clicked:
+
+Small popup.
+
+Options:
+
+Full Payment
+Partial Payment
+
+---
+
+## FULL PAYMENT
+
+Generate payment link.
+
+Show:
+
+You can complete the payment by clicking below.
+
+https://rzp....
+
+Buttons:
+
+Copy Link
+WhatsApp Parent
+
+---
+
+## PARTIAL PAYMENT
+
+Popup:
+
+Amount field
+
+Button:
+
+Launch Payment
+
+Generate:
+
+https://rzp....
+
+Buttons:
+
+Copy Link
+WhatsApp Parent
+
+---
+
+## IMPORTANT
+
+These notifications are ONLY for LONG-TERM payments.
+
+Do NOT show:
+
+"Rahul created order for Ignite Demo ₹39"
+
+These students already belong to Ignite.
+
+Notification should simply be:
+
+🟡 Rahul created order.
+
+Meaning:
+
+Student clicked long-term payment link but payment not completed.
+
+Successful payment:
+
+🟢 Ananya completed payment successfully.
+
+Failed:
+
+🔴 Aarav payment failed.
+
+---
+
+## LIVE CLASS ACTIVITY
+
+Simple list.
+
+Example:
+
+Live Class 1
+60 min
+Attendance 75%
+
+Activity line:
+
+Green:
+Student active
+
+Red:
+Student away
+
+No heavy graphs.
+
+No separate analytics pages.
+
+---
+
+## ANALYTICS
+
+Small cards only:
+
+Classes Completed
+Attendance %
+Watch Time
+Homework Completion %
+
+Keep very lightweight.
+
+---
+
+## PREVIOUS COURSES
+
+Simple list.
+
+Example:
+
+Math Demo
+Completed
+
+Science Demo
+Dropped
+
+English Demo
+Completed
+
+If none:
+
+No Previous Courses
+
+---
+
+## RIGHT BOX
+
+Contains:
+
+Student Information
+Call Details
+Previous Remarks
+
+Everything on ONE screen.
+
+---
+
+## STUDENT INFORMATION
+
+READ ONLY:
+
+Parent Name
+Original Name
+Mobile
+Email
+School
+City
+Lead Source
+
+DO NOT EDIT:
+
+Lead Source
+Original Name
+Assigned Mentor
+Parent Grade
+
+---
+
+## MENTOR EDITABLE FIELDS
+
+Display Name
+Additional Mobile
+Weak Subject
+Strong Subject
+Mentor Notes
+Reference Grade
+
+Reference Grade:
+
+Example:
+
+Actual Grade:
+3
+
+Mentor Note:
+
+Interested for Grade 4 next year.
+
+Must NOT overwrite actual grade.
+
+---
+
+## CALL DETAILS
+
+Who Picked?
+
+Student
+Mother
+Father
+Brother
+Sister
+Other
+
+If Other:
+
+Name
+Relation
+
+---
+
+## CALL STATUS
+
+Not Connected
+Busy
+Call Later
+Interested
+Not Interested
+Payment Pending
+Payment Failed
+Payment Completed
+
+---
+
+## CALL REMARKS
+
+Large textbox.
+
+---
+
+## NEXT FOLLOW UP
+
+Date
+Time
+
+Button:
+
+Save Remarks
+
+---
+
+## PREVIOUS REMARKS
+
+Permanent timeline.
+
+Never overwrite.
+
+Every remark:
+
+Date
+Time
+Mentor Name
+Remark
+
+Example:
+
+26 Jun
+Priya Sharma
+
+Mother interested.
+Asked to call after tuition.
+
+25 Jun
+Rahul Sharma
+
+Father requested fees details.
+
+Everything remains forever.
+
+---
+
+## PAYMENT STATUS MENU
+
+Separate menu.
+
+Purpose:
+
+Mentor tracks payment progress.
+
+---
+
+## PAYMENT STATUS TABLE
+
+Columns:
+
+Student Name
+Lead ID
+Payment ID
+Program
+Amount
+Status
+Created Date
+Action
+
+---
+
+## STATUSES
+
+Pending
+Failed
+Abandoned
+Completed
+
+---
+
+## SEARCH
+
+Search:
+
+Student Name
+Phone
+Payment ID
+
+---
+
+## FILTERS
+
+Status
+Course
+Date
+
+---
+
+## ACTIONS
+
+Pending:
+
+Call
+WhatsApp
+Copy Payment Link
+
+Failed:
+
+Call
+WhatsApp
+Resend Payment Link
+
+Completed:
+
+View Details
+
+---
+
+## PAYMENT DETAILS DRAWER
+
+Show:
+
+Student Name
+Phone
+Parent Name
+Program
+Amount
+Payment ID
+Order ID
+Created On
+Completed On
+Status
+
+If Pending:
+
+Payment Link
+Copy Link
+WhatsApp Parent
+Call Parent
+
+---
+
+## NOTIFICATION SYSTEM
+
+Top right header:
+
+Bell icon.
+
+Notification count badge.
+
+Beside bell:
+
+Flag/Arrow icon.
+
+Click:
+
+Right sidebar slides open.
+
+Click again:
+
+Sidebar closes.
+
+---
+
+## NOTIFICATION PANEL
+
+Simple list only.
+
+No tabs.
+
+No categories.
+
+Newest on top.
+
+Examples:
+
+🟡 Rahul created order.
+🟢 Ananya completed payment successfully.
+🔴 Aarav payment failed.
+🟣 Sumit submitted homework.
+🔵 Kritika edited profile.
+💬 Preety sent you a message.
+
+Unread notifications highlighted.
+
+Count badge auto updates.
+
+---
+
+## NOTIFICATION BEHAVIOR
+
+Click notification:
+
+Open corresponding:
+
+Student Details
+Payment Details
+Message
+
+depending on notification type.
+
+---
+
+## PERMISSIONS
+
+Sales mentors can:
+
+View assigned leads
+Call
+WhatsApp
+Add remarks
+Add follow-ups
+Edit limited student details
+View payments
+Generate payment links
+View notifications
+
+Cannot:
+
+Assign leads
+Delete leads
+Reassign leads
+Assign batches
+Manage permissions
+Manage staff
+Edit payments manually
+View all company leads
+
+---
+
+## PERFORMANCE REQUIREMENTS
+
+Portal must remain extremely lightweight.
+
+Avoid:
+
+Heavy charts
+Large dashboards
+Multiple pages
+Nested tabs
+Unnecessary API calls
+
+Everything should feel:
+
+Open App
+↓
+See Leads
+↓
+Call Parent
+↓
+Add Remark
+↓
+Send Payment Link
+↓
+Receive Notifications
+↓
+Convert Student
+
+Done.
+
+---
+
+## BEFORE IMPLEMENTATION
+
+Show:
+
+Files to modify
+Routes impacted
+Components impacted
+Any DB changes required
+
+Do NOT apply changes immediately.
+
+---
+
+## AFTER IMPLEMENTATION
+
+Run:
+
+pnpm typecheck
+pnpm build
+
+Verify:
+
+Login works
+Mentor permissions work
+Lead cards work
+Student details work
+Call flow works
+Remarks save
+Payment popup works
+Payment links work
+Notification sidebar opens/closes
+Payment status screen works
+Converted tab works
+Responsive on desktop and mobile
+
+Provide screenshots after implementation.
+
+STOP and wait for approval.
