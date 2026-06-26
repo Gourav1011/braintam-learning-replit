@@ -1,0 +1,131 @@
+Update the existing /enroll page.
+
+Do NOT use grade from URL parameters anymore.
+
+Use the already existing class selection section as the source of truth.
+
+Flow:
+
+Choose Class
+↓
+Enter Mobile Number
+↓
+Pay ₹39
+↓
+Payment Success
+↓
+Auto Create Ignite Lead
+
+Requirements:
+
+1. Grade Selection
+
+* Use existing Class 1–8 cards.
+* Store selected class in state:
+  selectedGrade
+* Grade becomes mandatory.
+* Disable payment button until:
+  selectedGrade != null
+  AND phone number is valid.
+
+2. Payment Order API
+   POST /api/payments/create-demo-order
+
+Send:
+
+{
+phone,
+grade: selectedGrade,
+utm_source,
+utm_campaign,
+utm_adset,
+utm_ad
+}
+
+3. Payment Verification
+   POST /api/payments/verify-demo-payment
+
+Send:
+
+{
+razorpay_order_id,
+razorpay_payment_id,
+razorpay_signature,
+phone,
+grade: selectedGrade,
+utm_source,
+utm_campaign,
+utm_adset,
+utm_ad
+}
+
+4. Auto Lead Creation
+
+After successful Razorpay verification:
+
+Create Ignite lead:
+
+leadSource = "Meta Ads"
+leadStage = "Demo Paid"
+paymentStatus = "Paid"
+grade = selectedGrade
+phone = enteredPhone
+isWebsiteLead = true
+assignedMentor = null
+deploymentStatus = "Undeployed"
+isConverted = false
+
+5. Duplicate Protection
+
+Search by phone.
+
+If lead exists:
+
+* Update payment information.
+* Update timeline.
+* Do not create duplicate lead.
+
+6. Success Screen
+
+Show:
+
+🎉 Congratulations!
+
+Your seat for the 6-Day Ignite Program has been reserved.
+
+✔ Enrollment Successful
+✔ Payment Received: ₹39
+✔ Class: {selectedGrade}
+✔ Demo Classes Starting Soon
+
+Button:
+
+Get Class Details
+
+7. WhatsApp Button
+
+Open:
+
+Hi, I have successfully enrolled in the Braintam Ignite Program and completed my payment.
+
+Phone: {phone}
+Class: {selectedGrade}
+
+Please guide me with the class schedule and next steps.
+
+8. CRM Display
+
+Inside Admin → Ignite → Leads:
+
+Show:
+
+🌐 Website Lead
+Phone
+Class
+Source: Meta Ads
+Status: Demo Paid
+Payment: Paid
+Created By: System
+Assignment: Undeployed
+
+Build without breaking any existing payment flow, Razorpay integration, or Ignite CRM functionality.

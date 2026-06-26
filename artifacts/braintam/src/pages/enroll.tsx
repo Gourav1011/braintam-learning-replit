@@ -276,7 +276,7 @@ const WA_SUPPORT = "918492944473";
 function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
   const cleanPhone = normalizePhone(phone);
   const waMsg = encodeURIComponent(
-    `Hi, I have enrolled in the Braintam Ignite Program and completed my payment. Please guide me on joining the classes.\n\nPhone: ${cleanPhone}\nGrade: Grade ${grade}`
+    `Hi, I have successfully enrolled in the Braintam Ignite Program and completed my payment.\n\nPhone: ${cleanPhone}\nClass: Class ${grade}\n\nPlease guide me with the class schedule and next steps.`
   );
   const waUrl = `https://wa.me/${WA_SUPPORT}?text=${waMsg}`;
 
@@ -293,12 +293,13 @@ function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
           style={{ background: "linear-gradient(135deg,#bbf7d0,#d1fae5)" }}>
           <CheckCircle2 className="w-10 h-10 text-green-600" />
         </div>
-        <h1 className="text-2xl font-extrabold mb-1" style={{ color: NAVY }}>Congratulations! 🎉</h1>
-        <p className="text-lg font-bold mb-3" style={{ color: ORANGE }}>Your seat for the 6-Day Ignite Program has been reserved.</p>
-        <div className="rounded-xl p-4 mb-5 text-left space-y-1.5"
+        <h1 className="text-2xl font-extrabold mb-1" style={{ color: NAVY }}>🎉 Congratulations!</h1>
+        <p className="text-base font-bold mb-4" style={{ color: ORANGE }}>Your seat for the 6-Day Ignite Program has been reserved.</p>
+        <div className="rounded-xl p-4 mb-5 text-left space-y-2"
           style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
           <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Enrollment Successful</p>
           <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Payment Received: ₹{getPrice(grade)}</p>
+          <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Class: Class {grade}</p>
           <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Demo Classes Starting Soon</p>
         </div>
         <p className="text-gray-500 mb-5 text-sm">
@@ -325,8 +326,7 @@ function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
 
 // ── Main Page ────────────────────────────────────────────────
 export default function EnrollPage() {
-  const [grade, setGrade]     = useState(6);
-  const [gradeFromUrl, setGradeFromUrl] = useState(false);
+  const [grade, setGrade]     = useState<number | null>(null);
   const [showModal, setModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmedPhone, setConfirmedPhone] = useState("");
@@ -342,14 +342,9 @@ export default function EnrollPage() {
     utm_source: "", utm_campaign: "", utm_adset: "", utm_ad: "",
   });
 
-  // Read grade + UTMs from URL on mount
+  // Read UTMs from URL on mount (grade always chosen via UI)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const g = Number(params.get("grade"));
-    if (Number.isInteger(g) && g >= 1 && g <= 10) {
-      setGrade(g);
-      setGradeFromUrl(true);
-    }
     setUtms({
       utm_source:   params.get("utm_source")   ?? "",
       utm_campaign: params.get("utm_campaign") ?? "",
@@ -358,10 +353,11 @@ export default function EnrollPage() {
     });
   }, []);
 
-  const price = getPrice(grade);
-  const disc  = getDisc(grade);
+  const price = grade !== null ? getPrice(grade) : 39;
+  const disc  = grade !== null ? getDisc(grade)  : getDisc(39);
 
   const handleConfirm = useCallback(async (phone: string) => {
+    if (grade === null) return;
     setError(null);
     if (!razorpayReady) {
       setError("Payment is loading — please try again in a moment.");
@@ -434,7 +430,7 @@ export default function EnrollPage() {
     }
   }, [grade, razorpayReady, utms]);
 
-  if (success) return <SuccessScreen grade={grade} phone={confirmedPhone} />;
+  if (success) return <SuccessScreen grade={grade ?? 0} phone={confirmedPhone} />;
 
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: "#f5f7ff" }}>
@@ -445,9 +441,10 @@ export default function EnrollPage() {
           <div className="flex items-center">
             <img src={braintamLogoImg} alt="Braintam" className="h-10 w-auto" />
           </div>
-          <button onClick={() => setModal(true)}
-            className="text-xs font-extrabold px-4 py-2 rounded-full text-white"
-            style={{ background: `linear-gradient(90deg,${ORANGE},#e85d12)` }}>
+          <button onClick={() => grade !== null && setModal(true)}
+            disabled={grade === null}
+            className="text-xs font-extrabold px-4 py-2 rounded-full text-white transition-opacity"
+            style={{ background: `linear-gradient(90deg,${ORANGE},#e85d12)`, opacity: grade === null ? 0.45 : 1 }}>
             Enroll Now
           </button>
         </div>
@@ -584,8 +581,8 @@ export default function EnrollPage() {
           </div>
         </div>
 
-        {/* ── Grade Selector (hidden when grade passed via URL from ad) ── */}
-        {!gradeFromUrl && <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        {/* ── Grade Selector ── */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h2 className="font-extrabold text-base mb-1" style={{ color: NAVY }}>
             Choose Class to Boost Score (2025–26) 🔥
           </h2>
@@ -626,7 +623,7 @@ export default function EnrollPage() {
           <p className="text-xs text-center text-gray-500 mt-3 flex items-center justify-center gap-1.5">
             <span className="text-green-500">✅</span> Classes 1–8 open · Batch starts soon
           </p>
-        </div>}
+        </div>
 
         {/* ── Social Proof / Rating ── */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
@@ -695,23 +692,33 @@ export default function EnrollPage() {
         <div className="max-w-2xl mx-auto px-4 pt-2.5 pb-1.5">
           <div className="flex items-center gap-3 mb-1.5">
             <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black" style={{ color: ORANGE }}>₹{price}</span>
-                <span className="text-sm text-gray-400 line-through">₹{MRP}</span>
-                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full"
-                  style={{ background: "#dcfce7", color: "#16a34a" }}>{disc}% OFF</span>
-              </div>
-              <p className="text-xs text-gray-400">
-                Only <strong className="text-red-500">{seats} seats</strong> left · Class {grade} selected
-              </p>
+              {grade !== null ? (
+                <>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black" style={{ color: ORANGE }}>₹{price}</span>
+                    <span className="text-sm text-gray-400 line-through">₹{MRP}</span>
+                    <span className="text-xs font-extrabold px-2 py-0.5 rounded-full"
+                      style={{ background: "#dcfce7", color: "#16a34a" }}>{disc}% OFF</span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Only <strong className="text-red-500">{seats} seats</strong> left · Class {grade} selected
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-extrabold" style={{ color: NAVY }}>Select a class above</p>
+                  <p className="text-xs text-gray-400">Choose your child's class to enroll</p>
+                </>
+              )}
             </div>
             <button
-              onClick={() => { setError(null); setModal(true); }}
-              disabled={loading}
+              onClick={() => { if (grade === null) return; setError(null); setModal(true); }}
+              disabled={loading || grade === null}
               className="flex-1 py-3.5 rounded-xl font-extrabold text-white text-base flex items-center justify-center gap-2 active:scale-95 transition-all"
               style={{
-                background: `linear-gradient(90deg,${ORANGE},#e85d12)`,
-                boxShadow: "0 6px 20px rgba(255,107,26,0.45)",
+                background: grade !== null ? `linear-gradient(90deg,${ORANGE},#e85d12)` : "#94a3b8",
+                boxShadow: grade !== null ? "0 6px 20px rgba(255,107,26,0.45)" : "none",
+                cursor: grade === null ? "not-allowed" : "pointer",
               }}>
               {loading ? "Processing…" : "Enroll Now"}
               {!loading && <ChevronRight className="w-5 h-5" />}
@@ -729,7 +736,7 @@ export default function EnrollPage() {
       </div>
 
       {/* ── Booking Modal ── */}
-      {showModal && (
+      {showModal && grade !== null && (
         <BookingModal
           grade={grade}
           onConfirm={handleConfirm}
