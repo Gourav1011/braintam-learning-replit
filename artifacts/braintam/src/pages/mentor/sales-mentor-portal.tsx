@@ -83,13 +83,12 @@ interface Remark {
 }
 
 interface Notification {
-  id: number;
-  color: string;
-  text: string;
+  id: string;
+  type: "payment_link" | "payment_approved";
+  studentName: string;
+  studentId: number | null;
+  action: string;
   time: string;
-  unread: boolean;
-  type: "payment" | "activity" | "message";
-  leadId?: number;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -209,15 +208,38 @@ function CallStatusBadge({ status }: { status: string }) {
 }
 
 // ── Notification Panel ─────────────────────────────────────────────────────
-function NotificationPanel({ notifications, onClose, onNotifClick }: {
+const NOTIF_META: Record<string, { color: string; dot: string }> = {
+  payment_link:     { color: "#F59E0B", dot: "#F59E0B" },
+  payment_approved: { color: "#10B981", dot: "#10B981" },
+};
+
+function NotifText({ studentName, action }: { studentName: string; action: string }) {
+  return (
+    <span>
+      <span style={{ color: "#374151" }}>{studentName} </span>
+      <span className="font-black" style={{ color: NAVY }}>{action}</span>
+    </span>
+  );
+}
+
+function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
   notifications: Notification[];
+  loading: boolean;
   onClose: () => void;
   onNotifClick: (n: Notification) => void;
 }) {
-  const groups = [
-    { label: "Today",     items: notifications.filter(n => { const d = new Date(n.time); const now = new Date(); return d.toDateString() === now.toDateString(); }) },
-    { label: "Yesterday", items: notifications.filter(n => { const d = new Date(n.time); const y = new Date(); y.setDate(y.getDate()-1); return d.toDateString() === y.toDateString(); }) },
-  ];
+  const bucket = (n: Notification) => {
+    const d = new Date(n.time);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return "Today";
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return "Yesterday";
+    return "Earlier";
+  };
+  const groups = ["Today", "Yesterday", "Earlier"].map(label => ({
+    label,
+    items: notifications.filter(n => bucket(n) === label),
+  }));
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -227,29 +249,35 @@ function NotificationPanel({ notifications, onClose, onNotifClick }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <div className="font-black text-sm" style={{ color: NAVY }}>Notifications</div>
-            <div className="text-[11px] text-gray-400">{notifications.filter(n => n.unread).length} unread</div>
+            <div className="text-[11px] text-gray-400">{notifications.length} event{notifications.length !== 1 ? "s" : ""} (last 30 days)</div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {groups.map(g => g.items.length > 0 && (
+          {loading && (
+            <div className="flex items-center justify-center h-24">
+              <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${NAVY}40`, borderTopColor: "transparent" }} />
+            </div>
+          )}
+          {!loading && groups.map(g => g.items.length > 0 && (
             <div key={g.label}>
               <div className="px-5 pt-3 pb-1 text-[10px] font-black text-gray-400 uppercase tracking-wider">{g.label}</div>
-              {g.items.map(n => (
-                <button key={n.id} onClick={() => onNotifClick(n)}
-                  className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 border-b border-gray-50 transition-colors"
-                  style={{ background: n.unread ? "rgba(11,43,107,0.025)" : "white" }}>
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1" style={{ background: n.color }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold leading-snug" style={{ color: NAVY }}>{n.text}</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">{fmtTime(n.time)}</div>
-                  </div>
-                  {n.unread && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: ORANGE }} />}
-                </button>
-              ))}
+              {g.items.map(n => {
+                const meta = NOTIF_META[n.type] ?? { color: "#6B7280", dot: "#6B7280" };
+                return (
+                  <button key={n.id} onClick={() => onNotifClick(n)}
+                    className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1" style={{ background: meta.dot }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs leading-snug"><NotifText studentName={n.studentName} action={n.action} /></div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">{fmtTime(n.time)}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ))}
-          {groups.every(g => g.items.length === 0) && (
+          {!loading && groups.every(g => g.items.length === 0) && (
             <div className="flex flex-col items-center justify-center h-40 gap-2">
               <Bell className="w-8 h-8 text-gray-200" />
               <p className="text-xs text-gray-400">No notifications yet</p>
@@ -1554,17 +1582,20 @@ export function SalesMentorPortal({ user, onLogout }: {
   const [showNotifications, setShowNotifications] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
 
-  const notifications: Notification[] = [
-    { id: 1, color: "#F59E0B", text: "Priya Gupta created order.",                    time: new Date(Date.now() - 20*60000).toISOString(), unread: true,  type: "payment" },
-    { id: 2, color: "#10B981", text: "Priya Gupta completed payment successfully.",   time: new Date(Date.now() - 25*60000).toISOString(), unread: true,  type: "payment", leadId: 39 },
-    { id: 3, color: "#EF4444", text: "Aarav Sharma payment failed.",                  time: new Date(Date.now() - 90*60000).toISOString(), unread: true,  type: "payment", leadId: 42 },
-    { id: 4, color: "#8B5CF6", text: "Aarav Sharma submitted homework.",              time: new Date(Date.now() - 120*60000).toISOString(), unread: false, type: "activity", leadId: 42 },
-    { id: 5, color: "#3B82F6", text: "Priya Gupta edited profile.",                   time: new Date(Date.now() - 26*3600000).toISOString(), unread: false, type: "activity" },
-    { id: 6, color: "#6B7280", text: "You have a new follow-up due today.",           time: new Date(Date.now() - 27*3600000).toISOString(), unread: false, type: "message" },
-  ];
+  const fetchNotifications = useCallback(async () => {
+    setNotifLoading(true);
+    try {
+      const r = await apiFetch("/mentor/notifications");
+      if (r.ok) setNotifications(await r.json());
+    } catch { /* silent */ } finally {
+      setNotifLoading(false);
+    }
+  }, []);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -1612,10 +1643,11 @@ export function SalesMentorPortal({ user, onLogout }: {
       {showNotifications && (
         <NotificationPanel
           notifications={notifications}
+          loading={notifLoading}
           onClose={() => setShowNotifications(false)}
           onNotifClick={n => {
             setShowNotifications(false);
-            if (n.leadId) openStudent(n.leadId);
+            if (n.studentId) openStudent(n.studentId);
           }}
         />
       )}
@@ -1650,10 +1682,10 @@ export function SalesMentorPortal({ user, onLogout }: {
           <button onClick={() => setShowNotifications(v => !v)}
             className="relative w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
             <Bell className="w-4 h-4" style={{ color: NAVY }} />
-            {unreadCount > 0 && (
+            {notifications.length > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-white font-black rounded-full"
                 style={{ background: "#EF4444", minWidth: 17, height: 17, fontSize: 9 }}>
-                {unreadCount}
+                {notifications.length}
               </span>
             )}
           </button>

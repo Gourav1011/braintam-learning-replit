@@ -8,7 +8,7 @@ import {
   auditLogsTable,
   manualPaymentsTable,
 } from "@workspace/db";
-import { eq, desc, and, ilike, or, inArray, isNull } from "drizzle-orm";
+import { eq, desc, and, ilike, or, inArray, isNull, gte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -388,6 +388,80 @@ router.post("/admin/long-term/manual-payments/:id/reject", adminOnly, async (req
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ id: row.id, status: row.status });
+});
+
+// ── GET /api/mentor/notifications ─────────────────────────────────────────────
+// Returns real events: full payment links launched + approved manual payments.
+// No partial payments. No amounts. Name plain, action is the key label.
+router.get("/mentor/notifications", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  // 1. Full payment links created by this mentor (no partials)
+  const links = await db
+    .select({
+      id: paymentLinksTable.id,
+      studentId: paymentLinksTable.studentId,
+      studentName: usersTable.name,
+      createdAt: paymentLinksTable.createdAt,
+    })
+    .from(paymentLinksTable)
+    .leftJoin(usersTable, eq(paymentLinksTable.studentId, usersTable.id))
+    .where(and(
+      eq(paymentLinksTable.mentorId, mentorId),
+      eq(paymentLinksTable.paymentType, "long_term_full"),
+      gte(paymentLinksTable.createdAt, since),
+    ))
+    .orderBy(desc(paymentLinksTable.createdAt))
+    .limit(30);
+
+  // 2. Manual payments approved for this mentor's students (full-payment approvals only)
+  // Join payment_links to find which student belongs to this mentor
+  const allMentorStudentIds = await db
+    .select({ studentId: paymentLinksTable.studentId })
+    .from(paymentLinksTable)
+    .where(eq(paymentLinksTable.mentorId, mentorId));
+  const studentIds = [...new Set(allMentorStudentIds.map(r => r.studentId).filter(Boolean))] as number[];
+
+  const approvals = studentIds.length > 0
+    ? await db
+        .select({
+          id: manualPaymentsTable.id,
+          studentId: manualPaymentsTable.studentId,
+          studentName: usersTable.name,
+          approvedAt: manualPaymentsTable.approvedAt,
+        })
+        .from(manualPaymentsTable)
+        .leftJoin(usersTable, eq(manualPaymentsTable.studentId, usersTable.id))
+        .where(and(
+          eq(manualPaymentsTable.status, "approved"),
+          inArray(manualPaymentsTable.studentId, studentIds),
+          gte(manualPaymentsTable.approvedAt, since),
+        ))
+        .orderBy(desc(manualPaymentsTable.approvedAt))
+        .limit(30)
+    : [];
+
+  const notifs = [
+    ...links.map(l => ({
+      id: `link-${l.id}`,
+      type: "payment_link" as const,
+      studentName: l.studentName ?? "Student",
+      studentId: l.studentId,
+      action: "payment link launched",
+      time: l.createdAt.toISOString(),
+    })),
+    ...approvals.map(a => ({
+      id: `approval-${a.id}`,
+      type: "payment_approved" as const,
+      studentName: a.studentName ?? "Student",
+      studentId: a.studentId,
+      action: "completed payment successfully",
+      time: (a.approvedAt ?? new Date()).toISOString(),
+    })),
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 50);
+
+  res.json(notifs);
 });
 
 // ── GET /api/admin/payment-status ─────────────────────────────────────────────
