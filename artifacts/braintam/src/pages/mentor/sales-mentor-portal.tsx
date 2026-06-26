@@ -333,16 +333,10 @@ function UploadPaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void
         ) : (
           <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
 
-            {/* Student name — prominent at top */}
-            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${NAVY}08` }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0"
-                style={{ background: avatarBg(lead.name) }}>
-                {initials(lead.name)}
-              </div>
-              <div>
-                <div className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</div>
-                <div className="text-[10px] text-gray-400">Grade {lead.grade} · {padLeadId(lead.id)}</div>
-              </div>
+            {/* Student info — compact */}
+            <div className="px-1 pb-1 border-b border-gray-100">
+              <span className="text-xs font-semibold" style={{ color: NAVY }}>{lead.name}</span>
+              <span className="text-[10px] text-gray-400 ml-1.5">Grade {lead.grade} · {padLeadId(lead.id)}</span>
             </div>
 
             {/* Amount */}
@@ -373,11 +367,11 @@ function UploadPaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void
                   {screenshots.map((sc, i) => (
                     <div key={i} className="relative group">
                       <img src={sc.dataUrl} alt={sc.name}
-                        className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
+                        className="w-10 h-10 object-cover rounded-lg border border-gray-200" />
                       <button
                         onClick={() => setScreenshots(prev => prev.filter((_, j) => j !== i))}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors">
-                        <X className="w-2.5 h-2.5" />
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors">
+                        <X className="w-2 h-2" />
                       </button>
                     </div>
                   ))}
@@ -985,6 +979,18 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
               style={{ background: "#25D366" }}>
               <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
             </a>
+            {!conv && (
+              <button onClick={() => setShowPaymentPopup("full")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
+                style={{ borderColor: ORANGE, color: ORANGE }}>
+                <CreditCard className="w-3.5 h-3.5" /> Launch Payment
+              </button>
+            )}
+            <button onClick={() => setShowUploadPopup(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
+              style={{ borderColor: GREEN, color: GREEN }}>
+              <Upload className="w-3.5 h-3.5" /> Upload Payment
+            </button>
           </div>
         </div>
       </div>
@@ -995,34 +1001,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         {/* ── LEFT PANEL ── */}
         <div className="space-y-3">
 
-          {/* 1. Payment Link */}
-          {!conv && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <CreditCard className="w-4 h-4" style={{ color: NAVY }} />
-                <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link</div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => setShowPaymentPopup("full")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all">
-                  <CreditCard className="w-5 h-5 text-blue-500" />
-                  <div className="font-black text-[10px] text-center" style={{ color: NAVY }}>Full Payment</div>
-                </button>
-                <button onClick={() => setShowPaymentPopup("partial")}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-gray-100 hover:border-purple-300 hover:bg-purple-50 transition-all">
-                  <CreditCard className="w-5 h-5 text-purple-500" />
-                  <div className="font-black text-[10px] text-center" style={{ color: NAVY }}>Partial Payment</div>
-                </button>
-                <button onClick={() => setShowUploadPopup(true)}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-gray-100 hover:border-green-300 hover:bg-green-50 transition-all">
-                  <Save className="w-5 h-5 text-green-500" />
-                  <div className="font-black text-[10px] text-center" style={{ color: NAVY }}>Upload Payment</div>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 2. Live Class Activity */}
+          {/* 1. Live Class Activity */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
             <div className="flex items-center gap-2 mb-3">
               <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
@@ -1060,11 +1039,11 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
           <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
             <div className="flex items-center gap-2 mb-3">
               <BarChart2 className="w-4 h-4" style={{ color: NAVY }} />
-              <div className="font-black text-sm" style={{ color: NAVY }}>Analytics <span className="text-gray-400 font-normal text-xs">(This Month)</span></div>
+              <div className="font-black text-sm" style={{ color: NAVY }}>Analytics <span className="text-gray-400 font-normal text-xs">(5-Day Course)</span></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: BookOpen,     label: "Classes Held",     value: "8",                                               color: "#6366F1" },
+                { icon: BookOpen,     label: "Classes Held",     value: lead.attPct !== null ? "5" : "—",               color: "#6366F1" },
                 { icon: BarChart2,    label: "Attendance",       value: lead.attPct !== null ? `${lead.attPct}%` : "—",    color: GREEN },
                 { icon: ClipboardList,label: "Avg. Watch Time",  value: "42 min",                                           color: ORANGE },
                 { icon: Check,        label: "HW Completion",    value: lead.hwPct !== null ? `${lead.hwPct}%` : "—",      color: "#0284C7" },
