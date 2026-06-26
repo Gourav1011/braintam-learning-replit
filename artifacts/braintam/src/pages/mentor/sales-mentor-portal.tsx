@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Phone, MessageSquare, ChevronRight, Bell, Flag, ChevronDown, X,
   Search, Filter, ArrowLeft, Copy, Check, Loader2,
-  CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle,
+  CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle, Upload,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
 import { StaffCheckin } from "@/components/staff-checkin";
@@ -269,69 +269,143 @@ function fmtExpiry(date: string, time: string) {
 // ── Upload Payment Popup ───────────────────────────────────────────────────
 function UploadPaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const [amount, setAmount] = useState("");
-  const [utr, setUtr] = useState("");
-  const [remarks, setRemarks] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [screenshots, setScreenshots] = useState<{ dataUrl: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleFiles(files: FileList | null) {
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const dataUrl = e.target?.result as string;
+        setScreenshots(prev => [...prev, { dataUrl, name: file.name }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function submit() {
-    if (!amount || !utr) { setErr("Amount and UTR are required"); return; }
+    if (!amount || !referenceNumber) { setErr("Amount and Reference Number are required"); return; }
+    if (screenshots.length === 0) { setErr("Please upload at least one payment screenshot"); return; }
     setSaving(true); setErr("");
     try {
+      const screenshotsJson = JSON.stringify(screenshots.map(s => s.dataUrl));
       const r = await apiFetch("/mentor/long-term/upload-payment", {
         method: "POST",
-        body: JSON.stringify({ studentId: lead.id, amount: Number(amount), utr, remarks, status: "pending_approval" }),
+        body: JSON.stringify({
+          studentId: lead.id,
+          amount: Number(amount),
+          referenceNumber,
+          screenshotsJson,
+          type: "upi",
+        }),
       });
       if (r.ok) { setDone(true); }
-      else { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Failed to submit"); }
+      else { const d = await r.json().catch(() => ({})) as { error?: string }; setErr(d.error ?? "Failed to submit"); }
     } catch { setErr("Network error"); }
     setSaving(false);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="font-black text-sm" style={{ color: NAVY }}>Upload Payment</div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
+
         {done ? (
-          <div className="p-6 text-center space-y-3">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: "#DCFCE7" }}>
-              <Check className="w-7 h-7" style={{ color: GREEN }} />
+          <div className="p-8 text-center space-y-3">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: "#DCFCE7" }}>
+              <Check className="w-8 h-8" style={{ color: GREEN }} />
             </div>
-            <div className="font-black text-sm" style={{ color: NAVY }}>Submitted for Approval</div>
-            <div className="text-xs text-gray-400">Admin will verify and approve shortly.</div>
-            <div className="inline-flex px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: "#FEF3C7", color: "#D97706" }}>⏳ Pending Approval</div>
-            <button onClick={onClose} className="block w-full mt-2 py-2 rounded-xl text-xs font-bold text-white" style={{ background: NAVY }}>Close</button>
+            <div className="font-black text-base" style={{ color: NAVY }}>Submitted for Approval!</div>
+            <div className="text-xs text-gray-400">Admin will verify your screenshots and approve the payment shortly.</div>
+            <div className="inline-flex px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: "#FEF3C7", color: "#D97706" }}>⏳ Pending Admin Approval</div>
+            <button onClick={onClose} className="block w-full mt-2 py-2.5 rounded-xl text-xs font-bold text-white" style={{ background: NAVY }}>Close</button>
           </div>
         ) : (
-          <div className="p-5 space-y-3">
+          <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+
+            {/* Student name — prominent at top */}
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${NAVY}08` }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0"
+                style={{ background: avatarBg(lead.name) }}>
+                {initials(lead.name)}
+              </div>
+              <div>
+                <div className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</div>
+                <div className="text-[10px] text-gray-400">Grade {lead.grade} · {padLeadId(lead.id)}</div>
+              </div>
+            </div>
+
+            {/* Amount */}
             <div>
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">Amount (₹) *</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300" style={{ color: NAVY }} />
+              <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Amount Received (₹) *</label>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 15000"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-base font-black outline-none focus:border-orange-300"
+                style={{ color: NAVY }} />
             </div>
+
+            {/* Unique Reference */}
             <div>
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">UTR / Transaction ID *</label>
-              <input type="text" value={utr} onChange={e => setUtr(e.target.value)} placeholder="UTR or Txn ID"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300" style={{ color: NAVY }} />
+              <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Unique Reference Number *</label>
+              <input type="text" value={referenceNumber} onChange={e => setReferenceNumber(e.target.value)}
+                placeholder="UTR / Transaction ID / Cheque No."
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300"
+                style={{ color: NAVY }} />
+              <p className="text-[9px] text-gray-400 mt-1">Must be unique — duplicate reference numbers are rejected.</p>
             </div>
+
+            {/* Screenshot upload */}
             <div>
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">Remarks</label>
-              <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} placeholder="Optional notes"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none" style={{ color: NAVY }} />
+              <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Payment Screenshots *</label>
+
+              {/* Thumbnail grid */}
+              {screenshots.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {screenshots.map((sc, i) => (
+                    <div key={i} className="relative group">
+                      <img src={sc.dataUrl} alt={sc.name}
+                        className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
+                      <button
+                        onClick={() => setScreenshots(prev => prev.filter((_, j) => j !== i))}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload button */}
+              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                onChange={e => handleFiles(e.target.files)} />
+              <button onClick={() => fileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                <Upload className="w-4 h-4" />
+                {screenshots.length === 0 ? "Upload Screenshot(s)" : "Add More Screenshots"}
+              </button>
+              <p className="text-[9px] text-gray-400 mt-1">You can upload multiple screenshots. Tap × to remove.</p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-bold" style={{ background: "#FEF3C7", color: "#D97706" }}>
-              ⏳ Status will be set to: Pending Approval
+
+            {/* Pending notice */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-semibold" style={{ background: "#FEF3C7", color: "#D97706" }}>
+              ⏳ Admin will review screenshots and approve the payment.
             </div>
-            {err && <p className="text-[10px] text-red-500">{err}</p>}
+
+            {err && <p className="text-[10px] text-red-500 font-semibold">{err}</p>}
+
             <button onClick={submit} disabled={saving}
               className="w-full py-3 rounded-xl font-black text-white text-sm transition-all"
               style={{ background: saving ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Submit for Approval"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Submit for Approval →"}
             </button>
           </div>
         )}
@@ -871,10 +945,6 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
       <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-4">
         <div className="flex items-start gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-base flex-shrink-0"
-              style={{ background: conv ? GREEN : avatarBg(lead.name) }}>
-              {initials(lead.name)}
-            </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-base" style={{ color: NAVY }}>{lead.name}</span>
@@ -915,13 +985,6 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
               style={{ background: "#25D366" }}>
               <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
             </a>
-            {!conv && (
-              <button onClick={() => setShowPaymentPopup("full")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
-                style={{ borderColor: ORANGE, color: ORANGE }}>
-                <CreditCard className="w-3.5 h-3.5" /> Launch Payment
-              </button>
-            )}
           </div>
         </div>
       </div>

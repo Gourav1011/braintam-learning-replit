@@ -6,6 +6,7 @@ import {
   paymentLinksTable,
   coursePricingTable,
   auditLogsTable,
+  manualPaymentsTable,
 } from "@workspace/db";
 import { eq, desc, and, ilike, or, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -296,6 +297,96 @@ router.get("/mentor/long-term/payment-links", mentorAuth, async (req, res) => {
     ...r,
     amountRupees: Math.round((r.amount ?? 0) / 100),
   })));
+});
+
+// ── POST /api/mentor/long-term/upload-payment ─────────────────────────────────
+router.post("/mentor/long-term/upload-payment", mentorAuth, async (req, res) => {
+  const { studentId, amount, referenceNumber, screenshotsJson, type } = req.body as {
+    studentId?: number; amount?: number; referenceNumber?: string;
+    screenshotsJson?: string; type?: string;
+  };
+  if (!studentId || !amount || !referenceNumber) {
+    res.status(400).json({ error: "studentId, amount, and referenceNumber are required" });
+    return;
+  }
+
+  // duplicate reference check
+  const existing = await db.select({ id: manualPaymentsTable.id })
+    .from(manualPaymentsTable)
+    .where(eq(manualPaymentsTable.referenceNumber, referenceNumber))
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(400).json({ error: "Duplicate reference number" });
+    return;
+  }
+
+  const [row] = await db.insert(manualPaymentsTable).values({
+    studentId,
+    submittedById: (req as unknown as { user: { id: number } }).user.id,
+    type: type ?? "upi",
+    amount,
+    referenceNumber,
+    screenshotsJson: screenshotsJson ?? null,
+    status: "pending",
+  }).returning();
+
+  res.json({ id: row.id, status: "pending" });
+});
+
+// ── GET /api/admin/long-term/manual-payments ──────────────────────────────────
+router.get("/admin/long-term/manual-payments", adminOnly, async (req, res) => {
+  const rows = await db
+    .select({
+      id: manualPaymentsTable.id,
+      studentId: manualPaymentsTable.studentId,
+      submittedById: manualPaymentsTable.submittedById,
+      type: manualPaymentsTable.type,
+      amount: manualPaymentsTable.amount,
+      referenceNumber: manualPaymentsTable.referenceNumber,
+      screenshotsJson: manualPaymentsTable.screenshotsJson,
+      status: manualPaymentsTable.status,
+      uploadedAt: manualPaymentsTable.uploadedAt,
+      approvedById: manualPaymentsTable.approvedById,
+      approvedAt: manualPaymentsTable.approvedAt,
+      rejectionReason: manualPaymentsTable.rejectionReason,
+      studentName: usersTable.name,
+      studentPhone: usersTable.phone,
+    })
+    .from(manualPaymentsTable)
+    .leftJoin(usersTable, eq(manualPaymentsTable.studentId, usersTable.id))
+    .orderBy(desc(manualPaymentsTable.uploadedAt));
+
+  res.json(rows);
+});
+
+// ── POST /api/admin/long-term/manual-payments/:id/approve ─────────────────────
+router.post("/admin/long-term/manual-payments/:id/approve", adminOnly, async (req, res) => {
+  const id = Number(req.params["id"]);
+  const adminId = (req as unknown as { user: { id: number } }).user.id;
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [row] = await db.update(manualPaymentsTable)
+    .set({ status: "approved", approvedById: adminId, approvedAt: new Date() })
+    .where(eq(manualPaymentsTable.id, id))
+    .returning();
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ id: row.id, status: row.status });
+});
+
+// ── POST /api/admin/long-term/manual-payments/:id/reject ──────────────────────
+router.post("/admin/long-term/manual-payments/:id/reject", adminOnly, async (req, res) => {
+  const id = Number(req.params["id"]);
+  const { reason } = req.body as { reason?: string };
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [row] = await db.update(manualPaymentsTable)
+    .set({ status: "rejected", rejectionReason: reason ?? "" })
+    .where(eq(manualPaymentsTable.id, id))
+    .returning();
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ id: row.id, status: row.status });
 });
 
 // ── GET /api/admin/payment-status ─────────────────────────────────────────────

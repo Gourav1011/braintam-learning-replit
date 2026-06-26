@@ -10,6 +10,7 @@ export const manualPaymentsTable = pgTable("manual_payments", {
   amount: integer("amount").notNull(),
   referenceNumber: text("reference_number").unique(),
   proofUrl: text("proof_url"),
+  screenshotsJson: text("screenshots_json"),
   status: text("status").notNull().default("pending"),
   isDuplicate: boolean("is_duplicate").notNull().default(false),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
