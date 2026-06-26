@@ -101,6 +101,13 @@ function fmtDate(s: string | null) {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" });
 }
+function fmtDT(s: string | null) {
+  if (!s) return "—";
+  const d = new Date(s);
+  const day = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit", timeZone: "Asia/Kolkata" });
+  const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }).toUpperCase();
+  return `${day} ${time}`;
+}
 function fmtDateTime(s: string | null) {
   if (!s) return "—";
   return new Date(s).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
@@ -1455,13 +1462,10 @@ function PaymentStatusView() {
                 <tr className="border-b-2 border-gray-100" style={{ background: "#F8FAFF" }}>
                   {[
                     "Student",
-                    "Student ID",
-                    "Razorpay ID",
                     "Amount",
                     "Type",
                     "Status",
-                    "Created",
-                    "Expiry",
+                    "Date / Expiry",
                     "Action",
                   ].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-black text-gray-500 whitespace-nowrap text-[11px] uppercase tracking-wide">{h}</th>
@@ -1471,32 +1475,20 @@ function PaymentStatusView() {
               <tbody>
                 {filtered.map((row, i) => {
                   const cfg = STATUS_CFG[row.status] ?? { bg: "#F9FAFB", border: "#D1D5DB", color: "#6B7280", label: row.status };
-                  const rzpId = row.razorpayPaymentLinkId ?? null;
+                  const isFull = row.paymentType?.includes("full");
+                  const isExpired = row.expiresAt && new Date(row.expiresAt) < new Date() && row.status !== "paid";
                   return (
                     <tr key={row.id}
                       className="border-b border-gray-50 transition-colors"
                       style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFF" }}>
 
-                      {/* Student name */}
+                      {/* Student name + lead ID + phone */}
                       <td className="px-4 py-3">
                         <div className="font-black text-[12px]" style={{ color: NAVY }}>{row.studentName ?? "—"}</div>
-                        {row.grade && <div className="text-[10px] text-gray-400 mt-0.5">Grade {row.grade}</div>}
+                        {row.studentId && (
+                          <div className="text-[10px] font-bold mt-0.5" style={{ color: "#6366F1" }}>{padLeadId(row.studentId)}</div>
+                        )}
                         {row.studentPhone && <div className="text-[10px] text-gray-400">{row.studentPhone}</div>}
-                      </td>
-
-                      {/* Student ID */}
-                      <td className="px-4 py-3">
-                        <span className="font-black text-[12px] px-2 py-1 rounded-lg" style={{ background: "#EEF2FF", color: NAVY }}>
-                          #{row.studentId ?? "—"}
-                        </span>
-                      </td>
-
-                      {/* Razorpay tracking ID */}
-                      <td className="px-4 py-3">
-                        <div className="font-mono text-[10px] font-bold px-2 py-1.5 rounded-lg border select-all cursor-text"
-                          style={{ background: rzpId ? "#FFFBEB" : "#F9FAFB", borderColor: rzpId ? "#FCD34D" : "#E5E7EB", color: rzpId ? "#92400E" : "#9CA3AF" }}>
-                          {rzpId ?? `PLN-${String(row.id).padStart(4, "0")}`}
-                        </div>
                       </td>
 
                       {/* Amount */}
@@ -1507,12 +1499,12 @@ function PaymentStatusView() {
                       {/* Type */}
                       <td className="px-4 py-3">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: row.paymentType === "full" ? "#EEF2FF" : "#FFF7ED", color: row.paymentType === "full" ? "#4F46E5" : "#C2410C" }}>
-                          {row.paymentType === "full" ? "Full" : "Partial"}
+                          style={{ background: isFull ? "#EEF2FF" : "#FFF7ED", color: isFull ? "#4F46E5" : "#C2410C" }}>
+                          {isFull ? "Full" : "Partial"}
                         </span>
                       </td>
 
-                      {/* Status — Excel-like colored cell */}
+                      {/* Status */}
                       <td className="px-4 py-3">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-bold text-[11px] uppercase tracking-wide"
                           style={{ background: cfg.bg, borderColor: cfg.border, color: cfg.color }}>
@@ -1521,16 +1513,15 @@ function PaymentStatusView() {
                         </div>
                       </td>
 
-                      {/* Created */}
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(row.createdAt)}</td>
-
-                      {/* Expiry */}
+                      {/* Created + Expiry stacked */}
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {row.expiresAt
-                          ? <span className={`font-semibold ${new Date(row.expiresAt) < new Date() && row.status !== "paid" ? "text-red-500" : "text-gray-500"}`}>
-                              {fmtDate(row.expiresAt)}
-                            </span>
-                          : <span className="text-gray-300">—</span>}
+                        <div className="text-[10px] text-gray-500">
+                          <span className="font-semibold text-gray-400">Created</span> {fmtDT(row.createdAt)}
+                        </div>
+                        <div className={`text-[10px] mt-0.5 ${isExpired ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                          <span className="font-semibold">Expiry</span>{" "}
+                          {row.expiresAt ? fmtDT(row.expiresAt) : "—"}
+                        </div>
                       </td>
 
                       {/* Actions */}
