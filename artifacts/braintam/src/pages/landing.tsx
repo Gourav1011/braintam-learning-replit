@@ -477,7 +477,7 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             </Link>
             <p className="text-xs text-center mt-4" style={{ color: MUTED }}>
               Already have an account?{" "}
-              <Link href="/sign-in" onClick={onClose} className="hover:opacity-80 transition-opacity" style={{ color: ORANGE }}>Sign in</Link>
+              <Link href="/login" onClick={onClose} className="hover:opacity-80 transition-opacity" style={{ color: ORANGE }}>Sign in</Link>
             </p>
           </motion.div>
         </motion.div>
@@ -674,7 +674,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/sign-in">
+            <Link href="/login">
               <span className="hidden md:block text-sm font-medium cursor-pointer transition-colors" style={{ color: MUTED }}
                 onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
                 onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>Sign in</span>
@@ -720,7 +720,7 @@ export default function LandingPage() {
                   Start for free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
               </Link>
-              <Link href="/sign-in">
+              <Link href="/login">
                 <button className="group flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-sm transition-all hover:scale-105"
                   style={{ background: NAVY, color: "#fff", boxShadow: "0 4px 18px rgba(11,43,107,0.28)" }}>
                   <GraduationCap className="w-4 h-4" /> Student Login
@@ -1209,7 +1209,7 @@ export default function LandingPage() {
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 50px rgba(255,107,26,0.35)` }}>
               Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
-            <Link href="/sign-in">
+            <Link href="/login">
               <button className="flex items-center justify-center gap-2 px-8 py-4 rounded-full font-semibold text-sm transition-all hover:bg-white/10"
                 style={{ background: "#fff", border: `1px solid ${BORDER2}`, color: TEXT,
                        boxShadow: "0 2px 12px rgba(11,43,107,0.08)" }}>

@@ -92,7 +92,7 @@ function PublicNav() {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/sign-in"><span className={`text-sm font-semibold cursor-pointer ${scrolled ? "text-gray-700" : "text-white/90"}`}>Sign In</span></Link>
+          <Link href="/login"><span className={`text-sm font-semibold cursor-pointer ${scrolled ? "text-gray-700" : "text-white/90"}`}>Sign In</span></Link>
           <Link href="/sign-up">
             <button className="px-5 py-2 rounded-full text-sm font-bold text-white transition-all hover:opacity-90"
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>Join Free</button>
@@ -221,7 +221,7 @@ function PublicLiveClassesView() {
                   Book FREE Demo Class <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
-              <Link href="/sign-in">
+              <Link href="/login">
                 <button className="px-7 py-3.5 rounded-full font-bold text-white border border-white/30 hover:bg-white/10 transition-colors text-base">
                   Student Login
                 </button>
