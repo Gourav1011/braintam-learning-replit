@@ -1,0 +1,760 @@
+# BTL CRM – Phase F
+
+Online-First CRM Completion (PW / ODA / CuriousJr Style)
+
+Project: Braintam Learning Platform (BTL CRM)
+
+IMPORTANT:
+
+This CRM is ONLY for Braintam's online business.
+
+Do NOT build:
+
+* Walk-ins
+* Offline centres
+* Branch management
+* Physical classroom admissions
+
+Think like:
+
+Physics Wallah (PW)
+ODA Class
+CuriousJr
+Cuemath
+
+Goal:
+
+Admin should be able to:
+
+1. Create leads
+2. Import leads
+3. Find leads quickly
+4. Assign leads weekly
+5. Track mentor work
+6. Recover pending payments
+7. Convert students
+8. Manage old leads
+9. View complete student history
+10. Scale from hundreds to thousands of leads.
+
+====================================================
+PART 1 – LEAD MANAGEMENT REBUILD
+================================
+
+Ignite
+├── Dashboard
+├── Leads
+│   ├── All Leads
+│   ├── New Leads
+│   ├── This Week
+│   ├── Old Leads
+│   ├── Assigned Leads
+│   ├── Follow Ups
+│   ├── Add Lead
+│   ├── Bulk Import
+│   └── Converted Leads
+├── Recovery Center
+├── Paid Students
+├── Students
+├── Sales Mentors
+└── Analytics
+
+====================================================
+LEAD STATUSES
+=============
+
+new
+contacted
+follow_up
+interested
+payment_initiated
+payment_pending
+payment_failed
+payment_abandoned
+payment_completed
+converted
+dropped
+
+Do not rename.
+
+====================================================
+ALL LEADS
+=========
+
+Columns:
+
+Student Name
+Parent Name
+Phone
+Email
+Grade
+Board
+School
+City
+Lead Source
+Status
+Assigned Mentor
+Created Date
+Last Follow Up
+Notes Count
+
+Actions:
+
+View
+Edit
+Assign
+Call
+WhatsApp
+Soft Delete
+
+Features:
+
+Search
+Filters
+Sort
+Pagination
+Loading
+Empty State
+Export CSV
+
+====================================================
+ADD LEAD
+========
+
+Button:
+
+* Add Lead
+
+Fields:
+
+Student Name
+Parent Name
+Phone
+Alternate Phone
+Email
+Grade
+Board
+School
+City
+Lead Source
+Notes
+
+Sources:
+
+Website
+Instagram
+Facebook
+Google Ads
+WhatsApp Campaign
+Referral
+Competition
+Manual
+Import
+
+Validations:
+
+Duplicate phone
+Duplicate email
+
+Audit:
+
+lead_created
+
+====================================================
+BULK IMPORT
+===========
+
+Button:
+
+* Bulk Import
+
+Support:
+
+CSV
+Excel
+
+Features:
+
+Download sample template
+Preview rows
+Highlight duplicates
+Skip duplicates
+Import summary
+
+Results:
+
+Imported
+Skipped
+Failed
+
+Audit:
+
+bulk_import_started
+bulk_import_completed
+
+====================================================
+PART 2 – WEEKLY LEAD ASSIGNMENT SYSTEM
+======================================
+
+This is mandatory.
+
+Braintam assigns leads weekly.
+
+Assignment cycle:
+
+Sunday night
+or
+Monday morning
+
+Admin distributes new leads.
+
+Mentors work the entire week.
+
+Build:
+
+Assignment Queue
+
+====================================================
+LEAD FIELDS
+===========
+
+assignedMentorId
+assignedAt
+assignmentWeek
+assignmentMonth
+assignedById
+isCurrentWeek
+assignmentStatus
+
+====================================================
+LEAD VIEWS
+==========
+
+New Leads
+This Week
+Old Leads
+Reassigned Leads
+Converted
+Dropped
+
+====================================================
+ASSIGNMENT METHODS
+==================
+
+Method 1:
+
+Manual Assignment
+
+Select Leads
+↓
+Select Mentor
+↓
+Assign
+
+Method 2:
+
+Auto Distribution
+
+Example:
+
+50 leads
+
+Priya → 10
+Rohit → 10
+Ankit → 10
+Neha → 10
+Rahul → 10
+
+Distribute equally.
+
+====================================================
+PERMISSIONS
+===========
+
+Only:
+
+super_admin
+admin
+manager
+assistant_manager
+
+can assign leads.
+
+Mentors cannot:
+
+Assign
+Reassign
+Delete leads
+
+====================================================
+PART 3 – OLD LEADS MANAGEMENT
+=============================
+
+This is extremely important.
+
+Views:
+
+This Week
+Previous Week
+Old Leads
+Reassigned
+Converted
+Dropped
+
+====================================================
+OLD LEAD RULE
+=============
+
+If:
+
+No payment
+No conversion
+
+for:
+
+7 days
+
+then:
+
+isCurrentWeek = false
+
+Move automatically:
+
+Old Leads
+
+====================================================
+OLD LEAD FILTERS
+================
+
+7 Days
+15 Days
+30 Days
+60+ Days
+
+====================================================
+OLD LEAD ACTIONS
+================
+
+Reassign
+Call
+WhatsApp
+Add Notes
+Add Follow Up
+
+====================================================
+PART 4 – RECOVERY CENTER
+========================
+
+Create:
+
+Recovery Center
+
+Sections:
+
+Payment Pending
+Payment Failed
+Payment Abandoned
+Recovered
+
+====================================================
+PAYMENT INITIATED
+=================
+
+Student clicked payment button.
+
+Create:
+
+paymentStatus = initiated
+
+====================================================
+PAYMENT PENDING
+===============
+
+Razorpay order created.
+
+No payment completed.
+
+====================================================
+PAYMENT FAILED
+==============
+
+Payment attempted.
+
+Gateway failure.
+
+====================================================
+PAYMENT ABANDONED
+=================
+
+Checkout opened.
+
+No payment completed.
+
+====================================================
+RECOVERY ACTIONS
+================
+
+Call
+WhatsApp
+Resend Payment Link
+Assign Mentor
+
+====================================================
+KPIs
+====
+
+Pending Revenue
+Failed Revenue
+Abandoned Revenue
+Recovered Revenue
+
+====================================================
+PART 5 – NEW STUDENTS MANAGEMENT
+================================
+
+Create:
+
+Students
+
+Sections:
+
+New Students
+Ignite Students
+Mastery Students
+Alumni
+Archived
+
+====================================================
+NEW STUDENTS
+============
+
+Subsections:
+
+Payment Initiated
+Payment Pending
+Payment Failed
+Payment Abandoned
+Payment Completed
+
+====================================================
+PAYMENT COMPLETED
+=================
+
+When:
+
+Webhook verified
+
+Automatically:
+
+accountType = demo_student
+leadStage = Payment Completed
+
+Automatically move:
+
+Paid Students
+→ Unassigned
+
+====================================================
+PART 6 – PAID STUDENT WORKFLOW
+==============================
+
+Unassigned
+Assigned
+Batch Assigned
+Demo Started
+Demo Completed
+Converted
+Dropped
+
+====================================================
+STATUS FLOW
+===========
+
+Unassigned
+↓
+Assigned
+↓
+Batch Assigned
+↓
+Demo Started
+↓
+Demo Completed
+↓
+Converted
+OR
+Dropped
+
+====================================================
+BATCH PERMISSIONS
+=================
+
+Only:
+
+super_admin
+admin
+manager
+
+can:
+
+Assign batch
+Change batch
+Remove batch
+Reassign batch
+
+Mentors and teachers cannot.
+
+====================================================
+PART 7 – MENTOR CRM
+===================
+
+Create:
+
+My Dashboard
+
+Sections:
+
+My Leads
+My Follow Ups
+My Payments
+My Students
+My Conversion
+My Revenue
+Leaderboard
+
+====================================================
+MENTOR PERMISSIONS
+==================
+
+Mentors can:
+
+View
+Call
+WhatsApp
+Add Notes
+Add Follow Ups
+
+Mentors cannot:
+
+Assign leads
+Assign batches
+Convert students
+Change permissions
+
+====================================================
+PART 8 – FOLLOW UP ENGINE
+=========================
+
+Statuses:
+
+No Answer
+Interested
+Not Interested
+Busy
+Call Back
+Parent Asked Time
+Payment Pending
+Payment Failed
+Payment Completed
+Converted
+Dropped
+
+Track:
+
+Call Date
+Next Follow Up
+Notes
+Outcome
+
+====================================================
+PART 9 – LEAD TIMELINE
+======================
+
+Every lead should have:
+
+Created
+Assignments
+Calls
+WhatsApp
+Notes
+Payments
+Status Changes
+Reassignments
+Conversion
+
+====================================================
+PART 10 – ANALYTICS
+===================
+
+Lead Analytics
+Payment Analytics
+Revenue Analytics
+Mentor Analytics
+Conversion Funnel
+
+====================================================
+FUNNEL
+======
+
+Leads
+↓
+Payment Initiated
+↓
+Payment Pending
+↓
+Payment Failed
+↓
+Payment Abandoned
+↓
+Payment Completed
+↓
+Demo Started
+↓
+Converted
+↓
+Mastery
+
+====================================================
+MENTOR ANALYTICS
+================
+
+Assigned Leads
+Payments
+Conversions
+Revenue
+Leaderboard
+Recovery Performance
+
+====================================================
+PART 11 – STAFF CREATION
+========================
+
+Create:
+
+* Add Staff
+
+Dynamic role-based creation.
+
+Roles:
+
+super_admin
+admin
+manager
+assistant_manager
+sales_mentor
+academic_mentor
+teacher
+
+Role-specific forms.
+
+Create:
+
+Staff Profile Pages
+Mentor Profile Pages
+Teacher Profile Pages
+
+====================================================
+AUDIT LOGS
+==========
+
+Create events for:
+
+lead_created
+lead_assigned
+lead_reassigned
+lead_imported
+payment_initiated
+payment_pending
+payment_failed
+payment_abandoned
+payment_completed
+student_assigned
+batch_assigned
+demo_started
+demo_completed
+student_converted
+student_dropped
+staff_created
+mentor_created
+teacher_created
+
+====================================================
+IMPORTANT
+=========
+
+Admin experience should be:
+
+Easy
+Fast
+Searchable
+Filterable
+Scalable
+
+Admin should be able to:
+
+Create
+Find
+Assign
+Track
+Reassign
+Recover
+Convert
+
+within a few clicks.
+
+Mentors should simply open CRM every Monday and immediately see:
+
+This Week Leads
+Old Leads
+Pending Payments
+Follow Ups
+My Students
+
+and start working.
+
+====================================================
+IMPLEMENTATION ORDER
+====================
+
+Phase F1
+Fix all data flow issues and verify yesterday's students.
+
+Phase F2
+Lead Management + Add Lead + Bulk Import.
+
+Phase F3
+Weekly Lead Assignment System.
+
+Phase F4
+Old Leads Management.
+
+Phase F5
+Recovery Center.
+
+Phase F6
+New Students Management.
+
+Phase F7
+Remaining Paid Student Workflow.
+
+Phase F8
+Mentor CRM Dashboard.
+
+Phase F9
+Analytics.
+
+Phase F10
+Staff Creation System.
+
+STOP after each phase.
+
+Provide:
+
+Files changed
+Database changes
+Routes added
+Components added
+Screens added
+Permissions added
+Audit events added
+Testing report
+Screenshots if possible.

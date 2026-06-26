@@ -8,8 +8,9 @@ import {
   mentorFollowUpsTable,
   ignitePaidStudentsTable,
   paymentsTable,
+  auditLogsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, count, inArray, isNotNull, notInArray } from "drizzle-orm";
+import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -119,6 +120,26 @@ router.get("/admin/ignite/demo-students", adminOnly, async (_req, res) => {
     batchGrade: batchMap[r.batchId]?.grade ?? null,
   })));
 });
+// ── Leads: audit helper ───────────────────────────────────────────────────────
+async function logLeadAudit(req: any, action: string, targetId: number, targetName: string, meta?: Record<string, unknown>) {
+  try {
+    await db.insert(auditLogsTable).values({
+      actorId: req.user?.id ?? null,
+      actorName: req.user?.name ?? "Admin",
+      actorRole: req.user?.role ?? "admin",
+      action,
+      actionLabel: action.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+      targetType: "lead",
+      targetId,
+      targetName,
+      category: "crm",
+      module: "ignite",
+      metadata: meta ? JSON.stringify(meta) : null,
+    });
+  } catch { /* audit failures are non-fatal */ }
+}
+
+// ── GET /admin/ignite/leads ───────────────────────────────────────────────────
 router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
   const leads = await db
     .select({
@@ -126,22 +147,204 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
       name: usersTable.name,
       email: usersTable.email,
       phone: usersTable.phone,
+      altPhone: usersTable.altPhone,
       grade: usersTable.grade,
       school: usersTable.school,
+      board: usersTable.board,
       city: usersTable.city,
+      parentName: usersTable.parentName,
       parentPhone: usersTable.parentPhone,
       leadStage: usersTable.leadStage,
+      leadSource: usersTable.leadSource,
+      notes: usersTable.notes,
       interestLevel: usersTable.interestLevel,
       callStatus: usersTable.callStatus,
       nextFollowUpAt: usersTable.nextFollowUpAt,
       lastCallAt: usersTable.lastCallAt,
+      assignedMentorId: usersTable.assignedMentorId,
+      assignedAt: usersTable.assignedAt,
+      assignmentWeek: usersTable.assignmentWeek,
+      assignmentStatus: usersTable.assignmentStatus,
+      isCurrentWeek: usersTable.isCurrentWeek,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
-    .where(inArray(usersTable.accountType, ["lead", "demo_student"]))
+    .where(and(
+      inArray(usersTable.accountType, ["lead", "demo_student"]),
+      eq(usersTable.isDeleted, false),
+    ))
     .orderBy(desc(usersTable.createdAt));
 
-  res.json(leads);
+  // Bulk-load mentor names
+  const mentorIds = [...new Set(leads.map((l) => l.assignedMentorId).filter(Boolean))] as number[];
+  const mentorMap: Record<number, string> = {};
+  if (mentorIds.length > 0) {
+    const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable).where(inArray(usersTable.id, mentorIds));
+    mentors.forEach((m) => { mentorMap[m.id] = m.name; });
+  }
+
+  // Notes counts per student
+  const notesCounts = await db
+    .select({ studentId: mentorFollowUpsTable.studentId, cnt: count() })
+    .from(mentorFollowUpsTable)
+    .groupBy(mentorFollowUpsTable.studentId);
+  const notesMap: Record<number, number> = {};
+  notesCounts.forEach((r) => { notesMap[r.studentId] = r.cnt; });
+
+  res.json(leads.map((l) => ({
+    ...l,
+    assignedMentorName: l.assignedMentorId ? (mentorMap[l.assignedMentorId] ?? null) : null,
+    notesCount: notesMap[l.id] ?? 0,
+  })));
+});
+
+// ── POST /admin/ignite/leads — create ─────────────────────────────────────────
+router.post("/admin/ignite/leads", adminOnly, async (req, res) => {
+  const { name, phone, altPhone, email, parentName, parentPhone, grade, board, school, city, leadSource, notes } = req.body as Record<string, string>;
+  if (!name?.trim()) { res.status(400).json({ error: "name is required" }); return; }
+  if (!phone?.trim()) { res.status(400).json({ error: "phone is required" }); return; }
+  if (!grade) { res.status(400).json({ error: "grade is required" }); return; }
+
+  const norm = (p: string) => p.replace(/\D/g, "").slice(-10);
+  const normPhone = norm(phone);
+
+  const [existPhone] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.phone, normPhone)).limit(1);
+  if (existPhone) { res.status(409).json({ error: "duplicate_phone", message: "A lead with this phone number already exists" }); return; }
+
+  if (email?.trim()) {
+    const [existEmail] = await db.select({ id: usersTable.id })
+      .from(usersTable).where(eq(usersTable.email, email.trim())).limit(1);
+    if (existEmail) { res.status(409).json({ error: "duplicate_email", message: "A lead with this email already exists" }); return; }
+  }
+
+  const [newLead] = await db.insert(usersTable).values({
+    name: name.trim(),
+    phone: normPhone,
+    altPhone: altPhone?.trim() || null,
+    email: email?.trim() || null,
+    parentName: parentName?.trim() || null,
+    parentPhone: parentPhone?.trim() || null,
+    grade: Number(grade) || 0,
+    board: board || null,
+    school: school?.trim() || null,
+    city: city?.trim() || null,
+    leadSource: leadSource || "Manual",
+    notes: notes?.trim() || null,
+    accountType: "lead",
+    role: "student",
+    leadStage: "new",
+    assignmentStatus: "unassigned",
+    isCurrentWeek: false,
+    isDeleted: false,
+    points: 0,
+    streakDays: 0,
+  }).returning();
+
+  await logLeadAudit(req, "lead_created", newLead.id, newLead.name, { phone: normPhone, grade, leadSource });
+  res.status(201).json(newLead);
+});
+
+// ── PUT /admin/ignite/leads/:id — update ──────────────────────────────────────
+router.put("/admin/ignite/leads/:id", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const allowed = ["name","phone","altPhone","email","parentName","parentPhone","grade","board","school","city","leadSource","notes","leadStage","interestLevel","callStatus","nextFollowUpAt","assignedMentorId","assignmentStatus"] as const;
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  allowed.forEach((k) => { if (k in req.body) patch[k] = (req.body as Record<string, unknown>)[k]; });
+  const [updated] = await db.update(usersTable).set(patch).where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name });
+  if (!updated) { res.status(404).json({ error: "Lead not found" }); return; }
+  await logLeadAudit(req, "lead_updated", id, updated.name, patch);
+  res.json({ ok: true });
+});
+
+// ── DELETE /admin/ignite/leads/:id — soft delete ──────────────────────────────
+router.delete("/admin/ignite/leads/:id", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [deleted] = await db.update(usersTable)
+    .set({ isDeleted: true, deletedAt: new Date(), deletedBy: (req as any).user?.id ?? null, updatedAt: new Date() })
+    .where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name });
+  if (!deleted) { res.status(404).json({ error: "Lead not found" }); return; }
+  await logLeadAudit(req, "lead_deleted", id, deleted.name);
+  res.json({ ok: true });
+});
+
+// ── POST /admin/ignite/leads/bulk-import ─────────────────────────────────────
+router.post("/admin/ignite/leads/bulk-import", adminOnly, async (req, res) => {
+  const { leads } = req.body as { leads: Record<string, string>[] };
+  if (!Array.isArray(leads) || leads.length === 0) { res.status(400).json({ error: "No leads provided" }); return; }
+
+  let imported = 0, skipped = 0, failed = 0;
+  const norm = (p: string) => (p ?? "").replace(/\D/g, "").slice(-10);
+
+  for (const row of leads) {
+    const name = (row["name"] ?? "").trim();
+    const phone = norm(row["phone"] ?? "");
+    const grade = Number(row["grade"] ?? 0);
+    if (!name || !phone || !grade) { failed++; continue; }
+
+    const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+    if (existing) { skipped++; continue; }
+
+    try {
+      const [newLead] = await db.insert(usersTable).values({
+        name, phone,
+        altPhone: (row["altPhone"] ?? "").trim() || null,
+        email: (row["email"] ?? "").trim() || null,
+        parentName: (row["parentName"] ?? "").trim() || null,
+        grade,
+        board: (row["board"] ?? "") || null,
+        school: (row["school"] ?? "").trim() || null,
+        city: (row["city"] ?? "").trim() || null,
+        leadSource: (row["leadSource"] ?? "Import") || "Import",
+        notes: (row["notes"] ?? "").trim() || null,
+        accountType: "lead",
+        role: "student",
+        leadStage: "new",
+        assignmentStatus: "unassigned",
+        isCurrentWeek: false,
+        isDeleted: false,
+        points: 0,
+        streakDays: 0,
+      }).returning();
+      await logLeadAudit(req, "lead_imported", newLead.id, newLead.name, { source: "bulk_import" });
+      imported++;
+    } catch { failed++; }
+  }
+
+  await logLeadAudit(req, "bulk_import_completed", 0, "bulk_import", { imported, skipped, failed });
+  res.json({ imported, skipped, failed });
+});
+
+// ── GET /admin/ignite/leads/export — CSV download ────────────────────────────
+router.get("/admin/ignite/leads/export", adminOnly, async (_req, res) => {
+  const leads = await db
+    .select({
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      phone: usersTable.phone, altPhone: usersTable.altPhone,
+      grade: usersTable.grade, board: usersTable.board, school: usersTable.school,
+      city: usersTable.city, parentName: usersTable.parentName,
+      parentPhone: usersTable.parentPhone, leadStage: usersTable.leadStage,
+      leadSource: usersTable.leadSource, assignmentStatus: usersTable.assignmentStatus,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .where(and(inArray(usersTable.accountType, ["lead", "demo_student"]), eq(usersTable.isDeleted, false)))
+    .orderBy(desc(usersTable.createdAt));
+
+  const headers = ["ID","Name","Parent Name","Phone","Alt Phone","Email","Grade","Board","School","City","Lead Source","Status","Assignment Status","Created"];
+  const rows = leads.map((l) => [
+    l.id, `"${l.name}"`, `"${l.parentName ?? ""}"`, l.phone ?? "", l.altPhone ?? "", l.email ?? "",
+    l.grade ?? "", l.board ?? "", `"${l.school ?? ""}"`, `"${l.city ?? ""}"`,
+    l.leadSource ?? "", l.leadStage ?? "", l.assignmentStatus ?? "",
+    l.createdAt ? new Date(l.createdAt).toLocaleDateString("en-IN") : "",
+  ]);
+  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="braintam_leads_${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send(csv);
 });
 
 router.get("/admin/ignite/attendance/:batchId", adminOnly, async (req, res) => {

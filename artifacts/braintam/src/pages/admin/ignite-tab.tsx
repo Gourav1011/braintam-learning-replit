@@ -698,171 +698,455 @@ function LeadProfileModal({
   );
 }
 
-const PIPELINE_STAGES = ["New Lead", "Contacted", "Demo Assigned", "Demo Joined", "Interested", "Payment Sent", "Converted", "Dropped"];
+// ── Lead Row ──────────────────────────────────────────────────────────────────
+interface LeadRow {
+  id: number; name: string; email: string | null; phone: string | null;
+  altPhone: string | null; grade: number | null; school: string | null;
+  board: string | null; city: string | null; parentName: string | null;
+  parentPhone: string | null; leadStage: string | null; leadSource: string | null;
+  notes: string | null; interestLevel: string | null; callStatus: string | null;
+  nextFollowUpAt: string | null; lastCallAt: string | null;
+  assignedMentorId: number | null; assignedMentorName: string | null;
+  assignedAt: string | null; assignmentStatus: string | null;
+  notesCount: number; createdAt: string;
+}
+
+const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  new:               { bg: "#DBEAFE", text: "#1D4ED8" },
+  contacted:         { bg: "#D1FAE5", text: "#059669" },
+  follow_up:         { bg: "#FEF3C7", text: "#D97706" },
+  interested:        { bg: "#EDE9FE", text: "#7C3AED" },
+  payment_initiated: { bg: "#FFF7ED", text: "#C2410C" },
+  payment_pending:   { bg: "#FEF9C3", text: "#A16207" },
+  payment_failed:    { bg: "#FEE2E2", text: "#DC2626" },
+  payment_abandoned: { bg: "#FEE2E2", text: "#B91C1C" },
+  payment_completed: { bg: "#D1FAE5", text: "#065F46" },
+  converted:         { bg: "#DCFCE7", text: "#15803D" },
+  dropped:           { bg: "#F3F4F6", text: "#6B7280" },
+};
+
+function LeadStatusBadge({ status }: { status: string | null }) {
+  if (!status) return <span className="text-gray-400 text-xs">–</span>;
+  const c = LEAD_STATUS_COLORS[status] ?? { bg: "#F3F4F6", text: "#6B7280" };
+  return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+      style={{ background: c.bg, color: c.text }}>
+      {status.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase())}
+    </span>
+  );
+}
+
+function AddLeadModal({ onClose, onSuccess, flash }: {
+  onClose: () => void; onSuccess: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [form, setForm] = useState({
+    name: "", parentName: "", phone: "", altPhone: "", email: "",
+    grade: "", board: "", school: "", city: "", leadSource: "Manual", notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.name.trim()) { setError("Student name is required"); return; }
+    if (!form.phone.trim()) { setError("Phone number is required"); return; }
+    if (!form.grade) { setError("Grade is required"); return; }
+    setSaving(true); setError("");
+    try {
+      const r = await apiFetch("/admin/ignite/leads", {
+        method: "POST",
+        body: JSON.stringify({ ...form, grade: Number(form.grade) }),
+      });
+      if (r.status === 409) { const d = await r.json(); setError(d.message ?? "Duplicate found"); return; }
+      if (!r.ok) throw new Error("Failed");
+      flash("Lead created successfully", true); onSuccess(); onClose();
+    } catch { setError("Failed to create lead. Try again."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-6 my-4">
+        <div className="flex items-center justify-between mb-5">
+          <div><h2 className="text-lg font-black" style={{ color: NAVY }}>Add New Lead</h2>
+            <p className="text-xs text-gray-500">Fill in student details to add a new lead</p></div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">✕</button>
+        </div>
+        {error && <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">{error}</div>}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { k: "name", label: "Student Name *", placeholder: "e.g. Arjun Sharma", type: "text" },
+            { k: "parentName", label: "Parent Name", placeholder: "e.g. Rajesh Sharma", type: "text" },
+            { k: "phone", label: "Phone Number *", placeholder: "10-digit mobile", type: "tel" },
+            { k: "altPhone", label: "Alternate Phone", placeholder: "Optional", type: "tel" },
+            { k: "email", label: "Email Address", placeholder: "Optional", type: "email" },
+          ].map(({ k, label, placeholder, type }) => (
+            <div key={k}>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">{label}</label>
+              <input value={(form as Record<string,string>)[k]} onChange={(e) => set(k, e.target.value)}
+                type={type} placeholder={placeholder}
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            </div>
+          ))}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Grade *</label>
+            <select value={form.grade} onChange={(e) => set("grade", e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none">
+              <option value="">Select Grade</option>
+              {[1,2,3,4,5,6,7,8,9,10].map((g) => <option key={g} value={g}>Grade {g}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Board</label>
+            <select value={form.board} onChange={(e) => set("board", e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none">
+              <option value="">Select Board</option>
+              {["CBSE","ICSE","State Board","IB","IGCSE"].map((b) => <option key={b}>{b}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">School</label>
+            <input value={form.school} onChange={(e) => set("school", e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+              placeholder="School name" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">City</label>
+            <input value={form.city} onChange={(e) => set("city", e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+              placeholder="e.g. Mumbai" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Lead Source</label>
+            <select value={form.leadSource} onChange={(e) => set("leadSource", e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none">
+              {["Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Notes</label>
+            <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+              rows={3} placeholder="Add any notes about this lead..." />
+          </div>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={submit} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-black disabled:opacity-50"
+            style={{ background: ORANGE }}>{saving ? "Saving..." : "Add Lead"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BulkImportModal({ onClose, onSuccess, flash }: {
+  onClose: () => void; onSuccess: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [step, setStep] = useState<"upload" | "preview" | "done">("upload");
+  const [rows, setRows] = useState<Record<string, string>[]>([]);
+  const [duplicates, setDuplicates] = useState<Set<number>>(new Set());
+  const [result, setResult] = useState<{ imported: number; skipped: number; failed: number } | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const parseCSV = (text: string) => {
+    const lines = text.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map((h) => h.replace(/^"|"$/g, "").trim());
+    return lines.slice(1).map((line) => {
+      const vals = line.split(",").map((v) => v.replace(/^"|"$/g, "").trim());
+      const row: Record<string, string> = {};
+      headers.forEach((h, i) => { row[h] = vals[i] ?? ""; });
+      return row;
+    });
+  };
+
+  const handleFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const parsed = parseCSV(text);
+      const phones = new Set<string>();
+      const dupes = new Set<number>();
+      parsed.forEach((row, i) => {
+        const phone = (row["phone"] ?? row["Phone"] ?? "").replace(/\D/g, "").slice(-10);
+        if (phone && phones.has(phone)) dupes.add(i); else phones.add(phone);
+      });
+      setRows(parsed); setDuplicates(dupes); setStep("preview");
+    };
+    reader.readAsText(file);
+  };
+
+  const doImport = async () => {
+    const toImport = rows.filter((_, i) => !duplicates.has(i));
+    setImporting(true);
+    try {
+      const r = await apiFetch("/admin/ignite/leads/bulk-import", {
+        method: "POST", body: JSON.stringify({ leads: toImport }),
+      });
+      const data = await r.json();
+      setResult(data); setStep("done");
+      if (data.imported > 0) onSuccess();
+    } catch { flash("Bulk import failed", false); }
+    finally { setImporting(false); }
+  };
+
+  const downloadTemplate = () => {
+    const csv = "name,parentName,phone,altPhone,email,grade,board,school,city,leadSource,notes\nArjun Sharma,Rajesh Sharma,9876543210,,arjun@email.com,6,CBSE,Delhi Public School,New Delhi,Manual,";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "braintam_leads_template.csv" });
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div><h2 className="text-lg font-black" style={{ color: NAVY }}>Bulk Import Leads</h2>
+            <p className="text-xs text-gray-500">Import multiple leads from CSV</p></div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">✕</button>
+        </div>
+        {step === "upload" && (
+          <div className="space-y-4">
+            <button onClick={downloadTemplate}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+              <Download className="w-3.5 h-3.5" /> Download Sample Template
+            </button>
+            <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors">
+              <Plus className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-sm font-semibold text-gray-600">Click to upload CSV file</span>
+              <span className="text-xs text-gray-400 mt-1">Required columns: name, phone, grade</span>
+              <input type="file" accept=".csv" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+            </label>
+          </div>
+        )}
+        {step === "preview" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-700">
+                {rows.length} rows — <span className="text-red-600">{duplicates.size} duplicates will be skipped</span>
+              </div>
+              <button onClick={() => setStep("upload")} className="text-xs text-gray-500 hover:text-gray-700 underline">Change file</button>
+            </div>
+            <div className="overflow-auto max-h-60 rounded-xl border border-gray-100">
+              <table className="w-full text-xs">
+                <thead style={{ background: "#F8FAFF" }}>
+                  <tr>
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold">#</th>
+                    {Object.keys(rows[0] ?? {}).slice(0, 5).map((h) => (
+                      <th key={h} className="px-3 py-2 text-left text-gray-500 font-semibold">{h}</th>
+                    ))}
+                    <th className="px-3 py-2 text-left text-gray-500 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.slice(0, 20).map((row, i) => (
+                    <tr key={i} className={duplicates.has(i) ? "bg-red-50" : "border-b border-gray-50"}>
+                      <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
+                      {Object.values(row).slice(0, 5).map((v, j) => (
+                        <td key={j} className="px-3 py-1.5 text-gray-700 max-w-24 truncate">{v || "–"}</td>
+                      ))}
+                      <td className="px-3 py-1.5">
+                        {duplicates.has(i)
+                          ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600">Duplicate</span>
+                          : <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-600">Ready</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  {rows.length > 20 && <tr><td colSpan={7} className="px-3 py-2 text-center text-gray-400">…{rows.length - 20} more rows</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={doImport} disabled={importing}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-black disabled:opacity-50"
+                style={{ background: NAVY }}>
+                {importing ? "Importing..." : `Import ${rows.length - duplicates.size} Leads`}
+              </button>
+            </div>
+          </div>
+        )}
+        {step === "done" && result && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-4 rounded-2xl text-center bg-green-50">
+                <div className="text-2xl font-black text-green-700">{result.imported}</div>
+                <div className="text-xs font-semibold text-green-600">Imported</div>
+              </div>
+              <div className="p-4 rounded-2xl text-center bg-yellow-50">
+                <div className="text-2xl font-black text-yellow-700">{result.skipped}</div>
+                <div className="text-xs font-semibold text-yellow-600">Skipped</div>
+              </div>
+              <div className="p-4 rounded-2xl text-center bg-red-50">
+                <div className="text-2xl font-black text-red-700">{result.failed}</div>
+                <div className="text-xs font-semibold text-red-600">Failed</div>
+              </div>
+            </div>
+            <button onClick={onClose}
+              className="w-full py-2.5 rounded-xl text-white text-sm font-black"
+              style={{ background: NAVY }}>Done</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
-  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [stageTab, setStageTab] = useState("All");
+  const [statusF, setStatusF] = useState("All Status");
+  const [gradeF, setGradeF] = useState("All Grades");
+  const [sourceF, setSourceF] = useState("All Sources");
   const [mentorF, setMentorF] = useState("All Mentors");
   const [page, setPage] = useState(1);
-  const [selectedLead, setSelectedLead] = useState<StudentRow | null>(null);
   const [showAddLead, setShowAddLead] = useState(false);
-  const PER = 12;
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const PER = 15;
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     apiFetch("/admin/ignite/leads")
       .then((r) => r.json())
-      .then(setStudents)
+      .then(setLeads)
       .catch(() => flash("Failed to load leads", false))
       .finally(() => setLoading(false));
-  }, []);
+  }, [flash]);
 
-  const mentors = [...new Set(students.map((s) => s.assignedMentorName).filter(Boolean))] as string[];
+  useEffect(() => { load(); }, [load]);
 
-  const stageCounts = PIPELINE_STAGES.reduce((acc, stage) => {
-    acc[stage] = students.filter((s) => s.leadStage === stage).length;
-    return acc;
-  }, {} as Record<string, number>);
+  const mentors = [...new Set(leads.map((l) => l.assignedMentorName).filter(Boolean))] as string[];
 
-  const filtered = students.filter((s) => {
+  const statusCounts: Record<string, number> = { "All Status": leads.length };
+  leads.forEach((l) => { const s = l.leadStage ?? "new"; statusCounts[s] = (statusCounts[s] ?? 0) + 1; });
+
+  const filtered = leads.filter((l) => {
     const q = search.toLowerCase();
-    if (q && !s.name.toLowerCase().includes(q) && !(s.phone ?? "").includes(q) && !(s.school ?? "").toLowerCase().includes(q)) return false;
-    if (stageTab !== "All" && s.leadStage !== stageTab) return false;
-    if (mentorF !== "All Mentors" && s.assignedMentorName !== mentorF) return false;
+    if (q && !l.name.toLowerCase().includes(q) && !(l.phone ?? "").includes(q) &&
+        !(l.school ?? "").toLowerCase().includes(q) && !(l.city ?? "").toLowerCase().includes(q)) return false;
+    if (statusF !== "All Status" && (l.leadStage ?? "new") !== statusF) return false;
+    if (gradeF !== "All Grades" && String(l.grade) !== gradeF.replace("Grade ", "")) return false;
+    if (sourceF !== "All Sources" && (l.leadSource ?? "") !== sourceF) return false;
+    if (mentorF !== "All Mentors" && l.assignedMentorName !== mentorF) return false;
     return true;
   });
 
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
 
+  const exportCSV = () => {
+    const headers = ["Name","Parent Name","Phone","Alt Phone","Email","Grade","Board","School","City","Lead Source","Status","Assigned Mentor","Assignment Status","Created"];
+    const csvRows = filtered.map((l) => [
+      `"${l.name}"`, `"${l.parentName ?? ""}"`, l.phone ?? "", l.altPhone ?? "", l.email ?? "",
+      l.grade ?? "", l.board ?? "", `"${l.school ?? ""}"`, `"${l.city ?? ""}"`,
+      l.leadSource ?? "", l.leadStage ?? "", `"${l.assignedMentorName ?? ""}"`,
+      l.assignmentStatus ?? "", new Date(l.createdAt).toLocaleDateString("en-IN"),
+    ]);
+    const csv = [headers, ...csvRows].map((r) => r.join(",")).join("\n");
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+      download: `braintam_leads_${new Date().toISOString().slice(0,10)}.csv`,
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const softDelete = async (id: number, name: string) => {
+    if (!confirm(`Delete lead "${name}"? This action can be undone by an admin.`)) return;
+    try {
+      await apiFetch(`/admin/ignite/leads/${id}`, { method: "DELETE" });
+      flash("Lead deleted", true); load();
+    } catch { flash("Failed to delete lead", false); }
+  };
+
   return (
     <div className="space-y-4">
-      {selectedLead && (
-        <LeadProfileModal lead={selectedLead} onClose={() => setSelectedLead(null)} flash={flash} />
-      )}
-      {showAddLead && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAddLead(false);
-          }}
-        >
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-black">Add New Lead</h2>
-              <button
-                onClick={() => setShowAddLead(false)}
-                className="text-gray-500"
-              >
-                ✕
-              </button>
-            </div>
+      {showAddLead && <AddLeadModal onClose={() => setShowAddLead(false)} onSuccess={load} flash={flash} />}
+      {showBulkImport && <BulkImportModal onClose={() => setShowBulkImport(false)} onSuccess={load} flash={flash} />}
 
-            <div className="space-y-3">
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Student Name"
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Parent Name"
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Parent Mobile"
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Student Mobile"
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Grade"
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="School"
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="City"
-              />
-
-              <button
-                className="w-full py-2 rounded-lg text-white font-semibold"
-                style={{ background: ORANGE }}
-              >
-                Save Lead
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-black" style={{ color: NAVY }}>Leads</h1>
-          <p className="text-xs text-gray-500">Manage all incoming leads through the sales pipeline</p>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>All Leads</h1>
+          <p className="text-xs text-gray-500">{leads.length} total leads in pipeline</p>
         </div>
-      <button
-  onClick={() => setShowAddLead(true)}
-  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
-  style={{ background: ORANGE }}
->
-  <Plus className="w-3.5 h-3.5" /> Add Lead
-</button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
+          <button onClick={() => setShowBulkImport(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+            <Plus className="w-3.5 h-3.5" /> Bulk Import
+          </button>
+          <button onClick={() => setShowAddLead(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
+            style={{ background: ORANGE }}>
+            <Plus className="w-3.5 h-3.5" /> Add Lead
+          </button>
+        </div>
       </div>
 
-      {/* Stage pipeline tabs */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => { setStageTab("All"); setPage(1); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
-          style={stageTab === "All"
-            ? { background: NAVY, color: "#fff", borderColor: NAVY }
-            : { background: "#fff", color: "#6B7280", borderColor: "#E5E7EB" }}>
-          All
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black"
-            style={stageTab === "All" ? { background: "rgba(255,255,255,0.2)", color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>
-            {students.length}
-          </span>
-        </button>
-        {PIPELINE_STAGES.map((stage) => (
-          <button key={stage} onClick={() => { setStageTab(stage); setPage(1); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
-            style={stageTab === stage
-              ? { background: STAGE_COLORS[stage]?.text ?? NAVY, color: "#fff", borderColor: STAGE_COLORS[stage]?.text ?? NAVY }
-              : { background: "#fff", color: "#6B7280", borderColor: "#E5E7EB" }}>
-            {stage}
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black"
-              style={stageTab === stage
-                ? { background: "rgba(255,255,255,0.25)", color: "#fff" }
-                : { background: STAGE_COLORS[stage]?.bg ?? "#F3F4F6", color: STAGE_COLORS[stage]?.text ?? "#374151" }}>
-              {stageCounts[stage] ?? 0}
-            </span>
-          </button>
+      {/* KPI strip */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        {[
+          { label: "Total", count: leads.length, color: NAVY, bg: "#EEF2FF" },
+          { label: "New", count: statusCounts["new"] ?? 0, color: "#1D4ED8", bg: "#DBEAFE" },
+          { label: "Contacted", count: statusCounts["contacted"] ?? 0, color: "#059669", bg: "#D1FAE5" },
+          { label: "Interested", count: statusCounts["interested"] ?? 0, color: "#7C3AED", bg: "#EDE9FE" },
+          { label: "In Payment", count: (statusCounts["payment_completed"] ?? 0) + (statusCounts["payment_pending"] ?? 0) + (statusCounts["payment_initiated"] ?? 0), color: "#D97706", bg: "#FEF3C7" },
+          { label: "Converted", count: statusCounts["converted"] ?? 0, color: "#15803D", bg: "#DCFCE7" },
+        ].map((k) => (
+          <div key={k.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
+            <div className="text-lg font-black" style={{ color: k.color }}>{k.count}</div>
+            <div className="text-[10px] text-gray-500 font-semibold">{k.label}</div>
+          </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center">
+      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by name, phone or school..."
+            placeholder="Search name, phone, school, city…"
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100" />
         </div>
+        <select value={statusF} onChange={(e) => { setStatusF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          <option>All Status</option>
+          {["new","contacted","follow_up","interested","payment_initiated","payment_pending","payment_failed","payment_abandoned","payment_completed","converted","dropped"].map((s) => (
+            <option key={s} value={s}>{s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+          ))}
+        </select>
+        <select value={gradeF} onChange={(e) => { setGradeF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          <option>All Grades</option>
+          {[1,2,3,4,5,6,7,8,9,10].map((g) => <option key={g} value={`Grade ${g}`}>Grade {g}</option>)}
+        </select>
+        <select value={sourceF} onChange={(e) => { setSourceF(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          <option>All Sources</option>
+          {["Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
         <select value={mentorF} onChange={(e) => { setMentorF(e.target.value); setPage(1); }}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none">
+          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
           <option>All Mentors</option>
           {mentors.map((m) => <option key={m}>{m}</option>)}
         </select>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
       </div>
 
       {/* Table */}
@@ -871,49 +1155,76 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
           <table className="w-full text-sm">
             <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
               <tr>
-                {["Student Name", "Parent Mobile", "Mobile", "Grade", "School", "Batch", "Mentor", "Stage", "Attendance", "Last Contact", "Action"].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                {["Student Name","Parent Name","Phone","Email","Grade","City","Source","Status","Mentor","Created","Last Activity","Notes","Actions"].map((h) => (
+                  <th key={h} className="text-left px-3 py-3 text-[10px] font-bold text-gray-500 whitespace-nowrap uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-400">
-                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading leads...
+                <tr><td colSpan={13} className="text-center py-12 text-gray-400">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading leads…
                 </td></tr>
               ) : paged.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-400 text-sm">
-                  {stageTab !== "All" ? `No leads in "${stageTab}" stage` : "No leads found"}
+                <tr><td colSpan={13} className="text-center py-12">
+                  <div className="text-gray-400 text-sm">{search || statusF !== "All Status" ? "No leads match your filters" : "No leads yet — click Add Lead to get started"}</div>
                 </td></tr>
-              ) : paged.map((s) => (
-                <tr key={s.enrollmentId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
+              ) : paged.map((l) => (
+                <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                        style={{ background: NAVY }}>{s.name?.[0] ?? "?"}</div>
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
+                        style={{ background: NAVY }}>{(l.name?.[0] ?? "?").toUpperCase()}</div>
                       <div>
-                        <div className="font-semibold text-gray-800 text-xs">{s.name}</div>
-                        <div className="text-gray-400 text-[10px]">{s.email ?? "–"}</div>
+                        <div className="font-semibold text-gray-800 text-xs whitespace-nowrap">{l.name}</div>
+                        <div className="text-gray-400 text-[10px]">{l.board ?? "–"} · {l.school ?? "–"}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">{s.parentPhone ?? "–"}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs font-mono">{s.phone ?? "–"}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{s.grade ?? "–"}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs max-w-28 truncate">{s.school ?? "–"}</td>
-                  <td className="px-4 py-3 text-gray-700 text-xs max-w-32 truncate">{s.batchTitle}</td>
-                  <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{s.assignedMentorName ?? "–"}</td>
-                  <td className="px-4 py-3"><StageBadge stage={s.leadStage} /></td>
-                  <td className="px-4 py-3 text-xs">
-                    {s.lastDayAttended
-                      ? <span className="font-semibold" style={{ color: "#059669" }}>Day {s.lastDayAttended}</span>
-                      : <span className="text-gray-400">–</span>}
+                  <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">{l.parentName ?? "–"}</td>
+                  <td className="px-3 py-3">
+                    <div className="text-xs font-mono text-gray-700">{l.phone ?? "–"}</div>
+                    {l.altPhone && <div className="text-[10px] font-mono text-gray-400">{l.altPhone}</div>}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmt(s.lastCallAt ?? s.nextFollowUpAt)}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setSelectedLead(s)}
-                      className="text-xs font-semibold px-3 py-1 rounded-lg hover:opacity-80"
-                      style={{ background: "#EEF2FF", color: NAVY }}>View</button>
+                  <td className="px-3 py-3 text-xs text-gray-500 max-w-28 truncate">{l.email ?? "–"}</td>
+                  <td className="px-3 py-3">
+                    {l.grade ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#EEF2FF", color: NAVY }}>Gr {l.grade}</span> : "–"}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">{l.city ?? "–"}</td>
+                  <td className="px-3 py-3">
+                    {l.leadSource ? <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 whitespace-nowrap">{l.leadSource}</span> : "–"}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap"><LeadStatusBadge status={l.leadStage} /></td>
+                  <td className="px-3 py-3">
+                    {l.assignedMentorName
+                      ? <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: "#1D4ED8" }}>{l.assignedMentorName[0].toUpperCase()}</div>
+                          <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{l.assignedMentorName}</span>
+                        </div>
+                      : <span className="text-gray-400 text-xs">Unassigned</span>}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(l.createdAt)}</td>
+                  <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(l.lastCallAt ?? l.nextFollowUpAt)}</td>
+                  <td className="px-3 py-3">
+                    {l.notesCount > 0
+                      ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600">{l.notesCount}</span>
+                      : <span className="text-gray-300 text-xs">0</span>}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-1">
+                      <a href={`tel:${l.phone}`}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Call">
+                        <Phone className="w-3 h-3 text-green-700" />
+                      </a>
+                      <a href={`https://wa.me/91${(l.phone ?? "").replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="WhatsApp">
+                        <Bell className="w-3 h-3 text-green-700" />
+                      </a>
+                      <button onClick={() => softDelete(l.id, l.name)}
+                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Delete">
+                        <X className="w-3 h-3 text-red-600" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -922,7 +1233,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
         </div>
         {totalPages > 1 && (
           <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length}</span>
+            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length} leads</span>
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
                 <button key={p} onClick={() => setPage(p)}
