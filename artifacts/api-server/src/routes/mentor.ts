@@ -271,7 +271,11 @@ router.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
     if (!assignment) { res.status(403).json({ error: "Not your assigned student" }); return; }
   }
 
-  const { leadStage, parentName, parentPhone, weakSubject, strongSubject, interestLevel, repeatedCustomer } = req.body;
+  const {
+    leadStage, parentName, parentPhone,
+    weakSubject, strongSubject, interestLevel, repeatedCustomer,
+    displayName, referenceGrade, altPhone, notes,
+  } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (leadStage !== undefined) updates.leadStage = leadStage || null;
   if (parentName !== undefined) updates.parentName = parentName || null;
@@ -280,10 +284,17 @@ router.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
   if (strongSubject !== undefined) updates.strongSubject = strongSubject || null;
   if (interestLevel !== undefined) updates.interestLevel = interestLevel || null;
   if (repeatedCustomer !== undefined) updates.repeatedCustomer = Boolean(repeatedCustomer);
+  // New mentor-editable fields — displayName/referenceGrade/altPhone/notes only
+  if (displayName !== undefined) updates.displayName = displayName || null;
+  if (referenceGrade !== undefined) updates.referenceGrade = referenceGrade ? Number(referenceGrade) : null;
+  if (altPhone !== undefined) updates.altPhone = altPhone || null;
+  if (notes !== undefined) updates.notes = notes || null;
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning({
     id: usersTable.id, leadStage: usersTable.leadStage, parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
     weakSubject: usersTable.weakSubject, strongSubject: usersTable.strongSubject, interestLevel: usersTable.interestLevel,
+    displayName: usersTable.displayName, referenceGrade: usersTable.referenceGrade,
+    altPhone: usersTable.altPhone, notes: usersTable.notes,
   });
   res.json(updated);
 });

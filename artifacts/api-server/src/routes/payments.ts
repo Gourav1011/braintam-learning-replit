@@ -7,6 +7,7 @@ import {
   paymentsTable,
   enrolmentErrorsTable,
   ignitePaidStudentsTable,
+  paymentLinksTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
@@ -165,6 +166,73 @@ router.post("/payments/webhook", async (req, res) => {
 
   // ── 2. Event type filter ──────────────────────────────────
   const event = req.body?.event as string | undefined;
+
+  // ── 2a. Long-term payment_link events ─────────────────────
+  if (
+    event === "payment_link.paid" ||
+    event === "payment_link.expired" ||
+    event === "payment_link.cancelled" ||
+    event === "payment_link.partially_paid"
+  ) {
+    const plEntity = req.body?.payload?.payment_link?.entity;
+    const rpLinkId: string | undefined = plEntity?.id;
+    if (rpLinkId) {
+      const statusMap: Record<string, string> = {
+        "payment_link.paid":           "paid",
+        "payment_link.expired":        "expired",
+        "payment_link.cancelled":      "cancelled",
+        "payment_link.partially_paid": "opened",
+      };
+      const newStatus = statusMap[event] ?? "opened";
+      const updates: Record<string, unknown> = { status: newStatus };
+
+      if (event === "payment_link.paid") {
+        // Fetch link row to get studentId
+        const [linkRow] = await db
+          .select({ studentId: paymentLinksTable.studentId })
+          .from(paymentLinksTable)
+          .where(eq(paymentLinksTable.razorpayPaymentLinkId, rpLinkId))
+          .limit(1);
+
+        if (linkRow?.studentId) {
+          await db
+            .update(usersTable)
+            .set({ leadStage: "Converted", updatedAt: new Date() })
+            .where(eq(usersTable.id, linkRow.studentId));
+        }
+      }
+
+      await db
+        .update(paymentLinksTable)
+        .set(updates)
+        .where(eq(paymentLinksTable.razorpayPaymentLinkId, rpLinkId));
+    }
+    res.sendStatus(200);
+    return;
+  }
+
+  if (
+    event === "payment_link.created" ||
+    event === "payment_link.reminder_sent"
+  ) {
+    // Update status to opened if not already paid
+    const plEntity = req.body?.payload?.payment_link?.entity;
+    const rpLinkId: string | undefined = plEntity?.id;
+    if (rpLinkId && event === "payment_link.created") {
+      await db
+        .update(paymentLinksTable)
+        .set({ status: "opened" })
+        .where(
+          and(
+            eq(paymentLinksTable.razorpayPaymentLinkId, rpLinkId),
+            eq(paymentLinksTable.status, "created"),
+          ),
+        );
+    }
+    res.sendStatus(200);
+    return;
+  }
+
   if (event !== "payment.captured") {
     // Acknowledge non-capture events silently
     res.sendStatus(200);

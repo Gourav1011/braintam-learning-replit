@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { runOverdueFollowUpReminders } from "./jobs/overdueFollowUpReminders.js";
+import { seedCoursePricing } from "./routes/longTermPayments.js";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,7 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
   scheduleReminderJob();
+  seedCoursePricing().catch(e => logger.error({ err: e }, "Course pricing seed failed"));
 });
 
 function scheduleReminderJob(): void {

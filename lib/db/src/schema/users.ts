@@ -33,6 +33,8 @@ export const usersTable = pgTable("users", {
   parentPhone: text("parent_phone"),
   callStatus: text("call_status"),            // Need To Call | Picked | Busy | Call Back | Not Connected
   interestLevel: text("interest_level"),      // Low | Moderate | High | Very High
+  displayName: text("display_name"),
+  referenceGrade: integer("reference_grade"),
   weakSubject: text("weak_subject"),
   strongSubject: text("strong_subject"),
   repeatedCustomer: boolean("repeated_customer").notNull().default(false),

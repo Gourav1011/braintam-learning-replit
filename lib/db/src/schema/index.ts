@@ -44,3 +44,4 @@ export * from "./ignitePaidStudents";
 export * from "./roles";
 export * from "./rbacPermissions";
 export * from "./rolePermissions";
+export * from "./coursePricing";

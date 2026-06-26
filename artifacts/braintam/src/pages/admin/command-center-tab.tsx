@@ -4,7 +4,7 @@ import {
   FileText, Settings, ChevronRight, TrendingUp, Activity,
   Clock, CheckCircle2, AlertCircle, Zap,
   RefreshCw, Loader2, AlertTriangle, XCircle,
-  ArrowRight,
+  ArrowRight, DollarSign, Pencil, Save, X,
 } from "lucide-react";
 import { StaffManagementView } from "./command-center-staff-tab";
 import { MentorManagementView } from "./command-center-mentors-tab";
@@ -35,6 +35,7 @@ type CCView =
   | "teacher-management"
   | "roles-permissions"
   | "audit-logs"
+  | "course-pricing"
   | "settings";
 
 interface DashboardData {
@@ -335,6 +336,7 @@ const NAV: NavItem[] = [
   { key: "teacher-management", label: "Teacher Management",  icon: GraduationCap,   description: "Teacher schedules, classes, assignments",     status: "live"        },
   { key: "roles-permissions",  label: "Roles & Permissions", icon: ShieldCheck,     description: "Database-driven role and permission system",  status: "live"        },
   { key: "audit-logs",         label: "Audit Logs",          icon: FileText,        description: "Full trail of all system actions",            status: "live"        },
+  { key: "course-pricing",     label: "Course Pricing",      icon: DollarSign,      description: "Set per-grade, per-subject long-term fees",   status: "live"        },
   { key: "settings",           label: "Settings",            icon: Settings,        description: "Platform-wide configuration and preferences", status: "coming-soon" },
 ];
 
@@ -344,6 +346,7 @@ const ROADMAPS: Record<Exclude<CCView, "dashboard">, { phase: string; items: str
   "teacher-management": [{ phase: "Phase C Step 4", items: ["Teacher roster with class load", "Subject–teacher mapping", "Attendance submission tracking", "Schedule overview"] }, { phase: "Phase C+", items: ["Teacher performance metrics", "Student feedback per teacher"] }],
   "roles-permissions":  [{ phase: "Phase D Step 5", items: ["DB-driven roles table", "Per-module action permissions (View/Create/Edit/Delete/Assign)", "Super Admin permission editor UI", "Role hierarchy enforcement"] }, { phase: "Phase D+", items: ["Permission inheritance", "Custom role creation", "Audit log of permission changes"] }],
   "audit-logs":         [{ phase: "Phase H Step 6", items: ["Who changed what and when", "Old value → new value diffs", "Filter by user, module, date", "Export to CSV"] }, { phase: "Phase H+", items: ["Real-time audit stream", "Alert on suspicious actions"] }],
+  "course-pricing":     [{ phase: "Phase 1 — Live", items: ["Per-grade, per-subject pricing grid", "Full & partial payment support", "Seed defaults on startup", "Edit any cell inline"] }, { phase: "Phase 2", items: ["Discount codes", "Bulk-grade pricing", "Pricing history & audit trail"] }],
   "settings":           [{ phase: "Phase B+", items: ["Platform name & branding", "Academic year configuration", "Session timeout settings", "Feature flags"] }, { phase: "Later", items: ["Email notification templates", "Maintenance mode toggle", "Integration toggles"] }],
 };
 
@@ -426,6 +429,222 @@ function ComingSoonView({ view }: { view: Exclude<CCView, "dashboard"> }) {
   );
 }
 
+// ── Course Pricing Master ─────────────────────────────────────────────────────
+interface PricingRow {
+  id: number;
+  gradeNumber: number;
+  subject: string;
+  fullYearPrice: number;
+  halfYearPrice: number;
+  quarterYearPrice: number;
+}
+
+const GRADE_LABELS: Record<number, string> = {
+  1: "Grade 1", 2: "Grade 2", 3: "Grade 3", 4: "Grade 4", 5: "Grade 5",
+  6: "Grade 6", 7: "Grade 7", 8: "Grade 8", 9: "Grade 9", 10: "Grade 10",
+};
+
+function CoursePricingView() {
+  const [rows, setRows] = useState<PricingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [flash, setFlash] = useState<{ text: string; ok: boolean } | null>(null);
+  const [editing, setEditing] = useState<Record<number, Partial<PricingRow>>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const showFlash = (text: string, ok = true) => {
+    setFlash({ text, ok });
+    setTimeout(() => setFlash(null), 3000);
+  };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch("/mentor/long-term/pricing");
+      if (!res.ok) throw new Error("Failed to load pricing");
+      const data = await res.json() as PricingRow[];
+      setRows(data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const startEdit = (row: PricingRow) => {
+    setEditingId(row.id);
+    setEditing(prev => ({ ...prev, [row.id]: {
+      fullYearPrice: row.fullYearPrice,
+      halfYearPrice: row.halfYearPrice,
+      quarterYearPrice: row.quarterYearPrice,
+    }}));
+  };
+
+  const cancelEdit = (id: number) => {
+    setEditingId(null);
+    setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
+
+  const saveRow = async (row: PricingRow) => {
+    const patch = editing[row.id];
+    if (!patch) return;
+    setSaving(true);
+    try {
+      const body = {
+        gradeNumber: row.gradeNumber,
+        subject: row.subject,
+        fullYearPrice: Number(patch.fullYearPrice ?? row.fullYearPrice),
+        halfYearPrice: Number(patch.halfYearPrice ?? row.halfYearPrice),
+        quarterYearPrice: Number(patch.quarterYearPrice ?? row.quarterYearPrice),
+      };
+      const res = await apiFetch("/mentor/long-term/pricing", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? "Save failed");
+      }
+      await load();
+      cancelEdit(row.id);
+      showFlash("Pricing saved!");
+    } catch (e) {
+      showFlash((e as Error).message, false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const subjects = [...new Set(rows.map(r => r.subject))].sort();
+  const grades = [...new Set(rows.map(r => r.gradeNumber))].sort((a, b) => a - b);
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: `${GREEN}15` }}>
+            <DollarSign className="w-6 h-6" style={{ color: GREEN }} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black" style={{ color: NAVY }}>Course Pricing Master</h2>
+            <p className="text-sm text-gray-400 mt-0.5">Per-grade, per-subject long-term payment fees</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">
+            <CheckCircle2 className="w-2.5 h-2.5" /> Live
+          </span>
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Flash */}
+      {flash && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold text-white flex items-center gap-2 ${flash.ok ? "bg-green-500" : "bg-red-500"}`}>
+          {flash.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+          {flash.text}
+        </div>
+      )}
+
+      {loading && (
+        <div className="bg-white rounded-2xl p-10 border border-gray-100 shadow-sm flex items-center justify-center gap-2 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" /> Loading pricing data…
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 rounded-2xl p-5 border border-red-100 flex items-center gap-3 text-red-700 text-sm font-semibold">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {error}
+          <button onClick={load} className="ml-auto underline text-xs">Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && subjects.map(subject => (
+        <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2" style={{ background: `${NAVY}06` }}>
+            <span className="text-xs font-black uppercase tracking-widest" style={{ color: NAVY }}>{subject}</span>
+            <span className="text-[10px] text-gray-400 ml-1">— {grades.length} grades</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-4 py-2.5 font-bold text-gray-500 w-28">Grade</th>
+                  <th className="text-right px-4 py-2.5 font-bold text-gray-500">Full Year (₹)</th>
+                  <th className="text-right px-4 py-2.5 font-bold text-gray-500">Half Year (₹)</th>
+                  <th className="text-right px-4 py-2.5 font-bold text-gray-500">Quarter Year (₹)</th>
+                  <th className="text-center px-4 py-2.5 font-bold text-gray-500 w-24">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grades.map(grade => {
+                  const row = rows.find(r => r.gradeNumber === grade && r.subject === subject);
+                  if (!row) return null;
+                  const isEditing = editingId === row.id;
+                  const draft = editing[row.id] ?? {};
+                  return (
+                    <tr key={grade} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-2.5 font-bold" style={{ color: NAVY }}>{GRADE_LABELS[grade] ?? `Grade ${grade}`}</td>
+                      {(["fullYearPrice", "halfYearPrice", "quarterYearPrice"] as const).map(field => (
+                        <td key={field} className="px-4 py-2.5 text-right">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              value={draft[field] ?? row[field]}
+                              onChange={e => setEditing(prev => ({ ...prev, [row.id]: { ...prev[row.id], [field]: Number(e.target.value) } }))}
+                              className="w-24 px-2 py-1 rounded-lg border border-orange-300 text-right text-xs outline-none focus:border-orange-400 bg-orange-50"
+                            />
+                          ) : (
+                            <span className="font-semibold text-gray-700">₹{row[field].toLocaleString("en-IN")}</span>
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-4 py-2.5 text-center">
+                        {isEditing ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button onClick={() => saveRow(row)} disabled={saving}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors">
+                              <Save className="w-2.5 h-2.5" /> Save
+                            </button>
+                            <button onClick={() => cancelEdit(row.id)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors">
+                              <X className="w-2.5 h-2.5" /> Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startEdit(row)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-gray-200 text-gray-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-colors mx-auto">
+                            <Pencil className="w-2.5 h-2.5" /> Edit
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {!loading && !error && rows.length === 0 && (
+        <div className="bg-white rounded-2xl p-10 border border-gray-100 shadow-sm text-center text-gray-400 text-sm">
+          No pricing data found. Restart the API server to seed defaults.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export function CommandCenterTab() {
   const [view, setView] = useState<CCView>("dashboard");
@@ -485,7 +704,8 @@ export function CommandCenterTab() {
         {view === "teacher-management"  && <TeacherManagementView  flash={flash} />}
         {view === "roles-permissions"   && <RolesPermissionsView   flash={flash} />}
         {view === "audit-logs"          && <AuditLogsView          flash={flash} />}
-        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && view !== "teacher-management" && view !== "roles-permissions" && view !== "audit-logs" && <ComingSoonView view={view} />}
+        {view === "course-pricing"      && <CoursePricingView />}
+        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && view !== "teacher-management" && view !== "roles-permissions" && view !== "audit-logs" && view !== "course-pricing" && <ComingSoonView view={view} />}
       </div>
     </div>
   );

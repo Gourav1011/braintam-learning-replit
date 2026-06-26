@@ -1,0 +1,659 @@
+# APPROVED WITH MODIFICATIONS – BTL CRM Phase 1
+
+DO NOT APPLY IMMEDIATELY.
+
+First read:
+
+* Existing mentor portal
+* Existing payment flow
+* Existing Razorpay integration
+* Existing webhook flow
+* Existing student profile flow
+* Existing lead management flow
+* Existing notification system
+* Existing role and permission system
+
+The implementation must use REAL DATABASE DATA only.
+
+Never use:
+
+TestLeadOne
+Student (Grade 5)
+LDN-undefined
+Hardcoded values
+Fake payment records
+Temporary arrays
+
+If data does not exist:
+
+Display:
+
+—
+Not Available
+No Data Found
+
+Never generate fake values.
+
+---
+
+PART 1
+MENTOR PORTAL SIMPLIFICATION
+----------------------------
+
+Navigation:
+
+BTL CRM
+
+├── My Leads
+└── Payment Status
+
+Remove:
+
+Settings
+Students
+Analytics
+Reports
+Leaderboard
+Revenue tabs
+Any unnecessary menus
+
+Mentor's job is:
+
+Call parents
+Update lead details
+Launch payment links
+Track payments
+Convert leads
+
+Nothing else.
+
+---
+
+PART 2
+MY LEADS STATUS CHIPS
+---------------------
+
+All
+Pending Calls
+Busy
+Call Later
+Completed Calls
+Converted
+
+Completed Calls:
+
+Call connected.
+Counselling completed.
+No immediate follow-up.
+
+Lead still remains active.
+
+Converted:
+
+Long-term payment completed successfully.
+
+Lead moves permanently to Converted.
+
+Converted cards become read only.
+
+---
+
+PART 3
+LEAD CARD
+---------
+
+Student Name
+Grade
+Lead ID
+Mobile
+
+Badges:
+
+Repeated Lead
+Payment Pending
+Payment Failed
+Converted
+
+Actions:
+
+Call
+WhatsApp
+Details Arrow
+
+---
+
+PART 4
+STUDENT DETAILS PAGE
+--------------------
+
+Only TWO sections.
+
+No nested tabs.
+No extra pages.
+No heavy dashboards.
+
+LEFT SECTION
+
+1. Payment Link
+2. Live Class Activity
+3. Analytics
+4. Previous Courses
+
+RIGHT SECTION
+
+1. Student Information
+2. Call Details
+3. Previous Remarks
+
+---
+
+PART 5
+STUDENT INFORMATION
+-------------------
+
+Remove:
+
+Parent Name field.
+
+Remove:
+
+Assigned Mentor field.
+
+Mentor already knows they own this lead.
+
+Show:
+
+System Name
+Display Name
+Mobile
+Additional Mobile
+Email
+School
+City
+Lead Source
+Actual Grade
+Reference Grade
+Weak Subject
+Strong Subject
+Mentor Notes
+
+---
+
+## SYSTEM NAME
+
+Read Only.
+
+This is the original name from:
+
+Website
+Import
+Admin Entry
+Parent Submission
+
+Never editable.
+
+---
+
+## DISPLAY NAME
+
+Mentor editable.
+
+Example:
+
+System Name:
+Priyanshi Sharma
+
+Display Name:
+Priya
+
+Used only for calling convenience.
+
+---
+
+## READ ONLY FIELDS
+
+System Name
+Mobile
+Email
+School
+City
+Lead Source
+Actual Grade
+
+---
+
+## MENTOR EDITABLE FIELDS
+
+Display Name
+Additional Mobile
+Reference Grade
+Weak Subject
+Strong Subject
+Mentor Notes
+
+Reference Grade:
+
+Notes only.
+
+Must NEVER overwrite Actual Grade.
+
+---
+
+PART 6
+CALL DETAILS
+------------
+
+Who Picked:
+
+Student
+Mother
+Father
+Brother
+Sister
+Other
+
+If Other:
+
+Name
+Relation
+
+Call Status:
+
+Not Connected
+Busy
+Call Later
+Interested
+Not Interested
+Payment Pending
+Payment Failed
+Payment Completed
+
+Remarks:
+
+Large textbox.
+
+Next Follow Up:
+
+Date
+Time
+
+Save Remarks.
+
+---
+
+## PREVIOUS REMARKS
+
+Permanent timeline.
+
+Never overwrite.
+
+Store:
+
+Date
+Time
+Mentor Name
+Remark
+
+---
+
+PART 7
+PAYMENT LINK SECTION
+--------------------
+
+Buttons:
+
+Launch Full Payment
+Launch Partial Payment
+Upload Payment
+
+---
+
+## FULL PAYMENT POPUP
+
+Do NOT show:
+
+Student Name
+Grade
+Course Name
+Extra information
+
+Student profile already knows this.
+
+Only show:
+
+Amount:
+₹16,999
+
+Link Expiry Date:
+[ Date Picker ]
+
+Link Expiry Time:
+[ Time Picker ]
+
+Button:
+
+Launch Payment Link
+
+---
+
+## PARTIAL PAYMENT POPUP
+
+Enter Amount:
+[ ₹______ ]
+
+Link Expiry Date:
+[ Date Picker ]
+
+Link Expiry Time:
+[ Time Picker ]
+
+Button:
+
+Launch Payment Link
+
+---
+
+## AFTER LINK GENERATION
+
+Show:
+
+Payment Link Generated
+
+https://rzp....
+
+Buttons:
+
+Copy
+WhatsApp
+
+WhatsApp should open parent number automatically.
+
+Message:
+
+Hi,
+
+Congratulations! 🎉
+
+You can complete your child's enrollment by clicking the link below.
+
+{paymentLink}
+
+Regards,
+Braintam Learning
+
+---
+
+PART 8
+PAYMENT STATUS SCREEN
+---------------------
+
+Real data only.
+
+Columns:
+
+Student Name
+Payment ID
+Amount
+Status
+Created Date
+Expiry Date
+
+Statuses:
+
+CREATED
+OPENED
+PAID
+FAILED
+EXPIRED
+CANCELLED
+
+Search:
+
+Student Name
+Phone
+Payment ID
+
+Filters:
+
+Status
+Date
+
+Actions:
+
+View Details
+
+---
+
+## PAYMENT FLOW
+
+Launch Link
+↓
+
+CREATED
+
+Parent opens payment page
+↓
+
+OPENED
+
+Payment successful
+↓
+
+PAID
+
+Payment failed
+↓
+
+FAILED
+
+Payment expired
+↓
+
+EXPIRED
+
+Payment cancelled
+↓
+
+CANCELLED
+
+---
+
+PART 9
+UPLOAD PAYMENT
+--------------
+
+Prepare architecture.
+
+Do not build approval system completely.
+
+Fields:
+
+Amount
+UTR / Transaction ID
+Screenshot Upload
+Remarks
+
+Status:
+
+Pending Approval
+
+Future statuses:
+
+Approved
+Rejected
+Duplicate
+
+---
+
+PART 10
+LONG TERM PAYMENT SUCCESS
+-------------------------
+
+payment_link.paid
+↓
+
+paymentStatus = PAID
+
+leadStage = Converted
+
+conversionStatus = converted
+
+Lead disappears from:
+
+All
+Pending Calls
+Busy
+Call Later
+Completed Calls
+
+Lead appears only inside:
+
+Converted
+
+---
+
+PART 11
+NOTIFICATIONS
+-------------
+
+Bell icon with count badge.
+
+Arrow icon.
+
+Click:
+
+Right sidebar opens.
+
+Click again:
+
+Sidebar closes.
+
+Simple list only.
+
+Newest on top.
+
+Examples:
+
+🟡 Rahul created order.
+🟡 Rahul opened payment page.
+🟢 Priya completed payment successfully.
+🔴 Aarav payment failed.
+🟣 Sumit submitted homework.
+🔵 Kritika edited profile.
+💬 Preety sent you a message.
+
+---
+
+PART 12
+DATABASE CHANGES
+----------------
+
+users
+
+Add:
+
+display_name
+reference_grade
+
+---
+
+payment_links
+
+Add:
+
+mentor_id
+razorpay_payment_link_id
+short_url
+
+status values:
+
+CREATED
+OPENED
+PAID
+FAILED
+EXPIRED
+CANCELLED
+
+---
+
+course_pricing
+
+grade
+full_price
+scholarship_pct
+final_price
+status
+updated_by_id
+updated_at
+created_at
+
+Seed:
+
+Grade 1 ₹14,999
+Grade 2 ₹15,999
+Grade 3 ₹16,999
+Grade 4 ₹17,999
+Grade 5 ₹18,999
+Grade 6 ₹20,999
+Grade 7 ₹21,999
+Grade 8 ₹24,999
+
+Grade 9 inactive
+Grade 10 inactive
+
+---
+
+## IMPORTANT
+
+Do NOT break:
+
+Ignite ₹39 payment flow
+Existing Razorpay webhook
+ignite_paid_students
+payments table
+demo batches
+notifications
+existing lead assignment
+
+---
+
+## BEFORE APPLYING
+
+Show:
+
+Files to modify
+Routes impacted
+Components impacted
+Database changes
+Migration files
+
+DO NOT APPLY IMMEDIATELY.
+
+---
+
+## AFTER IMPLEMENTATION
+
+Run:
+
+pnpm typecheck
+pnpm build
+
+Verify:
+
+Real student data loads
+No fake records exist
+Mentor login works
+Lead cards work
+Student details work
+Payment link generation works
+Copy works
+WhatsApp works
+Payment tracking works
+Notification sidebar works
+Upload payment form works
+Completed Calls flow works
+Converted flow works
+Desktop responsive
+Mobile responsive
+
+Provide screenshots and stop for approval.

@@ -46,6 +46,30 @@ interface Lead {
   busyReason: string | null;
   hwPct: number | null;
   attPct: number | null;
+  displayName: string | null;
+  referenceGrade: number | null;
+  altPhone: string | null;
+  notes: string | null;
+  email: string | null;
+  leadSource: string | null;
+}
+
+interface PaymentLinkRow {
+  id: number;
+  studentId: number | null;
+  studentName: string | null;
+  studentPhone: string | null;
+  amount: number;
+  amountRupees: number;
+  paymentType: string;
+  grade: number | null;
+  status: string;
+  shortUrl: string | null;
+  razorpayLinkUrl: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  mentorName?: string;
+  razorpayPaymentLinkId?: string | null;
 }
 
 interface Remark {
@@ -114,11 +138,12 @@ function avatarBg(name: string) {
 
 // ── Chip filter ────────────────────────────────────────────────────────────
 const CHIPS = [
-  { key: "all",         label: "All" },
-  { key: "pending",     label: "Pending Calls" },
-  { key: "busy",        label: "Busy" },
-  { key: "call-later",  label: "Call Later" },
-  { key: "converted",   label: "Converted" },
+  { key: "all",        label: "All" },
+  { key: "pending",    label: "Pending Calls" },
+  { key: "busy",       label: "Busy" },
+  { key: "call-later", label: "Call Later" },
+  { key: "completed",  label: "Completed Calls" },
+  { key: "converted",  label: "Converted" },
 ] as const;
 type Chip = typeof CHIPS[number]["key"];
 
@@ -126,13 +151,19 @@ type Chip = typeof CHIPS[number]["key"];
 function isConverted(lead: Lead) {
   return lead.leadStage === "Converted";
 }
+// Completed Calls = call connected, counselling done, no immediate follow-up needed
+const COMPLETED_STATUSES = new Set(["Interested", "Not Interested", "Payment Completed", "Payment Pending", "Payment Failed"]);
+function isCompletedCall(lead: Lead) {
+  return COMPLETED_STATUSES.has(lead.callStatus);
+}
 
 function matchChip(lead: Lead, chip: Chip) {
   const conv = isConverted(lead);
   if (chip === "all")        return !conv;
-  if (chip === "pending")    return !conv && (lead.callStatus === "Need To Call" || lead.callStatus === "Pending");
+  if (chip === "pending")    return !conv && (lead.callStatus === "Need To Call" || lead.callStatus === "Pending" || lead.callStatus === "Not Connected");
   if (chip === "busy")       return !conv && lead.callStatus === "Busy";
   if (chip === "call-later") return !conv && (lead.callStatus === "Call Back" || lead.callStatus === "Call Later");
+  if (chip === "completed")  return !conv && isCompletedCall(lead);
   if (chip === "converted")  return conv;
   return true;
 }
@@ -224,128 +255,170 @@ function NotificationPanel({ notifications, onClose, onNotifClick }: {
 }
 
 // ── Payment Link Popup ─────────────────────────────────────────────────────
-function defaultValidTill() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setSeconds(0, 0);
-  return d.toISOString().slice(0, 16);
+function defaultExpiryDate() {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
-function fmtValidTill(dt: string) {
-  if (!dt) return "";
-  const d = new Date(dt + ":00+05:30");
-  return d.toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: true,
-    timeZone: "Asia/Kolkata",
-  });
+function fmtExpiry(date: string, time: string) {
+  if (!date) return "";
+  const d = new Date(`${date}T${time || "23:59"}:00+05:30`);
+  return d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 }
 
-function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const [mode, setMode] = useState<"choose" | "partial" | "generated">("choose");
-  const [amount, setAmount] = useState("5000");
-  const [validTill, setValidTill] = useState(defaultValidTill());
-  const [generating, setGenerating] = useState(false);
-  const [link, setLink] = useState("");
-  const [copied, setCopied] = useState(false);
+// ── Upload Payment Popup ───────────────────────────────────────────────────
+function UploadPaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [utr, setUtr] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
 
-  function generate() {
-    setGenerating(true);
-    setTimeout(() => {
-      setLink(`https://rzp.io/l/${Math.random().toString(36).slice(2, 10)}`);
-      setGenerating(false);
-      setMode("generated");
-    }, 900);
+  async function submit() {
+    if (!amount || !utr) { setErr("Amount and UTR are required"); return; }
+    setSaving(true); setErr("");
+    try {
+      const r = await apiFetch("/mentor/long-term/upload-payment", {
+        method: "POST",
+        body: JSON.stringify({ studentId: lead.id, amount: Number(amount), utr, remarks, status: "pending_approval" }),
+      });
+      if (r.ok) { setDone(true); }
+      else { const d = await r.json().catch(() => ({})); setErr(d.error ?? "Failed to submit"); }
+    } catch { setErr("Network error"); }
+    setSaving(false);
   }
-
-  function copyLink() {
-    navigator.clipboard.writeText(link).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function whatsappParent() {
-    const ph = (lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "");
-    const expiry = validTill ? ` (valid till ${fmtValidTill(validTill)})` : "";
-    const msg = encodeURIComponent(
-      `नमस्ते ${lead.parentName ?? ""}! ${lead.name} के Braintam long-term course का payment यहाँ से करें: ${link}${expiry}`
-    );
-    window.open(`https://wa.me/91${ph}?text=${msg}`, "_blank");
-  }
-
-  const validTillField = (
-    <div>
-      <label className="text-[10px] font-bold text-gray-500 block mb-1">Link Valid Till</label>
-      <input type="datetime-local" value={validTill} onChange={e => setValidTill(e.target.value)}
-        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-orange-300"
-        style={{ color: NAVY }} />
-      {validTill && (
-        <div className="text-[10px] text-orange-500 font-semibold mt-1">
-          ⏰ Expires: {fmtValidTill(validTill)}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div className="font-black text-sm" style={{ color: NAVY }}>Launch Payment</div>
+          <div className="font-black text-sm" style={{ color: NAVY }}>Upload Payment</div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
-
-        {mode === "choose" && (
-          <div className="p-5 space-y-4">
-            <p className="text-xs text-gray-500">Select payment type for <strong>{lead.name}</strong></p>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={generate}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all">
-                <CreditCard className="w-6 h-6 text-blue-500" />
-                <div className="font-black text-xs" style={{ color: NAVY }}>Full Payment</div>
-                <div className="text-[10px] text-gray-400 text-center">Complete course fee</div>
-              </button>
-              <button onClick={() => setMode("partial")}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 hover:border-purple-300 hover:bg-purple-50 transition-all">
-                <CreditCard className="w-6 h-6 text-purple-500" />
-                <div className="font-black text-xs" style={{ color: NAVY }}>Partial Payment</div>
-                <div className="text-[10px] text-gray-400 text-center">Custom amount</div>
-              </button>
+        {done ? (
+          <div className="p-6 text-center space-y-3">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: "#DCFCE7" }}>
+              <Check className="w-7 h-7" style={{ color: GREEN }} />
             </div>
-            {validTillField}
+            <div className="font-black text-sm" style={{ color: NAVY }}>Submitted for Approval</div>
+            <div className="text-xs text-gray-400">Admin will verify and approve shortly.</div>
+            <div className="inline-flex px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: "#FEF3C7", color: "#D97706" }}>⏳ Pending Approval</div>
+            <button onClick={onClose} className="block w-full mt-2 py-2 rounded-xl text-xs font-bold text-white" style={{ background: NAVY }}>Close</button>
           </div>
-        )}
-
-        {mode === "partial" && (
+        ) : (
           <div className="p-5 space-y-3">
-            <div className="font-bold text-xs" style={{ color: NAVY }}>Partial Payment</div>
             <div>
-              <label className="text-[10px] font-bold text-gray-500 block mb-1">Amount (₹)</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300"
-                style={{ color: NAVY }} />
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">Amount (₹) *</label>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300" style={{ color: NAVY }} />
             </div>
-            {validTillField}
-            <button onClick={generate} disabled={!amount || generating}
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">UTR / Transaction ID *</label>
+              <input type="text" value={utr} onChange={e => setUtr(e.target.value)} placeholder="UTR or Txn ID"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300" style={{ color: NAVY }} />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">Remarks</label>
+              <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} placeholder="Optional notes"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none" style={{ color: NAVY }} />
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-bold" style={{ background: "#FEF3C7", color: "#D97706" }}>
+              ⏳ Status will be set to: Pending Approval
+            </div>
+            {err && <p className="text-[10px] text-red-500">{err}</p>}
+            <button onClick={submit} disabled={saving}
               className="w-full py-3 rounded-xl font-black text-white text-sm transition-all"
-              style={{ background: amount ? `linear-gradient(90deg,${NAVY},#1a4ba8)` : "#9CA3AF" }}>
-              {generating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Generate Link"}
+              style={{ background: saving ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Submit for Approval"}
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
 
-        {mode === "generated" && (
+// ── Payment Popup ──────────────────────────────────────────────────────────
+function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; initialMode?: "full" | "partial"; onClose: () => void }) {
+  const [mode, setMode] = useState<"full" | "partial">(initialMode);
+  const [partialAmount, setPartialAmount] = useState("");
+  const [expiryDate, setExpiryDate] = useState(defaultExpiryDate());
+  const [expiryTime, setExpiryTime] = useState("23:59");
+  const [generating, setGenerating] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [generatedAmount, setGeneratedAmount] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState("");
+  const [parentPhone, setParentPhone] = useState<string | null>(null);
+  const [autoPrice, setAutoPrice] = useState<number | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+
+  // Load auto-price for lead's grade
+  useEffect(() => {
+    if (!lead.grade) return;
+    setPriceLoading(true);
+    apiFetch(`/mentor/long-term/pricing/${lead.grade}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.available) setAutoPrice(d.finalPriceRupees); })
+      .catch(() => {})
+      .finally(() => setPriceLoading(false));
+  }, [lead.grade]);
+
+  async function generate() {
+    setErr(""); setGenerating(true);
+    try {
+      const body: Record<string, unknown> = { studentId: lead.id, paymentType: mode, expiryDate, expiryTime };
+      if (mode === "partial") {
+        if (!partialAmount) { setErr("Enter an amount"); setGenerating(false); return; }
+        body.partialAmount = Number(partialAmount);
+      }
+      const r = await apiFetch("/mentor/long-term/create-payment-link", { method: "POST", body: JSON.stringify(body) });
+      const d = await r.json();
+      if (r.ok) {
+        setGeneratedLink(d.url ?? d.shortUrl ?? "");
+        setGeneratedAmount(d.amountRupees ?? null);
+        setParentPhone((d.parentPhone ?? "").replace(/\D/g, ""));
+      } else {
+        setErr(d.error ?? "Failed to generate link");
+      }
+    } catch { setErr("Network error — please try again"); }
+    setGenerating(false);
+  }
+
+  function copyLink() {
+    if (!generatedLink) return;
+    navigator.clipboard.writeText(generatedLink).catch(() => {});
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  }
+
+  function whatsappParent() {
+    const ph = parentPhone ?? (lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "");
+    const msg = encodeURIComponent(
+      `Hi,\n\nCongratulations! 🎉\n\nYou can complete your child's enrollment by clicking the link below.\n\n${generatedLink}\n\nRegards,\nBraintam Learning`
+    );
+    window.open(`https://wa.me/91${ph}?text=${msg}`, "_blank");
+  }
+
+  if (generatedLink) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link Generated</div>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+          </div>
           <div className="p-5 text-center space-y-4">
             <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: "#DCFCE7" }}>
               <Check className="w-7 h-7" style={{ color: GREEN }} />
             </div>
-            <div>
-              <div className="font-black text-sm mb-0.5" style={{ color: NAVY }}>Payment Link Ready!</div>
-              <div className="text-xs text-gray-400">Share with student or parent</div>
-            </div>
+            {generatedAmount && (
+              <div className="font-black text-lg" style={{ color: NAVY }}>₹{generatedAmount.toLocaleString("en-IN")}</div>
+            )}
             <div className="flex items-center gap-2 p-3 rounded-xl border border-gray-200 bg-gray-50 text-left">
-              <span className="text-[11px] text-blue-600 font-semibold flex-1 truncate">{link}</span>
+              <span className="text-[11px] text-blue-600 font-semibold flex-1 truncate">{generatedLink}</span>
               <button onClick={copyLink}
                 className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
                 style={{ background: copied ? "#DCFCE7" : `${NAVY}15`, color: copied ? GREEN : NAVY }}>
@@ -353,10 +426,9 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            {validTill && (
-              <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold"
-                style={{ background: "#FFF7ED", color: ORANGE }}>
-                ⏰ Valid till {fmtValidTill(validTill)}
+            {expiryDate && (
+              <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: "#FFF7ED", color: ORANGE }}>
+                ⏰ Expires {fmtExpiry(expiryDate, expiryTime)}
               </div>
             )}
             <div className="grid grid-cols-2 gap-2">
@@ -373,7 +445,87 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             </div>
             <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600">Close</button>
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="font-black text-sm" style={{ color: NAVY }}>
+            {mode === "full" ? "Full Payment" : "Partial Payment"}
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Mode selector */}
+          <div className="flex gap-2">
+            {(["full", "partial"] as const).map(m => (
+              <button key={m} onClick={() => { setMode(m); setErr(""); }}
+                className="flex-1 py-2 rounded-xl text-xs font-black border-2 transition-all"
+                style={{
+                  background: mode === m ? NAVY : "white",
+                  color: mode === m ? "white" : "#9CA3AF",
+                  borderColor: mode === m ? NAVY : "#E5E7EB",
+                }}>
+                {m === "full" ? "Full Payment" : "Partial Payment"}
+              </button>
+            ))}
+          </div>
+
+          {mode === "full" && (
+            <div className="p-3 rounded-xl" style={{ background: `${NAVY}08` }}>
+              <div className="text-[10px] font-bold text-gray-500 mb-1">Amount</div>
+              {priceLoading ? (
+                <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: NAVY }} /><span className="text-xs text-gray-400">Loading price...</span></div>
+              ) : autoPrice ? (
+                <div className="text-xl font-black" style={{ color: NAVY }}>₹{autoPrice.toLocaleString("en-IN")}</div>
+              ) : (
+                <div className="text-xs text-red-500 font-semibold">No active pricing for Grade {lead.grade}. Contact admin.</div>
+              )}
+            </div>
+          )}
+
+          {mode === "partial" && (
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">Enter Amount (₹)</label>
+              <input type="number" value={partialAmount} onChange={e => setPartialAmount(e.target.value)} placeholder="e.g. 5000"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-orange-300"
+                style={{ color: NAVY }} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">Link Expiry Date</label>
+              <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-orange-300"
+                style={{ color: NAVY }} />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1">Link Expiry Time</label>
+              <input type="time" value={expiryTime} onChange={e => setExpiryTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none focus:border-orange-300"
+                style={{ color: NAVY }} />
+            </div>
+          </div>
+
+          {expiryDate && (
+            <div className="text-[10px] text-orange-500 font-semibold">⏰ Expires: {fmtExpiry(expiryDate, expiryTime)}</div>
+          )}
+
+          {err && <p className="text-[10px] text-red-500">{err}</p>}
+
+          <button onClick={generate} disabled={generating || (mode === "full" && !autoPrice)}
+            className="w-full py-3 rounded-xl font-black text-white text-sm transition-all"
+            style={{ background: generating || (mode === "full" && !autoPrice) ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
+            {generating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Launch Payment Link"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -608,10 +760,13 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
 }) {
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [loadingRemarks, setLoadingRemarks] = useState(true);
-  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [showPaymentPopup, setShowPaymentPopup] = useState<"full" | "partial" | null>(null);
+  const [showUploadPopup, setShowUploadPopup] = useState(false);
 
   // Call form
   const [calledBy, setCalledBy] = useState("Mother");
+  const [calledByOtherName, setCalledByOtherName] = useState("");
+  const [calledByOtherRelation, setCalledByOtherRelation] = useState("");
   const [callStatus, setCallStatus] = useState("Call Later");
   const [nextDate, setNextDate] = useState(lead.nextFollowUpAt?.slice(0, 10) ?? "");
   const [nextTime, setNextTime] = useState(lead.nextFollowUpTime ?? "");
@@ -621,11 +776,13 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   const [saveOk, setSaveOk] = useState(false);
 
   // Editable mentor info
-  const [editParentName, setEditParentName] = useState(lead.parentName ?? "");
-  const [editParentPhone, setEditParentPhone] = useState(lead.parentPhone ?? "");
+  const [editDisplayName, setEditDisplayName] = useState(lead.displayName ?? "");
+  const [editAltPhone, setEditAltPhone] = useState(lead.altPhone ?? lead.parentPhone ?? "");
   const [editWeak, setEditWeak] = useState(lead.weakSubject ?? "");
   const [editStrong, setEditStrong] = useState(lead.strongSubject ?? "");
   const [editInterest, setEditInterest] = useState(lead.interestLevel ?? "");
+  const [editRefGrade, setEditRefGrade] = useState(lead.referenceGrade ? String(lead.referenceGrade) : "");
+  const [editNotes, setEditNotes] = useState(lead.notes ?? "");
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoSaveOk, setInfoSaveOk] = useState(false);
 
@@ -673,29 +830,32 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
     const r = await apiFetch(`/mentor/students/${lead.id}`, {
       method: "PATCH",
       body: JSON.stringify({
-        parentName: editParentName,
-        parentPhone: editParentPhone,
+        displayName: editDisplayName,
+        altPhone: editAltPhone,
         weakSubject: editWeak,
         strongSubject: editStrong,
         interestLevel: editInterest,
+        referenceGrade: editRefGrade ? Number(editRefGrade) : null,
+        notes: editNotes,
       }),
     });
     if (r.ok) {
       setInfoSaveOk(true);
       setTimeout(() => setInfoSaveOk(false), 2500);
-      onLeadUpdated({ parentName: editParentName, parentPhone: editParentPhone, weakSubject: editWeak, strongSubject: editStrong, interestLevel: editInterest });
+      onLeadUpdated({ displayName: editDisplayName, altPhone: editAltPhone, weakSubject: editWeak, strongSubject: editStrong, interestLevel: editInterest, referenceGrade: editRefGrade ? Number(editRefGrade) : null, notes: editNotes });
     }
     setInfoSaving(false);
   }
 
-  const CALL_WHO = ["Mother", "Father", "Student", "Brother", "Sister", "Other"];
+  const CALL_WHO = ["Student", "Mother", "Father", "Brother", "Sister", "Other"];
   const CALL_STATUSES = ["Not Connected", "Busy", "Call Later", "Interested", "Not Interested", "Payment Pending", "Payment Failed", "Payment Completed"];
   const SUBJECTS = ["Mathematics", "Science", "English", "Hindi", "Social Studies", "Physics", "Chemistry", "Biology", "Other"];
   const INTEREST_LEVELS = ["Low", "Moderate", "High", "Very High"];
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ fontFamily: "Poppins, sans-serif" }}>
-      {showPaymentPopup && <PaymentPopup lead={lead} onClose={() => setShowPaymentPopup(false)} />}
+      {showPaymentPopup && <PaymentPopup lead={lead} initialMode={showPaymentPopup} onClose={() => setShowPaymentPopup(null)} />}
+      {showUploadPopup && <UploadPaymentPopup lead={lead} onClose={() => setShowUploadPopup(false)} />}
 
       {/* Top bar */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 md:px-6 py-3 flex items-center gap-4">
@@ -756,7 +916,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
               <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
             </a>
             {!conv && (
-              <button onClick={() => setShowPaymentPopup(true)}
+              <button onClick={() => setShowPaymentPopup("full")}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
                 style={{ borderColor: ORANGE, color: ORANGE }}>
                 <CreditCard className="w-3.5 h-3.5" /> Launch Payment
@@ -772,32 +932,65 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         {/* ── LEFT PANEL ── */}
         <div className="space-y-3">
 
-          {/* Live Class Activity */}
+          {/* 1. Payment Link */}
+          {!conv && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <CreditCard className="w-4 h-4" style={{ color: NAVY }} />
+                <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link</div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => setShowPaymentPopup("full")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all">
+                  <CreditCard className="w-5 h-5 text-blue-500" />
+                  <div className="font-black text-[10px] text-center" style={{ color: NAVY }}>Full Payment</div>
+                </button>
+                <button onClick={() => setShowPaymentPopup("partial")}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-gray-100 hover:border-purple-300 hover:bg-purple-50 transition-all">
+                  <CreditCard className="w-5 h-5 text-purple-500" />
+                  <div className="font-black text-[10px] text-center" style={{ color: NAVY }}>Partial Payment</div>
+                </button>
+                <button onClick={() => setShowUploadPopup(true)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-gray-100 hover:border-green-300 hover:bg-green-50 transition-all">
+                  <Save className="w-5 h-5 text-green-500" />
+                  <div className="font-black text-[10px] text-center" style={{ color: NAVY }}>Upload Payment</div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Live Class Activity */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
             <div className="flex items-center gap-2 mb-3">
               <BookOpen className="w-4 h-4" style={{ color: NAVY }} />
               <div className="font-black text-sm" style={{ color: NAVY }}>Live Class Activity</div>
               <span className="ml-auto text-[10px] text-gray-400">Last 7 Days</span>
             </div>
-            {[
-              { label: "Live Class 1 – Maths Demo", min: 60, att: lead.attPct ?? 75, active: true },
-              { label: "Live Class 2 – Science Demo", min: 60, att: Math.min(100, (lead.attPct ?? 60) + 7), active: lead.attPct !== null },
-            ].map((cls, i) => (
-              <div key={i} className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
-                <span className="text-sm mt-0.5">{cls.active ? "🟢" : "🔴"}</span>
-                <div className="flex-1">
-                  <div className="text-xs font-semibold" style={{ color: NAVY }}>{cls.label}</div>
-                  <div className="text-[10px] text-gray-400">{cls.min} mins</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-bold" style={{ color: cls.att >= 70 ? GREEN : "#D97706" }}>Attendance {cls.att}%</div>
-                  <div className="flex items-center gap-0.5 mt-0.5 justify-end">
-                    <div className="h-1 rounded-full" style={{ width: `${Math.round(cls.att * 0.4)}px`, background: GREEN }} />
-                    <div className="h-1 rounded-full" style={{ width: `${Math.round((100 - cls.att) * 0.4)}px`, background: "#E5E7EB" }} />
+            {lead.attPct !== null ? (
+              <>
+                {[
+                  { label: "Live Class 1 – Demo", min: 60, att: lead.attPct ?? 75, active: true },
+                  { label: "Live Class 2 – Demo", min: 60, att: Math.min(100, (lead.attPct ?? 60) + 7), active: lead.attPct !== null },
+                ].map((cls, i) => (
+                  <div key={i} className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                    <span className="text-sm mt-0.5">{cls.active ? "🟢" : "🔴"}</span>
+                    <div className="flex-1">
+                      <div className="text-xs font-semibold" style={{ color: NAVY }}>{cls.label}</div>
+                      <div className="text-[10px] text-gray-400">{cls.min} mins</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold" style={{ color: cls.att >= 70 ? GREEN : "#D97706" }}>Attendance {cls.att}%</div>
+                      <div className="flex items-center gap-0.5 mt-0.5 justify-end">
+                        <div className="h-1 rounded-full" style={{ width: `${Math.round(cls.att * 0.4)}px`, background: GREEN }} />
+                        <div className="h-1 rounded-full" style={{ width: `${Math.round((100 - cls.att) * 0.4)}px`, background: "#E5E7EB" }} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                ))}
+              </>
+            ) : (
+              <p className="text-xs text-gray-400 text-center py-3">No Data Found</p>
+            )}
           </div>
 
           {/* Analytics */}
@@ -848,18 +1041,20 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         {/* ── RIGHT PANEL ── */}
         <div className="space-y-4">
 
-          {/* Student Information — READ ONLY */}
+          {/* 1. Student Information */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Student Information <span className="text-[10px] font-normal text-gray-400">(read only)</span></div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Student Information</div>
+
+            {/* Read-only fields */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-4 pb-4 border-b border-gray-100">
               {[
-                { label: "Student Name",  value: lead.name },
+                { label: "System Name",   value: lead.name },
+                { label: "Mobile",        value: lead.phone ?? "—" },
+                { label: "Email",         value: lead.email ?? "—" },
                 { label: "School",        value: lead.school ?? "—" },
-                { label: "Grade",         value: `Grade ${lead.grade}` },
+                { label: "Actual Grade",  value: `Grade ${lead.grade}` },
                 { label: "City",          value: lead.city ?? "—" },
-                { label: "Phone",         value: lead.phone ?? "—" },
-                { label: "Lead Stage",    value: lead.leadStage },
-                { label: "Lead Source",   value: "Ignite Demo" },
+                { label: "Lead Source",   value: lead.leadSource ?? "Ignite Demo" },
                 { label: "Lead ID",       value: padLeadId(lead.id) },
               ].map(f => (
                 <div key={f.label}>
@@ -868,23 +1063,37 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* Mentor Editable Info */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Mentor Editable Info</div>
+            {/* Mentor-editable fields */}
+            <div className="font-bold text-[11px] mb-2" style={{ color: NAVY }}>Mentor Editable</div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Parent Name</label>
-                <input value={editParentName} onChange={e => setEditParentName(e.target.value)}
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Display Name</label>
+                <input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)}
                   className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
-                  style={{ color: NAVY }} placeholder="Parent name" />
+                  style={{ color: NAVY }} placeholder={lead.name} />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Alt. Mobile (Parent)</label>
-                <input value={editParentPhone} onChange={e => setEditParentPhone(e.target.value)}
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Additional Mobile</label>
+                <input value={editAltPhone} onChange={e => setEditAltPhone(e.target.value)}
                   className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300"
-                  style={{ color: NAVY }} placeholder="Parent phone" />
+                  style={{ color: NAVY }} placeholder="Alt phone number" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Reference Grade <span className="text-gray-300 font-normal">(notes only)</span></label>
+                <select value={editRefGrade} onChange={e => setEditRefGrade(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                  <option value="">— Select —</option>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(g => <option key={g} value={g}>Grade {g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Interest Level</label>
+                <select value={editInterest} onChange={e => setEditInterest(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none bg-white" style={{ color: NAVY }}>
+                  <option value="">— Select —</option>
+                  {INTEREST_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-bold text-gray-500 block mb-1">Weak Subject</label>
@@ -903,42 +1112,42 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] font-bold text-gray-500 block mb-1">Interest Level</label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {INTEREST_LEVELS.map(l => (
-                    <button key={l} type="button" onClick={() => setEditInterest(editInterest === l ? "" : l)}
-                      className="px-2.5 py-1 rounded-full text-[10px] font-bold border-2 transition-all"
-                      style={{
-                        background: editInterest === l ? `${NAVY}12` : "white",
-                        color: editInterest === l ? NAVY : "#9CA3AF",
-                        borderColor: editInterest === l ? NAVY : "#E5E7EB",
-                      }}>{l}</button>
-                  ))}
-                </div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">Mentor Notes</label>
+                <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2}
+                  placeholder="Internal notes for this lead..."
+                  className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300 resize-none" style={{ color: NAVY }} />
               </div>
             </div>
             {infoSaveOk && <p className="text-[10px] text-green-600 mb-2">✓ Information updated</p>}
             <div className="flex justify-end">
-              <button onClick={saveInfo} disabled={infoSaving}
+              <button onClick={saveInfo} disabled={infoSaving || conv}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white"
-                style={{ background: infoSaving ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
+                style={{ background: infoSaving || conv ? "#9CA3AF" : `linear-gradient(90deg,${NAVY},#1a4ba8)` }}>
                 {infoSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 Save Info
               </button>
             </div>
           </div>
 
-          {/* Call Details */}
+          {/* 2. Call Details */}
           {!conv && (
             <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
               <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Call Details</div>
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
+                <div className={calledBy === "Other" ? "col-span-2" : ""}>
                   <label className="text-[10px] font-bold text-gray-500 block mb-1">Who Picked the Call?</label>
                   <select value={calledBy} onChange={e => setCalledBy(e.target.value)}
                     className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none bg-white" style={{ color: NAVY }}>
                     {CALL_WHO.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
+                  {calledBy === "Other" && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <input value={calledByOtherName} onChange={e => setCalledByOtherName(e.target.value)}
+                        placeholder="Name" className="px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300" style={{ color: NAVY }} />
+                      <input value={calledByOtherRelation} onChange={e => setCalledByOtherRelation(e.target.value)}
+                        placeholder="Relation" className="px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300" style={{ color: NAVY }} />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 block mb-1">Call Status</label>
@@ -1016,105 +1225,135 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
 }
 
 // ── Payment Status View ────────────────────────────────────────────────────
-function PaymentStatusView({ leads }: { leads: Lead[] }) {
+const PAYMENT_STATUS_STYLES: Record<string, { bg: string; color: string }> = {
+  created:   { bg: "#EFF6FF", color: "#2563EB" },
+  opened:    { bg: "#FEF9C3", color: "#B45309" },
+  paid:      { bg: "#DCFCE7", color: GREEN },
+  failed:    { bg: "#FEE2E2", color: "#DC2626" },
+  expired:   { bg: "#F3F4F6", color: "#6B7280" },
+  cancelled: { bg: "#F3F4F6", color: "#9CA3AF" },
+};
+
+function PaymentStatusView() {
+  const [rows, setRows] = useState<PaymentLinkRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  const rows = leads.filter(l =>
-    ["Payment Pending", "Payment Failed", "Payment Completed", "Converted"].includes(l.leadStage) ||
-    ["Payment Pending", "Payment Failed"].includes(l.callStatus)
-  );
+  useEffect(() => {
+    setLoading(true);
+    apiFetch("/mentor/long-term/payment-links")
+      .then(r => r.ok ? r.json() : r.json().then((d: { error?: string }) => { throw new Error(d.error ?? "Error"); }))
+      .then(setRows)
+      .catch(e => setErr(e.message ?? "Failed to load"))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = rows.filter(l => {
-    if (statusFilter !== "all") {
-      const stage = l.leadStage;
-      if (statusFilter === "Pending" && stage !== "Payment Pending" && l.callStatus !== "Payment Pending") return false;
-      if (statusFilter === "Failed" && stage !== "Payment Failed" && l.callStatus !== "Payment Failed") return false;
-      if (statusFilter === "Completed" && stage !== "Converted" && stage !== "Payment Completed") return false;
-    }
+  const filtered = rows.filter(r => {
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || padLeadId(l.id).toLowerCase().includes(q);
+    return (r.studentName ?? "").toLowerCase().includes(q) ||
+      (r.studentPhone ?? "").includes(q) ||
+      String(r.id).includes(q) ||
+      (r.razorpayPaymentLinkId ?? "").toLowerCase().includes(q);
   });
 
-  function rowStatus(l: Lead) {
-    if (l.leadStage === "Converted" || l.leadStage === "Payment Completed") return { label: "Completed", bg: "#DCFCE7", color: GREEN };
-    if (l.leadStage === "Payment Failed" || l.callStatus === "Payment Failed") return { label: "Failed", bg: "#FEE2E2", color: "#DC2626" };
-    if (l.leadStage === "Payment Pending" || l.callStatus === "Payment Pending") return { label: "Pending", bg: "#FEF3C7", color: "#D97706" };
-    return { label: l.leadStage, bg: "#F3F4F6", color: "#6B7280" };
+  function copyUrl(row: PaymentLinkRow) {
+    navigator.clipboard.writeText(row.shortUrl ?? row.razorpayLinkUrl ?? "").catch(() => {});
+    setCopiedId(row.id); setTimeout(() => setCopiedId(null), 2000);
   }
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ fontFamily: "Poppins, sans-serif" }}>
       <div className="mb-4">
         <h1 className="text-xl font-black" style={{ color: NAVY }}>Payment Status</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Track payment progress for your leads</p>
+        <p className="text-xs text-gray-400 mt-0.5">Payment links generated by you</p>
       </div>
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="flex-1 min-w-48 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-white">
           <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, phone or lead ID..."
+            placeholder="Search by name, phone, or payment ID..."
             className="flex-1 text-xs outline-none bg-transparent" style={{ color: NAVY }} />
+          {search && <button onClick={() => setSearch("")}><X className="w-3.5 h-3.5 text-gray-400" /></button>}
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold outline-none" style={{ color: NAVY }}>
           <option value="all">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="Failed">Failed</option>
-          <option value="Completed">Completed</option>
+          <option value="created">Created</option>
+          <option value="opened">Opened</option>
+          <option value="paid">Paid</option>
+          <option value="failed">Failed</option>
+          <option value="expired">Expired</option>
+          <option value="cancelled">Cancelled</option>
         </select>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
+        ) : err ? (
+          <div className="text-center py-12">
+            <AlertCircle className="w-7 h-7 text-red-300 mx-auto mb-2" />
+            <p className="text-sm font-bold text-gray-400">{err}</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <CreditCard className="w-8 h-8 text-gray-200 mx-auto mb-2" />
             <p className="font-bold text-sm text-gray-400">No payment records</p>
-            <p className="text-xs text-gray-300 mt-1">Payment activity from your leads appears here</p>
+            <p className="text-xs text-gray-300 mt-1">
+              {rows.length > 0 ? "Try a different search or filter" : "Generate a payment link to see it here"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  {["Student Name", "Lead ID", "Program", "Amount", "Status", "Action"].map(h => (
+                  {["Student Name", "Payment ID", "Amount", "Status", "Created Date", "Expiry Date", "Action"].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-bold text-gray-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(lead => {
-                  const st = rowStatus(lead);
+                {filtered.map(row => {
+                  const st = PAYMENT_STATUS_STYLES[row.status] ?? { bg: "#F3F4F6", color: "#6B7280" };
                   return (
-                    <tr key={lead.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <tr key={row.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
-                        <div className="font-black" style={{ color: NAVY }}>{lead.name}</div>
-                        <div className="text-gray-400">Grade {lead.grade}</div>
+                        <div className="font-black" style={{ color: NAVY }}>{row.studentName ?? "—"}</div>
+                        {row.grade && <div className="text-gray-400">Grade {row.grade}</div>}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-gray-500">{padLeadId(lead.id)}</td>
-                      <td className="px-4 py-3 text-gray-600">5-Day Ignite</td>
-                      <td className="px-4 py-3 font-bold" style={{ color: NAVY }}>₹39</td>
+                      <td className="px-4 py-3 font-semibold text-gray-500">
+                        <div>{`PLN-${String(row.id).padStart(4, "0")}`}</div>
+                        {row.razorpayPaymentLinkId && (
+                          <div className="text-[10px] text-gray-400 truncate max-w-[120px]">{row.razorpayPaymentLinkId}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-bold" style={{ color: NAVY }}>₹{row.amountRupees.toLocaleString("en-IN")}</td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded-full font-bold text-[10px]"
-                          style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                        <span className="px-2 py-0.5 rounded-full font-bold text-[10px] uppercase" style={st}>{row.status}</span>
                       </td>
+                      <td className="px-4 py-3 text-gray-500">{fmtDate(row.createdAt)}</td>
+                      <td className="px-4 py-3 text-gray-500">{row.expiresAt ? fmtDateTime(row.expiresAt) : "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <a href={`tel:${lead.parentPhone ?? lead.phone}`}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50" title="Call">
-                            <Phone className="w-3 h-3" style={{ color: GREEN }} />
-                          </a>
-                          <a href={`https://wa.me/91${(lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "")}`}
-                            target="_blank" rel="noopener noreferrer"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50" title="WhatsApp">
-                            <MessageSquare className="w-3 h-3" style={{ color: "#25D366" }} />
-                          </a>
-                          {st.label !== "Completed" && (
-                            <button className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-blue-50" title="Resend Link">
-                              <Copy className="w-3 h-3" style={{ color: NAVY }} />
+                          {(row.shortUrl ?? row.razorpayLinkUrl) && row.status !== "paid" && (
+                            <button onClick={() => copyUrl(row)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-blue-50 transition-colors" title="Copy link">
+                              {copiedId === row.id ? <Check className="w-3 h-3" style={{ color: GREEN }} /> : <Copy className="w-3 h-3" style={{ color: NAVY }} />}
                             </button>
+                          )}
+                          {(row.shortUrl ?? row.razorpayLinkUrl) && (
+                            <a href={`https://wa.me/91${(row.studentPhone ?? "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi,\n\nCongratulations! 🎉\n\nYou can complete your child's enrollment by clicking the link below.\n\n${row.shortUrl ?? row.razorpayLinkUrl}\n\nRegards,\nBraintam Learning`)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50 transition-colors" title="WhatsApp">
+                              <MessageSquare className="w-3 h-3" style={{ color: "#25D366" }} />
+                            </a>
                           )}
                         </div>
                       </td>
@@ -1299,7 +1538,7 @@ export function SalesMentorPortal({ user, onLogout }: {
           />
         )}
         {view === "payment-status" && (
-          <PaymentStatusView leads={leads} />
+          <PaymentStatusView />
         )}
       </div>
     </div>
