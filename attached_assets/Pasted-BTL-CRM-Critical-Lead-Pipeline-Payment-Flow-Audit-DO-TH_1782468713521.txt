@@ -1,0 +1,297 @@
+BTL CRM – Critical Lead Pipeline & Payment Flow Audit (DO THIS FIRST)
+
+IMPORTANT
+
+Stop all new feature development.
+
+Do NOT build:
+
+Bulk Import
+Weekly Assignment
+Add Mentor screens
+Revenue analytics
+New dashboards
+New CRM features
+
+First investigate the existing lead and payment architecture because yesterday's successful payment is not appearing in Admin → Ignite → Leads.
+
+Issue Observed
+
+Yesterday we successfully made a payment.
+
+Facts:
+
+Payment completed successfully.
+Student account was created.
+ignite_paid_students row was created.
+leadStage = Payment Completed.
+Mentor portal can see the student.
+
+But:
+
+Admin → Ignite → Leads shows:
+
+Total = 0
+New = 0
+Contacted = 0
+Interested = 0
+In Payment = 0
+Converted = 0
+
+This is wrong.
+
+A successful payment should NEVER make a lead disappear from CRM.
+
+Objective
+
+Perform a complete audit of the lead lifecycle.
+
+Do NOT patch blindly.
+
+Find the root cause first.
+
+Step 1 – Trace Yesterday's Payment
+
+Trace this exact student end-to-end.
+
+Show:
+
+Student Name
+Phone
+Grade
+User ID
+Payment ID
+Lead Stage
+Current Tables
+
+Trace:
+
+payments
+users
+ignite_paid_students
+payment_links
+lead tables
+mentor assignment tables
+notification tables
+Step 2 – Show Current Architecture
+
+Create a report:
+
+Website Lead
+↓
+Which table?
+↓
+Payment
+↓
+Which table?
+↓
+Paid Student
+↓
+Which table?
+↓
+Admin Leads
+↓
+Which query?
+↓
+Mentor Leads
+↓
+Which query?
+
+For each step show:
+
+Table name
+Route
+Query
+Filters applied
+Why student appears or disappears
+Step 3 – Audit Admin Leads Screen
+
+Investigate:
+
+Admin
+→ Ignite
+→ Leads
+
+Answer:
+
+Which table powers this page?
+Which API powers this page?
+Which SQL query powers this page?
+Which filters are applied?
+Why are counters showing zero?
+Why is yesterday's paid student excluded?
+
+Show exact code locations.
+
+Step 4 – Audit Mentor Leads Screen
+
+Investigate:
+
+Mentor
+→ My Leads
+
+Answer:
+
+Which table powers this page?
+Which API powers this page?
+Why can mentor see leads but admin cannot?
+Are both portals using different data sources?
+Step 5 – Proposed Architecture
+
+I do NOT want separate disconnected systems.
+
+Everything should follow one CRM pipeline.
+
+Required Final Lead Lifecycle
+Website Form Submitted
+↓
+New Lead
+↓
+Assigned
+↓
+Contacted
+↓
+Interested
+↓
+Payment Link Generated
+↓
+In Payment
+↓
+Payment Completed
+↓
+Completed Calls
+↓
+Converted
+↓
+Long Term Student
+
+A lead should NEVER disappear.
+
+Lead Definitions
+New
+
+Website form submitted.
+
+Assigned
+
+Admin assigned lead.
+
+Contacted
+
+Mentor contacted parent.
+
+Interested
+
+Parent interested.
+
+In Payment
+
+Includes:
+
+Payment link generated
+Payment pending
+Payment failed
+Payment expired
+Payment Completed
+
+Demo payment successful.
+
+Student must STILL remain visible.
+
+Completed Calls
+
+Counselling completed.
+
+Converted
+
+Long-term payment completed successfully.
+
+Required Admin Leads Counters
+
+Admin → Ignite → Leads
+
+Cards:
+
+Total
+New
+Contacted
+Interested
+In Payment
+Converted
+
+All cards must use REAL DATABASE DATA.
+
+No fake counters.
+
+No hardcoded values.
+
+Required Lead Table
+
+Columns:
+
+Student Name
+Parent Name
+Phone
+Grade
+Source
+Status
+Assigned Mentor
+Created Date
+Last Activity
+
+Actions:
+
+View
+Edit
+Assign
+Reassign
+Open Student Profile
+
+Required Permissions
+
+Super Admin:
+See all leads.
+
+Admin:
+See all leads.
+
+Manager:
+See leads under manager.
+
+Team Lead:
+See leads under TL.
+
+Mentor:
+See only assigned leads.
+
+Deliverables (DO NOT CODE YET)
+
+Provide a report containing:
+
+Database Tables Used
+APIs Used
+Queries Used
+Routes Used
+Root Cause
+Why Yesterday's Student Is Missing
+Proposed Architecture Changes
+Which Files Need Changes
+Which Migrations Are Needed
+Impact on Existing Payment Flow
+Impact on Existing Mentor Portal
+
+STOP.
+
+Do NOT implement anything.
+
+Wait for approval after presenting the report.
+
+After this audit is approved, we will implement:
+
+Fix Lead Pipeline
+Fix Payment Link Generation
+Fix Admin Counters
+Fix Payment Status Tracking
+Continue CRM development
+
+This is now the highest priority because all future CRM features depend on a correct lead architecture.
