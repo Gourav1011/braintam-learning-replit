@@ -807,6 +807,12 @@ export default function BTLCRMPage() {
   useEffect(() => { if (tab === "students") fetchHealthSummary(); }, [tab, fetchHealthSummary]);
   useEffect(() => { if (tab === "dashboard" && dashboard?.mentorType === "sales") fetchSalesMetrics(); }, [tab, dashboard?.mentorType, fetchSalesMetrics]);
 
+  // These must stay above ALL early returns (Rules of Hooks)
+  const [completingId, setCompletingId] = useState<number | null>(null);
+  const [completeRemark, setCompleteRemark] = useState("");
+  const [completeError, setCompleteError] = useState("");
+  const [completeLoading, setCompleteLoading] = useState(false);
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
   if (!student || (role !== "mentor" && role !== "admin")) return <Redirect to="/mentor/login" />;
   // Wait for dashboard so we know mentorType before rendering either portal
@@ -953,11 +959,6 @@ export default function BTLCRMPage() {
     if (r.ok) { setFuNote(""); setFuCallStatus(""); setFuCallTime(""); setFuCalledBy(""); setFuCalledByName(""); setFuLeadStatus(""); setFuNextDate(""); await fetchFollowUps(); await fetchDashboard(); }
     setFuLoading(false);
   }
-  const [completingId, setCompletingId] = useState<number | null>(null);
-  const [completeRemark, setCompleteRemark] = useState("");
-  const [completeError, setCompleteError] = useState("");
-  const [completeLoading, setCompleteLoading] = useState(false);
-
   function startComplete(id: number) { setCompletingId(id); setCompleteRemark(""); setCompleteError(""); }
   function cancelComplete() { setCompletingId(null); setCompleteRemark(""); setCompleteError(""); }
   async function submitComplete(id: number) {
