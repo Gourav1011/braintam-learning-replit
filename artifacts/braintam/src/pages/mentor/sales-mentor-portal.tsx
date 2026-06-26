@@ -336,6 +336,7 @@ function UploadPaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void
             {/* Student info — compact */}
             <div className="px-1 pb-1 border-b border-gray-100">
               <span className="text-xs font-semibold" style={{ color: NAVY }}>{lead.name}</span>
+              {lead.displayName && <span className="text-[10px] font-bold ml-1" style={{ color: ORANGE }}>({lead.displayName})</span>}
               <span className="text-[10px] text-gray-400 ml-1.5">Grade {lead.grade} · {padLeadId(lead.id)}</span>
             </div>
 
@@ -634,8 +635,9 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
       <div className="bg-white rounded-2xl border-l-4 px-4 py-3 flex items-center gap-3"
         style={{ borderColor: GREEN, borderTop: "1px solid #D1FAE5", borderRight: "1px solid #D1FAE5", borderBottom: "1px solid #D1FAE5", boxShadow: "0 1px 4px rgba(5,150,105,0.08)" }}>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</span>
+            {lead.displayName && <span className="text-xs font-bold" style={{ color: ORANGE }}>({lead.displayName})</span>}
             <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>✓ Converted</span>
           </div>
           <div className="text-[11px] text-gray-500">Grade {lead.grade} · {padLeadId(lead.id)}</div>
@@ -659,6 +661,7 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-black text-sm" style={{ color: NAVY }}>{lead.name}</span>
+          {lead.displayName && <span className="text-xs font-bold" style={{ color: ORANGE }}>({lead.displayName})</span>}
           <StatusBadge lead={lead} />
           {lead.callStatus && <CallStatusBadge status={lead.callStatus} />}
         </div>
@@ -835,7 +838,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   const [calledBy, setCalledBy] = useState("Mother");
   const [calledByOtherName, setCalledByOtherName] = useState("");
   const [calledByOtherRelation, setCalledByOtherRelation] = useState("");
-  const [callStatus, setCallStatus] = useState("Call Later");
+  const [callStatus, setCallStatus] = useState(lead.callStatus ?? "Call Later");
   const [nextDate, setNextDate] = useState(lead.nextFollowUpAt?.slice(0, 10) ?? "");
   const [nextTime, setNextTime] = useState(lead.nextFollowUpTime ?? "");
   const [remarkText, setRemarkText] = useState("");
@@ -935,6 +938,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-base" style={{ color: NAVY }}>{lead.name}</span>
+                {lead.displayName && <span className="text-sm font-bold" style={{ color: ORANGE }}>({lead.displayName})</span>}
                 {lead.repeatedCustomer && (
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#FEF3C7", color: "#D97706" }}>🔄 Repeat</span>
                 )}
