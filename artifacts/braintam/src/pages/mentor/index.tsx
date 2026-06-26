@@ -13,6 +13,7 @@ import {
 import { LeaderboardTab } from "./leaderboard-tab";
 import { PipelineTab } from "./pipeline-tab";
 import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, SalesLeaderboardTab } from "./sales-calling-queue";
+import { SalesMentorPortal } from "./sales-mentor-portal";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
@@ -1058,6 +1059,16 @@ export default function BTLCRMPage() {
     });
     if (r.ok) { const d = await r.json(); setReminderPrefs({ remindersEnabled: d.remindersEnabled, digestMode: d.digestMode, digestTime: d.digestTime }); setReminderSaved(true); setTimeout(() => setReminderSaved(false), 3000); }
     setReminderSaving(false);
+  }
+
+  // ── Sales Mentor: use redesigned portal ────────────────────────────────
+  if (isSales) {
+    return (
+      <SalesMentorPortal
+        user={{ id: student.id, name: student.name ?? "Mentor", avatarUrl: student.avatarUrl }}
+        onLogout={logout}
+      />
+    );
   }
 
   return (
