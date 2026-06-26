@@ -842,6 +842,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveOk, setSaveOk] = useState(false);
+  const [showPrevRemarks, setShowPrevRemarks] = useState(false);
 
   // Editable mentor info
   const [editDisplayName, setEditDisplayName] = useState(lead.displayName ?? "");
@@ -974,19 +975,19 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                 <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
               </a>
             </div>
-            {/* Payment actions — smaller row below */}
-            <div className="flex items-center gap-3">
+            {/* Payment actions — styled pill buttons */}
+            <div className="flex items-center gap-2 mt-1">
               {!conv && (
                 <button onClick={() => setShowPaymentPopup("full")}
-                  className="flex items-center gap-1 text-[10px] font-bold transition-colors hover:opacity-80"
-                  style={{ color: ORANGE }}>
-                  <CreditCard className="w-3 h-3" /> Launch Payment
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all hover:shadow-md active:scale-95"
+                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85c00)`, color: "#fff", boxShadow: `0 2px 8px ${ORANGE}55` }}>
+                  <CreditCard className="w-3.5 h-3.5" /> Launch Payment
                 </button>
               )}
               <button onClick={() => setShowUploadPopup(true)}
-                className="flex items-center gap-1 text-[10px] font-bold transition-colors hover:opacity-80"
-                style={{ color: GREEN }}>
-                <Upload className="w-3 h-3" /> Upload Payment
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all hover:shadow-md active:scale-95 border-2"
+                style={{ borderColor: GREEN, color: GREEN, background: `${GREEN}12` }}>
+                <Upload className="w-3.5 h-3.5" /> Upload Payment
               </button>
             </div>
           </div>
@@ -1081,24 +1082,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         {/* ── RIGHT PANEL ── */}
         <div className="space-y-4">
 
-          {/* 1. Student Information — compact 4-field */}
-          <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-              {[
-                { label: "Name",     value: lead.name },
-                { label: "Mobile",   value: lead.phone ?? "—" },
-                { label: "Grade",    value: `Grade ${lead.grade}` },
-                { label: "Lead ID",  value: padLeadId(lead.id) },
-              ].map(f => (
-                <div key={f.label} className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-gray-400 w-10 flex-shrink-0">{f.label}</span>
-                  <span className="text-[11px] font-semibold" style={{ color: NAVY }}>{f.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. Call Details + Mentor Editable — ONE combined card */}
+          {/* Call Details + Mentor Editable — ONE combined card */}
           {!conv && (
             <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
               <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Call Details</div>
@@ -1126,17 +1110,6 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                     className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none bg-white" style={{ color: NAVY }}>
                     {CALL_STATUSES.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
-                </div>
-                {/* Follow-up date / time */}
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Date</label>
-                  <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)}
-                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Time</label>
-                  <input type="time" value={nextTime} onChange={e => setNextTime(e.target.value)}
-                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
                 </div>
               </div>
 
@@ -1200,6 +1173,20 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
                   style={{ color: NAVY }} />
               </div>
 
+              {/* Next Follow-up — below remarks */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Date</label>
+                  <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">Next Follow-up Time</label>
+                  <input type="time" value={nextTime} onChange={e => setNextTime(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-gray-200 text-xs outline-none" style={{ color: NAVY }} />
+                </div>
+              </div>
+
               {saveError && <p className="text-[10px] text-red-500 mb-2">{saveError}</p>}
               {saveOk && <p className="text-[10px] text-green-600 mb-2">✓ Saved successfully</p>}
 
@@ -1214,33 +1201,49 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
             </div>
           )}
 
-          {/* Previous Remarks — permanent timeline */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
-            <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Previous Remarks <span className="text-[10px] font-normal text-gray-400">({remarks.length} entries)</span></div>
-            {loadingRemarks ? (
-              <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
-            ) : remarks.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">No previous remarks. Add your first remark above.</p>
-            ) : (
-              <div className="space-y-0">
-                {remarks.slice(0, 15).map((r, i) => (
-                  <div key={r.id} className="flex gap-3">
-                    <div className="flex flex-col items-center flex-shrink-0">
-                      <div className="w-2 h-2 rounded-full mt-1.5" style={{ background: ORANGE }} />
-                      {i < Math.min(remarks.length, 15) - 1 && <div className="w-0.5 flex-1 mt-1" style={{ background: "#E5E7EB", minHeight: 16 }} />}
-                    </div>
-                    <div className="pb-3 flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold text-gray-500">{fmtDate(r.createdAt)}, {fmtTime(r.createdAt)}</span>
-                        {r.calledByName && <span className="text-[10px] font-bold" style={{ color: NAVY }}>{r.calledByName}</span>}
-                        {r.callStatus && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-gray-100 text-gray-600">{r.callStatus}</span>}
+          {/* Previous Remarks — collapsible */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
+            <button
+              onClick={() => setShowPrevRemarks(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="font-black text-sm" style={{ color: NAVY }}>Previous Remarks</div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${ORANGE}18`, color: ORANGE }}>{remarks.length}</span>
+              </div>
+              <svg className={`w-4 h-4 transition-transform ${showPrevRemarks ? "rotate-180" : ""}`} style={{ color: "#9CA3AF" }} viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            {showPrevRemarks && (
+              <div className="px-4 pb-4">
+                <div className="border-t border-gray-100 mb-3" />
+                {loadingRemarks ? (
+                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /></div>
+                ) : remarks.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">No previous remarks yet.</p>
+                ) : (
+                  <div className="space-y-0">
+                    {remarks.slice(0, 15).map((r, i) => (
+                      <div key={r.id} className="flex gap-3">
+                        <div className="flex flex-col items-center flex-shrink-0">
+                          <div className="w-2 h-2 rounded-full mt-1.5" style={{ background: ORANGE }} />
+                          {i < Math.min(remarks.length, 15) - 1 && <div className="w-0.5 flex-1 mt-1" style={{ background: "#E5E7EB", minHeight: 16 }} />}
+                        </div>
+                        <div className="pb-3 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold text-gray-500">{fmtDate(r.createdAt)}, {fmtTime(r.createdAt)}</span>
+                            {r.calledByName && <span className="text-[10px] font-bold" style={{ color: NAVY }}>{r.calledByName}</span>}
+                            {r.callStatus && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-gray-100 text-gray-600">{r.callStatus}</span>}
+                          </div>
+                          <p className="text-xs text-gray-700 mt-0.5 leading-relaxed break-words">{r.note}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-700 mt-0.5 leading-relaxed break-words">{r.note}</p>
-                    </div>
+                    ))}
+                    {remarks.length > 15 && (
+                      <p className="text-xs text-gray-400 text-center pt-1">+{remarks.length - 15} more remarks not shown</p>
+                    )}
                   </div>
-                ))}
-                {remarks.length > 15 && (
-                  <p className="text-xs text-gray-400 text-center pt-1">+{remarks.length - 15} more remarks not shown</p>
                 )}
               </div>
             )}
