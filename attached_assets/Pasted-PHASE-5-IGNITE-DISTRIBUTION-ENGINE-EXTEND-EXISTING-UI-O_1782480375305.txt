@@ -1,0 +1,342 @@
+PHASE 5 – IGNITE DISTRIBUTION ENGINE (EXTEND EXISTING UI ONLY)
+
+IMPORTANT:
+The current Ignite portal UI is already built and should remain mostly unchanged.
+
+DO NOT redesign:
+
+* Left sidebar
+* Dashboard
+* Existing Leads table
+* Existing filters
+* Existing cards
+* Existing Add Lead flow
+* Existing Demo Batches
+* Existing Payments
+* Existing Reports
+* Existing Sales Mentor screens
+* Existing Phase 4 functionality
+
+Only extend the existing UI.
+
+=================================================
+CURRENT LEADS PAGE
+==================
+
+Keep existing sections:
+
+Top tabs:
+
+* All Leads
+* Old Leads (30+ days)
+* Lost Leads
+
+Buttons:
+
+* Export CSV
+* Bulk Import
+* Add Lead
+
+Filters:
+
+* Search
+* Status
+* Grades
+* Sources
+* Mentors
+
+Lead Table:
+
+* Keep as is.
+
+=================================================
+NEW TABS TO ADD
+===============
+
+Add ONLY these tabs:
+
+All Leads
+Pending Deployment
+Old Leads
+Lost Leads
+Converted Leads
+Disabled Leads
+
+Do not remove existing tabs.
+
+=================================================
+NEW BUTTONS
+===========
+
+Next to Add Lead button add:
+
+Deploy Leads
+Redistribute
+
+Keep existing buttons.
+
+=================================================
+GRADE POOLS
+===========
+
+Every lead should automatically belong to a Grade Pool.
+
+Example:
+
+Grade 1 Pool
+Grade 2 Pool
+Grade 3 Pool
+...
+Grade 10 Pool
+
+Example:
+
+Parent pays from Grade 4 advertisement.
+
+Automatically:
+
+Lead Created
+Grade = 4
+Status = Demo Paid
+Deployment Status = Pending
+
+Lead goes into:
+
+Grade 4 Pool
+
+No mentor assignment yet.
+
+=================================================
+DEPLOYMENT ENGINE
+=================
+
+Admin should be able to:
+
+Deploy Selected Grade
+Deploy All Grades
+
+Typical workflow:
+
+Sunday evening
+OR
+Monday morning
+
+Admin clicks:
+
+Deploy Grade
+OR
+Deploy All
+
+System:
+
+1. Read all Pending leads
+2. Read active Sales Mentors
+3. Create temporary groups automatically
+4. Distribute leads equally
+5. Save deployment history
+
+=================================================
+GROUP CREATION
+==============
+
+Groups should NEVER be permanent.
+
+Groups should be auto-generated.
+
+Examples:
+
+1000 leads
+10 mentors
+
+Create:
+
+Group 1 → Mentor A → 100 leads
+Group 2 → Mentor B → 100 leads
+...
+Group 10 → Mentor J → 100 leads
+
+987 leads
+10 mentors
+
+Distribute evenly:
+
+99
+99
+99
+98
+98
+98
+98
+99
+99
+100
+
+35 leads
+1 mentor
+
+Create:
+
+Group 1 → Mentor A → 35 leads
+
+5000 leads
+100 mentors
+
+Create:
+
+100 groups automatically.
+
+There is no limit.
+
+=================================================
+REDISTRIBUTION
+==============
+
+Redistribution should support:
+
+* Mentor resigned
+* Mentor sick
+* Mentor underperforming
+* Business decision
+* Load balancing
+* Temporary leave
+
+Admin should be able to:
+
+Select Mentor
+Select Leads
+Move manually
+OR
+Redistribute randomly
+
+Everything must be audit logged.
+
+=================================================
+ADMIN CONTROLS
+==============
+
+Admin should always have full override.
+
+Admin can:
+
+Create Lead
+Edit Lead
+Disable Lead
+Restore Lead
+Delete Lead
+Assign Lead
+Move Lead
+Bulk Move Leads
+Redistribute Leads
+Assign Course
+Remove Course
+Change Grade
+Reopen Lost Lead
+
+=================================================
+CONVERTED LEADS
+===============
+
+When a lead converts:
+
+Automatically create Mastery student record.
+
+Inside Ignite:
+
+Keep lead as:
+
+Status = Converted
+Converted At
+Converted By
+Course Purchased
+Course Value
+
+Converted leads remain visible only for reporting.
+
+Converted leads become read-only.
+
+They cannot:
+
+Receive assignments
+Be redistributed
+Re-enter deployment
+Enter waiting queues
+
+=================================================
+OLD LEADS
+=========
+
+Old leads remain in Ignite forever.
+
+Do not delete.
+
+They can still:
+
+Be reassigned
+Be redistributed
+Be reopened
+Be converted later
+
+=================================================
+DATABASE
+========
+
+First audit current schemas.
+
+Reuse existing assignment tables.
+
+Only create missing tables.
+
+Likely additions:
+
+lead_deployments
+lead_groups
+deployment_history
+
+Add metadata:
+
+deployment_status
+deployment_id
+group_id
+assignment_week
+assigned_at
+
+=================================================
+NEW UI SECTIONS
+===============
+
+Add small buttons/modals only.
+
+Do NOT redesign the page.
+
+1. Pending Deployment Tab
+2. Converted Leads Tab
+3. Disabled Leads Tab
+4. Deploy Leads Modal
+5. Redistribution Modal
+6. Deployment History Modal
+
+Everything else should remain exactly as it is.
+
+=================================================
+IMPLEMENTATION ORDER
+====================
+
+Step 1:
+Audit current schemas and APIs.
+
+Step 2:
+Show migration plan.
+
+Step 3:
+Implement backend.
+
+Step 4:
+Implement UI extensions only.
+
+Step 5:
+Test deployment and redistribution.
+
+Do not touch Mastery workflows yet.
+Do not break existing CRM.
+Do not redesign the portal.
+Extend only the missing functionality.

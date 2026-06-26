@@ -47,3 +47,4 @@ export * from "./rolePermissions";
 export * from "./coursePricing";
 export * from "./leadStatusHistory";
 export * from "./mentorReassignmentHistory";
+export * from "./leadDeployments";

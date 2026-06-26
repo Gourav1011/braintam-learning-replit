@@ -13,6 +13,8 @@ import {
   mentorReassignmentHistoryTable,
   studentTimelineTable,
   mentorStudentAssignmentsTable,
+  leadDeploymentsTable,
+  leadDeploymentGroupsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -172,6 +174,9 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
       isCurrentWeek: usersTable.isCurrentWeek,
       lostReason: usersTable.lostReason,
       lostAt: usersTable.lostAt,
+      isActive: usersTable.isActive,
+      disabledAt: usersTable.disabledAt,
+      disabledReason: usersTable.disabledReason,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -1087,6 +1092,251 @@ router.post("/admin/ignite/leads/:id/reassign", adminOnly, async (req, res) => {
   });
 
   res.json({ ok: true, newMentorId: newMentor.id, newMentorName: newMentor.name });
+});
+
+// ── GET /admin/ignite/sales-mentors ───────────────────────────────────────────
+router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
+  const mentors = await db
+    .select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .where(and(
+      eq(usersTable.role, "mentor"),
+      eq(usersTable.mentorType, "sales"),
+      eq(usersTable.isActive, true),
+      eq(usersTable.isDeleted, false),
+    ));
+  res.json(mentors);
+});
+
+// ── PATCH /admin/ignite/leads/:id/disable ─────────────────────────────────────
+router.patch("/admin/ignite/leads/:id/disable", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const { reason } = req.body as { reason?: string };
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  const [lead] = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, leadId)).limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  await db.update(usersTable).set({
+    isActive: false,
+    disabledAt: new Date(),
+    disabledBy: actor.id,
+    disabledReason: reason ?? null,
+    updatedAt: new Date(),
+  }).where(eq(usersTable.id, leadId));
+
+  await db.insert(studentTimelineTable).values({
+    studentId: leadId, createdById: actor.id,
+    createdByName: actor.name ?? "Admin", createdByRole: actor.role ?? "admin",
+    noteType: "status_change",
+    remark: `Lead disabled${reason ? `: ${reason}` : ""}`,
+    actionTaken: "disable",
+  });
+  await logLeadAudit(req, "disable_lead", leadId, lead.name, { reason });
+  res.json({ ok: true });
+});
+
+// ── PATCH /admin/ignite/leads/:id/restore ─────────────────────────────────────
+router.patch("/admin/ignite/leads/:id/restore", adminOnly, async (req, res) => {
+  const leadId = Number(req.params.id);
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  const [lead] = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, leadId)).limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  await db.update(usersTable).set({
+    isActive: true, disabledAt: null, disabledBy: null, disabledReason: null,
+    updatedAt: new Date(),
+  }).where(eq(usersTable.id, leadId));
+
+  await db.insert(studentTimelineTable).values({
+    studentId: leadId, createdById: actor.id,
+    createdByName: actor.name ?? "Admin", createdByRole: actor.role ?? "admin",
+    noteType: "status_change", remark: "Lead restored by admin", actionTaken: "restore",
+  });
+  await logLeadAudit(req, "restore_lead", leadId, lead.name, {});
+  res.json({ ok: true });
+});
+
+// ── POST /admin/ignite/deploy ─────────────────────────────────────────────────
+// Distributes all unassigned pending leads (optionally filtered by grade) across active sales mentors.
+router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
+  const { grade } = req.body as { grade?: number | null };
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  const pendingLeads = await db.select({ id: usersTable.id, grade: usersTable.grade, leadStage: usersTable.leadStage })
+    .from(usersTable)
+    .where(and(
+      inArray(usersTable.accountType, ["lead", "demo_student"]),
+      eq(usersTable.isDeleted, false),
+      eq(usersTable.isActive, true),
+      isNull(usersTable.assignedMentorId),
+      or(isNull(usersTable.leadStage), notInArray(usersTable.leadStage, ["Lost", "Converted"])),
+      ...(grade ? [eq(usersTable.grade, Number(grade))] : []),
+    ));
+
+  const safePending = pendingLeads;
+
+  if (safePending.length === 0) {
+    res.json({ ok: false, message: "No pending unassigned leads to deploy", deployed: 0 });
+    return;
+  }
+
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .where(and(
+      eq(usersTable.role, "mentor"),
+      eq(usersTable.mentorType, "sales"),
+      eq(usersTable.isActive, true),
+      eq(usersTable.isDeleted, false),
+    ));
+
+  if (mentors.length === 0) {
+    res.json({ ok: false, message: "No active sales mentors available", deployed: 0 });
+    return;
+  }
+
+  const n = safePending.length;
+  const m = mentors.length;
+  const base = Math.floor(n / m);
+  const rem = n % m;
+
+  const groups: { mentor: typeof mentors[0]; leads: typeof safePending }[] = [];
+  let cursor = 0;
+  mentors.forEach((mentor, i) => {
+    const size = base + (i < rem ? 1 : 0);
+    if (size > 0) {
+      groups.push({ mentor, leads: safePending.slice(cursor, cursor + size) });
+      cursor += size;
+    }
+  });
+
+  const now = new Date();
+
+  for (const g of groups) {
+    const ids = g.leads.map(l => l.id);
+    await db.update(usersTable).set({
+      assignedMentorId: g.mentor.id,
+      assignedAt: now,
+      assignmentStatus: "assigned",
+      updatedAt: now,
+    }).where(inArray(usersTable.id, ids));
+
+    const existing = await db.select({ studentId: mentorStudentAssignmentsTable.studentId })
+      .from(mentorStudentAssignmentsTable)
+      .where(and(
+        eq(mentorStudentAssignmentsTable.mentorId, g.mentor.id),
+        inArray(mentorStudentAssignmentsTable.studentId, ids),
+      ));
+    const existingIds = new Set(existing.map(e => e.studentId));
+    const newIds = ids.filter(id => !existingIds.has(id));
+    if (newIds.length > 0) {
+      await db.insert(mentorStudentAssignmentsTable).values(
+        newIds.map(sid => ({ mentorId: g.mentor.id, studentId: sid, assignedAt: now, isActive: true }))
+      );
+    }
+  }
+
+  const [deployment] = await db.insert(leadDeploymentsTable).values({
+    grade: grade ? Number(grade) : null,
+    createdById: actor.id,
+    createdByName: actor.name ?? "Admin",
+    totalLeads: n,
+    mentorCount: groups.length,
+    status: "completed",
+  }).returning();
+
+  if (groups.length > 0) {
+    await db.insert(leadDeploymentGroupsTable).values(
+      groups.map(g => ({
+        deploymentId: deployment.id,
+        mentorId: g.mentor.id,
+        mentorName: g.mentor.name,
+        leadCount: g.leads.length,
+      }))
+    );
+  }
+
+  await logLeadAudit(req, "deploy_leads", 0, "batch", { grade, totalLeads: n, mentors: groups.length });
+  res.json({
+    ok: true,
+    deployed: n,
+    mentorsUsed: groups.length,
+    deploymentId: deployment.id,
+    groups: groups.map(g => ({ mentorId: g.mentor.id, mentorName: g.mentor.name, count: g.leads.length })),
+  });
+});
+
+// ── GET /admin/ignite/deployments ─────────────────────────────────────────────
+router.get("/admin/ignite/deployments", adminOnly, async (_req, res) => {
+  const deps = await db.select().from(leadDeploymentsTable).orderBy(desc(leadDeploymentsTable.createdAt)).limit(50);
+  const depIds = deps.map(d => d.id);
+  const groups = depIds.length > 0
+    ? await db.select().from(leadDeploymentGroupsTable).where(inArray(leadDeploymentGroupsTable.deploymentId, depIds))
+    : [];
+  const groupsByDep: Record<number, typeof groups> = {};
+  groups.forEach(g => { (groupsByDep[g.deploymentId] ??= []).push(g); });
+  res.json(deps.map(d => ({ ...d, groups: groupsByDep[d.id] ?? [] })));
+});
+
+// ── POST /admin/ignite/redistribute ──────────────────────────────────────────
+router.post("/admin/ignite/redistribute", adminOnly, async (req, res) => {
+  const { sourceMentorId, leadIds, targetMentorIds } = req.body as {
+    sourceMentorId?: number; leadIds?: number[]; targetMentorIds: number[];
+  };
+  const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  if (!targetMentorIds?.length) { res.status(400).json({ error: "targetMentorIds required" }); return; }
+
+  let toRedistribute: { id: number }[] = [];
+  if (leadIds?.length) {
+    toRedistribute = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(and(inArray(usersTable.id, leadIds), eq(usersTable.isDeleted, false)));
+  } else if (sourceMentorId) {
+    toRedistribute = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(and(
+        eq(usersTable.assignedMentorId, sourceMentorId),
+        eq(usersTable.isDeleted, false), eq(usersTable.isActive, true),
+      ));
+  }
+
+  if (!toRedistribute.length) { res.json({ ok: false, message: "No leads to redistribute", moved: 0 }); return; }
+
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable).where(inArray(usersTable.id, targetMentorIds));
+  if (!mentors.length) { res.status(400).json({ error: "No valid target mentors" }); return; }
+
+  const n = toRedistribute.length;
+  const m = mentors.length;
+  const base = Math.floor(n / m);
+  const rem = n % m;
+  const now = new Date();
+  let cursor = 0;
+
+  for (let i = 0; i < mentors.length; i++) {
+    const size = base + (i < rem ? 1 : 0);
+    if (size === 0) continue;
+    const batch = toRedistribute.slice(cursor, cursor + size);
+    cursor += size;
+    const ids = batch.map(l => l.id);
+    await db.update(usersTable).set({
+      assignedMentorId: mentors[i].id, assignedAt: now, assignmentStatus: "assigned", updatedAt: now,
+    }).where(inArray(usersTable.id, ids));
+
+    await db.insert(mentorReassignmentHistoryTable).values(ids.map(lid => ({
+      leadId: lid, newMentorId: mentors[i].id, newMentorName: mentors[i].name,
+      prevMentorId: sourceMentorId ?? null, prevMentorName: null,
+      reassignedById: actor.id, reassignedByName: actor.name ?? "Admin",
+      reason: "Redistribution",
+    }))).catch(() => {});
+  }
+
+  await logLeadAudit(req, "redistribute_leads", 0, "batch", {
+    sourceMentorId, targetMentorIds, movedCount: n,
+  });
+  res.json({ ok: true, moved: n, mentorsUsed: mentors.length });
 });
 
 export default router;

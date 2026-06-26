@@ -5,6 +5,7 @@ import {
   Download, Plus, Eye, RefreshCw, Star, Award, Zap, CheckCircle,
   XCircle, Clock, UserCheck, BarChart3, AlertTriangle, Check, X,
   Bell, CreditCard, ChevronUp, UserX, RotateCcw, History, UserCog,
+  Ban, ShieldCheck, Shuffle, GitBranch, Rocket,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
@@ -710,6 +711,7 @@ interface LeadRow {
   assignedAt: string | null; assignmentStatus: string | null;
   notesCount: number; createdAt: string;
   lostReason: string | null; lostAt: string | null;
+  isActive: boolean; disabledAt: string | null; disabledReason: string | null;
 }
 
 const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -1201,6 +1203,223 @@ function LeadHistoryModal({ lead, onClose }: { lead: LeadRow; onClose: () => voi
   );
 }
 
+// ── DeployModal ────────────────────────────────────────────────────────────────
+function DeployModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [grade, setGrade] = useState<string>("all");
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<{ deployed: number; mentorsUsed: number; groups: { mentorName: string; count: number }[] } | null>(null);
+  const [err, setErr] = useState("");
+
+  async function deploy() {
+    setSaving(true); setErr("");
+    try {
+      const r = await apiFetch("/admin/ignite/deploy", {
+        method: "POST",
+        body: JSON.stringify(grade === "all" ? {} : { grade: Number(grade) }),
+      });
+      const d = await r.json();
+      if (!d.ok) { setErr(d.message ?? "Deployment failed"); return; }
+      setResult(d);
+      onDone();
+    } catch { setErr("Network error"); } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Rocket className="w-4 h-4" style={{ color: ORANGE }} />
+            <span className="font-black text-sm" style={{ color: NAVY }}>Deploy Leads</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          {result ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-green-700 font-black text-sm"><CheckCircle className="w-4 h-4" /> Deployment Complete</div>
+              <div className="bg-green-50 rounded-xl p-3 text-xs text-green-800">
+                <div className="font-bold mb-2">{result.deployed} leads distributed across {result.mentorsUsed} mentors</div>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {result.groups.map((g, i) => (
+                    <div key={i} className="flex justify-between"><span>{g.mentorName}</span><span className="font-bold">{g.count} leads</span></div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={onClose} className="w-full py-2.5 rounded-xl text-xs font-black text-white" style={{ background: NAVY }}>Close</button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Grade Pool</label>
+                <select value={grade} onChange={e => setGrade(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none" style={{ color: NAVY }}>
+                  <option value="all">All Grades (deploy everything pending)</option>
+                  {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>Grade {g} Pool only</option>)}
+                </select>
+              </div>
+              <div className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
+                System will find all unassigned leads, distribute them equally across all active sales mentors, and log the deployment.
+              </div>
+              {err && <p className="text-[10px] text-red-500">{err}</p>}
+              <div className="flex gap-2 pt-1">
+                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+                <button onClick={deploy} disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  style={{ background: ORANGE }}>
+                  <Rocket className="w-3.5 h-3.5" />{saving ? "Deploying…" : "Deploy Now"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── RedistributeModal ──────────────────────────────────────────────────────────
+function RedistributeModal({ leads, onClose, onDone }: { leads: LeadRow[]; onClose: () => void; onDone: () => void }) {
+  const mentors = [...new Set(leads.map(l => l.assignedMentorName).filter(Boolean))] as string[];
+  const [sourceMentor, setSourceMentor] = useState<string>("");
+  const [targetMentorIds, setTargetMentorIds] = useState<string>("");
+  const [allMentors, setAllMentors] = useState<{ id: number; name: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/sales-mentors").then(r => r.json()).then(setAllMentors).catch(() => {});
+  }, []);
+
+  const sourceLead = leads.filter(l => l.assignedMentorName === sourceMentor);
+
+  async function submit() {
+    if (!sourceMentor) { setErr("Select a source mentor"); return; }
+    const targets = targetMentorIds.split(",").map(s => Number(s.trim())).filter(Boolean);
+    if (!targets.length) { setErr("Select at least one target mentor"); return; }
+    setSaving(true); setErr("");
+    try {
+      const sourceId = allMentors.find(m => m.name === sourceMentor)?.id;
+      const r = await apiFetch("/admin/ignite/redistribute", {
+        method: "POST",
+        body: JSON.stringify({ sourceMentorId: sourceId, targetMentorIds: targets }),
+      });
+      const d = await r.json();
+      if (!d.ok) { setErr(d.message ?? "Failed"); return; }
+      onDone(); onClose();
+    } catch { setErr("Network error"); } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Shuffle className="w-4 h-4" style={{ color: NAVY }} />
+            <span className="font-black text-sm" style={{ color: NAVY }}>Redistribute Leads</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Move leads FROM mentor</label>
+            <select value={sourceMentor} onChange={e => setSourceMentor(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold outline-none" style={{ color: NAVY }}>
+              <option value="">Select source mentor</option>
+              {mentors.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            {sourceMentor && <div className="text-[10px] text-gray-400 mt-1">{sourceLead.length} leads will be moved</div>}
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Distribute TO mentors</label>
+            <div className="max-h-36 overflow-y-auto space-y-1 border border-gray-100 rounded-xl p-2">
+              {allMentors.map(m => {
+                const ids = targetMentorIds.split(",").map(s => s.trim()).filter(Boolean);
+                const checked = ids.includes(String(m.id));
+                return (
+                  <label key={m.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" checked={checked} onChange={e => {
+                      const cur = targetMentorIds.split(",").map(s => s.trim()).filter(Boolean);
+                      if (e.target.checked) setTargetMentorIds([...cur, String(m.id)].join(","));
+                      else setTargetMentorIds(cur.filter(id => id !== String(m.id)).join(","));
+                    }} className="rounded" />
+                    <span className="text-xs font-semibold" style={{ color: NAVY }}>{m.name}</span>
+                  </label>
+                );
+              })}
+              {allMentors.length === 0 && <div className="text-[10px] text-gray-400 text-center py-2">Loading mentors…</div>}
+            </div>
+          </div>
+          {err && <p className="text-[10px] text-red-500">{err}</p>}
+          <div className="flex gap-2">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button onClick={submit} disabled={saving}
+              className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50"
+              style={{ background: NAVY }}>{saving ? "Moving…" : "Redistribute"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── DeployHistoryModal ─────────────────────────────────────────────────────────
+interface DeploymentRow { id: number; grade: number | null; createdByName: string | null; totalLeads: number; mentorCount: number; status: string; createdAt: string; groups: { mentorName: string | null; leadCount: number }[] }
+
+function DeployHistoryModal({ onClose }: { onClose: () => void }) {
+  const [rows, setRows] = useState<DeploymentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/deployments").then(r => r.json()).then(setRows).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <GitBranch className="w-4 h-4" style={{ color: NAVY }} />
+            <span className="font-black text-sm" style={{ color: NAVY }}>Deployment History</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          {loading && <div className="flex justify-center py-8"><RefreshCw className="w-5 h-5 animate-spin text-gray-300" /></div>}
+          {!loading && rows.length === 0 && <div className="text-center py-10 text-gray-400 text-sm">No deployments yet</div>}
+          {rows.map(d => (
+            <div key={d.id} className="border border-gray-100 rounded-xl overflow-hidden">
+              <button className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                onClick={() => setExpanded(expanded === d.id ? null : d.id)}>
+                <div>
+                  <div className="text-xs font-black" style={{ color: NAVY }}>
+                    {d.grade ? `Grade ${d.grade} Pool` : "All Grades"} — {d.totalLeads} leads → {d.mentorCount} mentors
+                  </div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">By {d.createdByName ?? "Admin"} · {new Date(d.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}</div>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${expanded === d.id ? "rotate-180" : ""}`} />
+              </button>
+              {expanded === d.id && d.groups.length > 0 && (
+                <div className="border-t border-gray-50 px-4 pb-3">
+                  <div className="mt-2 space-y-1">
+                    {d.groups.map((g, i) => (
+                      <div key={i} className="flex justify-between text-[11px]">
+                        <span className="text-gray-600">{g.mentorName ?? "—"}</span>
+                        <span className="font-bold" style={{ color: NAVY }}>{g.leadCount} leads</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1209,13 +1428,19 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [gradeF, setGradeF] = useState("All Grades");
   const [sourceF, setSourceF] = useState("All Sources");
   const [mentorF, setMentorF] = useState("All Mentors");
-  const [viewMode, setViewMode] = useState<"all" | "old" | "lost">("all");
+  const [viewMode, setViewMode] = useState<"all" | "pending" | "old" | "lost" | "converted" | "disabled">("all");
   const [page, setPage] = useState(1);
   const [showAddLead, setShowAddLead] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [markLostLead, setMarkLostLead] = useState<LeadRow | null>(null);
   const [reassignLead, setReassignLead] = useState<LeadRow | null>(null);
   const [historyLead, setHistoryLead] = useState<LeadRow | null>(null);
+  const [showDeploy, setShowDeploy] = useState(false);
+  const [showRedistribute, setShowRedistribute] = useState(false);
+  const [showDeployHistory, setShowDeployHistory] = useState(false);
+  const [disableLead, setDisableLead] = useState<LeadRow | null>(null);
+  const [disableReason, setDisableReason] = useState("");
+  const [disabling, setDisabling] = useState(false);
   const PER = 15;
 
   const load = useCallback(() => {
@@ -1241,10 +1466,16 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
     return ageMs > OLD_DAYS * 86400000 && l.leadStage !== "Converted" && l.leadStage !== "Lost";
   };
 
+  const isPending = (l: LeadRow) =>
+    l.isActive && !l.assignedMentorId && l.leadStage !== "Lost" && l.leadStage !== "Converted";
+
   const filtered = leads.filter((l) => {
-    if (viewMode === "lost") { if (l.leadStage !== "Lost") return false; }
-    else if (viewMode === "old") { if (!isOldLead(l)) return false; }
-    else { if (l.leadStage === "Lost") return false; }
+    if (viewMode === "lost")      { if (l.leadStage !== "Lost") return false; }
+    else if (viewMode === "old")  { if (!isOldLead(l)) return false; }
+    else if (viewMode === "converted") { if (l.leadStage !== "Converted") return false; }
+    else if (viewMode === "disabled")  { if (l.isActive !== false) return false; }
+    else if (viewMode === "pending")   { if (!isPending(l)) return false; }
+    else { if (l.leadStage === "Lost" || !l.isActive) return false; }
 
     const q = search.toLowerCase();
     if (q && !l.name.toLowerCase().includes(q) && !(l.phone ?? "").includes(q) &&
@@ -1256,8 +1487,11 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
     return true;
   });
 
-  const lostCount = leads.filter(l => l.leadStage === "Lost").length;
-  const oldCount = leads.filter(isOldLead).length;
+  const lostCount      = leads.filter(l => l.leadStage === "Lost").length;
+  const oldCount       = leads.filter(isOldLead).length;
+  const pendingCount   = leads.filter(isPending).length;
+  const convertedCount = leads.filter(l => l.leadStage === "Converted").length;
+  const disabledCount  = leads.filter(l => !l.isActive).length;
 
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
@@ -1293,16 +1527,52 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       {markLostLead && <MarkLostModal lead={markLostLead} onClose={() => setMarkLostLead(null)} onDone={load} />}
       {reassignLead && <ReassignModal lead={reassignLead} onClose={() => setReassignLead(null)} onDone={load} />}
       {historyLead && <LeadHistoryModal lead={historyLead} onClose={() => setHistoryLead(null)} />}
+      {showDeploy && <DeployModal onClose={() => setShowDeploy(false)} onDone={load} />}
+      {showRedistribute && <RedistributeModal leads={leads} onClose={() => setShowRedistribute(false)} onDone={load} />}
+      {showDeployHistory && <DeployHistoryModal onClose={() => setShowDeployHistory(false)} />}
+
+      {/* Inline Disable Lead Confirmation */}
+      {disableLead && (
+        <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) { setDisableLead(null); setDisableReason(""); } }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4" style={{ fontFamily: "Poppins, sans-serif" }}>
+            <div className="flex items-center gap-2">
+              <Ban className="w-4 h-4 text-red-500" />
+              <span className="font-black text-sm" style={{ color: NAVY }}>Disable Lead</span>
+            </div>
+            <p className="text-xs text-gray-500">Disable <span className="font-bold" style={{ color: NAVY }}>{disableLead.name}</span>? They won't appear in active queues.</p>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 block mb-1.5">Reason (optional)</label>
+              <input value={disableReason} onChange={e => setDisableReason(e.target.value)} placeholder="e.g. Wrong number, test lead…"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-orange-300" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setDisableLead(null); setDisableReason(""); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button disabled={disabling} onClick={async () => {
+                setDisabling(true);
+                try {
+                  await apiFetch(`/admin/ignite/leads/${disableLead.id}/disable`, { method: "PATCH", body: JSON.stringify({ reason: disableReason }) });
+                  flash(`${disableLead.name} disabled`, true); setDisableLead(null); setDisableReason(""); load();
+                } catch { flash("Failed to disable lead", false); } finally { setDisabling(false); }
+              }} className="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-red-500 disabled:opacity-50">
+                {disabling ? "Disabling…" : "Disable"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* View Mode Tabs */}
       <div className="flex items-center gap-2 flex-wrap">
         {([
-          { key: "all", label: "All Leads", count: leads.filter(l => l.leadStage !== "Lost").length, color: NAVY, bg: "#EEF2FF" },
-          { key: "old", label: "Old Leads (30+ days)", count: oldCount, color: "#D97706", bg: "#FEF3C7" },
-          { key: "lost", label: "Lost Leads", count: lostCount, color: "#DC2626", bg: "#FEE2E2" },
-        ] as const).map((v) => (
+          { key: "all",       label: "All Leads",      count: leads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
+          { key: "pending",   label: "Pending Deploy",  count: pendingCount,   color: "#D97706",  bg: "#FEF3C7" },
+          { key: "converted", label: "Converted",       count: convertedCount, color: "#15803D",  bg: "#DCFCE7" },
+          { key: "old",       label: "Old (30+ days)",  count: oldCount,       color: "#7C3AED",  bg: "#EDE9FE" },
+          { key: "lost",      label: "Lost",            count: lostCount,      color: "#DC2626",  bg: "#FEE2E2" },
+          { key: "disabled",  label: "Disabled",        count: disabledCount,  color: "#6B7280",  bg: "#F3F4F6" },
+        ] as { key: "all"|"pending"|"converted"|"old"|"lost"|"disabled"; label: string; count: number; color: string; bg: string }[]).map((v) => (
           <button key={v.key} onClick={() => { setViewMode(v.key); setPage(1); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all"
             style={viewMode === v.key
               ? { background: v.color, color: "#fff" }
               : { background: v.bg, color: v.color, border: `1px solid ${v.color}22` }}>
@@ -1319,11 +1589,27 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-black" style={{ color: NAVY }}>
-            {viewMode === "lost" ? "Lost Leads" : viewMode === "old" ? "Old Leads" : "All Leads"}
+            {{ all: "All Leads", pending: "Pending Deployment", converted: "Converted Leads", old: "Old Leads", lost: "Lost Leads", disabled: "Disabled Leads" }[viewMode]}
           </h1>
-          <p className="text-xs text-gray-500">{filtered.length} leads {viewMode === "lost" ? "marked as lost" : viewMode === "old" ? "inactive for 30+ days" : "in pipeline"}</p>
+          <p className="text-xs text-gray-500">{filtered.length} leads
+            {{ all: " in pipeline", pending: " awaiting mentor assignment", converted: " successfully converted", old: " inactive for 30+ days", lost: " marked as lost", disabled: " currently disabled" }[viewMode]}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowDeployHistory(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+            <GitBranch className="w-3.5 h-3.5" /> Deploy History
+          </button>
+          <button onClick={() => setShowRedistribute(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold hover:bg-gray-50"
+            style={{ color: NAVY }}>
+            <Shuffle className="w-3.5 h-3.5" /> Redistribute
+          </button>
+          <button onClick={() => setShowDeploy(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
+            style={{ background: ORANGE }}>
+            <Rocket className="w-3.5 h-3.5" /> Deploy Leads
+          </button>
           <button onClick={exportCSV}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
             <Download className="w-3.5 h-3.5" /> Export CSV
@@ -1334,7 +1620,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
           </button>
           <button onClick={() => setShowAddLead(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
-            style={{ background: ORANGE }}>
+            style={{ background: NAVY }}>
             <Plus className="w-3.5 h-3.5" /> Add Lead
           </button>
         </div>
@@ -1481,6 +1767,21 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
                         <button onClick={() => setMarkLostLead(l)}
                           className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Mark as Lost">
                           <UserX className="w-3 h-3 text-red-600" />
+                        </button>
+                      )}
+                      {l.isActive ? (
+                        <button onClick={() => { setDisableLead(l); setDisableReason(""); }}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Disable Lead">
+                          <Ban className="w-3 h-3 text-red-600" />
+                        </button>
+                      ) : (
+                        <button onClick={async () => {
+                          try {
+                            await apiFetch(`/admin/ignite/leads/${l.id}/restore`, { method: "PATCH", body: JSON.stringify({}) });
+                            flash(`${l.name} restored`, true); load();
+                          } catch { flash("Failed to restore lead", false); }
+                        }} className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Restore Lead">
+                          <ShieldCheck className="w-3 h-3 text-green-700" />
                         </button>
                       )}
                       <button onClick={() => softDelete(l.id, l.name)}
