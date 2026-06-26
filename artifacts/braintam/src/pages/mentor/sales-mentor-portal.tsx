@@ -458,22 +458,24 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
   const [parentPhone, setParentPhone] = useState<string | null>(null);
   const [autoPrice, setAutoPrice] = useState<number | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState<number>(lead.grade ?? 1);
 
-  // Load auto-price for lead's grade
+  // Load auto-price whenever selectedGrade changes
   useEffect(() => {
-    if (!lead.grade) return;
+    if (!selectedGrade) return;
     setPriceLoading(true);
-    apiFetch(`/mentor/long-term/pricing/${lead.grade}`)
+    setAutoPrice(null);
+    apiFetch(`/mentor/long-term/pricing/${selectedGrade}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.available) setAutoPrice(d.finalPriceRupees); })
       .catch(() => {})
       .finally(() => setPriceLoading(false));
-  }, [lead.grade]);
+  }, [selectedGrade]);
 
   async function generate() {
     setErr(""); setGenerating(true);
     try {
-      const body: Record<string, unknown> = { studentId: lead.id, paymentType: mode, expiryDate, expiryTime };
+      const body: Record<string, unknown> = { studentId: lead.id, paymentType: mode, expiryDate, expiryTime, grade: selectedGrade };
       if (mode === "partial") {
         if (!partialAmount) { setErr("Enter an amount"); setGenerating(false); return; }
         body.partialAmount = Number(partialAmount);
@@ -605,6 +607,22 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
             ))}
           </div>
 
+          {/* Grade selector */}
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 block mb-1">Grade</label>
+            <select
+              value={selectedGrade}
+              onChange={e => setSelectedGrade(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold outline-none"
+              style={{ color: NAVY, background: "#fff" }}
+            >
+              {[1,2,3,4,5,6,7,8,9].map(g => (
+                <option key={g} value={g}>Grade {g}{g === (lead.grade ?? 0) ? " (student's grade)" : ""}</option>
+              ))}
+              <option value={10} disabled>Grade 10 — Coming Soon</option>
+            </select>
+          </div>
+
           {mode === "full" && (
             <div className="p-3 rounded-xl" style={{ background: `${NAVY}08` }}>
               <div className="text-[10px] font-bold text-gray-500 mb-1">Amount</div>
@@ -613,7 +631,7 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
               ) : autoPrice ? (
                 <div className="text-xl font-black" style={{ color: NAVY }}>₹{autoPrice.toLocaleString("en-IN")}</div>
               ) : (
-                <div className="text-xs text-red-500 font-semibold">No active pricing for Grade {lead.grade}. Contact admin.</div>
+                <div className="text-xs text-red-500 font-semibold">No active pricing for Grade {selectedGrade}. Contact admin.</div>
               )}
             </div>
           )}
