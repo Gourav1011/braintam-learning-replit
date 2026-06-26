@@ -122,13 +122,18 @@ const CHIPS = [
 ] as const;
 type Chip = typeof CHIPS[number]["key"];
 
+// "Converted" = paid long-term program only. ₹39 Ignite demo payment is NOT converted.
+function isConverted(lead: Lead) {
+  return lead.leadStage === "Converted";
+}
+
 function matchChip(lead: Lead, chip: Chip) {
-  const converted = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed";
-  if (chip === "all")        return !converted;
-  if (chip === "pending")    return !converted && (lead.callStatus === "Need To Call" || lead.callStatus === "Pending");
-  if (chip === "busy")       return !converted && lead.callStatus === "Busy";
-  if (chip === "call-later") return !converted && (lead.callStatus === "Call Back" || lead.callStatus === "Call Later");
-  if (chip === "converted")  return converted;
+  const conv = isConverted(lead);
+  if (chip === "all")        return !conv;
+  if (chip === "pending")    return !conv && (lead.callStatus === "Need To Call" || lead.callStatus === "Pending");
+  if (chip === "busy")       return !conv && lead.callStatus === "Busy";
+  if (chip === "call-later") return !conv && (lead.callStatus === "Call Back" || lead.callStatus === "Call Later");
+  if (chip === "converted")  return conv;
   return true;
 }
 function chipCount(leads: Lead[], chip: Chip) {
@@ -137,7 +142,7 @@ function chipCount(leads: Lead[], chip: Chip) {
 
 // ── Status badge ───────────────────────────────────────────────────────────
 function StatusBadge({ lead }: { lead: Lead }) {
-  const c = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed"
+  const c = isConverted(lead)
     ? { bg: "#DCFCE7", color: GREEN, label: "✓ Converted" }
     : lead.leadStage === "Payment Pending" || lead.callStatus === "Payment Pending"
       ? { bg: "#FEF3C7", color: "#D97706", label: "Payment Pending" }
@@ -334,9 +339,9 @@ function PaymentPopup({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 
 // ── Lead Card ──────────────────────────────────────────────────────────────
 function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }) {
-  const isConverted = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed";
+  const conv = isConverted(lead);
 
-  if (isConverted) {
+  if (conv) {
     return (
       <div className="bg-white rounded-2xl border-l-4 px-4 py-3.5 flex items-center gap-3"
         style={{ borderColor: GREEN, borderTop: "1px solid #D1FAE5", borderRight: "1px solid #D1FAE5", borderBottom: "1px solid #D1FAE5", boxShadow: "0 1px 4px rgba(5,150,105,0.08)" }}>
@@ -350,7 +355,7 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: (id: number) => void }
             <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>✓ Converted</span>
           </div>
           <div className="text-[11px] text-gray-500">Grade {lead.grade} · {padLeadId(lead.id)}</div>
-          <div className="text-[11px] text-green-600 font-semibold mt-0.5">5-Day Ignite Program · ₹39 paid</div>
+          <div className="text-[11px] text-green-600 font-semibold mt-0.5">Long-term program purchased</div>
         </div>
         <div className="text-right flex-shrink-0 hidden sm:block">
           <div className="text-[10px] text-gray-400">Converted</div>
@@ -564,7 +569,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoSaveOk, setInfoSaveOk] = useState(false);
 
-  const isConverted = lead.leadStage === "Converted" || lead.leadStage === "Payment Completed";
+  const conv = isConverted(lead);
 
   useEffect(() => {
     (async () => {
@@ -644,7 +649,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-bold hover:opacity-70 transition-opacity" style={{ color: NAVY }}>
           <ArrowLeft className="w-4 h-4" /> Back to Leads
         </button>
-        {isConverted && (
+        {conv && (
           <span className="text-[10px] px-2 py-0.5 rounded-full font-black" style={{ background: "#DCFCE7", color: GREEN }}>✓ Converted Student</span>
         )}
       </div>
@@ -654,7 +659,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         <div className="flex items-start gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-base flex-shrink-0"
-              style={{ background: isConverted ? GREEN : avatarBg(lead.name) }}>
+              style={{ background: conv ? GREEN : avatarBg(lead.name) }}>
               {initials(lead.name)}
             </div>
             <div className="min-w-0">
@@ -723,7 +728,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
         <div className="space-y-4">
 
           {/* Payment Link */}
-          {!isConverted && (
+          {!conv && (
             <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -802,7 +807,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
             <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Previous Courses / Demos</div>
             <div className="space-y-2">
               {[
-                { name: "5-Day Ignite Demo", type: "Demo", status: isConverted ? "Completed" : "Enrolled", color: GREEN },
+                { name: "5-Day Ignite Demo", type: "Demo", status: conv ? "Completed" : "Enrolled", color: GREEN },
                 { name: "Maths Trial Class", type: "Trial", status: "Completed", color: "#0284C7" },
               ].map((c, i) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
@@ -901,7 +906,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
           </div>
 
           {/* Call Details */}
-          {!isConverted && (
+          {!conv && (
             <div className="bg-white rounded-2xl border border-gray-100 p-4" style={{ boxShadow: "0 1px 4px rgba(11,43,107,0.06)" }}>
               <div className="font-black text-sm mb-3" style={{ color: NAVY }}>Call Details</div>
               <div className="grid grid-cols-2 gap-3 mb-3">
