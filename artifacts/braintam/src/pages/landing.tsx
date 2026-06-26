@@ -286,50 +286,50 @@ const toppers = [
 
 function TopperCard({ s, featured }: { s: typeof toppers[number]; featured?: boolean }) {
   return (
-    <div className="rounded-2xl flex flex-col items-center w-full h-full"
+    <div className="rounded-2xl flex flex-col items-center w-full h-full overflow-hidden"
       style={{
         background: "#fff",
         border: featured ? `2px solid rgba(255,107,26,0.4)` : `1px solid rgba(11,43,107,0.09)`,
         boxShadow: featured
           ? "0 20px 50px rgba(11,43,107,0.16), 0 0 0 4px rgba(255,107,26,0.07)"
           : "0 8px 24px rgba(11,43,107,0.09)",
-        padding: featured ? "20px 16px" : "16px 12px",
-        gap: featured ? 10 : 8,
+        padding: featured ? "14px 12px" : "14px 10px",
+        gap: featured ? 7 : 6,
         justifyContent: "center",
       }}>
-      {featured && <div className="text-xl leading-none">👑</div>}
+      {featured && <div className="text-base leading-none flex-shrink-0">👑</div>}
       {/* Avatar */}
       <div className="relative flex-shrink-0">
         <div className="rounded-2xl flex items-center justify-center text-white font-black"
           style={{
-            width: featured ? 64 : 48,
-            height: featured ? 64 : 48,
+            width: featured ? 56 : 44,
+            height: featured ? 56 : 44,
             background: `linear-gradient(135deg, ${s.avatarFrom}, ${s.avatarTo})`,
-            boxShadow: `0 8px 20px ${s.avatarFrom}55`,
-            fontSize: featured ? 24 : 18,
+            boxShadow: `0 6px 16px ${s.avatarFrom}55`,
+            fontSize: featured ? 20 : 16,
           }}>
           {s.initial}
         </div>
-        <span className="absolute -bottom-2 -right-2 leading-none" style={{ fontSize: featured ? 18 : 14 }}>{s.medal}</span>
+        <span className="absolute -bottom-1.5 -right-1.5 leading-none" style={{ fontSize: featured ? 15 : 12 }}>{s.medal}</span>
       </div>
       {/* Info */}
-      <div className="text-center">
-        <div className="font-bold leading-tight" style={{ color: TEXT, fontSize: featured ? 14 : 11 }}>{s.name}</div>
-        <div style={{ color: MUTED, fontSize: featured ? 11 : 9 }}>{s.grade}</div>
+      <div className="text-center flex-shrink-0">
+        <div className="font-bold leading-tight" style={{ color: TEXT, fontSize: featured ? 13 : 10 }}>{s.name}</div>
+        <div style={{ color: MUTED, fontSize: featured ? 10 : 8 }}>{s.grade}</div>
       </div>
       {/* Tag */}
-      <span className="px-2.5 py-0.5 rounded-full font-bold"
-        style={{ background: s.tagBg, color: s.tagColor, fontSize: featured ? 10 : 9 }}>{s.tag}</span>
+      <span className="px-2 py-0.5 rounded-full font-bold flex-shrink-0"
+        style={{ background: s.tagBg, color: s.tagColor, fontSize: featured ? 9 : 8 }}>{s.tag}</span>
       {/* Score */}
-      <div className="font-black tabular-nums"
-        style={{ color: s.tagColor, fontSize: featured ? 28 : 20, lineHeight: 1 }}>{s.score}</div>
+      <div className="font-black tabular-nums flex-shrink-0"
+        style={{ color: s.tagColor, fontSize: featured ? 24 : 18, lineHeight: 1 }}>{s.score}</div>
       {featured && (
-        <div className="text-center italic px-1" style={{ color: MUTED, fontSize: 10 }}>"{s.quote}"</div>
+        <div className="text-center italic px-1 flex-shrink-0" style={{ color: MUTED, fontSize: 9 }}>"{s.quote}"</div>
       )}
       {/* Stars */}
-      <div className="flex gap-0.5">
+      <div className="flex gap-0.5 flex-shrink-0">
         {[...Array(5)].map((_, i) => (
-          <span key={i} style={{ color: "#FBBF24", fontSize: featured ? 11 : 9 }}>★</span>
+          <span key={i} style={{ color: "#FBBF24", fontSize: featured ? 10 : 8 }}>★</span>
         ))}
       </div>
     </div>

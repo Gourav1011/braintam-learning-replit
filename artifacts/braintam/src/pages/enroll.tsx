@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE } from "@/lib/api-base";
 import { CheckCircle2, Shield, Star, ChevronRight, X } from "lucide-react";
 
-import studentHeroImg from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
 import braintamLogoImg from "@assets/logo_transparent-Photoroom_1782323218278.png";
 
 const NAVY   = "#0B2B6B";
@@ -519,12 +518,6 @@ export default function EnrollPage() {
               </div>
             </div>
 
-            {/* Girl photo — large, flush to bottom */}
-            <div className="flex-shrink-0 self-end" style={{ marginRight: -4 }}>
-              <img src={studentHeroImg} alt="Braintam student"
-                className="h-56 w-auto object-contain"
-                style={{ filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.5))" }} />
-            </div>
           </div>
         </div>
 
