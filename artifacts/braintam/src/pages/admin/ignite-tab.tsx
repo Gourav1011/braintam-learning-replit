@@ -5,7 +5,7 @@ import {
   Download, Plus, Eye, RefreshCw, Star, Award, Zap, CheckCircle,
   XCircle, Clock, UserCheck, BarChart3, AlertTriangle, Check, X,
   Bell, CreditCard, ChevronUp, UserX, RotateCcw, History, UserCog,
-  Ban, ShieldCheck, Shuffle, GitBranch, Rocket,
+  Ban, ShieldCheck, Shuffle, GitBranch, Rocket, Upload, BarChart2,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
@@ -1441,13 +1441,19 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [disableLead, setDisableLead] = useState<LeadRow | null>(null);
   const [disableReason, setDisableReason] = useState("");
   const [disabling, setDisabling] = useState(false);
-  const PER = 15;
+  const [selectedLeads, setSelectedLeads] = useState<Set<number>>(new Set());
+  const [recentDeployments, setRecentDeployments] = useState<{ id: number; grade: number | null; totalLeads: number; mentorCount: number; createdAt: string }[]>([]);
+  const PER = 12;
 
   const load = useCallback(() => {
     setLoading(true);
-    apiFetch("/admin/ignite/leads")
-      .then((r) => r.json())
-      .then(setLeads)
+    Promise.all([
+      apiFetch("/admin/ignite/leads").then(r => r.json()),
+      apiFetch("/admin/ignite/deployments").then(r => r.json()).catch(() => []),
+    ]).then(([ls, deps]) => {
+      setLeads(ls as LeadRow[]);
+      setRecentDeployments((deps as typeof recentDeployments).slice(0, 5));
+    })
       .catch(() => flash("Failed to load leads", false))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1492,6 +1498,11 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const pendingCount   = leads.filter(isPending).length;
   const convertedCount = leads.filter(l => l.leadStage === "Converted").length;
   const disabledCount  = leads.filter(l => !l.isActive).length;
+
+  const gradePools = [1,2,3,4,5,6,7,8,9,10]
+    .map(g => ({ grade: g, count: leads.filter(l => l.grade === g && isPending(l)).length }))
+    .filter(g => g.count > 0).sort((a, b) => b.count - a.count);
+  const maxGradeCount = gradePools[0]?.count ?? 1;
 
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
@@ -1555,17 +1566,17 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       )}
 
       {/* View Mode Tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-wrap">
         {([
-          { key: "all",       label: "All Leads",      count: leads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
-          { key: "pending",   label: "Pending Deploy",  count: pendingCount,   color: "#D97706",  bg: "#FEF3C7" },
-          { key: "converted", label: "Converted",       count: convertedCount, color: "#15803D",  bg: "#DCFCE7" },
-          { key: "old",       label: "Old (30+ days)",  count: oldCount,       color: "#7C3AED",  bg: "#EDE9FE" },
-          { key: "lost",      label: "Lost",            count: lostCount,      color: "#DC2626",  bg: "#FEE2E2" },
-          { key: "disabled",  label: "Disabled",        count: disabledCount,  color: "#6B7280",  bg: "#F3F4F6" },
+          { key: "all",       label: "All Leads",          count: leads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
+          { key: "pending",   label: "Pending Deployment",  count: pendingCount,   color: "#D97706",  bg: "#FEF3C7" },
+          { key: "old",       label: "Old Leads",           count: oldCount,       color: "#7C3AED",  bg: "#EDE9FE" },
+          { key: "lost",      label: "Lost Leads",          count: lostCount,      color: "#DC2626",  bg: "#FEE2E2" },
+          { key: "converted", label: "Converted Leads",     count: convertedCount, color: "#15803D",  bg: "#DCFCE7" },
+          { key: "disabled",  label: "Disabled Leads",      count: disabledCount,  color: "#6B7280",  bg: "#F3F4F6" },
         ] as { key: "all"|"pending"|"converted"|"old"|"lost"|"disabled"; label: string; count: number; color: string; bg: string }[]).map((v) => (
           <button key={v.key} onClick={() => { setViewMode(v.key); setPage(1); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
             style={viewMode === v.key
               ? { background: v.color, color: "#fff" }
               : { background: v.bg, color: v.color, border: `1px solid ${v.color}22` }}>
@@ -1578,42 +1589,34 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
         ))}
       </div>
 
-      {/* Header */}
+      {/* Action Bar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-xl font-black" style={{ color: NAVY }}>
-            {{ all: "All Leads", pending: "Pending Deployment", converted: "Converted Leads", old: "Old Leads", lost: "Lost Leads", disabled: "Disabled Leads" }[viewMode]}
-          </h1>
-          <p className="text-xs text-gray-500">{filtered.length} leads
-            {{ all: " in pipeline", pending: " awaiting mentor assignment", converted: " successfully converted", old: " inactive for 30+ days", lost: " marked as lost", disabled: " currently disabled" }[viewMode]}
-          </p>
+        <div className="text-xs text-gray-500 font-semibold">
+          <span style={{ color: NAVY }} className="font-black">{filtered.length}</span> leads
+          <span className="ml-1">{{ all: "in pipeline", pending: "awaiting assignment", converted: "converted", old: "inactive 30+ days", lost: "marked lost", disabled: "disabled" }[viewMode]}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowDeployHistory(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
-            <GitBranch className="w-3.5 h-3.5" /> Deploy History
-          </button>
-          <button onClick={() => setShowRedistribute(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold hover:bg-gray-50"
-            style={{ color: NAVY }}>
-            <Shuffle className="w-3.5 h-3.5" /> Redistribute
-          </button>
-          <button onClick={() => setShowDeploy(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
-            style={{ background: ORANGE }}>
-            <Rocket className="w-3.5 h-3.5" /> Deploy Leads
-          </button>
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button onClick={exportCSV}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
           <button onClick={() => setShowBulkImport(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
-            <Plus className="w-3.5 h-3.5" /> Bulk Import
+            <Upload className="w-3.5 h-3.5" /> Bulk Import
+          </button>
+          <button onClick={() => setShowDeploy(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90"
+            style={{ background: NAVY }}>
+            <Rocket className="w-3.5 h-3.5" /> Deploy Leads
+          </button>
+          <button onClick={() => setShowRedistribute(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90"
+            style={{ background: ORANGE }}>
+            <Shuffle className="w-3.5 h-3.5" /> Redistribute
           </button>
           <button onClick={() => setShowAddLead(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
-            style={{ background: NAVY }}>
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90"
+            style={{ background: "#1D4ED8" }}>
             <Plus className="w-3.5 h-3.5" /> Add Lead
           </button>
         </div>
@@ -1622,186 +1625,332 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       {/* KPI strip */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
         {[
-          { label: "Total", count: leads.length, color: NAVY, bg: "#EEF2FF" },
-          { label: "New", count: statusCounts["new"] ?? 0, color: "#1D4ED8", bg: "#DBEAFE" },
-          { label: "Contacted", count: statusCounts["contacted"] ?? 0, color: "#059669", bg: "#D1FAE5" },
-          { label: "Interested", count: statusCounts["interested"] ?? 0, color: "#7C3AED", bg: "#EDE9FE" },
-          { label: "In Payment", count: (statusCounts["payment_completed"] ?? 0) + (statusCounts["payment_pending"] ?? 0) + (statusCounts["payment_initiated"] ?? 0), color: "#D97706", bg: "#FEF3C7" },
-          { label: "Converted", count: statusCounts["converted"] ?? 0, color: "#15803D", bg: "#DCFCE7" },
+          { label: "Total Leads",        count: leads.length,                                                                                                                     color: NAVY,     bg: "#EEF2FF" },
+          { label: "Pending Deployment", count: pendingCount,                                                                                                                      color: "#D97706", bg: "#FEF3C7" },
+          { label: "Contacted",          count: statusCounts["contacted"] ?? 0,                                                                                                   color: "#059669", bg: "#D1FAE5" },
+          { label: "In Payment",         count: (statusCounts["payment_completed"] ?? 0) + (statusCounts["payment_pending"] ?? 0) + (statusCounts["payment_initiated"] ?? 0),     color: "#D97706", bg: "#FEF9C3" },
+          { label: "Converted",          count: convertedCount,                                                                                                                    color: "#15803D", bg: "#DCFCE7" },
+          { label: "Lost",               count: lostCount,                                                                                                                         color: "#DC2626", bg: "#FEE2E2" },
         ].map((k) => (
           <div key={k.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
-            <div className="text-lg font-black" style={{ color: k.color }}>{k.count}</div>
-            <div className="text-[10px] text-gray-500 font-semibold">{k.label}</div>
+            <div className="text-xl font-black" style={{ color: k.color }}>{k.count}</div>
+            <div className="text-[10px] text-gray-500 font-semibold mt-0.5 whitespace-nowrap">{k.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* Filter Bar */}
+      <div className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-40">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search name, phone, school, city…"
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            placeholder="Search name, phone, city…"
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-100" />
         </div>
         <select value={statusF} onChange={(e) => { setStatusF(e.target.value); setPage(1); }}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none">
           <option>All Status</option>
           {["new","contacted","follow_up","interested","payment_initiated","payment_pending","payment_failed","payment_abandoned","payment_completed","converted","dropped"].map((s) => (
             <option key={s} value={s}>{s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
           ))}
         </select>
         <select value={gradeF} onChange={(e) => { setGradeF(e.target.value); setPage(1); }}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none">
           <option>All Grades</option>
           {[1,2,3,4,5,6,7,8,9,10].map((g) => <option key={g} value={`Grade ${g}`}>Grade {g}</option>)}
         </select>
         <select value={sourceF} onChange={(e) => { setSourceF(e.target.value); setPage(1); }}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none">
           <option>All Sources</option>
           {["Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
         <select value={mentorF} onChange={(e) => { setMentorF(e.target.value); setPage(1); }}
-          className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none">
+          className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none">
           <option>All Mentors</option>
           {mentors.map((m) => <option key={m}>{m}</option>)}
         </select>
         <button onClick={load}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 shrink-0">
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
-              <tr>
-                {["Student Name","Parent Name","Phone","Email","Grade","City","Source","Status","Mentor","Created","Last Activity","Notes","Actions"].map((h) => (
-                  <th key={h} className="text-left px-3 py-3 text-[10px] font-bold text-gray-500 whitespace-nowrap uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={13} className="text-center py-12 text-gray-400">
-                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading leads…
-                </td></tr>
-              ) : paged.length === 0 ? (
-                <tr><td colSpan={13} className="text-center py-12">
-                  <div className="text-gray-400 text-sm">{search || statusF !== "All Status" ? "No leads match your filters" : "No leads yet — click Add Lead to get started"}</div>
-                </td></tr>
-              ) : paged.map((l) => (
-                <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
-                        style={{ background: NAVY }}>{(l.name?.[0] ?? "?").toUpperCase()}</div>
-                      <div>
-                        <div className="font-semibold text-gray-800 text-xs whitespace-nowrap">{l.name}</div>
-                        <div className="text-gray-400 text-[10px]">{l.board ?? "–"} · {l.school ?? "–"}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">{l.parentName ?? "–"}</td>
-                  <td className="px-3 py-3">
-                    <div className="text-xs font-mono text-gray-700">{l.phone ?? "–"}</div>
-                    {l.altPhone && <div className="text-[10px] font-mono text-gray-400">{l.altPhone}</div>}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-500 max-w-28 truncate">{l.email ?? "–"}</td>
-                  <td className="px-3 py-3">
-                    {l.grade ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#EEF2FF", color: NAVY }}>Gr {l.grade}</span> : "–"}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">{l.city ?? "–"}</td>
-                  <td className="px-3 py-3">
-                    {l.leadSource ? <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 whitespace-nowrap">{l.leadSource}</span> : "–"}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap"><LeadStatusBadge status={l.leadStage} /></td>
-                  <td className="px-3 py-3">
-                    {l.assignedMentorName
-                      ? <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: "#1D4ED8" }}>{l.assignedMentorName[0].toUpperCase()}</div>
-                          <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{l.assignedMentorName}</span>
-                        </div>
-                      : <span className="text-gray-400 text-xs">Unassigned</span>}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(l.createdAt)}</td>
-                  <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(l.lastCallAt ?? l.nextFollowUpAt)}</td>
-                  <td className="px-3 py-3">
-                    {l.notesCount > 0
-                      ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600">{l.notesCount}</span>
-                      : <span className="text-gray-300 text-xs">0</span>}
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <a href={`tel:${l.phone}`}
-                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Call">
-                        <Phone className="w-3 h-3 text-green-700" />
-                      </a>
-                      <button onClick={() => setHistoryLead(l)}
-                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#EEF2FF" }} title="View History">
-                        <History className="w-3 h-3 text-indigo-600" />
-                      </button>
-                      <button onClick={() => setReassignLead(l)}
-                        className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#F0FDF4" }} title="Reassign">
-                        <UserCog className="w-3 h-3" style={{ color: "#15803D" }} />
-                      </button>
-                      {l.leadStage === "Lost" ? (
-                        <button onClick={async () => {
-                          await apiFetch(`/admin/ignite/leads/${l.id}/reopen`, { method: "PATCH", body: JSON.stringify({}) });
-                          load();
-                        }} className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Reopen Lead">
-                          <RotateCcw className="w-3 h-3 text-green-700" />
-                        </button>
-                      ) : (
-                        <button onClick={() => setMarkLostLead(l)}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Mark as Lost">
-                          <UserX className="w-3 h-3 text-red-600" />
-                        </button>
-                      )}
-                      {l.isActive ? (
-                        <button onClick={() => { setDisableLead(l); setDisableReason(""); }}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#FEE2E2" }} title="Disable Lead">
-                          <Ban className="w-3 h-3 text-red-600" />
-                        </button>
-                      ) : (
-                        <button onClick={async () => {
-                          try {
-                            await apiFetch(`/admin/ignite/leads/${l.id}/restore`, { method: "PATCH", body: JSON.stringify({}) });
-                            flash(`${l.name} restored`, true); load();
-                          } catch { flash("Failed to restore lead", false); }
-                        }} className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80" style={{ background: "#D1FAE5" }} title="Restore Lead">
-                          <ShieldCheck className="w-3 h-3 text-green-700" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+      {/* Split-Screen: 70% Table + 30% Insights */}
+      <div className="flex gap-3 items-start">
+
+        {/* ── LEFT: Lead Table (70%) ── */}
+        <div className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+          {/* Bulk select banner */}
+          {selectedLeads.size > 0 && (
+            <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
+              <span className="text-xs font-bold text-blue-700">{selectedLeads.size} leads selected</span>
+              <button onClick={() => setShowDeploy(true)}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white hover:opacity-90"
+                style={{ background: NAVY }}>Deploy Selected</button>
+              <button onClick={() => setSelectedLeads(new Set())}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">
+                Clear
+              </button>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+                <tr>
+                  <th className="pl-3 pr-1 py-3 w-8">
+                    <input type="checkbox"
+                      className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                      checked={paged.length > 0 && paged.every(l => selectedLeads.has(l.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedLeads(prev => new Set([...prev, ...paged.map(l => l.id)]));
+                        else setSelectedLeads(prev => { const n = new Set(prev); paged.forEach(l => n.delete(l.id)); return n; });
+                      }} />
+                  </th>
+                  {["Student / Parent","Phone","Grade","Status","Mentor","Deployment","Created","Actions"].map((h) => (
+                    <th key={h} className="text-left px-3 py-3 text-[10px] font-bold text-gray-500 whitespace-nowrap uppercase tracking-wide">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={9} className="text-center py-12 text-gray-400">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading leads…
+                  </td></tr>
+                ) : paged.length === 0 ? (
+                  <tr><td colSpan={9} className="text-center py-12">
+                    <div className="text-gray-400 text-sm">{search || statusF !== "All Status" ? "No leads match your filters" : "No leads yet — click Add Lead to get started"}</div>
+                  </td></tr>
+                ) : paged.map((l) => (
+                  <tr key={l.id}
+                    className={`border-b border-gray-50 transition-colors ${selectedLeads.has(l.id) ? "bg-blue-50" : "hover:bg-gray-50"}`}>
+                    <td className="pl-3 pr-1 py-3 w-8">
+                      <input type="checkbox"
+                        className="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
+                        checked={selectedLeads.has(l.id)}
+                        onChange={(e) => {
+                          setSelectedLeads(prev => {
+                            const n = new Set(prev);
+                            if (e.target.checked) n.add(l.id); else n.delete(l.id);
+                            return n;
+                          });
+                        }} />
+                    </td>
+                    {/* Student / Parent */}
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
+                          style={{ background: NAVY }}>{(l.name?.[0] ?? "?").toUpperCase()}</div>
+                        <div>
+                          <div className="font-semibold text-gray-800 text-xs whitespace-nowrap">{l.name}</div>
+                          <div className="text-gray-400 text-[10px] whitespace-nowrap">{l.parentName ?? "–"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {/* Phone */}
+                    <td className="px-3 py-3">
+                      <div className="text-xs font-mono text-gray-700 whitespace-nowrap">{l.phone ?? "–"}</div>
+                      {l.altPhone && <div className="text-[10px] font-mono text-gray-400">{l.altPhone}</div>}
+                    </td>
+                    {/* Grade */}
+                    <td className="px-3 py-3">
+                      {l.grade
+                        ? <span className="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ background: "#EEF2FF", color: NAVY }}>Gr {l.grade}</span>
+                        : <span className="text-gray-300 text-xs">–</span>}
+                    </td>
+                    {/* Status */}
+                    <td className="px-3 py-3 whitespace-nowrap"><LeadStatusBadge status={l.leadStage} /></td>
+                    {/* Mentor */}
+                    <td className="px-3 py-3">
+                      {l.assignedMentorName
+                        ? <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: "#1D4ED8" }}>
+                              {l.assignedMentorName[0].toUpperCase()}
+                            </div>
+                            <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{l.assignedMentorName}</span>
+                          </div>
+                        : <span className="text-gray-400 text-xs">Unassigned</span>}
+                    </td>
+                    {/* Deployment Status */}
+                    <td className="px-3 py-3">
+                      {l.assignedMentorId
+                        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "#DCFCE7", color: "#15803D" }}>
+                            <CheckCircle className="w-2.5 h-2.5" /> Assigned
+                          </span>
+                        : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "#FEF3C7", color: "#D97706" }}>
+                            <Clock className="w-2.5 h-2.5" /> Pending
+                          </span>}
+                    </td>
+                    {/* Created */}
+                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(l.createdAt)}</td>
+                    {/* Actions */}
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1">
+                        <a href={`tel:${l.phone}`}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#D1FAE5" }} title="Call">
+                          <Phone className="w-3 h-3 text-green-700" />
+                        </a>
+                        <button onClick={() => setHistoryLead(l)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#EEF2FF" }} title="View History">
+                          <History className="w-3 h-3 text-indigo-600" />
+                        </button>
+                        <button onClick={() => setReassignLead(l)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#F0FDF4" }} title="Reassign">
+                          <UserCog className="w-3 h-3" style={{ color: "#15803D" }} />
+                        </button>
+                        {l.leadStage === "Lost" ? (
+                          <button onClick={async () => {
+                            await apiFetch(`/admin/ignite/leads/${l.id}/reopen`, { method: "PATCH", body: JSON.stringify({}) });
+                            load();
+                          }} className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#D1FAE5" }} title="Reopen Lead">
+                            <RotateCcw className="w-3 h-3 text-green-700" />
+                          </button>
+                        ) : (
+                          <button onClick={() => setMarkLostLead(l)}
+                            className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#FEE2E2" }} title="Mark as Lost">
+                            <UserX className="w-3 h-3 text-red-600" />
+                          </button>
+                        )}
+                        {l.isActive ? (
+                          <button onClick={() => { setDisableLead(l); setDisableReason(""); }}
+                            className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#FEE2E2" }} title="Disable Lead">
+                            <Ban className="w-3 h-3 text-red-600" />
+                          </button>
+                        ) : (
+                          <button onClick={async () => {
+                            try {
+                              await apiFetch(`/admin/ignite/leads/${l.id}/restore`, { method: "PATCH", body: JSON.stringify({}) });
+                              flash(`${l.name} restored`, true); load();
+                            } catch { flash("Failed to restore lead", false); }
+                          }} className="w-6 h-6 rounded-lg flex items-center justify-center hover:opacity-80 shrink-0" style={{ background: "#D1FAE5" }} title="Restore Lead">
+                            <ShieldCheck className="w-3 h-3 text-green-700" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+              <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length} leads</span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                  <button key={p} onClick={() => setPage(p)}
+                    className="w-7 h-7 rounded-lg text-xs font-semibold"
+                    style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{p}</button>
+                ))}
+                {totalPages > 7 && <span className="px-1">…</span>}
+                {totalPages > 7 && (
+                  <button onClick={() => setPage(totalPages)}
+                    className="w-7 h-7 rounded-lg text-xs font-semibold"
+                    style={page === totalPages ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{totalPages}</button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Showing {((page - 1) * PER) + 1}–{Math.min(page * PER, filtered.length)} of {filtered.length} leads</span>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
-                <button key={p} onClick={() => setPage(p)}
-                  className="w-7 h-7 rounded-lg text-xs font-semibold"
-                  style={page === p ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{p}</button>
-              ))}
-              {totalPages > 7 && <span className="px-1">…</span>}
-              {totalPages > 7 && (
-                <button onClick={() => setPage(totalPages)}
-                  className="w-7 h-7 rounded-lg text-xs font-semibold"
-                  style={page === totalPages ? { background: NAVY, color: "#fff" } : { background: "#F3F4F6", color: "#374151" }}>{totalPages}</button>
-              )}
+
+        {/* ── RIGHT: Insights Panel (30%) ── */}
+        <div className="w-64 xl:w-72 shrink-0 space-y-3" style={{ position: "sticky", top: "1rem" }}>
+
+          {/* Grade Pools */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-black" style={{ color: NAVY }}>Grade Pools</h3>
+              <span className="text-[10px] text-gray-400 font-semibold">Pending Leads</span>
+            </div>
+            {gradePools.length === 0 ? (
+              <div className="text-center py-4">
+                <div className="text-gray-400 text-xs">No pending leads</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {gradePools.map((g) => (
+                  <div key={g.grade} className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold w-14 shrink-0" style={{ color: NAVY }}>Grade {g.grade}</span>
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.round((g.count / maxGradeCount) * 100)}%`, background: ORANGE }} />
+                    </div>
+                    <span className="text-[11px] font-black text-gray-700 w-5 text-right shrink-0">{g.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setShowDeploy(true)}
+              className="w-full mt-3 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 hover:opacity-90"
+              style={{ background: ORANGE }}>
+              <Rocket className="w-3.5 h-3.5" /> Deploy Pending Leads
+            </button>
+          </div>
+
+          {/* Recent Deployments */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-black" style={{ color: NAVY }}>Recent Deployments</h3>
+              <button onClick={() => setShowDeployHistory(true)}
+                className="text-[10px] font-semibold hover:underline" style={{ color: ORANGE }}>
+                View All
+              </button>
+            </div>
+            {recentDeployments.length === 0 ? (
+              <div className="text-center py-4 text-gray-400 text-xs">No deployments yet</div>
+            ) : (
+              <div className="space-y-0">
+                {recentDeployments.map((d, idx) => (
+                  <div key={d.id} className={`flex items-center justify-between py-2 ${idx < recentDeployments.length - 1 ? "border-b border-gray-50" : ""}`}>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-800">{d.grade != null ? `Grade ${d.grade}` : "All Grades"}</div>
+                      <div className="text-[10px] text-gray-400">{fmt(d.createdAt)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-black" style={{ color: NAVY }}>{d.totalLeads} leads</div>
+                      <div className="text-[10px] text-gray-400">{d.mentorCount} mentors</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Stats */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart2 className="w-4 h-4" style={{ color: NAVY }} />
+              <h3 className="text-sm font-black" style={{ color: NAVY }}>Quick Statistics</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl p-2.5 text-center" style={{ background: "#EEF2FF" }}>
+                <div className="text-lg font-black" style={{ color: NAVY }}>{mentors.length}</div>
+                <div className="text-[10px] text-gray-500 font-semibold">Active Mentors</div>
+              </div>
+              <div className="rounded-xl p-2.5 text-center" style={{ background: "#FEF3C7" }}>
+                <div className="text-lg font-black" style={{ color: "#D97706" }}>{recentDeployments.length}</div>
+                <div className="text-[10px] text-gray-500 font-semibold">Deployments</div>
+              </div>
+              <div className="rounded-xl p-2.5 text-center" style={{ background: "#DCFCE7" }}>
+                <div className="text-lg font-black text-green-700">
+                  {leads.length > 0 ? Math.round((convertedCount / leads.length) * 100) : 0}%
+                </div>
+                <div className="text-[10px] text-gray-500 font-semibold">Conversion Rate</div>
+              </div>
+              <div className="rounded-xl p-2.5 text-center" style={{ background: "#EDE9FE" }}>
+                <div className="text-lg font-black text-purple-700">
+                  {leads.filter(l => l.isActive && l.assignedMentorId).length}
+                </div>
+                <div className="text-[10px] text-gray-500 font-semibold">Deployed</div>
+              </div>
             </div>
           </div>
-        )}
+
+        </div>
       </div>
     </div>
   );
