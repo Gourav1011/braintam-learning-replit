@@ -283,6 +283,7 @@ router.get("/mentor/long-term/payment-links", mentorAuth, async (req, res) => {
       status: paymentLinksTable.status,
       shortUrl: paymentLinksTable.shortUrl,
       razorpayLinkUrl: paymentLinksTable.razorpayLinkUrl,
+      razorpayPaymentLinkId: paymentLinksTable.razorpayPaymentLinkId,
       expiresAt: paymentLinksTable.expiresAt,
       createdAt: paymentLinksTable.createdAt,
       studentName: usersTable.name,
