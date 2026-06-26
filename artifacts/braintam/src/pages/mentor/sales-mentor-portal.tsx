@@ -1333,7 +1333,7 @@ const STATUS_CFG: Record<string, { bg: string; border: string; color: string; la
   paid:      { bg: "#F0FDF4", border: "#86EFAC", color: "#16A34A", label: "Paid" },
   created:   { bg: "#EFF6FF", border: "#93C5FD", color: "#2563EB", label: "Pending" },
   opened:    { bg: "#FFFBEB", border: "#FCD34D", color: "#B45309", label: "Opened" },
-  expired:   { bg: "#F9FAFB", border: "#D1D5DB", color: "#6B7280", label: "Expired" },
+  expired:   { bg: "#fff",    border: "#D1D5DB", color: "#111827", label: "Expired" },
   failed:    { bg: "#FEF2F2", border: "#FCA5A5", color: "#DC2626", label: "Failed" },
   cancelled: { bg: "#F9FAFB", border: "#D1D5DB", color: "#9CA3AF", label: "Cancelled" },
 };
@@ -1462,6 +1462,7 @@ function PaymentStatusView() {
                 <tr className="border-b-2 border-gray-100" style={{ background: "#F8FAFF" }}>
                   {[
                     "Student",
+                    "Razorpay ID",
                     "Amount",
                     "Type",
                     "Status",
@@ -1489,6 +1490,16 @@ function PaymentStatusView() {
                           <div className="text-[10px] font-bold mt-0.5" style={{ color: "#6366F1" }}>{padLeadId(row.studentId)}</div>
                         )}
                         {row.studentPhone && <div className="text-[10px] text-gray-400">{row.studentPhone}</div>}
+                      </td>
+
+                      {/* Razorpay ID */}
+                      <td className="px-4 py-3">
+                        {row.razorpayPaymentLinkId
+                          ? <div className="font-mono text-[10px] font-bold px-2 py-1.5 rounded-lg border select-all cursor-text"
+                              style={{ background: "#FFFBEB", borderColor: "#FCD34D", color: "#92400E" }}>
+                              {row.razorpayPaymentLinkId}
+                            </div>
+                          : <span className="text-gray-300 text-[10px]">—</span>}
                       </td>
 
                       {/* Amount */}
