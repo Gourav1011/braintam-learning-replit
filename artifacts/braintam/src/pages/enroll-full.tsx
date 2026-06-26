@@ -64,6 +64,12 @@ const GRADE_RANGES: Record<string, number[]> = {
   elite:      [7,8,9],
 };
 
+const GRADE_TO_PROGRAM: Record<number, string> = {
+  1: "foundation", 2: "foundation", 3: "foundation",
+  4: "mastery",    5: "mastery",    6: "mastery",
+  7: "elite",      8: "elite",      9: "elite",
+};
+
 function SuccessScreen({ program, grade, phone }: { program: string; grade: number; phone: string }) {
   const p = PROGRAMS[program] ?? PROGRAMS.mastery;
   return (
@@ -99,23 +105,36 @@ function SuccessScreen({ program, grade, phone }: { program: string; grade: numb
 
 export default function EnrollFullPage() {
   const params = new URLSearchParams(window.location.search);
-  const programKey = params.get("program") ?? "mastery";
+
+  // Support ?grade=X (mentor flow) OR ?program=xxx (landing flow)
+  const gradeParam = parseInt(params.get("grade") ?? "0", 10);
+  const derivedProgramFromGrade = gradeParam >= 1 && gradeParam <= 9 ? GRADE_TO_PROGRAM[gradeParam] : null;
+  const initialProgramKey = derivedProgramFromGrade ?? params.get("program") ?? "mastery";
+
+  const [programKey, setProgramKey] = useState(initialProgramKey);
   const program = PROGRAMS[programKey] ?? PROGRAMS.mastery;
   const validGrades = GRADE_RANGES[programKey] ?? [4,5,6];
 
   const [name,  setName]  = useState("");
   const [phone, setPhone] = useState("");
-  const [grade, setGrade] = useState(validGrades[0]);
+  const [grade, setGrade] = useState(gradeParam >= 1 && gradeParam <= 9 ? gradeParam : validGrades[0]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmedPhone, setConfirmedPhone] = useState("");
   const razorpayReady = useRazorpay();
 
-  // Sync grade when program changes via URL (edge case)
+  // Sync grade when programKey changes
   useEffect(() => {
-    if (!validGrades.includes(grade)) setGrade(validGrades[0]);
+    const vg = GRADE_RANGES[programKey] ?? [4,5,6];
+    if (!vg.includes(grade)) setGrade(vg[0]);
   }, [programKey]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When grade dropdown changes — auto-switch program
+  const handleGradeDropdown = (g: number) => {
+    const newProg = GRADE_TO_PROGRAM[g];
+    if (newProg) { setProgramKey(newProg); setGrade(g); }
+  };
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,24 +284,27 @@ export default function EnrollFullPage() {
                   </div>
                 </div>
 
-                {/* Grade */}
+                {/* Grade — dropdown selector */}
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>
-                    Grade
+                    Select Grade
                   </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {validGrades.map(g => (
-                      <button key={g} type="button" onClick={() => setGrade(g)}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all"
-                        style={{
-                          background: grade === g ? NAVY : "transparent",
-                          color: grade === g ? "#fff" : NAVY,
-                          borderColor: grade === g ? NAVY : "#E5E7EB",
-                        }}>
-                        Grade {g}
-                      </button>
+                  <select
+                    value={grade}
+                    onChange={e => handleGradeDropdown(Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border text-sm font-semibold outline-none transition-all appearance-none"
+                    style={{ borderColor: "#E5E7EB", color: NAVY, background: "#fff" }}
+                    onFocus={e => (e.currentTarget.style.borderColor = ORANGE)}
+                    onBlur={e => (e.currentTarget.style.borderColor = "#E5E7EB")}
+                  >
+                    {[1,2,3,4,5,6,7,8,9].map(g => (
+                      <option key={g} value={g}>Grade {g}</option>
                     ))}
-                  </div>
+                    <option value={10} disabled>Grade 10 — Coming Soon</option>
+                  </select>
+                  <p className="text-[11px] mt-1" style={{ color: "#9CA3AF" }}>
+                    Program auto-selected: <span className="font-semibold" style={{ color: NAVY }}>{program.name}</span>
+                  </p>
                 </div>
 
                 {/* Error */}
