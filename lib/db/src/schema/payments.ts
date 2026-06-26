@@ -18,6 +18,11 @@ export const paymentsTable = pgTable("payments", {
   status: text("status").notNull().default("created"),
   webhookVerified: boolean("webhook_verified").notNull().default(false),
   rawWebhookPayload: jsonb("raw_webhook_payload"),
+  // UTM / Meta Ads tracking
+  utmSource: text("utm_source"),
+  utmCampaign: text("utm_campaign"),
+  utmAdset: text("utm_adset"),
+  utmAd: text("utm_ad"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

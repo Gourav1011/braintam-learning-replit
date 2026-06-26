@@ -1,0 +1,631 @@
+# BRAINTAM IGNITE – WEBSITE ENROLLMENT AUTOMATION
+
+## Phase 5A – Meta Ads → Payment → Auto Lead Creation → WhatsApp
+
+### IMPORTANT
+
+Implement this ONLY for Ignite CRM.
+
+DO NOT modify:
+
+* Mastery CRM
+* Existing Lead Management
+* Existing Payment Verification Logic
+* Existing Notifications
+* Existing Mentor Dashboard
+* Existing Converted Leads Module
+
+This should be built as an extension of the current system without breaking anything.
+
+---
+
+# BUSINESS FLOW
+
+Meta Advertisement
+↓
+Braintam Enroll Page (/enroll)
+↓
+Student enters:
+• Mobile Number
+↓
+Clicks Pay ₹39
+↓
+Razorpay Checkout Popup
+↓
+Payment Success
+↓
+Lead Automatically Created in Ignite CRM
+↓
+Grade Automatically Assigned
+↓
+Success Screen Appears
+↓
+Student Clicks WhatsApp Button
+↓
+WhatsApp Opens with Pre-filled Message
+
+Entire process should feel smooth and take less than 2 seconds after payment verification.
+
+---
+
+# USE EXISTING ENROLL PAGE
+
+DO NOT create a new page.
+
+Continue using:
+
+/enroll
+
+Keep the current UI and branding.
+
+Maintain:
+
+* Navy theme
+* Orange CTA buttons
+* Glass cards
+* Mobile-first design
+* Existing animations
+
+---
+
+# FORM DESIGN
+
+Only ask for:
+
+Mobile Number *
+
+Button:
+
+Pay ₹39
+
+Do NOT ask:
+
+❌ Student Name
+❌ Parent Name
+❌ Email
+❌ City
+❌ School
+
+Reason:
+Less friction.
+Higher conversion.
+Faster payment completion.
+
+---
+
+# GRADE SHOULD COME FROM AD
+
+Grade should be automatically passed from Meta advertisements.
+
+Examples:
+
+Grade 1 Ad:
+
+https://braintam.com/enroll?grade=1
+
+Grade 4 Ad:
+
+https://braintam.com/enroll?grade=4
+
+Grade 8 Ad:
+
+https://braintam.com/enroll?grade=8
+
+On page load:
+
+Read:
+
+grade
+
+from URL parameters.
+
+Store internally.
+
+Do NOT ask the user again.
+
+---
+
+# OPTIONAL CAMPAIGN PARAMETERS
+
+Also capture:
+
+utm_source
+utm_campaign
+utm_adset
+utm_ad
+
+Examples:
+
+https://braintam.com/enroll?grade=4&utm_source=meta&utm_campaign=grade4_june&utm_adset=mumbai_parents&utm_ad=multiplication_video
+
+Store these values with the lead.
+
+---
+
+# PAYMENT FLOW
+
+STEP 1
+
+Student enters mobile number.
+
+Click:
+
+Pay ₹39
+
+Create Razorpay Order.
+
+Store temporary data:
+
+phone
+grade
+utm_source
+utm_campaign
+utm_adset
+utm_ad
+orderId
+createdAt
+
+Do NOT create lead yet.
+
+---
+
+# STEP 2
+
+Open Razorpay Checkout Popup.
+
+Amount:
+
+₹39
+
+Description:
+
+Braintam Ignite Program
+
+Brand:
+
+Braintam
+
+---
+
+# STEP 3
+
+Payment Success.
+
+Verify payment using:
+
+razorpay_order_id
+razorpay_payment_id
+razorpay_signature
+
+Signature verification must happen on the server.
+
+Never trust frontend payment success.
+
+---
+
+# AFTER PAYMENT VERIFICATION
+
+Create Ignite Lead automatically.
+
+---
+
+# LEAD DATA
+
+Create:
+
+Lead Source:
+Meta Ads
+
+Lead Stage:
+Demo Paid
+
+Payment Status:
+Paid
+
+Payment Type:
+Website Enrollment
+
+Grade:
+URL grade
+
+Phone:
+Student mobile number
+
+Created By:
+System
+
+Assigned Mentor:
+NULL
+
+Deployment Batch:
+NULL
+
+Converted:
+False
+
+isWebsiteLead:
+True
+
+paymentId:
+razorpay_payment_id
+
+orderId:
+razorpay_order_id
+
+paymentDate:
+Current Timestamp
+
+campaign:
+utm_campaign
+
+adSet:
+utm_adset
+
+ad:
+utm_ad
+
+source:
+utm_source
+
+---
+
+# AUTO GRADE ASSIGNMENT
+
+Examples:
+
+Ad:
+
+https://braintam.com/enroll?grade=1
+
+Automatically create:
+
+Ignite
+→ Grade 1 Leads
+
+---
+
+Ad:
+
+https://braintam.com/enroll?grade=4
+
+Automatically create:
+
+Ignite
+→ Grade 4 Leads
+
+---
+
+Ad:
+
+https://braintam.com/enroll?grade=8
+
+Automatically create:
+
+Ignite
+→ Grade 8 Leads
+
+No manual assignment.
+
+Everything automatic.
+
+---
+
+# DUPLICATE CHECK
+
+Before creating lead:
+
+Search by phone number.
+
+IF PHONE DOES NOT EXIST:
+
+Create Lead.
+
+IF PHONE ALREADY EXISTS:
+
+DO NOT create duplicate.
+
+Instead:
+
+Update:
+
+paymentStatus
+paymentId
+paymentDate
+leadStage
+
+Add timeline entry:
+
+Student completed another website enrollment payment.
+
+Update campaign details if available.
+
+---
+
+# TIMELINE ENTRY
+
+Automatically add:
+
+Website Enrollment Completed
+
+Platform:
+Meta Ads
+
+Payment:
+Successful
+
+Grade:
+Grade X
+
+Created By:
+System
+
+Date:
+Timestamp
+
+---
+
+# SUCCESS SCREEN
+
+After payment success:
+
+Replace payment form with:
+
+🎉 Congratulations!
+
+Your seat for the 6-Day Ignite Program has been reserved.
+
+✔ Enrollment Successful
+✔ Payment Received: ₹39
+✔ Demo Classes Starting Soon
+
+Tap below to receive your class details and next steps.
+
+Button:
+
+Get Class Details
+
+Do NOT mention:
+
+❌ Join WhatsApp Group
+
+---
+
+# WHATSAPP FLOW
+
+When user clicks:
+
+Get Class Details
+
+Open WhatsApp automatically.
+
+Prefilled Message:
+
+Hi, I have enrolled in the Braintam Ignite Program and completed my payment. Please guide me on joining the classes.
+
+Automatically append:
+
+Phone: XXXXXXXX
+Grade: Grade X
+
+Example:
+
+Hi, I have enrolled in the Braintam Ignite Program and completed my payment. Please guide me on joining the classes.
+
+Phone: 9876543210
+Grade: Grade 4
+
+Open:
+
+https://wa.me/YOUR_NUMBER?text=ENCODED_MESSAGE
+
+---
+
+# ADMIN CRM DISPLAY
+
+Inside:
+
+Admin
+→ Ignite
+→ Leads
+
+Website-created leads should display:
+
+Badge:
+Website Lead
+
+Source:
+Meta Ads
+
+Stage:
+Demo Paid
+
+Payment:
+Paid
+
+Created By:
+System
+
+Grade:
+Auto Assigned
+
+---
+
+# FILTERS
+
+Add:
+
+Website Leads
+Meta Leads
+Demo Paid Leads
+Grade-wise Leads
+Payment Completed Leads
+
+---
+
+# LEAD CARD
+
+Display:
+
+Phone Number
+Grade
+Source
+Campaign
+Payment Status
+Created Date
+Website Lead Badge
+
+---
+
+# FUTURE DISTRIBUTION READY
+
+Every website lead should remain:
+
+assignedMentor = NULL
+
+until admin runs weekly deployment.
+
+This will later feed into:
+
+Lead Distribution Engine
+Weekly Deployment Center
+Mentor Assignment
+Redistribution Module
+
+Do not implement deployment now.
+
+Just make website-created leads compatible with future automation.
+
+---
+
+# API REQUIREMENTS
+
+Create:
+
+POST
+/api/payments/create-demo-order
+
+Input:
+
+phone
+grade
+utm_source
+utm_campaign
+utm_adset
+utm_ad
+
+Returns:
+
+orderId
+amount
+currency
+keyId
+
+---
+
+Create:
+
+POST
+/api/payments/verify-demo-payment
+
+Input:
+
+razorpay_order_id
+razorpay_payment_id
+razorpay_signature
+phone
+grade
+utm_source
+utm_campaign
+utm_adset
+utm_ad
+
+Returns:
+
+success
+leadId
+paymentId
+grade
+
+---
+
+# VALIDATIONS
+
+Phone:
+Required
+10 digits only
+
+Grade:
+Required
+Must come from URL
+
+Prevent:
+
+Duplicate submissions
+Multiple payment clicks
+Duplicate lead creation
+Double payment processing
+
+---
+
+# ERROR STATES
+
+Payment Failed:
+
+Do not create lead.
+
+Show:
+
+Payment Failed.
+Please try again.
+
+---
+
+Verification Failed:
+
+Do not create lead.
+
+Show:
+
+Payment verification failed.
+Please contact support.
+
+---
+
+Payment Successful:
+
+Create Lead
+Create Timeline
+Store Campaign Data
+Show Success Screen
+Enable WhatsApp Button
+
+---
+
+# PERFORMANCE GOAL
+
+Meta Ad
+↓
+Enroll Page Opens
+↓
+Phone Number Entered
+↓
+Pay ₹39
+↓
+Razorpay Popup
+↓
+Payment Success
+↓
+Server Verification
+↓
+Lead Auto Created
+↓
+Grade Auto Assigned
+↓
+Success Screen
+↓
+WhatsApp Opens
+
+Target:
+Lead visible inside Ignite CRM within 2 seconds of payment verification.
+
+Build this in production-ready architecture with proper database migrations, APIs, validation, duplicate protection, error handling, and mobile-first UI while preserving all existing Ignite CRM functionality.

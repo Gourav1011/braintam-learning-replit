@@ -270,8 +270,16 @@ function BookingModal({ grade, onConfirm, onClose, timer: modalTimer }: {
   );
 }
 
+const WA_SUPPORT = "918492944473";
+
 // ── Success Screen ───────────────────────────────────────────
 function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
+  const cleanPhone = normalizePhone(phone);
+  const waMsg = encodeURIComponent(
+    `Hi, I have enrolled in the Braintam Ignite Program and completed my payment. Please guide me on joining the classes.\n\nPhone: ${cleanPhone}\nGrade: Grade ${grade}`
+  );
+  const waUrl = `https://wa.me/${WA_SUPPORT}?text=${waMsg}`;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
       style={{ background: "linear-gradient(135deg,#f0f4ff,#fff7f0)" }}>
@@ -286,27 +294,29 @@ function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
           <CheckCircle2 className="w-10 h-10 text-green-600" />
         </div>
         <h1 className="text-2xl font-extrabold mb-1" style={{ color: NAVY }}>Congratulations! 🎉</h1>
-        <p className="text-lg font-bold mb-4" style={{ color: ORANGE }}>Your seat is confirmed.</p>
-        <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-          Your <strong>Ignite Course — Grade {grade}</strong> enrollment is confirmed.
-          Class details will be shared on{" "}
-          <strong>+91 {normalizePhone(phone)}</strong> via WhatsApp within <strong>24 hours</strong>.
-        </p>
-        <div className="rounded-xl p-4 mb-6 text-left"
-          style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
-          <p className="text-sm font-bold mb-2" style={{ color: ORANGE }}>What happens next?</p>
-          <ul className="space-y-1.5 text-sm" style={{ color: "#92400e" }}>
-            <li>✅ Mentor will WhatsApp your class schedule</li>
-            <li>✅ Classes begin within 24–48 hours</li>
-            <li>✅ 5 live sessions, no hidden charges</li>
-            <li>✅ 100% refund if you're not satisfied</li>
-          </ul>
+        <p className="text-lg font-bold mb-3" style={{ color: ORANGE }}>Your seat for the 6-Day Ignite Program has been reserved.</p>
+        <div className="rounded-xl p-4 mb-5 text-left space-y-1.5"
+          style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+          <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Enrollment Successful</p>
+          <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Payment Received: ₹{getPrice(grade)}</p>
+          <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Demo Classes Starting Soon</p>
         </div>
-        <p className="text-xs text-gray-400">
-          Questions?{" "}
-          <a href="https://wa.me/919876543210" className="underline font-semibold" style={{ color: NAVY }}>
-            Chat with us on WhatsApp
-          </a>
+        <p className="text-gray-500 mb-5 text-sm">
+          Tap below to receive your class details and next steps.
+        </p>
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="w-full py-4 rounded-xl font-extrabold text-white text-base flex items-center justify-center gap-2 active:scale-95"
+          style={{ background: "#25D366", boxShadow: "0 8px 20px rgba(37,211,102,0.4)" }}>
+          <svg className="w-5 h-5 fill-white shrink-0" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.524 3.659 1.438 5.168L2 22l4.978-1.304A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z" opacity=".3"/>
+          </svg>
+          Get Class Details
+        </a>
+        <p className="text-xs text-gray-400 mt-4">
+          You'll receive your class schedule on WhatsApp within 24 hours.
         </p>
       </motion.div>
     </div>
@@ -316,6 +326,7 @@ function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
 // ── Main Page ────────────────────────────────────────────────
 export default function EnrollPage() {
   const [grade, setGrade]     = useState(6);
+  const [gradeFromUrl, setGradeFromUrl] = useState(false);
   const [showModal, setModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmedPhone, setConfirmedPhone] = useState("");
@@ -325,6 +336,27 @@ export default function EnrollPage() {
   const timer                 = useCountdown();
   const [seats]               = useState(() => Math.floor(Math.random() * 5) + 8);
   const enrolleeText          = useRollingText(ENROLLEES);
+
+  // UTM params from URL (Meta Ads tracking)
+  const [utms, setUtms] = useState({
+    utm_source: "", utm_campaign: "", utm_adset: "", utm_ad: "",
+  });
+
+  // Read grade + UTMs from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const g = Number(params.get("grade"));
+    if (Number.isInteger(g) && g >= 1 && g <= 10) {
+      setGrade(g);
+      setGradeFromUrl(true);
+    }
+    setUtms({
+      utm_source:   params.get("utm_source")   ?? "",
+      utm_campaign: params.get("utm_campaign") ?? "",
+      utm_adset:    params.get("utm_adset")    ?? "",
+      utm_ad:       params.get("utm_ad")       ?? "",
+    });
+  }, []);
 
   const price = getPrice(grade);
   const disc  = getDisc(grade);
@@ -337,20 +369,23 @@ export default function EnrollPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/payments/create-order`, {
+      const res = await fetch(`${API_BASE}/api/payments/create-demo-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalizePhone(phone), grade }),
+        body: JSON.stringify({
+          phone: normalizePhone(phone), grade,
+          utm_source: utms.utm_source || undefined,
+          utm_campaign: utms.utm_campaign || undefined,
+          utm_adset: utms.utm_adset || undefined,
+          utm_ad: utms.utm_ad || undefined,
+        }),
       });
       const data = await res.json() as {
         orderId?: string; amount?: number; currency?: string; keyId?: string;
-        existingAccount?: { accountType: string; name?: string };
         error?: string; message?: string;
       };
       if (!res.ok) {
-        setError(res.status === 409
-          ? (data.message ?? "Already enrolled. Please contact support.")
-          : (data.error ?? "Something went wrong. Please try again."));
+        setError(data.error ?? "Something went wrong. Please try again.");
         setLoading(false);
         return;
       }
@@ -361,7 +396,35 @@ export default function EnrollPage() {
         name: "Braintam", description: `Ignite Course — Grade ${grade}`,
         prefill: { contact: `91${normalizePhone(phone)}` },
         theme: { color: ORANGE },
-        handler() { setConfirmedPhone(phone); setSuccess(true); },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: async (response: any) => {
+          try {
+            const vRes = await fetch(`${API_BASE}/api/payments/verify-demo-payment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                phone: normalizePhone(phone), grade,
+                utm_source: utms.utm_source || undefined,
+                utm_campaign: utms.utm_campaign || undefined,
+                utm_adset: utms.utm_adset || undefined,
+                utm_ad: utms.utm_ad || undefined,
+              }),
+            });
+            const vData = await vRes.json() as { success?: boolean; error?: string };
+            if (vData.success) {
+              setConfirmedPhone(phone); setSuccess(true);
+            } else {
+              setError(vData.error ?? "Payment verification failed. Please contact support.");
+              setLoading(false);
+            }
+          } catch {
+            // Network error during verify — payment was captured; show success anyway
+            setConfirmedPhone(phone); setSuccess(true);
+          }
+        },
         modal: { ondismiss() { setLoading(false); } },
       });
       rzp.open();
@@ -369,7 +432,7 @@ export default function EnrollPage() {
       setError("Network error — please check your connection and try again.");
       setLoading(false);
     }
-  }, [grade, razorpayReady]);
+  }, [grade, razorpayReady, utms]);
 
   if (success) return <SuccessScreen grade={grade} phone={confirmedPhone} />;
 
@@ -521,8 +584,8 @@ export default function EnrollPage() {
           </div>
         </div>
 
-        {/* ── Grade Selector ── */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        {/* ── Grade Selector (hidden when grade passed via URL from ad) ── */}
+        {!gradeFromUrl && <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h2 className="font-extrabold text-base mb-1" style={{ color: NAVY }}>
             Choose Class to Boost Score (2025–26) 🔥
           </h2>
@@ -563,7 +626,7 @@ export default function EnrollPage() {
           <p className="text-xs text-center text-gray-500 mt-3 flex items-center justify-center gap-1.5">
             <span className="text-green-500">✅</span> Classes 1–8 open · Batch starts soon
           </p>
-        </div>
+        </div>}
 
         {/* ── Social Proof / Rating ── */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">

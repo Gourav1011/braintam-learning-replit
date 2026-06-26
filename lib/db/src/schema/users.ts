@@ -67,6 +67,12 @@ export const usersTable = pgTable("users", {
   organizationId: integer("organization_id"),
   phoneVerified: boolean("phone_verified").notNull().default(false),
   department: text("department"),
+  // Website enrollment / Meta Ads tracking
+  isWebsiteLead: boolean("is_website_lead").notNull().default(false),
+  utmSource: text("utm_source"),
+  utmCampaign: text("utm_campaign"),
+  utmAdset: text("utm_adset"),
+  utmAd: text("utm_ad"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

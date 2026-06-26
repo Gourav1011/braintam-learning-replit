@@ -8,6 +8,7 @@ import {
   enrolmentErrorsTable,
   ignitePaidStudentsTable,
   paymentLinksTable,
+  studentTimelineTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
@@ -395,6 +396,297 @@ router.post("/payments/webhook", async (req, res) => {
 
   // Always 200 — Razorpay must not retry
   res.sendStatus(200);
+});
+
+// ── POST /api/payments/create-demo-order ─────────────────────
+// Phase 5A: Meta Ads → Website Enrollment flow.
+// Accepts phone, grade + optional UTM params. Creates Razorpay order and stores UTMs.
+router.post("/payments/create-demo-order", async (req, res) => {
+  const {
+    phone: rawPhone, grade: rawGrade,
+    utm_source, utm_campaign, utm_adset, utm_ad,
+  } = req.body as {
+    phone?: string; grade?: unknown;
+    utm_source?: string; utm_campaign?: string; utm_adset?: string; utm_ad?: string;
+  };
+
+  const phone = normalizePhone(String(rawPhone ?? ""));
+  if (!phone) {
+    res.status(400).json({ error: "Invalid mobile number. Enter a 10-digit Indian mobile number." });
+    return;
+  }
+  const grade = Number(rawGrade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Grade must be between 1 and 10." });
+    return;
+  }
+
+  const amountPaise = getDemoAmountPaise(grade);
+
+  let razorpay: Razorpay;
+  try {
+    razorpay = getRazorpay();
+  } catch {
+    res.status(503).json({ error: "Payment service is not configured. Please try again later." });
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let order: any;
+  try {
+    order = await razorpay.orders.create({
+      amount: amountPaise,
+      currency: "INR",
+      receipt: `btl_meta_${Date.now()}`,
+      notes: {
+        phone, grade: String(grade),
+        utm_source: utm_source ?? "",
+        utm_campaign: utm_campaign ?? "",
+      },
+    });
+  } catch (err: unknown) {
+    req.log.error({ err }, "RAZORPAY CREATE DEMO ORDER ERROR");
+    res.status(502).json({ error: "Failed to create payment order. Please try again." });
+    return;
+  }
+
+  await db.insert(paymentsTable).values({
+    phone,
+    grade,
+    razorpayOrderId: order.id,
+    amount: amountPaise,
+    currency: "INR",
+    paymentType: "demo_enrollment",
+    status: "created",
+    utmSource: utm_source ?? null,
+    utmCampaign: utm_campaign ?? null,
+    utmAdset: utm_adset ?? null,
+    utmAd: utm_ad ?? null,
+  });
+
+  res.json({
+    orderId: order.id,
+    amount: amountPaise,
+    currency: "INR",
+    keyId: process.env.RAZORPAY_KEY_ID,
+  });
+});
+
+// ── POST /api/payments/verify-demo-payment ────────────────────
+// Phase 5A: verify Razorpay HMAC after payment success, then create/update Ignite CRM lead.
+router.post("/payments/verify-demo-payment", async (req, res) => {
+  const {
+    razorpay_order_id, razorpay_payment_id, razorpay_signature,
+    phone: rawPhone, grade: rawGrade,
+    utm_source, utm_campaign, utm_adset, utm_ad,
+  } = req.body as {
+    razorpay_order_id?: string; razorpay_payment_id?: string; razorpay_signature?: string;
+    phone?: string; grade?: unknown;
+    utm_source?: string; utm_campaign?: string; utm_adset?: string; utm_ad?: string;
+  };
+
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    res.status(400).json({ error: "Missing Razorpay payment fields." });
+    return;
+  }
+
+  const phone = normalizePhone(String(rawPhone ?? ""));
+  if (!phone) {
+    res.status(400).json({ error: "Invalid mobile number." });
+    return;
+  }
+  const grade = Number(rawGrade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Grade must be between 1 and 10." });
+    return;
+  }
+
+  // ── 1. Verify HMAC signature ──────────────────────────────
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    res.status(503).json({ error: "Payment service misconfigured." });
+    return;
+  }
+
+  const expectedSig = crypto
+    .createHmac("sha256", keySecret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+
+  if (expectedSig !== razorpay_signature) {
+    await logEnrolmentError({
+      errorType: "verify_signature_mismatch",
+      errorMessage: "HMAC signature mismatch on verify-demo-payment",
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+    });
+    res.status(400).json({ error: "Payment verification failed. Please contact support." });
+    return;
+  }
+
+  // ── 2. Idempotency: skip if payment already fully processed ──
+  const [existingPayment] = await db
+    .select({ id: paymentsTable.id, status: paymentsTable.status })
+    .from(paymentsTable)
+    .where(eq(paymentsTable.razorpayOrderId, razorpay_order_id))
+    .limit(1);
+
+  if (existingPayment?.status === "captured") {
+    const [existIgnite] = await db
+      .select({ id: ignitePaidStudentsTable.id, studentId: ignitePaidStudentsTable.studentId })
+      .from(ignitePaidStudentsTable)
+      .where(eq(ignitePaidStudentsTable.paymentId, existingPayment.id))
+      .limit(1);
+    if (existIgnite) {
+      res.json({ success: true, leadId: existIgnite.studentId, paymentId: razorpay_payment_id, grade });
+      return;
+    }
+  }
+
+  // ── 3. Find or create user (demo_student) ────────────────
+  let studentId: number;
+  try {
+    // Check for existing user by phone
+    const [existingUser] = await db
+      .select({ id: usersTable.id, accountType: usersTable.accountType })
+      .from(usersTable)
+      .where(eq(usersTable.phone, phone))
+      .limit(1);
+
+    if (existingUser) {
+      studentId = existingUser.id;
+      // Update existing user with latest payment + website lead info
+      await db
+        .update(usersTable)
+        .set({
+          accountType: existingUser.accountType === "paid_student" ? "paid_student" : "demo_student",
+          leadStage: "Demo Paid",
+          leadSource: "Meta Ads",
+          isWebsiteLead: true,
+          utmSource: utm_source ?? undefined,
+          utmCampaign: utm_campaign ?? undefined,
+          utmAdset: utm_adset ?? undefined,
+          utmAd: utm_ad ?? undefined,
+          phoneVerified: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, studentId));
+    } else {
+      // Create new demo_student lead
+      const [inserted] = await db
+        .insert(usersTable)
+        .values({
+          name: `Student (Grade ${grade})`,
+          phone,
+          grade,
+          role: "student",
+          accountType: "demo_student",
+          leadStage: "Demo Paid",
+          leadSource: "Meta Ads",
+          isWebsiteLead: true,
+          utmSource: utm_source ?? null,
+          utmCampaign: utm_campaign ?? null,
+          utmAdset: utm_adset ?? null,
+          utmAd: utm_ad ?? null,
+          phoneVerified: true,
+          points: 0,
+          streakDays: 0,
+        })
+        .returning({ id: usersTable.id });
+
+      if (!inserted) throw new Error("Failed to create user");
+      studentId = inserted.id;
+    }
+  } catch (err: unknown) {
+    await logEnrolmentError({
+      errorType: "verify_user_create_fail",
+      errorMessage: err instanceof Error ? err.message : "Unknown error creating user",
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+    });
+    res.status(500).json({ error: "Failed to create lead. Please contact support." });
+    return;
+  }
+
+  // ── 4. Upsert payment row (mark captured) ───────────────
+  const paymentId = existingPayment?.id ?? null;
+  let paymentRowId: number;
+
+  if (paymentId) {
+    await db
+      .update(paymentsTable)
+      .set({
+        status: "captured",
+        webhookVerified: true,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature,
+        studentId,
+        utmSource: utm_source ?? undefined,
+        utmCampaign: utm_campaign ?? undefined,
+        utmAdset: utm_adset ?? undefined,
+        utmAd: utm_ad ?? undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentsTable.razorpayOrderId, razorpay_order_id));
+    paymentRowId = paymentId;
+  } else {
+    // Payment row missing (edge case) — create one now
+    const amountPaise = getDemoAmountPaise(grade);
+    const [newPayment] = await db
+      .insert(paymentsTable)
+      .values({
+        phone,
+        grade,
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature,
+        amount: amountPaise,
+        currency: "INR",
+        paymentType: "demo_enrollment",
+        status: "captured",
+        webhookVerified: true,
+        studentId,
+        utmSource: utm_source ?? null,
+        utmCampaign: utm_campaign ?? null,
+        utmAdset: utm_adset ?? null,
+        utmAd: utm_ad ?? null,
+      })
+      .returning({ id: paymentsTable.id });
+    paymentRowId = newPayment.id;
+  }
+
+  // ── 5. Create ignite paid student record ─────────────────
+  const amountPaise = getDemoAmountPaise(grade);
+  await db
+    .insert(ignitePaidStudentsTable)
+    .values({
+      studentId,
+      paymentId: paymentRowId,
+      grade,
+      phone,
+      amountPaise,
+      paidAt: new Date(),
+      assignmentStatus: "unassigned",
+      courseType: "ignite",
+      leadSource: "Meta Ads",
+    })
+    .onConflictDoNothing();
+
+  // ── 6. Add timeline entry ─────────────────────────────────
+  try {
+    await db.insert(studentTimelineTable).values({
+      studentId,
+      createdByName: "System",
+      createdByRole: "system",
+      noteType: "payment",
+      remark: `Website Enrollment Completed — Platform: Meta Ads — Payment: Successful — Grade: Grade ${grade} — Order: ${razorpay_order_id}`,
+      actionTaken: "Lead auto-created via website enrollment",
+    });
+  } catch {
+    // Timeline failure is non-fatal
+  }
+
+  res.json({ success: true, leadId: studentId, paymentId: razorpay_payment_id, grade });
 });
 
 // ── POST /api/payments/create-full-order ─────────────────────

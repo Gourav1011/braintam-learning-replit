@@ -177,6 +177,11 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
       isActive: usersTable.isActive,
       disabledAt: usersTable.disabledAt,
       disabledReason: usersTable.disabledReason,
+      isWebsiteLead: usersTable.isWebsiteLead,
+      utmSource: usersTable.utmSource,
+      utmCampaign: usersTable.utmCampaign,
+      utmAdset: usersTable.utmAdset,
+      utmAd: usersTable.utmAd,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)

@@ -712,6 +712,9 @@ interface LeadRow {
   notesCount: number; createdAt: string;
   lostReason: string | null; lostAt: string | null;
   isActive: boolean; disabledAt: string | null; disabledReason: string | null;
+  isWebsiteLead: boolean;
+  utmSource: string | null; utmCampaign: string | null;
+  utmAdset: string | null; utmAd: string | null;
 }
 
 const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -824,7 +827,7 @@ function AddLeadModal({ onClose, onSuccess, flash }: {
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Lead Source</label>
             <select value={form.leadSource} onChange={(e) => set("leadSource", e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none">
-              {["Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
+              {["Meta Ads","Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>
@@ -1531,7 +1534,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [gradeF, setGradeF] = useState("All Grades");
   const [sourceF, setSourceF] = useState("All Sources");
   const [mentorF, setMentorF] = useState("All Mentors");
-  const [viewMode, setViewMode] = useState<"all" | "pending" | "old" | "lost" | "converted" | "disabled">("all");
+  const [viewMode, setViewMode] = useState<"all" | "pending" | "old" | "lost" | "converted" | "disabled" | "website">("all");
   const [page, setPage] = useState(1);
   const [showAddLead, setShowAddLead] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -1584,6 +1587,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
     else if (viewMode === "converted") { if (l.leadStage !== "Converted") return false; }
     else if (viewMode === "disabled")  { if (l.isActive !== false) return false; }
     else if (viewMode === "pending")   { if (!isPending(l)) return false; }
+    else if (viewMode === "website")   { if (!l.isWebsiteLead) return false; }
     else { if (l.leadStage === "Lost" || !l.isActive) return false; }
 
     const q = search.toLowerCase();
@@ -1672,12 +1676,13 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       <div className="flex items-center gap-1.5 flex-wrap">
         {([
           { key: "all",       label: "All Leads",          count: leads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
+          { key: "website",   label: "Website Leads",       count: leads.filter(l => l.isWebsiteLead).length, color: "#0891B2", bg: "#E0F2FE" },
           { key: "pending",   label: "Pending Deployment",  count: pendingCount,   color: "#D97706",  bg: "#FEF3C7" },
           { key: "old",       label: "Old Leads",           count: oldCount,       color: "#7C3AED",  bg: "#EDE9FE" },
           { key: "lost",      label: "Lost Leads",          count: lostCount,      color: "#DC2626",  bg: "#FEE2E2" },
           { key: "converted", label: "Converted Leads",     count: convertedCount, color: "#15803D",  bg: "#DCFCE7" },
           { key: "disabled",  label: "Disabled Leads",      count: disabledCount,  color: "#6B7280",  bg: "#F3F4F6" },
-        ] as { key: "all"|"pending"|"converted"|"old"|"lost"|"disabled"; label: string; count: number; color: string; bg: string }[]).map((v) => (
+        ] as { key: "all"|"pending"|"converted"|"old"|"lost"|"disabled"|"website"; label: string; count: number; color: string; bg: string }[]).map((v) => (
           <button key={v.key} onClick={() => { setViewMode(v.key); setPage(1); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
             style={viewMode === v.key
@@ -1696,7 +1701,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-xs text-gray-500 font-semibold">
           <span style={{ color: NAVY }} className="font-black">{filtered.length}</span> leads
-          <span className="ml-1">{{ all: "in pipeline", pending: "awaiting assignment", converted: "converted", old: "inactive 30+ days", lost: "marked lost", disabled: "disabled" }[viewMode]}</span>
+          <span className="ml-1">{{ all: "in pipeline", pending: "awaiting assignment", converted: "converted", old: "inactive 30+ days", lost: "marked lost", disabled: "disabled", website: "from website / Meta Ads" }[viewMode]}</span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <button onClick={exportCSV}
@@ -1765,7 +1770,7 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
         <select value={sourceF} onChange={(e) => { setSourceF(e.target.value); setPage(1); }}
           className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none">
           <option>All Sources</option>
-          {["Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
+          {["Meta Ads","Website","Instagram","Facebook","Google Ads","WhatsApp Campaign","Referral","Competition","Manual","Import"].map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
@@ -1848,8 +1853,20 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
                           style={{ background: NAVY }}>{(l.name?.[0] ?? "?").toUpperCase()}</div>
                         <div>
-                          <div className="font-semibold text-gray-800 text-xs whitespace-nowrap">{l.name}</div>
-                          <div className="text-gray-400 text-[10px] whitespace-nowrap">{l.parentName ?? "–"}</div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-gray-800 text-xs whitespace-nowrap">{l.name}</span>
+                            {l.isWebsiteLead && (
+                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap"
+                                style={{ background: "#E0F2FE", color: "#0891B2" }}>
+                                🌐 Website Lead
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-gray-400 text-[10px] whitespace-nowrap">
+                            {l.isWebsiteLead && l.utmCampaign
+                              ? `Meta Ads · ${l.utmCampaign}`
+                              : (l.parentName ?? "–")}
+                          </div>
                         </div>
                       </div>
                     </td>
