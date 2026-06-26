@@ -456,18 +456,29 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
     setGenerating(false);
   }
 
+  function buildMessage(link: string) {
+    if (mode === "partial") {
+      return `Hi,\n\nYou can complete your payment by clicking the link below.\n\n${link}\n\nRegards,\nBraintam Learning`;
+    }
+    return `Hi,\n\nCongratulations! 🎉\n\nYou can complete your child's enrollment by clicking the link below.\n\n${link}\n\nRegards,\nBraintam Learning`;
+  }
+
   function copyLink() {
     if (!generatedLink) return;
     navigator.clipboard.writeText(generatedLink).catch(() => {});
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
 
+  const [copiedMsg, setCopiedMsg] = useState(false);
+  function copyMessage() {
+    if (!generatedLink) return;
+    navigator.clipboard.writeText(buildMessage(generatedLink ?? "")).catch(() => {});
+    setCopiedMsg(true); setTimeout(() => setCopiedMsg(false), 2000);
+  }
+
   function whatsappParent() {
     const ph = parentPhone ?? (lead.parentPhone ?? lead.phone ?? "").replace(/\D/g, "");
-    const msg = encodeURIComponent(
-      `Hi,\n\nCongratulations! 🎉\n\nYou can complete your child's enrollment by clicking the link below.\n\n${generatedLink}\n\nRegards,\nBraintam Learning`
-    );
-    window.open(`https://wa.me/91${ph}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/91${ph}?text=${encodeURIComponent(buildMessage(generatedLink ?? ""))}`, "_blank");
   }
 
   if (generatedLink) {
@@ -479,40 +490,53 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
             <div className="font-black text-sm" style={{ color: NAVY }}>Payment Link Generated</div>
             <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
           </div>
-          <div className="p-5 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: "#DCFCE7" }}>
-              <Check className="w-7 h-7" style={{ color: GREEN }} />
+          <div className="p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#DCFCE7" }}>
+                <Check className="w-5 h-5" style={{ color: GREEN }} />
+              </div>
+              <div>
+                <div className="font-black text-sm" style={{ color: NAVY }}>Link Generated!</div>
+                {generatedAmount && <div className="text-xs text-gray-500">Amount: ₹{generatedAmount.toLocaleString("en-IN")}</div>}
+              </div>
             </div>
-            {generatedAmount && (
-              <div className="font-black text-lg" style={{ color: NAVY }}>₹{generatedAmount.toLocaleString("en-IN")}</div>
-            )}
-            <div className="flex items-center gap-2 p-3 rounded-xl border border-gray-200 bg-gray-50 text-left">
-              <span className="text-[11px] text-blue-600 font-semibold flex-1 truncate">{generatedLink}</span>
-              <button onClick={copyLink}
-                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
-                style={{ background: copied ? "#DCFCE7" : `${NAVY}15`, color: copied ? GREEN : NAVY }}>
-                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                {copied ? "Copied" : "Copy"}
-              </button>
+
+            {/* Message preview */}
+            <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-3 py-2 flex items-center justify-between" style={{ background: "#F8FAFC" }}>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">WhatsApp Message</span>
+                <button onClick={copyMessage}
+                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
+                  style={{ background: copiedMsg ? "#DCFCE7" : `${NAVY}12`, color: copiedMsg ? GREEN : NAVY }}>
+                  {copiedMsg ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  {copiedMsg ? "Copied!" : "Copy Message"}
+                </button>
+              </div>
+              <div className="px-3 py-3 text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap bg-white" style={{ fontFamily: "monospace" }}>
+                {buildMessage(generatedLink)}
+              </div>
             </div>
+
             {expiryDate && (
-              <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: "#FFF7ED", color: ORANGE }}>
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: "#FFF7ED", color: ORANGE }}>
                 ⏰ Expires {fmtExpiry(expiryDate, expiryTime)}
               </div>
             )}
+
             <div className="grid grid-cols-2 gap-2">
               <button onClick={copyLink}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold"
-                style={{ background: `${NAVY}12`, color: NAVY }}>
-                <Copy className="w-3.5 h-3.5" /> Copy Link
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border-2 transition-all"
+                style={{ borderColor: copied ? GREEN : "#E5E7EB", color: copied ? GREEN : NAVY, background: copied ? "#DCFCE7" : "white" }}>
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Link Copied" : "Copy Link"}
               </button>
               <button onClick={whatsappParent}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white"
-                style={{ background: "#25D366" }}>
-                <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black text-white transition-all hover:shadow-md active:scale-95"
+                style={{ background: "linear-gradient(135deg,#25D366,#128C7E)", boxShadow: "0 2px 8px #25D36644" }}>
+                <MessageSquare className="w-3.5 h-3.5" /> Send on WhatsApp
               </button>
             </div>
-            <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-600">Close</button>
+            <button onClick={onClose} className="w-full text-xs text-gray-400 hover:text-gray-600 py-1">Close</button>
           </div>
         </div>
       </div>
@@ -1383,7 +1407,7 @@ function PaymentStatusView() {
                             </button>
                           )}
                           {(row.shortUrl ?? row.razorpayLinkUrl) && (
-                            <a href={`https://wa.me/91${(row.studentPhone ?? "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi,\n\nCongratulations! 🎉\n\nYou can complete your child's enrollment by clicking the link below.\n\n${row.shortUrl ?? row.razorpayLinkUrl}\n\nRegards,\nBraintam Learning`)}`}
+                            <a href={`https://wa.me/91${(row.studentPhone ?? "").replace(/\D/g, "")}?text=${encodeURIComponent(row.paymentType === "partial" ? `Hi,\n\nYou can complete your payment by clicking the link below.\n\n${row.shortUrl ?? row.razorpayLinkUrl}\n\nRegards,\nBraintam Learning` : `Hi,\n\nCongratulations! 🎉\n\nYou can complete your child's enrollment by clicking the link below.\n\n${row.shortUrl ?? row.razorpayLinkUrl}\n\nRegards,\nBraintam Learning`)}`}
                               target="_blank" rel="noopener noreferrer"
                               className="w-7 h-7 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-green-50 transition-colors" title="WhatsApp">
                               <MessageSquare className="w-3 h-3" style={{ color: "#25D366" }} />
