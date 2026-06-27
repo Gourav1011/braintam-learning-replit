@@ -1,0 +1,316 @@
+BRAINTAM CRM – COMPLETE PRODUCT REVIEW, CLEANUP & UX AUDIT
+
+IMPORTANT:
+Do NOT build any new features in this task.
+
+This is a complete product review, audit, cleanup, and polish task.
+
+Review everything we built yesterday and today, including:
+
+Ignite CRM
+Mastery CRM
+Mentor Portal
+Admin Portal
+Leaderboards
+Payments
+Notifications
+Lead Deployment
+Reports
+Analytics
+Retention Foundations
+Student Portal
+Communication Features
+Performance Tracking
+Historical Data
+
+────────────────────────
+PHASE 1 – COMPLETE SYSTEM AUDIT
+────────────────────────
+
+Review every:
+
+Page
+Route
+Card
+Table
+Sidebar Item
+Dropdown
+Button
+Modal
+Form
+Filter
+Notification
+Leaderboard
+Dashboard
+
+Verify:
+
+All features work correctly
+No broken buttons
+No dead links
+No duplicate functionality
+No duplicate tabs
+No duplicate notifications
+No duplicate dropdown options
+No duplicate filters
+No duplicate cards
+No incorrect calculations
+No broken APIs
+No missing data
+No console errors
+No layout issues
+No overflow issues
+No mobile issues
+
+Fix anything found.
+
+────────────────────────
+PHASE 2 – FEATURE VALIDATION
+────────────────────────
+
+Compare implementation against business requirements discussed and built.
+
+Verify:
+
+Ignite Lead Creation
+Website Leads
+Meta Lead Attribution
+Lead Deployment
+Mentor Assignment
+Leaderboards
+Successful Payment Counting
+Non-Active Leads
+Daily Call Reset
+Notifications
+Historical Tracking
+Payment Verification
+Course Auto Assignment
+Exports
+Reports
+Performance Rankings
+
+Make sure:
+
+Everything behaves exactly as planned.
+
+Remove anything unnecessary.
+
+────────────────────────
+PHASE 3 – REMOVE NONSENSE FEATURES
+────────────────────────
+
+Remove:
+
+Unused dropdowns
+Unused tabs
+Unused filters
+Unused cards
+Unused buttons
+Unused statistics
+Duplicate menus
+Redundant options
+Temporary testing components
+Developer placeholders
+Unused sections
+
+The CRM should feel:
+
+Minimal
+Professional
+Purpose-driven
+
+Every option should have a clear business purpose.
+
+If something does not help operations:
+
+Remove it.
+
+────────────────────────
+PHASE 4 – DASHBOARD CLEANUP
+────────────────────────
+
+Review every dashboard.
+
+Cards should not be oversized.
+
+Avoid large empty boxes.
+
+If information does not justify a card:
+
+Convert to:
+
+Simple list
+Simple grid
+Compact stats row
+Inline text summary
+Small chips
+Badges
+
+Reduce unnecessary vertical scrolling.
+
+The dashboard should fit naturally on screen.
+
+────────────────────────
+PHASE 5 – RESPONSIVE LAYOUT REVIEW
+────────────────────────
+
+Review:
+
+Desktop
+Laptop
+Tablet
+Mobile
+
+Ensure:
+
+No cards overflow
+No tables break
+No text truncation
+No overlapping elements
+No excessive whitespace
+No giant empty sections
+
+If a component becomes too large:
+
+Convert:
+
+Cards → Grid
+Cards → Table
+Cards → List
+Charts → Compact summaries
+
+Optimize screen utilization.
+
+────────────────────────
+PHASE 6 – DESIGN CONSISTENCY
+────────────────────────
+
+Ensure all pages use:
+
+Same card radius
+Same shadows
+Same spacing
+Same paddings
+Same typography
+Same icon sizing
+Same button styles
+Same table styles
+Same badge styles
+Same empty states
+Same loading states
+
+No page should feel different.
+
+Everything should feel like one product.
+
+────────────────────────
+PHASE 7 – SIDEBAR CLEANUP
+────────────────────────
+
+Review every portal:
+
+Admin
+Ignite
+Mentor
+Teacher
+Student
+
+Verify:
+
+No duplicate menu items
+No confusing names
+No unnecessary sections
+No hidden dead pages
+
+Group menus logically.
+
+Remove clutter.
+
+────────────────────────
+PHASE 8 – PERFORMANCE REVIEW
+────────────────────────
+
+Review:
+
+API requests
+Queries
+Loading states
+Rerenders
+Large tables
+Charts
+Notifications
+
+Remove:
+
+Unnecessary API calls
+Duplicate fetches
+Unused state
+Unused hooks
+Unused components
+
+Ensure:
+
+Fast loading
+Smooth navigation
+Responsive interactions
+
+────────────────────────
+PHASE 9 – HISTORICAL DATA REVIEW
+────────────────────────
+
+Verify all history systems.
+
+Ensure:
+
+Nothing gets deleted automatically.
+Nothing gets overwritten.
+Snapshots remain permanent.
+Ex-employees retain historical data.
+Exports work correctly.
+Weekly and monthly reports remain accessible.
+
+────────────────────────
+PHASE 10 – FINAL PRODUCT CHECKLIST
+────────────────────────
+
+Generate an internal audit report containing:
+
+✔ Working Features
+✔ Fixed Issues
+✔ Removed Redundant Features
+✔ UI Improvements
+✔ Performance Improvements
+✔ Remaining Issues
+✔ Recommendations
+
+For every recommendation:
+
+Explain:
+
+Why it should stay
+Why it should be removed
+Why it should be simplified
+
+Do not add new features.
+
+Focus entirely on:
+
+Cleanup
+Consistency
+Performance
+Minimalism
+Professional appearance
+Operational usefulness
+
+Final goal:
+
+The CRM should feel clean, premium, and production-ready.
+
+Every button, tab, filter, card, and screen should exist only if it genuinely helps Braintam operations.
+No clutter.
+No duplicate functionality.
+No oversized components.
+No unnecessary scrolling.
+No dead features.
+No placeholder elements.
+Everything should fit naturally on screen and feel like a polished commercial CRM.
