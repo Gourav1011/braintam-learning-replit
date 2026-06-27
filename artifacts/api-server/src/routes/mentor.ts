@@ -1325,14 +1325,21 @@ router.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) => {
 // ── GET /mentor/sales/leaderboard ─────────────────────────────────────────────
 // Deployment-cycle-scoped conversion leaderboard.
 // Scopes to the current active cycle's assignments; falls back to all-time.
-router.get("/mentor/sales/leaderboard", mentorAuth, async (_req, res) => {
-  // 1. Find active deployment cycle
+router.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
+  const gradeFilter = req.query.grade ? Number(req.query.grade) : null;
+
+  // 1. Active cycle is REQUIRED — no all-time fallback
   const [activeCycle] = await db
     .select()
     .from(mentorDeploymentCyclesTable)
     .where(eq(mentorDeploymentCyclesTable.status, "active"))
     .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
     .limit(1);
+
+  if (!activeCycle) {
+    res.json({ cycle: null, leaderboard: [] });
+    return;
+  }
 
   // 2. All active sales mentors
   const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
@@ -1345,46 +1352,38 @@ router.get("/mentor/sales/leaderboard", mentorAuth, async (_req, res) => {
     ));
 
   if (mentors.length === 0) {
-    res.json({ cycle: activeCycle ?? null, leaderboard: [] });
+    res.json({ cycle: { id: activeCycle.id, weekLabel: activeCycle.weekLabel, startDate: activeCycle.startDate }, leaderboard: [] });
     return;
   }
 
   const mentorIds = mentors.map(m => m.id);
 
-  // 3. Assignments scoped to the active cycle (or all if no cycle)
-  const assignmentWhere = activeCycle
-    ? and(
-        inArray(mentorStudentAssignmentsTable.mentorId, mentorIds),
-        eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
-      )
-    : and(
-        inArray(mentorStudentAssignmentsTable.mentorId, mentorIds),
-        eq(mentorStudentAssignmentsTable.isActive, true),
-      );
+  // 3. Assignments in this cycle only, optionally filtered by student grade
+  const assignments = await db
+    .select({
+      mentorId: mentorStudentAssignmentsTable.mentorId,
+      studentId: mentorStudentAssignmentsTable.studentId,
+      leadStage: usersTable.leadStage,
+    })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(usersTable, eq(mentorStudentAssignmentsTable.studentId, usersTable.id))
+    .where(and(
+      inArray(mentorStudentAssignmentsTable.mentorId, mentorIds),
+      eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+      ...(gradeFilter ? [eq(usersTable.grade, gradeFilter)] : []),
+    ));
 
-  const assignments = await db.select({
-    mentorId: mentorStudentAssignmentsTable.mentorId,
-    studentId: mentorStudentAssignmentsTable.studentId,
-  }).from(mentorStudentAssignmentsTable).where(assignmentWhere);
-
-  const mentorStudentMap: Record<number, number[]> = {};
+  const mentorStudentMap: Record<number, { leadStage: string | null }[]> = {};
   for (const a of assignments) {
     if (!mentorStudentMap[a.mentorId]) mentorStudentMap[a.mentorId] = [];
-    mentorStudentMap[a.mentorId].push(a.studentId);
+    mentorStudentMap[a.mentorId].push({ leadStage: a.leadStage });
   }
-
-  const allStudentIds = assignments.map(a => a.studentId);
-  const stageRows = allStudentIds.length > 0
-    ? await db.select({ id: usersTable.id, leadStage: usersTable.leadStage })
-        .from(usersTable).where(inArray(usersTable.id, allStudentIds))
-    : [];
-  const stageMap = Object.fromEntries(stageRows.map(s => [s.id, s.leadStage]));
 
   const results = mentors
     .map(m => {
-      const sIds = mentorStudentMap[m.id] ?? [];
-      const assigned = sIds.length;
-      const converted = sIds.filter(id => stageMap[id] === "Converted").length;
+      const rows = mentorStudentMap[m.id] ?? [];
+      const assigned = rows.length;
+      const converted = rows.filter(r => r.leadStage === "Converted").length;
       const convPct = assigned > 0 ? Math.round((converted / assigned) * 100 * 10) / 10 : 0;
       return { mentorId: m.id, mentorName: m.name ?? "—", assigned, converted, convPct };
     })
@@ -1392,9 +1391,7 @@ router.get("/mentor/sales/leaderboard", mentorAuth, async (_req, res) => {
     .sort((a, b) => b.convPct - a.convPct || b.converted - a.converted);
 
   res.json({
-    cycle: activeCycle
-      ? { id: activeCycle.id, weekLabel: activeCycle.weekLabel, startDate: activeCycle.startDate }
-      : null,
+    cycle: { id: activeCycle.id, weekLabel: activeCycle.weekLabel, startDate: activeCycle.startDate },
     leaderboard: results.map((r, i) => ({ ...r, rank: i + 1 })),
   });
 });

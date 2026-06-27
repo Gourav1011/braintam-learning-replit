@@ -414,7 +414,7 @@ router.get("/mentor/notifications", mentorAuth, async (req, res) => {
       leadCount: count(mentorStudentAssignmentsTable.id),
     })
     .from(mentorStudentAssignmentsTable)
-    .where(eq(mentorStudentAssignmentsTable.assignedMentorId, mentorId))
+    .where(eq(mentorStudentAssignmentsTable.mentorId, mentorId))
     .groupBy(mentorStudentAssignmentsTable.deploymentCycleId);
 
   // Fetch cycle details for each cycle
