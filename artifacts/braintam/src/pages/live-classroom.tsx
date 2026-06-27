@@ -247,12 +247,14 @@ export default function LiveClassroom() {
   const sessionId = params.sessionId ?? "demo";
   const search = new URLSearchParams(window.location.search);
 
-  const role     = (search.get("role") ?? "student").toLowerCase();
-  const name     = search.get("name") ?? "Student";
-  const userId   = search.get("userId") ?? `u-${name.toLowerCase().replace(/\s+/g, "-")}`;
-  const groupId  = search.get("groupId") ?? "";
-  const phone    = search.get("phone") ?? "";
-  const title    = search.get("title") ?? `Live Class · ${sessionId}`;
+  const role          = (search.get("role") ?? "student").toLowerCase();
+  const name          = search.get("name") ?? "Student";
+  const userId        = search.get("userId") ?? `u-${name.toLowerCase().replace(/\s+/g, "-")}`;
+  const groupId       = search.get("groupId") ?? "";
+  const phone         = search.get("phone") ?? "";
+  const title         = search.get("title") ?? `Live Class · ${sessionId}`;
+  const meetLink      = search.get("meetLink") ?? "";      // Sprint 2 — Join Meet button
+  const recordingUrl  = search.get("recordingUrl") ?? "";  // Sprint 2 — View Recording button
 
   const { socket, connected } = useClassroomSocket(sessionId, userId, name, role, groupId, phone);
   const isStaff  = role === "teacher" || role === "admin";
@@ -307,10 +309,12 @@ export default function LiveClassroom() {
     }
   }, [cameraOn]);
 
-  // ── Poll form ──────────────────────────────────────────────
+  // ── Poll form (Sprint 1 — includes correct answer) ────────
   const [showPollForm, setShowPollForm] = useState(false);
   const [pollQ, setPollQ] = useState("");
   const [pollOpts, setPollOpts] = useState(["", "", "", ""]);
+  const [pollCorrectIdx, setPollCorrectIdx] = useState<number | null>(null); // index into pollOpts
+  const [myPollCorrect, setMyPollCorrect] = useState<boolean | null>(null);  // feedback after submit
 
   // ── Sidebar ────────────────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -358,7 +362,7 @@ export default function LiveClassroom() {
     socket.on("pollStarted", (poll: Poll) => {
       setActivePoll(poll); setMyPollAnswer(null); setPollCounts({}); setPollTotal(0); setPanelMode("poll");
     });
-    socket.on("pollEnded", () => { setActivePoll(null); setMyPollAnswer(null); setPanelMode("chat"); });
+    socket.on("pollEnded", () => { setActivePoll(null); setMyPollAnswer(null); setMyPollCorrect(null); setPanelMode("chat"); });
     socket.on("pollUpdate", ({ counts, total }: { counts: Record<string, number>; total: number }) => {
       setPollCounts(counts); setPollTotal(total);
     });
@@ -390,7 +394,10 @@ export default function LiveClassroom() {
       if (!enabled) { setMyHandRaised(false); setRaisedHands([]); }
     });
 
-    socket.on("pollSubmitted", ({ optionId }: { optionId: string }) => setMyPollAnswer(optionId));
+    socket.on("pollSubmitted", ({ optionId, isCorrect }: { optionId: string; isCorrect: boolean }) => {
+      setMyPollAnswer(optionId);
+      setMyPollCorrect(isCorrect);
+    });
 
     return () => {
       socket.off("roomState"); socket.off("chat:message");
@@ -417,8 +424,12 @@ export default function LiveClassroom() {
     if (!socket) return;
     const opts = pollOpts.filter(o => o.trim());
     if (!pollQ.trim() || opts.length < 2) { alert("Add a question and at least 2 options"); return; }
-    socket.emit("startPoll", { question: pollQ, options: opts });
-    setShowPollForm(false); setPollQ(""); setPollOpts(["", "", "", ""]);
+    // correctOptionId is the letter (A, B, C…) of the correct option
+    const correctOptionId = pollCorrectIdx !== null
+      ? String.fromCharCode(65 + pollCorrectIdx)
+      : undefined;
+    socket.emit("startPoll", { question: pollQ, options: opts, correctOptionId });
+    setShowPollForm(false); setPollQ(""); setPollOpts(["", "", "", ""]); setPollCorrectIdx(null);
   };
 
   const toggleHand = () => {
@@ -461,6 +472,21 @@ export default function LiveClassroom() {
             <span className="text-[10px] text-gray-500">
               {Array.from(registry.values()).filter(r => r.status === "BACKSTAGE").length} backstage
             </span>
+          )}
+          {/* Sprint 2 — Meet + Recording quick-access */}
+          {meetLink && (
+            <a href={meetLink} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#1A73E8" }}>
+              📹 Join Meet
+            </a>
+          )}
+          {recordingUrl && (
+            <a href={recordingUrl} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#7C3AED" }}>
+              🎬 Recording
+            </a>
           )}
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isStaff ? "bg-blue-900/60 text-blue-300" : isMentor ? "bg-purple-900/60 text-purple-300" : "bg-gray-800 text-gray-400"}`}>
             {isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"} · {name}
@@ -655,14 +681,32 @@ export default function LiveClassroom() {
                   <div className="space-y-2">
                     <input className="w-full bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border border-gray-700 outline-none placeholder-gray-600"
                       placeholder="Question…" value={pollQ} onChange={e => setPollQ(e.target.value)} />
-                    {pollOpts.map((opt, i) => (
-                      <input key={i} className="w-full bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border border-gray-700 outline-none placeholder-gray-600"
-                        placeholder={`Option ${String.fromCharCode(65 + i)}`} value={opt}
-                        onChange={e => { const n = [...pollOpts]; n[i] = e.target.value; setPollOpts(n); }} />
-                    ))}
+                    {/* Sprint 1 — options with correct-answer radio */}
+                    <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide">Options · tap ✓ to mark correct</p>
+                    {pollOpts.map((opt, i) => {
+                      const letter = String.fromCharCode(65 + i);
+                      const isCorrect = pollCorrectIdx === i;
+                      return (
+                        <div key={i} className="flex gap-1.5 items-center">
+                          <button
+                            onClick={() => setPollCorrectIdx(isCorrect ? null : i)}
+                            className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-black border transition-all ${isCorrect ? "bg-green-500 border-green-400 text-white" : "border-gray-600 text-gray-500 hover:border-green-600"}`}
+                            title="Mark as correct answer"
+                          >✓</button>
+                          <input
+                            className={`flex-1 bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border outline-none placeholder-gray-600 ${isCorrect ? "border-green-600" : "border-gray-700"}`}
+                            placeholder={`Option ${letter}`} value={opt}
+                            onChange={e => { const n = [...pollOpts]; n[i] = e.target.value; setPollOpts(n); }}
+                          />
+                        </div>
+                      );
+                    })}
+                    {pollCorrectIdx === null && (
+                      <p className="text-[9px] text-yellow-600">No correct answer marked — all responses score equally</p>
+                    )}
                     <div className="flex gap-2">
                       <button onClick={launchPoll} className="flex-1 py-2 text-xs font-bold text-white rounded-xl" style={{ background: ORANGE }}>🚀 Launch</button>
-                      <button onClick={() => setShowPollForm(false)} className="px-3 py-2 text-xs text-gray-400 bg-gray-800 rounded-xl hover:bg-gray-700">Cancel</button>
+                      <button onClick={() => { setShowPollForm(false); setPollCorrectIdx(null); }} className="px-3 py-2 text-xs text-gray-400 bg-gray-800 rounded-xl hover:bg-gray-700">Cancel</button>
                     </div>
                   </div>
                 )
@@ -694,8 +738,22 @@ export default function LiveClassroom() {
                     </button>
                   )}
                   {!isStaff && (
-                    <p className={`text-xs text-center font-semibold ${myPollAnswer ? "text-green-400" : "text-gray-500"}`}>
-                      {myPollAnswer ? "✓ Submitted!" : "Tap to answer"}
+                    <p className={`text-xs text-center font-semibold ${
+                      myPollAnswer
+                        ? myPollCorrect === true
+                          ? "text-green-400"
+                          : myPollCorrect === false
+                          ? "text-red-400"
+                          : "text-blue-400"
+                        : "text-gray-500"
+                    }`}>
+                      {myPollAnswer
+                        ? myPollCorrect === true
+                          ? "✓ Correct!"
+                          : myPollCorrect === false
+                          ? "✗ Wrong answer"
+                          : "✓ Submitted!"
+                        : "Tap to answer"}
                     </p>
                   )}
                 </div>

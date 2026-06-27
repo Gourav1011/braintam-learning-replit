@@ -16,12 +16,13 @@ export const leadDeploymentsTable = pgTable("lead_deployments", {
 });
 
 export const leadDeploymentGroupsTable = pgTable("lead_deployment_groups", {
-  id:           serial("id").primaryKey(),
-  deploymentId: integer("deployment_id").notNull(),
-  mentorId:     integer("mentor_id").notNull(),
-  mentorName:   text("mentor_name"),
-  leadCount:    integer("lead_count").notNull().default(0),
-  createdAt:    timestamp("created_at").defaultNow().notNull(),
+  id:            serial("id").primaryKey(),
+  deploymentId:  integer("deployment_id").notNull(),
+  mentorId:      integer("mentor_id").notNull(),
+  mentorName:    text("mentor_name"),
+  leadCount:     integer("lead_count").notNull().default(0),
+  mentorGroupId: integer("mentor_group_id"),  // ← FK → mentor_groups.id (Sprint 1 bridge)
+  createdAt:     timestamp("created_at").defaultNow().notNull(),
 });
 
 export type LeadDeployment = typeof leadDeploymentsTable.$inferSelect;

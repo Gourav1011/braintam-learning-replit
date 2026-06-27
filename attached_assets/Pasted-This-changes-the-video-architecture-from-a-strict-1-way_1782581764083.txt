@@ -1,0 +1,175 @@
+This changes the video architecture from a strict 1-way broadcast to a controlled 1-to-Many "Stage" layout.
+
+To make this work seamlessly without crashing BTL servers, the application will use Socket.io to manage permission states (the logic), while the Zoom/Meet WebRTC engine handles the audio/video streams of whichever 5 students are currently promoted to the stage.
+
+1. Classroom Layout: Dynamic 5-Slot Stage Overlay
+When a teacher approves a student, their video slot appears right below the presentation space, overlaying the layout for all participants.
+
+┌─────────────────────────────────────────────────────────┬──────────────────┐
+│                                                         │  Teacher Video   │
+│                  Presentation Area                      ├──────────────────┤
+│                (Canva / PDF View Link)                  │                  │
+│                                                         │   Group Chat     │
+│                                                         │        +         │
+│ ┌───────────┐┌───────────┐┌───────────┐┌───────────┐┌───│   Raise Hand     │
+│ │ Student 1 ││ Student 2 ││ Student 3 ││ Student 4 ││ S │     Queue        │
+│ └───────────┘└───────────┘└───────────┘└───────────┘└───│                  │
+└─────────────────────────────────────────────────────────┴──────────────────┘
+2. Updated Database Schema Tracking
+To maintain the stage layout state across page refreshes and server restarts, we need a session stage table to track who is currently active.
+
+SQL
+CREATE TYPE stage_slot_status AS ENUM ('invited', 'active', 'muted');
+
+CREATE TABLE session_stage_slots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id VARCHAR(50) NOT NULL,
+    student_id VARCHAR(50) NOT NULL,
+    student_name VARCHAR(100) NOT NULL,
+    mentor_group_id UUID REFERENCES mentor_groups(id),
+    slot_number INT NOT NULL CHECK (slot_number BETWEEN 1 AND 5),
+    status stage_slot_status DEFAULT 'invited',
+    is_muted BOOLEAN DEFAULT TRUE,
+    joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(session_id, slot_number), -- Maximum 5 unique slots per session
+    UNIQUE(session_id, student_id)   -- A student can only occupy one slot
+);
+
+CREATE INDEX idx_stage_session ON session_stage_slots(session_id);
+3. Real-Time Stage Orchestration Logic (socket.ts)
+These socket event handlers manage inviting students to the stage, unmuting their feeds, and clearing slots when they leave.
+
+TypeScript
+// Add inside the main connection controller: io.on('connection', (socket) => { ... })
+
+// 1. TEACHER APPROVES STUDENT FROM QUEUE -> PROMOTES TO STAGE
+socket.on('stage:approveStudent', async (payload: { studentId: string, studentName: string, studentGroupId: string }) => {
+  if (role !== 'Teacher') return;
+
+  try {
+    // Check for an open slot between 1 and 5
+    const activeSlots = await db.query(`SELECT slot_number FROM session_stage_slots WHERE session_id = $1`, [sessionId]);
+    const occupied = activeSlots.rows.map((r: any) => r.slot_number);
+    let openSlot = null;
+    for (let i = 1; i <= 5; i++) {
+      if (!occupied.includes(i)) { openSlot = i; break; }
+    }
+
+    if (!openSlot) {
+      socket.emit('stage:error', { message: "Stage capacity full. Maximum 5 students allowed." });
+      return;
+    }
+
+    // Insert student into the temporary stage slot table
+    await db.query(`
+      INSERT INTO session_stage_slots (session_id, student_id, student_name, mentor_group_id, slot_number, status, is_muted)
+      VALUES ($1, $2, $3, $4, $5, 'invited', true)
+    `, [sessionId, payload.studentId, payload.studentName, payload.studentGroupId, openSlot]);
+
+    // Notify the entire room so all users render the student's video slot container
+    io.to(`session-${sessionId}`).emit('stage:studentInvited', {
+      studentId: payload.studentId,
+      name: payload.studentName,
+      slotNumber: openSlot,
+      isMuted: true
+    });
+  } catch (err) {
+    console.error('Failed to promote student to live stage layer:', err);
+  }
+});
+
+// 2. TEACHER TOGGLES STUDENT MICROPHONE STATE
+socket.on('stage:toggleMute', async (payload: { studentId: string, muteState: boolean }) => {
+  if (role !== 'Teacher') return;
+
+  await db.query(`
+    UPDATE session_stage_slots SET is_muted = $1 WHERE session_id = $2 AND student_id = $3
+  `, [payload.muteState, sessionId, payload.studentId]);
+
+  // Broadcast state to sync media engines for all clients
+  io.to(`session-${sessionId}`).emit('stage:muteStateChanged', {
+    studentId: payload.studentId,
+    isMuted: payload.muteState
+  });
+});
+
+// 3. TEACHER DISMISSES STUDENT FROM STAGE
+socket.on('stage:removeStudent', async (payload: { studentId: string }) => {
+  if (role !== 'Teacher') return;
+
+  await db.query(`DELETE FROM session_stage_slots WHERE session_id = $1 AND student_id = $2`, [sessionId, payload.studentId]);
+
+  // Force the target student's local media devices to shut down completely
+  io.to(`session-${sessionId}`).emit('stage:studentRemoved', { studentId: payload.studentId });
+});
+4. Frontend Stage Integration Layout (live-classroom.tsx)
+This React component renders the 5 overlay boxes underneath the presentation panel, managing media capabilities based on current permission tokens.
+
+JavaScript
+import React, { useEffect, useState } from 'react';
+
+export function DynamicStageOverlay({ socket, currentUserId, videoEngineInstance }) {
+  const [stageSlots, setStageSlots] = useState([]); // Max length: 5 items
+
+  useEffect(() => {
+    socket.on('stage:studentInvited', (newUser) => {
+      setStageSlots(prev => [...prev, newUser]);
+      
+      // Critical Check: If this matches the local user, turn on their camera/mic stream
+      if (currentUserId === newUser.studentId) {
+        videoEngineInstance.publishLocalTracks({ video: true, audio: true, startMuted: true });
+      }
+    });
+
+    socket.on('stage:muteStateChanged', (data) => {
+      setStageSlots(prev => prev.map(s => s.studentId === data.studentId ? { ...s, isMuted: data.isMuted } : s));
+      
+      if (currentUserId === data.studentId) {
+        videoEngineInstance.setLocalAudioMute(data.isMuted);
+      }
+    });
+
+    socket.on('stage:studentRemoved', (data) => {
+      setStageSlots(prev => prev.filter(s => s.studentId !== data.studentId));
+      
+      if (currentUserId === data.studentId) {
+        videoEngineInstance.unpublishLocalTracks(); // Turn off media feed completely
+        alert("Your doubt has been resolved. Returning to viewer mode.");
+      }
+    });
+
+    return () => {
+      socket.off('stage:studentInvited');
+      socket.off('stage:muteStateChanged');
+      socket.off('stage:studentRemoved');
+    };
+  }, [socket, currentUserId, videoEngineInstance]);
+
+  if (stageSlots.length === 0) return null;
+
+  return (
+    <div className="absolute bottom-4 left-4 right-4 flex gap-2 justify-center z-40 pointer-events-none">
+      {stageSlots.map((slot) => (
+        <div key={slot.studentId} className="w-32 h-24 bg-slate-900 border border-slate-700 shadow-xl rounded overflow-hidden relative pointer-events-auto">
+          {/* Render target WebRTC stream frame track right inside the slot container box */}
+          <VideoTrackRenderer studentId={slot.studentId} streamInstance={videoEngineInstance} />
+          
+          <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1 flex justify-between items-center text-[10px] text-white">
+            <span className="truncate max-w-[60px] font-medium">{slot.name}</span>
+            <span>{slot.isMuted ? '🔇' : '🔊'}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+5. Summary of the Stage Flow
+Student Raises Hand: Student clicks ✋ Raise Hand. Their name joins the teacher's right panel queue.
+
+Teacher Invites to Stage: The teacher clicks Approve. BTL server claims an open slot (1–5) and updates the database.
+
+Media Activation: The layout renders a video box for all participants. The student's camera opens automatically but starts muted to prevent audio clutter.
+
+Controlled Discussion: The teacher clicks Unmute to speak with the student, then re-mutes them when finished.
+
+Doubt Resolved: The teacher clicks Remove. The slot clears, the media feed shuts down instantly, and the box disappears for everyone.

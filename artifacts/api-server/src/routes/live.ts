@@ -21,7 +21,7 @@ router.get("/live/:sessionId", async (req, res) => {
         scheduledAt: demoSessionsTable.scheduledAt,
         joinUrl: demoSessionsTable.joinUrl,
         batchId: demoSessionsTable.batchId,
-        batchName: demoBatchesTable.name,
+        batchName: demoBatchesTable.title,
         batchGrade: demoBatchesTable.grade,
         batchSubject: demoBatchesTable.subject,
       })

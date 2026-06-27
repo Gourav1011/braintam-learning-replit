@@ -5,13 +5,14 @@ import {
   sessionAttendanceTable,
   pollAnalyticsTable,
   leaderboardAnalyticsTable,
+  chatMessagesTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, gt, desc } from "drizzle-orm";
 
 // ── Room naming ────────────────────────────────────────────────
-const globalRoom = (sid: string) => `session-${sid}`;
+const globalRoom  = (sid: string) => `session-${sid}`;
 const teacherRoom = (sid: string) => `session-${sid}-teachers`;
-const groupRoom = (sid: string, gid: string | number) => `session-${sid}-grp-${gid}`;
+const groupRoom   = (sid: string, gid: string | number) => `session-${sid}-grp-${gid}`;
 
 // ── Types ──────────────────────────────────────────────────────
 interface CacheEntry {
@@ -26,11 +27,13 @@ interface CacheEntry {
 }
 
 interface PollOpt { id: string; text: string; }
+
 interface Poll {
   id: string;
   question: string;
   options: PollOpt[];
   startedAt: number;
+  correctOptionId: string | null;   // teacher-set correct answer; never sent to students
 }
 
 interface PollAnswer {
@@ -38,6 +41,8 @@ interface PollAnswer {
   optionText: string;
   name: string;
   userId: string;
+  mentorGroupId: string | null;
+  isCorrect: boolean;
   responseTimeMs: number;
   ts: number;
 }
@@ -52,7 +57,6 @@ interface ChatMsg {
 }
 
 interface SessionRoom {
-  chat: ChatMsg[];
   raisedHands: Map<string, { name: string; mentorGroupId: string | null }>;
   raiseHandEnabled: boolean;
   activePoll: Poll | null;
@@ -60,14 +64,12 @@ interface SessionRoom {
 }
 
 // ── In-memory caches ───────────────────────────────────────────
-// Key: `${sessionId}-${userId}`
 const liveStateCache = new Map<string, CacheEntry>();
-const sessionRooms = new Map<string, SessionRoom>();
+const sessionRooms   = new Map<string, SessionRoom>();
 
 function getSessionRoom(sid: string): SessionRoom {
   if (!sessionRooms.has(sid)) {
     sessionRooms.set(sid, {
-      chat: [],
       raisedHands: new Map(),
       raiseHandEnabled: false,
       activePoll: null,
@@ -77,43 +79,94 @@ function getSessionRoom(sid: string): SessionRoom {
   return sessionRooms.get(sid)!;
 }
 
-// ── Status derivation ──────────────────────────────────────────
-function deriveStatus(entry: CacheEntry): "LIVE" | "BACKSTAGE" | "ABSENT" {
-  if (!entry.lastSeenAt) return "ABSENT";
-  const delta = (Date.now() - entry.lastSeenAt.getTime()) / 1000;
-  return delta <= 15 ? "LIVE" : "BACKSTAGE";
+// ── Sprint 2: Seed liveStateCache from DB on startup ──────────
+async function seedCacheFromDB(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - 30_000);
+    const rows = await db
+      .select()
+      .from(sessionAttendanceTable)
+      .where(gt(sessionAttendanceTable.lastSeenAt, cutoff));
+
+    for (const row of rows) {
+      const key = `${row.sessionId}-${row.studentId}`;
+      liveStateCache.set(key, {
+        lastSeenAt: row.lastSeenAt ?? new Date(),
+        currentStatus: "LIVE",
+        name: row.studentName,
+        mentorGroupId: row.mentorGroupId != null ? String(row.mentorGroupId) : null,
+        phone: null,
+        sessionId: String(row.sessionId),
+        userId: row.studentId,
+        role: row.role,
+      });
+    }
+    if (rows.length > 0) {
+      console.log(`[socket] Restored ${rows.length} LIVE student(s) from DB after restart`);
+    }
+  } catch (err) {
+    console.error("[socket] liveStateCache seed failed:", err);
+  }
 }
 
-// ── Leaderboard helper ─────────────────────────────────────────
-function computeTop3(room: SessionRoom): Array<{ name: string; rank: number; userId: string; optionId: string; responseTimeMs: number }> {
-  if (!room.activePoll || room.pollAnswers.size === 0) return [];
-  const counts: Record<string, number> = {};
-  for (const a of room.pollAnswers.values()) counts[a.optionId] = (counts[a.optionId] ?? 0) + 1;
-  const topOpt = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
-  if (!topOpt) return [];
-  return Array.from(room.pollAnswers.values())
-    .filter(a => a.optionId === topOpt)
-    .sort((a, b) => a.responseTimeMs - b.responseTimeMs)
-    .slice(0, 3)
-    .map((a, i) => ({ name: a.name, rank: i + 1, userId: a.userId, optionId: a.optionId, responseTimeMs: a.responseTimeMs }));
+// ── Sprint 2: Chat persistence helpers ────────────────────────
+async function loadRecentChat(sessionId: string): Promise<ChatMsg[]> {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return [];
+  try {
+    const rows = await db
+      .select()
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.sessionId, sid))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(50);
+    return rows.reverse().map(r => ({
+      id: String(r.id),
+      name: r.senderName,
+      role: r.senderRole,
+      text: r.message,
+      isAnnouncement: r.isAnnouncement,
+      ts: r.createdAt.getTime(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function persistChat(
+  sessionId: string,
+  senderId: string,
+  msg: ChatMsg,
+  mentorGroupId: string | null,
+): void {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return;
+  db.insert(chatMessagesTable)
+    .values({
+      sessionId: sid,
+      mentorGroupId: mentorGroupId ? Number(mentorGroupId) : undefined,
+      senderId,
+      senderName: msg.name,
+      senderRole: msg.role,
+      message: msg.text,
+      isAnnouncement: msg.isAnnouncement,
+    })
+    .catch(() => {});
 }
 
 // ── DB helpers (fire-and-forget) ───────────────────────────────
-function upsertAttendanceHeartbeat(sessionId: string, userId: string, name: string, mentorGroupId: string | null, role: string) {
-  const now = new Date();
+function upsertAttendanceHeartbeat(
+  sessionId: string, userId: string, name: string,
+  mentorGroupId: string | null, role: string,
+) {
   const sid = Number(sessionId);
   if (Number.isNaN(sid)) return;
-
+  const now = new Date();
   db.insert(sessionAttendanceTable)
     .values({
-      sessionId: sid,
-      studentId: userId,
-      studentName: name,
+      sessionId: sid, studentId: userId, studentName: name,
       mentorGroupId: mentorGroupId ? Number(mentorGroupId) : undefined,
-      role,
-      joinedAt: now,
-      lastSeenAt: now,
-      totalDurationSeconds: 0,
+      role, joinedAt: now, lastSeenAt: now, totalDurationSeconds: 0,
     })
     .onConflictDoUpdate({
       target: [sessionAttendanceTable.sessionId, sessionAttendanceTable.studentId],
@@ -122,39 +175,71 @@ function upsertAttendanceHeartbeat(sessionId: string, userId: string, name: stri
         totalDurationSeconds: sql`${sessionAttendanceTable.totalDurationSeconds} + 15`,
       },
     })
-    .catch(() => { /* non-critical */ });
+    .catch(() => {});
 }
 
 function markLeft(sessionId: string, userId: string) {
   const sid = Number(sessionId);
   if (Number.isNaN(sid)) return;
-  const now = new Date();
   db.update(sessionAttendanceTable)
-    .set({ leftAt: now })
+    .set({ leftAt: new Date() })
     .where(and(eq(sessionAttendanceTable.sessionId, sid), eq(sessionAttendanceTable.studentId, userId)))
-    .catch(() => { /* non-critical */ });
+    .catch(() => {});
 }
 
+// ── Sprint 1: Poll analytics with mentor_group_id + is_correct ─
 function persistPollAnswer(sessionId: string, poll: Poll, answer: PollAnswer) {
   const sid = Number(sessionId);
   if (Number.isNaN(sid)) return;
-  const optText = poll.options.find(o => o.id === answer.optionId)?.text ?? "";
   db.insert(pollAnalyticsTable)
     .values({
       sessionId: sid,
       pollId: poll.id,
       pollQuestion: poll.question,
+      correctOptionId: poll.correctOptionId,
       studentId: answer.userId,
       studentName: answer.name,
+      mentorGroupId: answer.mentorGroupId ? Number(answer.mentorGroupId) : undefined,
       optionId: answer.optionId,
-      optionText: optText,
+      optionText: answer.optionText,
+      isCorrect: answer.isCorrect,
       responseTimeMs: answer.responseTimeMs,
       answeredAt: new Date(),
     })
-    .catch(() => { /* non-critical */ });
+    .catch(() => {});
 }
 
-function persistLeaderboard(sessionId: string, pollId: string, top3: ReturnType<typeof computeTop3>) {
+// ── Sprint 1: Leaderboard ranks by is_correct DESC, response_time ASC ──
+function computeTop3(room: SessionRoom): Array<{
+  name: string; rank: number; userId: string;
+  optionId: string; responseTimeMs: number; isCorrect: boolean;
+}> {
+  if (!room.activePoll || room.pollAnswers.size === 0) return [];
+
+  const answers = Array.from(room.pollAnswers.values());
+  const sorted = answers.sort((a, b) => {
+    // Correct answers first
+    if (b.isCorrect !== a.isCorrect) return (b.isCorrect ? 1 : 0) - (a.isCorrect ? 1 : 0);
+    // Then fastest response
+    return a.responseTimeMs - b.responseTimeMs;
+  });
+
+  return sorted.slice(0, 3).map((a, i) => ({
+    name: a.name,
+    rank: i + 1,
+    userId: a.userId,
+    optionId: a.optionId,
+    responseTimeMs: a.responseTimeMs,
+    isCorrect: a.isCorrect,
+  }));
+}
+
+function persistLeaderboard(
+  sessionId: string,
+  pollId: string,
+  top3: ReturnType<typeof computeTop3>,
+  mentorGroupId: string | null,
+) {
   const sid = Number(sessionId);
   if (Number.isNaN(sid) || top3.length === 0) return;
   db.insert(leaderboardAnalyticsTable)
@@ -164,11 +249,13 @@ function persistLeaderboard(sessionId: string, pollId: string, top3: ReturnType<
       rank: e.rank,
       studentId: e.userId,
       studentName: e.name,
+      mentorGroupId: mentorGroupId ? Number(mentorGroupId) : undefined,
       optionId: e.optionId,
+      isCorrect: e.isCorrect,
       responseTimeMs: e.responseTimeMs,
       recordedAt: new Date(),
     })))
-    .catch(() => { /* non-critical */ });
+    .catch(() => {});
 }
 
 // ── Setup ──────────────────────────────────────────────────────
@@ -178,16 +265,19 @@ export function setupSocketIO(httpServer: HttpServer) {
     path: "/api/socket.io",
   });
 
+  // Seed liveStateCache immediately from DB (Sprint 2)
+  seedCacheFromDB().catch(() => {});
+
   // ── Auth middleware — context from handshake query ──────────
   io.use((socket, next) => {
     const q = socket.handshake.query;
     (socket as any).ctx = {
-      sessionId: String(q["sessionId"] ?? ""),
-      userId:    String(q["userId"] ?? `anon-${Math.random().toString(36).slice(2)}`),
-      role:      String(q["role"] ?? "student").toLowerCase(),
-      groupId:   q["groupId"] ? String(q["groupId"]) : null,
-      name:      String(q["name"] ?? "Student").slice(0, 50),
-      phone:     q["phone"] ? String(q["phone"]) : null,
+      sessionId:  String(q["sessionId"] ?? ""),
+      userId:     String(q["userId"] ?? `anon-${Math.random().toString(36).slice(2)}`),
+      role:       String(q["role"] ?? "student").toLowerCase(),
+      groupId:    q["groupId"] ? String(q["groupId"]) : null,
+      name:       String(q["name"] ?? "Student").slice(0, 50),
+      phone:      q["phone"] ? String(q["phone"]) : null,
     };
     next();
   });
@@ -195,13 +285,15 @@ export function setupSocketIO(httpServer: HttpServer) {
   // ── 5-second backstage sweeper ─────────────────────────────
   setInterval(() => {
     const now = Date.now();
-    for (const [cacheKey, entry] of liveStateCache.entries()) {
+    for (const entry of liveStateCache.values()) {
       if (entry.currentStatus === "LIVE") {
         const delta = (now - entry.lastSeenAt.getTime()) / 1000;
         if (delta > 15) {
           entry.currentStatus = "BACKSTAGE";
           io.to(teacherRoom(entry.sessionId))
-            .to(entry.mentorGroupId ? groupRoom(entry.sessionId, entry.mentorGroupId) : teacherRoom(entry.sessionId))
+            .to(entry.mentorGroupId
+              ? groupRoom(entry.sessionId, entry.mentorGroupId)
+              : teacherRoom(entry.sessionId))
             .emit("studentBackstage", {
               userId: entry.userId,
               name: entry.name,
@@ -218,31 +310,47 @@ export function setupSocketIO(httpServer: HttpServer) {
       sessionId: string; userId: string; role: string;
       groupId: string | null; name: string; phone: string | null;
     };
-
     const { sessionId, userId, role, groupId, name, phone } = ctx;
-    const isStaff = role === "teacher" || role === "admin";
+    const isStaff  = role === "teacher" || role === "admin";
     const isMentor = role === "mentor";
 
-    // ── Join socket rooms ─────────────────────────────────────
+    // ── Join rooms ────────────────────────────────────────────
     socket.join(globalRoom(sessionId));
     if (isStaff) {
       socket.join(teacherRoom(sessionId));
+    } else if (isMentor && groupId) {
+      socket.join(groupRoom(sessionId, groupId));
+      socket.join(teacherRoom(sessionId)); // mentors also see teacher room
     } else if (groupId) {
       socket.join(groupRoom(sessionId, groupId));
     }
 
-    // ── Send initial room state to joiner ─────────────────────
     const room = getSessionRoom(sessionId);
-    socket.emit("roomState", {
-      chat: room.chat.slice(-50),
-      raisedHands: Array.from(room.raisedHands.entries()).map(([uid, h]) => ({ uid, ...h })),
-      raiseHandEnabled: room.raiseHandEnabled,
-      activePoll: room.activePoll,
+
+    // ── Send initial room state (async — loads chat from DB) ──
+    (async () => {
+      const recentChat = await loadRecentChat(sessionId);
+      socket.emit("roomState", {
+        chat: recentChat,
+        raisedHands: Array.from(room.raisedHands.entries())
+          .map(([uid, h]) => ({ uid, ...h })),
+        raiseHandEnabled: room.raiseHandEnabled,
+        activePoll: room.activePoll
+          ? { ...room.activePoll, correctOptionId: undefined }
+          : null,
+      });
+    })().catch(() => {
+      socket.emit("roomState", {
+        chat: [],
+        raisedHands: [],
+        raiseHandEnabled: room.raiseHandEnabled,
+        activePoll: null,
+      });
     });
 
-    // ── Heartbeat (students only, every 15s) ──────────────────
+    // ── Heartbeat (students & mentors, every 15s) ─────────────
     socket.on("heartbeat:ping", () => {
-      if (isStaff) return; // teachers/admins don't need attendance tracking
+      if (isStaff) return;
       const now = new Date();
       const cacheKey = `${sessionId}-${userId}`;
       const prev = liveStateCache.get(cacheKey);
@@ -254,22 +362,19 @@ export function setupSocketIO(httpServer: HttpServer) {
         name, mentorGroupId: groupId, phone, sessionId, userId, role,
       });
 
-      // Persist to DB
       upsertAttendanceHeartbeat(sessionId, userId, name, groupId, role);
 
-      // Emit state transition event only on change
       if (prevStatus !== "LIVE") {
         const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
-        const payload = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
+        const payload   = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
         io.to(teacherRoom(sessionId))
           .to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId))
           .emit(eventType, payload);
       }
-
       socket.emit("heartbeat:ack");
     });
 
-    // ── Chat message ──────────────────────────────────────────
+    // ── Chat (Sprint 2 — DB-persisted) ─────────────────────────
     socket.on("chat:send", (rawText: string) => {
       const text = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
       if (!text) return;
@@ -281,14 +386,13 @@ export function setupSocketIO(httpServer: HttpServer) {
         ts: Date.now(),
       };
 
-      room.chat.push(msg);
-      if (room.chat.length > 200) room.chat = room.chat.slice(-200);
-
       if (isStaff) {
-        // Teacher/Admin announcement → everyone
+        // Announce to everyone; null mentor_group_id = global
+        persistChat(sessionId, userId, msg, null);
         io.to(globalRoom(sessionId)).emit("chat:message", msg);
       } else if (groupId) {
-        // Mentor/Student → their group + mirror to teachers
+        // Group-scoped; mirror to teacher room
+        persistChat(sessionId, userId, msg, groupId);
         io.to(groupRoom(sessionId, groupId))
           .to(teacherRoom(sessionId))
           .emit("chat:message", msg);
@@ -297,78 +401,90 @@ export function setupSocketIO(httpServer: HttpServer) {
       }
     });
 
-    // ── Raise hand (student) ──────────────────────────────────
+    // ── Raise hand ─────────────────────────────────────────────
     socket.on("student:raiseHand", () => {
       if (!room.raiseHandEnabled) return;
       const raised = room.raisedHands.has(userId);
-      if (raised) {
-        room.raisedHands.delete(userId);
-      } else {
-        room.raisedHands.set(userId, { name, mentorGroupId: groupId });
-      }
-      const payload = { userId, name, mentorGroupId: groupId, raised: !raised, ts: new Date() };
+      if (raised) room.raisedHands.delete(userId);
+      else room.raisedHands.set(userId, { name, mentorGroupId: groupId });
+      const payload = { uid: userId, name, mentorGroupId: groupId, raised: !raised, ts: new Date() };
       io.to(groupId ? groupRoom(sessionId, groupId) : globalRoom(sessionId))
         .to(teacherRoom(sessionId))
         .emit("classroom:handRaised", payload);
     });
 
-    // ── Toggle raise hand (teacher) ───────────────────────────
     socket.on("toggleRaiseHand", (data: { enabled: boolean }) => {
       if (!isStaff) return;
       room.raiseHandEnabled = !!data.enabled;
       if (!room.raiseHandEnabled) room.raisedHands.clear();
-      io.to(globalRoom(sessionId)).emit("raiseHandToggled", {
-        enabled: room.raiseHandEnabled,
-        hands: [],
-      });
+      io.to(globalRoom(sessionId)).emit("raiseHandToggled", { enabled: room.raiseHandEnabled, hands: [] });
     });
 
-    // ── Poll: start (teacher) ─────────────────────────────────
-    socket.on("startPoll", (data: { question: string; options: string[] }) => {
+    // ── Sprint 1: Poll with correct answer support ─────────────
+    socket.on("startPoll", (data: {
+      question: string;
+      options: string[];
+      correctOptionId?: string;   // teacher marks correct answer at creation
+    }) => {
       if (!isStaff) return;
       const opts = (data.options ?? []).filter(Boolean).slice(0, 6);
       if (!data.question?.trim() || opts.length < 2) return;
+
+      const pollOptions: PollOpt[] = opts.map((t, i) => ({
+        id: String.fromCharCode(65 + i),
+        text: String(t).slice(0, 100),
+      }));
+
       room.activePoll = {
         id: `poll-${Date.now()}`,
         question: String(data.question).trim().slice(0, 200),
-        options: opts.map((t, i) => ({ id: String.fromCharCode(65 + i), text: String(t).slice(0, 100) })),
+        options: pollOptions,
         startedAt: Date.now(),
+        correctOptionId: data.correctOptionId ?? null,
       };
       room.pollAnswers = new Map();
-      io.to(globalRoom(sessionId)).emit("pollStarted", room.activePoll);
+
+      // Send poll to all — but strip correctOptionId for everyone except teacher's own socket
+      const studentPayload = { ...room.activePoll, correctOptionId: undefined };
+      io.to(teacherRoom(sessionId)).emit("pollStarted", room.activePoll); // teacher sees answer
+      socket.broadcast.to(globalRoom(sessionId)).emit("pollStarted", studentPayload);
     });
 
-    // ── Poll: submit answer (student) ─────────────────────────
+    // ── Poll submit — score is_correct server-side ─────────────
     socket.on("submitPoll", (data: { optionId: string }) => {
       if (!room.activePoll || room.pollAnswers.has(userId)) return;
       const responseTimeMs = Date.now() - room.activePoll.startedAt;
+      const optId    = String(data.optionId);
+      const isCorrect = room.activePoll.correctOptionId != null
+        ? optId === room.activePoll.correctOptionId
+        : true; // No correct answer set → everyone is "correct" for ranking
+
       const answer: PollAnswer = {
-        optionId: String(data.optionId),
-        optionText: room.activePoll.options.find(o => o.id === data.optionId)?.text ?? "",
-        name, userId, responseTimeMs, ts: Date.now(),
+        optionId: optId,
+        optionText: room.activePoll.options.find(o => o.id === optId)?.text ?? "",
+        name, userId,
+        mentorGroupId: groupId,
+        isCorrect,
+        responseTimeMs,
+        ts: Date.now(),
       };
       room.pollAnswers.set(userId, answer);
-
-      // Persist answer
       persistPollAnswer(sessionId, room.activePoll, answer);
 
       // Live counts to teacher
       const counts: Record<string, number> = {};
       for (const a of room.pollAnswers.values()) counts[a.optionId] = (counts[a.optionId] ?? 0) + 1;
       io.to(teacherRoom(sessionId)).emit("pollUpdate", { counts, total: room.pollAnswers.size });
-      socket.emit("pollSubmitted", { optionId: data.optionId });
+
+      socket.emit("pollSubmitted", { optionId: optId, isCorrect });
     });
 
-    // ── Show leaderboard (teacher) ────────────────────────────
+    // ── Leaderboard (Sprint 1 — ranked by correctness then speed) ──
     socket.on("showLeaderboard", () => {
       if (!isStaff || !room.activePoll) return;
-      const top3 = computeTop3(room);
+      const top3   = computeTop3(room);
       const pollId = room.activePoll.id;
-
-      // Persist leaderboard
-      persistLeaderboard(sessionId, pollId, top3);
-
-      // Broadcast to everyone for 5s, then close poll
+      persistLeaderboard(sessionId, pollId, top3, groupId);
       io.to(globalRoom(sessionId)).emit("showLeaderboard", { top3 });
       room.activePoll = null;
       setTimeout(() => io.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
@@ -378,8 +494,7 @@ export function setupSocketIO(httpServer: HttpServer) {
     socket.on("disconnect", () => {
       if (!isStaff) {
         markLeft(sessionId, userId);
-        const cacheKey = `${sessionId}-${userId}`;
-        const entry = liveStateCache.get(cacheKey);
+        const entry = liveStateCache.get(`${sessionId}-${userId}`);
         if (entry) entry.currentStatus = "ABSENT";
       }
       room.raisedHands.delete(userId);

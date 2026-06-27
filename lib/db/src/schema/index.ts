@@ -61,3 +61,5 @@ export * from "./mentorDeploymentCycles";
 export * from "./mentorGroups";
 export * from "./sessionAttendance";
 export * from "./pollAnalytics";
+
+export * from "./chatMessages";

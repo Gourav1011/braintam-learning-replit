@@ -6,6 +6,8 @@ import {
   masteryTimelineTable,
   masteryNotificationsTable,
   usersTable,
+  mentorGroupsTable,
+  groupStudentsTable,
 } from "@workspace/db";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -187,6 +189,35 @@ router.post("/admin/mastery/deployment/deploy", adminOnly, async (req, res) => {
       }).catch(() => null);
     }
   }
+
+  // ── Sprint 1: Unify mentor_groups — create one group per mentor in this mastery deployment ──
+  // Fire-and-forget: non-critical; does not block the response
+  Promise.all(
+    mentorAssignments.map(async (assignment) => {
+      if (assignment.studentIds.length === 0) return;
+      try {
+        const [mg] = await db.insert(mentorGroupsTable).values({
+          batchId: batch.id,
+          sessionId: null,
+          mentorId: assignment.mentorId,
+          mentorName: assignment.mentorName ?? "Mentor",
+          groupName: `${batchCode} · ${assignment.mentorName ?? `Mentor ${assignment.mentorId}`}`,
+          programType: "mastery",
+        }).returning({ id: mentorGroupsTable.id });
+
+        if (mg && assignment.studentIds.length > 0) {
+          await db.insert(groupStudentsTable).values(
+            assignment.studentIds.map(sid => ({
+              mentorGroupId: mg.id,
+              studentId: String(sid),
+              studentName: `MasteryStudent-${sid}`,
+              phone: null,
+            }))
+          ).onConflictDoNothing();
+        }
+      } catch { /* non-critical */ }
+    })
+  ).catch(() => {});
 
   res.json({ batchCode, batchId: batch.id, totalAssigned: allStudentIds.length });
 });

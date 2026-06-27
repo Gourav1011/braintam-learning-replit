@@ -16,6 +16,8 @@ import {
   leadDeploymentsTable,
   leadDeploymentGroupsTable,
   mentorDeploymentCyclesTable,
+  mentorGroupsTable,
+  groupStudentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -1341,6 +1343,46 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
       }))
     );
   }
+
+  // ── Sprint 1: Unify mentor_groups — create one group per mentor in this deployment ──
+  // Fire-and-forget: non-critical bridge; does not affect existing deploy flow
+  Promise.all(
+    groups.map(async (g) => {
+      try {
+        const [mg] = await db.insert(mentorGroupsTable).values({
+          batchId: null,
+          sessionId: null,
+          mentorId: g.mentor.id,
+          mentorName: g.mentor.name ?? "Mentor",
+          groupName: `${batchCode} · ${g.mentor.name ?? `Mentor ${g.mentor.id}`}`,
+          programType: "ignite",
+        }).returning({ id: mentorGroupsTable.id });
+
+        if (mg && g.leads.length > 0) {
+          await db.insert(groupStudentsTable).values(
+            g.leads.map(lead => ({
+              mentorGroupId: mg.id,
+              studentId: String(lead.id),
+              studentName: `Lead-${lead.id}`,
+              phone: null,
+            }))
+          ).onConflictDoNothing();
+        }
+
+        // Back-link the deployment group row
+        if (mg) {
+          await db.update(leadDeploymentGroupsTable)
+            .set({ mentorGroupId: mg.id })
+            .where(
+              and(
+                eq(leadDeploymentGroupsTable.deploymentId, deployment.id),
+                eq(leadDeploymentGroupsTable.mentorId, g.mentor.id),
+              )
+            );
+        }
+      } catch { /* non-critical */ }
+    })
+  ).catch(() => {});
 
   // Create timeline entries for every assigned lead
   const timelineRows = groups.flatMap(g => g.leads.map(lead => ({
