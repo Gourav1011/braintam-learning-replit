@@ -68,18 +68,29 @@ function KpiCard({
   icon: React.ElementType; color: string; bgColor: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 min-w-0">
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: bgColor }}>
-        <Icon className="w-5 h-5" style={{ color }} />
+    <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center gap-2.5 min-w-0">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: bgColor }}>
+        <Icon className="w-4 h-4" style={{ color }} />
       </div>
       <div className="min-w-0">
-        <div className="font-black text-xl leading-tight" style={{ color: NAVY }}>{value}</div>
-        {sub && <div className="text-xs font-semibold" style={{ color }}>{sub}</div>}
-        <div className="text-xs text-gray-500 truncate">{label}</div>
+        <div className="font-black text-base leading-tight" style={{ color: NAVY }}>{value}</div>
+        {sub && <div className="text-[11px] font-semibold leading-tight" style={{ color }}>{sub}</div>}
+        <div className="text-[11px] text-gray-500 leading-tight">{label}</div>
       </div>
     </div>
   );
 }
+
+const DURATION_OPTIONS = [
+  { value: "7",   label: "This Week (7d)" },
+  { value: "14",  label: "Last 2 Weeks" },
+  { value: "21",  label: "Last 3 Weeks" },
+  { value: "30",  label: "This Month (30d)" },
+  { value: "60",  label: "Last 2 Months" },
+  { value: "90",  label: "Last 3 Months" },
+  { value: "365", label: "This Year" },
+  { value: "0",   label: "All Time" },
+];
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
 
@@ -2792,29 +2803,44 @@ interface SalesMentor {
 function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [mentors, setMentors] = useState<SalesMentor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState("7");
 
-  useEffect(() => {
-    apiFetch("/admin/ignite/sales-mentors")
+  const load = useCallback(() => {
+    setLoading(true);
+    const url = days === "0" ? "/admin/ignite/sales-mentors" : `/admin/ignite/sales-mentors?days=${days}`;
+    apiFetch(url)
       .then((r) => r.json())
       .then(setMentors)
       .catch(() => flash("Failed to load sales mentors", false))
       .finally(() => setLoading(false));
-  }, []);
+  }, [days]);
+
+  useEffect(() => { load(); }, [load]);
 
   const totalAssigned = mentors.reduce((s, m) => s + m.assignedLeads, 0);
   const totalConverted = mentors.reduce((s, m) => s + m.converted, 0);
   const overallRate = totalAssigned > 0 ? Math.round((totalConverted / totalAssigned) * 100) : 0;
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-black" style={{ color: NAVY }}>Sales Mentors</h1>
+          <h1 className="text-base font-black" style={{ color: NAVY }}>Sales Mentors</h1>
           <p className="text-xs text-gray-500">Sales mentor performance and conversion tracking</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={days} onChange={e => setDays(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-orange-300"
+            style={{ color: NAVY }}>
+            {DURATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:border-gray-300">
+            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <KpiCard label="Total Sales Mentors" value={mentors.length} icon={Users} color={NAVY} bgColor="#EEF2FF" />
         <KpiCard label="Total Leads Assigned" value={totalAssigned} icon={UserCheck} color="#3B82F6" bgColor="#DBEAFE" />
         <KpiCard label="Overall Conversion" value={`${overallRate}%`} icon={TrendingUp} color={GREEN} bgColor="#D1FAE5" />
@@ -2933,47 +2959,24 @@ function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500">Interested</span>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#FFF7ED" }}>
-              <Star className="w-4 h-4" style={{ color: ORANGE }} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {[
+          { label: "Interested", sub: "Ready for collection", count: cnt("Interested"), icon: Star, color: ORANGE, bg: "#FFF7ED" },
+          { label: "Payment Sent", sub: "Awaiting confirmation", count: cnt("Payment Sent"), icon: CreditCard, color: "#3B82F6", bg: "#DBEAFE" },
+          { label: "Converted", sub: "Payment confirmed", count: cnt("Converted"), icon: CheckCircle, color: GREEN, bg: "#D1FAE5" },
+          { label: "Total Pipeline", sub: "In payment funnel", count: paymentStudents.length, icon: TrendingUp, color: NAVY, bg: "#EEF2FF" },
+        ].map(c => (
+          <div key={c.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: c.bg }}>
+              <c.icon className="w-4 h-4" style={{ color: c.color }} />
+            </div>
+            <div>
+              <div className="font-black text-base leading-none" style={{ color: c.color }}>{c.count}</div>
+              <div className="text-[11px] font-semibold text-gray-600 mt-0.5 leading-tight">{c.label}</div>
+              <div className="text-[10px] text-gray-400 leading-tight">{c.sub}</div>
             </div>
           </div>
-          <div className="text-3xl font-black" style={{ color: NAVY }}>{cnt("Interested")}</div>
-          <div className="text-[10px] text-gray-400 mt-1">Ready for collection</div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500">Payment Sent</span>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#DBEAFE" }}>
-              <CreditCard className="w-4 h-4 text-blue-500" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-blue-600">{cnt("Payment Sent")}</div>
-          <div className="text-[10px] text-gray-400 mt-1">Awaiting confirmation</div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500">Converted</span>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D1FAE5" }}>
-              <CheckCircle className="w-4 h-4 text-green-600" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-green-600">{cnt("Converted")}</div>
-          <div className="text-[10px] text-gray-400 mt-1">Payment confirmed</div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500">Total Pipeline</span>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#EEF2FF" }}>
-              <TrendingUp className="w-4 h-4" style={{ color: NAVY }} />
-            </div>
-          </div>
-          <div className="text-3xl font-black" style={{ color: NAVY }}>{paymentStudents.length}</div>
-          <div className="text-[10px] text-gray-400 mt-1">In payment funnel</div>
-        </div>
+        ))}
       </div>
 
       {/* Filters */}
@@ -3071,7 +3074,7 @@ interface OutreachLead {
   leadStage: string | null; interestLevel: string | null;
   callStatus: string | null; lastCallAt: string | null;
   nextFollowUpAt: string | null; assignedMentorName: string | null;
-  city: string | null; school: string | null;
+  city: string | null; school: string | null; createdAt: string | null;
 }
 
 const INTEREST_COLOR: Record<string, string> = {
@@ -3085,6 +3088,7 @@ function StudentOutreachView({ flash }: { flash: (m: string, ok?: boolean) => vo
   const [stageFilter, setStage]   = useState("all");
   const [gradeFilter, setGrade]   = useState("all");
   const [sortBy, setSort]         = useState<"interest" | "followup" | "stage">("interest");
+  const [durationDays, setDurationDays] = useState("0");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -3104,7 +3108,13 @@ function StudentOutreachView({ flash }: { flash: (m: string, ok?: boolean) => vo
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = leads
+  const durationFiltered = durationDays === "0" ? leads : leads.filter(l => {
+    if (!l.createdAt) return true;
+    const since = new Date(Date.now() - Number(durationDays) * 86400000);
+    return new Date(l.createdAt) >= since;
+  });
+
+  const filtered = durationFiltered
     .filter(l => {
       if (stageFilter !== "all" && l.leadStage !== stageFilter) return false;
       if (gradeFilter !== "all" && String(l.grade) !== gradeFilter) return false;
@@ -3135,42 +3145,54 @@ function StudentOutreachView({ flash }: { flash: (m: string, ok?: boolean) => vo
     navigator.clipboard.writeText(phone).then(() => flash(`Copied: ${phone}`, true));
   };
 
-  const overdueCnt = leads.filter(l => l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date()).length;
+  const overdueCnt = durationFiltered.filter(l => l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date()).length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-black" style={{ color: NAVY }}>Student Outreach</h1>
+          <h1 className="text-base font-black" style={{ color: NAVY }}>Student Outreach</h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            Active demo leads that need follow-up — {filtered.length} of {leads.length} shown
+            {filtered.length} of {durationFiltered.length} shown
             {overdueCnt > 0 && <span className="ml-2 text-red-500 font-semibold">· {overdueCnt} overdue</span>}
           </p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <select value={durationDays} onChange={e => setDurationDays(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-orange-300"
+            style={{ color: NAVY }}>
+            {DURATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:border-gray-300">
+            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {[
-          { label: "Very High Interest", count: leads.filter(l => l.interestLevel === "Very High").length, color: NAVY, bg: "#EEF2FF" },
-          { label: "High Interest",      count: leads.filter(l => l.interestLevel === "High").length,      color: GREEN, bg: "#D1FAE5" },
-          { label: "Overdue Follow-ups", count: overdueCnt,                                                color: "#EF4444", bg: "#FEE2E2" },
-          { label: "Unassigned Leads",   count: leads.filter(l => !l.assignedMentorName).length,           color: ORANGE, bg: "#FFF7ED" },
+          { label: "Very High Interest", count: durationFiltered.filter(l => l.interestLevel === "Very High").length, color: NAVY, bg: "#EEF2FF" },
+          { label: "High Interest",      count: durationFiltered.filter(l => l.interestLevel === "High").length,      color: GREEN, bg: "#D1FAE5" },
+          { label: "Overdue Follow-ups", count: overdueCnt,                                                            color: "#EF4444", bg: "#FEE2E2" },
+          { label: "Unassigned Leads",   count: durationFiltered.filter(l => !l.assignedMentorName).length,            color: ORANGE, bg: "#FFF7ED" },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-2xl font-black" style={{ color: c.color }}>{c.count}</div>
-            <div className="text-xs text-gray-500 font-medium mt-0.5">{c.label}</div>
+          <div key={c.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: c.bg }}>
+              <Users className="w-3.5 h-3.5" style={{ color: c.color }} />
+            </div>
+            <div>
+              <div className="text-base font-black leading-none" style={{ color: c.color }}>{c.count}</div>
+              <div className="text-[11px] text-gray-500 font-medium mt-0.5 leading-tight">{c.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[180px]">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2.5 flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input placeholder="Search name, phone, mentor…" value={search} onChange={e => setSearch(e.target.value)}
             className="pl-9 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl w-full focus:outline-none focus:border-orange-300" />
@@ -3579,15 +3601,17 @@ function ConversionCenterView({ setView }: { setView: (v: IgniteView) => void })
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {counts.map((p) => (
           <button key={p.stage} onClick={() => setView("leads")}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md transition-shadow group">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2" style={{ background: p.bg }}>
-              <TrendingUp className="w-4 h-4" style={{ color: p.color }} />
+            className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-left hover:shadow-md transition-shadow flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: p.bg }}>
+              <TrendingUp className="w-3.5 h-3.5" style={{ color: p.color }} />
             </div>
-            <div className="font-black text-xl" style={{ color: NAVY }}>{loading ? "…" : p.count}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{p.stage}</div>
+            <div>
+              <div className="font-black text-base leading-none" style={{ color: NAVY }}>{loading ? "…" : p.count}</div>
+              <div className="text-[11px] text-gray-500 mt-0.5 leading-tight">{p.stage}</div>
+            </div>
           </button>
         ))}
       </div>

@@ -470,7 +470,10 @@ router.get("/admin/ignite/follow-ups", adminOnly, async (_req, res) => {
   res.json(followUps);
 });
 
-router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
+router.get("/admin/ignite/sales-mentors", adminOnly, async (req, res) => {
+  const daysParam = Number(req.query.days);
+  const since = daysParam > 0 ? new Date(Date.now() - daysParam * 86400000) : null;
+
   const mentors = await db
     .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, lastLoginDate: usersTable.lastLoginDate })
     .from(usersTable)
@@ -479,6 +482,9 @@ router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
   if (mentors.length === 0) { res.json([]); return; }
 
   const mentorIds = mentors.map((m) => m.id);
+  const enrollmentWhere = since
+    ? and(inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds), gte(demoBatchEnrollmentsTable.enrolledAt, since))
+    : inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds);
   const demoStats = await db
     .select({
       mentorId: demoBatchEnrollmentsTable.assignedMentorId,
@@ -487,7 +493,7 @@ router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
       dropped: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus} = 'dropped' THEN 1 ELSE 0 END)`,
     })
     .from(demoBatchEnrollmentsTable)
-    .where(inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds))
+    .where(enrollmentWhere)
     .groupBy(demoBatchEnrollmentsTable.assignedMentorId);
 
   const statsMap = Object.fromEntries(
