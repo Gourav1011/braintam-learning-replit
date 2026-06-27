@@ -216,14 +216,15 @@ export default function TeacherLoginPage() {
             </form>
           </div>
 
-          <p className="text-xs text-center mt-5 text-gray-400">
-            Admin?{" "}
+          <div className="flex gap-4 mt-5 text-xs text-gray-400 justify-center">
             <Link href="/admin/login">
-              <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>
-                Admin login →
-              </span>
+              <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>Admin Login →</span>
             </Link>
-          </p>
+            <span>·</span>
+            <Link href="/mentor/login">
+              <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>Mentor Login →</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
