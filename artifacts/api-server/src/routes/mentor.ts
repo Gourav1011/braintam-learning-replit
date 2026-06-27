@@ -17,7 +17,7 @@ import {
   mentorDeploymentCyclesTable,
   demoBatchEnrollmentsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNotNull } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNull, isNotNull } from "drizzle-orm";
 import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
 import { requireRole } from "../middlewares/auth.js";
 import crypto from "crypto";
@@ -1545,31 +1545,9 @@ router.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
   if (assignments.length === 0) { res.json([]); return; }
   const studentIds = assignments.map(a => a.studentId);
 
-  // Meaningful engagement = Call Connected, Busy, or Call Back Later in history
-  // OR any attendance record OR any homework submission
-  const [callEngaged, attEngaged, hwEngaged] = await Promise.all([
-    db.select({ studentId: mentorFollowUpsTable.studentId })
-      .from(mentorFollowUpsTable)
-      .where(and(
-        inArray(mentorFollowUpsTable.studentId, studentIds),
-        inArray(mentorFollowUpsTable.callStatus, ["Call Connected", "Busy", "Call Back Later", "Picked", "Call Back"]),
-      )),
-    db.select({ studentId: mentorAttendanceTable.studentId })
-      .from(mentorAttendanceTable)
-      .where(inArray(mentorAttendanceTable.studentId, studentIds)),
-    db.select({ studentId: homeworkSubmissionsTable.studentId })
-      .from(homeworkSubmissionsTable)
-      .where(inArray(homeworkSubmissionsTable.studentId, studentIds)),
-  ]);
-  const engagedIds = new Set([
-    ...callEngaged.map(r => r.studentId),
-    ...attEngaged.map(r => r.studentId),
-    ...hwEngaged.map(r => r.studentId),
-  ]);
-
-  const nonActiveIds = studentIds.filter(id => !engagedIds.has(id));
-  if (nonActiveIds.length === 0) { res.json([]); return; }
-
+  // Non-active = mentor never called at all (lastCallAt IS NULL).
+  // lastCallAt is stamped on every call log — even without a formal follow-up entry —
+  // so it is the most accurate signal for "no contact made yet".
   const SKIP_STAGES = new Set(["Interested", "Highly Interested", "Converted", "Demo Booked", "Payment Pending", "Enrolled"]);
 
   const students = await db.select({
@@ -1580,7 +1558,10 @@ router.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
     interestLevel: usersTable.interestLevel, lastCallAt: usersTable.lastCallAt,
     nextFollowUpAt: usersTable.nextFollowUpAt, nextFollowUpTime: usersTable.nextFollowUpTime,
     busyReason: usersTable.busyReason,
-  }).from(usersTable).where(inArray(usersTable.id, nonActiveIds));
+  }).from(usersTable).where(and(
+    inArray(usersTable.id, studentIds),
+    isNull(usersTable.lastCallAt),       // never called
+  ));
 
   const assignedAtMap = Object.fromEntries(assignments.map(a => [a.studentId, a.assignedAt.toISOString()]));
 

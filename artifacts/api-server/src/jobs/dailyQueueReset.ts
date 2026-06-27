@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
-import { mentorStudentAssignmentsTable, mentorFollowUpsTable, usersTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { mentorStudentAssignmentsTable, usersTable } from "@workspace/db";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 
 function getISTHourMinute(): { h: number; m: number; dateStr: string } {
@@ -14,7 +14,7 @@ let lastResetDate = "";
 
 export async function runDailyQueueReset(): Promise<void> {
   try {
-    // 1. Get all students currently assigned to active sales mentors
+    // 1. Get all students currently assigned to active sales mentors, with their assignment date
     const rows = await db
       .select({
         studentId: mentorStudentAssignmentsTable.studentId,
@@ -38,9 +38,10 @@ export async function runDailyQueueReset(): Promise<void> {
       return;
     }
 
-    // 2. Identify non-active leads (assigned 2+ days ago, zero follow-up history).
-    //    These must NOT be reset — they belong in the Non-Active bucket and should
-    //    not bleed back into Pending Calls every morning.
+    // 2. Identify non-active leads: assigned 2+ days ago AND lastCallAt IS NULL.
+    //    lastCallAt is stamped on every call log (even without a formal follow-up form),
+    //    so it is the most accurate signal for "mentor never called this lead at all".
+    //    These must NOT be reset — they belong in the Non-Active bucket.
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     twoDaysAgo.setHours(0, 0, 0, 0);
@@ -49,25 +50,24 @@ export async function runDailyQueueReset(): Promise<void> {
       .filter(r => new Date(r.assignedAt) < twoDaysAgo)
       .map(r => r.studentId);
 
-    const nonActiveIds = new Set<number>();
+    let nonActiveIds = new Set<number>();
     if (oldStudentIds.length > 0) {
-      // Any entry in mentorFollowUpsTable means the mentor engaged the lead
-      const engagedRows = await db
-        .select({ studentId: mentorFollowUpsTable.studentId })
-        .from(mentorFollowUpsTable)
-        .where(inArray(mentorFollowUpsTable.studentId, oldStudentIds));
-      const engagedSet = new Set(engagedRows.map(r => r.studentId));
-      // Non-active = old assignments with NO follow-up history at all
-      for (const id of oldStudentIds) {
-        if (!engagedSet.has(id)) nonActiveIds.add(id);
-      }
+      // Leads with lastCallAt set have been called at least once → not non-active
+      const neverCalledRows = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(and(
+          inArray(usersTable.id, oldStudentIds),
+          isNull(usersTable.lastCallAt),
+        ));
+      nonActiveIds = new Set(neverCalledRows.map(r => r.id));
     }
 
     // 3. Statuses that reset to Pending each morning:
     //    - Busy / Call Back / Call Later: temporary daily-queue statuses
-    //    - Call Connected / Picked: mentor spoke but needs to follow up again
+    //    - Call Connected / Picked: mentor spoke, needs to follow up again
     //    - Interested / Not Interested: call completed; re-queue for next-day follow-up
-    //    NOT reset: Non-Active (excluded above), Payment statuses, permanent outcomes
+    //    NOT reset: Non-Active leads (excluded above), payment states, permanent outcomes
     const RESET_STATUSES = [
       "Busy",
       "Call Back", "Call Back Later", "Call Later",
