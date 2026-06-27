@@ -110,9 +110,8 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
           <div className="text-center py-16 text-gray-400 text-sm">
             <div className="text-3xl mb-2">🏆</div>
             {data?.cycle
-              ? "No leads assigned in this cycle yet."}
-          </div>
-        ) : (
+              ? "No leads assigned}</div>
+      ) : (
           <>
             {/* Simple ranked table — no podium */}
             <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white"

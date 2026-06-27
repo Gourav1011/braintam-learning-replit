@@ -242,9 +242,6 @@ function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <div className="font-black text-sm" style={{ color: NAVY }}>Notifications</div>
-            <div className="text-[11px] text-gray-400">
-              {currentCycle.length} in current cycle
-            </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
