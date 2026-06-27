@@ -7,8 +7,10 @@ import {
   coursePricingTable,
   auditLogsTable,
   manualPaymentsTable,
+  mentorStudentAssignmentsTable,
+  mentorDeploymentCyclesTable,
 } from "@workspace/db";
-import { eq, desc, and, ilike, or, inArray, isNull, gte } from "drizzle-orm";
+import { eq, desc, and, ilike, or, inArray, isNull, gte, count } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -391,13 +393,68 @@ router.post("/admin/long-term/manual-payments/:id/reject", adminOnly, async (req
 });
 
 // ── GET /api/mentor/notifications ─────────────────────────────────────────────
-// Returns real events: full payment links launched + approved manual payments.
-// No partial payments. No amounts. Name plain, action is the key label.
+// Returns deployment-cycle-scoped notifications:
+//   1. Lead assignment notifications (one per cycle: "You received X new leads for Week Y")
+//   2. Payment events (links launched + manual approvals)
+// Each notification is tagged with isCurrentCycle so the bell badge only counts current ones.
 router.get("/mentor/notifications", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  // 1. Full payment links created by this mentor (no partials)
+  // 1. Find active deployment cycle
+  const [activeCycle] = await db
+    .select()
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .limit(1);
+
+  // 2. Lead assignment notifications — one per cycle where this mentor has leads
+  const cycleLeadCounts = await db
+    .select({
+      cycleId: mentorStudentAssignmentsTable.deploymentCycleId,
+      leadCount: count(mentorStudentAssignmentsTable.id),
+    })
+    .from(mentorStudentAssignmentsTable)
+    .where(eq(mentorStudentAssignmentsTable.assignedMentorId, mentorId))
+    .groupBy(mentorStudentAssignmentsTable.deploymentCycleId);
+
+  // Fetch cycle details for each cycle
+  const cycleIds = cycleLeadCounts
+    .map(r => r.cycleId)
+    .filter((id): id is number => id != null);
+
+  const cycles = cycleIds.length > 0
+    ? await db
+        .select()
+        .from(mentorDeploymentCyclesTable)
+        .where(inArray(mentorDeploymentCyclesTable.id, cycleIds))
+    : [];
+
+  const cycleMap = new Map(cycles.map(c => [c.id, c]));
+
+  const leadNotifs = cycleLeadCounts
+    .filter(r => r.cycleId != null)
+    .map(r => {
+      const cycle = cycleMap.get(r.cycleId!);
+      const isCurrentCycle = activeCycle ? r.cycleId === activeCycle.id : false;
+      return {
+        id: `leads-${r.cycleId}`,
+        type: "leads_assigned" as const,
+        studentName: "",
+        studentId: null,
+        action: `You received ${r.leadCount} new lead${r.leadCount !== 1 ? "s" : ""} for ${cycle?.weekLabel ?? `Cycle ${r.cycleId}`}.`,
+        time: cycle?.createdAt?.toISOString() ?? new Date().toISOString(),
+        cycleId: r.cycleId,
+        weekLabel: cycle?.weekLabel ?? null,
+        isCurrentCycle,
+      };
+    })
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  // 3. Payment events scoped to current cycle (or all-time if no active cycle)
+  const since = activeCycle
+    ? new Date(activeCycle.startDate)
+    : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
   const links = await db
     .select({
       id: paymentLinksTable.id,
@@ -415,8 +472,6 @@ router.get("/mentor/notifications", mentorAuth, async (req, res) => {
     .orderBy(desc(paymentLinksTable.createdAt))
     .limit(30);
 
-  // 2. Manual payments approved for this mentor's students (full-payment approvals only)
-  // Join payment_links to find which student belongs to this mentor
   const allMentorStudentIds = await db
     .select({ studentId: paymentLinksTable.studentId })
     .from(paymentLinksTable)
@@ -442,7 +497,7 @@ router.get("/mentor/notifications", mentorAuth, async (req, res) => {
         .limit(30)
     : [];
 
-  const notifs = [
+  const paymentNotifs = [
     ...links.map(l => ({
       id: `link-${l.id}`,
       type: "payment_link" as const,
@@ -450,6 +505,9 @@ router.get("/mentor/notifications", mentorAuth, async (req, res) => {
       studentId: l.studentId,
       action: "payment link launched",
       time: l.createdAt.toISOString(),
+      cycleId: null,
+      weekLabel: null,
+      isCurrentCycle: true,
     })),
     ...approvals.map(a => ({
       id: `approval-${a.id}`,
@@ -458,8 +516,15 @@ router.get("/mentor/notifications", mentorAuth, async (req, res) => {
       studentId: a.studentId,
       action: "completed payment successfully",
       time: (a.approvedAt ?? new Date()).toISOString(),
+      cycleId: null,
+      weekLabel: null,
+      isCurrentCycle: true,
     })),
-  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 50);
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  const notifs = [...leadNotifs, ...paymentNotifs]
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .slice(0, 50);
 
   res.json(notifs);
 });

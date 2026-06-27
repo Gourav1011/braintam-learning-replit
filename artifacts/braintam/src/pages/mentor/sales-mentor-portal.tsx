@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Phone, MessageSquare, ChevronRight, Bell, Flag, ChevronDown, X,
+  Phone, MessageSquare, ChevronRight, Bell, ChevronDown, X,
   Search, Filter, ArrowLeft, Copy, Check, Loader2,
   CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle, Upload, Trophy,
 } from "lucide-react";
@@ -85,11 +85,14 @@ interface Remark {
 
 interface Notification {
   id: string;
-  type: "payment_link" | "payment_approved";
+  type: "payment_link" | "payment_approved" | "leads_assigned";
   studentName: string;
   studentId: number | null;
   action: string;
   time: string;
+  cycleId?: number | null;
+  weekLabel?: string | null;
+  isCurrentCycle?: boolean;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -211,19 +214,11 @@ function CallStatusBadge({ status }: { status: string }) {
 }
 
 // ── Notification Panel ─────────────────────────────────────────────────────
-const NOTIF_META: Record<string, { color: string; dot: string }> = {
-  payment_link:     { color: "#F59E0B", dot: "#F59E0B" },
-  payment_approved: { color: "#10B981", dot: "#10B981" },
+const NOTIF_META: Record<string, { dot: string; emoji: string }> = {
+  payment_link:     { dot: "#F59E0B", emoji: "💳" },
+  payment_approved: { dot: "#10B981", emoji: "✅" },
+  leads_assigned:   { dot: "#3B82F6", emoji: "🔔" },
 };
-
-function NotifText({ studentName, action }: { studentName: string; action: string }) {
-  return (
-    <span>
-      <span style={{ color: "#374151" }}>{studentName} </span>
-      <span className="font-black" style={{ color: NAVY }}>{action}</span>
-    </span>
-  );
-}
 
 function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
   notifications: Notification[];
@@ -231,18 +226,13 @@ function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
   onClose: () => void;
   onNotifClick: (n: Notification) => void;
 }) {
-  const bucket = (n: Notification) => {
-    const d = new Date(n.time);
-    const now = new Date();
-    if (d.toDateString() === now.toDateString()) return "Today";
-    const y = new Date(); y.setDate(y.getDate() - 1);
-    if (d.toDateString() === y.toDateString()) return "Yesterday";
-    return "Earlier";
-  };
-  const groups = ["Today", "Yesterday", "Earlier"].map(label => ({
-    label,
-    items: notifications.filter(n => bucket(n) === label),
-  }));
+  const currentCycle = notifications.filter(n => n.isCurrentCycle !== false);
+  const history = notifications.filter(n => n.isCurrentCycle === false);
+
+  const groups = [
+    { label: "This Cycle", items: currentCycle },
+    { label: "History", items: history },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -252,7 +242,9 @@ function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <div className="font-black text-sm" style={{ color: NAVY }}>Notifications</div>
-            <div className="text-[11px] text-gray-400">{notifications.length} event{notifications.length !== 1 ? "s" : ""} (last 30 days)</div>
+            <div className="text-[11px] text-gray-400">
+              {currentCycle.length} in current cycle
+            </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
@@ -266,13 +258,16 @@ function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
             <div key={g.label}>
               <div className="px-5 pt-3 pb-1 text-[10px] font-black text-gray-400 uppercase tracking-wider">{g.label}</div>
               {g.items.map(n => {
-                const meta = NOTIF_META[n.type] ?? { color: "#6B7280", dot: "#6B7280" };
+                const meta = NOTIF_META[n.type] ?? { dot: "#6B7280", emoji: "🔔" };
                 return (
                   <button key={n.id} onClick={() => onNotifClick(n)}
                     className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 border-b border-gray-50 transition-colors">
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1" style={{ background: meta.dot }} />
+                    <span className="text-base flex-shrink-0 mt-0.5">{meta.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs leading-snug"><NotifText studentName={n.studentName} action={n.action} /></div>
+                      <div className="text-xs leading-snug text-gray-800">{n.action}</div>
+                      {n.studentName && (
+                        <div className="text-[11px] font-semibold mt-0.5" style={{ color: NAVY }}>{n.studentName}</div>
+                      )}
                       <div className="text-[10px] text-gray-400 mt-0.5">{fmtTime(n.time)}</div>
                     </div>
                   </button>
@@ -280,7 +275,7 @@ function NotificationPanel({ notifications, loading, onClose, onNotifClick }: {
               })}
             </div>
           ))}
-          {!loading && groups.every(g => g.items.length === 0) && (
+          {!loading && notifications.length === 0 && (
             <div className="flex flex-col items-center justify-center h-40 gap-2">
               <Bell className="w-8 h-8 text-gray-200" />
               <p className="text-xs text-gray-400">No notifications yet</p>
@@ -1737,16 +1732,12 @@ export function SalesMentorPortal({ user, onLogout }: {
           <button onClick={() => setShowNotifications(v => !v)}
             className="relative w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
             <Bell className="w-4 h-4" style={{ color: NAVY }} />
-            {notifications.length > 0 && (
+            {notifications.filter(n => n.isCurrentCycle !== false).length > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-white font-black rounded-full"
                 style={{ background: "#EF4444", minWidth: 17, height: 17, fontSize: 9 }}>
-                {notifications.length}
+                {notifications.filter(n => n.isCurrentCycle !== false).length}
               </span>
             )}
-          </button>
-          <button onClick={() => setShowNotifications(v => !v)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors border border-gray-200">
-            <Flag className="w-4 h-4" style={{ color: showNotifications ? ORANGE : NAVY }} />
           </button>
 
           <div className="relative" ref={profileRef}>
