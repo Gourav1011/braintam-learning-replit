@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, ToggleLeft, ToggleRight, Shield, RefreshCw, AlertTriangle } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { API_BASE } from "@/lib/api-base";
+
+function apiFetch(path: string, opts?: RequestInit) {
+  const token = localStorage.getItem("braintam_staff_token");
+  return fetch(`${API_BASE}/api${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts?.headers,
+    },
+  });
+}
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

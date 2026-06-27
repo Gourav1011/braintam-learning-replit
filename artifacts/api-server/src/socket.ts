@@ -138,6 +138,7 @@ function filterMessage(text: string): { filtered: string; matchedWord: string | 
 async function applyStrike(
   studentId: string,
   studentName: string,
+  phone: string | null,
   sessionId: string,
   mentorGroupId: string | null,
   originalMessage: string,
@@ -163,6 +164,7 @@ async function applyStrike(
     .values({
       studentId,
       studentName,
+      phone: phone ?? undefined,
       chatStatus: nowBlocked ? "blocked" : "active",
       chatViolationCount: newCount,
       chatBlockedAt: nowBlocked ? new Date() : undefined,
@@ -178,6 +180,7 @@ async function applyStrike(
         chatBlockReason: nowBlocked
           ? "Inappropriate Language"
           : sql`${chatModerationTable.chatBlockReason}`,
+        phone: phone ? phone : sql`${chatModerationTable.phone}`,
         updatedAt: new Date(),
       },
     })
@@ -598,7 +601,7 @@ export function setupSocketIO(httpServer: HttpServer) {
 
       if (matchedWord) {
         // Apply strike asynchronously then emit filtered message + warning
-        applyStrike(userId, name, sessionId, groupId, rawSanitized, matchedWord)
+        applyStrike(userId, name, phone, sessionId, groupId, rawSanitized, matchedWord)
           .then(({ newCount, nowBlocked }) => {
             if (nowBlocked) {
               socket.emit("chat:blocked", {

@@ -151,6 +151,70 @@ router.patch("/chat-moderation/student/:studentId/reset-violations", async (req,
   }
 });
 
+// ── Phone-based lookup (admin/mentor can look up by student phone) ─
+
+// GET /api/chat-moderation/by-phone/:phone/status
+router.get("/chat-moderation/by-phone/:phone/status", async (req, res) => {
+  const phone = req.params["phone"]!.replace(/\D/g, "");
+  try {
+    const [row] = await db
+      .select()
+      .from(chatModerationTable)
+      .where(eq(chatModerationTable.phone, phone));
+    return res.json({ status: row ?? null });
+  } catch (err) {
+    logger.error({ err }, "fetch chat-moderation by-phone failed");
+    return res.status(500).json({ error: "Query failed" });
+  }
+});
+
+// PATCH /api/chat-moderation/by-phone/:phone/unblock
+router.patch("/chat-moderation/by-phone/:phone/unblock", async (req, res) => {
+  const phone = req.params["phone"]!.replace(/\D/g, "");
+  const { unlockedBy } = req.body as { unlockedBy?: string };
+  try {
+    const [existing] = await db
+      .select({ studentId: chatModerationTable.studentId })
+      .from(chatModerationTable)
+      .where(eq(chatModerationTable.phone, phone));
+    if (!existing) return res.status(404).json({ error: "No moderation record found for this phone" });
+    await db
+      .update(chatModerationTable)
+      .set({
+        chatStatus: "active",
+        chatBlockedAt: null,
+        chatBlockReason: `Unblocked by ${unlockedBy ?? "mentor"}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(chatModerationTable.phone, phone));
+    return res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "unblock by-phone failed");
+    return res.status(500).json({ error: "Update failed" });
+  }
+});
+
+// PATCH /api/chat-moderation/by-phone/:phone/reset-violations
+router.patch("/chat-moderation/by-phone/:phone/reset-violations", async (req, res) => {
+  const phone = req.params["phone"]!.replace(/\D/g, "");
+  try {
+    await db
+      .update(chatModerationTable)
+      .set({
+        chatViolationCount: 0,
+        chatStatus: "active",
+        chatBlockedAt: null,
+        chatBlockReason: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(chatModerationTable.phone, phone));
+    return res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "reset-violations by-phone failed");
+    return res.status(500).json({ error: "Update failed" });
+  }
+});
+
 // ── Violations Log ─────────────────────────────────────────────
 
 // GET /api/chat-moderation/violations?studentId=&sessionId=&limit=100

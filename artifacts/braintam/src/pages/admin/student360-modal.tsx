@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, User, Phone, Edit2, Save, Loader2, Target, ClipboardList, Trophy, FileText } from "lucide-react";
+import { X, BookOpen, Star, Zap, Clock, CheckCircle, AlertCircle, Activity, User, Phone, Edit2, Save, Loader2, Target, ClipboardList, Trophy, FileText, Shield, Unlock, RotateCcw, MessageSquareOff } from "lucide-react";
 import { API_BASE } from "@/lib/api-base";
 
 const NAVY = "#0B2B6B";
@@ -141,6 +141,109 @@ type StudentAssessments = {
   tests: { id: number; title: string; grade: number; maxMarks: number; score: number | null; maxScore: number | null; scorePct: number | null; submittedAt: string; testType: string | null }[];
   summary: { totalSubmissions: number; avgScore: number; pendingCount: number; rank: number };
 };
+
+// ── Chat Moderation Card ────────────────────────────────────────
+interface ChatModStatus {
+  studentId: string; studentName: string; phone: string | null;
+  chatStatus: string; chatViolationCount: number;
+  chatBlockedAt: string | null; chatBlockReason: string | null;
+}
+function ChatModerationCard({ phone, staffName }: { phone: string; staffName: string }) {
+  const [status, setStatus] = useState<ChatModStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const showFlash = (msg: string) => { setFlash(msg); setTimeout(() => setFlash(null), 3000); };
+  const digits = phone.replace(/\D/g, "");
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch(`/chat-moderation/by-phone/${digits}/status`)
+      .then(r => r.json())
+      .then((d: { status: ChatModStatus | null }) => setStatus(d.status))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [digits]);
+
+  const unblock = async () => {
+    setActing(true);
+    try {
+      const r = await apiFetch(`/chat-moderation/by-phone/${digits}/unblock`, {
+        method: "PATCH", body: JSON.stringify({ unlockedBy: staffName }),
+      });
+      if (r.ok) { setStatus(s => s ? { ...s, chatStatus: "active", chatBlockedAt: null } : s); showFlash("✅ Chat unblocked"); }
+      else showFlash("Failed to unblock");
+    } finally { setActing(false); }
+  };
+
+  const reset = async () => {
+    setActing(true);
+    try {
+      const r = await apiFetch(`/chat-moderation/by-phone/${digits}/reset-violations`, { method: "PATCH" });
+      if (r.ok) { setStatus(s => s ? { ...s, chatStatus: "active", chatViolationCount: 0, chatBlockedAt: null, chatBlockReason: null } : s); showFlash("✅ Violations reset"); }
+      else showFlash("Failed to reset");
+    } finally { setActing(false); }
+  };
+
+  if (loading) return <div className="rounded-2xl border border-gray-100 p-4 text-xs text-gray-400">Loading chat status…</div>;
+  if (!status) return (
+    <div className="rounded-2xl border border-gray-100 p-4 flex items-center gap-2">
+      <Shield className="w-4 h-4 text-gray-300" />
+      <span className="text-xs text-gray-400">No chat activity recorded yet</span>
+    </div>
+  );
+
+  const isBlocked = status.chatStatus === "blocked";
+
+  return (
+    <div className={`rounded-2xl border p-4 space-y-3 ${isBlocked ? "border-red-200 bg-red-50/50" : "border-gray-100 bg-white"}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isBlocked ? <MessageSquareOff className="w-4 h-4 text-red-500" /> : <Shield className="w-4 h-4 text-green-600" />}
+          <span className="text-xs font-semibold" style={{ color: NAVY }}>Chat Moderation</span>
+        </div>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isBlocked ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+          {isBlocked ? "🚫 Blocked" : "💬 Active"}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="bg-gray-50 rounded-xl p-2.5">
+          <div className="text-gray-400 text-[10px]">Violations</div>
+          <div className={`font-bold text-sm ${status.chatViolationCount > 0 ? "text-orange-600" : "text-gray-700"}`}>{status.chatViolationCount} / 3</div>
+        </div>
+        {isBlocked && (
+          <div className="bg-red-50 rounded-xl p-2.5">
+            <div className="text-gray-400 text-[10px]">Blocked At</div>
+            <div className="font-semibold text-red-700 text-[11px]">{status.chatBlockedAt ? new Date(status.chatBlockedAt).toLocaleDateString("en-IN") : "—"}</div>
+          </div>
+        )}
+        {isBlocked && status.chatBlockReason && (
+          <div className="bg-red-50 rounded-xl p-2.5 col-span-2">
+            <div className="text-gray-400 text-[10px]">Reason</div>
+            <div className="font-semibold text-red-700 text-[11px]">{status.chatBlockReason}</div>
+          </div>
+        )}
+      </div>
+
+      {flash && <div className="text-xs text-green-700 bg-green-50 rounded-lg px-2.5 py-1.5">{flash}</div>}
+
+      <div className="flex gap-2">
+        {isBlocked && (
+          <button onClick={unblock} disabled={acting} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-white disabled:opacity-50" style={{ background: NAVY }}>
+            <Unlock className="w-3 h-3" /> Unblock Chat
+          </button>
+        )}
+        {status.chatViolationCount > 0 && (
+          <button onClick={reset} disabled={acting} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">
+            <RotateCcw className="w-3 h-3" /> Reset Violations
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function Student360Modal({ userId, userName, userEmail, onClose }: { userId: number; userName: string; userEmail: string | null; onClose: () => void }) {
   const [data, setData] = useState<Student360Data | null>(null);
@@ -615,6 +718,9 @@ export function Student360Modal({ userId, userName, userEmail, onClose }: { user
                         </div>
                       </div>
                     </div>
+
+                    {/* ── Chat Moderation ───────────────────── */}
+                    {p?.phone && <ChatModerationCard phone={p.phone} staffName={userName} />}
                   </div>
                 )}
 

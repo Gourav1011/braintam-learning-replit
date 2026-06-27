@@ -7,7 +7,8 @@ export const chatModerationTable = pgTable("chat_moderation", {
   id:                  serial("id").primaryKey(),
   studentId:           text("student_id").notNull().unique(),
   studentName:         text("student_name").notNull(),
-  chatStatus:          text("chat_status").notNull().default("active"),   // 'active' | 'blocked'
+  phone:               text("phone"),                                       // nullable — set when known from socket
+  chatStatus:          text("chat_status").notNull().default("active"),    // 'active' | 'blocked'
   chatViolationCount:  integer("chat_violation_count").notNull().default(0),
   chatBlockedAt:       timestamp("chat_blocked_at"),
   chatBlockReason:     text("chat_block_reason"),
