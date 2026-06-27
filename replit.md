@@ -48,12 +48,19 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## Staff accounts
 
+### Teacher portal (`/teacher/login`)
 | Name   | Email                     | Role    | Password   |
 |--------|---------------------------|---------|------------|
 | poonam | braintam20@gmail.com      | teacher | poonam2026 |
 | gourav | gourav.manhas10@gmail.com | admin   | admin2026  |
 | priya  | priya@braintam.com        | mentor  | priya2026  |
 | super  | super@braintam.com        | super_admin | super2026 |
+
+### Mentor/Sales SSM portal (`/mentor/login`) — role=mentor
+| Name   | Email                          | mentor_type | Password   |
+|--------|--------------------------------|-------------|------------|
+| poonam | poonam.mentor@braintam.com     | sales       | poonam2026 |
+| akshay | akshay@briantam.com            | sales       | (in DB)    |
 
 ## Product
 
