@@ -10,6 +10,7 @@ import {
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
 import { LeadDeploymentView } from "./lead-deployment-tab";
+import { IgnitePerformanceRankingsTab } from "./ignite-performance-rankings-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -44,6 +45,7 @@ export type IgniteView =
   | "follow-ups"
   | "conversion"
   | "sales-mentors"
+  | "performance-rankings"
   | "lead-deployment"
   | "paid-students-unassigned"
   | "paid-students-assigned"
@@ -3088,6 +3090,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
+  { id: "performance-rankings", label: "Performance Rankings", icon: BarChart2 },
 ];
 
 function IgniteSidebar({
@@ -4537,6 +4540,7 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    case "performance-rankings": return <IgnitePerformanceRankingsTab />;
     case "lead-deployment": return <LeadDeploymentView flash={flash} />;
     case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
     case "paid-students-assigned":      return <PaidStudentsAssignedView />;
@@ -4573,6 +4577,7 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
+      case "performance-rankings": return <IgnitePerformanceRankingsTab />;
       case "lead-deployment": return <LeadDeploymentView flash={flash} />;
       case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
       case "paid-students-assigned":      return <PaidStudentsAssignedView />;

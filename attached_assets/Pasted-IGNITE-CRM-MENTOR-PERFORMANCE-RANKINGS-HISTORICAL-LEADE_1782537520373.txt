@@ -1,0 +1,255 @@
+IGNITE CRM – MENTOR PERFORMANCE RANKINGS & HISTORICAL LEADERBOARDS
+
+IMPORTANT:
+This feature is for Admin, Managers, and Team Leads only.
+
+Do NOT delete historical rankings.
+Do NOT recalculate old rankings after data has been saved.
+Keep permanent weekly, monthly, and yearly snapshots.
+
+────────────────────────
+CREATE:
+Admin
+→ Ignite
+→ Performance Rankings
+────────────────────────
+
+Top Filters:
+
+Time View:
+Weekly
+Monthly
+Yearly
+Custom Date Range
+
+Comparison View:
+
+Specific Week
+Combined Weeks
+Specific Month
+Specific Year
+
+Examples:
+
+Week 24
+Week 25
+Weeks 24-28 Combined
+June 2026
+2026 Overall
+
+────────────────────────
+LEADERBOARD TABLE
+────────────────────────
+
+Columns:
+
+Rank
+Mentor Name
+Assigned Leads
+Successful Calls
+Demo Attendance %
+Homework Completion %
+Successful Payments
+Conversion %
+Non-Active Leads
+
+Sort:
+
+Highest Conversion %
+↓
+Highest Successful Payments
+↓
+Lowest Non-Active Leads
+
+Rank should automatically calculate.
+
+Example:
+
+#1 Rahul Sharma
+#2 Priya Singh
+#3 Sumit Kumar
+#4 Akshay Gupta
+
+────────────────────────
+TOP CARDS
+────────────────────────
+
+Top Performer
+Highest Conversion %
+Highest Successful Payments
+Lowest Non-Active Leads
+Most Improved Mentor
+
+────────────────────────
+MENTOR PERFORMANCE DRAWER
+────────────────────────
+
+When Admin clicks a mentor:
+
+Open detailed report:
+
+Mentor Name
+Week
+Assigned Leads
+Successful Calls
+Pending Calls
+No Response Leads
+Demo Attendance
+Homework Completion
+Successful Payments
+Conversion %
+Non-Active Leads
+Manager Name
+Team Lead Name
+
+Charts:
+
+Week-on-Week Trend
+Conversion Trend
+Payment Trend
+Lead Engagement Trend
+
+────────────────────────
+WEEKLY SNAPSHOT ENGINE
+────────────────────────
+
+Every week store:
+
+Week Number
+Mentor Name
+Assigned Leads
+Successful Calls
+Successful Payments
+Conversion %
+Non-Active Leads
+Rank
+
+Freeze snapshots permanently.
+
+If mentor leaves company:
+
+Keep records forever.
+
+Do not delete rankings.
+
+────────────────────────
+MONTHLY SNAPSHOTS
+────────────────────────
+
+Store:
+
+Month
+Mentor
+Assigned Leads
+Successful Payments
+Conversion %
+Rank
+
+────────────────────────
+YEARLY SNAPSHOTS
+────────────────────────
+
+Store:
+
+Year
+Mentor
+Assigned Leads
+Successful Payments
+Conversion %
+Rank
+
+────────────────────────
+COMBINED PERIODS
+────────────────────────
+
+Admin can select:
+
+Week 24
+to
+Week 30
+
+System should calculate:
+
+Combined Assigned Leads
+Combined Payments
+Combined Conversion %
+Combined Non-Active Leads
+Combined Rank
+
+Same for:
+
+Months
+Years
+Custom Dates
+
+────────────────────────
+EX-EMPLOYEE SUPPORT
+────────────────────────
+
+If mentor becomes inactive:
+
+Keep:
+
+Weekly Rankings
+Monthly Rankings
+Yearly Rankings
+Performance Reports
+
+Status:
+
+Inactive
+
+Still show in historical reports.
+
+────────────────────────
+EXPORTS
+────────────────────────
+
+Allow export:
+
+Weekly Rankings
+Monthly Rankings
+Yearly Rankings
+Custom Reports
+
+Formats:
+
+Excel
+CSV
+PDF
+
+────────────────────────
+UI DESIGN
+────────────────────────
+
+Simple and clean.
+
+Leaderboard:
+
+Rank | Mentor | Payments | Conversion %
+
+Click row:
+
+Opens detailed performance drawer.
+
+Use podium colors only:
+
+#1 Gold
+#2 Silver
+#3 Bronze
+
+Everything else remains simple table format.
+
+────────────────────────
+FINAL GOAL
+────────────────────────
+
+Admin should be able to answer questions like:
+
+Who was Rank #1 in Week 24?
+Who had the best conversion rate in March?
+Who received the most successful payments in 2026?
+How did Sumit perform over the last 8 weeks?
+How did an ex-employee perform before leaving?
+
+All rankings and reports should remain permanently available for future reference and coaching discussions.
