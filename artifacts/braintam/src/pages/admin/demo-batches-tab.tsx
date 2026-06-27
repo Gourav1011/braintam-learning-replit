@@ -3,7 +3,7 @@ import {
   Plus, Trash2, ChevronRight, ChevronLeft, Video, BookOpen, Calendar,
   Clock, Globe, GlobeLock, Users, Search, X, Phone, MessageSquare,
   Eye, BarChart3, Settings2, CheckCircle2, XCircle, RefreshCw, Loader2,
-  TrendingUp, MoreHorizontal, Edit2, User, Save, Link, Pencil
+  TrendingUp, MoreHorizontal, Edit2, User, Save, Link, Pencil, Wand2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -452,6 +452,21 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     loadBatches(); // refresh totalDays
   }
 
+  async function generateSessions() {
+    if (!selectedBatch) return;
+    if (!selectedBatch.startDate) { flash("Set a start date in Batch Details first", false); return; }
+    setBusy(true);
+    try {
+      const r = await apiFetch(`/admin/demo-batches/${selectedBatch.id}/generate-sessions`, { method: "POST" });
+      if (!r.ok) { flash("Failed — batch needs a start date", false); return; }
+      const newSessions = await r.json() as DemoSession[];
+      setSessions(newSessions);
+      flash(`${newSessions.length} sessions generated`);
+      loadBatches();
+    } catch { flash("Failed to generate sessions", false); }
+    finally { setBusy(false); }
+  }
+
   function openEditSession(s: DemoSession) {
     const { date, time: startTime } = sessionToIst(s.scheduledAt);
     const endMs = new Date(s.scheduledAt).getTime() + s.duration * 60 * 1000;
@@ -535,7 +550,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       onEnroll={enrollStudent} onRemove={removeEnrollment}
       onUpdateStatus={updateEnrollStatus} onUpdateAttendance={updateAttendanceDay}
       parseCSV={parseCSV} handleCSVFile={handleCSVFile} runBulkUpload={runBulkUpload}
-      onCreateSession={createSession} onDeleteSession={deleteSession}
+      onCreateSession={createSession} onDeleteSession={deleteSession} onGenerateSessions={generateSessions}
       onSaveSettings={saveSettings}
       flash={flash}
     />;
@@ -812,7 +827,7 @@ interface BatchDetailProps {
   parseCSV: (t: string) => { name: string; email: string; phone: string; grade: string }[];
   handleCSVFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   runBulkUpload: () => void;
-  onCreateSession: () => void; onDeleteSession: (id: number) => void;
+  onCreateSession: () => void; onDeleteSession: (id: number) => void; onGenerateSessions: () => void;
   onSaveSettings: () => void;
   flash: (msg: string, ok?: boolean) => void;
 }
@@ -920,7 +935,7 @@ function BatchDetail(p: BatchDetailProps) {
           setEditSessionForm={p.setEditSessionForm} savingSession={p.savingSession}
           onOpenEdit={p.onOpenEditSession} onUpdateSession={p.onUpdateSession}
           onCloseEdit={p.onCloseEditSession}
-          onCreate={p.onCreateSession} onDelete={p.onDeleteSession} />
+          onCreate={p.onCreateSession} onDelete={p.onDeleteSession} onGenerate={p.onGenerateSessions} />
       )}
       {p.detailTab === "mentor-tracking" && <MentorTrackingTab rows={p.mentorRows} loading={p.mentorLoading} flash={p.flash} />}
       {p.detailTab === "analytics" && <AnalyticsTab analytics={p.analytics} />}
@@ -1296,7 +1311,7 @@ function SessionsTab(p: {
   onOpenEdit: (s: DemoSession) => void;
   onUpdateSession: () => void;
   onCloseEdit: () => void;
-  onCreate: () => void; onDelete: (id: number) => void;
+  onCreate: () => void; onDelete: (id: number) => void; onGenerate: () => void;
 }) {
   if (p.loading) return <div className="flex items-center justify-center py-16 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading sessions...</div>;
 
@@ -1306,7 +1321,7 @@ function SessionsTab(p: {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-bold text-sm" style={{ color: NAVY }}>Sessions ({p.sessions.length})</h3>
-          <p className="text-xs text-gray-400 mt-0.5">5 sessions auto-generated at 5 PM IST · Edit each to customise</p>
+          <p className="text-xs text-gray-400 mt-0.5">Sessions at 5 PM IST · Edit each to customise</p>
         </div>
         <Button onClick={() => p.setShowAdd(!p.showAdd)} style={{ background: ORANGE }} className="text-white text-xs gap-1 h-8">
           <Plus className="w-3.5 h-3.5" /> Add Session
@@ -1362,9 +1377,19 @@ function SessionsTab(p: {
 
       {/* Sessions Table (desktop) / Cards (mobile) */}
       {p.sessions.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          <Video className="w-8 h-8 mx-auto mb-2 opacity-20" />
-          <p className="text-sm">No sessions yet. Add a session or create a new batch with a start date to auto-generate.</p>
+        <div className="text-center py-10 text-gray-400">
+          <Video className="w-10 h-10 mx-auto mb-3 opacity-20" />
+          <p className="text-sm font-semibold text-gray-500 mb-1">No sessions yet</p>
+          {p.batch.startDate ? (
+            <>
+              <p className="text-xs text-gray-400 mb-4">Auto-generate 5 sessions (Day 1–5 at 5 PM IST) based on the batch start date</p>
+              <Button onClick={p.onGenerate} style={{ background: NAVY }} className="text-white text-sm gap-1.5 mx-auto">
+                <Wand2 className="w-4 h-4" /> Generate 5 Sessions
+              </Button>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">Set a start date in <strong>Batch Details</strong> tab first, then come back to auto-generate sessions.</p>
+          )}
         </div>
       ) : (
         <>

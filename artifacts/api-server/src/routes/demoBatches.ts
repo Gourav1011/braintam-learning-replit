@@ -460,6 +460,40 @@ router.get("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res) 
   res.json(sessions);
 });
 
+// Auto-generate 5 sessions for an existing batch (idempotent — deletes and recreates)
+router.post("/admin/demo-batches/:batchId/generate-sessions", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
+
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId));
+  if (!batch) { res.status(404).json({ error: "Not found" }); return; }
+  if (!batch.startDate) { res.status(400).json({ error: "Batch has no start date — set one in settings first" }); return; }
+
+  // Clear existing sessions then regenerate
+  await db.delete(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
+
+  const sessions: typeof demoSessionsTable.$inferSelect[] = [];
+  for (let i = 0; i < DEFAULT_SESSION_TEMPLATE.length; i++) {
+    const tpl = DEFAULT_SESSION_TEMPLATE[i];
+    const [s] = await db.insert(demoSessionsTable).values({
+      batchId,
+      title: `Day ${i + 1} – ${tpl.subject}`,
+      subject: tpl.subject,
+      dayNumber: i + 1,
+      scheduledAt: sessionDateForDay(batch.startDate, i),
+      duration: 60,
+      status: "scheduled",
+    }).returning();
+    sessions.push(s);
+  }
+
+  await db.update(demoBatchesTable)
+    .set({ totalDays: sessions.length })
+    .where(eq(demoBatchesTable.id, batchId));
+
+  res.json(sessions);
+});
+
 router.post("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
