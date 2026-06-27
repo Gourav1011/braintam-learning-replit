@@ -8,8 +8,10 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable,
   testSubmissionsTable,
   auditLogsTable, topicNotesTable,
+  demoSessionsTable, demoBatchesTable,
+  chaptersTable, topicsTable,
 } from "@workspace/db";
-import { eq, and, inArray, desc, sql } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, gte, lte } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -697,6 +699,93 @@ router.delete("/teacher/notes/:id", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
   await db.delete(topicNotesTable).where(and(eq(topicNotesTable.id, id), eq(topicNotesTable.teacherId, teacherId)));
   res.json({ ok: true });
+});
+
+// ── Teacher-safe chapters & topics (fix 403 for admin endpoints) ──
+router.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
+  const courseId = Number(req.query.courseId);
+  if (!courseId) { res.status(400).json({ error: "courseId required" }); return; }
+  const rows = await db.select().from(chaptersTable)
+    .where(eq(chaptersTable.courseId, courseId))
+    .orderBy(chaptersTable.order, chaptersTable.name);
+  res.json(rows);
+});
+
+router.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
+  const chapterId = Number(req.query.chapterId);
+  if (!chapterId) { res.status(400).json({ error: "chapterId required" }); return; }
+  const rows = await db.select().from(topicsTable)
+    .where(eq(topicsTable.chapterId, chapterId))
+    .orderBy(topicsTable.order, topicsTable.name);
+  res.json(rows);
+});
+
+// ── My Sessions (demo_sessions for teacher's batches) ──────────────
+router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
+
+  const batches = await db.select().from(demoBatchesTable)
+    .where(isAdmin ? undefined : eq(demoBatchesTable.teacherId, teacherId));
+
+  if (batches.length === 0) { res.json([]); return; }
+  const batchIds = batches.map(b => b.id);
+  const batchMap = Object.fromEntries(batches.map(b => [b.id, b]));
+
+  const sessions = await db.select().from(demoSessionsTable)
+    .where(inArray(demoSessionsTable.batchId, batchIds))
+    .orderBy(desc(demoSessionsTable.scheduledAt));
+
+  res.json(sessions.map(s => {
+    const batch = batchMap[s.batchId];
+    return {
+      id: s.id,
+      topic: s.title,
+      dayNumber: s.dayNumber,
+      scheduledAt: s.scheduledAt.toISOString(),
+      duration: s.duration,
+      status: s.status,
+      joinUrl: s.joinUrl ?? null,
+      recordingUrl: s.recordingUrl ?? null,
+      batchId: s.batchId,
+      batchTitle: batch?.title ?? "",
+      batchGrade: batch?.grade ?? null,
+      batchSubject: batch?.subject ?? null,
+      // backward-compat fields for hw/test selectors
+      grade: batch?.grade ?? 0,
+      title: s.title,
+    };
+  }));
+});
+
+// ── Edit session (topic / meet link / recording) ───────────────────
+router.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "invalid id" }); return; }
+  const { title, joinUrl, recordingUrl } = req.body;
+  const [updated] = await db.update(demoSessionsTable)
+    .set({
+      ...(title !== undefined ? { title } : {}),
+      ...(joinUrl !== undefined ? { joinUrl: joinUrl || null } : {}),
+      ...(recordingUrl !== undefined ? { recordingUrl: recordingUrl || null } : {}),
+    })
+    .where(eq(demoSessionsTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Session not found" }); return; }
+  res.json({ ok: true, session: updated });
+});
+
+// ── Session status (scheduled → live → completed) ─────────────────
+router.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const { status } = req.body;
+  if (isNaN(id) || !status) { res.status(400).json({ error: "status required" }); return; }
+  const [updated] = await db.update(demoSessionsTable)
+    .set({ status })
+    .where(eq(demoSessionsTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Session not found" }); return; }
+  res.json({ ok: true, status: updated.status });
 });
 
 export default router;
