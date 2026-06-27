@@ -683,6 +683,14 @@ export function setupSocketIO(httpServer: HttpServer) {
       setTimeout(() => io.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
     });
 
+    // ── Attendance snapshot on demand (5-second client heartbeat) ────
+    socket.on("request:attendance", () => {
+      const snap = Array.from(liveStateCache.entries())
+        .filter(([k]) => k.startsWith(`${sessionId}-`))
+        .map(([, v]) => v);
+      socket.emit("attendance:snapshot", { students: snap });
+    });
+
     // ── Disconnect ────────────────────────────────────────────
     socket.on("disconnect", () => {
       if (isStaff) {

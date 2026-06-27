@@ -276,6 +276,21 @@ function AttendanceSidebar({
   );
 }
 
+// ── Analytics helper ───────────────────────────────────────────
+function trackEvent(
+  event: string,
+  sessionId: string,
+  userId: string,
+  role: string,
+  metadata: Record<string, unknown> = {}
+) {
+  fetch("/api/analytics/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event, sessionId, userId, role, metadata }),
+  }).catch(() => {/* fire-and-forget */});
+}
+
 // ── Main page ──────────────────────────────────────────────────
 export default function LiveClassroom() {
   const params = useParams<{ sessionId: string }>();
@@ -334,6 +349,7 @@ export default function LiveClassroom() {
   const salePrice    = search.get("scholarshipPrice") ?? "12000";
   const payLink      = search.get("paymentLink") ?? "/enroll";
   const [showBrochure, setShowBrochure] = useState(false);
+  const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [badgePos, setBadgePos] = useState({ x: 0, y: 0 });
   const badgeRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -361,9 +377,12 @@ export default function LiveClassroom() {
       // If barely moved, treat as click → open brochure
       const dx = Math.abs(e.clientX - (badgePos.x + dragOffset.current.x));
       const dy = Math.abs(e.clientY - (badgePos.y + dragOffset.current.y));
-      if (dx < 5 && dy < 5) setShowBrochure(true);
+      if (dx < 5 && dy < 5) {
+        setShowBrochure(true);
+        trackEvent("popup_opened", sessionId, userId, role, { grade, programName });
+      }
     }
-  }, [badgePos]);
+  }, [badgePos, sessionId, userId, role, grade, programName]);
 
   // ── Annotation ─────────────────────────────────────────────
   const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter">("none");
@@ -517,13 +536,23 @@ export default function LiveClassroom() {
 
     // ── Give Mic invite (student sees accept dialog) ──────────
     socket.on("stage:micInvite", (d: { studentId: string; studentName: string; fromTeacher: string }) => {
-      // Only show dialog to the invited student
       if (d.studentId === userId && !isStaff && !isMentor) {
         setMicInvite(d);
       }
     });
 
+    // ── Attendance snapshot — handle server response ──────────
+    socket.on("attendance:snapshot", ({ students }: { students: AttendanceRecord[] }) => {
+      students.forEach(s => upsert(s));
+    });
+
+    // ── Attendance 5-second heartbeat ─────────────────────────
+    const attendanceTick = setInterval(() => {
+      if (canSeeAttendance) socket.emit("request:attendance");
+    }, 5000);
+
     return () => {
+      clearInterval(attendanceTick);
       socket.off("roomState"); socket.off("chat:message");
       socket.off("pollStarted"); socket.off("pollEnded"); socket.off("pollUpdate");
       socket.off("showLeaderboard"); socket.off("studentJoined"); socket.off("studentReturned");
@@ -533,6 +562,7 @@ export default function LiveClassroom() {
       socket.off("stage:studentRemoved"); socket.off("stage:error");
       socket.off("teacher:joined"); socket.off("teacher:left");
       socket.off("stage:micInvite");
+      socket.off("attendance:snapshot");
     };
   }, [socket, upsert]);
 
@@ -832,14 +862,16 @@ export default function LiveClassroom() {
                   <p className="text-[11px] text-white font-semibold">{teacherInfo.name}</p>
                 </div>
               ) : (
-                /* ── Teacher disconnected — network issue message ── */
+                /* ── Teacher disconnected — reconnecting placeholder ── */
                 <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
-                  <div className="relative opacity-40">
-                    <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gray-600 rounded-full border-2 border-black" />
+                  <div className="relative">
+                    {/* Pulsing ring */}
+                    <span className="absolute inset-0 rounded-full animate-ping bg-yellow-500/30" />
+                    <div className="relative w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl opacity-60">👤</div>
                   </div>
                   <p className="text-[10px] text-gray-300 font-semibold">{teacherInfo.name}</p>
-                  <p className="text-[9px] text-yellow-400 leading-tight">📡 Network issue — please wait a moment</p>
+                  <p className="text-[9px] text-yellow-400 leading-tight font-bold">📡 Teacher is reconnecting…</p>
+                  <p className="text-[8px] text-gray-500 leading-tight">Stream will restore automatically</p>
                 </div>
               )
             ) : (
@@ -1111,20 +1143,29 @@ export default function LiveClassroom() {
       )}
 
       {/* ── Draggable Payment Badge (student + mentor only) ── */}
-      {!isStaff && (
+      {!isStaff && !badgeDismissed && (
         <div
           ref={badgeRef}
           data-testid="payment-badge"
-          className="fixed z-40 select-none cursor-grab active:cursor-grabbing"
+          className="fixed z-40 select-none"
           style={{ left: badgePos.x, top: badgePos.y, touchAction: "none" }}
           onPointerDown={onBadgePointerDown}
           onPointerMove={onBadgePointerMove}
           onPointerUp={onBadgePointerUp}
         >
-          <div className="rounded-full shadow-2xl border border-orange-500/60 px-3 py-2 flex items-center gap-2 text-white text-[10px] font-bold whitespace-nowrap"
+          <div className="rounded-full shadow-2xl border border-orange-500/60 px-3 py-2 flex items-center gap-2 text-white text-[10px] font-bold whitespace-nowrap cursor-grab active:cursor-grabbing"
             style={{ background: "linear-gradient(135deg,#FF6B1A,#c84b00)" }}>
             <span className="text-base">🚀</span>
             <span>Grade {grade} {programName}</span>
+            {/* Dismiss — stops propagation so it doesn't trigger brochure open */}
+            <button
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); setBadgeDismissed(true); }}
+              className="ml-1 w-4 h-4 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-[9px] text-white/80 hover:text-white transition-all flex-shrink-0"
+              title="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}
@@ -1135,7 +1176,7 @@ export default function LiveClassroom() {
           <div className="relative rounded-3xl overflow-hidden shadow-2xl w-full max-w-sm"
             style={{ background: "linear-gradient(160deg,#0a1f44 0%,#0B2B6B 60%,#1a0533 100%)" }}>
             {/* Close */}
-            <button onClick={() => setShowBrochure(false)}
+            <button onClick={() => { setShowBrochure(false); trackEvent("popup_closed", sessionId, userId, role, { grade }); }}
               className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
               <X className="w-4 h-4 text-white" />
             </button>
@@ -1185,7 +1226,14 @@ export default function LiveClassroom() {
 
             {/* CTA */}
             <div className="px-6 pb-6">
-              <a href={payLink} target="_blank" rel="noreferrer"
+              <a
+                href={payLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  trackEvent("cta_clicked", sessionId, userId, role, { grade, programName, salePrice });
+                  trackEvent("payment_started", sessionId, userId, role, { grade, programName, salePrice, payLink });
+                }}
                 className="block w-full py-3 text-center text-white font-black text-sm rounded-2xl shadow-lg transition-all hover:opacity-90 active:scale-95"
                 style={{ background: "linear-gradient(90deg,#FF6B1A,#e05500)" }}>
                 🎓 Grab My Seat Now

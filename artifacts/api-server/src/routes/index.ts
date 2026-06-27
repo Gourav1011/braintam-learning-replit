@@ -40,6 +40,7 @@ import masteryRetentionRouter from "./masteryRetention";
 import masteryNotificationsRouter from "./masteryNotifications";
 import ignitePerformanceRankingsRouter from "./ignitePerformanceRankings";
 import liveRouter from "./live";
+import analyticsRouter from "./analytics";
 
 const router: IRouter = Router();
 
@@ -84,5 +85,6 @@ router.use(masteryRetentionRouter);
 router.use(masteryNotificationsRouter);
 router.use(ignitePerformanceRankingsRouter);
 router.use(liveRouter);
+router.use(analyticsRouter);
 
 export default router;
