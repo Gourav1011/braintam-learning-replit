@@ -11,6 +11,7 @@ import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
 import { LeadDeploymentView } from "./lead-deployment-tab";
 import { IgnitePerformanceRankingsTab } from "./ignite-performance-rankings-tab";
+import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -46,6 +47,8 @@ export type IgniteView =
   | "conversion"
   | "sales-mentors"
   | "performance-rankings"
+  | "student-outreach"
+  | "ignite-reports"
   | "lead-deployment"
   | "paid-students-unassigned"
   | "paid-students-assigned"
@@ -3060,6 +3063,214 @@ interface NavItem {
   children?: { id: IgniteView; label: string }[];
 }
 
+// ── Student Outreach View ─────────────────────────────────────────────────────
+
+interface OutreachLead {
+  id: number; name: string | null; grade: number | null;
+  phone: string | null; parentPhone: string | null;
+  leadStage: string | null; interestLevel: string | null;
+  callStatus: string | null; lastCallAt: string | null;
+  nextFollowUpAt: string | null; assignedMentorName: string | null;
+  city: string | null; school: string | null;
+}
+
+const INTEREST_COLOR: Record<string, string> = {
+  "Very High": "#0B2B6B", "High": "#059669", "Moderate": "#D97706", "Low": "#9CA3AF",
+};
+
+function StudentOutreachView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [leads, setLeads]         = useState<OutreachLead[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState("");
+  const [stageFilter, setStage]   = useState("all");
+  const [gradeFilter, setGrade]   = useState("all");
+  const [sortBy, setSort]         = useState<"interest" | "followup" | "stage">("interest");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await apiFetch("/admin/ignite/leads?limit=500");
+      if (!r.ok) return;
+      const data = await r.json() as { leads?: OutreachLead[]; data?: OutreachLead[] };
+      const list: OutreachLead[] = data.leads ?? data.data ?? (Array.isArray(data) ? data as OutreachLead[] : []);
+      // Filter for leads that need outreach: not yet converted/dropped
+      setLeads(list.filter(l =>
+        !["Converted", "converted", "dropped", "Dropped"].includes(l.leadStage ?? "")
+      ));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = leads
+    .filter(l => {
+      if (stageFilter !== "all" && l.leadStage !== stageFilter) return false;
+      if (gradeFilter !== "all" && String(l.grade) !== gradeFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (l.name ?? "").toLowerCase().includes(q) ||
+          (l.phone ?? "").includes(q) ||
+          (l.parentPhone ?? "").includes(q) ||
+          (l.assignedMentorName ?? "").toLowerCase().includes(q);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "interest") {
+        const order: Record<string, number> = { "Very High": 0, "High": 1, "Moderate": 2, "Low": 3 };
+        return (order[a.interestLevel ?? ""] ?? 4) - (order[b.interestLevel ?? ""] ?? 4);
+      }
+      if (sortBy === "followup") {
+        return new Date(a.nextFollowUpAt ?? "9999").getTime() - new Date(b.nextFollowUpAt ?? "9999").getTime();
+      }
+      return (a.leadStage ?? "").localeCompare(b.leadStage ?? "");
+    });
+
+  const stages = [...new Set(leads.map(l => l.leadStage).filter(Boolean))] as string[];
+
+  const copyPhone = (phone: string | null) => {
+    if (!phone) return;
+    navigator.clipboard.writeText(phone).then(() => flash(`Copied: ${phone}`, true));
+  };
+
+  const overdueCnt = leads.filter(l => l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date()).length;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>Student Outreach</h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Active demo leads that need follow-up — {filtered.length} of {leads.length} shown
+            {overdueCnt > 0 && <span className="ml-2 text-red-500 font-semibold">· {overdueCnt} overdue</span>}
+          </p>
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Very High Interest", count: leads.filter(l => l.interestLevel === "Very High").length, color: NAVY, bg: "#EEF2FF" },
+          { label: "High Interest",      count: leads.filter(l => l.interestLevel === "High").length,      color: GREEN, bg: "#D1FAE5" },
+          { label: "Overdue Follow-ups", count: overdueCnt,                                                color: "#EF4444", bg: "#FEE2E2" },
+          { label: "Unassigned Leads",   count: leads.filter(l => !l.assignedMentorName).length,           color: ORANGE, bg: "#FFF7ED" },
+        ].map(c => (
+          <div key={c.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-2xl font-black" style={{ color: c.color }}>{c.count}</div>
+            <div className="text-xs text-gray-500 font-medium mt-0.5">{c.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input placeholder="Search name, phone, mentor…" value={search} onChange={e => setSearch(e.target.value)}
+            className="pl-9 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl w-full focus:outline-none focus:border-orange-300" />
+        </div>
+        <select value={stageFilter} onChange={e => setStage(e.target.value)}
+          className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none">
+          <option value="all">All Stages</option>
+          {stages.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={gradeFilter} onChange={e => setGrade(e.target.value)}
+          className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none">
+          <option value="all">All Grades</option>
+          {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={String(g)}>Grade {g}</option>)}
+        </select>
+        <select value={sortBy} onChange={e => setSort(e.target.value as typeof sortBy)}
+          className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none">
+          <option value="interest">Sort: Interest</option>
+          <option value="followup">Sort: Follow-up Date</option>
+          <option value="stage">Sort: Stage</option>
+        </select>
+      </div>
+
+      {/* Leads table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <UserCheck className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-sm">No leads match your filters</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-semibold">
+                  {["Student", "Grade", "Phone / Parent", "Interest", "Lead Stage", "Call Status", "Next Follow-up", "Mentor"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.slice(0, 100).map((l, idx) => {
+                  const isOverdue = l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date();
+                  return (
+                    <tr key={l.id}
+                      className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors"
+                      style={{ background: idx % 2 === 0 ? "white" : "#FAFAFA" }}>
+                      <td className="px-4 py-3">
+                        <p className="font-black text-xs" style={{ color: NAVY }}>{l.name ?? "—"}</p>
+                        {l.school && <p className="text-[10px] text-gray-400 truncate max-w-[140px]">{l.school}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{l.grade ? `G${l.grade}` : "—"}</td>
+                      <td className="px-4 py-3">
+                        {l.phone && (
+                          <button onClick={() => copyPhone(l.phone)} className="flex items-center gap-1 font-mono text-blue-600 hover:underline">
+                            <Phone className="w-3 h-3" />{l.phone}
+                          </button>
+                        )}
+                        {l.parentPhone && <p className="text-[10px] text-gray-400 mt-0.5">{l.parentPhone}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {l.interestLevel
+                          ? <span className="font-semibold text-xs" style={{ color: INTEREST_COLOR[l.interestLevel] ?? "#9CA3AF" }}>{l.interestLevel}</span>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+                          {l.leadStage ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{l.callStatus ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        {l.nextFollowUpAt
+                          ? <span className={`font-semibold ${isOverdue ? "text-red-500" : "text-gray-600"}`}>
+                              {new Date(l.nextFollowUpAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                              {isOverdue && " ⚠️"}
+                            </span>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{l.assignedMentorName ?? <span className="text-red-400">Unassigned</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filtered.length > 100 && (
+              <div className="text-center py-3 text-xs text-gray-400 border-t border-gray-50">
+                Showing 100 of {filtered.length} leads
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
@@ -3090,6 +3301,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
+  { id: "student-outreach", label: "Student Outreach", icon: UserCheck },
   { id: "performance-rankings", label: "Performance Rankings", icon: BarChart2 },
 ];
 
@@ -3172,9 +3384,14 @@ function IgniteSidebar({
         })}
 
         {/* Reports & Analytics */}
-        <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors">
+        <button
+          onClick={() => setView("ignite-reports")}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+          style={view === "ignite-reports"
+            ? { background: "#EEF2FF", color: NAVY }
+            : { color: "#6B7280" }}>
           <BarChart3 className="w-4 h-4 shrink-0" />
-          <span>Reports & Analytics</span>
+          <span>Reports</span>
         </button>
       </nav>
     </div>
@@ -4540,6 +4757,8 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    case "student-outreach": return <StudentOutreachView flash={flash} />;
+    case "ignite-reports": return <IgniteAnalyticsTab />;
     case "performance-rankings": return <IgnitePerformanceRankingsTab />;
     case "lead-deployment": return <LeadDeploymentView flash={flash} />;
     case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
@@ -4577,6 +4796,8 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
+      case "student-outreach": return <StudentOutreachView flash={flash} />;
+      case "ignite-reports": return <IgniteAnalyticsTab />;
       case "performance-rankings": return <IgnitePerformanceRankingsTab />;
       case "lead-deployment": return <LeadDeploymentView flash={flash} />;
       case "paid-students-unassigned":    return <PaidStudentsUnassignedView />;
