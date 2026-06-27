@@ -1223,7 +1223,7 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
     if (!asgn) { res.status(403).json({ error: "Not your assigned student" }); return; }
   }
 
-  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, repeatedCustomer } = req.body;
+  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, repeatedCustomer, whoPicked, contactOutcome } = req.body;
   if (!remark?.trim()) { res.status(400).json({ error: "Remark is required" }); return; }
   if (!callOutcome) { res.status(400).json({ error: "callOutcome is required" }); return; }
 
@@ -1243,13 +1243,19 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
   await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId));
 
   const actor = req.authUser!;
-  const noteText = `[${callOutcome}${busyReason ? ` – ${busyReason}` : ""}] ${remark.trim()}`;
+  const noteParts: string[] = [callOutcome];
+  if (busyReason) noteParts.push(busyReason);
+  if (whoPicked) noteParts.push(`Picked: ${whoPicked}`);
+  if (contactOutcome) noteParts.push(contactOutcome);
+  const noteText = `[${noteParts.join(" | ")}] ${remark.trim()}`;
   const [fu] = await db.insert(mentorFollowUpsTable).values({
     mentorId,
     studentId,
     noteType: "Call Outcome",
     note: noteText,
     callStatus: callOutcome,
+    whoPicked: whoPicked ?? null,
+    contactOutcome: contactOutcome ?? null,
     callTime: now.toISOString(),
     calledBy: String(actor.id),
     calledByName: actor.name,

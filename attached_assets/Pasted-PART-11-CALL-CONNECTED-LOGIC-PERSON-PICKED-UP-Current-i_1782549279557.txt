@@ -1,0 +1,251 @@
+PART 11 – CALL CONNECTED LOGIC & PERSON PICKED UP
+
+Current issue:
+
+Mentors can directly select:
+
+Father
+Mother
+Student
+Guardian
+
+even when the call never connected.
+
+This creates inaccurate data because we do not know who picked the call if the call was not answered.
+
+Implement the following workflow.
+
+═══════════════════════════════════════
+CALL FLOW
+═══════════════════════════════════════
+
+Step 1:
+
+Mentor clicks:
+
+Call Status
+
+Options:
+
+Pending
+Call Connected
+Busy
+No Response
+Switched Off
+Wrong Number
+Call Back Later
+
+═══════════════════════════════════════
+CALL CONNECTED LOGIC
+═══════════════════════════════════════
+
+ONLY IF:
+
+Call Status = Call Connected
+Call Status = call later 
+
+show an additional field:
+
+Who Picked the Call?
+
+Options:
+
+Father
+Mother
+Student
+Guardian
+Other
+
+Default:
+
+Not Selected
+
+This field must remain hidden for every other call status.
+
+Example:
+
+Busy
+↓
+Do NOT show:
+Who Picked
+
+No Response
+↓
+Do NOT show:
+Who Picked
+
+Switched Off
+↓
+Do NOT show:
+Who Picked
+
+Wrong Number
+↓
+Do NOT show:
+Who Picked
+
+Only:
+
+Call Connected
+↓
+Show:
+Who Picked the Call?
+
+═══════════════════════════════════════
+ADDITIONAL FIELD
+═══════════════════════════════════════
+
+After:
+
+Call Connected
+↓
+Who Picked
+
+Allow mentor to select:
+
+Interested
+Not Interested
+Need Callback
+Demo Explained
+Class Details Shared
+
+These options should also remain hidden until:
+
+Call Connected = Yes
+
+═══════════════════════════════════════
+HISTORY TRACKING
+═══════════════════════════════════════
+
+Store complete history.
+
+Example:
+
+24 Jun
+Call Connected
+Picked By: Mother
+Interested
+
+25 Jun
+Busy
+
+26 Jun
+No Response
+
+27 Jun
+Call Connected
+Picked By: Father
+Need Callback
+
+Nothing should ever be overwritten.
+
+═══════════════════════════════════════
+NON-ACTIVE LEAD LOGIC
+═══════════════════════════════════════
+
+Primary decision should now be based on:
+
+Call Connected.
+
+A lead becomes Non-Active on Day 3 only if:
+
+No Call Connected
+No Demo Attendance
+No Homework Activity
+No Meaningful Engagement
+
+Meaning:
+
+Busy
+No Response
+Switched Off
+Wrong Number
+Call Back Later
+
+DO NOT count as engagement.
+
+Only:
+
+Call Connected
+
+counts as meaningful contact.
+
+═══════════════════════════════════════
+EXAMPLES
+═══════════════════════════════════════
+
+Example 1:
+
+Day 1:
+Busy
+
+Day 2:
+No Response
+
+Day 3:
+Switched Off
+
+Result:
+
+Move to:
+Non-Active Leads.
+
+---
+
+Example 2:
+
+Day 1:
+Call Connected
+Mother Picked
+Need Callback
+
+Result:
+
+Do NOT move to:
+Non-Active Leads.
+
+---
+
+Example 3:
+
+Day 1:
+Call Connected
+Student Picked
+Demo Explained
+
+Result:
+
+Do NOT move to:
+Non-Active Leads.
+
+═══════════════════════════════════════
+REPORTING
+═══════════════════════════════════════
+
+Admin reports should additionally show:
+
+Call Connected Count
+Connected %
+Who Picked Distribution
+
+Example:
+
+Father: 35%
+Mother: 45%
+Student: 15%
+Guardian: 5%
+
+This will help analyze who usually engages during the Ignite cycle.
+
+═══════════════════════════════════════
+FINAL REQUIREMENTS
+═══════════════════════════════════════
+
+✔ Add "Call Connected" status.
+✔ Show "Who Picked the Call?" only after Call Connected.
+✔ Hide person selection for all other statuses.
+✔ Save complete call history.
+✔ Make Call Connected the primary engagement indicator.
+✔ Use Call Connected in Non-Active Lead calculation.
+✔ Keep reports and exports updated with these metrics.
+✔ Do not break existing mentor workflows.

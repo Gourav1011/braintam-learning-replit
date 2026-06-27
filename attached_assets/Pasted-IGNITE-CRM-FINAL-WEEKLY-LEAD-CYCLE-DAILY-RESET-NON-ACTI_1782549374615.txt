@@ -1,0 +1,518 @@
+IGNITE CRM – FINAL WEEKLY LEAD CYCLE, DAILY RESET, NON-ACTIVE LEADS & HISTORICAL TRACKING
+
+IMPORTANT:
+Do NOT create a new module.
+Do NOT redesign the portal.
+Do NOT remove any historical records.
+Do NOT delete any leads automatically.
+
+This task is to finalize and fix the existing Ignite Mentor Portal workflow exactly according to our business process.
+
+The current issue is that mentors are still seeing yesterday's statuses (Busy, No Response, Pending, etc.) and old week's leads inside their active dashboard. This is incorrect.
+
+Implement the workflow below.
+
+═══════════════════════════════════════
+BUSINESS MODEL
+═══════════════════════════════════════
+
+Ignite is a 6-day demo program.
+
+Internally mentors work on a weekly lead cycle.
+
+Example:
+
+Sunday
+↓
+Admin deploys leads
+
+Monday
+↓
+Mentors receive fresh lead batch
+
+Tuesday
+↓
+Follow-ups
+
+Wednesday
+↓
+Follow-ups + identify non-active leads
+
+Thursday
+↓
+Follow-ups
+
+Friday
+↓
+Follow-ups
+
+Saturday
+↓
+Final follow-ups
+
+Sunday
+↓
+New lead deployment cycle starts
+
+IMPORTANT:
+
+These internal day stages are ONLY for backend logic.
+
+Do NOT display:
+
+Day 1
+Day 2
+Day 3
+Day 4
+Day 5
+Day 6
+
+anywhere in the UI.
+
+═══════════════════════════════════════
+PART 1 – DAILY RESET (5:00 AM)
+═══════════════════════════════════════
+
+Every day at exactly:
+
+05:00 AM Server Time
+
+reset ONLY the mentor's working queue.
+
+Example:
+
+Tuesday evening:
+
+Aryan → Busy
+Rahul → No Response
+Neha → Called
+Ritika → Follow Up
+
+At 5:00 AM:
+
+Aryan → Pending Call
+Rahul → Pending Call
+Neha → Pending Call
+Ritika → Pending Call
+
+Reason:
+
+Mentors must attempt contacting every lead again each day.
+
+═══════════════════════════════════════
+VERY IMPORTANT
+═══════════════════════════════════════
+
+Reset ONLY:
+
+Today's Queue Status
+
+Do NOT modify:
+
+Lead Stage
+Demo Stage
+Attendance
+Homework Status
+Payment Status
+Conversion Status
+Lead Ownership
+Lead Assignment
+Mentor Notes
+Historical Activity
+
+Only reset:
+
+Today's Calling Queue.
+
+═══════════════════════════════════════
+PART 2 – DAILY ACTIVITY HISTORY
+═══════════════════════════════════════
+
+Maintain permanent activity history.
+
+Every action performed by a mentor must remain stored.
+
+Example:
+
+24 Jun
+
+Called
+Busy
+No Attendance
+
+25 Jun
+
+Called
+Interested
+Attended Class
+
+26 Jun
+
+No Response
+
+27 Jun
+
+Called Again
+Parent Busy
+
+Nothing should ever be overwritten.
+
+Daily history should be permanently available.
+
+Admin and mentors must be able to review previous activities.
+
+═══════════════════════════════════════
+PART 3 – CURRENT WEEK LEADS ONLY
+═══════════════════════════════════════
+
+Current issue:
+
+Mentors are seeing:
+
+Yesterday's Busy Leads
+Yesterday's No Response Leads
+Previous Week Leads
+Old Pending Calls
+
+This is incorrect.
+
+Mentor Dashboard should only display:
+
+Current Deployment Batch
+Current Week Leads
+Current Week Calling Queue
+Current Week Statistics
+
+Do NOT show:
+
+Previous Week Pending Calls
+Previous Week Busy Leads
+Previous Week No Response Leads
+Previous Week Follow Ups
+Previous Week Metrics
+
+The mentor dashboard must always feel like a fresh working dashboard for the current deployment cycle.
+
+═══════════════════════════════════════
+PART 4 – NON-ACTIVE LEADS
+═══════════════════════════════════════
+
+Add a new top navigation tab:
+
+Non-Active Leads
+
+Purpose:
+
+Identify leads showing zero engagement.
+
+A lead becomes Non-Active ONLY on Day 3.
+
+Day 1:
+
+Mentor attempts contact.
+
+Day 2:
+
+Mentor attempts contact again.
+
+Day 3:
+
+Move lead into:
+
+Non-Active Leads
+
+ONLY IF:
+
+No Successful Calls
+No Demo Attendance
+No Homework Activity
+No Meaningful Response
+No Engagement
+ 
+
+═══════════════════════════════════════
+VERY IMPORTANT
+═══════════════════════════════════════
+
+Do NOT:
+
+Delete Lead
+Remove Lead
+Unassign Lead
+Close Lead
+Change Lead Stage
+Change Ownership
+
+Simply display the lead under:
+
+Non-Active Leads.
+
+The lead must remain:
+
+Searchable
+Editable
+Callable
+Assignable
+
+═══════════════════════════════════════
+PART 5 – WEEKLY DEPLOYMENT RESET
+═══════════════════════════════════════
+
+Normally:
+
+Sunday Night
+or
+Monday Morning
+
+Admin deploys fresh leads.
+
+During deployment add:
+
+Refresh Mentor Portal
+
+OR
+
+Start New Week
+
+button.
+
+When clicked:
+
+Archive previous week's dashboard state.
+
+Previous week's:
+
+Pending Calls
+Busy Leads
+No Response Leads
+Follow Ups
+Statistics
+
+should move into:
+
+History.
+
+Then create:
+
+Fresh Current Week Queue
+
+using the newly deployed leads.
+
+═══════════════════════════════════════
+IMPORTANT
+═══════════════════════════════════════
+
+Do NOT delete:
+
+Lead Assignments
+Lead History
+Call Logs
+Attendance
+Conversion Records
+Payment Records
+
+Everything must remain historically available.
+
+═══════════════════════════════════════
+PART 6 – HISTORY SYSTEM
+═══════════════════════════════════════
+
+Maintain permanent history for every lead.
+
+Store:
+
+Assignment Date
+Assignment Week
+Assignment Month
+Deployment Batch
+Mentor
+Calls Made
+Busy Count
+No Response Count
+Successful Calls
+Attendance
+Homework Status
+Notes
+Conversion Status
+Payment Status
+
+Nothing should ever be lost.
+
+Nothing should ever be overwritten.
+
+═══════════════════════════════════════
+PART 7 – MENTOR DASHBOARD CARDS
+═══════════════════════════════════════
+
+Dashboard cards should always represent:
+
+TODAY'S activity only.
+
+Cards:
+
+Today's Pending Calls
+Today's Called
+Today's Follow Ups
+Today's Busy
+Today's No Response
+Today's Interested
+Today's Attended
+Today's Conversions
+
+These numbers reset every day at:
+
+05:00 AM.
+
+Historical numbers remain stored separately.
+
+═══════════════════════════════════════
+PART 8 – ADMIN PERFORMANCE TRACKING
+═══════════════════════════════════════
+
+Admin should be able to view:
+
+Week-wise Reports
+
+Week 24
+Week 25
+Week 26
+
+Month-wise Reports
+
+June
+July
+August
+
+Metrics:
+
+Assigned Leads
+Calls Made
+Busy
+No Response
+Successful Calls
+Attendance
+Non-Active Leads
+Conversions
+Successful Payments
+
+Allow exports:
+
+Excel
+CSV
+PDF
+
+═══════════════════════════════════════
+PART 9 – EX-EMPLOYEE SUPPORT
+═══════════════════════════════════════
+
+If a mentor leaves the company:
+
+Do NOT delete:
+
+Assignments
+Call History
+Performance Reports
+Conversions
+Payments
+Rankings
+
+Mark:
+
+Status = Inactive
+
+Historical data should remain permanently available.
+
+Admin must still be able to:
+
+View reports
+Export reports
+Review performance
+Compare previous weeks and months
+
+═══════════════════════════════════════
+PART 10 – EXAMPLE WORKFLOW
+═══════════════════════════════════════
+
+Week 24
+
+Monday:
+
+100 leads deployed.
+
+Tuesday:
+
+40 Busy
+30 No Response
+20 Interested
+10 Attended
+
+Wednesday at 5:00 AM:
+
+All leads return to:
+
+Pending Calls.
+
+Tuesday's work remains in history.
+
+Wednesday evening:
+
+Leads with:
+
+No Calls
+No Attendance
+No Responses
+No Engagement
+
+move into:
+
+Non-Active Leads.
+
+Next Sunday:
+
+Admin deploys new leads.
+
+Previous week's dashboard state moves into:
+
+History.
+
+Mentor dashboard becomes:
+
+Fresh Week
+Fresh Pending Calls
+Fresh Counts
+Fresh Leads
+
+No old statuses should remain visible.
+
+═══════════════════════════════════════
+FINAL REQUIREMENTS
+═══════════════════════════════════════
+
+Fix the current bug where yesterday's statuses and old leads are still visible.
+
+Implement:
+
+✔ Daily 5 AM queue reset
+✔ Current week leads only in mentor dashboard
+✔ Non-Active Leads on Day 3
+✔ Weekly archive/history system
+✔ Refresh Mentor Portal during deployment
+✔ Permanent historical tracking
+✔ Today's dashboard counts only
+✔ Weekly and monthly admin reports
+✔ Export support
+✔ Ex-employee historical records
+✔ No automatic lead deletion
+✔ No data loss
+
+After implementation, verify by simulating:
+
+1. Daily reset
+2. Day 3 non-active movement
+3. New week deployment
+4. History creation
+5. Current week filtering
+6. Export generation
+7. Mentor dashboard counts
+
+Ensure everything behaves exactly like a real weekly sales CRM workflow.

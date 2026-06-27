@@ -8,6 +8,8 @@ export const mentorFollowUpsTable = pgTable("mentor_follow_ups", {
   noteType: text("note_type").notNull().default("general"),
   note: text("note").notNull(),
   callStatus: text("call_status"),
+  whoPicked: text("who_picked"),           // Father | Mother | Student | Guardian | Other
+  contactOutcome: text("contact_outcome"), // Interested | Not Interested | Need Callback | Demo Explained | Class Details Shared
   callTime: text("call_time"),
   calledBy: text("called_by"),
   calledByName: text("called_by_name"),

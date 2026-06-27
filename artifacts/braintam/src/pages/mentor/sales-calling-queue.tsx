@@ -45,6 +45,8 @@ interface CallOutcomeHistory {
   id: number;
   note: string;
   callStatus: string | null;
+  whoPicked: string | null;
+  contactOutcome: string | null;
   leadStatus: string | null;
   calledByName: string | null;
   nextFollowUpDate: string | null;
@@ -52,12 +54,34 @@ interface CallOutcomeHistory {
 }
 
 const CALL_STATUSES = [
-  { key: "Need To Call", label: "Need To Call", color: "#DC2626", bg: "#FEF2F2", border: "#FECACA" },
-  { key: "Picked", label: "Picked", color: "#059669", bg: "#F0FDF4", border: "#BBF7D0" },
-  { key: "Busy", label: "Busy", color: "#D97706", bg: "#FFFBEB", border: "#FDE68A" },
-  { key: "Call Back", label: "Call Back", color: "#6366F1", bg: "#EEF2FF", border: "#C7D2FE" },
-  { key: "Not Connected", label: "Not Connected", color: "#6B7280", bg: "#F9FAFB", border: "#E5E7EB" },
+  { key: "Pending",         label: "Pending",         color: "#DC2626", bg: "#FEF2F2", border: "#FECACA" },
+  { key: "Call Connected",  label: "Call Connected",  color: "#059669", bg: "#F0FDF4", border: "#BBF7D0" },
+  { key: "Busy",            label: "Busy",            color: "#D97706", bg: "#FFFBEB", border: "#FDE68A" },
+  { key: "No Response",     label: "No Response",     color: "#6B7280", bg: "#F9FAFB", border: "#E5E7EB" },
+  { key: "Switched Off",    label: "Switched Off",    color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+  { key: "Wrong Number",    label: "Wrong Number",    color: "#0891B2", bg: "#ECFEFF", border: "#A5F3FC" },
+  { key: "Call Back Later", label: "Call Back Later", color: "#6366F1", bg: "#EEF2FF", border: "#C7D2FE" },
 ];
+
+// Map legacy values → new canonical keys (for backward-compat display & filtering)
+function normalizeCallStatus(status: string | null | undefined): string {
+  if (!status) return "Pending";
+  const MAP: Record<string, string> = {
+    "Need To Call": "Pending",
+    "Picked":       "Call Connected",
+    "Call Back":    "Call Back Later",
+    "Not Connected":"No Response",
+  };
+  return MAP[status] ?? status;
+}
+
+// Statuses where "Who Picked the Call?" must be shown
+const SHOW_WHO_PICKED = new Set(["Call Connected", "Call Back Later"]);
+// Statuses where "Contact Outcome" must be shown
+const SHOW_CONTACT_OUTCOME = new Set(["Call Connected"]);
+
+const WHO_PICKED_OPTIONS = ["Father", "Mother", "Student", "Guardian", "Other"];
+const CONTACT_OUTCOMES   = ["Interested", "Not Interested", "Need Callback", "Demo Explained", "Class Details Shared"];
 
 const LEAD_STATUSES = [
   { key: "New Lead", label: "New Lead", color: "#6B7280", bg: "#F9FAFB" },
@@ -104,7 +128,8 @@ function LeadStageBadge({ stage }: { stage: string }) {
 }
 
 function CallStatusBadge({ status }: { status: string }) {
-  const s = CALL_STATUSES.find(c => c.key === status) ?? { color: "#6B7280", bg: "#F9FAFB" };
+  const normalized = normalizeCallStatus(status);
+  const s = CALL_STATUSES.find(c => c.key === normalized) ?? { color: "#6B7280", bg: "#F9FAFB" };
   return (
     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap"
       style={{ background: s.bg, color: s.color }}>{status}</span>
@@ -140,8 +165,13 @@ interface CallOutcomeModalProps {
 }
 
 function CallOutcomeModal({ lead, onClose, onSaved, onOpenProfile }: CallOutcomeModalProps) {
-  const [outcome, setOutcome] = useState(lead.callStatus !== "Need To Call" ? lead.callStatus : "Picked");
+  const [outcome, setOutcome] = useState(() => {
+    const n = normalizeCallStatus(lead.callStatus);
+    return n === "Pending" ? "Call Connected" : n;
+  });
   const [busyReason, setBusyReason] = useState(lead.busyReason ?? "");
+  const [whoPicked, setWhoPicked] = useState("");
+  const [contactOutcome, setContactOutcome] = useState("");
   const [leadStatus, setLeadStatus] = useState(lead.leadStage);
   const [interestLevel, setInterestLevel] = useState(lead.interestLevel ?? "");
   const [remark, setRemark] = useState("");
@@ -167,7 +197,17 @@ function CallOutcomeModal({ lead, onClose, onSaved, onOpenProfile }: CallOutcome
     setError("");
     const r = await apiFetch(`/mentor/sales/call-outcome/${lead.id}`, {
       method: "POST",
-      body: JSON.stringify({ callOutcome: outcome, busyReason: outcome === "Busy" ? busyReason : "", leadStatus, interestLevel: interestLevel || undefined, remark: remark.trim(), nextFollowUpAt: nextDate || undefined, nextFollowUpTime: nextTime || undefined }),
+      body: JSON.stringify({
+        callOutcome: outcome,
+        busyReason: outcome === "Busy" ? busyReason : "",
+        whoPicked: SHOW_WHO_PICKED.has(outcome) ? (whoPicked || undefined) : undefined,
+        contactOutcome: SHOW_CONTACT_OUTCOME.has(outcome) ? (contactOutcome || undefined) : undefined,
+        leadStatus,
+        interestLevel: interestLevel || undefined,
+        remark: remark.trim(),
+        nextFollowUpAt: nextDate || undefined,
+        nextFollowUpTime: nextTime || undefined,
+      }),
     });
     if (r.ok) {
       onSaved({ callStatus: outcome, leadStage: leadStatus, interestLevel: interestLevel || lead.interestLevel, nextFollowUpAt: nextDate || lead.nextFollowUpAt, nextFollowUpTime: nextTime || lead.nextFollowUpTime, busyReason: outcome === "Busy" ? busyReason : lead.busyReason, lastCallAt: new Date().toISOString() });
@@ -253,6 +293,52 @@ function CallOutcomeModal({ lead, onClose, onSaved, onOpenProfile }: CallOutcome
                   <option value="">Select reason…</option>
                   {BUSY_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
+              </div>
+            )}
+
+            {/* Who Picked the Call? (Call Connected / Call Back Later) */}
+            {SHOW_WHO_PICKED.has(outcome) && (
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">
+                  Who Picked the Call? <span className="text-red-400 text-[9px]">(recommended)</span>
+                </label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {WHO_PICKED_OPTIONS.map(opt => (
+                    <button key={opt} type="button"
+                      onClick={() => setWhoPicked(whoPicked === opt ? "" : opt)}
+                      className="px-2.5 py-1 rounded-full text-[10px] font-bold border-2 transition-all"
+                      style={{
+                        background:   whoPicked === opt ? "#EFF6FF" : "white",
+                        color:        whoPicked === opt ? "#1D4ED8" : "#9CA3AF",
+                        borderColor:  whoPicked === opt ? "#1D4ED8" : "#E5E7EB",
+                      }}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Contact Outcome (Call Connected only) */}
+            {SHOW_CONTACT_OUTCOME.has(outcome) && (
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">
+                  Call Outcome <span className="text-red-400 text-[9px]">(recommended)</span>
+                </label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {CONTACT_OUTCOMES.map(opt => (
+                    <button key={opt} type="button"
+                      onClick={() => setContactOutcome(contactOutcome === opt ? "" : opt)}
+                      className="px-2.5 py-1 rounded-full text-[10px] font-bold border-2 transition-all"
+                      style={{
+                        background:  contactOutcome === opt ? "#F0FDF4" : "white",
+                        color:       contactOutcome === opt ? "#059669" : "#9CA3AF",
+                        borderColor: contactOutcome === opt ? "#059669" : "#E5E7EB",
+                      }}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -352,7 +438,22 @@ function CallOutcomeModal({ lead, onClose, onSaved, onOpenProfile }: CallOutcome
                           <span className="text-[10px] font-bold text-gray-500">
                             {fmtDateTime(h.createdAt)} · {h.calledByName ?? "Mentor"}
                           </span>
-                          {h.leadStatus && <LeadStageBadge stage={h.leadStatus} />}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {h.callStatus && <CallStatusBadge status={h.callStatus} />}
+                            {h.whoPicked && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                                style={{ background: "#EFF6FF", color: "#1D4ED8" }}>
+                                👤 {h.whoPicked}
+                              </span>
+                            )}
+                            {h.contactOutcome && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                                style={{ background: "#F0FDF4", color: "#059669" }}>
+                                {h.contactOutcome}
+                              </span>
+                            )}
+                            {h.leadStatus && <LeadStageBadge stage={h.leadStatus} />}
+                          </div>
                         </div>
                         <p className="text-xs text-gray-700 leading-relaxed">{h.note}</p>
                         {h.nextFollowUpDate && (
@@ -382,7 +483,7 @@ export function SalesCallingQueueTab({
 }) {
   const [leads, setLeads] = useState<SalesLead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<string>("Need To Call");
+  const [activeFilter, setActiveFilter] = useState<string>("Pending");
   const [search, setSearch] = useState("");
   const [outcomeTarget, setOutcomeTarget] = useState<SalesLead | null>(null);
 
@@ -398,7 +499,7 @@ export function SalesCallingQueueTab({
   function countForFilter(key: string) {
     const f = ALL_FILTERS.find(f => f.key === key);
     if (!f) return 0;
-    if (f.kind === "call") return leads.filter(l => l.callStatus === key).length;
+    if (f.kind === "call") return leads.filter(l => normalizeCallStatus(l.callStatus) === key).length;
     return leads.filter(l => l.leadStage === key).length;
   }
 
@@ -407,7 +508,7 @@ export function SalesCallingQueueTab({
   const filtered = leads.filter(l => {
     const f = ALL_FILTERS.find(f => f.key === activeFilter);
     if (!f) return true;
-    const matchesFilter = f.kind === "call" ? l.callStatus === activeFilter : l.leadStage === activeFilter;
+    const matchesFilter = f.kind === "call" ? normalizeCallStatus(l.callStatus) === activeFilter : l.leadStage === activeFilter;
     if (!matchesFilter) return false;
     if (search) {
       const q = search.toLowerCase();

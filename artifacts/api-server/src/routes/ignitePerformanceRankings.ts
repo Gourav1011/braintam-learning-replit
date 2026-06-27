@@ -146,7 +146,7 @@ async function computeMentorStats(
     )
     .groupBy(usersTable.assignedMentorId);
 
-  // ── Successful calls (Picked or Call Back) ────────────────────────────────
+  // ── Successful calls (Call Connected or Call Back Later, incl. legacy values) ────
   const callsQ = db
     .select({
       mentorId: mentorFollowUpsTable.mentorId,
@@ -156,14 +156,14 @@ async function computeMentorStats(
     .where(
       and(
         inArray(mentorFollowUpsTable.mentorId, mentorIds),
-        inArray(mentorFollowUpsTable.callStatus, ["Picked", "Call Back"]),
+        inArray(mentorFollowUpsTable.callStatus, ["Picked", "Call Back", "Call Connected", "Call Back Later"]),
         start ? gte(mentorFollowUpsTable.createdAt, start) : undefined,
         end   ? lte(mentorFollowUpsTable.createdAt, end)   : undefined,
       )
     )
     .groupBy(mentorFollowUpsTable.mentorId);
 
-  // ── Pending calls (Need To Call) ──────────────────────────────────────────
+  // ── Pending calls (Need To Call / Pending) ────────────────────────────────
   const pendingQ = db
     .select({
       mentorId: usersTable.assignedMentorId,
@@ -173,12 +173,12 @@ async function computeMentorStats(
     .where(
       and(
         inArray(usersTable.assignedMentorId, mentorIds),
-        eq(usersTable.callStatus, "Need To Call"),
+        inArray(usersTable.callStatus, ["Need To Call", "Pending"]),
       )
     )
     .groupBy(usersTable.assignedMentorId);
 
-  // ── No Response leads (Not Connected or Busy) ─────────────────────────────
+  // ── No Response leads (not connected, busy, switched off, wrong number) ───
   const noRespQ = db
     .select({
       mentorId: usersTable.assignedMentorId,
@@ -188,7 +188,7 @@ async function computeMentorStats(
     .where(
       and(
         inArray(usersTable.assignedMentorId, mentorIds),
-        inArray(usersTable.callStatus, ["Not Connected", "Busy"]),
+        inArray(usersTable.callStatus, ["Not Connected", "Busy", "No Response", "Switched Off", "Wrong Number"]),
       )
     )
     .groupBy(usersTable.assignedMentorId);

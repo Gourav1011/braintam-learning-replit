@@ -1206,11 +1206,17 @@ function MentorTrackingTab({ rows, loading, flash }: { rows: MentorTrackingRow[]
   const [filterStatus, setFilterStatus] = useState("all");
 
   const CALL_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-    "Need To Call": { bg: "#EFF6FF", text: "#1D4ED8" },
-    "Picked": { bg: "#F0FDF4", text: "#15803D" },
-    "Busy": { bg: "#FEF3C7", text: "#92400E" },
-    "Call Back": { bg: "#FFF7ED", text: "#C2410C" },
-    "Not Connected": { bg: "#F3F4F6", text: "#374151" },
+    "Need To Call":   { bg: "#EFF6FF", text: "#1D4ED8" },
+    "Pending":        { bg: "#EFF6FF", text: "#1D4ED8" },
+    "Picked":         { bg: "#F0FDF4", text: "#15803D" },
+    "Call Connected": { bg: "#F0FDF4", text: "#15803D" },
+    "Busy":           { bg: "#FEF3C7", text: "#92400E" },
+    "Call Back":      { bg: "#FFF7ED", text: "#C2410C" },
+    "Call Back Later":{ bg: "#EEF2FF", text: "#4338CA" },
+    "Not Connected":  { bg: "#F3F4F6", text: "#374151" },
+    "No Response":    { bg: "#F3F4F6", text: "#374151" },
+    "Switched Off":   { bg: "#F5F3FF", text: "#5B21B6" },
+    "Wrong Number":   { bg: "#ECFEFF", text: "#0E7490" },
   };
 
   const INTEREST_BADGE: Record<string, string> = {
@@ -1221,7 +1227,7 @@ function MentorTrackingTab({ rows, loading, flash }: { rows: MentorTrackingRow[]
 
   if (loading) return <div className="flex items-center justify-center py-16 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading mentor data...</div>;
 
-  const STATUS_FILTERS = ["all", "Need To Call", "Picked", "Busy", "Call Back", "Not Connected", "Interested", "Highly Interested", "Converted"];
+  const STATUS_FILTERS = ["all", "Pending", "Need To Call", "Call Connected", "Picked", "Busy", "Call Back Later", "Call Back", "No Response", "Not Connected", "Switched Off", "Wrong Number", "Interested", "Highly Interested", "Converted"];
   const filtered = filterStatus === "all" ? rows : rows.filter(r =>
     (filterStatus === "Interested" && r.interestLevel === "Moderate") ||
     (filterStatus === "Highly Interested" && r.interestLevel === "High") ||
