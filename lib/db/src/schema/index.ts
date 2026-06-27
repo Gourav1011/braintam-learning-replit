@@ -48,3 +48,5 @@ export * from "./coursePricing";
 export * from "./leadStatusHistory";
 export * from "./mentorReassignmentHistory";
 export * from "./leadDeployments";
+export * from "./masteryStudents";
+export * from "./masteryTimeline";

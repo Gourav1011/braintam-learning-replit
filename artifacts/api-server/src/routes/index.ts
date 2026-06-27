@@ -33,6 +33,7 @@ import adminTeachersRouter from "./adminTeachers";
 import adminRolesRouter from "./adminRoles";
 import adminAuditLogsRouter from "./adminAuditLogs";
 import longTermPaymentsRouter from "./longTermPayments";
+import masteryStudentsRouter from "./masteryStudents";
 
 const router: IRouter = Router();
 
@@ -70,5 +71,6 @@ router.use(adminTeachersRouter);
 router.use(adminRolesRouter);
 router.use(adminAuditLogsRouter);
 router.use(longTermPaymentsRouter);
+router.use(masteryStudentsRouter);
 
 export default router;

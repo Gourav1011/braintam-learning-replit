@@ -74,6 +74,7 @@ import { AssessmentsTab } from "./assessments-tab";
 import { CommandCenterTab } from "./command-center-tab";
 import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 import { ReportsAnalyticsTab } from "./reports-analytics-tab";
+import { MasteryStudentsTab } from "./mastery-students-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -112,6 +113,7 @@ type Tab =
   | "assessments"
   | "ignite-analytics"
   | "reports-analytics"
+  | "mastery-students"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1287,7 +1289,7 @@ function AdminPageInner() {
       sections: [{
         items: [
           { label: "Dashboard", icon: Activity, tab: "dashboard" },
-          { label: "Students", icon: Users, tab: "users" },
+          { label: "Students", icon: Users, tab: "mastery-students" },
           { label: "Courses", icon: BookOpen, tab: "courses" },
           { label: "Live Classes", icon: Video, tab: "liveclasses" },
           { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
@@ -3112,6 +3114,9 @@ function AdminPageInner() {
 
         {/* ── Reports & Analytics ──────────────────────────────────────── */}
         {tab === "reports-analytics" && <ReportsAnalyticsTab />}
+
+        {/* ── Mastery Students ─────────────────────────────────────────── */}
+        {tab === "mastery-students" && <MasteryStudentsTab flash={flash} />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}

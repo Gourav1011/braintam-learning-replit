@@ -1,0 +1,176 @@
+PROMPT 3 – MASTERY DEPLOYMENT, NOTIFICATIONS & RETENTION ENGINE
+
+Build the complete Mastery Operations System.
+
+PART 1 – Student Deployment
+
+Create:
+
+Admin
+→ Mastery
+→ Student Deployment Center
+
+Cards:
+
+New Admissions
+Unassigned Students
+Active Mentors
+Assigned Students
+
+Deployment Flow:
+
+Select Grade
+Select Mentors
+Preview Distribution
+Deploy
+
+Support:
+
+Select All Mentors
+Specific Mentor Selection
+Equal Distribution
+
+Generate:
+
+Deployment Batch Code
+
+Timeline:
+
+Student Assigned
+Mentor Assigned
+Deployment Batch Created
+
+PART 2 – Mentor Notifications
+
+When:
+
+Payment Approved
+New Student Assigned
+Student Renewed
+
+Generate Notification.
+
+Notification Center:
+
+🔔 Aryan Sharma paid ₹25,000
+🔔 Neha Gupta assigned to Grade 4
+🔔 Aarav Gupta renewed for Grade 5
+
+Create notification bar:
+
+Auto-scroll
+Left to Right
+Continuous movement
+
+Click notification:
+
+Open Student Profile.
+
+Mentor Dashboard Cards:
+
+Today's Payments
+Pending Verification
+New Admissions
+Retention Due
+Renewed Students
+
+PART 3 – Retention Engine
+
+Every year on 1 December:
+
+Automatically:
+
+masteryStatus
+
+Active
+↓
+Retention Due
+
+Students remain inside Mastery.
+
+Nothing should move outside Mastery.
+
+Create:
+
+Mastery
+→ Retention Mode
+
+Cards:
+
+Retention Due
+Contacted
+Interested
+Follow-up
+Renewed
+Lost
+
+Retention Pipeline:
+
+Retention Due
+↓
+Contacted
+↓
+Interested
+↓
+Follow-up
+↓
+Renewed
+
+or
+
+Retention Due
+↓
+Not Interested
+↓
+Lost
+
+Actions:
+
+Call
+WhatsApp
+Add Note
+Schedule Follow-up
+Renew
+Mark Lost
+
+Retention Leaderboard:
+
+Columns:
+
+Rank
+Mentor
+Retention %
+
+Formula:
+
+Renewed Students
+÷
+Retention Due Students
+×100
+
+After Renewal:
+
+Automatically:
+
+Increase Grade by 1
+Create New Academic Year
+Update Status = Active
+Create Academic History Entry
+Preserve all previous year records.
+
+Create:
+
+student_academic_history
+
+Fields:
+
+Student
+Academic Year
+Grade
+Mentor
+Status
+Promotion Date
+
+Nothing should overwrite historical records.
+
+Mastery CRM should become the single source of truth for all students after conversion from Ignite.
