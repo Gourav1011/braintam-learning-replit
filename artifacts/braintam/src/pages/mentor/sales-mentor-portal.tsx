@@ -150,6 +150,7 @@ const CHIPS = [
   { key: "busy",       label: "Busy" },
   { key: "call-later", label: "Call Later" },
   { key: "completed",  label: "Completed Calls" },
+  { key: "non-active", label: "Non-Active" },
   { key: "converted",  label: "Converted" },
 ] as const;
 type Chip = typeof CHIPS[number]["key"];
@@ -172,6 +173,7 @@ function matchChip(lead: Lead, chip: Chip) {
   if (chip === "call-later") return !conv && (lead.callStatus === "Call Back" || lead.callStatus === "Call Later");
   if (chip === "completed")  return !conv && isCompletedCall(lead);
   if (chip === "converted")  return conv;
+  if (chip === "non-active") return false; // non-active leads are loaded separately
   return true;
 }
 function chipCount(leads: Lead[], chip: Chip) {
@@ -799,9 +801,38 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
   const [chip, setChip] = useState<Chip>("all");
   const [search, setSearch] = useState("");
 
-  const filtered = leads
+  // Non-active leads: lazy-loaded from a separate endpoint
+  const [nonActiveLeads, setNonActiveLeads] = useState<Lead[]>([]);
+  const [nonActiveLoading, setNonActiveLoading] = useState(false);
+  const [nonActiveLoaded, setNonActiveLoaded] = useState(false);
+  const [nonActiveError, setNonActiveError] = useState("");
+
+  const loadNonActive = useCallback(async () => {
+    setNonActiveLoading(true);
+    setNonActiveError("");
+    try {
+      const r = await apiFetch("/mentor/sales/non-active");
+      if (!r.ok) throw new Error("Failed to load");
+      const data = await r.json();
+      setNonActiveLeads(Array.isArray(data) ? data : []);
+      setNonActiveLoaded(true);
+    } catch {
+      setNonActiveError("Could not load non-active leads");
+    } finally {
+      setNonActiveLoading(false);
+    }
+  }, []);
+
+  const handleChip = (key: Chip) => {
+    setChip(key);
+    if (key === "non-active" && !nonActiveLoaded) loadNonActive();
+  };
+
+  const activeLeads = chip === "non-active" ? nonActiveLeads : leads;
+
+  const filtered = activeLeads
     .filter(l => {
-      if (!matchChip(l, chip)) return false;
+      if (chip !== "non-active" && !matchChip(l, chip)) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (
@@ -813,6 +844,10 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
     })
     .sort((a, b) => (b.attPct ?? -1) - (a.attPct ?? -1));
 
+  const isNonActive = chip === "non-active";
+  const isLoadingCurrent = isNonActive ? nonActiveLoading : loading;
+  const errorCurrent = isNonActive ? nonActiveError : error;
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ fontFamily: "Poppins, sans-serif" }}>
       <div className="flex items-start justify-between mb-4">
@@ -820,20 +855,20 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
           <h1 className="text-xl font-black" style={{ color: NAVY }}>My Leads</h1>
           <p className="text-xs text-gray-400 mt-0.5">{leads.length} leads assigned to you</p>
         </div>
-        <button onClick={onRefresh} disabled={loading}
+        <button onClick={isNonActive ? loadNonActive : onRefresh} disabled={isLoadingCurrent}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-bold hover:bg-gray-50 transition-colors"
           style={{ color: NAVY }}>
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "↻"} Refresh
+          {isLoadingCurrent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "↻"} Refresh
         </button>
       </div>
 
       {/* Filter chips */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
         {CHIPS.map(c => {
-          const count = chipCount(leads, c.key);
+          const count = c.key === "non-active" ? nonActiveLeads.length : chipCount(leads, c.key);
           const active = chip === c.key;
           return (
-            <button key={c.key} onClick={() => setChip(c.key)}
+            <button key={c.key} onClick={() => handleChip(c.key)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border"
               style={{
                 background: active ? NAVY : "white",
@@ -867,17 +902,17 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
       </div>
 
       {/* Content */}
-      {loading ? (
+      {isLoadingCurrent ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="w-7 h-7 animate-spin" style={{ color: NAVY }} />
-          <p className="text-xs text-gray-400">Loading your leads...</p>
+          <p className="text-xs text-gray-400">{isNonActive ? "Loading non-active leads..." : "Loading your leads..."}</p>
         </div>
-      ) : error ? (
+      ) : errorCurrent ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <AlertCircle className="w-8 h-8 text-red-400" />
           <p className="text-sm font-bold text-gray-500">Could not load leads</p>
-          <p className="text-xs text-gray-400">{error}</p>
-          <button onClick={onRefresh}
+          <p className="text-xs text-gray-400">{errorCurrent}</p>
+          <button onClick={isNonActive ? loadNonActive : onRefresh}
             className="mt-2 px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: NAVY }}>
             Try Again
           </button>
@@ -886,14 +921,14 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
         <div className="text-center py-20">
           <p className="font-bold text-sm text-gray-400">No leads in this category</p>
           <p className="text-xs text-gray-300 mt-1">
-            {search ? "Try a different search term" : "All your leads will appear here"}
+            {search ? "Try a different search term" : isNonActive ? "No non-active leads found" : "All your leads will appear here"}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map(lead => <LeadCard key={lead.id} lead={lead} onOpen={onOpen} />)}
           <p className="text-center pt-2 text-xs text-gray-400">
-            Showing {filtered.length} of {chipCount(leads, chip)} {CHIPS.find(c => c.key === chip)?.label} leads
+            Showing {filtered.length} of {isNonActive ? nonActiveLeads.length : chipCount(leads, chip)} {CHIPS.find(c => c.key === chip)?.label} leads
           </p>
         </div>
       )}
