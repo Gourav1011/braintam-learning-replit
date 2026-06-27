@@ -1267,12 +1267,12 @@ export default function BTLCRMPage() {
                         { label: "Repeated Customers", value: salesMetrics?.repeatedCustomers ?? 0, icon: "🔄", color: ORANGE, tab: "assigned-leads" as Tab },
                       ].map(c => (
                         <button key={c.label} onClick={() => setTab(c.tab)}
-                          className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm text-left hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-lg">{c.icon}</span>
+                          className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm text-left hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-base">{c.icon}</span>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
                           </div>
-                          <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                          <div className="text-lg font-black leading-none" style={{ color: NAVY }}>{c.value}</div>
                         </button>
                       ))}
                     </div>
@@ -1301,12 +1301,12 @@ export default function BTLCRMPage() {
                         { label: "Tasks Pending", value: dashboard.pendingTasks, icon: "📋", color: "#6366F1" },
                         { label: "Tasks Overdue", value: dashboard.overdueTasks, icon: "⚠️", color: ORANGE },
                       ].map(c => (
-                        <div key={c.label} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-lg">{c.icon}</span>
+                        <div key={c.label} className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-base">{c.icon}</span>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${c.color}15`, color: c.color }}>{c.label}</span>
                           </div>
-                          <div className="text-2xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                          <div className="text-lg font-black leading-none" style={{ color: NAVY }}>{c.value}</div>
                         </div>
                       ))}
                     </div>
@@ -1321,7 +1321,7 @@ export default function BTLCRMPage() {
                       ].map(c => (
                         <div key={c.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
                           <div className="text-[10px] font-bold mb-1" style={{ color: c.color }}>{c.label}</div>
-                          <div className="text-xl font-black" style={{ color: NAVY }}>{c.value}</div>
+                          <div className="text-base font-black" style={{ color: NAVY }}>{c.value}</div>
                         </div>
                       ))}
                     </div>
@@ -1439,9 +1439,9 @@ export default function BTLCRMPage() {
                       { label: "Red", key: "red" as const, color: "#DC2626", bg: "#FEE2E2", icon: "🔴" },
                       { label: "Critical", key: "critical" as const, color: "#7F1D1D", bg: "#FEF2F2", icon: "⛔" },
                     ].map(b => (
-                      <div key={b.key} className="rounded-2xl border p-3 text-center" style={{ borderColor: b.color, background: b.bg }}>
-                        <div className="text-xl mb-0.5">{b.icon}</div>
-                        <div className="text-2xl font-black" style={{ color: NAVY }}>{healthSummary[b.key].length}</div>
+                      <div key={b.key} className="rounded-xl border p-2.5 text-center" style={{ borderColor: b.color, background: b.bg }}>
+                        <div className="text-sm mb-0.5">{b.icon}</div>
+                        <div className="text-lg font-black leading-none" style={{ color: NAVY }}>{healthSummary[b.key].length}</div>
                         <div className="text-[10px] font-bold" style={{ color: b.color }}>{b.label}</div>
                       </div>
                     ))}
@@ -1658,9 +1658,9 @@ export default function BTLCRMPage() {
                   { label: "Remaining Calls", value: attRemainingCalls, color: "#D97706" },
                   { label: "Call Later",      value: attCallLaterCount, color: "#F97316" },
                 ].map(c => (
-                  <div key={c.label} className="rounded-2xl p-3 text-center"
+                  <div key={c.label} className="rounded-xl p-2.5 text-center"
                     style={{ background: `${c.color}10`, border: `1.5px solid ${c.color}22` }}>
-                    <div className="text-2xl font-black leading-none" style={{ color: c.color }}>{c.value}</div>
+                    <div className="text-lg font-black leading-none" style={{ color: c.color }}>{c.value}</div>
                     <div className="text-[9px] font-bold mt-1 leading-tight" style={{ color: c.color }}>{c.label}</div>
                   </div>
                 ))}

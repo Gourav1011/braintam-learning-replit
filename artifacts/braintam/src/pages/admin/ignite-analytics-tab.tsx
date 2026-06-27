@@ -192,17 +192,17 @@ export function IgniteAnalyticsTab() {
           ].map(row => (
             <div key={row.title}>
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">{row.title}</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {row.cards.map(card => (
-                  <div key={card.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                    <div className="text-2xl font-black mb-0.5" style={{ color: row.color }}>{card.value.toLocaleString()}</div>
-                    <div className="text-xs font-semibold text-gray-600 leading-tight">{card.label}</div>
+                  <div key={card.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+                    <div className="text-lg font-black mb-0.5 leading-none" style={{ color: row.color }}>{card.value.toLocaleString()}</div>
+                    <div className="text-[11px] font-semibold text-gray-600 leading-tight mt-0.5">{card.label}</div>
                     <div className="text-[10px] text-gray-400 mt-0.5">{card.sub}</div>
                     <button
                       onClick={() => setActiveSection("leads")}
-                      className="text-[10px] font-semibold mt-2 hover:underline"
+                      className="text-[10px] font-semibold mt-1.5 hover:underline"
                       style={{ color: row.color }}
-                    >View Details →</button>
+                    >View →</button>
                   </div>
                 ))}
               </div>
@@ -210,33 +210,33 @@ export function IgniteAnalyticsTab() {
           ))}
 
           {/* Conversion % rings */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Overall Conversion %", value: kpis.conversionPct.overall, num: kpis.conversions.lifetime, den: kpis.leads.lifetime },
               { label: "Monthly Conversion %", value: kpis.conversionPct.monthly, num: kpis.conversions.thisMonth, den: kpis.leads.thisMonth },
               { label: "Weekly Conversion %", value: kpis.conversionPct.weekly, num: kpis.conversions.thisWeek, den: kpis.leads.thisWeek },
             ].map(ring => (
-              <div key={ring.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col items-center gap-3">
-                <div className="relative w-24 h-24">
+              <div key={ring.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div className="relative w-14 h-14 flex-shrink-0">
                   <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#F3F4F6" strokeWidth="10" />
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#22C55E" strokeWidth="10"
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#F3F4F6" strokeWidth="12" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#22C55E" strokeWidth="12"
                       strokeDasharray={`${(ring.value / 100) * 251.2} 251.2`} strokeLinecap="round" />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-black text-green-600">{ring.value}%</span>
+                    <span className="text-xs font-black text-green-600">{ring.value}%</span>
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xs font-bold text-gray-600">{ring.label}</div>
-                  <div className="text-[10px] text-gray-400">{ring.num} / {ring.den}</div>
+                <div>
+                  <div className="text-xs font-bold text-gray-600 leading-tight">{ring.label}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{ring.num} / {ring.den}</div>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Trend Chart */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>12-Month Trend</h3>
               <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
@@ -261,7 +261,7 @@ export function IgniteAnalyticsTab() {
 
           {/* Lead Stage + Top Performers row */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
               <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Lead Stage Distribution</h3>
               {leadStage.length > 0 ? (
                 <>
@@ -288,7 +288,7 @@ export function IgniteAnalyticsTab() {
               ) : <div className="text-center py-8 text-sm text-gray-400">No lead stage data yet</div>}
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 space-y-4">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>Top Performers</h3>
               {topGrade && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-100">
@@ -349,15 +349,15 @@ export function IgniteAnalyticsTab() {
               { label: "This Week", value: kpis.leads.thisWeek, color: ORANGE },
               { label: "Last Month", value: kpis.leads.lastMonth, color: NAVY },
             ].map(c => (
-              <div key={c.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-                <div className="text-2xl font-black" style={{ color: c.color }}>{c.value}</div>
-                <div className="text-xs text-gray-500 font-medium mt-0.5">{c.label}</div>
+              <div key={c.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
+                <div className="text-lg font-black" style={{ color: c.color }}>{c.value}</div>
+                <div className="text-[11px] text-gray-500 font-medium mt-0.5">{c.label}</div>
               </div>
             ))}
           </div>
 
           {/* Leads trend */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
             <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Monthly Leads Trend</h3>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={trend}>
@@ -443,7 +443,7 @@ export function IgniteAnalyticsTab() {
       {/* ── FUNNEL ── */}
       {activeSection === "funnel" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <h3 className="font-bold text-sm mb-6" style={{ color: NAVY }}>Ignite Conversion Funnel (Lifetime)</h3>
             <div className="space-y-4">
               {funnel.map((stage, i) => {
@@ -486,7 +486,7 @@ export function IgniteAnalyticsTab() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
             <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Conversion % Trend</h3>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={trend}>
@@ -508,16 +508,16 @@ export function IgniteAnalyticsTab() {
         <div className="space-y-4">
           {topGrade && weakGrade && (
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center"><Star className="w-5 h-5 text-white" /></div>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center"><Star className="w-4 h-4 text-white" /></div>
                 <div>
                   <div className="text-xs font-bold text-green-700">🏆 Top Performing Grade</div>
                   <div className="text-lg font-black text-green-600">Grade {topGrade.grade}</div>
                   <div className="text-xs text-green-500">{topGrade.conversionPct}% conversion · {topGrade.converted}/{topGrade.leads} leads</div>
                 </div>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-400 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-white" /></div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-red-400 flex items-center justify-center"><AlertTriangle className="w-3.5 h-3.5 text-white" /></div>
                 <div>
                   <div className="text-xs font-bold text-red-600">⚠️ Needs Attention</div>
                   <div className="text-lg font-black text-red-500">Grade {weakGrade.grade}</div>
@@ -527,7 +527,7 @@ export function IgniteAnalyticsTab() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
             <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Grade-wise Conversion</h3>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={gradeWise.map(g => ({ ...g, grade: `Gr ${g.grade}` }))}>
@@ -588,16 +588,16 @@ export function IgniteAnalyticsTab() {
         <div className="space-y-4">
           {topTeacher && weakTeacher && topTeacher !== weakTeacher && (
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center"><Star className="w-5 h-5 text-white" /></div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center"><Star className="w-3.5 h-3.5 text-white" /></div>
                 <div>
                   <div className="text-xs font-bold text-blue-700">🏆 Top Conversion Teacher</div>
                   <div className="text-base font-black text-blue-600">{topTeacher.teacher}</div>
                   <div className="text-xs text-blue-500">{topTeacher.conversionPct}% · {topTeacher.conversions} conversions · {topTeacher.classes} classes</div>
                 </div>
               </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-400 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-white" /></div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-orange-400 flex items-center justify-center"><TrendingDown className="w-3.5 h-3.5 text-white" /></div>
                 <div>
                   <div className="text-xs font-bold text-orange-700">⚠️ Needs Support</div>
                   <div className="text-base font-black text-orange-600">{weakTeacher.teacher}</div>
@@ -607,7 +607,7 @@ export function IgniteAnalyticsTab() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
             <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Teacher Conversion Ranking</h3>
             <ResponsiveContainer width="100%" height={Math.max(160, teacherImpact.length * 40)}>
               <BarChart data={teacherImpact} layout="vertical">
@@ -667,15 +667,15 @@ export function IgniteAnalyticsTab() {
         <div className="space-y-4">
           {topCounselor && weakCounselor && topCounselor !== weakCounselor && (
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center"><Star className="w-5 h-5 text-white" /></div>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-purple-500 flex items-center justify-center"><Star className="w-3.5 h-3.5 text-white" /></div>
                 <div>
                   <div className="text-xs font-bold text-purple-700">🏆 Best Counselor</div>
                   <div className="text-base font-black text-purple-600">{topCounselor.counselor}</div>
                   <div className="text-xs text-purple-500">{topCounselor.conversionPct}% conversion · {topCounselor.converted}/{topCounselor.leads} leads</div>
                 </div>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-red-400 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-white" /></div>
                 <div>
                   <div className="text-xs font-bold text-red-600">⚠️ Lowest Performing</div>
@@ -686,7 +686,7 @@ export function IgniteAnalyticsTab() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
             <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Counselor Ranking</h3>
             <ResponsiveContainer width="100%" height={Math.max(160, counselorPerf.length * 40)}>
               <BarChart data={counselorPerf} layout="vertical">
