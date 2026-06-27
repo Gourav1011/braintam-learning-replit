@@ -1546,15 +1546,27 @@ router.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
   if (assignments.length === 0) { res.json([]); return; }
   const studentIds = assignments.map(a => a.studentId);
 
-  // Students with any successful call (Call Connected or Call Back Later)
-  const engagedRows = await db
-    .select({ studentId: mentorFollowUpsTable.studentId })
-    .from(mentorFollowUpsTable)
-    .where(and(
-      inArray(mentorFollowUpsTable.studentId, studentIds),
-      inArray(mentorFollowUpsTable.callStatus, ["Call Connected", "Call Back Later", "Picked", "Call Back"]),
-    ));
-  const engagedIds = new Set(engagedRows.map(r => r.studentId));
+  // Meaningful engagement = Call Connected, Busy, or Call Back Later in history
+  // OR any attendance record OR any homework submission
+  const [callEngaged, attEngaged, hwEngaged] = await Promise.all([
+    db.select({ studentId: mentorFollowUpsTable.studentId })
+      .from(mentorFollowUpsTable)
+      .where(and(
+        inArray(mentorFollowUpsTable.studentId, studentIds),
+        inArray(mentorFollowUpsTable.callStatus, ["Call Connected", "Busy", "Call Back Later", "Picked", "Call Back"]),
+      )),
+    db.select({ studentId: mentorAttendanceTable.studentId })
+      .from(mentorAttendanceTable)
+      .where(inArray(mentorAttendanceTable.studentId, studentIds)),
+    db.select({ studentId: homeworkSubmissionsTable.studentId })
+      .from(homeworkSubmissionsTable)
+      .where(inArray(homeworkSubmissionsTable.studentId, studentIds)),
+  ]);
+  const engagedIds = new Set([
+    ...callEngaged.map(r => r.studentId),
+    ...attEngaged.map(r => r.studentId),
+    ...hwEngaged.map(r => r.studentId),
+  ]);
 
   const nonActiveIds = studentIds.filter(id => !engagedIds.has(id));
   if (nonActiveIds.length === 0) { res.json([]); return; }
@@ -1618,6 +1630,25 @@ router.post("/admin/mentor/cycles/start-new-week", adminOnly, async (req, res) =
     createdById: actor.id,
     createdByName: actor.name,
   }).returning();
+
+  // Reset callStatus for all currently-active sales leads so the new week starts fresh.
+  const activeRows = await db
+    .select({ studentId: mentorStudentAssignmentsTable.studentId })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(
+      usersTable,
+      and(
+        eq(usersTable.id, mentorStudentAssignmentsTable.mentorId),
+        eq(usersTable.mentorType, "sales"),
+      )
+    )
+    .where(eq(mentorStudentAssignmentsTable.isActive, true));
+  const resetIds = [...new Set(activeRows.map(r => r.studentId))];
+  if (resetIds.length > 0) {
+    await db.update(usersTable)
+      .set({ callStatus: "Pending", updatedAt: new Date() })
+      .where(inArray(usersTable.id, resetIds));
+  }
 
   res.status(201).json({ ok: true, cycle: newCycle });
 });

@@ -76,7 +76,7 @@ function normalizeCallStatus(status: string | null | undefined): string {
 }
 
 // Statuses where "Who Picked the Call?" must be shown
-const SHOW_WHO_PICKED = new Set(["Call Connected", "Call Back Later"]);
+const SHOW_WHO_PICKED = new Set(["Call Connected", "Busy", "Call Back Later"]);
 // Statuses where "Contact Outcome" must be shown
 const SHOW_CONTACT_OUTCOME = new Set(["Call Connected"]);
 
@@ -102,10 +102,13 @@ const INTEREST_LEVELS = [
 const BUSY_REASONS = ["At Work", "In Meeting", "Driving", "Sleeping", "Will Call Back", "Other"];
 
 const ALL_FILTERS = [
-  ...CALL_STATUSES.map(s => ({ key: s.key, label: s.label, color: s.color, bg: s.bg, border: s.border, kind: "call" as const })),
-  { key: "Interested", label: "Interested", color: "#0284C7", bg: "#E0F2FE", border: "#BAE6FD", kind: "lead" as const },
-  { key: "Highly Interested", label: "Highly Interested", color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", kind: "lead" as const },
-  { key: "Converted", label: "Converted", color: "#059669", bg: "#ECFDF5", border: "#A7F3D0", kind: "lead" as const },
+  { key: "All",            label: "All",           color: NAVY,      bg: "#EFF6FF", border: "#BFDBFE", kind: "all"      as const },
+  { key: "Pending",        label: "Pending Calls",  color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", kind: "call"     as const },
+  { key: "Busy",           label: "Busy",           color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", kind: "call"     as const },
+  { key: "Call Back Later",label: "Call Later",     color: "#6366F1", bg: "#EEF2FF", border: "#C7D2FE", kind: "call"     as const },
+  { key: "Call Connected", label: "Completed",      color: "#059669", bg: "#F0FDF4", border: "#BBF7D0", kind: "call"     as const },
+  { key: "Non-Active",     label: "Non-Active",     color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE", kind: "nonactive"as const },
+  { key: "Converted",      label: "Converted",      color: "#059669", bg: "#ECFDF5", border: "#A7F3D0", kind: "lead"     as const },
 ];
 
 function fmtDate(s: string | null) {
@@ -712,9 +715,11 @@ export function SalesCallingQueueTab({
 }) {
   const [leads, setLeads] = useState<SalesLead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<string>("Pending");
+  const [activeFilter, setActiveFilter] = useState<string>("All");
   const [search, setSearch] = useState("");
   const [outcomeTarget, setOutcomeTarget] = useState<SalesLead | null>(null);
+  const [nonActiveLeads, setNonActiveLeads] = useState<NonActiveLead[] | null>(null);
+  const [nonActiveLoading, setNonActiveLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -723,22 +728,69 @@ export function SalesCallingQueueTab({
     setLoading(false);
   }, []);
 
+  const loadNonActive = useCallback(async () => {
+    setNonActiveLoading(true);
+    const r = await apiFetch("/mentor/sales/non-active");
+    if (r.ok) setNonActiveLeads(await r.json());
+    setNonActiveLoading(false);
+  }, []);
+
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (activeFilter === "Non-Active" && nonActiveLeads === null) {
+      loadNonActive();
+    }
+  }, [activeFilter, nonActiveLeads, loadNonActive]);
 
   function countForFilter(key: string) {
     const f = ALL_FILTERS.find(f => f.key === key);
     if (!f) return 0;
+    if (f.kind === "all") return leads.length;
+    if (f.kind === "nonactive") return nonActiveLeads?.length ?? 0;
     if (f.kind === "call") return leads.filter(l => normalizeCallStatus(l.callStatus) === key).length;
     return leads.filter(l => l.leadStage === key).length;
   }
 
   const activeFilterMeta = ALL_FILTERS.find(f => f.key === activeFilter);
 
-  const filtered = leads.filter(l => {
-    const f = ALL_FILTERS.find(f => f.key === activeFilter);
-    if (!f) return true;
-    const matchesFilter = f.kind === "call" ? normalizeCallStatus(l.callStatus) === activeFilter : l.leadStage === activeFilter;
-    if (!matchesFilter) return false;
+  const isNonActive = activeFilter === "Non-Active";
+
+  // Cast non-active leads into SalesLead shape for the shared table
+  const nonActiveAsLeads: SalesLead[] = (nonActiveLeads ?? []).map(l => ({
+    id: l.id,
+    name: l.name,
+    grade: l.grade ?? 0,
+    school: l.school,
+    city: l.city,
+    state: null,
+    phone: l.phone,
+    parentName: l.parentName,
+    parentPhone: l.parentPhone,
+    leadStage: l.leadStage ?? "New Lead",
+    callStatus: l.callStatus ?? "Pending",
+    interestLevel: l.interestLevel,
+    weakSubject: null,
+    strongSubject: null,
+    repeatedCustomer: false,
+    nextFollowUpAt: l.nextFollowUpAt,
+    nextFollowUpTime: l.nextFollowUpTime,
+    lastCallAt: l.lastCallAt,
+    busyReason: l.busyReason,
+    hwPct: l.hwPct,
+    attPct: l.attPct,
+  }));
+
+  const sourceLeads = isNonActive ? nonActiveAsLeads : leads;
+
+  const filtered = sourceLeads.filter(l => {
+    if (!isNonActive) {
+      const f = ALL_FILTERS.find(f => f.key === activeFilter);
+      if (!f) return true;
+      if (f.kind === "call") { if (normalizeCallStatus(l.callStatus) !== activeFilter) return false; }
+      else if (f.kind === "lead") { if (l.leadStage !== activeFilter) return false; }
+      // kind === "all" → no filter
+    }
     if (search) {
       const q = search.toLowerCase();
       return l.name.toLowerCase().includes(q) || (l.school ?? "").toLowerCase().includes(q) || (l.city ?? "").toLowerCase().includes(q) || (l.parentPhone ?? l.phone ?? "").includes(q);
@@ -814,7 +866,7 @@ export function SalesCallingQueueTab({
       )}
 
       {/* Table */}
-      {loading ? (
+      {(loading || (isNonActive && nonActiveLoading)) ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">

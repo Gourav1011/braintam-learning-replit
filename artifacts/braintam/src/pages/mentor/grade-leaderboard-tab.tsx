@@ -59,7 +59,7 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
               {data.cycle.weekLabel} · from {new Date(data.cycle.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
             </p>
           ) : (
-            <p className="text-[11px] text-gray-400 mt-0.5">Conversion ranking · all time</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Ranking</p>
           )}
         </div>
         <button onClick={load} disabled={loading}

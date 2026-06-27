@@ -35,12 +35,24 @@ export async function runDailyQueueReset(): Promise<void> {
       return;
     }
 
+    // Only reset temporary follow-up buckets → Pending.
+    // No Response, Switched Off, Wrong Number are intentionally NOT reset (permanent outcomes).
+    const RESET_STATUSES = ["Busy", "Call Back Later", "Call Back", "Call Connected", "Picked"];
+
     await db
       .update(usersTable)
       .set({ callStatus: "Pending", updatedAt: new Date() })
-      .where(inArray(usersTable.id, studentIds));
+      .where(
+        and(
+          inArray(usersTable.id, studentIds),
+          inArray(usersTable.callStatus, RESET_STATUSES),
+        )
+      );
 
-    logger.info({ studentCount: studentIds.length }, "Daily queue reset: callStatus → Pending (5 AM IST)");
+    logger.info(
+      { studentCount: studentIds.length, resetStatuses: RESET_STATUSES },
+      "Daily queue reset: Busy/Call Later/Completed → Pending (5 AM IST)",
+    );
   } catch (err) {
     logger.error({ err }, "Daily queue reset job failed");
   }
