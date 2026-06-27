@@ -720,6 +720,38 @@ router.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
   res.json(rows);
 });
 
+// ── Teacher's batches list ─────────────────────────────────────────
+router.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin";
+  const batches = await db.select().from(demoBatchesTable)
+    .where(isAdmin ? undefined : eq(demoBatchesTable.teacherId, teacherId))
+    .orderBy(desc(demoBatchesTable.id));
+  res.json(batches.map(b => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
+});
+
+// ── Create standalone session ─────────────────────────────────────
+router.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
+  const { batchId, title, scheduledAt, duration, joinUrl } = req.body;
+  if (!batchId || !title || !scheduledAt) {
+    res.status(400).json({ error: "batchId, title, scheduledAt required" }); return;
+  }
+  // auto-increment dayNumber for this batch
+  const existing = await db.select({ dayNumber: demoSessionsTable.dayNumber })
+    .from(demoSessionsTable).where(eq(demoSessionsTable.batchId, Number(batchId)));
+  const nextDay = existing.length > 0 ? Math.max(...existing.map(e => e.dayNumber)) + 1 : 1;
+  const [session] = await db.insert(demoSessionsTable).values({
+    batchId: Number(batchId),
+    title: String(title),
+    scheduledAt: new Date(scheduledAt),
+    duration: duration ? Number(duration) : 60,
+    joinUrl: joinUrl || null,
+    dayNumber: nextDay,
+    status: "scheduled",
+  }).returning();
+  res.json({ ok: true, session });
+});
+
 // ── My Sessions (demo_sessions for teacher's batches) ──────────────
 router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;

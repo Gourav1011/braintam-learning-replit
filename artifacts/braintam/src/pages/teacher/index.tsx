@@ -6,7 +6,7 @@ import {
   BookOpen, Users, Video, FileText, Clock, Timer, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
-  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown, Monitor,
+  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown, Monitor, RefreshCw,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -24,7 +24,7 @@ import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes" | "profile" | "checkin";
+type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes" | "profile";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
 interface Session { id: number; topic: string; title: string; dayNumber: number; scheduledAt: string; status: string; duration: number; joinUrl: string | null; recordingUrl: string | null; batchId: number; batchTitle: string; batchGrade: number | null; batchSubject: string | null; grade: number; }
@@ -154,6 +154,17 @@ export default function TeacherPage() {
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  // Check-in modal
+  const [showCheckinModal, setShowCheckinModal] = useState(false);
+
+  // My Sessions extras
+  const [refreshing, setRefreshing] = useState(false);
+  const [lcFilter, setLcFilter] = useState<"all" | "upcoming" | "live" | "completed">("all");
+  const [showCreateSession, setShowCreateSession] = useState(false);
+  const [batches, setBatches] = useState<{ id: number; title: string; grade: number | null; subject: string | null }[]>([]);
+  const [createSessionForm, setCreateSessionForm] = useState({ batchId: "", title: "", scheduledAt: "", duration: "60", joinUrl: "" });
+  const [createSessionBusy, setCreateSessionBusy] = useState(false);
 
   useEffect(() => {
     if (!isLoading && (role === "teacher" || role === "admin")) loadAll();
@@ -329,6 +340,43 @@ export default function TeacherPage() {
       try { const d = await r.json(); flash(d.error ?? "Error posting assignment", false); } catch { flash("Error posting assignment", false); }
     }
     setBusy(false);
+  }
+
+  async function refreshSessions() {
+    setRefreshing(true);
+    const r = await apiFetch("/teacher/my-sessions");
+    if (r.ok) setLiveClasses(await r.json());
+    setRefreshing(false);
+  }
+
+  async function loadBatches() {
+    const r = await apiFetch("/teacher/my-batches");
+    if (r.ok) setBatches(await r.json());
+  }
+
+  async function createSession() {
+    if (!createSessionForm.batchId || !createSessionForm.title || !createSessionForm.scheduledAt) return;
+    setCreateSessionBusy(true);
+    const r = await apiFetch("/teacher/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        batchId: Number(createSessionForm.batchId),
+        title: createSessionForm.title,
+        scheduledAt: new Date(createSessionForm.scheduledAt + ":00+05:30").toISOString(),
+        duration: Number(createSessionForm.duration) || 60,
+        joinUrl: createSessionForm.joinUrl || null,
+      }),
+    });
+    if (r.ok) {
+      flash("Session created!");
+      setShowCreateSession(false);
+      setCreateSessionForm({ batchId: "", title: "", scheduledAt: "", duration: "60", joinUrl: "" });
+      refreshSessions();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash(d.error ?? "Failed to create", false);
+    }
+    setCreateSessionBusy(false);
   }
 
   // ── Session Actions ────────────────────────────────────────────
@@ -638,7 +686,6 @@ export default function TeacherPage() {
     { id: "notes", label: "Notes & Resources", icon: LinkIcon },
     { id: "submissions", label: "Grade Work", icon: CheckCircle },
     { id: "attendance", label: "Attendance", icon: Clock },
-    { id: "checkin", label: "Check-in / Out", icon: Timer },
     { id: "profile", label: "My Profile", icon: UserCircle },
   ];
 
@@ -689,6 +736,33 @@ export default function TeacherPage() {
           <span className="text-gray-500 whitespace-nowrap">{now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}</span>
           <span className="font-mono font-semibold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata", hour12: true })}</span>
         </div>
+        {/* Check-in / Out button */}
+        <button onClick={() => setShowCheckinModal(true)}
+          title="Check-in / Check-out"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors shrink-0 text-xs font-semibold"
+          style={{ color: NAVY }}>
+          <Timer className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Check-in</span>
+        </button>
+        {/* Check-in modal */}
+        {showCheckinModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                  <h3 className="font-black text-base" style={{ color: NAVY }}>Daily Check-in / Check-out</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Track your daily work hours</p>
+                </div>
+                <button onClick={() => setShowCheckinModal(false)}>
+                  <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                </button>
+              </div>
+              <div className="p-5">
+                <StaffCheckin apiFetch={apiFetch} role={role ?? "teacher"} />
+              </div>
+            </div>
+          </div>
+        )}
         <div className="relative shrink-0">
           <button onClick={() => setProfileDropOpen(o => !o)}
             className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-50 transition-colors">
@@ -1113,16 +1187,109 @@ export default function TeacherPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold" style={{ color: NAVY }}>My Sessions</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Sessions are created when batches are assigned to you</p>
+                <p className="text-xs text-gray-400 mt-0.5">Create or view your scheduled classes</p>
               </div>
-              <button onClick={loadAll} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500">Refresh</button>
+              <div className="flex items-center gap-2">
+                <button onClick={async () => { await loadBatches(); setShowCreateSession(true); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity"
+                  style={{ background: ORANGE }}>
+                  <Plus className="w-3.5 h-3.5" /> Schedule Class
+                </button>
+                <button onClick={refreshSessions} disabled={refreshing}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-all">
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                  {refreshing ? "Refreshing…" : "Refresh"}
+                </button>
+              </div>
             </div>
 
+            {/* Status filter pills */}
+            <div className="flex gap-1.5 flex-wrap">
+              {(["all", "upcoming", "live", "completed"] as const).map(f => (
+                <button key={f} onClick={() => setLcFilter(f)}
+                  className="text-[11px] font-bold px-3 py-1 rounded-full border transition-all capitalize"
+                  style={{
+                    background: lcFilter === f ? NAVY : "white",
+                    color: lcFilter === f ? "white" : "#6B7280",
+                    borderColor: lcFilter === f ? NAVY : "#E5E7EB",
+                  }}>
+                  {f === "all" ? "All" : f === "upcoming" ? "⏰ Upcoming" : f === "live" ? "🔴 Live" : "✓ Completed"}
+                  {f !== "all" && (
+                    <span className="ml-1 opacity-70">
+                      ({liveClasses.filter(s => s.status === f || (f === "upcoming" && s.status === "scheduled")).length})
+                    </span>
+                  )}
+                  {f === "all" && <span className="ml-1 opacity-70">({liveClasses.length})</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Create session modal */}
+            {showCreateSession && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-base" style={{ color: NAVY }}>Schedule a Class</h3>
+                    <button onClick={() => setShowCreateSession(false)}><X className="w-5 h-5 text-gray-400" /></button>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Batch *</label>
+                      <select value={createSessionForm.batchId}
+                        onChange={e => setCreateSessionForm(p => ({ ...p, batchId: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+                        <option value="">Select a batch…</option>
+                        {batches.map(b => (
+                          <option key={b.id} value={String(b.id)}>{b.title} {b.grade ? `· Grade ${b.grade}` : ""}{b.subject ? ` · ${b.subject}` : ""}</option>
+                        ))}
+                      </select>
+                      {batches.length === 0 && <p className="text-xs text-amber-600 mt-1">No batches assigned to you yet.</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Topic / Title *</label>
+                      <Input value={createSessionForm.title} onChange={e => setCreateSessionForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Fractions – Introduction" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Date & Time *</label>
+                        <Input type="datetime-local" value={createSessionForm.scheduledAt} onChange={e => setCreateSessionForm(p => ({ ...p, scheduledAt: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Duration (min)</label>
+                        <Input type="number" value={createSessionForm.duration} onChange={e => setCreateSessionForm(p => ({ ...p, duration: e.target.value }))} placeholder="60" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Meet Link (optional)</label>
+                      <Input value={createSessionForm.joinUrl} onChange={e => setCreateSessionForm(p => ({ ...p, joinUrl: e.target.value }))} placeholder="https://meet.google.com/…" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={createSession}
+                      disabled={createSessionBusy || !createSessionForm.batchId || !createSessionForm.title || !createSessionForm.scheduledAt}
+                      className="text-white flex-1" style={{ background: ORANGE }}>
+                      {createSessionBusy ? "Scheduling…" : "Schedule Class"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowCreateSession(false)}>Cancel</Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
-              {liveClasses.map(s => {
+              {(() => {
+                const filtered = liveClasses.filter(s => {
+                  if (lcFilter === "all") return true;
+                  if (lcFilter === "live") return s.status === "live";
+                  if (lcFilter === "completed") return s.status === "completed";
+                  if (lcFilter === "upcoming") return s.status === "scheduled" || s.status === "upcoming";
+                  return true;
+                });
+                return filtered;
+              })().map(s => {
                 const isLive = s.status === "live";
                 const isDone = s.status === "completed";
                 const isScheduled = !isLive && !isDone;
@@ -2080,18 +2247,6 @@ export default function TeacherPage() {
         </div>
       )}
 
-      {/* ── Check-in / Check-out ── */}
-      {tab === "checkin" && (
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-2xl mx-auto space-y-6">
-            <div>
-              <h2 className="text-xl font-black" style={{ color: NAVY }}>Daily Check-in / Check-out</h2>
-              <p className="text-sm text-gray-500 mt-1">Track your daily work hours. Check out at the end of the day with a work summary.</p>
-            </div>
-            <StaffCheckin apiFetch={apiFetch} role={role ?? "teacher"} />
-          </div>
-        </div>
-      )}
       </div>
       </div>
     </div>
