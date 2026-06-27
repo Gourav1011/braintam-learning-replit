@@ -1983,10 +1983,10 @@ router.get("/admin/reports/summary", adminOnly, async (req, res) => {
       WHERE converted_date >= ${todayStart} AND converted_date <= ${todayEnd}
     `),
     db.execute(sql`
-      SELECT status, COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total
+      SELECT payment_type, status, COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total
       FROM payments
       WHERE created_at >= ${fromDate} AND created_at <= ${toDate}
-      GROUP BY status
+      GROUP BY payment_type, status
     `),
   ]);
 
@@ -2042,15 +2042,21 @@ router.get("/admin/reports/summary", adminOnly, async (req, res) => {
     if (l.assignment_status === "converted") { dailyMap[d].converted++; dailyMap[d].revenue += l.course_value || 0; }
   }
 
-  // Payment summary
-  const pmtRows = paymentRows.rows as { status: string; cnt: string; total: string }[];
-  const pmtSummary = { captured: 0, failed: 0, created: 0, total: 0 };
+  // Payment summary — split Ignite (demo_enrollment) vs Mastery (other types)
+  const pmtRows = paymentRows.rows as { payment_type: string; status: string; cnt: string; total: string }[];
+  const ignitePmt  = { captured: 0, failed: 0, pending: 0, revenue: 0 };
+  const masteryPmt = { captured: 0, failed: 0, pending: 0, revenue: 0 };
   for (const p of pmtRows) {
+    const cnt = Number(p.cnt);
     const amt = Number(p.total) / 100;
-    if (p.status === "captured") { pmtSummary.captured = Number(p.cnt); pmtSummary.total += amt; }
-    else if (p.status === "failed") pmtSummary.failed = Number(p.cnt);
-    else pmtSummary.created += Number(p.cnt);
+    const isIgnite = p.payment_type === "demo_enrollment";
+    const bucket = isIgnite ? ignitePmt : masteryPmt;
+    if (p.status === "captured") { bucket.captured += cnt; bucket.revenue += amt; }
+    else if (p.status === "failed") bucket.failed += cnt;
+    else bucket.pending += cnt;
   }
+  // Mastery revenue also includes courseValue from converted ignite leads
+  masteryPmt.revenue += courseRevenue;
 
   res.json({
     period: { from: fromDate.toISOString(), to: toDate.toISOString() },
@@ -2085,7 +2091,7 @@ router.get("/admin/reports/summary", adminOnly, async (req, res) => {
       revenue: d.revenue,
     })).sort((a, b) => b.leads - a.leads),
     dailyTrend: Object.values(dailyMap).sort((a: any, b: any) => a.date < b.date ? -1 : 1),
-    payments: pmtSummary,
+    payments: { ignite: ignitePmt, mastery: masteryPmt },
   });
 });
 

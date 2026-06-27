@@ -52,7 +52,10 @@ interface Summary {
   mentorPerformance: { mentorId:number; name:string; leads:number; converted:number; convPct:number; revenue:number }[];
   leadSource: { source:string; leads:number; converted:number; convPct:number; revenue:number }[];
   dailyTrend: { date:string; leads:number; converted:number; revenue:number }[];
-  payments: { captured:number; failed:number; created:number; total:number };
+  payments: {
+    ignite:  { captured:number; failed:number; pending:number; revenue:number };
+    mastery: { captured:number; failed:number; pending:number; revenue:number };
+  };
 }
 
 type SortKey = "leads"|"converted"|"convPct"|"revenue";
@@ -453,23 +456,53 @@ export function ReportsAnalyticsTab() {
 
             {/* ── Payments ── */}
             {activeSection === "payments" && (
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                style={{ boxShadow: "0 1px 8px rgba(11,43,107,0.06)" }}>
-                <div className="px-5 py-3 border-b border-gray-100">
-                  <h3 className="font-bold text-sm" style={{ color: NAVY }}>Payment Summary</h3>
+              <div className="space-y-4">
+                {/* Ignite Revenue */}
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                  style={{ boxShadow: "0 1px 8px rgba(11,43,107,0.06)" }}>
+                  <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <span className="text-base">🚀</span>
+                    <h3 className="font-bold text-sm" style={{ color: NAVY }}>Ignite Revenue</h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold text-white ml-auto"
+                      style={{ background: "#3B82F6" }}>Demo Enrollments</span>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Successful Payments", value: fmt(data!.payments.ignite.captured), color: "#22C55E" },
+                      { label: "Failed Payments",     value: fmt(data!.payments.ignite.failed),   color: "#EF4444" },
+                      { label: "Pending Payments",    value: fmt(data!.payments.ignite.pending),  color: "#F59E0B" },
+                      { label: "Total Collection",    value: rupee(data!.payments.ignite.revenue),color: NAVY },
+                    ].map(c => (
+                      <div key={c.label} className="rounded-xl p-4 border border-gray-100 bg-gray-50">
+                        <div className="font-black text-xl" style={{ color: c.color }}>{c.value}</div>
+                        <div className="text-xs text-gray-500 font-medium mt-1">{c.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="p-4 grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Successful Payments", value: fmt(data!.payments.captured), color: "#22C55E" },
-                    { label: "Failed Payments",     value: fmt(data!.payments.failed),   color: "#EF4444" },
-                    { label: "Pending Payments",    value: fmt(data!.payments.created),  color: "#F59E0B" },
-                    { label: "Total Collection",    value: rupee(data!.payments.total),  color: NAVY },
-                  ].map(c => (
-                    <div key={c.label} className="rounded-xl p-4 border border-gray-100 bg-gray-50">
-                      <div className="font-black text-xl" style={{ color: c.color }}>{c.value}</div>
-                      <div className="text-xs text-gray-500 font-medium mt-1">{c.label}</div>
-                    </div>
-                  ))}
+
+                {/* Mastery Course Revenue */}
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                  style={{ boxShadow: "0 1px 8px rgba(11,43,107,0.06)" }}>
+                  <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <span className="text-base">🎓</span>
+                    <h3 className="font-bold text-sm" style={{ color: NAVY }}>Mastery Course Revenue</h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold text-white ml-auto"
+                      style={{ background: ORANGE }}>Long-term Conversions</span>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Successful Payments", value: fmt(data!.payments.mastery.captured), color: "#22C55E" },
+                      { label: "Failed Payments",     value: fmt(data!.payments.mastery.failed),   color: "#EF4444" },
+                      { label: "Pending Payments",    value: fmt(data!.payments.mastery.pending),  color: "#F59E0B" },
+                      { label: "Total Collection",    value: rupee(data!.payments.mastery.revenue),color: NAVY },
+                    ].map(c => (
+                      <div key={c.label} className="rounded-xl p-4 border border-gray-100 bg-gray-50">
+                        <div className="font-black text-xl" style={{ color: c.color }}>{c.value}</div>
+                        <div className="text-xs text-gray-500 font-medium mt-1">{c.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
