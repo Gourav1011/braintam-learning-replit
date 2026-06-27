@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Plus, Trash2, ChevronRight, BookOpen, GraduationCap, Layers, Tag,
   Video, FileText, ClipboardList, PlayCircle, RotateCcw, Edit3, Search,
   Archive, CheckCircle2, Clock, ChevronDown, ChevronUp, Pencil, X,
+  DollarSign, Users, Upload, ImageIcon, FileUp, AlertCircle, CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,15 @@ interface CourseItem {
   isPublished: boolean; status: string; teacher: string | null;
   description: string | null; thumbnailUrl: string | null;
   courseCode: string;
+  // Extended Mastery fields
+  duration?: string | null;
+  originalPrice?: number | null;
+  scholarshipPrice?: number | null;
+  registrationFee?: number | null;
+  studentCapacity?: number | null;
+  bannerUrl?: string | null;
+  brochureUrl?: string | null;
+  mentorIdsJson?: string | null;
 }
 interface CourseSubject {
   id: number; courseId: number; name: string; description: string | null;
@@ -56,6 +66,7 @@ interface TopicItem {
   topicCode: string;
 }
 interface ContentCounts { liveClasses: number; homework: number; assignments: number; tests: number; recordings: number; }
+interface ParsedRow { date?: string; chapter: string; topic: string; description?: string; }
 
 const BOARDS = ["CBSE", "ICSE", "State Board", "IIT Foundation", "NEET Foundation", "Olympiad", "Other"];
 const GRADES = [0, ...Array.from({ length: 10 }, (_, i) => i + 1)];
@@ -74,11 +85,93 @@ const statusIcon = (s: string) => {
 };
 
 type CmsView = "courses" | "subjects" | "chapters" | "topics";
+type SubjectView = "subjects" | "syllabus";
 
-const emptyCourseForm = { title: "", grade: "", board: "", academicYearId: "", description: "", teacher: "", thumbnailUrl: "", status: "active" };
-const emptySubjectForm = { name: "", description: "", thumbnailUrl: "" };
+const emptyCourseForm = {
+  title: "", grade: "", board: "", academicYearId: "", status: "active",
+  duration: "", description: "",
+  // Pricing
+  originalPrice: "", scholarshipPrice: "", registrationFee: "", paymentPlansJson: "",
+  // Academic
+  teacher: "", mentorIdsJson: "", studentCapacity: "",
+  // Media
+  bannerUrl: "", brochureUrl: "",
+};
+
+const emptySubjectForm = { name: "", description: "" };
 const emptyChapterForm = { name: "", description: "", sequenceNo: "" };
 const emptyTopicForm = { name: "", description: "", learningObjective: "", topicStatus: "active" };
+
+function FormSection({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 pb-1 border-b border-gray-100">
+        <Icon className="w-3.5 h-3.5" style={{ color: ORANGE }} />
+        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PriceInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">₹</span>
+      <Input placeholder={label} value={value} onChange={e => onChange(e.target.value)}
+        type="number" min="0" className="pl-7 text-sm" />
+    </div>
+  );
+}
+
+function BannerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
+        <Input placeholder="Banner image URL (paste link or upload)" value={value} onChange={e => onChange(e.target.value)} className="flex-1 text-sm" />
+      </div>
+      {value && (
+        <div className="relative rounded-xl overflow-hidden h-28 bg-gray-100 border border-gray-200">
+          <img src={value} alt="Banner preview" className="w-full h-full object-cover"
+            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          <button onClick={() => onChange("")}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      {!value && (
+        <div className="border-2 border-dashed border-gray-200 rounded-xl h-20 flex items-center justify-center text-gray-400 text-xs gap-1">
+          <ImageIcon className="w-4 h-4" /> Paste banner URL above to preview
+        </div>
+      )}
+    </div>
+  );
+}
+
+function parseCSV(text: string): ParsedRow[] {
+  const lines = text.split("\n").filter(l => l.trim());
+  const rows: ParsedRow[] = [];
+  const dateRe = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+
+  for (const line of lines) {
+    // Split by comma but handle quoted fields
+    const cols = line.split(",").map(s => s.trim());
+    if (cols.length < 2) continue;
+
+    const isDate = dateRe.test(cols[0]);
+    if (isDate && cols.length >= 3) {
+      rows.push({ date: cols[0], chapter: cols[1], topic: cols[2], description: cols[3] });
+    } else if (!isDate && cols.length >= 2) {
+      rows.push({ chapter: cols[0], topic: cols[1], description: cols[2] });
+    }
+  }
+  // Filter out header-like rows and empty
+  return rows.filter(r => r.chapter && r.topic &&
+    !r.chapter.toLowerCase().includes("chapter") &&
+    !r.topic.toLowerCase().includes("topic"));
+}
 
 export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
@@ -89,6 +182,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [contentCounts, setContentCounts] = useState<Record<number, ContentCounts>>({});
 
   const [view, setView] = useState<CmsView>("courses");
+  const [subjectView, setSubjectView] = useState<SubjectView>("subjects");
   const [selectedCourse, setSelectedCourse] = useState<CourseItem | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<CourseSubject | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<ChapterItem | null>(null);
@@ -118,6 +212,14 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [subjectForm, setSubjectForm] = useState(emptySubjectForm);
   const [chapterForm, setChapterForm] = useState(emptyChapterForm);
   const [topicForm, setTopicForm] = useState(emptyTopicForm);
+
+  // Syllabus import state
+  const [syllabusSubjectId, setSyllabusSubjectId] = useState<string>("");
+  const [replaceExisting, setReplaceExisting] = useState(false);
+  const [syllabusRows, setSyllabusRows] = useState<ParsedRow[]>([]);
+  const [syllabusImporting, setSyllabusImporting] = useState(false);
+  const [syllabusFileName, setSyllabusFileName] = useState<string>("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const loadBase = useCallback(async () => {
     setLoading(true);
@@ -170,23 +272,32 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   };
 
   // ── Courses ─────────────────────────────────────────────────────
+  const buildCoursePayload = (f: typeof emptyCourseForm) => ({
+    title: f.title.trim(),
+    grade: Number(f.grade),
+    board: f.board || null,
+    academicYearId: f.academicYearId ? Number(f.academicYearId) : null,
+    status: f.status || "active",
+    duration: f.duration.trim() || null,
+    description: f.description.trim() || null,
+    originalPrice: f.originalPrice ? Number(f.originalPrice) : null,
+    scholarshipPrice: f.scholarshipPrice ? Number(f.scholarshipPrice) : null,
+    registrationFee: f.registrationFee ? Number(f.registrationFee) : null,
+    paymentPlansJson: f.paymentPlansJson.trim() || null,
+    teacher: f.teacher.trim() || null,
+    mentorIdsJson: f.mentorIdsJson.trim() || null,
+    studentCapacity: f.studentCapacity ? Number(f.studentCapacity) : null,
+    bannerUrl: f.bannerUrl.trim() || null,
+    brochureUrl: f.brochureUrl.trim() || null,
+  });
+
   const createCourse = async () => {
-    const { title, grade, thumbnailUrl, board, academicYearId, description, teacher, status } = courseForm;
-    if (!title.trim()) { flash("Course title is required", false); return; }
-    if (!grade) { flash("Please select a grade", false); return; }
-    if (!academicYearId) { flash("Academic Year is required", false); return; }
+    if (!courseForm.title.trim()) { flash("Course title is required", false); return; }
+    if (!courseForm.grade) { flash("Please select a grade", false); return; }
+    if (!courseForm.academicYearId) { flash("Academic Year is required", false); return; }
     setBusy(true);
     try {
-      const r = await apiFetch("/admin/courses", {
-        method: "POST",
-        body: JSON.stringify({
-          title: title.trim(), grade: Number(grade),
-          thumbnailUrl: thumbnailUrl.trim() || "https://placehold.co/400x240?text=Course",
-          board: board || null, academicYearId: Number(academicYearId),
-          description: description.trim() || null, teacher: teacher.trim() || null,
-          status: status || "active",
-        }),
-      });
+      const r = await apiFetch("/admin/courses", { method: "POST", body: JSON.stringify(buildCoursePayload(courseForm)) });
       if (!r.ok) { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed", false); return; }
       setCourseForm(emptyCourseForm);
       setShowAddCourse(false);
@@ -197,19 +308,11 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const updateCourse = async () => {
     if (!editingCourse) return;
-    const { title, grade, thumbnailUrl, board, academicYearId, description, teacher, status } = editCourseForm;
-    if (!title.trim()) { flash("Title required", false); return; }
+    if (!editCourseForm.title.trim()) { flash("Title required", false); return; }
     setBusy(true);
     try {
       const r = await apiFetch(`/admin/courses/${editingCourse.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          title: title.trim(), grade: Number(grade),
-          thumbnailUrl: thumbnailUrl.trim() || undefined,
-          board: board || null, academicYearId: academicYearId ? Number(academicYearId) : null,
-          description: description.trim() || null, teacher: teacher.trim() || null,
-          status,
-        }),
+        method: "PUT", body: JSON.stringify(buildCoursePayload(editCourseForm)),
       });
       if (!r.ok) { flash("Failed to update", false); return; }
       setEditingCourse(null);
@@ -236,6 +339,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const selectCourse = async (course: CourseItem) => {
     setSelectedCourse(course);
+    setSubjectView("subjects");
     setLoading(true);
     try {
       const r = await apiFetch(`/admin/course-subjects?courseId=${course.id}`);
@@ -256,7 +360,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           courseId: selectedCourse.id,
           name: subjectForm.name.trim(),
           description: subjectForm.description.trim() || null,
-          thumbnailUrl: subjectForm.thumbnailUrl.trim() || null,
         }),
       });
       if (!r.ok) { flash("Failed to create subject", false); return; }
@@ -277,7 +380,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
         body: JSON.stringify({
           name: editSubjectForm.name.trim(),
           description: editSubjectForm.description.trim() || null,
-          thumbnailUrl: editSubjectForm.thumbnailUrl.trim() || null,
         }),
       });
       if (!r.ok) { flash("Failed to update", false); return; }
@@ -389,6 +491,42 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
     flash("Topic deleted", true);
   };
 
+  // ── Syllabus import ─────────────────────────────────────────────
+  const handleCSVFile = (file: File) => {
+    setSyllabusFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const rows = parseCSV(text);
+      setSyllabusRows(rows);
+    };
+    reader.readAsText(file);
+  };
+
+  const importSyllabus = async () => {
+    if (!selectedCourse || syllabusRows.length === 0) {
+      flash("Please upload a CSV file first", false); return;
+    }
+    setSyllabusImporting(true);
+    try {
+      const r = await apiFetch(`/admin/courses/${selectedCourse.id}/syllabus-import`, {
+        method: "POST",
+        body: JSON.stringify({
+          courseSubjectId: syllabusSubjectId ? Number(syllabusSubjectId) : null,
+          replaceExisting,
+          rows: syllabusRows,
+        }),
+      });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); flash(d.error ?? "Import failed", false); return; }
+      const d = await r.json();
+      flash(`✅ Imported: ${d.createdChapters} chapters, ${d.createdTopics} topics, ${d.createdClasses} live classes`, true);
+      setSyllabusRows([]);
+      setSyllabusFileName("");
+      setReplaceExisting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    } finally { setSyllabusImporting(false); }
+  };
+
   const goBack = () => {
     if (view === "topics") { setView("chapters"); setSelectedChapter(null); setTopics([]); setContentCounts({}); }
     else if (view === "chapters") { setView("subjects"); setSelectedSubject(null); setChapters([]); }
@@ -397,7 +535,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const yearName_ = (id: number | null) => academicYears.find(y => y.id === id)?.name ?? "—";
 
-  // ── Filter courses ───────────────────────────────────────────────
   const filteredCourses = courses.filter(c => {
     if (courseGradeFilter !== "all" && String(c.grade) !== courseGradeFilter) return false;
     if (courseYearFilter !== "all" && String(c.academicYearId) !== courseYearFilter) return false;
@@ -408,6 +545,87 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
     }
     return true;
   });
+
+  const CourseForm = ({ form, setForm, onSubmit, onCancel, submitLabel }: {
+    form: typeof emptyCourseForm;
+    setForm: React.Dispatch<React.SetStateAction<typeof emptyCourseForm>>;
+    onSubmit: () => void;
+    onCancel: () => void;
+    submitLabel: string;
+  }) => (
+    <div className="space-y-5">
+      {/* BASIC INFO */}
+      <FormSection title="Basic Info" icon={BookOpen}>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Input placeholder="Course name *" value={form.title}
+            onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2 text-sm" />
+          <Select value={form.grade} onValueChange={v => setForm(p => ({ ...p, grade: v }))}>
+            <SelectTrigger className="text-sm"><SelectValue placeholder="Grade *" /></SelectTrigger>
+            <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={form.board} onValueChange={v => setForm(p => ({ ...p, board: v }))}>
+            <SelectTrigger className="text-sm"><SelectValue placeholder="Board" /></SelectTrigger>
+            <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={form.academicYearId} onValueChange={v => setForm(p => ({ ...p, academicYearId: v }))}>
+            <SelectTrigger className={`text-sm ${!form.academicYearId ? "border-red-300" : ""}`}><SelectValue placeholder="Academic Year *" /></SelectTrigger>
+            <SelectContent>{academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+            <SelectTrigger className="text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input placeholder="Duration (e.g. 1 Year · Apr–Mar)" value={form.duration}
+            onChange={e => setForm(p => ({ ...p, duration: e.target.value }))} className="sm:col-span-2 text-sm" />
+          <Textarea placeholder="Description (optional)" value={form.description}
+            onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={2} className="sm:col-span-2 text-sm" />
+        </div>
+      </FormSection>
+
+      {/* PRICING */}
+      <FormSection title="Pricing" icon={DollarSign}>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <PriceInput label="Original Price" value={form.originalPrice} onChange={v => setForm(p => ({ ...p, originalPrice: v }))} />
+          <PriceInput label="Scholarship Price" value={form.scholarshipPrice} onChange={v => setForm(p => ({ ...p, scholarshipPrice: v }))} />
+          <PriceInput label="Registration Fee" value={form.registrationFee} onChange={v => setForm(p => ({ ...p, registrationFee: v }))} />
+          <Input placeholder="Payment plans (e.g. Monthly, Quarterly, Annual)" value={form.paymentPlansJson}
+            onChange={e => setForm(p => ({ ...p, paymentPlansJson: e.target.value }))} className="text-sm" />
+        </div>
+      </FormSection>
+
+      {/* ACADEMIC INFO */}
+      <FormSection title="Academic Info" icon={Users}>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Input placeholder="Primary Teacher name" value={form.teacher}
+            onChange={e => setForm(p => ({ ...p, teacher: e.target.value }))} className="text-sm" />
+          <Input placeholder="Student Capacity" type="number" value={form.studentCapacity}
+            onChange={e => setForm(p => ({ ...p, studentCapacity: e.target.value }))} className="text-sm" />
+          <Input placeholder="Assigned Mentor IDs (comma-separated)" value={form.mentorIdsJson}
+            onChange={e => setForm(p => ({ ...p, mentorIdsJson: e.target.value }))} className="sm:col-span-2 text-sm" />
+        </div>
+      </FormSection>
+
+      {/* MEDIA */}
+      <FormSection title="Media" icon={ImageIcon}>
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs text-gray-500 mb-1.5">Banner Image</p>
+            <BannerInput value={form.bannerUrl} onChange={v => setForm(p => ({ ...p, bannerUrl: v }))} />
+          </div>
+          <div className="flex items-center gap-2">
+            <FileUp className="w-3.5 h-3.5 text-gray-400" />
+            <Input placeholder="Brochure URL (PDF link)" value={form.brochureUrl}
+              onChange={e => setForm(p => ({ ...p, brochureUrl: e.target.value }))} className="flex-1 text-sm" />
+          </div>
+        </div>
+      </FormSection>
+
+      <div className="flex gap-2 pt-1">
+        <Button size="sm" onClick={onSubmit} disabled={busy} className="text-white" style={{ background: ORANGE }}>{submitLabel}</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -485,12 +703,12 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       {view === "courses" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-sm text-gray-500">Each course contains subjects → chapters → topics.</p>
+            <p className="text-sm text-gray-500">Long-term academic programs — Courses → Subjects → Chapters → Topics.</p>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={loadBase} className="gap-1 text-xs">
                 <RotateCcw className="w-3.5 h-3.5" /> Refresh
               </Button>
-              <Button size="sm" onClick={() => setShowAddCourse(p => !p)} className="text-white gap-1" style={{ background: ORANGE }}>
+              <Button size="sm" onClick={() => { setShowAddCourse(p => !p); setEditingCourse(null); }} className="text-white gap-1" style={{ background: ORANGE }}>
                 <Plus className="w-3.5 h-3.5" /> Add Course
               </Button>
             </div>
@@ -533,74 +751,24 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
           {/* Add Course form */}
           {showAddCourse && (
-            <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
-              <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Course</h3>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Input placeholder="Course name *" value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-                <Select value={courseForm.grade} onValueChange={v => setCourseForm(p => ({ ...p, grade: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
-                  <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={courseForm.academicYearId} onValueChange={v => setCourseForm(p => ({ ...p, academicYearId: v }))}>
-                  <SelectTrigger className={!courseForm.academicYearId ? "border-red-300" : ""}><SelectValue placeholder="Academic Year *" /></SelectTrigger>
-                  <SelectContent>{academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={courseForm.status} onValueChange={v => setCourseForm(p => ({ ...p, status: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={courseForm.board} onValueChange={v => setCourseForm(p => ({ ...p, board: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Board (optional)" /></SelectTrigger>
-                  <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input placeholder="Teacher name" value={courseForm.teacher} onChange={e => setCourseForm(p => ({ ...p, teacher: e.target.value }))} />
-                <Input placeholder="Thumbnail URL (optional)" value={courseForm.thumbnailUrl} onChange={e => setCourseForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
-                <Textarea placeholder="Description (optional)" value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))} rows={2} className="sm:col-span-2" />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={createCourse} disabled={busy} className="text-white" style={{ background: ORANGE }}>Create Course</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}>Cancel</Button>
-              </div>
+            <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-5">
+              <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Mastery Course</h3>
+              <CourseForm form={courseForm} setForm={setCourseForm}
+                onSubmit={createCourse} onCancel={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}
+                submitLabel="Create Course" />
             </div>
           )}
 
           {/* Edit Course form */}
           {editingCourse && (
-            <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-3">
+            <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-5">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit Course — <span className="font-mono text-xs">{editingCourse.courseCode}</span></h3>
                 <button onClick={() => setEditingCourse(null)}><X className="w-4 h-4 text-gray-400" /></button>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Input placeholder="Course name *" value={editCourseForm.title} onChange={e => setEditCourseForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-                <Select value={editCourseForm.grade} onValueChange={v => setEditCourseForm(p => ({ ...p, grade: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Grade *" /></SelectTrigger>
-                  <SelectContent>{GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={editCourseForm.academicYearId} onValueChange={v => setEditCourseForm(p => ({ ...p, academicYearId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Academic Year" /></SelectTrigger>
-                  <SelectContent>{academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={editCourseForm.status} onValueChange={v => setEditCourseForm(p => ({ ...p, status: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={editCourseForm.board} onValueChange={v => setEditCourseForm(p => ({ ...p, board: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Board" /></SelectTrigger>
-                  <SelectContent>{BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input placeholder="Teacher name" value={editCourseForm.teacher} onChange={e => setEditCourseForm(p => ({ ...p, teacher: e.target.value }))} />
-                <Input placeholder="Thumbnail URL" value={editCourseForm.thumbnailUrl} onChange={e => setEditCourseForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
-                <Textarea placeholder="Description" value={editCourseForm.description} onChange={e => setEditCourseForm(p => ({ ...p, description: e.target.value }))} rows={2} className="sm:col-span-2" />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={updateCourse} disabled={busy} className="text-white" style={{ background: NAVY }}>Save Changes</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingCourse(null)}>Cancel</Button>
-              </div>
+              <CourseForm form={editCourseForm} setForm={setEditCourseForm}
+                onSubmit={updateCourse} onCancel={() => setEditingCourse(null)}
+                submitLabel="Save Changes" />
             </div>
           )}
 
@@ -613,7 +781,15 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCourses.map(c => (
                 <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="h-1.5 w-full" style={{ background: c.status === "active" ? NAVY : c.status === "archived" ? "#9CA3AF" : "#F59E0B" }} />
+                  {/* Banner */}
+                  {(c.bannerUrl || c.thumbnailUrl) ? (
+                    <div className="h-24 overflow-hidden">
+                      <img src={c.bannerUrl || c.thumbnailUrl || ""} alt={c.title}
+                        className="w-full h-full object-cover" onError={e => (e.target as HTMLImageElement).style.display = "none"} />
+                    </div>
+                  ) : (
+                    <div className="h-1.5 w-full" style={{ background: c.status === "active" ? NAVY : c.status === "archived" ? "#9CA3AF" : "#F59E0B" }} />
+                  )}
                   <div className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -628,18 +804,41 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{gradeLabel(c.grade)}</span>
                       {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{c.board}</span>}
                       {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{yearName_(c.academicYearId)}</span>}
+                      {c.duration && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">{c.duration}</span>}
                     </div>
+                    {(c.scholarshipPrice || c.originalPrice) && (
+                      <div className="flex items-center gap-2">
+                        {c.scholarshipPrice && <span className="text-sm font-bold" style={{ color: ORANGE }}>₹{c.scholarshipPrice.toLocaleString("en-IN")}</span>}
+                        {c.originalPrice && c.originalPrice !== c.scholarshipPrice && (
+                          <span className="text-xs text-gray-400 line-through">₹{c.originalPrice.toLocaleString("en-IN")}</span>
+                        )}
+                      </div>
+                    )}
                     {c.teacher && <p className="text-xs text-gray-500">👤 {c.teacher}</p>}
                     <div className="flex gap-1.5 pt-1">
                       <button onClick={() => selectCourse(c)}
                         className="flex-1 text-xs py-1.5 rounded-lg font-semibold text-white flex items-center justify-center gap-1"
                         style={{ background: NAVY }}>
-                        <Layers className="w-3 h-3" /> Subjects
+                        <Layers className="w-3 h-3" /> Manage
                       </button>
                       <button
                         onClick={() => {
                           setEditingCourse(c);
-                          setEditCourseForm({ title: c.title, grade: String(c.grade), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", description: c.description ?? "", teacher: c.teacher ?? "", thumbnailUrl: c.thumbnailUrl ?? "", status: c.status ?? "active" });
+                          setEditCourseForm({
+                            title: c.title, grade: String(c.grade), board: c.board ?? "",
+                            academicYearId: c.academicYearId ? String(c.academicYearId) : "",
+                            status: c.status ?? "active", duration: c.duration ?? "",
+                            description: c.description ?? "",
+                            originalPrice: c.originalPrice ? String(c.originalPrice) : "",
+                            scholarshipPrice: c.scholarshipPrice ? String(c.scholarshipPrice) : "",
+                            registrationFee: c.registrationFee ? String(c.registrationFee) : "",
+                            paymentPlansJson: "",
+                            teacher: c.teacher ?? "",
+                            mentorIdsJson: c.mentorIdsJson ?? "",
+                            studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "",
+                            bannerUrl: c.bannerUrl ?? c.thumbnailUrl ?? "",
+                            brochureUrl: c.brochureUrl ?? "",
+                          });
                           setShowAddCourse(false);
                         }}
                         className="text-xs p-1.5 rounded-lg border border-blue-200 hover:border-blue-400 text-blue-500">
@@ -679,89 +878,237 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           ══════════════════════════════════════════════════════════ */}
       {view === "subjects" && selectedCourse && (
         <div className="space-y-4">
+          {/* Course info header */}
           <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-mono text-xs text-gray-400">{selectedCourse.courseCode} · {gradeLabel(selectedCourse.grade)}</p>
                 <h2 className="font-bold text-base mt-0.5" style={{ color: NAVY }}>{selectedCourse.title}</h2>
+                {selectedCourse.duration && <p className="text-xs text-gray-500 mt-0.5">📅 {selectedCourse.duration}</p>}
               </div>
               <button onClick={goBack} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200">← Back</button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Add subjects inside this course (e.g. Mathematics, Science).</p>
-            <Button size="sm" onClick={() => setShowAddSubject(p => !p)} className="text-white gap-1" style={{ background: ORANGE }}>
-              <Plus className="w-3.5 h-3.5" /> Add Subject
-            </Button>
+          {/* Tab toggle: Subjects | Syllabus Import */}
+          <div className="flex border-b border-gray-200">
+            <button onClick={() => setSubjectView("subjects")}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${subjectView === "subjects" ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+              <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Subjects</span>
+            </button>
+            <button onClick={() => setSubjectView("syllabus")}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${subjectView === "syllabus" ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+              <span className="flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" /> Syllabus Import</span>
+            </button>
           </div>
 
-          {showAddSubject && (
-            <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
-              <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Subject</h3>
-              <Input placeholder="Subject name * (e.g. Mathematics)" value={subjectForm.name} onChange={e => setSubjectForm(p => ({ ...p, name: e.target.value }))} />
-              <Textarea placeholder="Description (optional)" value={subjectForm.description} onChange={e => setSubjectForm(p => ({ ...p, description: e.target.value }))} rows={2} />
-              <Input placeholder="Thumbnail URL (optional)" value={subjectForm.thumbnailUrl} onChange={e => setSubjectForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={createSubject} disabled={busy} className="text-white" style={{ background: ORANGE }}>Create Subject</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setShowAddSubject(false); setSubjectForm(emptySubjectForm); }}>Cancel</Button>
-              </div>
-            </div>
-          )}
-
-          {editingSubject && (
-            <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-3">
+          {/* ── Subjects sub-tab ── */}
+          {subjectView === "subjects" && (
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit Subject — {editingSubject.subjectCode}</h3>
-                <button onClick={() => setEditingSubject(null)}><X className="w-4 h-4 text-gray-400" /></button>
+                <p className="text-sm text-gray-500">Add subjects inside this course (e.g. Mathematics, Science).</p>
+                <Button size="sm" onClick={() => setShowAddSubject(p => !p)} className="text-white gap-1" style={{ background: ORANGE }}>
+                  <Plus className="w-3.5 h-3.5" /> Add Subject
+                </Button>
               </div>
-              <Input placeholder="Subject name *" value={editSubjectForm.name} onChange={e => setEditSubjectForm(p => ({ ...p, name: e.target.value }))} />
-              <Textarea placeholder="Description" value={editSubjectForm.description} onChange={e => setEditSubjectForm(p => ({ ...p, description: e.target.value }))} rows={2} />
-              <Input placeholder="Thumbnail URL" value={editSubjectForm.thumbnailUrl} onChange={e => setEditSubjectForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={updateSubject} disabled={busy} className="text-white" style={{ background: NAVY }}>Save</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingSubject(null)}>Cancel</Button>
-              </div>
-            </div>
-          )}
 
-          <div className="space-y-2">
-            {courseSubjects.map(sub => (
-              <div key={sub.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3 p-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: NAVY }}>
-                    {sub.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[10px] text-gray-400">{sub.subjectCode}</p>
-                    <p className="font-semibold text-sm" style={{ color: NAVY }}>{sub.name}</p>
-                    {sub.description && <p className="text-xs text-gray-500 truncate">{sub.description}</p>}
-                  </div>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => selectSubject(sub)}
-                      className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white flex items-center gap-1"
-                      style={{ background: NAVY }}>
-                      <BookOpen className="w-3 h-3" /> Chapters
-                    </button>
-                    <button onClick={() => { setEditingSubject(sub); setEditSubjectForm({ name: sub.name, description: sub.description ?? "", thumbnailUrl: sub.thumbnailUrl ?? "" }); setShowAddSubject(false); }}
-                      className="p-1.5 rounded-lg border border-blue-200 text-blue-500">
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => deleteSubject(sub.id, sub.name)}
-                      className="p-1.5 rounded-lg border border-gray-200 text-red-400 hover:text-red-600">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              {showAddSubject && (
+                <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
+                  <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Subject</h3>
+                  <Input placeholder="Subject name * (e.g. Mathematics)" value={subjectForm.name}
+                    onChange={e => setSubjectForm(p => ({ ...p, name: e.target.value }))} />
+                  <Textarea placeholder="Description (optional)" value={subjectForm.description}
+                    onChange={e => setSubjectForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={createSubject} disabled={busy} className="text-white" style={{ background: ORANGE }}>Create Subject</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowAddSubject(false); setSubjectForm(emptySubjectForm); }}>Cancel</Button>
                   </div>
                 </div>
+              )}
+
+              {editingSubject && (
+                <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit Subject — {editingSubject.subjectCode}</h3>
+                    <button onClick={() => setEditingSubject(null)}><X className="w-4 h-4 text-gray-400" /></button>
+                  </div>
+                  <Input placeholder="Subject name *" value={editSubjectForm.name}
+                    onChange={e => setEditSubjectForm(p => ({ ...p, name: e.target.value }))} />
+                  <Textarea placeholder="Description" value={editSubjectForm.description}
+                    onChange={e => setEditSubjectForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={updateSubject} disabled={busy} className="text-white" style={{ background: NAVY }}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingSubject(null)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {courseSubjects.map(sub => (
+                  <div key={sub.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 p-4">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                        style={{ background: NAVY }}>
+                        {sub.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono text-[10px] text-gray-400">{sub.subjectCode}</p>
+                        <p className="font-semibold text-sm" style={{ color: NAVY }}>{sub.name}</p>
+                        {sub.description && <p className="text-xs text-gray-500 truncate">{sub.description}</p>}
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => selectSubject(sub)}
+                          className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white flex items-center gap-1"
+                          style={{ background: NAVY }}>
+                          <BookOpen className="w-3 h-3" /> Chapters
+                        </button>
+                        <button onClick={() => { setEditingSubject(sub); setEditSubjectForm({ name: sub.name, description: sub.description ?? "" }); setShowAddSubject(false); }}
+                          className="p-1.5 rounded-lg border border-blue-200 text-blue-500">
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteSubject(sub.id, sub.name)}
+                          className="p-1.5 rounded-lg border border-gray-200 text-red-400 hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {courseSubjects.length === 0 && !loading && (
+                  <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
+                    No subjects yet. Add the first subject (e.g. Mathematics, Science, English).
+                  </div>
+                )}
               </div>
-            ))}
-            {courseSubjects.length === 0 && !loading && (
-              <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
-                No subjects yet. Add the first subject for this course (e.g. Mathematics, Science, English).
+            </div>
+          )}
+
+          {/* ── Syllabus Import sub-tab ── */}
+          {subjectView === "syllabus" && (
+            <div className="space-y-4">
+              {/* Info card */}
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-700 space-y-1">
+                <p className="font-semibold">📋 CSV Format</p>
+                <p className="text-xs font-mono bg-white border border-blue-100 rounded-lg px-3 py-2 mt-1">
+                  Date (DD/MM/YYYY), Chapter, Topic, Description<br />
+                  11/07/2026,Numbers,Place Value,Understanding place values<br />
+                  Numbers,Comparing Numbers,Compare greater and smaller
+                </p>
+                <p className="text-xs text-blue-600 mt-1">Date column is optional. Each topic will get a scheduled live class automatically.</p>
               </div>
-            )}
-          </div>
+
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
+                {/* Subject selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-600">Subject</label>
+                  <Select value={syllabusSubjectId} onValueChange={setSyllabusSubjectId}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select a subject (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No specific subject</SelectItem>
+                      {courseSubjects.map(s => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {courseSubjects.length === 0 && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> No subjects added yet. Import will create chapters without a subject link.
+                    </p>
+                  )}
+                </div>
+
+                {/* Course & Grade info (auto-filled) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-600">Course</label>
+                    <div className="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-200 truncate">
+                      {selectedCourse.title}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-600">Grade · Board</label>
+                    <div className="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-200">
+                      {gradeLabel(selectedCourse.grade)}{selectedCourse.board ? ` · ${selectedCourse.board}` : ""}
+                    </div>
+                  </div>
+                </div>
+
+                {/* File upload */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-600">Upload CSV</label>
+                  <div
+                    onClick={() => fileRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
+                    className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-all">
+                    <FileUp className="w-7 h-7 text-gray-400" />
+                    {syllabusFileName ? (
+                      <p className="text-sm font-medium text-gray-700">{syllabusFileName}</p>
+                    ) : (
+                      <p className="text-sm text-gray-500">Click or drag & drop your CSV file here</p>
+                    )}
+                    {syllabusRows.length > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> {syllabusRows.length} rows parsed
+                      </span>
+                    )}
+                    <input ref={fileRef} type="file" accept=".csv" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); }} />
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {syllabusRows.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-gray-600">Preview ({syllabusRows.length} rows)</p>
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="px-3 py-2 text-left text-gray-500 font-semibold">Date</th>
+                            <th className="px-3 py-2 text-left text-gray-500 font-semibold">Chapter</th>
+                            <th className="px-3 py-2 text-left text-gray-500 font-semibold">Topic</th>
+                            <th className="px-3 py-2 text-left text-gray-500 font-semibold hidden sm:table-cell">Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {syllabusRows.slice(0, 50).map((row, i) => (
+                            <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="px-3 py-1.5 text-gray-400 whitespace-nowrap">{row.date ?? "—"}</td>
+                              <td className="px-3 py-1.5 font-medium text-gray-700">{row.chapter}</td>
+                              <td className="px-3 py-1.5 text-gray-600">{row.topic}</td>
+                              <td className="px-3 py-1.5 text-gray-400 truncate max-w-32 hidden sm:table-cell">{row.description ?? ""}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {syllabusRows.length > 50 && (
+                        <p className="text-center text-xs text-gray-400 py-2">+{syllabusRows.length - 50} more rows</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Replace checkbox */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={replaceExisting} onChange={e => setReplaceExisting(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 accent-orange-500" />
+                  <span className="text-sm text-gray-700">Replace Existing Syllabus</span>
+                  <span className="text-xs text-red-500">(deletes all existing chapters, topics & scheduled classes)</span>
+                </label>
+
+                <Button
+                  onClick={importSyllabus}
+                  disabled={syllabusImporting || syllabusRows.length === 0}
+                  className="w-full text-white gap-2 font-semibold" style={{ background: ORANGE }}>
+                  <Upload className="w-4 h-4" />
+                  {syllabusImporting ? "Importing…" : `Upload & Import ${syllabusRows.length > 0 ? `(${syllabusRows.length} rows)` : ""}`}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -792,9 +1139,12 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Chapter in {selectedSubject.name}</h3>
               <div className="grid sm:grid-cols-2 gap-3">
-                <Input placeholder="Chapter name * (e.g. Fractions)" value={chapterForm.name} onChange={e => setChapterForm(p => ({ ...p, name: e.target.value }))} className="sm:col-span-2" />
-                <Input placeholder="Sequence No. (e.g. 1)" type="number" value={chapterForm.sequenceNo} onChange={e => setChapterForm(p => ({ ...p, sequenceNo: e.target.value }))} />
-                <Textarea placeholder="Description (optional)" value={chapterForm.description} onChange={e => setChapterForm(p => ({ ...p, description: e.target.value }))} rows={2} className="sm:col-span-2" />
+                <Input placeholder="Chapter name * (e.g. Fractions)" value={chapterForm.name}
+                  onChange={e => setChapterForm(p => ({ ...p, name: e.target.value }))} className="sm:col-span-2" />
+                <Input placeholder="Sequence No. (e.g. 1)" type="number" value={chapterForm.sequenceNo}
+                  onChange={e => setChapterForm(p => ({ ...p, sequenceNo: e.target.value }))} />
+                <Textarea placeholder="Description (optional)" value={chapterForm.description}
+                  onChange={e => setChapterForm(p => ({ ...p, description: e.target.value }))} rows={2} className="sm:col-span-2" />
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={createChapter} disabled={busy} className="text-white" style={{ background: ORANGE }}>Create Chapter</Button>
@@ -830,7 +1180,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             ))}
             {chapters.length === 0 && !loading && (
               <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
-                No chapters yet. Add the first chapter for this subject.
+                No chapters yet. Add manually or use Syllabus Import.
               </div>
             )}
           </div>
@@ -854,7 +1204,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Topics are the smallest unit. Assign live classes, homework, tests, and recordings to topics.</p>
+            <p className="text-sm text-gray-500">Topics are the smallest unit. Assign live classes, homework, tests here.</p>
             <Button size="sm" onClick={() => setShowAddTopic(p => !p)} className="text-white gap-1" style={{ background: ORANGE }}>
               <Plus className="w-3.5 h-3.5" /> Add Topic
             </Button>
@@ -864,7 +1214,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
               <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Topic in {selectedChapter.name}</h3>
               <div className="grid sm:grid-cols-2 gap-3">
-                <Input placeholder="Topic name * (e.g. Introduction to Fractions)" value={topicForm.name} onChange={e => setTopicForm(p => ({ ...p, name: e.target.value }))} className="sm:col-span-2" />
+                <Input placeholder="Topic name * (e.g. Introduction to Fractions)" value={topicForm.name}
+                  onChange={e => setTopicForm(p => ({ ...p, name: e.target.value }))} className="sm:col-span-2" />
                 <Select value={topicForm.topicStatus} onValueChange={v => setTopicForm(p => ({ ...p, topicStatus: v }))}>
                   <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
@@ -872,8 +1223,10 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     <SelectItem value="draft">Draft</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input placeholder="Description (optional)" value={topicForm.description} onChange={e => setTopicForm(p => ({ ...p, description: e.target.value }))} />
-                <Textarea placeholder="Learning Objective (optional)" value={topicForm.learningObjective} onChange={e => setTopicForm(p => ({ ...p, learningObjective: e.target.value }))} rows={2} className="sm:col-span-2" />
+                <Input placeholder="Description (optional)" value={topicForm.description}
+                  onChange={e => setTopicForm(p => ({ ...p, description: e.target.value }))} />
+                <Textarea placeholder="Learning Objective (optional)" value={topicForm.learningObjective}
+                  onChange={e => setTopicForm(p => ({ ...p, learningObjective: e.target.value }))} rows={2} className="sm:col-span-2" />
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={createTopic} disabled={busy} className="text-white" style={{ background: ORANGE }}>Create Topic</Button>
@@ -929,7 +1282,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             })}
             {topics.length === 0 && !loading && (
               <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
-                No topics yet. Add the first topic for this chapter.
+                No topics yet. Add manually or use Syllabus Import in the course.
               </div>
             )}
           </div>
@@ -938,7 +1291,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
               <p className="text-xs font-semibold text-blue-700 mb-1">💡 Assigning content to topics</p>
               <p className="text-xs text-blue-600">
-                When scheduling Live Classes, Homework, Tests, or Recordings, select the Topic from the dropdown to link it here. Use the codes below for reference.
+                When scheduling Live Classes, Homework, Tests, or Recordings, select the Topic from the dropdown to link it here.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {topics.map(tp => (

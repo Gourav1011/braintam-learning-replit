@@ -491,6 +491,15 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     description: coursesTable.description,
     teacher: coursesTable.teacher,
     rating: coursesTable.rating,
+    duration: coursesTable.duration,
+    originalPrice: coursesTable.originalPrice,
+    scholarshipPrice: coursesTable.scholarshipPrice,
+    registrationFee: coursesTable.registrationFee,
+    paymentPlansJson: coursesTable.paymentPlansJson,
+    studentCapacity: coursesTable.studentCapacity,
+    bannerUrl: coursesTable.bannerUrl,
+    brochureUrl: coursesTable.brochureUrl,
+    mentorIdsJson: coursesTable.mentorIdsJson,
   })
     .from(coursesTable)
     .where(eq(coursesTable.isArchived, false))
@@ -503,7 +512,7 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status } = req.body;
+  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson } = req.body;
   if (!title || grade === undefined || grade === null || grade === "") {
     res.status(400).json({ error: "title and grade are required" });
     return;
@@ -512,7 +521,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
     const [course] = await db.insert(coursesTable).values({
       title, subjectId: subjectId ? Number(subjectId) : null, grade: Number(grade),
       totalLessons: totalLessons ?? 0,
-      thumbnailUrl: thumbnailUrl || "https://placehold.co/400x240?text=Course",
+      thumbnailUrl: thumbnailUrl || bannerUrl || "",
       description: description ?? null,
       teacher: teacher ?? null,
       rating: rating ?? null,
@@ -520,6 +529,15 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
       academicYearId: academicYearId ? Number(academicYearId) : null,
       isPublished: isPublished !== false,
       status: status ?? "active",
+      duration: duration ?? null,
+      originalPrice: originalPrice ? Number(originalPrice) : null,
+      scholarshipPrice: scholarshipPrice ? Number(scholarshipPrice) : null,
+      registrationFee: registrationFee ? Number(registrationFee) : null,
+      paymentPlansJson: paymentPlansJson ?? null,
+      studentCapacity: studentCapacity ? Number(studentCapacity) : null,
+      bannerUrl: bannerUrl ?? null,
+      brochureUrl: brochureUrl ?? null,
+      mentorIdsJson: mentorIdsJson ?? null,
     }).returning();
 
     await logAudit(
@@ -538,7 +556,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
 router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade } = req.body;
+  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson } = req.body;
   const updates: Record<string, unknown> = {};
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
@@ -549,6 +567,15 @@ router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   if (thumbnailUrl !== undefined) updates.thumbnailUrl = thumbnailUrl;
   if (status !== undefined) updates.status = status;
   if (grade !== undefined) updates.grade = Number(grade);
+  if (duration !== undefined) updates.duration = duration || null;
+  if (originalPrice !== undefined) updates.originalPrice = originalPrice ? Number(originalPrice) : null;
+  if (scholarshipPrice !== undefined) updates.scholarshipPrice = scholarshipPrice ? Number(scholarshipPrice) : null;
+  if (registrationFee !== undefined) updates.registrationFee = registrationFee ? Number(registrationFee) : null;
+  if (paymentPlansJson !== undefined) updates.paymentPlansJson = paymentPlansJson || null;
+  if (studentCapacity !== undefined) updates.studentCapacity = studentCapacity ? Number(studentCapacity) : null;
+  if (bannerUrl !== undefined) { updates.bannerUrl = bannerUrl || null; if (bannerUrl) updates.thumbnailUrl = bannerUrl; }
+  if (brochureUrl !== undefined) updates.brochureUrl = brochureUrl || null;
+  if (mentorIdsJson !== undefined) updates.mentorIdsJson = mentorIdsJson || null;
   const [course] = await db.update(coursesTable).set(updates as never).where(eq(coursesTable.id, id)).returning();
   if (!course) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...course, courseCode: `CRS${String(course.id).padStart(4, "0")}` });
@@ -568,6 +595,152 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
     "course_deleted", "course", id, course?.title ?? String(id),
   );
   res.json({ success: true });
+});
+
+// ── Syllabus CSV Import ───────────────────────────────────────────
+// POST /admin/courses/:courseId/syllabus-import
+// Body: { courseSubjectId?: number, replaceExisting: boolean, rows: [{date?,chapter,topic,description?}] }
+router.post("/admin/courses/:courseId/syllabus-import", adminOnly, async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  if (!courseId) { res.status(400).json({ error: "Invalid courseId" }); return; }
+
+  const { courseSubjectId, replaceExisting, rows } = req.body as {
+    courseSubjectId?: number;
+    replaceExisting?: boolean;
+    rows: Array<{ date?: string; chapter: string; topic: string; description?: string }>;
+  };
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: "rows array is required and must not be empty" });
+    return;
+  }
+
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId));
+  if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  // If replacing, delete all existing chapters+topics+live-classes for this course (filtered by courseSubjectId if given)
+  if (replaceExisting) {
+    const whereClause = courseSubjectId
+      ? and(eq(chaptersTable.courseId, courseId), eq(chaptersTable.courseSubjectId, courseSubjectId))
+      : eq(chaptersTable.courseId, courseId);
+    const existingChapters = await db.select({ id: chaptersTable.id }).from(chaptersTable).where(whereClause);
+    if (existingChapters.length > 0) {
+      const chapterIds = existingChapters.map(c => c.id);
+      const existingTopics = await db.select({ id: topicsTable.id }).from(topicsTable).where(inArray(topicsTable.chapterId, chapterIds));
+      if (existingTopics.length > 0) {
+        const topicIds = existingTopics.map(t => t.id);
+        // Remove live classes linked to these topics
+        await db.delete(liveClassesTable).where(inArray(liveClassesTable.topicId, topicIds));
+        await db.delete(topicsTable).where(inArray(topicsTable.id, topicIds));
+      }
+      await db.delete(chaptersTable).where(inArray(chaptersTable.id, chapterIds));
+    }
+  }
+
+  // Process rows
+  const chapterMap: Record<string, number> = {}; // chapterName → chapterId
+  let chapterOrder = 0;
+  let topicOrder = 0;
+  let createdChapters = 0;
+  let createdTopics = 0;
+  let createdClasses = 0;
+
+  // Default start date: 1 week from now at 10am IST
+  let lastDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  for (const row of rows) {
+    const chapterName = (row.chapter ?? "").trim();
+    const topicName = (row.topic ?? "").trim();
+    if (!chapterName || !topicName) continue;
+
+    // Parse date DD/MM/YYYY → Date (10am IST)
+    if (row.date) {
+      const parts = row.date.trim().split("/");
+      if (parts.length === 3) {
+        const [d, m, y] = parts.map(Number);
+        if (d && m && y) {
+          // IST offset = +5:30 = 330 min
+          const utcMs = Date.UTC(y, m - 1, d, 4, 30); // 10:00 IST = 04:30 UTC
+          lastDate = new Date(utcMs);
+        }
+      }
+    }
+
+    // Find or create chapter
+    if (chapterMap[chapterName] === undefined) {
+      let chapterId: number;
+      if (!replaceExisting) {
+        // Check if exists
+        const whereClause = courseSubjectId
+          ? and(eq(chaptersTable.courseId, courseId), eq(chaptersTable.name, chapterName), eq(chaptersTable.courseSubjectId, courseSubjectId))
+          : and(eq(chaptersTable.courseId, courseId), eq(chaptersTable.name, chapterName));
+        const [existing] = await db.select({ id: chaptersTable.id }).from(chaptersTable).where(whereClause);
+        if (existing) {
+          chapterId = existing.id;
+        } else {
+          const [ch] = await db.insert(chaptersTable).values({
+            name: chapterName, courseId, grade: course.grade,
+            courseSubjectId: courseSubjectId ?? null,
+            order: chapterOrder, sequenceNo: chapterOrder + 1,
+          }).returning({ id: chaptersTable.id });
+          chapterId = ch.id;
+          createdChapters++;
+          chapterOrder++;
+        }
+      } else {
+        const [ch] = await db.insert(chaptersTable).values({
+          name: chapterName, courseId, grade: course.grade,
+          courseSubjectId: courseSubjectId ?? null,
+          order: chapterOrder, sequenceNo: chapterOrder + 1,
+        }).returning({ id: chaptersTable.id });
+        chapterId = ch.id;
+        createdChapters++;
+        chapterOrder++;
+      }
+      chapterMap[chapterName] = chapterId;
+    }
+
+    const chapterId = chapterMap[chapterName];
+
+    // Find or create topic
+    if (!replaceExisting) {
+      const [existing] = await db.select({ id: topicsTable.id }).from(topicsTable)
+        .where(and(eq(topicsTable.chapterId, chapterId), eq(topicsTable.name, topicName)));
+      if (existing) continue; // skip duplicate topic
+    }
+
+    const [tp] = await db.insert(topicsTable).values({
+      name: topicName, chapterId,
+      description: (row.description ?? "").trim() || null,
+      order: topicOrder, topicStatus: "active",
+    }).returning({ id: topicsTable.id });
+    topicOrder++;
+    createdTopics++;
+
+    // Create one scheduled live class for this topic
+    await db.insert(liveClassesTable).values({
+      title: topicName,
+      grade: course.grade,
+      courseId,
+      chapterId,
+      topicId: tp.id,
+      courseSubjectId: courseSubjectId ?? null,
+      scheduledAt: lastDate,
+      duration: 60,
+      teacher: course.teacher || "Braintam Faculty",
+      status: "upcoming",
+      isPublished: true,
+    });
+    createdClasses++;
+    // Advance default date by 7 days for next un-dated row
+    lastDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+
+  await logAudit(req.authUser!.id, req.authUser!.name,
+    "syllabus_imported", "course", courseId, course.title,
+    JSON.stringify({ createdChapters, createdTopics, createdClasses, replaceExisting }));
+
+  res.json({ success: true, createdChapters, createdTopics, createdClasses });
 });
 
 // ── Seed 20 permanent courses ──────────────────────────────────────

@@ -11,7 +11,7 @@ export const coursesTable = pgTable("courses", {
   academicYearId: integer("academic_year_id"),
   courseType: text("course_type").notNull().default("mastery"),
   totalLessons: integer("total_lessons").notNull().default(0),
-  thumbnailUrl: text("thumbnail_url").notNull(),
+  thumbnailUrl: text("thumbnail_url").notNull().default(""),
   description: text("description"),
   teacher: text("teacher"),
   rating: real("rating"),
@@ -21,6 +21,16 @@ export const coursesTable = pgTable("courses", {
   archivedAt: timestamp("archived_at"),
   archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Extended Mastery fields
+  duration: text("duration"),
+  originalPrice: integer("original_price"),
+  scholarshipPrice: integer("scholarship_price"),
+  registrationFee: integer("registration_fee"),
+  paymentPlansJson: text("payment_plans_json"),
+  studentCapacity: integer("student_capacity"),
+  bannerUrl: text("banner_url"),
+  brochureUrl: text("brochure_url"),
+  mentorIdsJson: text("mentor_ids_json"),
 });
 
 export const lessonsTable = pgTable("lessons", {
