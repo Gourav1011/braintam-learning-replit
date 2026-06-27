@@ -28,6 +28,7 @@ import ProfilePage from "@/pages/profile";
 import LeaderboardPage from "@/pages/leaderboard";
 import DemoBatchesPage from "@/pages/demo-batches";
 import DemoBatchPage from "@/pages/demo-batch";
+import LiveClassroomPage from "@/pages/live-classroom";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import OurStoryPage from "@/pages/our-story";
@@ -435,6 +436,7 @@ function Router() {
       {/* Protected */}
       <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>
       <Route path="/live-classes" component={LiveClassesPage} />
+      <Route path="/live/:sessionId" component={LiveClassroomPage} />
       <Route path="/courses" component={CoursesPage} />
       <Route path="/courses/:id"><ProtectedRoute component={CourseDetailPage} /></Route>
       <Route path="/recordings"><ProtectedRoute component={RecordingsPage} /></Route>

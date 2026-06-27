@@ -1,0 +1,218 @@
+BRAINTAM LIVE CLASSROOM V1 (LIGHTWEIGHT VERSION)
+
+Principle:
+Video must consume most resources.
+Everything else should be lightweight and event-based.
+
+---
+
+## LEFT SIDE (80%)
+
+Presentation Area
+
+Support:
+
+• Canva Public Presentation Link
+OR
+• PDF Upload
+
+Teacher presents slides.
+
+Annotation:
+Simple pen and highlighter only.
+
+No heavy whiteboard engine.
+No infinite canvas.
+No shapes library.
+No stickers.
+No animations from our side.
+
+---
+
+## RIGHT SIDE (20%)
+
+Top:
+Teacher Camera
+
+Bottom:
+Dynamic Panel
+
+Only ONE thing visible at a time:
+
+1. Group Chat
+   OR
+2. Poll
+   OR
+3. Leaderboard Popup
+
+Never show all together.
+
+---
+
+## GROUP CHAT
+
+Text only.
+
+No:
+
+❌ Images
+❌ Files
+❌ GIFs
+❌ Emojis spam
+❌ Voice notes
+
+Messages:
+
+"Good evening sir"
+"I got option B"
+
+Mentor can reply.
+
+---
+
+## POLLS
+
+Teacher can:
+
+1. Publish saved poll
+2. Create quick poll
+
+When poll launches:
+
+Chat hides.
+
+Student answers.
+
+Poll disappears.
+
+Chat returns.
+
+---
+
+## LEADERBOARD
+
+Show only Top 3.
+
+Based on:
+
+Correct Answer
++
+Fastest Response
+
+Display:
+
+5 seconds
+
+Auto close.
+
+No permanent leaderboard.
+
+---
+
+## RAISE HAND
+
+Default:
+Hidden
+
+Teacher enables:
+
+Open Questions
+
+Student sees:
+
+✋ Raise Hand
+
+Student clicks once.
+
+No text popup.
+No audio requests.
+No video requests.
+
+Teacher and mentor see:
+
+✋ Aryan
+✋ Riya
+
+Mentor solves via:
+
+Group Chat
+or
+WhatsApp.
+
+---
+
+## PAYMENT BUTTON
+
+Floating Button:
+
+💳 Upgrade Course
+
+Small button.
+
+Bottom Right.
+
+No popup animations.
+
+No banners.
+
+---
+
+## RECORDINGS
+
+Use:
+
+Google Meet Recording
+OR
+Zoom Recording
+
+Store only:
+
+recording_url
+
+Do not upload videos to BTL servers.
+
+---
+
+## SOCKET EVENTS
+
+Only:
+
+chatMessage
+startPoll
+submitPoll
+showLeaderboard
+raiseHand
+toggleRaiseHand
+attendanceHeartbeat
+
+Tiny JSON messages only.
+
+---
+
+## DO NOT BUILD IN V1
+
+❌ Student cameras
+❌ Student microphones
+❌ Participant video grid
+❌ Real-time collaborative whiteboard
+❌ File sharing
+❌ Voice notes
+❌ Emoji reactions
+❌ Animated badges
+❌ Screen sharing by students
+❌ Custom video streaming
+❌ Recording processing
+
+---
+
+## TARGET SCALE
+
+10–20 simultaneous classes
+20–50 students per class
+
+This architecture should run comfortably because:
+
+Video → Meet/Zoom servers
+BTL → Chat + Polls + Attendance + Raise Hand only
+
+Keep everything simple, modular and lightweight.
