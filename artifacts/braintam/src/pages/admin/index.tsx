@@ -3046,7 +3046,7 @@ function AdminPageInner() {
 
         {/* ── Ignite (Sales & Admissions) CRM ──────────────────────────── */}
         {tab === "ignite" && (
-          <IgniteContentArea view={igniteView} setView={setIgniteView} flash={flash} />
+          <IgniteContentArea view={igniteView} setView={setIgniteView} flash={flash} role={role} />
         )}
 
         {/* ── Command Center ───────────────────────────────────────────── */}
@@ -3086,7 +3086,7 @@ function AdminPageInner() {
         {tab === "reports-analytics" && <ReportsAnalyticsTab />}
 
         {/* ── Mastery Students ─────────────────────────────────────────── */}
-        {tab === "mastery-students" && <MasteryStudentsTab flash={flash} />}
+        {tab === "mastery-students" && <MasteryStudentsTab flash={flash} role={role} />}
 
         {/* ── Mastery Payment Verification ─────────────────────────────── */}
         {tab === "mastery-payments"    && <MasteryPaymentVerificationTab />}

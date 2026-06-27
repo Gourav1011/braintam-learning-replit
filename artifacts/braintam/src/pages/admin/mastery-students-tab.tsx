@@ -3,7 +3,7 @@ import {
   Users, UserCheck, RefreshCw, Search, X, ChevronDown, ChevronUp,
   Phone, Mail, GraduationCap, Calendar, BookOpen, CreditCard,
   User, Clock, CheckCircle, AlertCircle, RotateCcw, TrendingUp,
-  Edit2, Save, XCircle,
+  Edit2, Save, XCircle, Download,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
 
@@ -591,7 +591,7 @@ function InfoRow({ label, value, icon: Icon }: {
 
 type FilterStatus = "" | "new_admission" | "existing" | "retention_due" | "renewed";
 
-export function MasteryStudentsTab({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
+export function MasteryStudentsTab({ flash, role = "admin" }: { flash: (msg: string, ok?: boolean) => void; role?: string }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [students, setStudents] = useState<MasteryStudent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -600,6 +600,32 @@ export function MasteryStudentsTab({ flash }: { flash: (msg: string, ok?: boolea
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<"admissionDate" | "studentName" | "grade">("admissionDate");
   const [sortAsc, setSortAsc] = useState(false);
+
+  const masteryMaxDays = role === "super_admin" ? null : role === "admin" ? 7 : 0;
+  const canExportMastery = masteryMaxDays !== 0;
+
+  const exportCSV = (allStudents: MasteryStudent[]) => {
+    let rows = [...allStudents];
+    if (masteryMaxDays !== null) {
+      const cutoff = new Date(Date.now() - masteryMaxDays * 86400000);
+      rows = rows.filter(s => new Date(s.admissionDate) >= cutoff);
+    }
+    const headers = ["Name","Parent","Phone","Alt Phone","Email","Grade","Board","Course Plan","Amount Paid","Amount Pending","Payment Status","Mentor","Acad Year","Admission Date","Status","Source"];
+    const csvRows = rows.map(s => [
+      s.studentName, s.parentName, s.phone, s.alternatePhone, s.email,
+      s.grade, s.board, s.coursePlan, s.amountPaid, s.amountPending,
+      s.paymentStatus, s.mentorName, s.academicYear,
+      new Date(s.admissionDate).toLocaleDateString("en-IN"), s.masteryStatus, s.source,
+    ]);
+    const e = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [headers.map(e), ...csvRows.map(r => r.map(e))].map(c => c.join(",")).join("\n");
+    const rangeLabel = masteryMaxDays === null ? "all" : `${masteryMaxDays}d`;
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+      download: `braintam_mastery-students_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`,
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -661,6 +687,13 @@ export function MasteryStudentsTab({ flash }: { flash: (msg: string, ok?: boolea
           onChange={e => setQ(e.target.value)}
           className="flex-1 text-xs outline-none placeholder-gray-400 bg-transparent" />
         {q && <button onClick={() => setQ("")}><X className="w-4 h-4 text-gray-400" /></button>}
+        {canExportMastery && (
+          <button onClick={() => exportCSV(students)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
+            <Download className="w-3 h-3" />
+            Export CSV{masteryMaxDays !== null ? ` (last ${masteryMaxDays}d)` : ""}
+          </button>
+        )}
         <button onClick={load} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>

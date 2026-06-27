@@ -35,6 +35,94 @@ function fmt(d: string | null | undefined) {
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// ── Export permission helpers ────────────────────────────────────────────────
+
+type DateRange = "7" | "30" | "this-month" | "all" | "custom";
+
+function igniteCanSeeAllTime(role: string): boolean {
+  return role === "super_admin" || role === "admin";
+}
+
+function masteryExportMaxDays(role: string): number | null {
+  if (role === "super_admin") return null;
+  if (role === "admin") return 7;
+  return 0;
+}
+
+function dateRangeCutoff(range: DateRange, customDate?: string): Date | null {
+  const now = new Date();
+  if (range === "all") return null;
+  if (range === "7") return new Date(now.getTime() - 7 * 86400000);
+  if (range === "30") return new Date(now.getTime() - 30 * 86400000);
+  if (range === "this-month") return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (range === "custom" && customDate) {
+    const d = new Date(customDate);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  return new Date(now.getTime() - 7 * 86400000);
+}
+
+function filterByDateField<T>(rows: T[], field: keyof T, cutoff: Date | null): T[] {
+  if (!cutoff) return rows;
+  return rows.filter(r => {
+    const v = r[field] as string | null | undefined;
+    return !v || new Date(v) >= cutoff;
+  });
+}
+
+function makeCSV(headers: string[], rows: (string | number | null | undefined)[][]): string {
+  const e = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  return [headers.map(e), ...rows.map(r => r.map(e))].map(cols => cols.join(",")).join("\n");
+}
+
+function downloadCSVFile(csv: string, filename: string) {
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+    download: filename,
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── Date range filter chips ─────────────────────────────────────────────────
+
+function DateRangeChips({ value, onChange, allowAll, customDate, onCustomDate, label }: {
+  value: DateRange;
+  onChange: (v: DateRange) => void;
+  allowAll: boolean;
+  customDate?: string;
+  onCustomDate?: (d: string) => void;
+  label?: string;
+}) {
+  const chips: { id: DateRange; text: string }[] = [
+    { id: "7", text: "Last 7 Days" },
+    { id: "30", text: "Last 30 Days" },
+    { id: "this-month", text: "This Month" },
+    ...(allowAll ? [{ id: "all" as DateRange, text: "All Time" }] : []),
+    { id: "custom", text: "Custom Date" },
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {label && <span className="text-[11px] font-bold text-gray-400 mr-1">{label}</span>}
+      {chips.map(c => (
+        <button key={c.id} onClick={() => onChange(c.id)}
+          className="px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all"
+          style={value === c.id
+            ? { background: NAVY, color: "#fff", borderColor: NAVY }
+            : { background: "#fff", color: "#6B7280", borderColor: "#E5E7EB" }}>
+          {c.text}
+        </button>
+      ))}
+      {value === "custom" && (
+        <input type="date" value={customDate ?? ""}
+          onChange={e => onCustomDate?.(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400" />
+      )}
+    </div>
+  );
+}
+
 export type IgniteView =
   | "dashboard"
   | "leads"
@@ -1544,7 +1632,10 @@ function DeployHistoryModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean) => void; role?: string }) {
+  const canSeeAll = igniteCanSeeAllTime(role);
+  const [dateRange, setDateRange] = useState<DateRange>("7");
+  const [customDate, setCustomDate] = useState("");
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -1599,7 +1690,10 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const isPending = (l: LeadRow) =>
     l.isActive && !l.assignedMentorId && l.leadStage !== "Lost" && l.leadStage !== "Converted";
 
-  const filtered = leads.filter((l) => {
+  const dateCutoff = dateRangeCutoff(dateRange, customDate);
+  const dateLeads = filterByDateField(leads, "createdAt", dateCutoff);
+
+  const filtered = dateLeads.filter((l) => {
     if (viewMode === "lost")      { if (l.leadStage !== "Lost") return false; }
     else if (viewMode === "old")  { if (!isOldLead(l)) return false; }
     else if (viewMode === "converted") { if (l.leadStage !== "Converted") return false; }
@@ -1633,19 +1727,12 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const totalPages = Math.ceil(filtered.length / PER);
 
   const exportCSV = () => {
-    const headers = ["Name","Parent Name","Phone","Alt Phone","Email","Grade","Board","School","City","Lead Source","Status","Assigned Mentor","Assignment Status","Created"];
-    const csvRows = filtered.map((l) => [
-      `"${l.name}"`, `"${l.parentName ?? ""}"`, l.phone ?? "", l.altPhone ?? "", l.email ?? "",
-      l.grade ?? "", l.board ?? "", `"${l.school ?? ""}"`, `"${l.city ?? ""}"`,
-      l.leadSource ?? "", l.leadStage ?? "", `"${l.assignedMentorName ?? ""}"`,
-      l.assignmentStatus ?? "", new Date(l.createdAt).toLocaleDateString("en-IN"),
-    ]);
-    const csv = [headers, ...csvRows].map((r) => r.join(",")).join("\n");
-    const a = Object.assign(document.createElement("a"), {
-      href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
-      download: `braintam_leads_${new Date().toISOString().slice(0,10)}.csv`,
-    });
-    a.click(); URL.revokeObjectURL(a.href);
+    const rangeLabel = dateRange === "all" ? "all" : dateRange === "7" ? "7d" : dateRange === "30" ? "30d" : dateRange === "this-month" ? "thismonth" : customDate || "custom";
+    const csv = makeCSV(
+      ["Name","Parent Name","Phone","Alt Phone","Email","Grade","Board","School","City","Lead Source","Status","Assigned Mentor","Assignment Status","Created"],
+      filtered.map(l => [l.name, l.parentName, l.phone, l.altPhone, l.email, l.grade, l.board, l.school, l.city, l.leadSource, l.leadStage, l.assignedMentorName, l.assignmentStatus, new Date(l.createdAt).toLocaleDateString("en-IN")])
+    );
+    downloadCSVFile(csv, `braintam_leads_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`);
   };
 
 
@@ -1690,10 +1777,16 @@ function LeadsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
         </div>
       )}
 
+      {/* Date Range Filter */}
+      <div className="bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <DateRangeChips value={dateRange} onChange={v => { setDateRange(v); setPage(1); }} allowAll={canSeeAll} customDate={customDate} onCustomDate={v => { setCustomDate(v); setPage(1); }} label="Period:" />
+        {!canSeeAll && <span className="text-[10px] text-orange-500 font-semibold ml-auto">⚠ Export limited to 7 days</span>}
+      </div>
+
       {/* View Mode Tabs */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {([
-          { key: "all",       label: "All Leads",          count: leads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
+          { key: "all",       label: "All Leads",          count: dateLeads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
           { key: "website",   label: "Website Leads",       count: leads.filter(l => l.isWebsiteLead).length, color: "#0891B2", bg: "#E0F2FE" },
           { key: "pending",   label: "Pending Deployment",  count: pendingCount,   color: "#D97706",  bg: "#FEF3C7" },
           { key: "old",       label: "Old Leads",           count: oldCount,       color: "#7C3AED",  bg: "#EDE9FE" },
@@ -2107,7 +2200,10 @@ interface StudentRow {
   nextFollowUpAt: string | null; lastCallAt: string | null; enrolledAt: string;
 }
 
-function DemoStudentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+function DemoStudentsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean) => void; role?: string }) {
+  const canSeeAll = igniteCanSeeAllTime(role);
+  const [dateRange, setDateRange] = useState<DateRange>("7");
+  const [customDate, setCustomDate] = useState("");
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -2125,10 +2221,13 @@ function DemoStudentsView({ flash }: { flash: (m: string, ok?: boolean) => void 
       .finally(() => setLoading(false));
   }, []);
 
-  const batches = [...new Set(students.map((s) => s.batchTitle))];
-  const mentors = [...new Set(students.map((s) => s.assignedMentorName).filter(Boolean))] as string[];
+  const dateCutoff = dateRangeCutoff(dateRange, customDate);
+  const dateStudents = filterByDateField(students, "enrolledAt", dateCutoff);
 
-  const filtered = students.filter((s) => {
+  const batches = [...new Set(dateStudents.map((s) => s.batchTitle))];
+  const mentors = [...new Set(dateStudents.map((s) => s.assignedMentorName).filter(Boolean))] as string[];
+
+  const filtered = dateStudents.filter((s) => {
     const q = search.toLowerCase();
     if (q && !s.name.toLowerCase().includes(q) && !(s.phone ?? "").includes(q) && !(s.school ?? "").toLowerCase().includes(q)) return false;
     if (batchF !== "All Batches" && s.batchTitle !== batchF) return false;
@@ -2137,15 +2236,24 @@ function DemoStudentsView({ flash }: { flash: (m: string, ok?: boolean) => void 
     return true;
   });
 
+  const exportCSV = () => {
+    const rangeLabel = dateRange === "all" ? "all" : dateRange === "7" ? "7d" : dateRange === "30" ? "30d" : dateRange === "this-month" ? "thismonth" : customDate || "custom";
+    const csv = makeCSV(
+      ["Name","Phone","Email","Grade","School","Batch","Mentor","Status","Interest","Lead Stage","Enrolled At"],
+      filtered.map(s => [s.name, s.phone, s.email, s.grade, s.school, s.batchTitle, s.assignedMentorName, s.enrollmentStatus, s.interestLevel, s.leadStage, new Date(s.enrolledAt).toLocaleDateString("en-IN")])
+    );
+    downloadCSVFile(csv, `braintam_demo-students_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`);
+  };
+
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
 
-  const total = students.length;
-  const active = students.filter((s) => s.enrollmentStatus === "active").length;
-  const interested = students.filter((s) => s.interestLevel === "High" || s.interestLevel === "Very High").length;
-  const paymentSent = students.filter((s) => s.leadStage === "Payment Sent").length;
-  const converted = students.filter((s) => s.enrollmentStatus === "converted").length;
-  const dropped = students.filter((s) => s.enrollmentStatus === "dropped").length;
+  const total = dateStudents.length;
+  const active = dateStudents.filter((s) => s.enrollmentStatus === "active").length;
+  const interested = dateStudents.filter((s) => s.interestLevel === "High" || s.interestLevel === "Very High").length;
+  const paymentSent = dateStudents.filter((s) => s.leadStage === "Payment Sent").length;
+  const converted = dateStudents.filter((s) => s.enrollmentStatus === "converted").length;
+  const dropped = dateStudents.filter((s) => s.enrollmentStatus === "dropped").length;
 
   return (
     <div className="space-y-5">
@@ -2155,14 +2263,20 @@ function DemoStudentsView({ flash }: { flash: (m: string, ok?: boolean) => void 
           <p className="text-xs text-gray-500">View and manage all demo students</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
-            <Download className="w-3.5 h-3.5" /> Export
+          <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+            <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90"
             style={{ background: ORANGE }}>
             <Plus className="w-3.5 h-3.5" /> Add Demo Student
           </button>
         </div>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <DateRangeChips value={dateRange} onChange={v => { setDateRange(v); setPage(1); }} allowAll={canSeeAll} customDate={customDate} onCustomDate={v => { setCustomDate(v); setPage(1); }} label="Period:" />
+        {!canSeeAll && <span className="text-[10px] text-orange-500 font-semibold ml-auto">⚠ Export limited to 7 days</span>}
       </div>
 
       {/* KPIs */}
@@ -2751,7 +2865,10 @@ interface FollowUp {
   mentorName: string | null; studentName: string | null; studentPhone: string | null; studentGrade: number | null;
 }
 
-function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+function FollowUpsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean) => void; role?: string }) {
+  const canSeeAll = igniteCanSeeAllTime(role);
+  const [dateRange, setDateRange] = useState<DateRange>("7");
+  const [customDate, setCustomDate] = useState("");
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -2767,6 +2884,9 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
       .finally(() => setLoading(false));
   }, []);
 
+  const dateCutoff = dateRangeCutoff(dateRange, customDate);
+  const dateFollowUps = filterByDateField(followUps, "createdAt", dateCutoff);
+
   const todayStr = new Date().toDateString();
   const tomorrowStr = new Date(Date.now() + 86400000).toDateString();
   const nowTs = Date.now();
@@ -2777,20 +2897,29 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
   function isCompleted(f: FollowUp) { return (f.callStatus ?? "").toLowerCase() === "completed"; }
 
   const TABS = [
-    { id: "All",       color: NAVY,      count: followUps.length },
-    { id: "Today",     color: ORANGE,    count: followUps.filter((f) => isToday(f.nextFollowUpDate)).length },
-    { id: "Tomorrow",  color: "#3B82F6", count: followUps.filter((f) => isTomorrow(f.nextFollowUpDate)).length },
-    { id: "Overdue",   color: "#EF4444", count: followUps.filter(isOverdue).length },
-    { id: "Completed", color: GREEN,     count: followUps.filter(isCompleted).length },
+    { id: "All",       color: NAVY,      count: dateFollowUps.length },
+    { id: "Today",     color: ORANGE,    count: dateFollowUps.filter((f) => isToday(f.nextFollowUpDate)).length },
+    { id: "Tomorrow",  color: "#3B82F6", count: dateFollowUps.filter((f) => isTomorrow(f.nextFollowUpDate)).length },
+    { id: "Overdue",   color: "#EF4444", count: dateFollowUps.filter(isOverdue).length },
+    { id: "Completed", color: GREEN,     count: dateFollowUps.filter(isCompleted).length },
   ];
 
-  const byTab = followUps.filter((f) => {
+  const byTab = dateFollowUps.filter((f) => {
     if (activeTab === "Today")     return isToday(f.nextFollowUpDate);
     if (activeTab === "Tomorrow")  return isTomorrow(f.nextFollowUpDate);
     if (activeTab === "Overdue")   return isOverdue(f);
     if (activeTab === "Completed") return isCompleted(f);
     return true;
   });
+
+  const exportCSV = () => {
+    const rangeLabel = dateRange === "all" ? "all" : dateRange === "7" ? "7d" : dateRange === "30" ? "30d" : dateRange === "this-month" ? "thismonth" : customDate || "custom";
+    const csv = makeCSV(
+      ["Student","Mentor","Lead Status","Call Status","Next Follow-Up","Created"],
+      dateFollowUps.map(f => [f.studentName, f.mentorName, f.leadStatus, f.callStatus, f.nextFollowUpDate ? new Date(f.nextFollowUpDate).toLocaleDateString("en-IN") : "", new Date(f.createdAt).toLocaleDateString("en-IN")])
+    );
+    downloadCSVFile(csv, `braintam_followups_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`);
+  };
 
   const filtered = byTab.filter((f) => {
     const q = search.toLowerCase();
@@ -2806,6 +2935,15 @@ function FollowUpsView({ flash }: { flash: (m: string, ok?: boolean) => void }) 
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Follow-ups</h1>
           <p className="text-xs text-gray-500">Manage mentor follow-up activity and call logs</p>
         </div>
+        <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <Download className="w-3.5 h-3.5" /> Export CSV
+        </button>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <DateRangeChips value={dateRange} onChange={v => { setDateRange(v); setPage(1); }} allowAll={canSeeAll} customDate={customDate} onCustomDate={v => { setCustomDate(v); setPage(1); }} label="Period:" />
+        {!canSeeAll && <span className="text-[10px] text-orange-500 font-semibold ml-auto">⚠ Export limited to 7 days</span>}
       </div>
 
       {/* Tabs */}
@@ -3021,7 +3159,10 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
 
 // ── Payments View ────────────────────────────────────────────────────────────
 
-function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+function PaymentsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean) => void; role?: string }) {
+  const canSeeAll = igniteCanSeeAllTime(role);
+  const [dateRange, setDateRange] = useState<DateRange>("7");
+  const [customDate, setCustomDate] = useState("");
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusF, setStatusF] = useState("All Status");
@@ -3037,7 +3178,10 @@ function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const paymentStudents = students.filter((s) =>
+  const dateCutoff = dateRangeCutoff(dateRange, customDate);
+  const dateStudents = filterByDateField(students, "enrolledAt", dateCutoff);
+
+  const paymentStudents = dateStudents.filter((s) =>
     ["Interested", "Payment Sent", "Converted"].includes(s.leadStage ?? "")
   );
   const batches = [...new Set(paymentStudents.map((s) => s.batchTitle))];
@@ -3050,7 +3194,16 @@ function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
 
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
-  const cnt = (stage: string) => students.filter((s) => s.leadStage === stage).length;
+  const cnt = (stage: string) => paymentStudents.filter((s) => s.leadStage === stage).length;
+
+  const exportCSV = () => {
+    const rangeLabel = dateRange === "all" ? "all" : dateRange === "7" ? "7d" : dateRange === "30" ? "30d" : dateRange === "this-month" ? "thismonth" : customDate || "custom";
+    const csv = makeCSV(
+      ["Name","Phone","Email","Grade","Batch","Mentor","Lead Stage","Enrolled At"],
+      filtered.map(s => [s.name, s.phone, s.email, s.grade, s.batchTitle, s.assignedMentorName, s.leadStage, new Date(s.enrolledAt).toLocaleDateString("en-IN")])
+    );
+    downloadCSVFile(csv, `braintam_payments_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`);
+  };
 
   return (
     <div className="space-y-5">
@@ -3059,9 +3212,15 @@ function PaymentsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Payments</h1>
           <p className="text-xs text-gray-500">Track demo fee collection and payment confirmations</p>
         </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
-          <Download className="w-3.5 h-3.5" /> Export
+        <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+          <Download className="w-3.5 h-3.5" /> Export CSV
         </button>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
+        <DateRangeChips value={dateRange} onChange={v => { setDateRange(v); setPage(1); }} allowAll={canSeeAll} customDate={customDate} onCustomDate={v => { setCustomDate(v); setPage(1); }} label="Period:" />
+        {!canSeeAll && <span className="text-[10px] text-orange-500 font-semibold ml-auto">⚠ Export limited to 7 days</span>}
       </div>
 
       {/* KPI cards */}
@@ -4900,21 +5059,22 @@ function PaidStudentsAssignedView() {
 // ── Ignite Content Area (used by admin portal — no own header/sidebar) ────────
 
 export function IgniteContentArea({
-  view, setView, flash,
+  view, setView, flash, role = "admin",
 }: {
   view: IgniteView;
   setView: (v: IgniteView) => void;
   flash: (m: string, ok?: boolean) => void;
+  role?: string;
 }) {
   switch (view) {
     case "dashboard": return <DashboardView setView={setView} />;
-    case "leads": return <LeadsView flash={flash} />;
+    case "leads": return <LeadsView flash={flash} role={role} />;
     case "overview": return <OverviewView setView={setView} />;
     case "demo-batches": return <DemoBatchesTab flash={flash} />;
-    case "demo-students": return <DemoStudentsView flash={flash} />;
+    case "demo-students": return <DemoStudentsView flash={flash} role={role} />;
     case "attendance": return <AttendanceView flash={flash} />;
     case "homework": return <HomeworkView flash={flash} />;
-    case "follow-ups": return <FollowUpsView flash={flash} />;
+    case "follow-ups": return <FollowUpsView flash={flash} role={role} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
     case "student-outreach": return <StudentOutreachView flash={flash} />;
@@ -4928,7 +5088,7 @@ export function IgniteContentArea({
     case "paid-students-demo-completed": return <PaidStudentsDemoCompletedView />;
     case "paid-students-converted":     return <PaidStudentsConvertedView />;
     case "paid-students-dropped":       return <PaidStudentsDroppedView />;
-    case "payments": return <PaymentsView flash={flash} />;
+    case "payments": return <PaymentsView flash={flash} role={role} />;
     default: return <DashboardView setView={setView} />;
   }
 }
