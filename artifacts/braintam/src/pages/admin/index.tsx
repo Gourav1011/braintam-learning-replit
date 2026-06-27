@@ -73,7 +73,6 @@ import { AuditLogsTab } from "./audit-logs-tab";
 import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
 import { AssessmentsTab } from "./assessments-tab";
 import { CommandCenterTab } from "./command-center-tab";
-import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 import { ReportsAnalyticsTab } from "./reports-analytics-tab";
 import { MasteryStudentsTab } from "./mastery-students-tab";
 import { MasteryPaymentVerificationTab } from "./mastery-payment-verification-tab";
@@ -115,7 +114,6 @@ type Tab =
   | "settings"
   | "revenue-analytics"
   | "assessments"
-  | "ignite-analytics"
   | "reports-analytics"
   | "mastery-students"
   | "mastery-payments"
@@ -1319,7 +1317,6 @@ function AdminPageInner() {
             { label: "Course Analytics", icon: TrendingUp, tab: "course-analytics" },
             { label: "Teachers", icon: GradCap, tab: "teacher-analytics" },
             { label: "Mastery Analytics", icon: BarChart3, tab: "analytics" },
-            { label: "Ignite Analytics", icon: Zap, tab: "ignite-analytics" },
             { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
             { label: "Reports & Analytics", icon: BarChart3, tab: "reports-analytics" },
           ],
@@ -3118,9 +3115,6 @@ function AdminPageInner() {
 
         {/* ── Assessments ──────────────────────────────────────────────── */}
         {tab === "assessments" && <AssessmentsTab flash={flash} />}
-
-        {/* ── Ignite Analytics ─────────────────────────────────────────── */}
-        {tab === "ignite-analytics" && <IgniteAnalyticsTab />}
 
         {/* ── Reports & Analytics ──────────────────────────────────────── */}
         {tab === "reports-analytics" && <ReportsAnalyticsTab />}

@@ -3303,6 +3303,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
   { id: "student-outreach", label: "Student Outreach", icon: UserCheck },
   { id: "performance-rankings", label: "Performance Rankings", icon: BarChart2 },
+  { id: "ignite-reports", label: "Reports", icon: BarChart3 },
 ];
 
 function IgniteSidebar({
@@ -3383,16 +3384,6 @@ function IgniteSidebar({
           );
         })}
 
-        {/* Reports & Analytics */}
-        <button
-          onClick={() => setView("ignite-reports")}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-          style={view === "ignite-reports"
-            ? { background: "#EEF2FF", color: NAVY }
-            : { color: "#6B7280" }}>
-          <BarChart3 className="w-4 h-4 shrink-0" />
-          <span>Reports</span>
-        </button>
       </nav>
     </div>
   );
