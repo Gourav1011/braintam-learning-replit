@@ -55,8 +55,8 @@ export default function AdminLoginPage() {
     <div className="min-h-screen flex flex-col lg:flex-row" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* ── Left branding panel ── */}
       <div
-        className="hidden lg:flex flex-col justify-between lg:w-5/12 p-12 relative overflow-hidden flex-shrink-0"
-        style={{ background: `linear-gradient(135deg, #0B1E4B 0%, ${NAVY} 50%, #1a1060 100%)` }}
+        className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden flex-shrink-0"
+        style={{ width: "60%", background: `linear-gradient(135deg, #0B1E4B 0%, ${NAVY} 50%, #1a1060 100%)` }}
       >
         <div className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-10 blur-3xl" style={{ background: RED }} />
         <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full opacity-10 blur-3xl" style={{ background: ORANGE }} />
