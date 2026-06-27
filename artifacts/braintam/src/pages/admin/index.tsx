@@ -46,6 +46,7 @@ import {
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
   ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User, ClipboardList,
   Mail, Phone, TrendingDown, TrendingUp as TrendUp, MoreVertical as MoreVert,
+  Package,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -76,6 +77,8 @@ import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 import { ReportsAnalyticsTab } from "./reports-analytics-tab";
 import { MasteryStudentsTab } from "./mastery-students-tab";
 import { MasteryPaymentVerificationTab } from "./mastery-payment-verification-tab";
+import { MasteryDeploymentTab } from "./mastery-deployment-tab";
+import { MasteryRetentionTab } from "./mastery-retention-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -116,6 +119,8 @@ type Tab =
   | "reports-analytics"
   | "mastery-students"
   | "mastery-payments"
+  | "mastery-deployment"
+  | "mastery-retention"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1293,6 +1298,8 @@ function AdminPageInner() {
           { label: "Dashboard", icon: Activity, tab: "dashboard" },
           { label: "Students", icon: Users, tab: "mastery-students" },
           { label: "Payments", icon: CreditCard, tab: "mastery-payments" },
+          { label: "Deployment", icon: Package, tab: "mastery-deployment" },
+          { label: "Retention", icon: RotateCcw, tab: "mastery-retention" },
           { label: "Courses", icon: BookOpen, tab: "courses" },
           { label: "Live Classes", icon: Video, tab: "liveclasses" },
           { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
@@ -3122,7 +3129,9 @@ function AdminPageInner() {
         {tab === "mastery-students" && <MasteryStudentsTab flash={flash} />}
 
         {/* ── Mastery Payment Verification ─────────────────────────────── */}
-        {tab === "mastery-payments" && <MasteryPaymentVerificationTab />}
+        {tab === "mastery-payments"    && <MasteryPaymentVerificationTab />}
+        {tab === "mastery-deployment" && <MasteryDeploymentTab />}
+        {tab === "mastery-retention"  && <MasteryRetentionTab />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}

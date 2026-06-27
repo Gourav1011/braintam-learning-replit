@@ -29,6 +29,12 @@ export const masteryStudentsTable = pgTable("mastery_students", {
   renewedAt:        timestamp("renewed_at", { withTimezone: true }),
   promotedGrade:    integer("promoted_grade"),
   notes:            text("notes"),
+  // Retention pipeline fields
+  retentionStatus:      text("retention_status"),
+  retentionContactedAt: timestamp("retention_contacted_at", { withTimezone: true }),
+  retentionFollowupAt:  timestamp("retention_followup_at", { withTimezone: true }),
+  retentionNotes:       text("retention_notes"),
+  deploymentBatchId:    integer("deployment_batch_id"),
   createdAt:        timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -37,6 +43,7 @@ export const masteryStudentsTable = pgTable("mastery_students", {
   index("ms_mastery_status_idx").on(t.masteryStatus),
   index("ms_mentor_id_idx").on(t.mentorId),
   index("ms_admission_date_idx").on(t.admissionDate),
+  index("ms_retention_status_idx").on(t.retentionStatus),
 ]);
 
 export const insertMasteryStudentSchema = createInsertSchema(masteryStudentsTable)

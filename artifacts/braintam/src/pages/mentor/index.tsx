@@ -21,6 +21,7 @@ import { TodayTasksTab } from "./today-tasks-tab";
 import { LiveClassesObserverTab } from "./live-classes-observer-tab";
 import { DoubtSessionsTab } from "./doubt-sessions-tab";
 import { EodReportTab } from "./eod-report-tab";
+import { MasteryNotificationBar } from "@/components/mastery-notification-bar";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -1238,6 +1239,7 @@ export default function BTLCRMPage() {
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (
           <div className="p-5 max-w-5xl mx-auto space-y-5">
+            <MasteryNotificationBar />
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-black" style={{ color: NAVY }}>BTL CRM Dashboard</h1>

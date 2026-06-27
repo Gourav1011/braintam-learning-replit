@@ -51,3 +51,6 @@ export * from "./leadDeployments";
 export * from "./masteryStudents";
 export * from "./masteryTimeline";
 export * from "./masteryPaymentVerifications";
+export * from "./masteryDeploymentBatches";
+export * from "./studentAcademicHistory";
+export * from "./masteryNotifications";
