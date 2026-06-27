@@ -57,3 +57,7 @@ export * from "./masteryNotifications";
 export * from "./achievementTickers";
 export * from "./mentorPerformanceSnapshots";
 export * from "./mentorDeploymentCycles";
+
+export * from "./mentorGroups";
+export * from "./sessionAttendance";
+export * from "./pollAnalytics";
