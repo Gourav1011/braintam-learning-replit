@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Phone, MessageSquare, ChevronRight, Bell, Flag, ChevronDown, X,
   Search, Filter, ArrowLeft, Copy, Check, Loader2,
-  CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle, Upload,
+  CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle, Upload, Trophy,
 } from "lucide-react";
+import { GradeLeaderboardTab } from "./grade-leaderboard-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 import { StaffCheckin } from "@/components/staff-checkin";
 
@@ -1592,7 +1593,7 @@ export function SalesMentorPortal({ user, onLogout }: {
   user: { id: number; name: string; avatarUrl?: string | null };
   onLogout: () => void;
 }) {
-  const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status">("my-leads");
+  const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status" | "leaderboard">("my-leads");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1654,6 +1655,7 @@ export function SalesMentorPortal({ user, onLogout }: {
   const NAV = [
     { key: "my-leads"       as const, label: "My Leads" },
     { key: "payment-status" as const, label: "Payment Status" },
+    { key: "leaderboard"    as const, label: "Leaderboard", icon: Trophy },
   ];
 
   return (
@@ -1761,6 +1763,9 @@ export function SalesMentorPortal({ user, onLogout }: {
         )}
         {view === "payment-status" && (
           <PaymentStatusView />
+        )}
+        {view === "leaderboard" && (
+          <GradeLeaderboardTab myId={user.id} />
         )}
       </div>
     </div>

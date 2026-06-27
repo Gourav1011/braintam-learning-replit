@@ -1328,6 +1328,109 @@ router.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
   res.json(results.map((r, i) => ({ ...r, rank: i + 1 })));
 });
 
+// ── GET /mentor/sales/leaderboard/grade ─────────────────────────────────────
+// Grade-wise mentor leaderboard. sorted by conversion % desc.
+// Also returns `myGrades` — the grades this mentor has leads in.
+router.get("/mentor/sales/leaderboard/grade", mentorAuth, async (req, res) => {
+  const grade = req.query.grade ? Number(req.query.grade) : null;
+  if (!grade || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "grade query param required (1–10)" });
+    return;
+  }
+
+  const callerId = req.authUser!.id;
+
+  // 1. All active sales mentors
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .where(and(
+      eq(usersTable.role, "mentor"),
+      eq(usersTable.mentorType, "sales"),
+      eq(usersTable.isActive, true),
+      eq(usersTable.isDeleted, false),
+    ));
+
+  if (mentors.length === 0) {
+    res.json({ grade, myGrades: [], leaderboard: [] });
+    return;
+  }
+
+  const mentorIds = mentors.map(m => m.id);
+
+  // 2. All active assignments for leads of the selected grade
+  const assignments = await db
+    .select({
+      mentorId: mentorStudentAssignmentsTable.mentorId,
+      studentId: mentorStudentAssignmentsTable.studentId,
+    })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(usersTable, eq(mentorStudentAssignmentsTable.studentId, usersTable.id))
+    .where(and(
+      inArray(mentorStudentAssignmentsTable.mentorId, mentorIds),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+      eq(usersTable.grade, grade),
+      inArray(usersTable.accountType, ["lead", "demo_student"]),
+      eq(usersTable.isDeleted, false),
+    ));
+
+  // 3. Build per-mentor map
+  const mentorStudentMap: Record<number, number[]> = {};
+  for (const a of assignments) {
+    if (!mentorStudentMap[a.mentorId]) mentorStudentMap[a.mentorId] = [];
+    mentorStudentMap[a.mentorId].push(a.studentId);
+  }
+
+  // 4. Fetch lead stages for these students
+  const allStudentIds = assignments.map(a => a.studentId);
+  const stageRows = allStudentIds.length > 0
+    ? await db.select({ id: usersTable.id, leadStage: usersTable.leadStage })
+        .from(usersTable)
+        .where(inArray(usersTable.id, allStudentIds))
+    : [];
+  const stageMap = Object.fromEntries(stageRows.map(s => [s.id, s.leadStage]));
+
+  // 5. Compute stats per mentor (only mentors with ≥1 assigned lead for this grade shown in table)
+  const results = mentors
+    .map(m => {
+      const sIds = mentorStudentMap[m.id] ?? [];
+      const assignedCount   = sIds.length;
+      const convertedCount  = sIds.filter(id => stageMap[id] === "Converted").length;
+      const conversionRate  = assignedCount > 0
+        ? Math.round((convertedCount / assignedCount) * 100)
+        : 0;
+      return { mentorId: m.id, mentorName: m.name ?? "—", assignedCount, convertedCount, conversionRate };
+    })
+    .filter(r => r.assignedCount > 0); // only mentors working this grade
+
+  // Sort: highest conversion % first; tiebreak by convertedCount
+  results.sort((a, b) =>
+    b.conversionRate - a.conversionRate ||
+    b.convertedCount - a.convertedCount
+  );
+
+  const leaderboard = results.map((r, i) => ({ ...r, rank: i + 1 }));
+
+  // 6. My grades — all distinct grades this mentor has leads assigned
+  const myGradeRows = await db
+    .select({ grade: usersTable.grade })
+    .from(mentorStudentAssignmentsTable)
+    .innerJoin(usersTable, eq(mentorStudentAssignmentsTable.studentId, usersTable.id))
+    .where(and(
+      eq(mentorStudentAssignmentsTable.mentorId, callerId),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+      inArray(usersTable.accountType, ["lead", "demo_student"]),
+      eq(usersTable.isDeleted, false),
+    ))
+    .groupBy(usersTable.grade);
+
+  const myGrades = myGradeRows
+    .map(r => r.grade)
+    .filter((g): g is number => g !== null)
+    .sort((a, b) => a - b);
+
+  res.json({ grade, myGrades, leaderboard });
+});
+
 // Admin posts a timeline entry on any student
 router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {
   const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;
