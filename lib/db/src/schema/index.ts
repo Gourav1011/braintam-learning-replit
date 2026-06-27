@@ -50,3 +50,4 @@ export * from "./mentorReassignmentHistory";
 export * from "./leadDeployments";
 export * from "./masteryStudents";
 export * from "./masteryTimeline";
+export * from "./masteryPaymentVerifications";

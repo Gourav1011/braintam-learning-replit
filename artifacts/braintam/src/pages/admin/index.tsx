@@ -75,6 +75,7 @@ import { CommandCenterTab } from "./command-center-tab";
 import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
 import { ReportsAnalyticsTab } from "./reports-analytics-tab";
 import { MasteryStudentsTab } from "./mastery-students-tab";
+import { MasteryPaymentVerificationTab } from "./mastery-payment-verification-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -114,6 +115,7 @@ type Tab =
   | "ignite-analytics"
   | "reports-analytics"
   | "mastery-students"
+  | "mastery-payments"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1290,6 +1292,7 @@ function AdminPageInner() {
         items: [
           { label: "Dashboard", icon: Activity, tab: "dashboard" },
           { label: "Students", icon: Users, tab: "mastery-students" },
+          { label: "Payments", icon: CreditCard, tab: "mastery-payments" },
           { label: "Courses", icon: BookOpen, tab: "courses" },
           { label: "Live Classes", icon: Video, tab: "liveclasses" },
           { label: "Enrollments", icon: UserCheck, tab: "enrollments" },
@@ -3117,6 +3120,9 @@ function AdminPageInner() {
 
         {/* ── Mastery Students ─────────────────────────────────────────── */}
         {tab === "mastery-students" && <MasteryStudentsTab flash={flash} />}
+
+        {/* ── Mastery Payment Verification ─────────────────────────────── */}
+        {tab === "mastery-payments" && <MasteryPaymentVerificationTab />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}
