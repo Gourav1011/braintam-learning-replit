@@ -1,0 +1,375 @@
+MASTERY & IGNITE COURSE-BATCH ARCHITECTURE (FINAL PRODUCTION DESIGN)
+
+===================================================================
+
+1. PERMANENT COURSES
+   ===================================================================
+
+Create only:
+
+Ignite Grade 1 to Ignite Grade 10
+Mastery Grade 1 to Mastery Grade 10
+
+Total:
+20 permanent courses.
+
+Never create weekly courses.
+
+Weekly demo cycles will be managed through batches.
+
+===================================================================
+2. DATABASE TABLES
+==================
+
+## leads
+
+lead_id TEXT PRIMARY KEY
+student_name TEXT
+parent_phone TEXT
+grade INT
+assigned_mentor_id TEXT DEFAULT NULL
+status TEXT DEFAULT 'Fresh'
+deployment_cycle_id TEXT DEFAULT NULL
+created_at TIMESTAMP
+updated_at TIMESTAMP
+
+Status:
+Fresh
+Ignite_Active
+Mastery_Converted
+Lost
+
+## batches
+
+batch_id TEXT PRIMARY KEY
+course_id TEXT
+batch_name TEXT
+start_date DATE
+end_date DATE
+status TEXT DEFAULT 'Upcoming'
+max_students INT DEFAULT NULL
+created_at TIMESTAMP
+
+Status:
+Upcoming
+Active
+Completed
+
+## payment_links
+
+payment_link_id TEXT PRIMARY KEY
+program_type TEXT
+grade INT
+amount DECIMAL
+linked_course_id TEXT
+is_active BOOLEAN DEFAULT TRUE
+created_at TIMESTAMP
+
+## enrollments
+
+enrollment_id TEXT PRIMARY KEY
+lead_id TEXT
+course_id TEXT
+batch_id TEXT DEFAULT NULL
+enrollment_type TEXT
+created_at TIMESTAMP
+
+## mentor_conversion_logs
+
+id TEXT PRIMARY KEY
+lead_id TEXT
+mentor_id TEXT
+payment_id TEXT
+payment_link_id TEXT
+course_id TEXT
+amount DECIMAL
+created_at TIMESTAMP
+
+===================================================================
+3. FLOW 1
+ADVERTISEMENT → IGNITE ₹39 FLOW
+===============================
+
+Meta/Google Ad
+↓
+Landing Page
+↓
+Parent enters:
+Student Name
+Mobile Number
+Grade
+↓
+Payment Success
+↓
+Webhook
+
+WEBHOOK:
+
+1. Create Lead
+
+assigned_mentor_id = NULL
+status = 'Ignite_Active'
+
+2. Find payment link
+
+payment_link_id
+↓
+linked_course_id
+
+3. Find active batch
+
+SELECT batch_id
+FROM batches
+WHERE course_id = linked_course_id
+AND status = 'Active'
+LIMIT 1;
+
+4. Create enrollment
+
+lead_id
+course_id
+batch_id
+enrollment_type = 'Ignite'
+
+5. Create student account if not existing.
+
+6. Student immediately sees:
+
+My Courses
+↓
+Ignite Grade X
+Batch:
+Start Date – End Date
+
+IMPORTANT:
+
+Student should never see an empty portal after paying ₹39.
+
+===================================================================
+4. ADMIN DEPLOYMENT
+===================
+
+Admin View:
+
+assigned_mentor_id IS NULL
+
+Admin can:
+
+Select Leads
+↓
+Assign Mentor
+
+Only update:
+
+assigned_mentor_id
+
+Do NOT modify:
+
+course_id
+batch_id
+attendance
+student account
+enrollment
+payment history
+
+Student portal remains unchanged.
+
+===================================================================
+5. FLOW 2
+MENTOR → MASTERY CONVERSION
+===========================
+
+Mentor Portal
+↓
+Lead Card
+↓
+Send Payment Link
+
+System generates:
+
+https://braintam.com/pay/mastery-g4?leadId=101
+
+Pass metadata:
+
+leadId
+paymentLinkId
+
+Do NOT pass mentorId.
+
+===================================================================
+6. MASTERY WEBHOOK
+==================
+
+Payment Success
+↓
+Parse:
+
+leadId
+paymentLinkId
+
+Find Lead:
+
+SELECT *
+FROM leads
+WHERE lead_id = ?
+
+Find:
+
+assigned_mentor_id
+grade
+
+Find:
+
+linked_course_id
+from payment_links
+
+Create enrollment:
+
+lead_id
+course_id
+batch_id = NULL
+enrollment_type = 'Mastery'
+
+Update:
+
+leads.status =
+'Mastery_Converted'
+
+Create mentor conversion log:
+
+mentor_id
+lead_id
+payment_id
+payment_link_id
+course_id
+amount
+
+Credit mentor automatically.
+
+Student immediately sees:
+
+My Courses
+↓
+Mastery Grade X
+
+===================================================================
+7. COURSE ASSIGNMENT RULES
+==========================
+
+IGNITE:
+
+Payment
+↓
+Course
+↓
+Active Batch
+↓
+Enrollment
+
+MASTERY:
+
+Payment
+↓
+Course
+↓
+Enrollment
+
+No batches required.
+
+===================================================================
+8. ADMIN TOOLS
+==============
+
+## Courses
+
+Create Course
+Edit Course
+Archive Course
+
+## Ignite Batch Management
+
+Create Batch
+Edit Batch
+Activate Batch
+Complete Batch
+View Batch Enrollments
+View Student List
+
+## Payment Link Manager
+
+Create Payment Link
+Edit Payment Link
+Deactivate Link
+Link Payment Link to Course
+View Payment Analytics
+
+## Deployments
+
+View Unassigned Leads
+Bulk Assign Mentor
+Reassign Mentor
+Export Deployments
+
+## Analytics
+
+Batch Enrollments
+Conversions
+Payments
+Mentor Conversions
+Revenue Reports
+
+===================================================================
+9. AUTOMATION SUMMARY
+=====================
+
+ADVERTISEMENT STUDENT
+
+Ad
+↓
+₹39 Payment
+↓
+Lead Created
+↓
+Student Created
+↓
+Ignite Course Assigned
+↓
+Active Batch Assigned
+↓
+Portal Ready
+↓
+Admin Deploys Mentor Later
+
+MENTOR CONVERSION
+
+Lead Assigned
+↓
+Mentor Sends Payment Link
+↓
+Parent Pays
+↓
+Webhook Reads leadId
+↓
+Find Mentor
+↓
+Assign Mastery Course
+↓
+Credit Mentor
+↓
+Update CRM
+↓
+Portal Ready
+
+===================================================================
+10. DESIGN PRINCIPLES
+=====================
+
+✓ Only 20 courses forever.
+✓ Unlimited Ignite batches.
+✓ Automatic enrollments.
+✓ No manual course assignment.
+✓ No duplicate courses.
+✓ Mentor attribution always preserved.
+✓ Students instantly see courses after payment.
+✓ Admin deployment never breaks enrollments.
+✓ Architecture scalable for thousands of students.
