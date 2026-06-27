@@ -1541,6 +1541,61 @@ router.get("/admin/ignite/deploy/mentors", adminOnly, async (_req, res) => {
 // ── Admin: manually top-up the batch pipeline for a grade ────────────────────
 // POST /admin/ignite/ensure-pipeline/:grade
 // Safe to call at any time — idempotent. Returns how many batches now exist.
+// ── GET /admin/ignite/batch-pipeline/:grade — batch rows + health for one grade ─
+router.get("/admin/ignite/batch-pipeline/:grade", adminOnly, async (req, res) => {
+  const grade = parseInt(String(req.params.grade), 10);
+  if (!grade || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "grade must be 1–10" });
+    return;
+  }
+
+  const datedWhere = and(
+    eq(demoBatchesTable.grade, grade),
+    isNotNull(demoBatchesTable.startDate),
+    isNotNull(demoBatchesTable.endDate),
+  );
+
+  const activeBatches = await db
+    .select()
+    .from(demoBatchesTable)
+    .where(and(datedWhere, eq(demoBatchesTable.status, "active")))
+    .orderBy(demoBatchesTable.startDate);
+
+  const upcomingBatches = await db
+    .select()
+    .from(demoBatchesTable)
+    .where(and(datedWhere, eq(demoBatchesTable.status, "upcoming")))
+    .orderBy(demoBatchesTable.startDate)
+    .limit(3);
+
+  const [{ undatedCount }] = await db
+    .select({ undatedCount: sql<number>`count(*)::int` })
+    .from(demoBatchesTable)
+    .where(
+      and(
+        eq(demoBatchesTable.grade, grade),
+        sql`(${demoBatchesTable.startDate} IS NULL OR ${demoBatchesTable.endDate} IS NULL)`,
+      ),
+    );
+
+  const ac = activeBatches.length;
+  const uc = upcomingBatches.length;
+  const issues: string[] = [];
+  if (ac !== PIPELINE_ACTIVE_TARGET)   issues.push(`active=${ac} (need ${PIPELINE_ACTIVE_TARGET})`);
+  if (uc !== PIPELINE_UPCOMING_TARGET) issues.push(`upcoming=${uc} (need ${PIPELINE_UPCOMING_TARGET})`);
+
+  res.json({
+    grade,
+    activeCount:    ac,
+    upcomingCount:  uc,
+    healthy:        issues.length === 0,
+    issues,
+    activeBatch:    activeBatches[0] ?? null,
+    upcomingBatches,
+    undatedCount:   undatedCount ?? 0,
+  });
+});
+
 // ── GET /admin/ignite/batch-health — read-only health for all grades ─────────
 router.get("/admin/ignite/batch-health", adminOnly, async (_req, res) => {
   const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

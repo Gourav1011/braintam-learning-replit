@@ -3594,177 +3594,333 @@ interface GradeHealth {
   issues: string[];
 }
 
-function BatchPipelineHealthView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
-  const [health, setHealth]       = useState<GradeHealth[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [repairing, setRepairing] = useState<Set<number>>(new Set());
-  const [repairingAll, setRepairingAll] = useState(false);
-  const [lastRefresh, setLastRefresh]  = useState<Date | null>(null);
+interface PipelineBatchRow {
+  id: number;
+  title: string;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  batchCode: string | null;
+  teacherName?: string | null;
+  joinLink?: string | null;
+  totalDays?: number | null;
+  weekNumber?: number | null;
+  maxStudents?: number | null;
+}
 
-  const loadHealth = async () => {
-    setLoading(true);
+interface GradePipelineDetail {
+  grade: number;
+  activeCount: number;
+  upcomingCount: number;
+  healthy: boolean;
+  issues: string[];
+  activeBatch: PipelineBatchRow | null;
+  upcomingBatches: PipelineBatchRow[];
+  undatedCount: number;
+}
+
+function fmtDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+}
+
+function BatchCard({ batch, label, accentColor }: { batch: PipelineBatchRow; label: string; accentColor: string }) {
+  return (
+    <div className="rounded-xl border p-4 flex flex-col gap-2" style={{ borderColor: accentColor + "40", background: accentColor + "08" }}>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: accentColor }}>{label}</span>
+        {batch.batchCode && (
+          <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{batch.batchCode}</span>
+        )}
+      </div>
+      <p className="text-sm font-semibold text-gray-800 leading-snug">{batch.title}</p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
+        <div><span className="text-gray-400">Start</span> {fmtDate(batch.startDate)}</div>
+        <div><span className="text-gray-400">End</span> {fmtDate(batch.endDate)}</div>
+        {batch.totalDays != null && <div><span className="text-gray-400">Days</span> {batch.totalDays}</div>}
+        {batch.weekNumber != null && <div><span className="text-gray-400">Week</span> {batch.weekNumber}</div>}
+        {batch.maxStudents != null && <div><span className="text-gray-400">Capacity</span> {batch.maxStudents}</div>}
+      </div>
+      {batch.joinLink && (
+        <a href={batch.joinLink} target="_blank" rel="noopener noreferrer"
+          className="text-xs font-semibold underline truncate" style={{ color: accentColor }}>
+          Join link ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
+function EmptySlot({ label }: { label: string }) {
+  return (
+    <div className="rounded-xl border-2 border-dashed border-gray-200 p-4 flex flex-col items-center justify-center gap-1 min-h-[120px]">
+      <AlertTriangle className="w-5 h-5 text-gray-300" />
+      <span className="text-xs text-gray-400 font-medium">{label} — missing</span>
+      <span className="text-[10px] text-gray-300">Repair will fill this slot</span>
+    </div>
+  );
+}
+
+function BatchPipelineHealthView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [selectedGrade, setSelectedGrade]       = useState(1);
+  const [allHealth, setAllHealth]               = useState<GradeHealth[]>([]);
+  const [healthLoading, setHealthLoading]       = useState(true);
+  const [detail, setDetail]                     = useState<GradePipelineDetail | null>(null);
+  const [detailLoading, setDetailLoading]       = useState(false);
+  const [repairing, setRepairing]               = useState(false);
+  const [repairingAll, setRepairingAll]         = useState(false);
+  const [lastRefresh, setLastRefresh]           = useState<Date | null>(null);
+
+  const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  const loadAllHealth = async () => {
+    setHealthLoading(true);
     try {
       const r = await apiFetch("/admin/ignite/batch-health");
       const d = await r.json() as GradeHealth[];
-      setHealth(d);
+      setAllHealth(d);
       setLastRefresh(new Date());
     } catch {
       flash("Failed to load pipeline health", false);
     } finally {
-      setLoading(false);
+      setHealthLoading(false);
     }
   };
 
-  useEffect(() => { loadHealth(); }, []);
-
-  const repairGrade = async (grade: number) => {
-    setRepairing(prev => new Set([...prev, grade]));
+  const loadGradeDetail = async (grade: number) => {
+    setDetailLoading(true);
+    setDetail(null);
     try {
-      const r = await apiFetch(`/admin/ignite/ensure-pipeline/${grade}`, { method: "POST" });
-      const d = await r.json() as GradeHealth & { total: number };
-      setHealth(prev => prev.map(h => h.grade === grade
+      const r = await apiFetch(`/admin/ignite/batch-pipeline/${grade}`);
+      const d = await r.json() as GradePipelineDetail;
+      setDetail(d);
+    } catch {
+      flash(`Failed to load Grade ${grade} details`, false);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAllHealth(); }, []);
+
+  useEffect(() => { loadGradeDetail(selectedGrade); }, [selectedGrade]);
+
+  const handleSelectGrade = (g: number) => {
+    if (g !== selectedGrade) setSelectedGrade(g);
+  };
+
+  const repairCurrentGrade = async () => {
+    setRepairing(true);
+    try {
+      const r = await apiFetch(`/admin/ignite/ensure-pipeline/${selectedGrade}`, { method: "POST" });
+      const d = await r.json() as GradeHealth;
+      setAllHealth(prev => prev.map(h => h.grade === selectedGrade
         ? { grade: d.grade, activeCount: d.activeCount, upcomingCount: d.upcomingCount, healthy: d.healthy, issues: d.issues }
         : h
       ));
-      if (d.healthy) flash(`Grade ${grade} pipeline is healthy ✓`, true);
-      else flash(`Grade ${grade} repaired — some issues remain`, false);
+      await loadGradeDetail(selectedGrade);
+      if (d.healthy) flash(`Grade ${selectedGrade} pipeline healthy ✓`, true);
+      else flash(`Grade ${selectedGrade} repaired — some issues remain`, false);
     } catch {
-      flash(`Grade ${grade} repair failed`, false);
+      flash(`Grade ${selectedGrade} repair failed`, false);
     } finally {
-      setRepairing(prev => { const next = new Set(prev); next.delete(grade); return next; });
+      setRepairing(false);
     }
   };
 
-  const repairAll = async () => {
+  const repairAllUnhealthy = async () => {
+    const unhealthy = allHealth.filter(h => !h.healthy).map(h => h.grade);
+    if (unhealthy.length === 0) { flash("All grades are already healthy ✓", true); return; }
     setRepairingAll(true);
-    const grades = health.filter(h => !h.healthy).map(h => h.grade);
-    if (grades.length === 0) { flash("All grades are already healthy", true); setRepairingAll(false); return; }
-    await Promise.all(grades.map(g => repairGrade(g)));
-    setRepairingAll(false);
-    flash(`Repaired ${grades.length} grade(s)`, true);
+    try {
+      await Promise.all(unhealthy.map(async g => {
+        const r = await apiFetch(`/admin/ignite/ensure-pipeline/${g}`, { method: "POST" });
+        const d = await r.json() as GradeHealth;
+        setAllHealth(prev => prev.map(h => h.grade === g
+          ? { grade: d.grade, activeCount: d.activeCount, upcomingCount: d.upcomingCount, healthy: d.healthy, issues: d.issues }
+          : h
+        ));
+      }));
+      await loadGradeDetail(selectedGrade);
+      flash(`Repaired ${unhealthy.length} grade(s)`, true);
+    } catch {
+      flash("Some repairs failed", false);
+    } finally {
+      setRepairingAll(false);
+    }
   };
 
-  const unhealthyCount = health.filter(h => !h.healthy).length;
+  const unhealthyGrades = allHealth.filter(h => !h.healthy);
+  const healthyCount    = allHealth.filter(h => h.healthy).length;
+  const gradeHealthMap  = Object.fromEntries(allHealth.map(h => [h.grade, h]));
+  const currentHealth   = gradeHealthMap[selectedGrade];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-5">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold" style={{ color: NAVY }}>Batch Pipeline Health</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Target equilibrium: <span className="font-semibold">1 Active + 2 Upcoming</span> dated batches per grade
-            {lastRefresh && <span className="ml-2 text-gray-400">· Refreshed {lastRefresh.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })} IST</span>}
+            Target: <span className="font-semibold">1 Active + 2 Upcoming</span> dated batches per grade · Null-dated batches excluded
+            {lastRefresh && (
+              <span className="ml-2 text-gray-400">
+                · Scanned {lastRefresh.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })} IST
+              </span>
+            )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <button
-            onClick={loadHealth}
-            disabled={loading}
+            onClick={() => { loadAllHealth(); loadGradeDetail(selectedGrade); }}
+            disabled={healthLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 hover:bg-gray-50 transition-colors">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${healthLoading ? "animate-spin" : ""}`} />
             Refresh
           </button>
-          {unhealthyCount > 0 && (
+          {unhealthyGrades.length > 0 && (
             <button
-              onClick={repairAll}
-              disabled={repairingAll || loading}
+              onClick={repairAllUnhealthy}
+              disabled={repairingAll || healthLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
               style={{ background: repairingAll ? "#9CA3AF" : ORANGE }}>
               <Zap className="w-3.5 h-3.5" />
-              {repairingAll ? "Repairing…" : `Repair All (${unhealthyCount})`}
+              {repairingAll ? "Repairing…" : `Repair All (${unhealthyGrades.length})`}
             </button>
           )}
         </div>
       </div>
 
-      {/* Summary bar */}
-      {!loading && (
-        <div className="flex gap-3">
-          <div className="flex-1 rounded-xl border p-3 flex items-center gap-3" style={{ borderColor: "#D1FAE5", background: "#F0FDF4" }}>
-            <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-            <div>
-              <div className="text-lg font-bold text-green-700">{health.filter(h => h.healthy).length}/10</div>
-              <div className="text-xs text-green-600">Healthy grades</div>
-            </div>
+      {/* ── All-grades summary bar ── */}
+      <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 flex flex-wrap items-center gap-3">
+        {healthLoading ? (
+          <div className="flex gap-2">
+            {GRADES.map(g => <div key={g} className="w-14 h-6 rounded-full bg-gray-200 animate-pulse" />)}
           </div>
-          <div className="flex-1 rounded-xl border p-3 flex items-center gap-3" style={{ borderColor: unhealthyCount > 0 ? "#FEE2E2" : "#D1FAE5", background: unhealthyCount > 0 ? "#FFF5F5" : "#F0FDF4" }}>
-            <AlertTriangle className={`w-5 h-5 shrink-0 ${unhealthyCount > 0 ? "text-red-500" : "text-green-500"}`} />
-            <div>
-              <div className={`text-lg font-bold ${unhealthyCount > 0 ? "text-red-700" : "text-green-700"}`}>{unhealthyCount}</div>
-              <div className={`text-xs ${unhealthyCount > 0 ? "text-red-600" : "text-green-600"}`}>Needs repair</div>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5" style={{ color: NAVY }} />
+              {healthyCount}/10 healthy
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Grade cards grid */}
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 p-4 animate-pulse bg-gray-50 h-32" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {health.map(h => {
-            const isRepairing = repairing.has(h.grade);
-            const borderColor = h.healthy ? "#D1FAE5" : "#FEE2E2";
-            const bgColor     = h.healthy ? "#F0FDF4" : "#FFF5F5";
-            return (
-              <div
-                key={h.grade}
-                className="rounded-xl border p-4 flex flex-col gap-3"
-                style={{ borderColor, background: bgColor }}>
-                {/* Grade label + status badge */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold" style={{ color: NAVY }}>Grade {h.grade}</span>
-                  {h.healthy
-                    ? <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">OK</span>
-                    : <span className="text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">⚠ Fix</span>
-                  }
-                </div>
-
-                {/* Counts */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Active</span>
-                    <span className={`font-bold ${h.activeCount === 1 ? "text-green-700" : "text-red-600"}`}>{h.activeCount}/1</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Upcoming</span>
-                    <span className={`font-bold ${h.upcomingCount === 2 ? "text-green-700" : "text-red-600"}`}>{h.upcomingCount}/2</span>
-                  </div>
-                </div>
-
-                {/* Issues */}
-                {h.issues.length > 0 && (
-                  <div className="space-y-0.5">
-                    {h.issues.map((issue, i) => (
-                      <p key={i} className="text-[10px] text-red-600 leading-tight">{issue}</p>
-                    ))}
-                  </div>
-                )}
-
-                {/* Repair button */}
-                {!h.healthy && (
+            <div className="h-4 w-px bg-gray-200" />
+            <div className="flex flex-wrap gap-1.5">
+              {GRADES.map(g => {
+                const h = gradeHealthMap[g];
+                const isUnhealthy = h && !h.healthy;
+                return (
                   <button
-                    onClick={() => repairGrade(h.grade)}
-                    disabled={isRepairing}
-                    className="mt-auto w-full py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
-                    style={{ background: isRepairing ? "#9CA3AF" : ORANGE }}>
-                    {isRepairing ? "Repairing…" : "Repair"}
+                    key={g}
+                    onClick={() => handleSelectGrade(g)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-colors"
+                    style={isUnhealthy
+                      ? { background: "#FEF2F2", borderColor: "#FECACA", color: "#DC2626" }
+                      : { background: "#F0FDF4", borderColor: "#BBF7D0", color: "#15803D" }}>
+                    {isUnhealthy && <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />}
+                    G{g}
+                    {isUnhealthy && " ⚠"}
                   </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Grade tab strip ── */}
+      <div>
+        <div className="flex overflow-x-auto gap-0 border-b border-gray-200 pb-0 no-scrollbar">
+          {GRADES.map(g => {
+            const h = gradeHealthMap[g];
+            const isUnhealthy = h && !h.healthy;
+            const isActive = g === selectedGrade;
+            return (
+              <button
+                key={g}
+                onClick={() => handleSelectGrade(g)}
+                className="relative flex items-center gap-1 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors shrink-0"
+                style={isActive
+                  ? { color: NAVY, borderBottom: `2px solid ${NAVY}`, marginBottom: -1 }
+                  : { color: "#6B7280", borderBottom: "2px solid transparent", marginBottom: -1 }}>
+                {isUnhealthy && !isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
                 )}
-              </div>
+                Grade {g}
+                {isUnhealthy && (
+                  <span className="ml-0.5 text-[10px] text-red-500">⚠</span>
+                )}
+              </button>
             );
           })}
         </div>
-      )}
+      </div>
 
-      {/* Info note */}
+      {/* ── Grade detail panel ── */}
+      {detailLoading ? (
+        <div className="grid grid-cols-3 gap-4">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="rounded-xl border border-gray-100 p-4 animate-pulse bg-gray-50 h-40" />
+          ))}
+        </div>
+      ) : detail ? (
+        <div className="space-y-4">
+          {/* Health status strip for this grade */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {detail.healthy
+                ? <span className="flex items-center gap-1.5 text-sm font-semibold text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-full">
+                    <CheckCircle className="w-4 h-4" /> Grade {detail.grade} — Healthy
+                  </span>
+                : <span className="flex items-center gap-1.5 text-sm font-semibold text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full">
+                    <AlertTriangle className="w-4 h-4" /> Grade {detail.grade} — Needs Repair
+                  </span>
+              }
+              <span className="text-xs text-gray-400">
+                Active {detail.activeCount}/1 · Upcoming {detail.upcomingCount}/2
+                {detail.undatedCount > 0 && ` · ${detail.undatedCount} undated (excluded)`}
+              </span>
+            </div>
+            <button
+              onClick={repairCurrentGrade}
+              disabled={repairing}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-colors"
+              style={{ background: repairing ? "#9CA3AF" : ORANGE }}>
+              <Zap className="w-3.5 h-3.5" />
+              {repairing ? "Repairing…" : "Repair Pipeline"}
+            </button>
+          </div>
+
+          {/* Issues list */}
+          {detail.issues.length > 0 && (
+            <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 flex flex-wrap gap-2">
+              {detail.issues.map((issue, i) => (
+                <span key={i} className="text-xs text-red-700 font-medium">· {issue}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Batch cards: 1 Active + 2 Upcoming */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Active slot */}
+            {detail.activeBatch
+              ? <BatchCard batch={detail.activeBatch} label="ACTIVE" accentColor="#16A34A" />
+              : <EmptySlot label="Active batch" />
+            }
+            {/* Upcoming slots */}
+            {[0, 1].map(idx => {
+              const b = detail.upcomingBatches[idx];
+              return b
+                ? <BatchCard key={b.id} batch={b} label={`UPCOMING ${idx + 1}`} accentColor={NAVY} />
+                : <EmptySlot key={idx} label={`Upcoming ${idx + 1}`} />;
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Info note ── */}
       <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-700">
-        <strong>How it works:</strong> The pipeline auto-repairs on every payment and every Sunday midnight cron. Null-dated batches (like legacy placeholders) are excluded from all counts. Clicking Repair runs <code className="bg-blue-100 px-1 rounded">ensureThreeWeekPipeline</code> which auto-promotes upcoming→active when needed and generates new Monday slots.
+        <strong>How it works:</strong> The pipeline auto-repairs on every payment and every Sunday midnight IST cron. Null-dated batches (legacy placeholders) are excluded from all counts. Repair runs <code className="bg-blue-100 px-1 rounded">ensureThreeWeekPipeline</code> — auto-promotes upcoming→active when activeCount=0 and startDate≤today, then generates new Monday slots.
       </div>
     </div>
   );
