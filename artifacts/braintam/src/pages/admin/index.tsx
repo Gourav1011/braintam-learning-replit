@@ -1285,7 +1285,7 @@ function AdminPageInner() {
           { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "payments" },
           { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
           { label: "Student Outreach", icon: UserCheck2, tab: "btl-crm" },
-          { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "overview" },
+          { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "ignite-reports" },
         ],
       }],
     },
