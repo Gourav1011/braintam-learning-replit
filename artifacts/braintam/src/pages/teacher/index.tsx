@@ -151,6 +151,7 @@ export default function TeacherPage() {
     const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     return now.toISOString().slice(0, 10);
   });
+  const [attendPeriod, setAttendPeriod] = useState<"today" | "yesterday" | "this-week" | "last-7" | "this-month" | "custom">("this-week");
   const [pastSummaries, setPastSummaries] = useState<Record<number, { present: number; absent: number; late: number; contacted: number }>>({});
 
   const [busy, setBusy] = useState(false);
@@ -1803,175 +1804,266 @@ export default function TeacherPage() {
 
         {/* ── Attendance ── */}
         {tab === "attendance" && (() => {
-          const classesForDate = liveClasses.filter(lc => istDateOf(lc.scheduledAt) === attendDate);
-          const mode = dateMode(attendDate);
-
           function fmtTime(iso: string) {
             const ist = new Date(new Date(iso).getTime() + 5.5 * 60 * 60 * 1000);
             return ist.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" });
           }
+          function fmtDayLabel(d: string) {
+            const today = todayIST();
+            const tomorrow = tomorrowIST();
+            const yesterday = (() => { const x = new Date(Date.now() + 5.5*3600000); x.setUTCDate(x.getUTCDate()-1); return x.toISOString().slice(0,10); })();
+            if (d === today) return "Today";
+            if (d === yesterday) return "Yesterday";
+            if (d === tomorrow) return "Tomorrow";
+            return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+          }
+
+          // Compute date range from period
+          function getPeriodDates(): string[] {
+            const nowIST = new Date(Date.now() + 5.5 * 3600000);
+            const today = todayIST();
+            if (attendPeriod === "custom") return [attendDate];
+            if (attendPeriod === "today") return [today];
+            if (attendPeriod === "yesterday") {
+              const y = new Date(nowIST); y.setUTCDate(y.getUTCDate() - 1);
+              return [y.toISOString().slice(0, 10)];
+            }
+            if (attendPeriod === "this-week") {
+              const day = nowIST.getUTCDay();
+              const diff = day === 0 ? 6 : day - 1;
+              const dates: string[] = [];
+              for (let i = diff; i >= 0; i--) {
+                const d = new Date(nowIST); d.setUTCDate(d.getUTCDate() - i);
+                dates.push(d.toISOString().slice(0, 10));
+              }
+              return dates.reverse();
+            }
+            if (attendPeriod === "last-7") {
+              const dates: string[] = [];
+              for (let i = 6; i >= 0; i--) {
+                const d = new Date(nowIST); d.setUTCDate(d.getUTCDate() - i);
+                dates.push(d.toISOString().slice(0, 10));
+              }
+              return dates.reverse();
+            }
+            if (attendPeriod === "this-month") {
+              const firstDay = today.slice(0, 7) + "-01";
+              const dates: string[] = [];
+              let cur = new Date(firstDay + "T00:00:00Z");
+              const end = new Date(today + "T00:00:00Z");
+              while (cur <= end) {
+                dates.push(cur.toISOString().slice(0, 10));
+                cur.setUTCDate(cur.getUTCDate() + 1);
+              }
+              return dates.reverse();
+            }
+            return [today];
+          }
+
+          const periodDates = getPeriodDates();
+          // Group classes by date, only dates that have classes within our period
+          const dateGroups = periodDates
+            .map(d => ({ date: d, classes: liveClasses.filter(lc => istDateOf(lc.scheduledAt) === d) }))
+            .filter(g => g.classes.length > 0);
+
+          const PERIOD_CHIPS = [
+            { key: "today",      label: "Today" },
+            { key: "yesterday",  label: "Yesterday" },
+            { key: "this-week",  label: "This Week" },
+            { key: "last-7",     label: "Last 7 Days" },
+            { key: "this-month", label: "This Month" },
+            { key: "custom",     label: "Custom Date" },
+          ] as const;
 
           return (
             <div className="space-y-4">
-              {/* Header row with date picker */}
-              <div className="flex items-center justify-between gap-3">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="font-bold text-base" style={{ color: NAVY }}>Attendance</h3>
-                <input
-                  type="date"
-                  value={attendDate}
-                  onChange={e => { setAttendDate(e.target.value); setAttendanceClassId(null); setPastSummaries({}); }}
-                  className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold outline-none focus:border-blue-400"
-                  style={{ color: NAVY }}
-                />
+                {attendPeriod === "custom" && (
+                  <input
+                    type="date"
+                    value={attendDate}
+                    onChange={e => { setAttendDate(e.target.value); setAttendanceClassId(null); setPastSummaries({}); }}
+                    className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold outline-none focus:border-blue-400"
+                    style={{ color: NAVY }}
+                  />
+                )}
               </div>
 
-              {/* Mode badge */}
-              <div className="flex items-center gap-2 text-xs">
-                {mode === "past" && <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">📅 Past — View Summary Only</span>}
-                {mode === "today" && <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-semibold">✅ Today — Mark Attendance</span>}
-                {mode === "tomorrow" && <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">📞 Tomorrow — Follow-up Calls Only</span>}
-                {mode === "future" && <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-600 font-semibold">🗓 Upcoming — No Attendance Yet</span>}
+              {/* Period filter chips */}
+              <div className="flex flex-wrap gap-2">
+                {PERIOD_CHIPS.map(chip => {
+                  const active = attendPeriod === chip.key;
+                  return (
+                    <button
+                      key={chip.key}
+                      onClick={() => { setAttendPeriod(chip.key); setAttendanceClassId(null); setPastSummaries({}); }}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                      style={{
+                        background: active ? NAVY : "white",
+                        color: active ? "white" : "#6B7280",
+                        borderColor: active ? NAVY : "#E5E7EB",
+                      }}
+                    >
+                      {chip.key === "this-week" ? "📅 This Week (7 days)" : chip.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {classesForDate.length === 0 ? (
+              {dateGroups.length === 0 ? (
                 <div className="py-10 text-center text-gray-400">
                   <Clock className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No classes scheduled for this date</p>
+                  <p className="text-sm">No classes in this period</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {classesForDate.map(lc => {
-                    const isOpen = attendanceClassId === lc.id;
-                    const summary = pastSummaries[lc.id];
-
+                <div className="space-y-6">
+                  {dateGroups.map(({ date, classes }) => {
+                    const mode = dateMode(date);
                     return (
-                      <div key={lc.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        {/* Class header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-                          <div>
-                            <div className="font-bold text-sm" style={{ color: NAVY }}>{lc.title}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">
-                              Grade {lc.grade} · {fmtTime(lc.scheduledAt)} · {lc.duration}m
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {/* PAST: load summary button */}
-                            {mode === "past" && !summary && (
-                              <button
-                                onClick={() => loadPastSummary(lc.id)}
-                                className="text-xs px-3 py-1.5 rounded-lg font-semibold"
-                                style={{ background: "#EFF6FF", color: NAVY }}
-                              >View</button>
-                            )}
-                            {/* TODAY: mark attendance */}
-                            {mode === "today" && !isOpen && (
-                              <button
-                                onClick={() => loadAttendance(lc.id)}
-                                className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white"
-                                style={{ background: NAVY }}
-                              >Mark Attendance</button>
-                            )}
-                            {isOpen && (
-                              <button onClick={() => setAttendanceClassId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
-                            )}
-                          </div>
+                      <div key={date}>
+                        {/* Date section header */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="font-black text-sm" style={{ color: NAVY }}>{fmtDayLabel(date)}</span>
+                          <span className="text-[10px] text-gray-400">{date}</span>
+                          {mode === "today" && <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">✅ Today</span>}
+                          {mode === "past" && <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold">Past</span>}
+                          {mode === "tomorrow" && <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">📞 Tomorrow</span>}
+                          <div className="flex-1 h-px bg-gray-100" />
+                          <span className="text-[10px] text-gray-400">{classes.length} class{classes.length !== 1 ? "es" : ""}</span>
                         </div>
 
-                        {/* PAST: summary stats */}
-                        {mode === "past" && summary && (
-                          <div className="px-4 py-3 grid grid-cols-4 gap-2">
-                            {[
-                              { label: "Present", value: summary.present, color: "#059669", bg: "#F0FDF4", icon: <CheckCircle2 className="w-4 h-4" /> },
-                              { label: "Absent",  value: summary.absent,  color: "#DC2626", bg: "#FEF2F2", icon: <XCircle className="w-4 h-4" /> },
-                              { label: "Late",    value: summary.late,    color: "#D97706", bg: "#FFFBEB", icon: <Timer className="w-4 h-4" /> },
-                              { label: "Contacted", value: summary.contacted, color: "#2563EB", bg: "#EFF6FF", icon: <Phone className="w-4 h-4" /> },
-                            ].map(s => (
-                              <div key={s.label} className="text-center rounded-xl py-2" style={{ background: s.bg }}>
-                                <div className="flex justify-center mb-0.5" style={{ color: s.color }}>{s.icon}</div>
-                                <div className="text-xl font-black" style={{ color: s.color }}>{s.value}</div>
-                                <div className="text-[10px] font-semibold text-gray-500">{s.label}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* TODAY: full attendance marking */}
-                        {mode === "today" && isOpen && (
-                          <div className="px-4 pb-4 space-y-3 pt-2">
-                            <div className="flex gap-2 text-xs">
-                              <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, status: "present" as AttendStatus })))} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100">All Present</button>
-                              <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, status: "absent" as AttendStatus })))} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100">All Absent</button>
-                            </div>
-                            {attendanceRecords.length === 0 ? (
-                              <p className="text-sm text-gray-400 text-center py-3">No enrolled students</p>
-                            ) : (
-                              <div className="space-y-1">
-                                {attendanceRecords.map((r, i) => (
-                                  <div key={r.studentId} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: NAVY }}>{r.studentName[0]}</div>
-                                      <div className="min-w-0">
-                                        <button onClick={() => setCrmStudent({ id: r.studentId, name: r.studentName })} className="text-sm font-semibold hover:underline truncate block" style={{ color: NAVY }}>{r.studentName}</button>
-                                        {r.grade && <div className="text-[10px] text-gray-400">Grade {r.grade}</div>}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      {(["present", "absent", "late"] as AttendStatus[]).map(s => (
-                                        <button key={s} onClick={() => setAttendanceRecords(prev => prev.map((rec, idx) => idx === i ? { ...rec, status: s } : rec))}
-                                          className={`text-[11px] px-2.5 py-1 rounded-full font-bold transition-all capitalize ${
-                                            r.status === s
-                                              ? s === "present" ? "bg-green-500 text-white" : s === "absent" ? "bg-red-500 text-white" : "bg-amber-400 text-white"
-                                              : "bg-gray-100 text-gray-400"
-                                          }`}>{s}</button>
-                                      ))}
-                                      {r.phone && (
-                                        <a href={`tel:${r.phone}`}
-                                          onClick={() => toggleContacted(lc.id, r.studentId, true)}
-                                          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${r.contacted ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600"}`}>
-                                          <Phone className="w-3.5 h-3.5" />
-                                        </a>
-                                      )}
+                        <div className="space-y-3">
+                          {classes.map(lc => {
+                            const isOpen = attendanceClassId === lc.id;
+                            const summary = pastSummaries[lc.id];
+                            return (
+                              <div key={lc.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                {/* Class header */}
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                                  <div>
+                                    <div className="font-bold text-sm" style={{ color: NAVY }}>{lc.title}</div>
+                                    <div className="text-xs text-gray-400 mt-0.5">
+                                      Grade {lc.grade} · {fmtTime(lc.scheduledAt)} · {lc.duration}m
                                     </div>
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex gap-2 pt-1">
-                              <Button size="sm" onClick={saveAttendance} disabled={attendanceBusy} className="text-white text-xs" style={{ background: ORANGE }}>Save Attendance</Button>
-                              <Button size="sm" variant="ghost" onClick={() => setAttendanceClassId(null)} className="text-xs">Cancel</Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* TOMORROW: call-only follow-up */}
-                        {mode === "tomorrow" && (
-                          <div className="px-4 py-3 space-y-1">
-                            <p className="text-[11px] text-blue-600 font-semibold mb-2">📞 Follow up with parents before class</p>
-                            {students.filter((s: any) => s.phone).length === 0 ? (
-                              <p className="text-xs text-gray-400">No student phone numbers on record</p>
-                            ) : (
-                              students.map((s: any) => s.phone ? (
-                                <div key={s.studentId} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ background: NAVY }}>{s.studentName[0]}</div>
-                                    <span className="text-sm font-medium" style={{ color: NAVY }}>{s.studentName}</span>
-                                    {s.grade && <span className="text-[10px] text-gray-400">Gr {s.grade}</span>}
+                                    {mode === "past" && !summary && (
+                                      <button onClick={() => loadPastSummary(lc.id)}
+                                        className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                                        style={{ background: "#EFF6FF", color: NAVY }}>View</button>
+                                    )}
+                                    {mode === "today" && !isOpen && (
+                                      <button onClick={() => loadAttendance(lc.id)}
+                                        className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white"
+                                        style={{ background: NAVY }}>Mark Attendance</button>
+                                    )}
+                                    {isOpen && (
+                                      <button onClick={() => setAttendanceClassId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                                    )}
                                   </div>
-                                  <a href={`tel:${s.phone}`} className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors">
-                                    <Phone className="w-3.5 h-3.5" />
-                                  </a>
                                 </div>
-                              ) : null)
-                            )}
-                          </div>
-                        )}
 
-                        {/* FUTURE: info only */}
-                        {mode === "future" && (
-                          <div className="px-4 py-3">
-                            <p className="text-xs text-gray-400 italic">Attendance will be available on the day of class</p>
-                          </div>
-                        )}
+                                {/* PAST: summary stats */}
+                                {mode === "past" && summary && (
+                                  <div className="px-4 py-3 grid grid-cols-4 gap-2">
+                                    {[
+                                      { label: "Present",   value: summary.present,   color: "#059669", bg: "#F0FDF4", icon: <CheckCircle2 className="w-4 h-4" /> },
+                                      { label: "Absent",    value: summary.absent,    color: "#DC2626", bg: "#FEF2F2", icon: <XCircle className="w-4 h-4" /> },
+                                      { label: "Late",      value: summary.late,      color: "#D97706", bg: "#FFFBEB", icon: <Timer className="w-4 h-4" /> },
+                                      { label: "Contacted", value: summary.contacted, color: "#2563EB", bg: "#EFF6FF", icon: <Phone className="w-4 h-4" /> },
+                                    ].map(s => (
+                                      <div key={s.label} className="text-center rounded-xl py-2" style={{ background: s.bg }}>
+                                        <div className="flex justify-center mb-0.5" style={{ color: s.color }}>{s.icon}</div>
+                                        <div className="text-xl font-black" style={{ color: s.color }}>{s.value}</div>
+                                        <div className="text-[10px] font-semibold text-gray-500">{s.label}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* TODAY: full attendance marking */}
+                                {mode === "today" && isOpen && (
+                                  <div className="px-4 pb-4 space-y-3 pt-2">
+                                    <div className="flex gap-2 text-xs">
+                                      <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, status: "present" as AttendStatus })))} className="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100">All Present</button>
+                                      <button onClick={() => setAttendanceRecords(prev => prev.map(r => ({ ...r, status: "absent" as AttendStatus })))} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100">All Absent</button>
+                                    </div>
+                                    {attendanceRecords.length === 0 ? (
+                                      <p className="text-sm text-gray-400 text-center py-3">No enrolled students</p>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {attendanceRecords.map((r, i) => (
+                                          <div key={r.studentId} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: NAVY }}>{r.studentName[0]}</div>
+                                              <div className="min-w-0">
+                                                <button onClick={() => setCrmStudent({ id: r.studentId, name: r.studentName })} className="text-sm font-semibold hover:underline truncate block" style={{ color: NAVY }}>{r.studentName}</button>
+                                                {r.grade && <div className="text-[10px] text-gray-400">Grade {r.grade}</div>}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                              {(["present", "absent", "late"] as AttendStatus[]).map(s => (
+                                                <button key={s} onClick={() => setAttendanceRecords(prev => prev.map((rec, idx) => idx === i ? { ...rec, status: s } : rec))}
+                                                  className={`text-[11px] px-2.5 py-1 rounded-full font-bold transition-all capitalize ${
+                                                    r.status === s
+                                                      ? s === "present" ? "bg-green-500 text-white" : s === "absent" ? "bg-red-500 text-white" : "bg-amber-400 text-white"
+                                                      : "bg-gray-100 text-gray-400"
+                                                  }`}>{s}</button>
+                                              ))}
+                                              {r.phone && (
+                                                <a href={`tel:${r.phone}`}
+                                                  onClick={() => toggleContacted(lc.id, r.studentId, true)}
+                                                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${r.contacted ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600"}`}>
+                                                  <Phone className="w-3.5 h-3.5" />
+                                                </a>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="flex gap-2 pt-1">
+                                      <Button size="sm" onClick={saveAttendance} disabled={attendanceBusy} className="text-white text-xs" style={{ background: ORANGE }}>Save Attendance</Button>
+                                      <Button size="sm" variant="ghost" onClick={() => setAttendanceClassId(null)} className="text-xs">Cancel</Button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* TOMORROW: call-only follow-up */}
+                                {mode === "tomorrow" && (
+                                  <div className="px-4 py-3 space-y-1">
+                                    <p className="text-[11px] text-blue-600 font-semibold mb-2">📞 Follow up with parents before class</p>
+                                    {students.filter((s: any) => s.phone).length === 0 ? (
+                                      <p className="text-xs text-gray-400">No student phone numbers on record</p>
+                                    ) : (
+                                      students.map((s: any) => s.phone ? (
+                                        <div key={s.studentId} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ background: NAVY }}>{s.studentName[0]}</div>
+                                            <span className="text-sm font-medium" style={{ color: NAVY }}>{s.studentName}</span>
+                                            {s.grade && <span className="text-[10px] text-gray-400">Gr {s.grade}</span>}
+                                          </div>
+                                          <a href={`tel:${s.phone}`} className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors">
+                                            <Phone className="w-3.5 h-3.5" />
+                                          </a>
+                                        </div>
+                                      ) : null)
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* FUTURE: info only */}
+                                {mode === "future" && (
+                                  <div className="px-4 py-3">
+                                    <p className="text-xs text-gray-400 italic">Attendance will be available on the day of class</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
