@@ -111,32 +111,6 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
         </div>
       </div>
 
-      {/* ── My stats strip ── */}
-      {initialised && (
-        <div className="shrink-0 mx-4 mt-3 rounded-2xl flex items-center gap-0 overflow-hidden"
-          style={{ background: `linear-gradient(90deg,${NAVY},#0d3494)`, boxShadow: "0 4px 20px rgba(11,43,107,0.25)" }}>
-          <div className="flex-1 flex flex-col items-center py-3">
-            <div className="font-black text-2xl text-white leading-none">
-              {myRow ? myRow.denseRank : "—"}
-            </div>
-            <div className="text-[10px] text-blue-200 mt-0.5 font-medium">My Rank</div>
-          </div>
-          <div className="w-px h-10 bg-white/15" />
-          <div className="flex-1 flex flex-col items-center py-3">
-            <div className="font-black text-2xl leading-none" style={{ color: ORANGE }}>
-              {myGrades.includes(selectedGrade ?? 0) ? `${myRow?.conversionRate ?? 0}%` : "—"}
-            </div>
-            <div className="text-[10px] text-blue-200 mt-0.5 font-medium">Conv. %</div>
-          </div>
-          <div className="w-px h-10 bg-white/15" />
-          <div className="flex-1 flex flex-col items-center py-3">
-            <div className="font-black text-2xl leading-none" style={{ color: "#60A5FA" }}>
-              G{selectedGrade ?? "—"}
-            </div>
-            <div className="text-[10px] text-blue-200 mt-0.5 font-medium">Grade</div>
-          </div>
-        </div>
-      )}
 
       {/* ── List ── */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
@@ -162,22 +136,23 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
 
               return (
                 <div key={row.mentorId}
-                  className="flex items-center gap-4 px-5 py-4 transition-colors"
+                  className="grid items-center px-5 py-4 transition-colors"
                   style={{
+                    gridTemplateColumns: "36px 1fr 52px",
                     borderBottom: idx < ranked.length - 1 ? "1px solid #F1F5F9" : "none",
                     background: isMe ? "#FFFBF5" : "#fff",
                   }}>
 
-                  {/* Rank — just the number, prominent for top 3 */}
-                  <div className="w-6 shrink-0 text-right">
+                  {/* Rank */}
+                  <div className="text-left">
                     <span className={`font-black leading-none ${isTop ? "text-lg" : "text-sm"}`}
                       style={{ color: isTop ? rankColor : "#CBD5E1" }}>
                       {row.denseRank}
                     </span>
                   </div>
 
-                  {/* Name */}
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                  {/* Name — centered */}
+                  <div className="flex items-center justify-center gap-2">
                     <span className="font-semibold text-sm truncate"
                       style={{ color: isMe ? ORANGE : NAVY }}>
                       {row.mentorName}
@@ -191,7 +166,7 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
                   </div>
 
                   {/* Conversion % */}
-                  <div className="shrink-0 font-black text-sm tabular-nums"
+                  <div className="text-right font-black text-sm tabular-nums"
                     style={{ color: isTop && row.conversionRate > 0 ? rankColor : row.conversionRate > 0 ? "#059669" : "#9CA3AF" }}>
                     {row.conversionRate}%
                   </div>
