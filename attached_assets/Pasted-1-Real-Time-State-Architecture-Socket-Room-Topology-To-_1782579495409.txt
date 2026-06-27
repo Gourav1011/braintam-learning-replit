@@ -1,0 +1,283 @@
+1. Real-Time State Architecture & Socket Room Topology
+To support 10–20 concurrent classes with up to 50 students each, communication is divided into specific target channels.
+
+                       ┌───────────────────────────────┐
+                       │     Session Global Room       │
+                       │     (session-{sessionId})     │
+                       └───────────────┬───────────────┘
+                                       │
+               ┌───────────────────────┴───────────────────────┐
+               ▼                                               ▼
+┌───────────────────────────────┐               ┌───────────────────────────────┐
+│     Global Teachers Room      │               │     Isolated Group Rooms      │
+│  (session-{sid}-teachers)     │               │  (session-{sid}-grp-{gid})   │
+└───────────────────────────────┘               └───────────────────────────────┘
+ - Primary Teachers                             - Group Specific Mentor
+ - Platform Admins                              - Assigned Group Students
+2. Dynamic Attendance & Event-Driven Engine (Node.js)
+This architecture eliminates heavy database polling. It processes state transitions using an in-memory cache and sends immediate delta notifications via WebSockets.
+
+JavaScript
+const io = require('socket.io')(server, { cors: { origin: "*" } });
+
+// In-Memory State Tracker to prevent database polling overhead
+// Structure: Map<`${sessionId}-${studentId}`, { lastSeenAt: Date, currentStatus: string }>
+const liveStateCache = new Map();
+
+/**
+ * Core Status Derivation Logic (Pure Function)
+ */
+function deriveStatus(joinedAt, lastSeenAt, now = new Date()) {
+  if (!joinedAt) return 'ABSENT';
+  const deltaSeconds = (now.getTime() - new Date(lastSeenAt).getTime()) / 1000;
+  return deltaSeconds <= 15 ? 'LIVE' : 'BACKSTAGE';
+}
+
+/**
+ * 15-Second Heartbeat Pipeline
+ */
+async function handleHeartbeat(io, socket) {
+  const { sessionId, userId, mentorGroupId } = socket.userContext;
+  const now = new Date();
+
+  // Single-trip DB statement: track runtime duration metrics
+  const dbResult = await db.query(`
+    INSERT INTO session_attendance (session_id, student_id, joined_at, last_seen_at, total_duration_seconds)
+    VALUES ($1, $2, $3, $3, 0)
+    ON CONFLICT (session_id, student_id)
+    DO UPDATE SET 
+      total_duration_seconds = session_attendance.total_duration_seconds + 15,
+      last_seen_at = $3
+    RETURNING joined_at, (SELECT display_name FROM student_profiles WHERE id = $2) as name;
+  `, [sessionId, userId, now]);
+
+  const record = dbResult.rows[0];
+  const cacheKey = `${sessionId}-${userId}`;
+  const previousCachedState = liveStateCache.get(cacheKey);
+  const previousStatus = previousCachedState ? previousCachedState.currentStatus : 'ABSENT';
+
+  // Update memory store with latest state
+  liveStateCache.set(cacheKey, { lastSeenAt: now, currentStatus: 'LIVE' });
+
+  // Stream state changes only when transitioning across status thresholds
+  if (previousStatus !== 'LIVE') {
+    const eventType = previousStatus === 'BACKSTAGE' ? 'studentReturned' : 'studentJoined';
+    const payload = { studentId: userId, name: record.name, mentorGroupId, lastSeenAt: now };
+    
+    // Notify the target mentor group and global teachers
+    io.to(`session-${sessionId}-teachers`).to(`session-${sessionId}-grp-${mentorGroupId}`).emit(eventType, payload);
+  }
+}
+
+/**
+ * 5-Second Delta Background Sweeper
+ * Iterates over the memory cache to find expired student connections.
+ */
+setInterval(() => {
+  const now = new Date();
+
+  for (const [cacheKey, state] of liveStateCache.entries()) {
+    if (state.currentStatus === 'LIVE') {
+      const deltaSeconds = (now.getTime() - state.lastSeenAt.getTime()) / 1000;
+
+      if (deltaSeconds > 15) {
+        state.currentStatus = 'BACKSTAGE';
+        const [sessionId, studentId] = cacheKey.split('-');
+
+        // Broadcast backstage transition to administrators and group mentors
+        io.to(`session-${sessionId}`).emit('studentBackstage', {
+          studentId,
+          timestamp: now
+        });
+      }
+    }
+  }
+}, 5000);
+3. Real-Time Router & Group Chat System
+This module handles message security, handles global teacher announcements, and routes user questions.
+
+JavaScript
+io.use((socket, next) => {
+  const { sessionId, userId, role, mentorGroupId } = socket.handshake.query;
+  socket.userContext = { sessionId, userId, role, mentorGroupId };
+  next();
+});
+
+io.on('connection', (socket) => {
+  const { sessionId, userId, role, mentorGroupId } = socket.userContext;
+
+  // Add the user to their base security room channels
+  socket.join(`session-${sessionId}`);
+  if (role === 'Teacher' || role === 'Admin') {
+    socket.join(`session-${sessionId}-teachers`);
+  } else if (mentorGroupId) {
+    socket.join(`session-${sessionId}-grp-${mentorGroupId}`);
+  }
+
+  // Bind the connection heartbeat listener
+  socket.on('heartbeat:ping', () => {
+    if (role === 'Student') handleHeartbeat(io, socket);
+  });
+
+  // Isolated Message Routing System
+  socket.on('chat:send', (messageText) => {
+    const cleanText = messageText.replace(/[<>]/g, ""); // Sanitize input strings
+    const payload = { senderId: userId, role, text: cleanText, timestamp: new Date() };
+
+    if (role === 'Teacher' || role === 'Admin') {
+      // Global teacher announcements target everyone in the session
+      io.to(`session-${sessionId}`).emit('chat:message', payload);
+    } else if (mentorGroupId) {
+      // Mentors and students are restricted to their assigned groups
+      io.to(`session-${sessionId}-grp-${mentorGroupId}`)
+        .to(`session-${sessionId}-teachers`) // Mirror messages to teachers for tracking
+        .emit('chat:message', payload);
+    }
+  });
+
+  // Non-intrusive Raise Hand functionality
+  socket.on('student:raiseHand', () => {
+    if (role !== 'Student') return;
+    const payload = { studentId: userId, mentorGroupId, timestamp: new Date() };
+
+    // Route notifications to the assigned group mentor and global teachers
+    io.to(`session-${sessionId}-grp-${mentorGroupId}`)
+      .to(`session-${sessionId}-teachers`)
+      .emit('classroom:handRaised', payload);
+  });
+});
+4. UI Implementation (React Components)
+Multi-Role Collapsible Attendance Sidebar
+This component calculates student statuses at runtime and applies role-based visibility rules for teachers, admins, and mentors.
+
+JavaScript
+import React, { useState, useEffect } from 'react';
+
+export function AttendanceSidebarWidget({ socket, currentContext, fullClassRegistry }) {
+  const [activeTab, setActiveTab] = useState('LIVE'); // LIVE | ABSENT | BACKSTAGE
+  const [registry, setRegistry] = useState(fullClassRegistry);
+
+  useEffect(() => {
+    // Process real-time connection status transitions
+    socket.on('studentJoined', (data) => updateStudentState(data.studentId, 'LIVE'));
+    socket.on('studentReturned', (data) => updateStudentState(data.studentId, 'LIVE'));
+    socket.on('studentBackstage', (data) => updateStudentState(data.studentId, 'BACKSTAGE'));
+
+    return () => {
+      socket.off('studentJoined');
+      socket.off('studentReturned');
+      socket.off('studentBackstage');
+    };
+  }, [socket]);
+
+  const updateStudentState = (studentId, targetStatus) => {
+    setRegistry(prev => prev.map(s => s.id === studentId ? { ...s, runtimeStatus: targetStatus } : s));
+  };
+
+  // Enforce data visibility boundaries by role
+  const processVisibilityFilters = (student) => {
+    if (currentContext.role === 'Teacher' || currentContext.role === 'Admin') return true;
+    return student.mentorGroupId === currentContext.mentorGroupId; // Mentors see only their assigned group
+  };
+
+  const currentViewDataset = registry
+    .filter(processVisibilityFilters)
+    .filter(student => student.runtimeStatus === activeTab);
+
+  return (
+    <div className="attendance-sidebar-container">
+      <div className="tab-layout-header">
+        {['LIVE', 'ABSENT', 'BACKSTAGE'].map(tab => (
+          <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>
+            {tab === 'LIVE' ? 'Live Class' : tab === 'BACKSTAGE' ? 'Backstage' : 'Absent'}
+          </button>
+        ))}
+      </div>
+
+      <div className="sidebar-scrollable-list">
+        {currentViewDataset.map(student => (
+          <div key={student.id} className="student-attendance-row">
+            <div className="meta">
+              <span className={`status-dot ${activeTab.toLowerCase()}`} />
+              <p className="name">{student.displayName}</p>
+              <small>{student.totalDurationSeconds ? `${Math.round(student.totalDurationSeconds / 60)} mins` : '0 mins'}</small>
+            </div>
+            <div className="device-communication-actions">
+              <button onClick={() => handleOutboundRoute(student.phoneNumber, 'TEL')}>📞 Call</button>
+              <button onClick={() => handleOutboundRoute(student.phoneNumber, 'WA')}>💬 WhatsApp</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+5. Communications & Device Routing Engine
+This module routes communication actions efficiently based on the agent's host device type.
+
+TypeScript
+type DialProtocol = 'TEL' | 'WA';
+
+export function handleOutboundRoute(rawPhoneNumber: string, protocol: DialProtocol): void {
+  const numbersOnly = rawPhoneNumber.replace(/\D/g, '');
+  const isTouchDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (protocol === 'TEL') {
+    if (isTouchDevice) {
+      window.location.href = `tel:${numbersOnly}`;
+    } else {
+      navigator.clipboard.writeText(numbersOnly)
+        .then(() => alert("System Notice: Phone number copied to clipboard."));
+    }
+  } else if (protocol === 'WA') {
+    const webEndpoint = isTouchDevice 
+      ? `https://wa.me/${numbersOnly}` 
+      : `https://web.whatsapp.com/send?phone=${numbersOnly}`;
+    window.open(webEndpoint, '_blank');
+  }
+}
+6. Comprehensive Student 360 & Portal Analytics
+This analytical database query calculates aggregate performance, attendance rates, and retention data across Ignite, Mastery, and core CRM tracking panels.
+
+SQL
+SELECT 
+    sp.id AS student_id,
+    sp.display_name,
+    mg.program_type,
+    mg.group_name AS assigned_group,
+    
+    -- Retention Analytics Calculations
+    ROUND(
+        (COUNT(DISTINCT CASE WHEN sa.joined_at IS NOT NULL THEN sa.session_id END)::numeric / 
+        NULLIF(COUNT(DISTINCT sa.session_id), 0)) * 100, 2
+    ) AS attendance_percentage,
+    
+    -- Engagement Tracking Metrics
+    ROUND(
+        (COUNT(DISTINCT pa.id)::numeric / 
+        NULLIF(COUNT(DISTINCT pa.session_id), 0)) * 100, 2
+    ) AS poll_participation_rate,
+    
+    COUNT(CASE WHEN la.rank = 1 THEN 1 END) AS total_leaderboard_wins,
+    COALESCE(SUM(sa.total_duration_seconds) / 60, 0) AS total_learning_minutes,
+    MAX(sa.last_seen_at) AS last_class_joined_date
+
+FROM student_profiles sp
+JOIN group_students gs ON sp.id = gs.student_id
+JOIN mentor_groups mg ON gs.mentor_group_id = mg.id
+LEFT JOIN session_attendance sa ON sp.id = sa.student_id
+LEFT JOIN poll_analytics pa ON sp.id = pa.student_id
+LEFT JOIN leaderboard_analytics la ON sp.id = la.student_id
+WHERE mg.mentor_id = :authenticatedMentorId
+GROUP BY sp.id, sp.display_name, mg.program_type, mg.group_name
+HAVING 
+    -- Quick Portal Filter Presets
+    -- Never Joined: 
+    -- COUNT(DISTINCT CASE WHEN sa.joined_at IS NOT NULL THEN sa.session_id END) = 0
+    
+    -- Low Attendance (< 60%):
+    -- (COUNT(DISTINCT CASE WHEN sa.joined_at IS NOT NULL THEN sa.session_id END)::numeric / NULLIF(COUNT(DISTINCT sa.session_id), 0)) * 100 < 60.00
+    
+    -- Passive Learner (No Poll Participation):
+    -- COUNT(DISTINCT pa.id) = 0
+;
