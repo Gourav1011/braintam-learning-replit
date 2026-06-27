@@ -22,6 +22,15 @@ interface Poll { id: string; question: string; options: PollOpt[]; startedAt?: n
 interface LeaderboardEntry { name: string; rank: number; }
 interface RaisedHand { uid: string; name: string; mentorGroupId: string | null; }
 
+// Sprint 3 — Stage overlay
+interface StageSlot {
+  studentId: string;
+  studentName: string;
+  slotNumber: number;
+  isMuted: boolean;
+  mentorGroupId: string | null;
+}
+
 interface AttendanceRecord {
   userId: string;
   name: string;
@@ -281,6 +290,9 @@ export default function LiveClassroom() {
   // Attendance registry
   const [registry, setRegistry] = useState<Map<string, AttendanceRecord>>(new Map());
 
+  // ── Sprint 3: Stage state ─────────────────────────────────
+  const [stageSlots, setStageSlots] = useState<StageSlot[]>([]);
+
   // ── Annotation ─────────────────────────────────────────────
   const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter">("none");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -350,11 +362,15 @@ export default function LiveClassroom() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("roomState", (s: { chat: ChatMsg[]; raisedHands: RaisedHand[]; raiseHandEnabled: boolean; activePoll: Poll | null }) => {
+    socket.on("roomState", (s: {
+      chat: ChatMsg[]; raisedHands: RaisedHand[]; raiseHandEnabled: boolean;
+      activePoll: Poll | null; stage?: StageSlot[];
+    }) => {
       setChat(s.chat);
       setRaisedHands(s.raisedHands);
       setRaiseHandEnabled(s.raiseHandEnabled);
       if (s.activePoll) { setActivePoll(s.activePoll); setPanelMode("poll"); }
+      if (s.stage) setStageSlots(s.stage);
     });
 
     socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
@@ -399,12 +415,29 @@ export default function LiveClassroom() {
       setMyPollCorrect(isCorrect);
     });
 
+    // ── Sprint 3: Stage events ────────────────────────────────
+    socket.on("stage:studentInvited", (slot: StageSlot) => {
+      setStageSlots(prev => {
+        const filtered = prev.filter(s => s.studentId !== slot.studentId);
+        return [...filtered, slot].sort((a, b) => a.slotNumber - b.slotNumber);
+      });
+    });
+    socket.on("stage:muteStateChanged", ({ studentId, isMuted }: { studentId: string; isMuted: boolean }) => {
+      setStageSlots(prev => prev.map(s => s.studentId === studentId ? { ...s, isMuted } : s));
+    });
+    socket.on("stage:studentRemoved", ({ studentId }: { studentId: string }) => {
+      setStageSlots(prev => prev.filter(s => s.studentId !== studentId));
+    });
+    socket.on("stage:error", ({ message }: { message: string }) => alert(message));
+
     return () => {
       socket.off("roomState"); socket.off("chat:message");
       socket.off("pollStarted"); socket.off("pollEnded"); socket.off("pollUpdate");
       socket.off("showLeaderboard"); socket.off("studentJoined"); socket.off("studentReturned");
       socket.off("studentBackstage"); socket.off("classroom:handRaised");
       socket.off("raiseHandToggled"); socket.off("pollSubmitted");
+      socket.off("stage:studentInvited"); socket.off("stage:muteStateChanged");
+      socket.off("stage:studentRemoved"); socket.off("stage:error");
     };
   }, [socket, upsert]);
 
@@ -439,12 +472,31 @@ export default function LiveClassroom() {
 
   const toggleRaiseHandFeature = (enabled: boolean) => socket?.emit("toggleRaiseHand", { enabled });
 
+  // ── Sprint 3: Stage actions ───────────────────────────────
+  const approveToStage = (hand: RaisedHand) => {
+    socket?.emit("stage:approveStudent", {
+      studentId: hand.uid,
+      studentName: hand.name,
+      studentGroupId: hand.mentorGroupId ?? "",
+    });
+  };
+  const toggleStageMute = (studentId: string, isMuted: boolean) => {
+    socket?.emit("stage:toggleMute", { studentId, isMuted });
+  };
+  const removeFromStage = (studentId: string) => {
+    socket?.emit("stage:removeStudent", { studentId });
+  };
+
   // Visible hands (mentor: only their group; staff: all)
   const visibleHands = raisedHands.filter(h => {
     if (isStaff) return true;
     if (isMentor) return h.mentorGroupId === groupId;
     return false;
   });
+
+  // ── Sprint 3: derived stage helpers ──────────────────────
+  const mySlot = stageSlots.find(s => s.studentId === userId);
+  const myOnStage = !!mySlot;
 
   const embedUrl = getEmbedUrl(presentationUrl);
 
@@ -546,6 +598,63 @@ export default function LiveClassroom() {
                 </p>
               </div>
             )}
+
+            {/* Sprint 3 — "You're on stage" banner for invited students */}
+            {myOnStage && !isStaff && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-green-700/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2">
+                🎤 You're on stage
+                <span className="text-green-200 font-normal">{mySlot?.isMuted ? "— muted" : "— mic on"}</span>
+              </div>
+            )}
+
+            {/* Sprint 3 — Dynamic 5-slot stage overlay */}
+            {stageSlots.length > 0 && (
+              <div className="absolute bottom-4 left-4 right-4 flex gap-2 justify-center z-40 pointer-events-none">
+                {stageSlots.map(slot => (
+                  <div
+                    key={slot.studentId}
+                    className="w-28 h-20 rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative"
+                    style={{ background: "#0f172a", borderColor: slot.studentId === userId ? "#10B981" : "#334155" }}>
+                    {/* Video placeholder (WebRTC hook point — connect SDK stream here) */}
+                    <div className="flex-1 flex items-center justify-center bg-gray-900/80">
+                      <div className="text-2xl select-none">👤</div>
+                    </div>
+
+                    {/* Name + mute bar */}
+                    <div className="px-1.5 py-1 bg-black/70 flex items-center justify-between gap-1">
+                      <span className="text-[9px] text-white font-semibold truncate flex-1">{slot.studentName}</span>
+                      <span className="text-[11px]">{slot.isMuted ? "🔇" : "🔊"}</span>
+                    </div>
+
+                    {/* Slot number badge */}
+                    <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-blue-600/80 flex items-center justify-center text-[8px] text-white font-black">
+                      {slot.slotNumber}
+                    </div>
+
+                    {/* "You" badge */}
+                    {slot.studentId === userId && (
+                      <div className="absolute top-1 right-1 text-[8px] bg-green-600 text-white px-1 rounded font-bold">You</div>
+                    )}
+
+                    {/* Teacher controls */}
+                    {isStaff && (
+                      <div className="absolute inset-x-0 top-5 flex justify-center gap-1 opacity-0 hover:opacity-100 transition-opacity bg-black/50 py-1">
+                        <button
+                          onClick={() => toggleStageMute(slot.studentId, !slot.isMuted)}
+                          className="text-[8px] bg-gray-700 hover:bg-gray-500 text-white px-1.5 py-0.5 rounded font-bold">
+                          {slot.isMuted ? "Unmute" : "Mute"}
+                        </button>
+                        <button
+                          onClick={() => removeFromStage(slot.studentId)}
+                          className="text-[8px] bg-red-700 hover:bg-red-500 text-white px-1.5 py-0.5 rounded font-bold">
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Annotation toolbar (teacher only) */}
@@ -590,13 +699,35 @@ export default function LiveClassroom() {
             </button>
           </div>
 
-          {/* Raised hands (teacher/mentor) */}
+          {/* Raised hands queue (teacher/mentor) — Sprint 3: approve to stage */}
           {canSeeAttendance && visibleHands.length > 0 && (
-            <div className="px-3 py-1.5 bg-yellow-900/20 border-b border-yellow-800/30 flex-shrink-0">
-              <p className="text-[10px] text-yellow-400 font-semibold">
-                ✋ {visibleHands.slice(0, 4).map(h => h.name).join(", ")}
-                {visibleHands.length > 4 ? ` +${visibleHands.length - 4}` : ""}
+            <div className="border-b border-yellow-800/30 flex-shrink-0 max-h-32 overflow-y-auto">
+              <p className="text-[9px] text-yellow-400 font-bold px-3 pt-1.5 pb-0.5 uppercase tracking-wide">
+                ✋ Q&A Queue ({visibleHands.length})
               </p>
+              {visibleHands.map(h => {
+                const alreadyOnStage = stageSlots.some(s => s.studentId === h.uid);
+                const stageFull = stageSlots.length >= 5;
+                return (
+                  <div key={h.uid} className="flex items-center justify-between px-3 py-1 hover:bg-yellow-900/10">
+                    <span className="text-[10px] text-yellow-300 truncate max-w-[110px]">{h.name}</span>
+                    {isStaff && !alreadyOnStage && !stageFull && (
+                      <button
+                        onClick={() => approveToStage(h)}
+                        className="text-[9px] bg-green-700 hover:bg-green-600 text-white px-1.5 py-0.5 rounded font-bold ml-1 flex-shrink-0"
+                        title="Approve to stage">
+                        → Stage
+                      </button>
+                    )}
+                    {alreadyOnStage && (
+                      <span className="text-[9px] text-green-400 ml-1 flex-shrink-0">On stage</span>
+                    )}
+                    {isStaff && stageFull && !alreadyOnStage && (
+                      <span className="text-[9px] text-gray-500 ml-1 flex-shrink-0">Stage full</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

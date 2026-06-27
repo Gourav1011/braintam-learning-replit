@@ -6,6 +6,7 @@ import {
   pollAnalyticsTable,
   leaderboardAnalyticsTable,
   chatMessagesTable,
+  stageSlotsTable,
 } from "@workspace/db";
 import { eq, and, sql, gt, desc } from "drizzle-orm";
 
@@ -61,6 +62,15 @@ interface SessionRoom {
   raiseHandEnabled: boolean;
   activePoll: Poll | null;
   pollAnswers: Map<string, PollAnswer>;
+  stageSlots: Map<string, StageSlotEntry>;  // key = studentId
+}
+
+interface StageSlotEntry {
+  studentId: string;
+  studentName: string;
+  slotNumber: number;
+  isMuted: boolean;
+  mentorGroupId: string | null;
 }
 
 // ── In-memory caches ───────────────────────────────────────────
@@ -74,9 +84,27 @@ function getSessionRoom(sid: string): SessionRoom {
       raiseHandEnabled: false,
       activePoll: null,
       pollAnswers: new Map(),
+      stageSlots: new Map(),
     });
   }
   return sessionRooms.get(sid)!;
+}
+
+// ── Sprint 3: Load active stage slots from DB for a session ────
+async function loadStageSlots(sessionId: string): Promise<StageSlotEntry[]> {
+  try {
+    const rows = await db
+      .select()
+      .from(stageSlotsTable)
+      .where(eq(stageSlotsTable.sessionId, sessionId));
+    return rows.map(r => ({
+      studentId: r.studentId,
+      studentName: r.studentName,
+      slotNumber: r.slotNumber,
+      isMuted: r.isMuted,
+      mentorGroupId: r.mentorGroupId ?? null,
+    }));
+  } catch { return []; }
 }
 
 // ── Sprint 2: Seed liveStateCache from DB on startup ──────────
@@ -327,9 +355,18 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     const room = getSessionRoom(sessionId);
 
-    // ── Send initial room state (async — loads chat from DB) ──
+    // ── Send initial room state (async — loads chat + stage from DB) ──
     (async () => {
-      const recentChat = await loadRecentChat(sessionId);
+      const [recentChat, dbStageSlots] = await Promise.all([
+        loadRecentChat(sessionId),
+        loadStageSlots(sessionId),
+      ]);
+
+      // Seed in-memory stageSlots if empty (handles server restart)
+      if (room.stageSlots.size === 0 && dbStageSlots.length > 0) {
+        for (const s of dbStageSlots) room.stageSlots.set(s.studentId, s);
+      }
+
       socket.emit("roomState", {
         chat: recentChat,
         raisedHands: Array.from(room.raisedHands.entries())
@@ -338,6 +375,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         activePoll: room.activePoll
           ? { ...room.activePoll, correctOptionId: undefined }
           : null,
+        stage: Array.from(room.stageSlots.values()),
       });
     })().catch(() => {
       socket.emit("roomState", {
@@ -345,6 +383,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         raisedHands: [],
         raiseHandEnabled: room.raiseHandEnabled,
         activePoll: null,
+        stage: [],
       });
     });
 
@@ -479,6 +518,86 @@ export function setupSocketIO(httpServer: HttpServer) {
       socket.emit("pollSubmitted", { optionId: optId, isCorrect });
     });
 
+    // ── Sprint 3: Stage orchestration ─────────────────────────
+    socket.on("stage:approveStudent", async (payload: {
+      studentId: string; studentName: string; studentGroupId: string;
+    }) => {
+      if (!isStaff) return;
+      const occupied = new Set(Array.from(room.stageSlots.values()).map(s => s.slotNumber));
+      let openSlot: number | null = null;
+      for (let i = 1; i <= 5; i++) { if (!occupied.has(i)) { openSlot = i; break; } }
+
+      if (!openSlot) {
+        socket.emit("stage:error", { message: "Stage full — max 5 students." });
+        return;
+      }
+      if (room.stageSlots.has(payload.studentId)) {
+        socket.emit("stage:error", { message: "Student is already on stage." });
+        return;
+      }
+
+      const entry: StageSlotEntry = {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        slotNumber: openSlot,
+        isMuted: true,
+        mentorGroupId: payload.studentGroupId || null,
+      };
+      room.stageSlots.set(payload.studentId, entry);
+
+      // Persist to DB (non-blocking)
+      db.insert(stageSlotsTable).values({
+        sessionId,
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        mentorGroupId: payload.studentGroupId || null,
+        slotNumber: openSlot,
+        isMuted: true,
+      }).onConflictDoNothing().catch(() => {});
+
+      // Clear hand from raise-hand queue
+      room.raisedHands.delete(payload.studentId);
+      io.to(globalRoom(sessionId)).emit("classroom:handRaised", {
+        uid: payload.studentId, name: payload.studentName,
+        mentorGroupId: payload.studentGroupId || null, raised: false, ts: new Date(),
+      });
+
+      io.to(globalRoom(sessionId)).emit("stage:studentInvited", {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        slotNumber: openSlot,
+        isMuted: true,
+        mentorGroupId: payload.studentGroupId || null,
+      });
+    });
+
+    socket.on("stage:toggleMute", (payload: { studentId: string; isMuted: boolean }) => {
+      if (!isStaff) return;
+      const entry = room.stageSlots.get(payload.studentId);
+      if (!entry) return;
+      entry.isMuted = payload.isMuted;
+
+      db.update(stageSlotsTable)
+        .set({ isMuted: payload.isMuted })
+        .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, payload.studentId)))
+        .catch(() => {});
+
+      io.to(globalRoom(sessionId)).emit("stage:muteStateChanged", {
+        studentId: payload.studentId, isMuted: payload.isMuted,
+      });
+    });
+
+    socket.on("stage:removeStudent", (payload: { studentId: string }) => {
+      if (!isStaff) return;
+      room.stageSlots.delete(payload.studentId);
+
+      db.delete(stageSlotsTable)
+        .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, payload.studentId)))
+        .catch(() => {});
+
+      io.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId: payload.studentId });
+    });
+
     // ── Leaderboard (Sprint 1 — ranked by correctness then speed) ──
     socket.on("showLeaderboard", () => {
       if (!isStaff || !room.activePoll) return;
@@ -496,6 +615,15 @@ export function setupSocketIO(httpServer: HttpServer) {
         markLeft(sessionId, userId);
         const entry = liveStateCache.get(`${sessionId}-${userId}`);
         if (entry) entry.currentStatus = "ABSENT";
+
+        // Sprint 3: auto-remove from stage if present
+        if (room.stageSlots.has(userId)) {
+          room.stageSlots.delete(userId);
+          db.delete(stageSlotsTable)
+            .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, userId)))
+            .catch(() => {});
+          io.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId: userId });
+        }
       }
       room.raisedHands.delete(userId);
     });
