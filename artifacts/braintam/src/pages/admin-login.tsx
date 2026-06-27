@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Shield, Users, BarChart3, Bell, BookOpen, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Shield, Users, BarChart3, Bell, BookOpen, Eye, EyeOff, Loader2, Settings2, TrendingUp, Megaphone } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
@@ -9,10 +9,11 @@ const RED = "#DC2626";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const perks = [
-  { icon: BarChart3, title: "Platform Analytics",  desc: "Real-time stats on users, enrollments and submissions" },
-  { icon: Users,     title: "User Management",     desc: "Create, promote and manage teachers and students" },
-  { icon: BookOpen,  title: "Assign & Enroll",     desc: "Assign teachers to courses and enroll students" },
-  { icon: Bell,      title: "Announcements",       desc: "Push notices and banners to the entire platform" },
+  { icon: BarChart3,   title: "Deep Platform Analytics",  desc: "Real-time dashboards — enrollment funnels, submission rates, class completion and student health scores" },
+  { icon: Users,       title: "Full User Management",     desc: "Create, promote and deactivate teacher, mentor and student accounts. Role-based access control across all portals" },
+  { icon: TrendingUp,  title: "Ignite CRM & Lead Engine",desc: "Full student pipeline from lead to paid. Demo batches, counsellor assignments and conversion tracking in one place" },
+  { icon: Settings2,   title: "Command Centre",           desc: "Manage courses, live classes, homework and tests from a single admin view — no switching between portals" },
+  { icon: Megaphone,   title: "Announcements & Alerts",   desc: "Push targeted notices, banners and reminders to students, teachers or the entire platform instantly" },
 ];
 
 export default function AdminLoginPage() {
@@ -69,49 +70,57 @@ export default function AdminLoginPage() {
           </Link>
         </div>
 
-        <div className="space-y-8 relative z-10">
+        <div className="space-y-6 relative z-10">
           <div>
-            <div
-              className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-4"
-              style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#FCA5A5" }}
-            >
+            <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-4"
+              style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#FCA5A5" }}>
               <Shield className="w-3.5 h-3.5" /> Admin Panel
             </div>
-            <h1 className="text-white font-black text-4xl leading-tight mb-3">
+            <h1 className="text-white font-black text-4xl leading-tight mb-2">
               Control Centre<br />
               <span style={{ color: "#FCA5A5" }}>for Braintam</span>
             </h1>
-            <p className="text-white/70 text-base leading-relaxed max-w-sm">
-              Full platform control — users, teachers, content, announcements and deep analytics, all from one place.
+            <p className="text-white/65 text-sm leading-relaxed">
+              Full platform control — users, content, CRM, analytics and announcements, all from one powerful dashboard.
             </p>
           </div>
 
-          <div className="space-y-3">
+          {/* Stats strip */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { val: "10K+",  label: "Students Managed" },
+              { val: "200+",  label: "Staff Members" },
+              { val: "Live",  label: "Real-time Data" },
+            ].map(s => (
+              <div key={s.label} className="flex flex-col items-center gap-1 rounded-xl py-2.5 px-2"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                <div className="font-black text-base text-white">{s.val}</div>
+                <div className="text-white/45 text-[10px] text-center leading-tight">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2.5">
             {perks.map(p => (
-              <div
-                key={p.title}
-                className="flex items-start gap-3 rounded-xl p-3.5"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-              >
+              <div key={p.title} className="flex items-start gap-3 rounded-xl p-3"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
                   style={{ background: "rgba(220,38,38,0.20)" }}>
                   <p.icon className="w-4 h-4" style={{ color: "#FCA5A5" }} />
                 </div>
                 <div>
                   <div className="text-white font-semibold text-sm">{p.title}</div>
-                  <div className="text-white/50 text-xs mt-0.5">{p.desc}</div>
+                  <div className="text-white/50 text-xs mt-0.5 leading-snug">{p.desc}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div
-            className="rounded-xl p-4 flex items-start gap-3"
-            style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.20)" }}
-          >
+          <div className="rounded-xl p-3.5 flex items-start gap-3"
+            style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.20)" }}>
             <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#FCA5A5" }} />
             <p className="text-white/60 text-xs leading-relaxed">
-              This portal is restricted to authorised administrators only. Unauthorised access attempts are logged and reported.
+              Restricted to authorised administrators only. All access attempts are logged and audited.
             </p>
           </div>
         </div>

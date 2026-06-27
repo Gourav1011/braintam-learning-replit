@@ -3,10 +3,10 @@ import { useAuth } from "@/components/auth-provider";
 import { Redirect } from "wouter";
 import { Student360Modal } from "@/pages/admin/student360-modal";
 import {
-  BookOpen, Users, Video, FileText, Clock, Plus, CheckCircle,
+  BookOpen, Users, Video, FileText, Clock, Timer, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
-  Phone, CheckCircle2, XCircle, Timer, Calendar, Bell, ChevronDown,
+  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -24,7 +24,7 @@ import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes" | "profile";
+type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes" | "profile" | "checkin";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
 interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; chapterId: number | null; topicId: number | null; }
@@ -685,6 +685,7 @@ export default function TeacherPage() {
     { id: "notes", label: "Notes & Resources", icon: LinkIcon },
     { id: "submissions", label: "Grade Work", icon: CheckCircle },
     { id: "attendance", label: "Attendance", icon: Clock },
+    { id: "checkin", label: "Check-in / Out", icon: Timer },
     { id: "profile", label: "My Profile", icon: UserCircle },
   ];
 
@@ -2095,6 +2096,19 @@ export default function TeacherPage() {
             apiFetch={apiFetch}
             flash={msg => setMsg({ text: msg, ok: true })}
           />
+        </div>
+      )}
+
+      {/* ── Check-in / Check-out ── */}
+      {tab === "checkin" && (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div>
+              <h2 className="text-xl font-black" style={{ color: NAVY }}>Daily Check-in / Check-out</h2>
+              <p className="text-sm text-gray-500 mt-1">Track your daily work hours. Check out at the end of the day with a work summary.</p>
+            </div>
+            <StaffCheckin apiFetch={apiFetch} role={role ?? "teacher"} />
+          </div>
         </div>
       )}
       </div>

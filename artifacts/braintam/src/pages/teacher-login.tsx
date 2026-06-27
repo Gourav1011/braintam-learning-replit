@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, BookOpen, Users, Video, ClipboardList, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Users, Video, ClipboardList, Eye, EyeOff, Loader2, Clock, Star, TrendingUp } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
 const NAVY = "#0B2B6B";
@@ -9,10 +9,11 @@ const TEAL = "#0891B2";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const perks = [
-  { icon: Video,         title: "Manage Live Classes",  desc: "Schedule, start and monitor your live sessions" },
-  { icon: BookOpen,      title: "Course Management",    desc: "Create and update lessons across your courses" },
-  { icon: ClipboardList, title: "Grade Submissions",    desc: "Review and grade homework and assignments" },
-  { icon: Users,         title: "Track Attendance",     desc: "Mark and view attendance for every class" },
+  { icon: Video,         title: "Live Class Manager",     desc: "Schedule, launch and monitor live sessions — with countdown timers and join links for every student" },
+  { icon: BookOpen,      title: "Course & Lesson Builder",desc: "Create chapters, topics and lessons. Upload drive links, videos and study materials in minutes" },
+  { icon: ClipboardList, title: "Homework & Assignments",  desc: "Set homework with MCQ or descriptive questions, assign marks and give per-student feedback" },
+  { icon: Users,         title: "Attendance Tracking",    desc: "Mark per-class attendance, filter by date range and export reports for admin review" },
+  { icon: Clock,         title: "Check-in / Check-out",   desc: "Log your work hours daily with a live timer. Submit your work summary and priorities at checkout" },
 ];
 
 export default function TeacherLoginPage() {
@@ -69,52 +70,58 @@ export default function TeacherLoginPage() {
           </Link>
         </div>
 
-        <div className="space-y-8 relative z-10">
+        <div className="space-y-6 relative z-10">
           <div>
-            <div
-              className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-4"
-              style={{ background: `${TEAL}25`, border: `1px solid ${TEAL}50`, color: "#67E8F9" }}
-            >
+            <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-4"
+              style={{ background: `${TEAL}25`, border: `1px solid ${TEAL}50`, color: "#67E8F9" }}>
               <BookOpen className="w-3.5 h-3.5" /> Teacher Portal
             </div>
-            <h1 className="text-white font-black text-4xl leading-tight mb-3">
+            <h1 className="text-white font-black text-4xl leading-tight mb-2">
               Welcome back,<br />
               <span style={{ color: "#67E8F9" }}>Educator!</span>
             </h1>
-            <p className="text-white/70 text-base leading-relaxed max-w-sm">
-              Your complete teaching hub — classes, grading, attendance and student progress all in one place.
+            <p className="text-white/65 text-sm leading-relaxed">
+              Your complete teaching hub — classes, grading, attendance and daily work tracking, all in one place.
             </p>
           </div>
 
-          <div className="space-y-3">
+          {/* Stats strip */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: Star,        val: "4.9★",    label: "Teacher Rating" },
+              { icon: Users,       val: "500+",    label: "Classes Managed" },
+              { icon: TrendingUp,  val: "98%",     label: "On-Time Rate" },
+            ].map(s => (
+              <div key={s.label} className="flex flex-col items-center gap-1 rounded-xl py-2.5 px-2"
+                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                <div className="font-black text-base text-white">{s.val}</div>
+                <div className="text-white/45 text-[10px] text-center leading-tight">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2.5">
             {perks.map(p => (
-              <div
-                key={p.title}
-                className="flex items-start gap-3 rounded-xl p-3.5"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
-              >
+              <div key={p.title} className="flex items-start gap-3 rounded-xl p-3"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
                   style={{ background: `${TEAL}30` }}>
                   <p.icon className="w-4 h-4" style={{ color: "#67E8F9" }} />
                 </div>
                 <div>
                   <div className="text-white font-semibold text-sm">{p.title}</div>
-                  <div className="text-white/50 text-xs mt-0.5">{p.desc}</div>
+                  <div className="text-white/50 text-xs mt-0.5 leading-snug">{p.desc}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div
-            className="rounded-xl p-4"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-          >
-            <p className="text-white/70 text-sm italic">
-              "Braintam's teacher portal makes managing 200+ students feel effortless. Everything I need is right here."
+          <div className="rounded-xl p-3.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
+            <p className="text-white/70 text-sm italic leading-snug">
+              "Managing 200+ students used to feel overwhelming. With Braintam's portal I can grade, schedule and track attendance in under 10 minutes."
             </p>
-            <div className="flex items-center gap-2 mt-3">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                style={{ background: TEAL }}>P</div>
+            <div className="flex items-center gap-2 mt-2.5">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs" style={{ background: TEAL }}>P</div>
               <div>
                 <div className="text-white text-xs font-semibold">Poonam</div>
                 <div className="text-white/40 text-xs">Co-Founder & COO, Braintam</div>

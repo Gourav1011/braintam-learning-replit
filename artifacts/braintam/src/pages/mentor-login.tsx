@@ -10,10 +10,11 @@ const AMBER = "#D97706";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const perks = [
-  { icon: Target,        title: "Full CRM Pipeline",      desc: "Track every student through New Lead → Paid Student with lead stage management" },
-  { icon: UserCheck,     title: "Student 360 Profiles",   desc: "Permanent timeline, parent info, health scores and full history in one view" },
-  { icon: MessageSquare, title: "Follow-Up Management",   desc: "Status-coded reminders — Due Today, Overdue, Upcoming, Completed" },
-  { icon: Bell,          title: "Task Management",        desc: "Assign and track mentor tasks: Call Parent, Fee Reminder, Attendance Follow-Up" },
+  { icon: Target,        title: "Full CRM Pipeline",       desc: "Move students through every stage — New Lead → Demo → Follow-Up → Interested → Paid — with one-click status updates" },
+  { icon: UserCheck,     title: "Student 360° Profiles",   desc: "Permanent activity timeline, parent contact, health score, academic history and all follow-ups in one powerful view" },
+  { icon: MessageSquare, title: "Smart Follow-Up Engine",  desc: "Status-coded reminders color-coded by urgency — Overdue, Due Today, Upcoming and Completed — so nothing slips through" },
+  { icon: Bell,          title: "Real-time Notifications", desc: "Instant alerts for new assignments, payment updates, demo enrollments and follow-up tasks assigned by admin" },
+  { icon: TrendingUp,    title: "EOD Reports & Analytics", desc: "Log daily calls, follow-ups and doubt sessions. Submit end-of-day summaries with tomorrow's priorities to admin" },
 ];
 
 type Step = "credentials" | "select-portal";
@@ -99,49 +100,64 @@ export default function MentorLoginPage() {
           </Link>
         </div>
 
-        <div className="space-y-8 relative z-10">
+        <div className="space-y-6 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-4"
               style={{ background: `${GREEN}25`, border: `1px solid ${GREEN}50`, color: "#6EE7B7" }}>
-              <Target className="w-3.5 h-3.5" /> BTL CRM
+              <Target className="w-3.5 h-3.5" /> Mentor CRM Portal
             </div>
-            <h1 className="text-white font-black text-4xl leading-tight mb-3">
+            <h1 className="text-white font-black text-4xl leading-tight mb-2">
               Welcome back,<br />
               <span style={{ color: "#6EE7B7" }}>Mentor!</span>
             </h1>
-            <p className="text-white/70 text-base leading-relaxed max-w-sm">
-              Your Student Success CRM — pipeline management, permanent timelines, and follow-up tracking all in one place.
+            <p className="text-white/65 text-sm leading-relaxed">
+              Your Student Success hub — pipeline, 360° profiles, follow-ups, EOD reports and real-time notifications all in one place.
             </p>
           </div>
 
-          <div className="space-y-3">
+          {/* Stats strip */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { val: "360°",    label: "Student Profiles" },
+              { val: "CRM",     label: "Full Pipeline" },
+              { val: "Live",    label: "Notifications" },
+            ].map(s => (
+              <div key={s.label} className="flex flex-col items-center gap-1 rounded-xl py-2.5 px-2"
+                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                <div className="font-black text-base text-white">{s.val}</div>
+                <div className="text-white/45 text-[10px] text-center leading-tight">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2.5">
             {perks.map(p => {
               const Icon = p.icon;
               return (
-                <div key={p.title} className="flex items-start gap-3 rounded-xl p-3.5"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                <div key={p.title} className="flex items-start gap-3 rounded-xl p-3"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
                     style={{ background: `${GREEN}30` }}>
                     <Icon className="w-4 h-4" style={{ color: "#6EE7B7" }} />
                   </div>
                   <div>
                     <div className="text-white font-semibold text-sm">{p.title}</div>
-                    <div className="text-white/50 text-xs mt-0.5">{p.desc}</div>
+                    <div className="text-white/50 text-xs mt-0.5 leading-snug">{p.desc}</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            <p className="text-white/70 text-sm italic">
-              "BTL CRM gives me a clear 360° view of every student — from lead stage to permanent timeline. I can act before they fall behind."
+          <div className="rounded-xl p-3.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
+            <p className="text-white/70 text-sm italic leading-snug">
+              "BTL CRM gives me a clear 360° view of every student — from lead to paid. I can track follow-ups, log calls and submit EOD reports without switching apps."
             </p>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-2.5">
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                style={{ background: GREEN }}>M</div>
+                style={{ background: GREEN }}>S</div>
               <div>
-                <div className="text-white text-xs font-semibold">Mentor Team</div>
+                <div className="text-white text-xs font-semibold">Sales Mentor Team</div>
                 <div className="text-white/40 text-xs">Student Success, Braintam</div>
               </div>
             </div>
