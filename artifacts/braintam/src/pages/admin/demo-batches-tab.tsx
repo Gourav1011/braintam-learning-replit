@@ -169,6 +169,9 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   const [editSessionForm, setEditSessionForm] = useState(emptyEditSessionForm);
   const [savingSession, setSavingSession] = useState(false);
 
+  // Grade filter
+  const [gradeFilter, setGradeFilter] = useState<number | null>(null);
+
   const loadBatches = useCallback(async () => {
     setLoading(true);
     try {
@@ -492,11 +495,18 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   }
 
   // ── Filtered batch list ─────────────────────────────────────
-  const filteredBatches = batches.filter(b =>
-    !searchQ || b.title.toLowerCase().includes(searchQ.toLowerCase()) ||
-    (b.teacherName ?? "").toLowerCase().includes(searchQ.toLowerCase()) ||
-    (b.subject ?? "").toLowerCase().includes(searchQ.toLowerCase())
-  );
+  const gradeCounts: Record<number, number> = {};
+  for (const b of batches) {
+    if (b.grade) gradeCounts[b.grade] = (gradeCounts[b.grade] ?? 0) + 1;
+  }
+
+  const filteredBatches = batches.filter(b => {
+    if (gradeFilter !== null && b.grade !== gradeFilter) return false;
+    if (!searchQ) return true;
+    return b.title.toLowerCase().includes(searchQ.toLowerCase()) ||
+      (b.teacherName ?? "").toLowerCase().includes(searchQ.toLowerCase()) ||
+      (b.subject ?? "").toLowerCase().includes(searchQ.toLowerCase());
+  });
 
   // ── Render ──────────────────────────────────────────────────
   if (selectedBatch) {
@@ -610,10 +620,39 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       )}
 
       {/* Search */}
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input placeholder="Search by batch name, course, teacher..." value={searchQ}
           onChange={e => setSearchQ(e.target.value)} className="pl-9 bg-white" />
+      </div>
+
+      {/* Grade filter tabs */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3 scrollbar-hide">
+        <button
+          onClick={() => setGradeFilter(null)}
+          className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${gradeFilter === null ? "border-transparent text-white shadow-sm" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
+          style={gradeFilter === null ? { background: NAVY } : {}}>
+          All
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${gradeFilter === null ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+            {batches.length}
+          </span>
+        </button>
+        {GRADES.map(g => {
+          const count = gradeCounts[g] ?? 0;
+          if (count === 0) return null;
+          const active = gradeFilter === g;
+          return (
+            <button key={g}
+              onClick={() => setGradeFilter(active ? null : g)}
+              className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${active ? "border-transparent text-white shadow-sm" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
+              style={active ? { background: ORANGE } : {}}>
+              G{g}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Summary stats */}
@@ -780,13 +819,13 @@ interface BatchDetailProps {
 
 function BatchDetail(p: BatchDetailProps) {
   const { batch } = p;
-  const TABS: { key: DetailTab; label: string; icon: typeof Eye }[] = [
-    { key: "overview", label: "Overview", icon: Eye },
-    { key: "students", label: "Students", icon: Users },
-    { key: "sessions", label: "Sessions", icon: Video },
-    { key: "mentor-tracking", label: "Mentor Tracking", icon: Phone },
-    { key: "analytics", label: "Analytics", icon: BarChart3 },
-    { key: "settings", label: "Settings", icon: Settings2 },
+  const TABS: { key: DetailTab; label: string; icon: typeof Eye; badge?: number; sub?: string }[] = [
+    { key: "overview", label: "Overview", icon: Eye, sub: batch.status === "active" ? "Live" : batch.status === "completed" ? "Done" : "Upcoming" },
+    { key: "students", label: "Students", icon: Users, badge: p.enrollments.length, sub: `${batch.enrolledCount ?? 0} enrolled` },
+    { key: "sessions", label: "Sessions", icon: Video, badge: p.sessions.length || (batch.totalDays ?? 0), sub: `${batch.totalDays ?? 5} days` },
+    { key: "mentor-tracking", label: "Tracking", icon: Phone, sub: "Mentor" },
+    { key: "analytics", label: "Analytics", icon: BarChart3, sub: `${batch.conversionRate ?? 0}% conv.` },
+    { key: "settings", label: "Details", icon: Settings2, sub: "Edit batch" },
   ];
 
   return (
@@ -836,8 +875,21 @@ function BatchDetail(p: BatchDetailProps) {
           const active = p.detailTab === t.key;
           return (
             <button key={t.key} onClick={() => p.setDetailTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-all ${active ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
-              <Icon className="w-3.5 h-3.5" /> {t.label}
+              className={`flex flex-col items-center gap-0 px-2.5 py-1.5 min-w-[60px] whitespace-nowrap border-b-2 transition-all ${active ? "border-blue-600" : "border-transparent hover:border-gray-200"}`}>
+              <div className={`flex items-center gap-1 text-[11px] font-bold ${active ? "text-blue-600" : "text-gray-600"}`}>
+                <Icon className="w-3 h-3" />
+                {t.label}
+                {t.badge !== undefined && t.badge > 0 && (
+                  <span className={`text-[9px] font-black px-1 py-px rounded-full leading-none ${active ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
+                    {t.badge}
+                  </span>
+                )}
+              </div>
+              {t.sub && (
+                <span className={`text-[9px] font-medium leading-none mt-0.5 ${active ? "text-blue-400" : "text-gray-400"}`}>
+                  {t.sub}
+                </span>
+              )}
             </button>
           );
         })}
