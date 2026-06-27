@@ -151,184 +151,199 @@ export default function MentorLoginPage() {
         <div className="text-white/25 text-xs relative z-10">© 2026 Braintam Learning. All Rights Reserved.</div>
       </div>
 
-      {/* ── Right form panel ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 lg:px-8 lg:py-8 bg-gray-50 overflow-y-auto relative">
+      {/* ── Right panel ── */}
+      <div className="flex-1 flex flex-col bg-white overflow-y-auto relative">
+
+        {/* Back link */}
         <Link href="/">
-          <div className="absolute top-5 left-5 flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer" style={{ color: NAVY }}>
+          <div className="absolute top-5 left-5 flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity cursor-pointer z-10" style={{ color: NAVY }}>
             <ArrowLeft className="w-4 h-4" /> Back
           </div>
         </Link>
 
-        <div className="flex items-center gap-2 mb-6 lg:hidden">
+        {/* Mobile logo */}
+        <div className="flex items-center gap-2 pt-16 px-8 pb-4 lg:hidden">
           <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
           <span className="font-black text-xl" style={{ color: NAVY }}>Braintam</span>
         </div>
 
-        <div className="w-full max-w-[420px]">
+        {/* Content — fills entire right panel, centered vertically */}
+        <div className="flex-1 flex items-center justify-center px-8 py-12">
+          <div className="w-full max-w-[460px] space-y-5">
 
-          {/* ── Step 1: Credentials ── */}
-          {step === "credentials" && (
-            <>
-              <div className="w-full mb-5 px-4 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold"
-                style={{ background: `${GREEN}12`, border: `1px solid ${GREEN}35`, color: GREEN }}>
-                <Target className="w-4 h-4 flex-shrink-0" />
-                BTL CRM — sign in to manage your students
-              </div>
+            {/* ── Step 1: Credentials ── */}
+            {step === "credentials" && (
+              <>
+                {/* CRM badge */}
+                <div className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl"
+                  style={{ background: `${GREEN}12`, border: `1px solid ${GREEN}35`, color: GREEN }}>
+                  <Target className="w-4 h-4 flex-shrink-0" />
+                  BTL CRM — sign in to manage your students
+                </div>
 
-              <div className="w-full bg-white rounded-2xl shadow-xl p-7">
-                <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>BTL CRM Sign In</h2>
-                <p className="text-sm text-gray-500 mb-6">Enter your credentials provided by your admin.</p>
+                {/* Form card */}
+                <div className="bg-white rounded-2xl p-8" style={{ border: "1.5px solid #E5E7EB", boxShadow: "0 4px 24px rgba(11,43,107,0.07)" }}>
+                  <h2 className="text-2xl font-black mb-1" style={{ color: NAVY }}>BTL CRM Sign In</h2>
+                  <p className="text-sm text-gray-500 mb-7">Enter your credentials provided by your admin.</p>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Email address</label>
-                    <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="you@braintam.com"
-                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                      style={{ border: "1.5px solid #E5E7EB", color: NAVY, background: "#F8FAFC" }}
-                      onFocus={e => (e.currentTarget.style.border = `1.5px solid ${GREEN}`)}
-                      onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Password</label>
-                    <div className="relative">
-                      <input type={showPw ? "text" : "password"} required autoComplete="current-password"
-                        value={password} onChange={e => setPassword(e.target.value)}
-                        placeholder="Your password"
-                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all pr-11"
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Email address</label>
+                      <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
+                        placeholder="you@braintam.com"
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
                         style={{ border: "1.5px solid #E5E7EB", color: NAVY, background: "#F8FAFC" }}
                         onFocus={e => (e.currentTarget.style.border = `1.5px solid ${GREEN}`)}
                         onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
                       />
-                      <button type="button" onClick={() => setShowPw(p => !p)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                        {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
                     </div>
-                  </div>
 
-                  {error && (
-                    <div className="px-4 py-3 rounded-xl text-sm font-medium text-red-700 bg-red-50 border border-red-200">{error}</div>
-                  )}
-
-                  <button type="submit" disabled={loading}
-                    className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-                    style={{ background: `linear-gradient(135deg, ${GREEN}, #047857)` }}>
-                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {loading ? "Signing in…" : "Sign In to BTL CRM"}
-                  </button>
-                </form>
-              </div>
-
-              <div className="flex gap-4 mt-5 text-xs text-center text-gray-400 justify-center">
-                <Link href="/admin/login">
-                  <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>Admin →</span>
-                </Link>
-                <span>·</span>
-                <Link href="/teacher/login">
-                  <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>Teacher →</span>
-                </Link>
-              </div>
-            </>
-          )}
-
-          {/* ── Step 2: Select portal type ── */}
-          {step === "select-portal" && (
-            <div className="w-full bg-white rounded-2xl shadow-xl p-7">
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle2 className="w-5 h-5" style={{ color: GREEN }} />
-                <h2 className="text-xl font-black" style={{ color: NAVY }}>Signed in!</h2>
-              </div>
-              <p className="text-sm text-gray-500 mb-6">
-                Which portal would you like to open today?
-              </p>
-
-              {/* Detected type info */}
-              <div className="mb-5 px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2"
-                style={{
-                  background: dbMentorType === "sales" ? "#FFFBEB" : "#ECFDF5",
-                  border: `1px solid ${dbMentorType === "sales" ? "#FCD34D" : "#6EE7B7"}`,
-                  color: dbMentorType === "sales" ? AMBER : GREEN,
-                }}>
-                {dbMentorType === "sales" ? "💼" : "📚"}
-                Your account is set up as a <strong className="ml-1">{dbMentorType === "sales" ? "Sales Mentor" : "Academic Mentor"}</strong>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {/* Academic card */}
-                <button
-                  onClick={() => enterPortal("academic")}
-                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all text-left group"
-                  style={{
-                    borderColor: dbMentorType === "academic" ? GREEN : "#E5E7EB",
-                    background: dbMentorType === "academic" ? "#ECFDF5" : "white",
-                  }}>
-                  {dbMentorType === "academic" && (
-                    <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: GREEN, color: "white" }}>Your role</span>
-                  )}
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{ background: dbMentorType === "academic" ? `${GREEN}20` : "#F3F4F6" }}>
-                    <BookOpen className="w-6 h-6" style={{ color: dbMentorType === "academic" ? GREEN : "#9CA3AF" }} />
-                  </div>
-                  <div className="text-center">
-                    <div className="font-black text-sm" style={{ color: dbMentorType === "academic" ? GREEN : "#374151" }}>
-                      📚 Academic
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>Password</label>
+                      <div className="relative">
+                        <input type={showPw ? "text" : "password"} required autoComplete="current-password"
+                          value={password} onChange={e => setPassword(e.target.value)}
+                          placeholder="Your password"
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all pr-11"
+                          style={{ border: "1.5px solid #E5E7EB", color: NAVY, background: "#F8FAFC" }}
+                          onFocus={e => (e.currentTarget.style.border = `1.5px solid ${GREEN}`)}
+                          onBlur={e => (e.currentTarget.style.border = "1.5px solid #E5E7EB")}
+                        />
+                        <button type="button" onClick={() => setShowPw(p => !p)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                          {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-gray-400 mt-0.5 leading-tight">
-                      Students, follow-ups, attendance & homework
-                    </div>
-                  </div>
-                </button>
 
-                {/* Sales card */}
-                <button
-                  onClick={() => enterPortal("sales")}
-                  className="relative flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all text-left group"
-                  style={{
-                    borderColor: dbMentorType === "sales" ? AMBER : "#E5E7EB",
-                    background: dbMentorType === "sales" ? "#FFFBEB" : "white",
-                  }}>
-                  {dbMentorType === "sales" && (
-                    <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: AMBER, color: "white" }}>Your role</span>
-                  )}
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{ background: dbMentorType === "sales" ? `${AMBER}20` : "#F3F4F6" }}>
-                    <TrendingUp className="w-6 h-6" style={{ color: dbMentorType === "sales" ? AMBER : "#9CA3AF" }} />
-                  </div>
-                  <div className="text-center">
-                    <div className="font-black text-sm" style={{ color: dbMentorType === "sales" ? AMBER : "#374151" }}>
-                      💼 Sales (SSM)
-                    </div>
-                    <div className="text-[10px] text-gray-400 mt-0.5 leading-tight">
-                      Lead pipeline, conversions & follow-ups
-                    </div>
-                  </div>
-                </button>
-              </div>
+                    {error && (
+                      <div className="px-4 py-3 rounded-xl text-sm font-medium text-red-700 bg-red-50 border border-red-200">{error}</div>
+                    )}
 
-              {accessDenied && (
-                <div className="mt-4 px-4 py-3 rounded-xl text-sm font-semibold text-red-700 bg-red-50 border border-red-200 flex items-start gap-2">
-                  <span className="text-base leading-none mt-0.5">🚫</span>
+                    <button type="submit" disabled={loading}
+                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                      style={{ background: `linear-gradient(135deg, ${GREEN}, #047857)` }}>
+                      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {loading ? "Signing in…" : "Sign In to BTL CRM"}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Other portal links */}
+                <div className="flex gap-4 text-xs text-gray-400 justify-center">
+                  <Link href="/admin/login">
+                    <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>Admin Login →</span>
+                  </Link>
+                  <span>·</span>
+                  <Link href="/teacher/login">
+                    <span className="font-semibold cursor-pointer hover:opacity-70 transition-opacity" style={{ color: NAVY }}>Teacher Login →</span>
+                  </Link>
+                </div>
+              </>
+            )}
+
+            {/* ── Step 2: Select portal ── */}
+            {step === "select-portal" && (
+              <>
+                {/* Success header */}
+                <div className="flex items-center gap-3 px-5 py-4 rounded-2xl"
+                  style={{ background: "#ECFDF5", border: `1.5px solid #6EE7B7` }}>
+                  <CheckCircle2 className="w-7 h-7 flex-shrink-0" style={{ color: GREEN }} />
                   <div>
-                    <div className="font-black">Access Denied</div>
-                    <div className="text-xs font-normal mt-0.5">
-                      Your account is set up as a <strong>{dbMentorType === "sales" ? "Sales (SSM)" : "Academic"} Mentor</strong>. You cannot open the {dbMentorType === "sales" ? "Academic" : "Sales"} portal. Contact your admin to change your account type.
-                    </div>
+                    <div className="font-black text-lg leading-tight" style={{ color: NAVY }}>Signed in!</div>
+                    <div className="text-sm text-gray-500 leading-tight">Which portal would you like to open today?</div>
                   </div>
                 </div>
-              )}
 
-              {!accessDenied && (
-                <p className="text-[10px] text-gray-400 text-center mt-4">
-                  Select the portal that matches your role above.
-                </p>
-              )}
-            </div>
-          )}
+                {/* Account type badge */}
+                <div className="px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2"
+                  style={{
+                    background: dbMentorType === "sales" ? "#FFFBEB" : "#ECFDF5",
+                    border: `1.5px solid ${dbMentorType === "sales" ? "#FCD34D" : "#6EE7B7"}`,
+                    color: dbMentorType === "sales" ? AMBER : GREEN,
+                  }}>
+                  <span className="text-base">{dbMentorType === "sales" ? "💼" : "📚"}</span>
+                  Your account is set up as a{" "}
+                  <strong>{dbMentorType === "sales" ? "Sales Mentor" : "Academic Mentor"}</strong>
+                </div>
+
+                {/* Portal cards — full width side by side */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Academic */}
+                  <button onClick={() => enterPortal("academic")}
+                    className="relative flex flex-col items-center gap-4 py-7 px-5 rounded-2xl border-2 transition-all hover:scale-[1.02]"
+                    style={{
+                      borderColor: dbMentorType === "academic" ? GREEN : "#E5E7EB",
+                      background: dbMentorType === "academic" ? "#ECFDF5" : "#FAFAFA",
+                      boxShadow: dbMentorType === "academic" ? `0 4px 16px ${GREEN}25` : "0 2px 8px rgba(0,0,0,0.05)",
+                    }}>
+                    {dbMentorType === "academic" && (
+                      <span className="absolute top-3 right-3 text-[10px] font-black px-2 py-0.5 rounded-full"
+                        style={{ background: GREEN, color: "#fff" }}>Your role</span>
+                    )}
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                      style={{ background: dbMentorType === "academic" ? `${GREEN}20` : "#F3F4F6" }}>
+                      <BookOpen className="w-7 h-7" style={{ color: dbMentorType === "academic" ? GREEN : "#9CA3AF" }} />
+                    </div>
+                    <div className="text-center">
+                      <div className="font-black text-base mb-1" style={{ color: dbMentorType === "academic" ? GREEN : "#374151" }}>
+                        📚 Academic
+                      </div>
+                      <div className="text-[11px] text-gray-400 leading-snug">
+                        Students, follow-ups,<br />attendance & homework
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Sales */}
+                  <button onClick={() => enterPortal("sales")}
+                    className="relative flex flex-col items-center gap-4 py-7 px-5 rounded-2xl border-2 transition-all hover:scale-[1.02]"
+                    style={{
+                      borderColor: dbMentorType === "sales" ? AMBER : "#E5E7EB",
+                      background: dbMentorType === "sales" ? "#FFFBEB" : "#FAFAFA",
+                      boxShadow: dbMentorType === "sales" ? `0 4px 16px ${AMBER}25` : "0 2px 8px rgba(0,0,0,0.05)",
+                    }}>
+                    {dbMentorType === "sales" && (
+                      <span className="absolute top-3 right-3 text-[10px] font-black px-2 py-0.5 rounded-full"
+                        style={{ background: AMBER, color: "#fff" }}>Your role</span>
+                    )}
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                      style={{ background: dbMentorType === "sales" ? `${AMBER}20` : "#F3F4F6" }}>
+                      <TrendingUp className="w-7 h-7" style={{ color: dbMentorType === "sales" ? AMBER : "#9CA3AF" }} />
+                    </div>
+                    <div className="text-center">
+                      <div className="font-black text-base mb-1" style={{ color: dbMentorType === "sales" ? AMBER : "#374151" }}>
+                        💼 Sales (SSM)
+                      </div>
+                      <div className="text-[11px] text-gray-400 leading-snug">
+                        Lead pipeline,<br />conversions & follow-ups
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Access denied */}
+                {accessDenied && (
+                  <div className="px-4 py-3 rounded-xl text-sm font-semibold text-red-700 bg-red-50 border border-red-200 flex items-start gap-2">
+                    <span className="text-base leading-none mt-0.5">🚫</span>
+                    <div>
+                      <div className="font-black">Access Denied</div>
+                      <div className="text-xs font-normal mt-0.5">
+                        Your account is set up as a <strong>{dbMentorType === "sales" ? "Sales (SSM)" : "Academic"} Mentor</strong>. You cannot open the {dbMentorType === "sales" ? "Academic" : "Sales"} portal. Contact your admin to change your account type.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!accessDenied && (
+                  <p className="text-[11px] text-gray-400 text-center">
+                    Click the portal that matches your role · Highlighted is your assigned type
+                  </p>
+                )}
+              </>
+            )}
+
+          </div>
         </div>
       </div>
     </div>

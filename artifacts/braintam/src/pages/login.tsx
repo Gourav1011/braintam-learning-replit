@@ -219,18 +219,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-400 mb-2">Are you staff?</p>
-            <div className="flex items-center justify-center gap-4">
-              <Link href="/teacher/login" className="text-xs font-semibold hover:underline" style={{ color: NAVY }}>
-                Teacher Login
-              </Link>
-              <span className="text-gray-300">·</span>
-              <Link href="/admin/login" className="text-xs font-semibold hover:underline" style={{ color: NAVY }}>
-                Admin Login
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
     </div>
