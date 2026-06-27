@@ -133,7 +133,7 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
               style={{ gridTemplateColumns: "52px 1fr 72px", background: "#F8FAFF" }}
             >
               <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">S.No</div>
-              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Name</div>
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center">Name</div>
               <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest text-right">Conv. %</div>
             </div>
 
@@ -157,8 +157,8 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
                     {sNo}
                   </div>
 
-                  {/* Name — left-aligned, plain black */}
-                  <div className="flex items-center min-w-0">
+                  {/* Name — centered, plain black */}
+                  <div className="flex items-center justify-center min-w-0">
                     <span className="font-semibold text-sm truncate text-gray-900">
                       {row.mentorName}
                     </span>
