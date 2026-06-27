@@ -10,8 +10,8 @@ import {
   Target, CheckSquare, History, ExternalLink, Video, Trash2,
   Zap, HelpCircle, ClipboardCheck, Trophy, TrendingUp, LayoutGrid, List, BarChart3,
 } from "lucide-react";
-import { LeaderboardTab } from "./leaderboard-tab";
-import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, SalesLeaderboardTab, NonActiveLeadsTab } from "./sales-calling-queue";
+import { GradeLeaderboardTab } from "./grade-leaderboard-tab";
+import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, NonActiveLeadsTab } from "./sales-calling-queue";
 import { SalesMentorPortal } from "./sales-mentor-portal";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -1034,7 +1034,6 @@ export default function BTLCRMPage() {
     { key: "students",      label: "Students",      icon: Users },
     { key: "follow-ups",    label: "Follow-Ups",    icon: MessageSquare },
     { key: "tasks",         label: "Tasks",         icon: CheckSquare },
-    { key: "leaderboard",   label: "Leaderboard",   icon: Trophy },
     { key: "attendance",    label: "Attendance",    icon: Calendar },
     { key: "live-classes",  label: "Live Classes",  icon: Video },
     { key: "doubt-sessions",label: "Doubt Sessions",icon: HelpCircle },
@@ -2676,10 +2675,8 @@ export default function BTLCRMPage() {
         )}
 
         {/* ════ LEADERBOARD ════ */}
-        {tab === "leaderboard" && (
-          isSales
-            ? <SalesLeaderboardTab myId={student.id} />
-            : <LeaderboardTab myId={student.id} />
+        {tab === "leaderboard" && isSales && (
+          <GradeLeaderboardTab myId={student.id} />
         )}
       </div>
       </div>
