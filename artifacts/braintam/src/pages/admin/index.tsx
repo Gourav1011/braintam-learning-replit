@@ -73,6 +73,7 @@ import { IgniteTab, IgniteContentArea, type IgniteView } from "./ignite-tab";
 import { AssessmentsTab } from "./assessments-tab";
 import { CommandCenterTab } from "./command-center-tab";
 import { IgniteAnalyticsTab } from "./ignite-analytics-tab";
+import { ReportsAnalyticsTab } from "./reports-analytics-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -110,6 +111,7 @@ type Tab =
   | "revenue-analytics"
   | "assessments"
   | "ignite-analytics"
+  | "reports-analytics"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1307,6 +1309,7 @@ function AdminPageInner() {
             { label: "Mastery Analytics", icon: BarChart3, tab: "analytics" },
             { label: "Ignite Analytics", icon: Zap, tab: "ignite-analytics" },
             { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
+            { label: "Reports & Analytics", icon: BarChart3, tab: "reports-analytics" },
           ],
         },
         {
@@ -3106,6 +3109,9 @@ function AdminPageInner() {
 
         {/* ── Ignite Analytics ─────────────────────────────────────────── */}
         {tab === "ignite-analytics" && <IgniteAnalyticsTab />}
+
+        {/* ── Reports & Analytics ──────────────────────────────────────── */}
+        {tab === "reports-analytics" && <ReportsAnalyticsTab />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}

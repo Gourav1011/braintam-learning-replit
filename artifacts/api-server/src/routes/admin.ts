@@ -1945,6 +1945,150 @@ router.get("/admin/students/:id/assessments", allStaffAuth, async (req, res) => 
   });
 });
 
+// ── Reports & Analytics Summary ───────────────────────────────────
+router.get("/admin/reports/summary", adminOnly, async (req, res) => {
+  const { from, to } = req.query;
+  const now = new Date();
+
+  let fromDate: Date, toDate: Date;
+  if (from && to) {
+    fromDate = new Date(String(from) + "T00:00:00+05:30");
+    toDate   = new Date(String(to)   + "T23:59:59+05:30");
+  } else {
+    fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    toDate   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
+
+  const todayIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayStart = new Date(`${todayIST.getFullYear()}-${String(todayIST.getMonth()+1).padStart(2,"0")}-${String(todayIST.getDate()).padStart(2,"0")}T00:00:00+05:30`);
+  const todayEnd   = new Date(`${todayIST.getFullYear()}-${String(todayIST.getMonth()+1).padStart(2,"0")}-${String(todayIST.getDate()).padStart(2,"0")}T23:59:59+05:30`);
+
+  const [leadsRows, activeMentorRows, todayConvRows, paymentRows] = await Promise.all([
+    db.execute(sql`
+      SELECT assignment_status, grade, lead_source,
+             assigned_mentor_id, assigned_mentor_name,
+             amount_paise, course_value,
+             (paid_at AT TIME ZONE 'Asia/Kolkata')::date AS paid_date,
+             converted_date
+      FROM ignite_paid_students
+      WHERE paid_at >= ${fromDate} AND paid_at <= ${toDate}
+    `),
+    db.execute(sql`
+      SELECT COUNT(DISTINCT assigned_mentor_id) AS cnt
+      FROM ignite_paid_students
+      WHERE assigned_mentor_id IS NOT NULL
+    `),
+    db.execute(sql`
+      SELECT COUNT(*) AS cnt FROM ignite_paid_students
+      WHERE converted_date >= ${todayStart} AND converted_date <= ${todayEnd}
+    `),
+    db.execute(sql`
+      SELECT status, COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total
+      FROM payments
+      WHERE created_at >= ${fromDate} AND created_at <= ${toDate}
+      GROUP BY status
+    `),
+  ]);
+
+  const leads = leadsRows.rows as {
+    assignment_status: string; grade: number; lead_source: string | null;
+    assigned_mentor_id: number | null; assigned_mentor_name: string | null;
+    amount_paise: number; course_value: number | null; paid_date: string;
+    converted_date: Date | null;
+  }[];
+
+  const total     = leads.length;
+  const converted = leads.filter(l => l.assignment_status === "converted").length;
+  const assigned  = leads.filter(l => l.assignment_status !== "unassigned").length;
+  const demoJoined = leads.filter(l => ["demo_started","demo_completed","converted"].includes(l.assignment_status)).length;
+  const demoCompleted = leads.filter(l => ["demo_completed","converted"].includes(l.assignment_status)).length;
+  const dropped   = leads.filter(l => l.assignment_status === "dropped").length;
+  const demoRevenue  = leads.reduce((s, l) => s + (l.amount_paise || 0), 0) / 100;
+  const courseRevenue = leads.filter(l => l.assignment_status === "converted").reduce((s, l) => s + (l.course_value || 0), 0);
+
+  // Grade-wise
+  const gradeMap: Record<number, { leads: number; converted: number; revenue: number }> = {};
+  for (const l of leads) {
+    if (!gradeMap[l.grade]) gradeMap[l.grade] = { leads: 0, converted: 0, revenue: 0 };
+    gradeMap[l.grade].leads++;
+    if (l.assignment_status === "converted") { gradeMap[l.grade].converted++; gradeMap[l.grade].revenue += l.course_value || 0; }
+  }
+
+  // Mentor performance
+  const mentorMap: Record<string, { name: string; leads: number; converted: number; revenue: number }> = {};
+  for (const l of leads) {
+    if (!l.assigned_mentor_id) continue;
+    const k = String(l.assigned_mentor_id);
+    if (!mentorMap[k]) mentorMap[k] = { name: l.assigned_mentor_name || "Unknown", leads: 0, converted: 0, revenue: 0 };
+    mentorMap[k].leads++;
+    if (l.assignment_status === "converted") { mentorMap[k].converted++; mentorMap[k].revenue += l.course_value || 0; }
+  }
+
+  // Lead source
+  const sourceMap: Record<string, { leads: number; converted: number; revenue: number }> = {};
+  for (const l of leads) {
+    const src = l.lead_source || "Unknown";
+    if (!sourceMap[src]) sourceMap[src] = { leads: 0, converted: 0, revenue: 0 };
+    sourceMap[src].leads++;
+    if (l.assignment_status === "converted") { sourceMap[src].converted++; sourceMap[src].revenue += l.course_value || 0; }
+  }
+
+  // Daily trend
+  const dailyMap: Record<string, { date: string; leads: number; converted: number; revenue: number }> = {};
+  for (const l of leads) {
+    const d = String(l.paid_date);
+    if (!dailyMap[d]) dailyMap[d] = { date: d, leads: 0, converted: 0, revenue: 0 };
+    dailyMap[d].leads++;
+    if (l.assignment_status === "converted") { dailyMap[d].converted++; dailyMap[d].revenue += l.course_value || 0; }
+  }
+
+  // Payment summary
+  const pmtRows = paymentRows.rows as { status: string; cnt: string; total: string }[];
+  const pmtSummary = { captured: 0, failed: 0, created: 0, total: 0 };
+  for (const p of pmtRows) {
+    const amt = Number(p.total) / 100;
+    if (p.status === "captured") { pmtSummary.captured = Number(p.cnt); pmtSummary.total += amt; }
+    else if (p.status === "failed") pmtSummary.failed = Number(p.cnt);
+    else pmtSummary.created += Number(p.cnt);
+  }
+
+  res.json({
+    period: { from: fromDate.toISOString(), to: toDate.toISOString() },
+    kpis: {
+      totalLeads: total, converted, demoRevenue, courseRevenue,
+      totalRevenue: demoRevenue + courseRevenue,
+      conversionPct: total > 0 ? Math.round((converted / total) * 100) : 0,
+      activeMentors: Number((activeMentorRows.rows[0] as any)?.cnt || 0),
+      todayAdmissions: Number((todayConvRows.rows[0] as any)?.cnt || 0),
+    },
+    funnel: [
+      { stage: "Total Leads",    count: total },
+      { stage: "Assigned",       count: assigned },
+      { stage: "Demo Joined",    count: demoJoined },
+      { stage: "Demo Completed", count: demoCompleted },
+      { stage: "Converted",      count: converted },
+      { stage: "Dropped",        count: dropped },
+    ],
+    gradeWise: Object.entries(gradeMap).map(([g, d]) => ({
+      grade: Number(g), leads: d.leads, converted: d.converted,
+      convPct: d.leads > 0 ? Math.round((d.converted / d.leads) * 100) : 0,
+      revenue: d.revenue,
+    })).sort((a, b) => a.grade - b.grade),
+    mentorPerformance: Object.entries(mentorMap).map(([id, d]) => ({
+      mentorId: Number(id), name: d.name, leads: d.leads, converted: d.converted,
+      convPct: d.leads > 0 ? Math.round((d.converted / d.leads) * 100) : 0,
+      revenue: d.revenue,
+    })).sort((a, b) => b.convPct - a.convPct),
+    leadSource: Object.entries(sourceMap).map(([src, d]) => ({
+      source: src, leads: d.leads, converted: d.converted,
+      convPct: d.leads > 0 ? Math.round((d.converted / d.leads) * 100) : 0,
+      revenue: d.revenue,
+    })).sort((a, b) => b.leads - a.leads),
+    dailyTrend: Object.values(dailyMap).sort((a: any, b: any) => a.date < b.date ? -1 : 1),
+    payments: pmtSummary,
+  });
+});
+
 // ── Teacher Notes (add) ───────────────────────────────────────────
 router.post("/admin/teachers/:id/notes", adminOnly, async (req, res) => {
   const teacherId = parseInt(String(req.params.id), 10);

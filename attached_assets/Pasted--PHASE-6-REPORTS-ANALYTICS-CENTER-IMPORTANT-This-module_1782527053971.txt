@@ -1,0 +1,383 @@
+# PHASE 6 – REPORTS & ANALYTICS CENTER
+
+IMPORTANT
+
+This module belongs to Admin CRM.
+
+Do NOT modify:
+
+* Ignite Lead Management
+* Mentor Portal
+* Deployment Engine
+* Payment Flow
+* Existing Reports
+* Existing Permissions
+
+Extend the current system without breaking anything.
+
+---
+
+# LOCATION
+
+Admin
+→ Reports & Analytics
+
+Create a completely new module.
+
+---
+
+# DASHBOARD OVERVIEW
+
+Top KPI Cards:
+
+📥 Total Leads
+🎯 Converted Leads
+💰 Revenue Generated
+📈 Overall Conversion %
+👨‍🏫 Active Mentors
+📅 Today's Admissions
+
+Cards should update in real-time.
+
+---
+
+# DATE FILTERS
+
+Today
+Yesterday
+This Week
+Last Week
+This Month
+Last Month
+Custom Date Range
+
+All reports should respect selected date filters.
+
+---
+
+# LEAD FUNNEL
+
+Display:
+
+Total Leads
+↓
+Interested
+↓
+Demo Paid
+↓
+Demo Joined
+↓
+Converted
+
+For every stage show:
+
+Count
+Percentage
+Change from previous period
+
+Example:
+
+Total Leads: 500
+Interested: 300 (60%)
+Demo Paid: 200 (40%)
+Joined Demo: 150 (30%)
+Converted: 75 (15%)
+
+---
+
+# REVENUE ANALYTICS
+
+Cards:
+
+Today's Revenue
+Weekly Revenue
+Monthly Revenue
+Total Revenue
+
+Display:
+
+Amount
+Percentage growth
+Trend indicator
+
+Examples:
+
+Today's Revenue
+₹45,000
+↑ 18%
+
+Monthly Revenue
+₹4,25,000
+↑ 32%
+
+---
+
+# GRADE-WISE ANALYTICS
+
+Show Grades:
+
+Grade 1
+Grade 2
+Grade 3
+Grade 4
+Grade 5
+Grade 6
+Grade 7
+Grade 8
+Grade 9
+Grade 10
+
+For each grade:
+
+Leads
+Demo Paid
+Converted
+Conversion %
+Revenue
+
+Example:
+
+Grade 4
+
+Leads: 180
+Converted: 40
+Conversion: 22%
+Revenue: ₹1,20,000
+
+---
+
+# MENTOR PERFORMANCE REPORT
+
+Table:
+
+Mentor
+Assigned Leads
+Interested
+Demo Joined
+Converted
+Conversion %
+Revenue Generated
+
+Sort by:
+
+Highest Conversion %
+Highest Revenue
+Highest Admissions
+
+---
+
+# LEAD SOURCE ANALYTICS
+
+Sources:
+
+Meta Ads
+Google Ads
+Website Leads
+Manual Leads
+Referrals
+
+For each source display:
+
+Leads
+Converted
+Revenue
+Conversion %
+
+Example:
+
+Meta Ads
+
+Leads: 300
+Converted: 60
+Revenue: ₹6,00,000
+Conversion: 20%
+
+---
+
+# DAILY TREND REPORT
+
+Show:
+
+Date
+Leads
+Conversions
+Revenue
+
+Examples:
+
+Monday
+Leads: 60
+Revenue: ₹50,000
+
+Tuesday
+Leads: 82
+Revenue: ₹72,000
+
+Wednesday
+Leads: 95
+Revenue: ₹88,000
+
+---
+
+# CONVERSION REPORT
+
+Metrics:
+
+Lead → Demo %
+Demo → Joined %
+Joined → Conversion %
+Overall Conversion %
+
+Formula:
+
+Conversion %
+
+=
+Converted Leads
+÷
+Total Leads
+× 100
+
+---
+
+# PAYMENT REPORT
+
+Display:
+
+Successful Payments
+Failed Payments
+Pending Payments
+Refunded Payments
+Total Collection
+
+Allow filtering by:
+
+Date
+Grade
+Payment Source
+Mentor
+
+---
+
+# WEBSITE LEAD REPORT
+
+Display:
+
+Website Leads
+Payment Success Rate
+Grade-wise Distribution
+Revenue Generated
+Top Performing Campaign
+
+---
+
+# LEADERBOARD ANALYTICS
+
+Show:
+
+Top Mentors
+Top Grades
+Top Campaigns
+Top Revenue Sources
+
+---
+
+# EXPORT OPTIONS
+
+Buttons:
+
+Export CSV
+Export Excel
+Print PDF
+
+Exports should respect all applied filters.
+
+---
+
+# SEARCH & FILTERS
+
+Search by:
+
+Student Name
+Phone Number
+Mentor Name
+
+Filters:
+
+Date Range
+Grade
+Mentor
+Lead Source
+Payment Status
+Conversion Status
+
+---
+
+# PERMISSIONS
+
+Super Admin:
+
+Full access
+
+Manager:
+
+View Reports
+Export Reports
+
+Mentor:
+
+No access
+
+---
+
+# UI REQUIREMENTS
+
+Maintain Braintam Design:
+
+Navy
+Orange
+White
+Glass Cards
+Rounded Corners
+
+Use:
+
+Cards
+Tabs
+Tables
+Progress Indicators
+Responsive Layout
+
+Avoid long scrolling.
+
+---
+
+# PERFORMANCE REQUIREMENTS
+
+Reports must:
+
+Load quickly
+Support thousands of leads
+Use server-side aggregation
+Support caching where needed
+Avoid unnecessary API calls
+
+---
+
+# FINAL FLOW
+
+Leads
+↓
+Payments
+↓
+Mentor Activity
+↓
+Conversions
+↓
+Revenue
+↓
+Reports & Analytics
+↓
+Business Decisions
+
+Build production-ready database queries, APIs, analytics calculations, export functionality, filters, permissions, and responsive UI while preserving all existing Braintam CRM functionality.
