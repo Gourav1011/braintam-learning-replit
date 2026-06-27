@@ -609,22 +609,42 @@ export default function LiveClassroom() {
 
             {/* Sprint 3 — Dynamic 5-slot stage overlay */}
             {stageSlots.length > 0 && (
-              <div className="absolute bottom-4 left-4 right-4 flex gap-2 justify-center z-40 pointer-events-none">
+              <div data-testid="stage-overlay" className="absolute bottom-4 left-4 right-4 flex gap-2 justify-center z-40 pointer-events-none">
                 {stageSlots.map(slot => (
                   <div
                     key={slot.studentId}
-                    className="w-28 h-20 rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative"
+                    data-testid="stage-slot"
+                    data-student-id={slot.studentId}
+                    className="w-28 rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative"
                     style={{ background: "#0f172a", borderColor: slot.studentId === userId ? "#10B981" : "#334155" }}>
-                    {/* Video placeholder (WebRTC hook point — connect SDK stream here) */}
-                    <div className="flex-1 flex items-center justify-center bg-gray-900/80">
-                      <div className="text-2xl select-none">👤</div>
+                    {/* Video placeholder (WebRTC hook point) */}
+                    <div className="h-12 flex items-center justify-center bg-gray-900/80">
+                      <div className="text-xl select-none">👤</div>
                     </div>
 
                     {/* Name + mute bar */}
                     <div className="px-1.5 py-1 bg-black/70 flex items-center justify-between gap-1">
                       <span className="text-[9px] text-white font-semibold truncate flex-1">{slot.studentName}</span>
-                      <span className="text-[11px]">{slot.isMuted ? "🔇" : "🔊"}</span>
+                      <span className="text-[10px]">{slot.isMuted ? "🔇" : "🔊"}</span>
                     </div>
+
+                    {/* Teacher controls — always visible (no hover dependency) */}
+                    {isStaff && (
+                      <div className="flex justify-center gap-1 bg-gray-900/90 px-1 py-1">
+                        <button
+                          data-testid={`stage-mute-${slot.studentId}`}
+                          onClick={() => toggleStageMute(slot.studentId, !slot.isMuted)}
+                          className="text-[8px] bg-gray-700 hover:bg-gray-500 text-white px-1.5 py-0.5 rounded font-bold">
+                          {slot.isMuted ? "Unmute" : "Mute"}
+                        </button>
+                        <button
+                          data-testid={`stage-remove-${slot.studentId}`}
+                          onClick={() => removeFromStage(slot.studentId)}
+                          className="text-[8px] bg-red-700 hover:bg-red-500 text-white px-1.5 py-0.5 rounded font-bold">
+                          ✕
+                        </button>
+                      </div>
+                    )}
 
                     {/* Slot number badge */}
                     <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-blue-600/80 flex items-center justify-center text-[8px] text-white font-black">
@@ -634,22 +654,6 @@ export default function LiveClassroom() {
                     {/* "You" badge */}
                     {slot.studentId === userId && (
                       <div className="absolute top-1 right-1 text-[8px] bg-green-600 text-white px-1 rounded font-bold">You</div>
-                    )}
-
-                    {/* Teacher controls */}
-                    {isStaff && (
-                      <div className="absolute inset-x-0 top-5 flex justify-center gap-1 opacity-0 hover:opacity-100 transition-opacity bg-black/50 py-1">
-                        <button
-                          onClick={() => toggleStageMute(slot.studentId, !slot.isMuted)}
-                          className="text-[8px] bg-gray-700 hover:bg-gray-500 text-white px-1.5 py-0.5 rounded font-bold">
-                          {slot.isMuted ? "Unmute" : "Mute"}
-                        </button>
-                        <button
-                          onClick={() => removeFromStage(slot.studentId)}
-                          className="text-[8px] bg-red-700 hover:bg-red-500 text-white px-1.5 py-0.5 rounded font-bold">
-                          ✕
-                        </button>
-                      </div>
                     )}
                   </div>
                 ))}
@@ -918,14 +922,6 @@ export default function LiveClassroom() {
         </div>
       )}
 
-      {/* ── Payment FAB ── */}
-      <button
-        className="fixed bottom-5 right-5 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-xs font-bold shadow-2xl z-40 hover:opacity-90 transition-all"
-        style={{ background: ORANGE }}
-        onClick={() => window.open("/enroll", "_blank")}
-      >
-        <CreditCard className="w-3.5 h-3.5" /> Upgrade Course
-      </button>
     </div>
   );
 }

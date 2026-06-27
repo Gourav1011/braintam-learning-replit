@@ -1,0 +1,216 @@
+AUTOMATIC COURSE → BATCH → SESSION → LIVE CLASS PIPELINE
+
+Do NOT replace existing systems. Extend current architecture only.
+
+================================================
+
+1. COURSE CREATION
+   ================================================
+
+When a permanent course is created:
+
+Examples:
+
+* Ignite Grade 1
+* Ignite Grade 2
+* Mastery Grade 4
+
+The system should automatically ensure:
+
+* Batch Pipeline exists
+* Session Templates exist
+* Default Teacher exists (if assigned)
+
+================================================
+2. AUTOMATIC BATCH PIPELINE
+===========================
+
+For Ignite:
+
+Maintain automatically:
+
+1 Active Batch
+2 Upcoming Batches
+
+Example:
+
+Batch 001 → Active
+Batch 002 → Upcoming
+Batch 003 → Upcoming
+
+If future batches are missing:
+
+Automatically create them.
+
+================================================
+3. AUTOMATIC SESSION CREATION
+=============================
+
+When a new batch is created:
+
+Automatically create all sessions.
+
+Ignite Default Template:
+
+Day 1 → Maths
+Day 2 → Science
+Day 3 → Maths
+Day 4 → English
+Day 5 → Science
+Day 6 → PTM / Closing
+
+Create:
+
+session records
+live class records
+
+Status:
+
+Scheduled
+
+================================================
+4. AUTOMATIC LIVE CLASS CREATION
+================================
+
+For every session:
+
+Automatically create:
+
+session_id
+batch_id
+course_id
+title
+subject
+teacher_id
+meet_link
+canva_link
+recording_link
+status
+
+Defaults:
+
+meet_link = NULL
+canva_link = NULL
+recording_link = NULL
+
+Teacher only edits:
+
+Topic Name
+Meet Link
+Canva Link
+Recording Link
+Start Time
+
+No manual live class creation required.
+
+================================================
+5. TEACHER AUTO-INHERIT
+=======================
+
+When creating a new batch:
+
+Check previous batch:
+
+SELECT teacher_id
+FROM demo_batches
+WHERE course_id = :courseId
+ORDER BY start_date DESC
+LIMIT 1;
+
+If teacher exists:
+
+Copy teacher_id into:
+
+new batch
+all sessions
+all live classes
+
+Fallback order:
+
+Session Teacher
+↓
+Batch Teacher
+↓
+Course Default Teacher
+
+================================================
+6. TEACHER CHANGE OPTIONS
+=========================
+
+If admin changes teacher:
+
+Provide:
+
+○ This Session Only
+○ Entire Batch
+○ Future Batches
+
+Future batches should inherit the newest teacher automatically until changed again.
+
+================================================
+7. SESSION PROGRESSION
+======================
+
+When batch becomes Active:
+
+Session 1:
+Status = Ready
+
+Remaining:
+Status = Locked
+
+After each session:
+
+Completed
+↓
+Next Session = Ready
+
+Prevents teachers from opening wrong sessions.
+
+================================================
+8. ADMIN EXPERIENCE
+===================
+
+Admin clicks:
+
+Create Batch
+
+System automatically:
+
+✓ Creates Batch
+✓ Creates Sessions
+✓ Creates Live Classes
+✓ Copies Teacher from Previous Batch
+✓ Prepares Schedule
+
+Admin work required:
+
+Almost zero.
+
+================================================
+9. ACCEPTANCE CRITERIA
+======================
+
+Creating a new batch should automatically result in:
+
+Batch Created
+↓
+Sessions Created
+↓
+Live Classes Created
+↓
+Teacher Assigned
+↓
+Ready To Teach
+
+Teacher only needs to edit:
+
+Topic Name
+Meet Link
+Canva Link
+Recording Link
+Start Time
+
+No manual session creation.
+No manual live class creation.
+No weekly teacher reassignment.
