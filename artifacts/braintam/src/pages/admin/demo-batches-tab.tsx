@@ -961,22 +961,22 @@ function OverviewTab({ batch, overview, loading, setTab }: {
   return (
     <div className="space-y-4">
       {/* Top stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {[
-          { label: "Total Enrolled", value: metrics.total, icon: "👥", color: NAVY, sub: "All batches" },
-          { label: "Today (Day Attendance)", value: dayBreakdown.reduce((m, d) => d.count > m ? d.count : m, 0), icon: "📅", color: "#0284C7", sub: "Today's session" },
-          { label: "Converted", value: metrics.converted, icon: "🎯", color: GREEN, sub: `${metrics.conversionRate}% rate` },
-          { label: "Dropped", value: metrics.dropped, icon: "📉", color: "#DC2626", sub: "Left program" },
-          { label: "Active", value: metrics.active, icon: "🔥", color: "#D97706", sub: "Still in program" },
-          { label: "Conversion %", value: `${metrics.conversionRate}%`, icon: "📊", color: metrics.conversionRate >= 30 ? GREEN : metrics.conversionRate >= 15 ? "#D97706" : "#DC2626", sub: "Overall rate" },
+          { label: "Enrolled", value: metrics.total, icon: "👥", color: NAVY, sub: "Total" },
+          { label: "Today", value: dayBreakdown.reduce((m, d) => d.count > m ? d.count : m, 0), icon: "📅", color: "#0284C7", sub: "Attendance" },
+          { label: "Converted", value: metrics.converted, icon: "🎯", color: GREEN, sub: `${metrics.conversionRate}%` },
+          { label: "Dropped", value: metrics.dropped, icon: "📉", color: "#DC2626", sub: "Left" },
+          { label: "Active", value: metrics.active, icon: "🔥", color: "#D97706", sub: "In program" },
+          { label: "Conv. %", value: `${metrics.conversionRate}%`, icon: "📊", color: metrics.conversionRate >= 30 ? GREEN : metrics.conversionRate >= 15 ? "#D97706" : "#DC2626", sub: "Rate" },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-lg">{c.icon}</span>
-              <span className="text-[10px] text-gray-400">{c.sub}</span>
+          <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-2.5 flex flex-col gap-0.5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{c.icon}</span>
+              <span className="text-[9px] text-gray-400">{c.sub}</span>
             </div>
-            <div className="text-2xl font-black" style={{ color: c.color }}>{c.value}</div>
-            <div className="text-[10px] text-gray-500 mt-0.5 font-medium">{c.label}</div>
+            <div className="text-lg font-black leading-none" style={{ color: c.color }}>{c.value}</div>
+            <div className="text-[9px] text-gray-500 font-medium">{c.label}</div>
           </div>
         ))}
       </div>
