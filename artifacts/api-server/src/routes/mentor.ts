@@ -1515,12 +1515,14 @@ router.get("/mentor/sales/cycle", mentorAuth, async (_req, res) => {
 router.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
 
+  // No active cycle → no leads to show (never return historical leads)
   const [activeCycle] = await db
     .select({ id: mentorDeploymentCyclesTable.id })
     .from(mentorDeploymentCyclesTable)
     .where(eq(mentorDeploymentCyclesTable.status, "active"))
     .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
     .limit(1);
+  if (!activeCycle) { res.json([]); return; }
 
   // Day 3+ means assigned at least 2 full days ago
   const twoDaysAgo = new Date();
@@ -1537,7 +1539,7 @@ router.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
       eq(mentorStudentAssignmentsTable.mentorId, mentorId),
       eq(mentorStudentAssignmentsTable.isActive, true),
       lt(mentorStudentAssignmentsTable.assignedAt, twoDaysAgo),
-      activeCycle ? eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id) : undefined,
+      eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
     ));
 
   if (assignments.length === 0) { res.json([]); return; }

@@ -793,7 +793,7 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
   const [chip, setChip] = useState<Chip>("all");
   const [search, setSearch] = useState("");
 
-  // Non-active leads: lazy-loaded from a separate endpoint
+  // Non-active leads: preloaded on mount (for badge count); refreshed on tab click
   const [nonActiveLeads, setNonActiveLeads] = useState<Lead[]>([]);
   const [nonActiveLoading, setNonActiveLoading] = useState(false);
   const [nonActiveLoaded, setNonActiveLoaded] = useState(false);
@@ -815,9 +815,13 @@ function MyLeadsView({ leads, loading, error, onOpen, onRefresh }: {
     }
   }, []);
 
+  // Preload on mount so the badge count is correct immediately
+  useEffect(() => { loadNonActive(); }, [loadNonActive]);
+
   const handleChip = (key: Chip) => {
     setChip(key);
-    if (key === "non-active" && !nonActiveLoaded) loadNonActive();
+    // Refresh when the tab is clicked again (or first click if preload failed)
+    if (key === "non-active") loadNonActive();
   };
 
   const activeLeads = chip === "non-active" ? nonActiveLeads : leads;

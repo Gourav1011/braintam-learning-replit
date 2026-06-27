@@ -32,7 +32,7 @@ interface ApiResp {
 const MEDAL = ["🥇", "🥈", "🥉"];
 const GRADE_TABS = [
   { key: 0,  label: "All" },
-  ...Array.from({ length: 10 }, (_, i) => ({ key: i + 1, label: `Gr ${i + 1}` })),
+  ...Array.from({ length: 10 }, (_, i) => ({ key: i + 1, label: `Grade ${i + 1}` })),
 ];
 
 export function GradeLeaderboardTab({ myId }: { myId: number }) {
@@ -110,8 +110,10 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
           <div className="text-center py-16 text-gray-400 text-sm">
             <div className="text-3xl mb-2">🏆</div>
             {data?.cycle
-              ? "No leads assigned}</div>
-      ) : (
+              ? "No leads assigned in this cycle yet."
+              : "leads not assigned."}
+          </div>
+        ) : (
           <>
             {/* Simple ranked table — no podium */}
             <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white"
