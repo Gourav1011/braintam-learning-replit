@@ -140,14 +140,28 @@ async function seedCacheFromDB(): Promise<void> {
 }
 
 // ── Sprint 2: Chat persistence helpers ────────────────────────
-async function loadRecentChat(sessionId: string): Promise<ChatMsg[]> {
+// groupId filtering: students only see teacher messages + their own group's messages
+async function loadRecentChat(
+  sessionId: string,
+  groupId: string | null,
+  isStaff: boolean,
+): Promise<ChatMsg[]> {
   const sid = Number(sessionId);
   if (Number.isNaN(sid)) return [];
+  const gid = groupId ? Number(groupId) : null;
+  const showAll = isStaff || gid === null || Number.isNaN(gid ?? NaN);
   try {
     const rows = await db
       .select()
       .from(chatMessagesTable)
-      .where(eq(chatMessagesTable.sessionId, sid))
+      .where(
+        showAll
+          ? eq(chatMessagesTable.sessionId, sid)
+          : and(
+              eq(chatMessagesTable.sessionId, sid),
+              sql`(${chatMessagesTable.mentorGroupId} IS NULL OR ${chatMessagesTable.mentorGroupId} = ${gid})`,
+            ),
+      )
       .orderBy(desc(chatMessagesTable.createdAt))
       .limit(50);
     return rows.reverse().map(r => ({
@@ -360,7 +374,7 @@ export function setupSocketIO(httpServer: HttpServer) {
     // ── Send initial room state (async — loads chat + stage from DB) ──
     (async () => {
       const [recentChat, dbStageSlots] = await Promise.all([
-        loadRecentChat(sessionId),
+        loadRecentChat(sessionId, groupId, isStaff),
         loadStageSlots(sessionId),
       ]);
 
@@ -578,6 +592,56 @@ export function setupSocketIO(httpServer: HttpServer) {
         slotNumber: openSlot,
         isMuted: true,
         mentorGroupId: payload.studentGroupId || null,
+      });
+    });
+
+    // ── Teacher directly invites student to stage (Give Mic) ──
+    socket.on("stage:inviteStudent", (payload: { studentId: string; studentName: string; studentGroupId: string }) => {
+      if (!isStaff) return;
+      if (room.stageSlots.size >= 5) {
+        socket.emit("stage:error", { message: "Stage full — max 5 students." });
+        return;
+      }
+      if (room.stageSlots.has(payload.studentId)) {
+        socket.emit("stage:error", { message: "Student is already on stage." });
+        return;
+      }
+      // Broadcast to whole room; student side checks if invite is for them
+      io.to(globalRoom(sessionId)).emit("stage:micInvite", {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        fromTeacher: name,
+      });
+    });
+
+    // ── Student accepts mic invite → gets put on stage ────────
+    socket.on("stage:acceptInvite", () => {
+      if (isStaff || isMentor) return;
+      if (room.stageSlots.size >= 5 || room.stageSlots.has(userId)) return;
+
+      const occupied = new Set(Array.from(room.stageSlots.values()).map(s => s.slotNumber));
+      let openSlot: number | null = null;
+      for (let i = 1; i <= 5; i++) { if (!occupied.has(i)) { openSlot = i; break; } }
+      if (!openSlot) return;
+
+      const entry: StageSlotEntry = {
+        studentId: userId, studentName: name,
+        slotNumber: openSlot, isMuted: true, mentorGroupId: groupId || null,
+      };
+      room.stageSlots.set(userId, entry);
+
+      db.insert(stageSlotsTable).values({
+        sessionId, studentId: userId, studentName: name,
+        mentorGroupId: groupId || null, slotNumber: openSlot, isMuted: true,
+      }).onConflictDoNothing().catch(() => {});
+
+      room.raisedHands.delete(userId);
+      io.to(globalRoom(sessionId)).emit("classroom:handRaised", {
+        uid: userId, name, mentorGroupId: groupId || null, raised: false, ts: new Date(),
+      });
+      io.to(globalRoom(sessionId)).emit("stage:studentInvited", {
+        studentId: userId, studentName: name,
+        slotNumber: openSlot, isMuted: true, mentorGroupId: groupId || null,
       });
     });
 

@@ -3,8 +3,7 @@ import { useParams } from "wouter";
 import { io, type Socket } from "socket.io-client";
 import {
   Video, VideoOff, Users, MessageSquare, BarChart2, Send,
-  Trophy, CreditCard, Monitor, Hand, Settings, ChevronLeft, ChevronRight,
-  Phone, PhoneCall,
+  Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, X,
 } from "lucide-react";
 
 const NAVY = "#0B2B6B";
@@ -139,13 +138,15 @@ function AnnotationCanvas({
 
 // ── Attendance Sidebar ─────────────────────────────────────────
 function AttendanceSidebar({
-  registry, myGroupId, role, collapsed, onCollapse,
+  registry, myGroupId, role, collapsed, onCollapse, onGiveMic, stageSlots,
 }: {
   registry: Map<string, AttendanceRecord>;
   myGroupId: string;
   role: string;
   collapsed: boolean;
   onCollapse: () => void;
+  onGiveMic: (s: AttendanceRecord) => void;
+  stageSlots: StageSlot[];
 }) {
   const [tab, setTab] = useState<"LIVE" | "BACKSTAGE" | "ABSENT">("LIVE");
 
@@ -188,7 +189,7 @@ function AttendanceSidebar({
     <div className="flex flex-col border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 220 }}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
-        <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wide">Attendance</span>
+        <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wide">Students</span>
         <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300">
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -216,35 +217,46 @@ function AttendanceSidebar({
         {byStatus.length === 0 && (
           <p className="text-[10px] text-gray-600 text-center mt-6">No students</p>
         )}
-        {byStatus.map(s => (
-          <div key={s.userId} className="px-3 py-2 border-b border-gray-800/50 hover:bg-gray-800/40">
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusColor[tab] }} />
-              <span className="text-[11px] text-gray-200 font-semibold truncate flex-1">{s.name}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] text-gray-500">
+        {byStatus.map(s => {
+          const alreadyOnStage = stageSlots.some(sl => sl.studentId === s.userId);
+          const stageFull = stageSlots.length >= 5;
+          return (
+            <div key={s.userId} className="px-3 py-2 border-b border-gray-800/50 hover:bg-gray-800/40">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusColor[tab] }} />
+                <span className="text-[11px] text-gray-200 font-semibold truncate flex-1">{s.name}</span>
+                {/* Give Mic — teacher only */}
+                {isStaff && s.status === "LIVE" && (
+                  alreadyOnStage ? (
+                    <span className="text-[8px] text-green-400 font-bold">🎤 on</span>
+                  ) : (
+                    <button
+                      disabled={stageFull}
+                      onClick={() => onGiveMic(s)}
+                      title="Give Mic — invite to stage"
+                      className={`flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded font-bold transition-all flex-shrink-0 ${stageFull ? "text-gray-600 cursor-not-allowed" : "bg-green-800/50 text-green-300 hover:bg-green-700/60"}`}
+                    >
+                      <Mic className="w-2.5 h-2.5" /> Mic
+                    </button>
+                  )
+                )}
+                {/* WhatsApp — mentor only */}
+                {isMentor && (
+                  <button
+                    onClick={() => handleOutbound(s.phone, "WA")}
+                    title="WhatsApp"
+                    className="p-1 rounded text-gray-500 hover:text-green-400 hover:bg-gray-700 transition-all flex-shrink-0"
+                  >
+                    <span className="text-[8px] font-bold">WA</span>
+                  </button>
+                )}
+              </div>
+              <span className="text-[9px] text-gray-600 pl-3">
                 {s.joinedAt ? fmtDuration(Math.round((Date.now() - s.joinedAt) / 1000)) : "—"}
               </span>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => handleOutbound(s.phone, "TEL")}
-                  title="Call"
-                  className="p-1 rounded text-gray-500 hover:text-green-400 hover:bg-gray-700 transition-all"
-                >
-                  <PhoneCall className="w-2.5 h-2.5" />
-                </button>
-                <button
-                  onClick={() => handleOutbound(s.phone, "WA")}
-                  title="WhatsApp"
-                  className="p-1 rounded text-gray-500 hover:text-green-400 hover:bg-gray-700 transition-all"
-                >
-                  <span className="text-[9px] font-bold">WA</span>
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -297,6 +309,47 @@ export default function LiveClassroom() {
   const [teacherInfo, setTeacherInfo] = useState<{ name: string; userId: string; online: boolean } | null>(
     isStaff ? { name, userId, online: true } : null
   );
+
+  // ── Mic invite (Give Mic flow) ────────────────────────────
+  const [micInvite, setMicInvite] = useState<{ studentId: string; studentName: string; fromTeacher: string } | null>(null);
+
+  // ── Payment badge (draggable, student + mentor only) ─────
+  const grade        = search.get("grade") ?? "3";
+  const programName  = search.get("programName") ?? "Mastery Program";
+  const origPrice    = search.get("originalPrice") ?? "24000";
+  const salePrice    = search.get("scholarshipPrice") ?? "12000";
+  const payLink      = search.get("paymentLink") ?? "/enroll";
+  const [showBrochure, setShowBrochure] = useState(false);
+  const [badgePos, setBadgePos] = useState({ x: 0, y: 0 });
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  // Initialise position once after first render
+  const badgeInitDone = useRef(false);
+  useEffect(() => {
+    if (!badgeInitDone.current) {
+      setBadgePos({ x: window.innerWidth - 150, y: window.innerHeight / 2 - 30 });
+      badgeInitDone.current = true;
+    }
+  }, []);
+  const onBadgePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    dragOffset.current = { x: e.clientX - badgePos.x, y: e.clientY - badgePos.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [badgePos]);
+  const onBadgePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    setBadgePos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+  }, []);
+  const onBadgePointerUp = useCallback((e: React.PointerEvent) => {
+    if (isDragging.current) {
+      isDragging.current = false;
+      // If barely moved, treat as click → open brochure
+      const dx = Math.abs(e.clientX - (badgePos.x + dragOffset.current.x));
+      const dy = Math.abs(e.clientY - (badgePos.y + dragOffset.current.y));
+      if (dx < 5 && dy < 5) setShowBrochure(true);
+    }
+  }, [badgePos]);
 
   // ── Annotation ─────────────────────────────────────────────
   const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter">("none");
@@ -448,6 +501,14 @@ export default function LiveClassroom() {
       setTeacherInfo(prev => prev ? { ...prev, online: false } : { name: d.name, userId: d.userId, online: false });
     });
 
+    // ── Give Mic invite (student sees accept dialog) ──────────
+    socket.on("stage:micInvite", (d: { studentId: string; studentName: string; fromTeacher: string }) => {
+      // Only show dialog to the invited student
+      if (d.studentId === userId && !isStaff && !isMentor) {
+        setMicInvite(d);
+      }
+    });
+
     return () => {
       socket.off("roomState"); socket.off("chat:message");
       socket.off("pollStarted"); socket.off("pollEnded"); socket.off("pollUpdate");
@@ -457,6 +518,7 @@ export default function LiveClassroom() {
       socket.off("stage:studentInvited"); socket.off("stage:muteStateChanged");
       socket.off("stage:studentRemoved"); socket.off("stage:error");
       socket.off("teacher:joined"); socket.off("teacher:left");
+      socket.off("stage:micInvite");
     };
   }, [socket, upsert]);
 
@@ -499,6 +561,17 @@ export default function LiveClassroom() {
       studentGroupId: hand.mentorGroupId ?? "",
     });
   };
+  const inviteToStage = (s: AttendanceRecord) => {
+    socket?.emit("stage:inviteStudent", {
+      studentId: s.userId,
+      studentName: s.name,
+      studentGroupId: s.mentorGroupId ?? "",
+    });
+  };
+  const acceptMicInvite = () => {
+    socket?.emit("stage:acceptInvite");
+    setMicInvite(null);
+  };
   const toggleStageMute = (studentId: string, isMuted: boolean) => {
     socket?.emit("stage:toggleMute", { studentId, isMuted });
   };
@@ -535,14 +608,17 @@ export default function LiveClassroom() {
           <span className="text-gray-600 text-xs">#{sessionId}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-xs text-gray-400">
-            <Users className="w-3 h-3" />
-            {Array.from(registry.values()).filter(r => r.status === "LIVE").length || userCount}
-          </span>
+          {/* Only staff/mentor see class counts */}
           {(isStaff || isMentor) && (
-            <span className="text-[10px] text-gray-500">
-              {Array.from(registry.values()).filter(r => r.status === "BACKSTAGE").length} backstage
-            </span>
+            <>
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <Users className="w-3 h-3" />
+                {Array.from(registry.values()).filter(r => r.status === "LIVE").length || userCount}
+              </span>
+              <span className="text-[10px] text-gray-500">
+                {Array.from(registry.values()).filter(r => r.status === "BACKSTAGE").length} backstage
+              </span>
+            </>
           )}
           {/* Sprint 2 — Meet + Recording quick-access */}
           {meetLink && (
@@ -576,6 +652,8 @@ export default function LiveClassroom() {
             role={role}
             collapsed={sidebarCollapsed}
             onCollapse={() => setSidebarCollapsed(p => !p)}
+            onGiveMic={inviteToStage}
+            stageSlots={stageSlots}
           />
         )}
 
@@ -817,20 +895,31 @@ export default function LiveClassroom() {
                 </div>
               )}
 
-              {/* Messages — group-scoped label */}
+              {/* Messages — students only see own mentor + teacher */}
               <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
                 {chat.length === 0 && <p className="text-[11px] text-gray-600 text-center mt-6">No messages yet</p>}
-                {chat.map(msg => (
-                  <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
-                      {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
-                      {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
-                      {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
+                {chat
+                  .filter(msg => {
+                    // Teacher/mentor see everything
+                    if (isStaff || isMentor) return true;
+                    // Students: always see teacher/admin messages
+                    if (msg.role === "teacher" || msg.role === "admin") return true;
+                    // Students: hide other mentors' messages (server already routes,
+                    // but filter here for safety on initial load)
+                    if (msg.role === "mentor" && (msg as any).mentorGroupId != null && (msg as any).mentorGroupId !== groupId) return false;
+                    return true;
+                  })
+                  .map(msg => (
+                    <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
+                        {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
+                        {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
+                        {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
+                      </div>
+                      <p className="text-xs text-gray-200 leading-snug break-words">{msg.text}</p>
                     </div>
-                    <p className="text-xs text-gray-200 leading-snug break-words">{msg.text}</p>
-                  </div>
-                ))}
+                  ))}
                 <div ref={chatEndRef} />
               </div>
 
@@ -974,6 +1063,124 @@ export default function LiveClassroom() {
               ))}
             </div>
             <p className="text-blue-400 text-xs mt-4 opacity-70">Auto-closes in 5s</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mic Invite Dialog (student: teacher gave mic) ── */}
+      {micInvite && (
+        <div className="fixed inset-0 flex items-end justify-center pb-24 z-50 pointer-events-none">
+          <div className="pointer-events-auto animate-bounce-once rounded-2xl shadow-2xl border border-green-700/50 px-5 py-4 flex flex-col items-center gap-3 max-w-xs w-full mx-4"
+            style={{ background: "linear-gradient(135deg,#0d2247,#0B2B6B)" }}>
+            <div className="text-3xl">🎤</div>
+            <p className="text-white font-bold text-sm text-center">
+              {micInvite.fromTeacher} invited you on stage!
+            </p>
+            <p className="text-blue-300 text-[11px] text-center">You'll be muted by default. Accept to join the stage.</p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={acceptMicInvite}
+                className="flex-1 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90"
+                style={{ background: GREEN }}
+              >
+                ✓ Accept
+              </button>
+              <button
+                onClick={() => setMicInvite(null)}
+                className="flex-1 py-2 text-sm font-bold text-gray-300 rounded-xl bg-gray-700 hover:bg-gray-600 transition-all"
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Draggable Payment Badge (student + mentor only) ── */}
+      {!isStaff && (
+        <div
+          ref={badgeRef}
+          data-testid="payment-badge"
+          className="fixed z-40 select-none cursor-grab active:cursor-grabbing"
+          style={{ left: badgePos.x, top: badgePos.y, touchAction: "none" }}
+          onPointerDown={onBadgePointerDown}
+          onPointerMove={onBadgePointerMove}
+          onPointerUp={onBadgePointerUp}
+        >
+          <div className="rounded-full shadow-2xl border border-orange-500/60 px-3 py-2 flex items-center gap-2 text-white text-[10px] font-bold whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg,#FF6B1A,#c84b00)" }}>
+            <span className="text-base">🚀</span>
+            <span>Grade {grade} {programName}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Brochure Popup ── */}
+      {showBrochure && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl w-full max-w-sm"
+            style={{ background: "linear-gradient(160deg,#0a1f44 0%,#0B2B6B 60%,#1a0533 100%)" }}>
+            {/* Close */}
+            <button onClick={() => setShowBrochure(false)}
+              className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+              <X className="w-4 h-4 text-white" />
+            </button>
+
+            {/* Top graphic strip */}
+            <div className="h-2 w-full" style={{ background: "linear-gradient(90deg,#FF6B1A,#ffd700,#FF6B1A)" }} />
+
+            {/* Header */}
+            <div className="px-6 pt-5 pb-3 text-center">
+              <div className="inline-flex items-center gap-1.5 bg-orange-500/20 border border-orange-500/40 rounded-full px-3 py-1 mb-3">
+                <span className="text-[10px] text-orange-300 font-bold uppercase tracking-wide">🌟 Scholarship Offer · Grade {grade}</span>
+              </div>
+              <h2 className="text-white font-black text-xl leading-tight">
+                {programName}
+              </h2>
+              <p className="text-blue-300 text-xs mt-1">Full Academic Year · Expert Teachers · 1-on-1 Mentorship</p>
+            </div>
+
+            {/* Price block */}
+            <div className="mx-6 rounded-2xl p-4 mb-4 text-center"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,107,26,0.3)" }}>
+              <p className="text-gray-400 text-[11px] mb-1">Original Price</p>
+              <p className="text-gray-500 text-sm line-through">₹{Number(origPrice).toLocaleString("en-IN")}</p>
+              <div className="my-2 flex items-center justify-center gap-2">
+                <span className="text-[10px] bg-green-600 text-white px-2 py-0.5 rounded-full font-bold">50% OFF</span>
+              </div>
+              <p className="text-white font-black text-3xl">₹{Number(salePrice).toLocaleString("en-IN")}</p>
+              <p className="text-orange-300 text-[10px] mt-1 font-semibold">🔥 Limited seats · Scholarship valid now</p>
+            </div>
+
+            {/* Features */}
+            <div className="mx-6 mb-5 space-y-2">
+              {[
+                { icon: "🧑‍🏫", text: "Best teachers from across India" },
+                { icon: "🤝", text: "1-on-1 mentor support throughout the year" },
+                { icon: "📅", text: "Full academic year coverage" },
+                { icon: "📊", text: "Weekly tests & personalised reports" },
+                { icon: "🎯", text: "Grade " + grade + " aligned curriculum" },
+                { icon: "💻", text: "Live + recorded classes, accessible anytime" },
+              ].map(f => (
+                <div key={f.text} className="flex items-center gap-2.5">
+                  <span className="text-base flex-shrink-0">{f.icon}</span>
+                  <span className="text-gray-200 text-[11px]">{f.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="px-6 pb-6">
+              <a href={payLink} target="_blank" rel="noreferrer"
+                className="block w-full py-3 text-center text-white font-black text-sm rounded-2xl shadow-lg transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "linear-gradient(90deg,#FF6B1A,#e05500)" }}>
+                🎓 Grab My Seat Now
+              </a>
+              <p className="text-gray-500 text-[10px] text-center mt-2">No hidden charges · Secure payment</p>
+            </div>
+
+            {/* Bottom graphic */}
+            <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg,#FF6B1A,#ffd700,#FF6B1A)" }} />
           </div>
         </div>
       )}
