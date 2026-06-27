@@ -1,0 +1,38 @@
+Please apply these final production adjustments and integrity constraints to our Ignite Batch Pipeline system. Ensure all operations are safe, idempotent, and transactional.
+
+===================================================================
+1. DATA FILTERING RESTRICTIONS (IGNORE UNDATED BATCHES)
+===================================================================
+- In 'ensureThreeWeekPipeline()', 'assignIgniteBatch()', and the Sunday Cron rotation logic, completely EXCLUDE any batch records where `start_date IS NULL` OR `end_date IS NULL`. 
+- Treat these as historical or incomplete placeholders; they must never count toward your activeCount or upcomingCount metrics.
+
+===================================================================
+2. ENHANCED PIPELINE BALANCING & AUTO-PROMOTION
+===================================================================
+Inside 'ensureThreeWeekPipeline(courseId)':
+- Calculate 'activeCount' and 'upcomingCount' using only valid, dated batches.
+- RULE: If activeCount === 0 AND there is a valid 'Upcoming' batch whose start_date <= CURRENT_DATE, automatically update that nearest Upcoming batch's status to 'Active'.
+- Ensure this auto-promotion preserves the core constraint: Maximum of 1 Active Batch per grade at any time.
+- Generate new batches with status = 'Upcoming' (incrementing dates by +7 days from the furthest existing batch) ONLY until you satisfy the pipeline equilibrium: Exactly 1 Active and 2 Upcoming batches. Do not over-generate.
+
+===================================================================
+3. HEALTH INTEGRITY DIAGNOSTIC CHECK
+===================================================================
+- Create a reusable health check validation routine. Run this check at the end of every payment webhook transaction, Sunday cron tick, and manual admin repair execution.
+- If (activeCount !== 1 OR upcomingCount !== 2), trigger an automated log warning and dispatch a notification via our existing alert framework: "Grade X batch pipeline unhealthy. Auto-repair attempted." Then execute the repair sequence.
+
+===================================================================
+4. AUTOMATED SUNDAY MIDNIGHT CRON OPERATION
+===================================================================
+- Implement the Sunday rotation to run automatically at 12:00 AM Monday IST. Do not make this manual.
+- Cron Execution Sequence:
+  1. Update current 'Active' batch to status = 'Completed'.
+  2. Move the nearest valid 'Upcoming' batch to status = 'Active'.
+  3. Call 'ensureThreeWeekPipeline()' to automatically generate missing upcoming slots until the 1 Active + 2 Upcoming balance is fully restored.
+
+===================================================================
+5. ADMIN ENDPOINT & UI ENHANCEMENTS
+===================================================================
+- Ensure the 'POST /admin/ignite/ensure-pipeline/:grade' handler runs inside a safe database transaction block to prevent partial execution states.
+- Update the Admin Batch Management UI page to clearly highlight: Missing Dates, Duplicate Active Batches, or Missing Upcoming slots.
+- Wire up a prominent "Repair Pipeline" button that sends a request directly to the transactional POST endpoint.

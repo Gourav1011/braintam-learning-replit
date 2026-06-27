@@ -1,17 +1,18 @@
 /**
- * Assigns a newly paid Ignite student to the best available batch for their grade
- * and creates the corresponding enrollment record so they see their course immediately.
+ * Ignite Batch Assignment & Pipeline Engine
  *
- * Safety rules:
- *  1. Monday 11:00 AM IST cutoff — after this point, skip 'active' batches and only
- *     route to the next 'upcoming' batch. Students who pay late on Sunday or Monday
- *     morning join the active batch; students who pay after 11 AM on Monday get the
- *     following week's batch.
- *  2. ensureThreeWeekPipeline — called before every assignment query. If fewer than
- *     3 'upcoming' batches exist for the grade, new rows are auto-inserted so the
- *     pipeline is never empty.
- *
- * Called after ignitePaidStudentsTable insert — idempotent via onConflictDoNothing.
+ * Safety rules (in order of execution):
+ *  0. Null-date filter — batches with NULL start_date or end_date are ALWAYS
+ *     excluded from counts, auto-promotion, and assignment routing.
+ *  1. ensureThreeWeekPipeline — run before every student assignment and after
+ *     every cron tick. Targets the equilibrium: 1 active + 2 upcoming dated batches.
+ *     - Auto-promotes the earliest upcoming batch to active when activeCount === 0
+ *       and that batch's startDate ≤ today. (Maximum 1 active enforced.)
+ *     - Auto-generates new upcoming rows (Mon–Fri, +7d increments) until upcomingCount === 2.
+ *  2. Monday 11:00 AM IST cutoff — after this point, skip 'active' batches entirely
+ *     and route new students to the next 'upcoming' batch only.
+ *  3. checkBatchPipelineHealth — reusable health check. Warns and auto-repairs when
+ *     activeCount ≠ 1 OR upcomingCount ≠ 2. Called at the end of every payment and cron tick.
  */
 
 import { db } from "@workspace/db";
@@ -22,28 +23,40 @@ import {
   enrollmentsTable,
   ignitePaidStudentsTable,
 } from "@workspace/db";
-import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { logger } from "./logger.js";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+export const PIPELINE_ACTIVE_TARGET  = 1;
+export const PIPELINE_UPCOMING_TARGET = 2;
 
 // ── IST helpers ───────────────────────────────────────────────────────────────
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // UTC+5:30
 
-/** Current moment as an IST-adjusted Date (use UTC accessors to read IST values). */
-function nowIST(): Date {
+/** Current moment shifted to IST; use .getUTC*() methods to read IST values. */
+export function nowIST(): Date {
   return new Date(Date.now() + IST_OFFSET_MS);
 }
 
+/** Today at 00:00:00 in IST, expressed as a UTC Date. */
+function todayIST(): Date {
+  const ist = nowIST();
+  ist.setUTCHours(0, 0, 0, 0);
+  return ist;
+}
+
 /**
- * Returns true when we are on a Monday at or after 11:00 AM IST.
- * At this point the running batch's first session has already started,
- * so new students should be routed to the NEXT upcoming batch.
+ * True when we are on a Monday at or after 11:00 AM IST.
+ * New students paying after this point must skip any 'active' batch.
  */
-function pastMondayCutoffIST(): boolean {
+export function pastMondayCutoffIST(): boolean {
   const ist = nowIST();
   return ist.getUTCDay() === 1 && ist.getUTCHours() >= 11;
 }
 
-/** ISO week number for a given Date. */
+/** ISO week number for a Date. */
 function getISOWeek(date: Date): number {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -53,13 +66,12 @@ function getISOWeek(date: Date): number {
 }
 
 /**
- * Computes the next Monday (in UTC) after the given date.
- * If the given date IS a Monday, returns the Monday one week later.
- * Batch start time is set to 09:00 IST = 03:30 UTC.
+ * Returns the next Monday (UTC) strictly after `base`.
+ * If `base` is itself a Monday, returns the Monday one week later.
+ * Batch start time: 09:00 IST = 03:30 UTC.
  */
-function nextMondayAfter(base: Date): Date {
-  const dayOfWeek = base.getUTCDay(); // 0=Sun … 1=Mon … 6=Sat
-  // Always advance at least one day so we never return the same Monday
+export function nextMondayAfter(base: Date): Date {
+  const dayOfWeek = base.getUTCDay();
   const daysToAdd = dayOfWeek === 1 ? 7 : (1 - dayOfWeek + 7) % 7 || 7;
   const result = new Date(base);
   result.setUTCDate(result.getUTCDate() + daysToAdd);
@@ -67,72 +79,179 @@ function nextMondayAfter(base: Date): Date {
   return result;
 }
 
-// ── Pipeline safety check ─────────────────────────────────────────────────────
+// ── Health types ──────────────────────────────────────────────────────────────
 
-export const PIPELINE_MIN = 3; // keep at least this many upcoming batches in the DB
+export interface BatchPipelineHealth {
+  grade: number;
+  activeCount: number;
+  upcomingCount: number;
+  healthy: boolean;
+  issues: string[];
+}
+
+// ── Core pipeline function ────────────────────────────────────────────────────
 
 /**
- * Guarantees that ≥ PIPELINE_MIN 'upcoming' batches exist for the given grade.
- * If the count falls below the threshold, new batches are auto-inserted by
- * advancing 7 days from the furthest existing batch (any status).
+ * Ensures the grade's batch pipeline is in equilibrium: 1 active + 2 upcoming.
+ * Only considers DATED batches (startDate IS NOT NULL AND endDate IS NOT NULL).
  *
- * Naming convention: "Braintam Ignite Grade {grade} — Batch {NNN}"
- * Batch code: IGN-GR{grade}-W{isoWeek}
+ * Returns the final active/upcoming counts after all repairs.
  */
-export async function ensureThreeWeekPipeline(grade: number): Promise<void> {
-  // How many 'upcoming' batches already exist for this grade?
+export async function ensureThreeWeekPipeline(
+  grade: number,
+): Promise<{ activeCount: number; upcomingCount: number }> {
+  const today = todayIST();
+
+  // ── Fetch all dated batches ordered by startDate ───────────────────
+  const datedBatches = await db
+    .select({
+      id: demoBatchesTable.id,
+      status: demoBatchesTable.status,
+      startDate: demoBatchesTable.startDate,
+      endDate: demoBatchesTable.endDate,
+    })
+    .from(demoBatchesTable)
+    .where(
+      and(
+        eq(demoBatchesTable.grade, grade),
+        isNotNull(demoBatchesTable.startDate),
+        isNotNull(demoBatchesTable.endDate),
+      ),
+    )
+    .orderBy(asc(demoBatchesTable.startDate));
+
+  let activeBatches  = datedBatches.filter(b => b.status === "active");
+  let upcomingBatches = datedBatches.filter(b => b.status === "upcoming");
+
+  // ── Auto-promote when there is no active batch ─────────────────────
+  // Pick the nearest upcoming whose startDate ≤ today and make it active.
+  // Never promote more than one — preserve the max-1-active constraint.
+  if (activeBatches.length === 0) {
+    const toPromote = upcomingBatches.find(b => b.startDate! <= today);
+    if (toPromote) {
+      await db
+        .update(demoBatchesTable)
+        .set({ status: "active" })
+        .where(eq(demoBatchesTable.id, toPromote.id));
+
+      logger.info({ grade, batchId: toPromote.id }, "Auto-promoted upcoming→active batch");
+      activeBatches  = [{ ...toPromote, status: "active" }];
+      upcomingBatches = upcomingBatches.filter(b => b.id !== toPromote.id);
+    }
+  }
+
+  let upcomingCount = upcomingBatches.length;
+  const neededUpcoming = PIPELINE_UPCOMING_TARGET - upcomingCount;
+
+  if (neededUpcoming > 0) {
+    // Furthest dated batch (any status) → base for new Monday slots
+    const furthest = datedBatches.at(-1); // already sorted ascending
+
+    // Count all batches for sequential naming
+    const [{ totalCount }] = await db
+      .select({ totalCount: sql<number>`count(*)::int` })
+      .from(demoBatchesTable)
+      .where(eq(demoBatchesTable.grade, grade));
+
+    const baseStart = furthest?.startDate
+      ? nextMondayAfter(furthest.startDate)
+      : nextMondayAfter(nowIST());
+
+    let seq = (totalCount ?? 0) + 1;
+
+    for (let i = 0; i < neededUpcoming; i++) {
+      const startDate = new Date(baseStart.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+      const endDate   = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000);
+      const weekNum   = getISOWeek(startDate);
+      const seqStr    = String(seq + i).padStart(3, "0");
+
+      await db
+        .insert(demoBatchesTable)
+        .values({
+          title:        `Braintam Ignite Grade ${grade} — Batch ${seqStr}`,
+          grade,
+          startDate,
+          endDate,
+          status:       "upcoming",
+          totalDays:    5,
+          batchCode:    `IGN-GR${grade}-W${weekNum}`,
+          weekNumber:   weekNum,
+          academicYear: "2026-27",
+          subject:      "All Subjects",
+          isActive:     true,
+          isPublic:     true,
+        })
+        .onConflictDoNothing();
+
+      upcomingCount++;
+    }
+
+    logger.info({ grade, generated: neededUpcoming }, "Auto-generated upcoming Ignite batches");
+  }
+
+  return { activeCount: activeBatches.length, upcomingCount };
+}
+
+// ── Health check ──────────────────────────────────────────────────────────────
+
+/**
+ * Validates pipeline equilibrium for a grade.
+ * If unhealthy, logs a warning and triggers a repair via ensureThreeWeekPipeline.
+ * Call after every payment webhook, cron tick, and manual admin repair.
+ */
+export async function checkBatchPipelineHealth(
+  grade: number,
+): Promise<BatchPipelineHealth> {
+  const today = todayIST();
+
+  const [{ activeCount }] = await db
+    .select({ activeCount: sql<number>`count(*)::int` })
+    .from(demoBatchesTable)
+    .where(
+      and(
+        eq(demoBatchesTable.grade, grade),
+        eq(demoBatchesTable.status, "active"),
+        isNotNull(demoBatchesTable.startDate),
+        isNotNull(demoBatchesTable.endDate),
+      ),
+    );
+
   const [{ upcomingCount }] = await db
     .select({ upcomingCount: sql<number>`count(*)::int` })
     .from(demoBatchesTable)
-    .where(and(eq(demoBatchesTable.grade, grade), eq(demoBatchesTable.status, "upcoming")));
+    .where(
+      and(
+        eq(demoBatchesTable.grade, grade),
+        eq(demoBatchesTable.status, "upcoming"),
+        isNotNull(demoBatchesTable.startDate),
+        isNotNull(demoBatchesTable.endDate),
+      ),
+    );
 
-  const needed = PIPELINE_MIN - (upcomingCount ?? 0);
-  if (needed <= 0) return;
+  const issues: string[] = [];
+  if ((activeCount ?? 0) !== PIPELINE_ACTIVE_TARGET)  issues.push(`activeCount=${activeCount ?? 0} (expected ${PIPELINE_ACTIVE_TARGET})`);
+  if ((upcomingCount ?? 0) !== PIPELINE_UPCOMING_TARGET) issues.push(`upcomingCount=${upcomingCount ?? 0} (expected ${PIPELINE_UPCOMING_TARGET})`);
 
-  // Furthest existing batch for this grade (any status) — determines where to start adding
-  const [furthest] = await db
-    .select({ startDate: demoBatchesTable.startDate })
-    .from(demoBatchesTable)
-    .where(eq(demoBatchesTable.grade, grade))
-    .orderBy(desc(demoBatchesTable.startDate))
-    .limit(1);
+  const healthy = issues.length === 0;
 
-  // Total batch count (for sequential naming: Batch 001, 002, …)
-  const [{ totalCount }] = await db
-    .select({ totalCount: sql<number>`count(*)::int` })
-    .from(demoBatchesTable)
-    .where(eq(demoBatchesTable.grade, grade));
-
-  // Base date: day after the furthest batch, or next Monday from now if none exist
-  const baseStart: Date = furthest?.startDate
-    ? nextMondayAfter(furthest.startDate)
-    : nextMondayAfter(nowIST());
-
-  let batchSeq = (totalCount ?? 0) + 1;
-
-  for (let i = 0; i < needed; i++) {
-    const startDate = new Date(baseStart.getTime() + i * 7 * 24 * 60 * 60 * 1000);
-    const endDate = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000); // Mon → Fri
-    const weekNum = getISOWeek(startDate);
-    const seq = String(batchSeq + i).padStart(3, "0");
-    const batchCode = `IGN-GR${grade}-W${weekNum}`;
-    const title = `Braintam Ignite Grade ${grade} — Batch ${seq}`;
-
-    await db.insert(demoBatchesTable).values({
-      title,
-      grade,
-      startDate,
-      endDate,
-      status: "upcoming",
-      totalDays: 5,
-      batchCode,
-      weekNumber: weekNum,
-      academicYear: "2026-27",
-      subject: "All Subjects",
-      isActive: true,
-      isPublic: true,
-    }).onConflictDoNothing();
+  if (!healthy) {
+    logger.warn(
+      { grade, activeCount, upcomingCount, issues },
+      `Grade ${grade} batch pipeline unhealthy. Auto-repair attempted.`,
+    );
+    // Trigger auto-repair — re-runs promotion + generation logic
+    await ensureThreeWeekPipeline(grade);
   }
+
+  void today; // suppress unused-var lint (today used conceptually for context)
+
+  return {
+    grade,
+    activeCount:   activeCount  ?? 0,
+    upcomingCount: upcomingCount ?? 0,
+    healthy,
+    issues,
+  };
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -143,12 +262,16 @@ export async function assignIgniteBatchAndCourse(
   ignitePaidStudentId: number,
 ): Promise<{ batchId: number | null; courseId: number | null }> {
 
-  // ── 0. Guarantee pipeline has ≥ 3 upcoming batches before we query ──
+  // ── 0. Run pipeline repair before querying ────────────────────────
   await ensureThreeWeekPipeline(grade);
 
-  // ── 1. Monday 11 AM IST cutoff ─────────────────────────────────────
-  // After this point, skip 'active' batches — route to next 'upcoming' only.
+  // ── 1. Monday 11 AM IST cutoff ────────────────────────────────────
   const skipActive = pastMondayCutoffIST();
+
+  const datedFilter = and(
+    isNotNull(demoBatchesTable.startDate),
+    isNotNull(demoBatchesTable.endDate),
+  );
 
   const statusFilter = skipActive
     ? eq(demoBatchesTable.status, "upcoming")
@@ -157,19 +280,18 @@ export async function assignIgniteBatchAndCourse(
         eq(demoBatchesTable.status, "active"),
       );
 
-  // ── 2. Find best available batch for this grade ─────────────────────
-  // 'upcoming' always wins over 'active'; within the same status, earliest startDate first.
+  // ── 2. Find best available DATED batch for this grade ────────────
   const [batch] = await db
     .select({
-      id: demoBatchesTable.id,
-      title: demoBatchesTable.title,
-      startDate: demoBatchesTable.startDate,
-      endDate: demoBatchesTable.endDate,
+      id:          demoBatchesTable.id,
+      title:       demoBatchesTable.title,
+      startDate:   demoBatchesTable.startDate,
+      endDate:     demoBatchesTable.endDate,
       teacherName: demoBatchesTable.teacherName,
-      status: demoBatchesTable.status,
+      status:      demoBatchesTable.status,
     })
     .from(demoBatchesTable)
-    .where(and(eq(demoBatchesTable.grade, grade), statusFilter))
+    .where(and(eq(demoBatchesTable.grade, grade), datedFilter, statusFilter))
     .orderBy(
       sql`CASE WHEN ${demoBatchesTable.status} = 'upcoming' THEN 0 ELSE 1 END`,
       asc(demoBatchesTable.startDate),
@@ -181,7 +303,7 @@ export async function assignIgniteBatchAndCourse(
   if (batch) {
     batchId = batch.id;
 
-    // ── 3. Enroll in batch (skip if already enrolled) ───────────────
+    // ── 3. Enroll in batch ──────────────────────────────────────────
     await db
       .insert(demoBatchEnrollmentsTable)
       .values({ batchId: batch.id, studentId, enrollmentStatus: "active" })
@@ -192,16 +314,16 @@ export async function assignIgniteBatchAndCourse(
       .update(ignitePaidStudentsTable)
       .set({
         assignedBatchId: batch.id,
-        batchName: batch.title ?? null,
-        batchStartDate: batch.startDate ?? null,
-        teacherName: batch.teacherName ?? null,
+        batchName:       batch.title ?? null,
+        batchStartDate:  batch.startDate ?? null,
+        teacherName:     batch.teacherName ?? null,
         assignmentStatus: "batch_assigned",
-        updatedAt: new Date(),
+        updatedAt:       new Date(),
       })
       .where(eq(ignitePaidStudentsTable.id, ignitePaidStudentId));
   }
 
-  // ── 5. Find permanent Ignite course for this grade ─────────────────
+  // ── 5. Find permanent Ignite course for this grade ────────────────
   const [igniteCourse] = await db
     .select({ id: coursesTable.id })
     .from(coursesTable)
@@ -219,17 +341,22 @@ export async function assignIgniteBatchAndCourse(
   if (igniteCourse) {
     courseId = igniteCourse.id;
 
-    // ── 6. Create enrollment so student sees course immediately ──────
+    // ── 6. Create enrollment ────────────────────────────────────────
     await db
       .insert(enrollmentsTable)
       .values({
         studentId,
-        courseId: igniteCourse.id,
-        batchId: batchId ?? undefined,
-        enrollmentType: "ignite",
+        courseId:        igniteCourse.id,
+        batchId:         batchId ?? undefined,
+        enrollmentType:  "ignite",
       })
       .onConflictDoNothing();
   }
+
+  // ── 7. Post-payment health check ──────────────────────────────────
+  void checkBatchPipelineHealth(grade).catch(e =>
+    logger.error({ err: e, grade }, "Post-payment health check failed"),
+  );
 
   return { batchId, courseId };
 }

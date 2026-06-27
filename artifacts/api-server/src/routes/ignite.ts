@@ -19,7 +19,12 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
-import { ensureThreeWeekPipeline, PIPELINE_MIN } from "../lib/assignIgniteBatch.js";
+import {
+  ensureThreeWeekPipeline,
+  checkBatchPipelineHealth,
+  PIPELINE_ACTIVE_TARGET,
+  PIPELINE_UPCOMING_TARGET,
+} from "../lib/assignIgniteBatch.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
@@ -1536,32 +1541,83 @@ router.get("/admin/ignite/deploy/mentors", adminOnly, async (_req, res) => {
 // ── Admin: manually top-up the batch pipeline for a grade ────────────────────
 // POST /admin/ignite/ensure-pipeline/:grade
 // Safe to call at any time — idempotent. Returns how many batches now exist.
+// ── GET /admin/ignite/batch-health — read-only health for all grades ─────────
+router.get("/admin/ignite/batch-health", adminOnly, async (_req, res) => {
+  const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const results = await Promise.all(
+    grades.map(async (grade) => {
+      const [{ activeCount }] = await db
+        .select({ activeCount: sql<number>`count(*)::int` })
+        .from(demoBatchesTable)
+        .where(
+          and(
+            eq(demoBatchesTable.grade, grade),
+            eq(demoBatchesTable.status, "active"),
+            isNotNull(demoBatchesTable.startDate),
+            isNotNull(demoBatchesTable.endDate),
+          ),
+        );
+      const [{ upcomingCount }] = await db
+        .select({ upcomingCount: sql<number>`count(*)::int` })
+        .from(demoBatchesTable)
+        .where(
+          and(
+            eq(demoBatchesTable.grade, grade),
+            eq(demoBatchesTable.status, "upcoming"),
+            isNotNull(demoBatchesTable.startDate),
+            isNotNull(demoBatchesTable.endDate),
+          ),
+        );
+      const ac = activeCount ?? 0;
+      const uc = upcomingCount ?? 0;
+      const issues: string[] = [];
+      if (ac !== PIPELINE_ACTIVE_TARGET)   issues.push(`active=${ac} (need ${PIPELINE_ACTIVE_TARGET})`);
+      if (uc !== PIPELINE_UPCOMING_TARGET) issues.push(`upcoming=${uc} (need ${PIPELINE_UPCOMING_TARGET})`);
+      return { grade, activeCount: ac, upcomingCount: uc, healthy: issues.length === 0, issues };
+    }),
+  );
+  res.json(results);
+});
+
+// ── POST /admin/ignite/ensure-pipeline/:grade — repair + return state ─────────
 router.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_admin"), async (req, res) => {
   const grade = parseInt(String(req.params.grade), 10);
   if (!grade || grade < 1 || grade > 10) {
     res.status(400).json({ error: "grade must be 1–10" });
     return;
   }
-  await ensureThreeWeekPipeline(grade);
-  const batches = await db
-    .select({
-      id: demoBatchesTable.id,
-      title: demoBatchesTable.title,
-      status: demoBatchesTable.status,
-      startDate: demoBatchesTable.startDate,
-      batchCode: demoBatchesTable.batchCode,
-    })
-    .from(demoBatchesTable)
-    .where(eq(demoBatchesTable.grade, grade))
-    .orderBy(demoBatchesTable.startDate);
-  const upcoming = batches.filter(b => b.status === "upcoming");
-  res.json({
-    grade,
-    total: batches.length,
-    upcomingCount: upcoming.length,
-    pipelineMin: PIPELINE_MIN,
-    batches,
-  });
+
+  try {
+    await ensureThreeWeekPipeline(grade);
+    const health = await checkBatchPipelineHealth(grade);
+
+    const batches = await db
+      .select({
+        id:        demoBatchesTable.id,
+        title:     demoBatchesTable.title,
+        status:    demoBatchesTable.status,
+        startDate: demoBatchesTable.startDate,
+        endDate:   demoBatchesTable.endDate,
+        batchCode: demoBatchesTable.batchCode,
+      })
+      .from(demoBatchesTable)
+      .where(eq(demoBatchesTable.grade, grade))
+      .orderBy(demoBatchesTable.startDate);
+
+    res.json({
+      grade,
+      total:         batches.length,
+      activeCount:   health.activeCount,
+      upcomingCount: health.upcomingCount,
+      healthy:       health.healthy,
+      issues:        health.issues,
+      activeTarget:  PIPELINE_ACTIVE_TARGET,
+      upcomingTarget: PIPELINE_UPCOMING_TARGET,
+      batches,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Pipeline repair failed", detail: String(err) });
+  }
 });
 
 export default router;

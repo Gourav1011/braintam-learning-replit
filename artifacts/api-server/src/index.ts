@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { runOverdueFollowUpReminders } from "./jobs/overdueFollowUpReminders.js";
 import { scheduleDailyQueueReset } from "./jobs/dailyQueueReset.js";
+import { scheduleSundayBatchRotation } from "./jobs/sundayBatchRotation.js";
 import { seedCoursePricing } from "./routes/longTermPayments.js";
 
 const rawPort = process.env["PORT"];
@@ -27,6 +28,7 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   scheduleReminderJob();
   scheduleDailyQueueReset();
+  scheduleSundayBatchRotation();
   seedCoursePricing().catch(e => logger.error({ err: e }, "Course pricing seed failed"));
 });
 

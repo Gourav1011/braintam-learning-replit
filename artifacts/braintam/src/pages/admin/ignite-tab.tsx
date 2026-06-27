@@ -145,7 +145,8 @@ export type IgniteView =
   | "paid-students-demo-completed"
   | "paid-students-converted"
   | "paid-students-dropped"
-  | "payments";
+  | "payments"
+  | "batch-health";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -3583,6 +3584,192 @@ function StudentOutreachView({ flash }: { flash: (m: string, ok?: boolean) => vo
   );
 }
 
+// ── Batch Pipeline Health View ────────────────────────────────────────────────
+
+interface GradeHealth {
+  grade: number;
+  activeCount: number;
+  upcomingCount: number;
+  healthy: boolean;
+  issues: string[];
+}
+
+function BatchPipelineHealthView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [health, setHealth]       = useState<GradeHealth[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [repairing, setRepairing] = useState<Set<number>>(new Set());
+  const [repairingAll, setRepairingAll] = useState(false);
+  const [lastRefresh, setLastRefresh]  = useState<Date | null>(null);
+
+  const loadHealth = async () => {
+    setLoading(true);
+    try {
+      const r = await apiFetch("/admin/ignite/batch-health");
+      const d = await r.json() as GradeHealth[];
+      setHealth(d);
+      setLastRefresh(new Date());
+    } catch {
+      flash("Failed to load pipeline health", false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadHealth(); }, []);
+
+  const repairGrade = async (grade: number) => {
+    setRepairing(prev => new Set([...prev, grade]));
+    try {
+      const r = await apiFetch(`/admin/ignite/ensure-pipeline/${grade}`, { method: "POST" });
+      const d = await r.json() as GradeHealth & { total: number };
+      setHealth(prev => prev.map(h => h.grade === grade
+        ? { grade: d.grade, activeCount: d.activeCount, upcomingCount: d.upcomingCount, healthy: d.healthy, issues: d.issues }
+        : h
+      ));
+      if (d.healthy) flash(`Grade ${grade} pipeline is healthy ✓`, true);
+      else flash(`Grade ${grade} repaired — some issues remain`, false);
+    } catch {
+      flash(`Grade ${grade} repair failed`, false);
+    } finally {
+      setRepairing(prev => { const next = new Set(prev); next.delete(grade); return next; });
+    }
+  };
+
+  const repairAll = async () => {
+    setRepairingAll(true);
+    const grades = health.filter(h => !h.healthy).map(h => h.grade);
+    if (grades.length === 0) { flash("All grades are already healthy", true); setRepairingAll(false); return; }
+    await Promise.all(grades.map(g => repairGrade(g)));
+    setRepairingAll(false);
+    flash(`Repaired ${grades.length} grade(s)`, true);
+  };
+
+  const unhealthyCount = health.filter(h => !h.healthy).length;
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold" style={{ color: NAVY }}>Batch Pipeline Health</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Target equilibrium: <span className="font-semibold">1 Active + 2 Upcoming</span> dated batches per grade
+            {lastRefresh && <span className="ml-2 text-gray-400">· Refreshed {lastRefresh.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })} IST</span>}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={loadHealth}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 hover:bg-gray-50 transition-colors">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          {unhealthyCount > 0 && (
+            <button
+              onClick={repairAll}
+              disabled={repairingAll || loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
+              style={{ background: repairingAll ? "#9CA3AF" : ORANGE }}>
+              <Zap className="w-3.5 h-3.5" />
+              {repairingAll ? "Repairing…" : `Repair All (${unhealthyCount})`}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Summary bar */}
+      {!loading && (
+        <div className="flex gap-3">
+          <div className="flex-1 rounded-xl border p-3 flex items-center gap-3" style={{ borderColor: "#D1FAE5", background: "#F0FDF4" }}>
+            <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+            <div>
+              <div className="text-lg font-bold text-green-700">{health.filter(h => h.healthy).length}/10</div>
+              <div className="text-xs text-green-600">Healthy grades</div>
+            </div>
+          </div>
+          <div className="flex-1 rounded-xl border p-3 flex items-center gap-3" style={{ borderColor: unhealthyCount > 0 ? "#FEE2E2" : "#D1FAE5", background: unhealthyCount > 0 ? "#FFF5F5" : "#F0FDF4" }}>
+            <AlertTriangle className={`w-5 h-5 shrink-0 ${unhealthyCount > 0 ? "text-red-500" : "text-green-500"}`} />
+            <div>
+              <div className={`text-lg font-bold ${unhealthyCount > 0 ? "text-red-700" : "text-green-700"}`}>{unhealthyCount}</div>
+              <div className={`text-xs ${unhealthyCount > 0 ? "text-red-600" : "text-green-600"}`}>Needs repair</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grade cards grid */}
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-gray-100 p-4 animate-pulse bg-gray-50 h-32" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {health.map(h => {
+            const isRepairing = repairing.has(h.grade);
+            const borderColor = h.healthy ? "#D1FAE5" : "#FEE2E2";
+            const bgColor     = h.healthy ? "#F0FDF4" : "#FFF5F5";
+            return (
+              <div
+                key={h.grade}
+                className="rounded-xl border p-4 flex flex-col gap-3"
+                style={{ borderColor, background: bgColor }}>
+                {/* Grade label + status badge */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold" style={{ color: NAVY }}>Grade {h.grade}</span>
+                  {h.healthy
+                    ? <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">OK</span>
+                    : <span className="text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">⚠ Fix</span>
+                  }
+                </div>
+
+                {/* Counts */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Active</span>
+                    <span className={`font-bold ${h.activeCount === 1 ? "text-green-700" : "text-red-600"}`}>{h.activeCount}/1</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Upcoming</span>
+                    <span className={`font-bold ${h.upcomingCount === 2 ? "text-green-700" : "text-red-600"}`}>{h.upcomingCount}/2</span>
+                  </div>
+                </div>
+
+                {/* Issues */}
+                {h.issues.length > 0 && (
+                  <div className="space-y-0.5">
+                    {h.issues.map((issue, i) => (
+                      <p key={i} className="text-[10px] text-red-600 leading-tight">{issue}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Repair button */}
+                {!h.healthy && (
+                  <button
+                    onClick={() => repairGrade(h.grade)}
+                    disabled={isRepairing}
+                    className="mt-auto w-full py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
+                    style={{ background: isRepairing ? "#9CA3AF" : ORANGE }}>
+                    {isRepairing ? "Repairing…" : "Repair"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Info note */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-700">
+        <strong>How it works:</strong> The pipeline auto-repairs on every payment and every Sunday midnight cron. Null-dated batches (like legacy placeholders) are excluded from all counts. Clicking Repair runs <code className="bg-blue-100 px-1 rounded">ensureThreeWeekPipeline</code> which auto-promotes upcoming→active when needed and generates new Monday slots.
+      </div>
+    </div>
+  );
+}
+
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
@@ -3610,6 +3797,7 @@ const NAV_ITEMS: NavItem[] = [
       { id: "paid-students-dropped",       label: "Dropped"       },
     ],
   },
+  { id: "batch-health", label: "Batch Health", icon: ShieldCheck },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
   { id: "student-outreach", label: "Student Outreach", icon: UserCheck },
@@ -5112,6 +5300,7 @@ export function IgniteContentArea({
     case "paid-students-demo-completed": return <PaidStudentsDemoCompletedView />;
     case "paid-students-converted":     return <PaidStudentsConvertedView />;
     case "paid-students-dropped":       return <PaidStudentsDroppedView />;
+    case "batch-health": return <BatchPipelineHealthView flash={flash} />;
     case "payments": return <PaymentsView flash={flash} role={role} />;
     default: return <DashboardView setView={setView} />;
   }
@@ -5151,6 +5340,7 @@ export function IgniteTab({
       case "paid-students-demo-completed": return <PaidStudentsDemoCompletedView />;
       case "paid-students-converted":     return <PaidStudentsConvertedView />;
       case "paid-students-dropped":       return <PaidStudentsDroppedView />;
+      case "batch-health": return <BatchPipelineHealthView flash={flash} />;
       case "payments": return <PaymentsView flash={flash} />;
       default: return <DashboardView setView={setView} />;
     }
