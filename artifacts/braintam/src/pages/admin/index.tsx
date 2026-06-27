@@ -96,10 +96,8 @@ type Tab =
   | "liveclasses"
   | "announcements"
   | "banners"
-  | "fees"
   | "audit"
   | "payments"
-  | "certificates"
   | "command-center"
   | "course-analytics"
   | "teacher-analytics"
@@ -1324,7 +1322,7 @@ function AdminPageInner() {
         {
           sectionLabel: "Administration",
           items: [
-            { label: "Teachers", icon: GradCap, tab: "assignments" },
+            { label: "Course Assignments", icon: GradCap, tab: "assignments" },
             { label: "Gamification", icon: Zap, tab: "gamification" },
             { label: "Command Center", icon: ShieldCheck, tab: "command-center" },
             { label: "Operations Center", icon: Cpu, tab: "operations-command-center" },
@@ -1354,7 +1352,7 @@ function AdminPageInner() {
     { id: "users", label: "Users", icon: Users, group: "Manage" },
     { id: "mentors", label: "Mentors", icon: UserCheck2, group: "Manage" },
     { id: "ignite", label: "🚀 Ignite CRM", icon: Zap, group: "Manage" },
-    { id: "assignments", label: "Teachers", icon: LinkIcon, group: "Manage" },
+    { id: "assignments", label: "Course Assignments", icon: LinkIcon, group: "Manage" },
     { id: "enrollments", label: "Enrollments", icon: UserCheck, group: "Manage" },
     { id: "announcements", label: "Announcements", icon: Bell, group: "Manage" },
     { id: "banners", label: "Banners", icon: Image, group: "Manage" },
@@ -3030,22 +3028,6 @@ function AdminPageInner() {
         {/* ── Audit Logs ─────────────────────────────────────────────────── */}
         {tab === "audit" && <AuditLogsTab />}
 
-        {/* ── Fees (Placeholder) ────────────────────────────────────────── */}
-        {tab === "fees" && (
-          <ModulePage
-            icon={DollarSign}
-            title="Fee Management"
-            description="Track student fee payments, installments, overdue amounts, and integrate with Razorpay for seamless collections."
-            emoji="🧾"
-            statusLabel="Coming Soon"
-            statusColor="orange"
-            roadmap={[
-              { phase: "Phase 1", items: ["Total fees collected vs pending", "Per-student installment tracking", "Overdue student alerts", "Payment history per course"] },
-              { phase: "Phase 2", items: ["Razorpay auto-reconciliation", "Fee analytics by grade / course", "Export receipts as PDF", "Automated overdue reminders"] },
-            ]}
-          />
-        )}
-
         {/* ── Payments (Placeholder) ────────────────────────────────────── */}
         {tab === "payments" && (
           <ModulePage
@@ -3058,22 +3040,6 @@ function AdminPageInner() {
             roadmap={[
               { phase: "Phase 1", items: ["Razorpay order & webhook integration", "Transaction history with search + filter", "Refund management workflow"] },
               { phase: "Phase 2", items: ["Revenue by course / teacher", "Subscription plan tracking", "Transaction history export (CSV/PDF)"] },
-            ]}
-          />
-        )}
-
-        {/* ── Certificates (Placeholder) ────────────────────────────────── */}
-        {tab === "certificates" && (
-          <ModulePage
-            icon={Award}
-            title="Certificates"
-            description="Auto-generate and issue course completion certificates with custom Braintam branding."
-            emoji="🏆"
-            statusLabel="Coming Soon"
-            statusColor="blue"
-            roadmap={[
-              { phase: "Phase 1", items: ["Auto-generate on course completion", "Custom Braintam certificate templates", "Bulk issue by grade / course"] },
-              { phase: "Phase 2", items: ["QR code verification", "Student self-download portal", "Certificate analytics dashboard"] },
             ]}
           />
         )}

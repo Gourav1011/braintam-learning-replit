@@ -11,7 +11,6 @@ import {
   Zap, HelpCircle, ClipboardCheck, Trophy, TrendingUp, LayoutGrid, List, BarChart3,
 } from "lucide-react";
 import { LeaderboardTab } from "./leaderboard-tab";
-import { PipelineTab } from "./pipeline-tab";
 import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, SalesLeaderboardTab } from "./sales-calling-queue";
 import { SalesMentorPortal } from "./sales-mentor-portal";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
@@ -41,7 +40,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "pipeline" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students";
+type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -666,7 +665,7 @@ export default function BTLCRMPage() {
   const [tab, setTab] = useState<Tab>(() => {
     const stored = localStorage.getItem("braintam_mentor_portal_type");
     localStorage.removeItem("braintam_mentor_portal_type");
-    return stored === "sales" ? "pipeline" : "dashboard";
+    return "dashboard";
   });
 
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -2645,13 +2644,6 @@ export default function BTLCRMPage() {
         {/* ════ EOD REPORT ════ */}
         {tab === "eod-report" && (
           <EodReportTab apiFetch={apiFetch} />
-        )}
-
-        {/* ════ PIPELINE (Sales only — legacy, kept for fallback) ════ */}
-        {tab === "pipeline" && (
-          <PipelineTab
-            onOpenStudent={(id, name) => open360ById(id, name)}
-          />
         )}
 
         {/* ════ TODAY'S CALLING QUEUE (Sales SSM) ════ */}

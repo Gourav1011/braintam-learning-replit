@@ -3392,13 +3392,51 @@ function IgniteSidebar({
 // ── Ignite Header ─────────────────────────────────────────────────────────────
 
 function IgniteHeader({
-  userName, userRole,
+  userName, userRole, view,
 }: {
   userName: string;
   userRole: string;
+  view: IgniteView;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  async function exportCurrentView() {
+    type ExportTarget = { url: string; label: string; dataKey?: string };
+    const exportMap: Partial<Record<IgniteView, ExportTarget>> = {
+      leads:            { url: "/admin/ignite/leads?limit=10000",           label: "leads",         dataKey: "leads" },
+      "demo-students":  { url: "/admin/ignite/demo-students",               label: "demo-students" },
+      "demo-batches":   { url: "/admin/demo-batches",                       label: "demo-batches" },
+      "sales-mentors":  { url: "/admin/ignite/sales-mentors",               label: "sales-mentors" },
+      payments:         { url: "/admin/ignite/payments/history?limit=5000", label: "payments",      dataKey: "rows" },
+      conversion:       { url: "/admin/ignite/leads?limit=10000",           label: "converted",     dataKey: "leads" },
+    };
+    const target = exportMap[view];
+    if (!target) return;
+    setExporting(true);
+    try {
+      const r = await apiFetch(target.url);
+      if (!r.ok) return;
+      const data = await r.json() as Record<string, unknown>;
+      const rows: Record<string, unknown>[] = Array.isArray(data)
+        ? data
+        : (target.dataKey ? (data[target.dataKey] as Record<string, unknown>[]) : []) ?? [];
+      if (rows.length === 0) return;
+      const headers = Object.keys(rows[0]);
+      const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const csv = [headers.join(","), ...rows.map(row => headers.map(h => escape(row[h])).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `braintam-${target.label}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const today = new Date();
   const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
@@ -3450,10 +3488,11 @@ function IgniteHeader({
       </div>
 
       {/* Export Report */}
-      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity shrink-0"
+      <button onClick={exportCurrentView} disabled={exporting}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity shrink-0 disabled:opacity-50"
         style={{ background: NAVY }}>
         <Download className="w-3.5 h-3.5" />
-        Export Report
+        {exporting ? "Exporting…" : "Export CSV"}
       </button>
 
       {/* Notifications */}
@@ -4806,7 +4845,7 @@ export function IgniteTab({
   return (
     <div className="flex flex-col -mx-6 -my-5" style={{ fontFamily: "Poppins, sans-serif", height: "calc(100vh - 0px)", minHeight: "600px" }}>
       {/* Top header */}
-      <IgniteHeader userName={userName} userRole={userRole} />
+      <IgniteHeader userName={userName} userRole={userRole} view={view} />
       {/* Body: sidebar + content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <IgniteSidebar view={view} setView={setView} />

@@ -1099,20 +1099,6 @@ router.post("/admin/ignite/leads/:id/reassign", adminOnly, async (req, res) => {
   res.json({ ok: true, newMentorId: newMentor.id, newMentorName: newMentor.name });
 });
 
-// ── GET /admin/ignite/sales-mentors ───────────────────────────────────────────
-router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
-  const mentors = await db
-    .select({ id: usersTable.id, name: usersTable.name })
-    .from(usersTable)
-    .where(and(
-      eq(usersTable.role, "mentor"),
-      eq(usersTable.mentorType, "sales"),
-      eq(usersTable.isActive, true),
-      eq(usersTable.isDeleted, false),
-    ));
-  res.json(mentors);
-});
-
 // ── PATCH /admin/ignite/leads/:id/disable ─────────────────────────────────────
 router.patch("/admin/ignite/leads/:id/disable", adminOnly, async (req, res) => {
   const leadId = Number(req.params.id);

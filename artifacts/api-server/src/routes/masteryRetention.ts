@@ -310,8 +310,12 @@ router.get("/admin/mastery/academic-history", adminOnly, async (req, res) => {
 });
 
 // ── POST /api/admin/mastery/retention/trigger-dec1 ───────────────────────────
-// Manual trigger for Dec 1 retention flip (Active → Retention Due)
+// Manual trigger for Dec 1 retention flip (Active → Retention Due) — dev/staging only
 router.post("/admin/mastery/retention/trigger-dec1", adminOnly, async (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    res.status(403).json({ error: "This endpoint is disabled in production" });
+    return;
+  }
   const admin = req.authUser!;
 
   const activeStudents = await db
