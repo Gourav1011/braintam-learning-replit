@@ -54,3 +54,4 @@ export * from "./masteryPaymentVerifications";
 export * from "./masteryDeploymentBatches";
 export * from "./studentAcademicHistory";
 export * from "./masteryNotifications";
+export * from "./achievementTickers";

@@ -29,6 +29,12 @@ export const masteryStudentsTable = pgTable("mastery_students", {
   renewedAt:        timestamp("renewed_at", { withTimezone: true }),
   promotedGrade:    integer("promoted_grade"),
   notes:            text("notes"),
+  // Razorpay payment link for mastery (Flow A)
+  razorpayPaymentLinkId: text("razorpay_payment_link_id"),
+  razorpayPaymentLinkUrl: text("razorpay_payment_link_url"),
+  paymentLinkCreatedAt: timestamp("payment_link_created_at", { withTimezone: true }),
+  paymentCompletedAt: timestamp("payment_completed_at", { withTimezone: true }),
+  assignedCourseId: integer("assigned_course_id"),
   // Retention pipeline fields
   retentionStatus:      text("retention_status"),
   retentionContactedAt: timestamp("retention_contacted_at", { withTimezone: true }),

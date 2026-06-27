@@ -22,6 +22,7 @@ import { LiveClassesObserverTab } from "./live-classes-observer-tab";
 import { DoubtSessionsTab } from "./doubt-sessions-tab";
 import { EodReportTab } from "./eod-report-tab";
 import { MasteryNotificationBar } from "@/components/mastery-notification-bar";
+import { MasteryAchievementTicker } from "@/components/mastery-achievement-ticker";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -1239,6 +1240,7 @@ export default function BTLCRMPage() {
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (
           <div className="p-5 max-w-5xl mx-auto space-y-5">
+            <MasteryAchievementTicker />
             <MasteryNotificationBar />
             <div className="flex items-center justify-between">
               <div>

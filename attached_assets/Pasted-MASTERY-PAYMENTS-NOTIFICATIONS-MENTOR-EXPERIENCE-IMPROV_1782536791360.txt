@@ -1,0 +1,335 @@
+MASTERY PAYMENTS, NOTIFICATIONS & MENTOR EXPERIENCE IMPROVEMENTS
+
+IMPORTANT:
+Do NOT break existing Ignite CRM, Mastery CRM, Payments, Leaderboards, or Notifications. Extend the current system only.
+
+────────────────────────
+PART 1 – PAYMENT FLOWS
+────────────────────────
+
+Support only two payment methods:
+
+1. Full Razorpay Payment Link
+2. Partial/Manual Payment Upload
+
+---
+
+## FLOW A – FULL PAYMENT LINK
+
+Parent pays through the generated Razorpay payment link.
+
+Flow:
+
+Payment Success
+↓
+Razorpay Verification
+↓
+Student Status = Active
+↓
+Automatically assign purchased grade course
+↓
+Course instantly appears in Student App
+↓
+Mentor Notification
+↓
+Leaderboard Update
+↓
+Achievement Ticker
+
+NO ADMIN APPROVAL REQUIRED.
+
+NO PAYMENT VERIFICATION QUEUE.
+
+NO MANUAL ACTION REQUIRED.
+
+Example:
+
+Grade 4 Payment Link
+↓
+Payment Success
+↓
+Assign Grade 4 Mastery Course
+↓
+Course appears in My Courses
+
+The course appearing itself acts as confirmation.
+
+No additional payment confirmation messages are needed.
+
+---
+
+## FLOW B – PARTIAL PAYMENT UPLOAD
+
+Examples:
+
+Cash
+Bank Transfer
+UTR
+Screenshot
+Third-party EMI Proof
+
+Flow:
+
+Mentor Uploads Payment
+↓
+Payment Status = Pending Verification
+↓
+Admin Reviews
+↓
+Approve or Reject
+
+IMPORTANT:
+
+Do NOT show any notifications for:
+
+Pending Verification
+Partial Payments
+Payment Uploads
+Duplicate Checks
+Verification Checks
+Incomplete Payments
+
+All of this should remain completely silent.
+
+---
+
+## CONVERSION RULE
+
+A successful payment is counted only when:
+
+1. Full Payment Link succeeds
+
+OR
+
+2. Admin approval causes:
+
+# Total Amount Paid
+
+Course Fee
+
+Only then:
+
+Student Status = Active
+Course Auto Assigned
+Mentor gets +1 Successful Payment
+Leaderboard Updates
+Achievement Ticker Generated
+
+Before this point:
+
+No conversion
+No leaderboard update
+No notifications
+
+────────────────────────
+PART 2 – AUTO COURSE ASSIGNMENT
+────────────────────────
+
+Map payment links directly to courses.
+
+Examples:
+
+Grade 1 Payment Link
+→ Grade 1 Mastery Course
+
+Grade 4 Payment Link
+→ Grade 4 Mastery Course
+
+Grade 8 Payment Link
+→ Grade 8 Mastery Course
+
+When payment becomes complete:
+
+Automatically:
+
+Assign Course
+Enable Access
+Show in Student App
+
+Admin should not manually assign courses.
+
+────────────────────────
+PART 3 – MENTOR NOTIFICATIONS
+────────────────────────
+
+Remove duplicate notification systems.
+
+Current system has:
+
+Bell
+Flag
+
+If both show similar notifications:
+
+Remove Flag entirely.
+
+Keep only:
+
+🔔 Notification Bell
+
+Notification Bell should contain:
+
+🔔 Sumit completed successful payment.
+
+Examples:
+
+🔔 Aryan Sharma completed successful payment.
+🔔 Neha Gupta completed successful payment.
+🔔 Rahul Singh completed successful payment.
+
+Generate only after:
+
+Full Payment Link Success
+
+OR
+
+Admin approval completes the total course fee.
+
+No notifications for partial payments.
+
+────────────────────────
+PART 4 – ACHIEVEMENT TICKER
+────────────────────────
+
+Create a live achievement ticker.
+
+Visible only to:
+
+Ignite Mentors
+Team Leads
+Managers
+
+Do NOT show to:
+
+Admins
+Students
+Parents
+
+Location:
+
+Top of Dashboard
+Above KPI Cards
+
+Notification text:
+
+🏆 Mentor Sumit got 1 successful payment.
+
+Behavior:
+
+Message enters from left
+↓
+Moves to right once
+↓
+Disappears completely
+↓
+Next queued message begins
+
+Do not loop continuously.
+
+Do not use a marquee.
+
+Do not repeat infinitely.
+
+If there are multiple successful payments:
+
+Queue them individually.
+
+Example:
+
+🏆 Mentor Rahul got 1 successful payment.
+↓
+🏆 Mentor Priya got 1 successful payment.
+↓
+🏆 Mentor Sumit got 1 successful payment.
+
+Even if one mentor receives multiple payments simultaneously:
+
+Generate separate queued messages.
+
+Example:
+
+🏆 Mentor Sumit got 1 successful payment.
+↓
+🏆 Mentor Sumit got 1 successful payment.
+↓
+🏆 Mentor Sumit got 1 successful payment.
+
+Do not group into:
+
+"Mentor Sumit got 3 successful payments."
+
+Each achievement should feel like an individual win.
+
+────────────────────────
+PART 5 – LEADERBOARD UPDATE
+────────────────────────
+
+Whenever a successful payment occurs:
+
++1 Successful Payment
+↓
+Leaderboard recalculates
+↓
+Conversion Percentage recalculates
+↓
+Rank updates immediately
+
+Successful payment should be counted only after:
+
+Payment Link Success
+
+OR
+
+Admin approval completes the full fee.
+
+────────────────────────
+PART 6 – ADMIN CONTROLS
+────────────────────────
+
+Admin should still have full control.
+
+Allow Admin to:
+
+Edit Student Name
+Edit Phone Number
+Edit Parent Name
+Edit Grade
+Edit Board
+Edit Course Plan
+Change Payment Status
+Assign Course
+Remove Course
+Change Course
+Pause Access
+Resume Access
+Approve Payments
+Reject Payments
+Refund Payments
+Add Manual Payments
+Delete Incorrect Payments
+
+Every action should create an audit log entry.
+
+────────────────────────
+FINAL FLOW
+────────────────────────
+
+Full Payment Link Success
+OR
+Admin Approval completes total fee
+↓
+Student Status = Active
+↓
+Course Auto Assigned
+↓
+Course appears in Student App
+↓
+🔔 Student Name completed successful payment.
+↓
+🏆 Mentor Name got 1 successful payment.
+↓
+Leaderboard Updates
+↓
+Audit Logs Created
+
+Build production-ready database updates, APIs, notification queue, achievement ticker, auto course assignment, leaderboard updates, permissions, and audit logging while preserving all existing Braintam CRM functionality.

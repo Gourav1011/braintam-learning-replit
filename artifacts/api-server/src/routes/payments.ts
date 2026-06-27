@@ -9,8 +9,10 @@ import {
   ignitePaidStudentsTable,
   paymentLinksTable,
   studentTimelineTable,
+  masteryStudentsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
 
 const router = Router();
 
@@ -188,7 +190,7 @@ router.post("/payments/webhook", async (req, res) => {
       const updates: Record<string, unknown> = { status: newStatus };
 
       if (event === "payment_link.paid") {
-        // Fetch link row to get studentId
+        // ── Ignite: mark lead as Converted ──────────────────────────────────
         const [linkRow] = await db
           .select({ studentId: paymentLinksTable.studentId })
           .from(paymentLinksTable)
@@ -200,6 +202,31 @@ router.post("/payments/webhook", async (req, res) => {
             .update(usersTable)
             .set({ leadStage: "Converted", updatedAt: new Date() })
             .where(eq(usersTable.id, linkRow.studentId));
+        }
+
+        // ── Mastery: check if this link belongs to a mastery student ─────────
+        const [masteryRow] = await db
+          .select({
+            id:     masteryStudentsTable.id,
+            amount: masteryStudentsTable.amountPaid,
+          })
+          .from(masteryStudentsTable)
+          .where(eq(masteryStudentsTable.razorpayPaymentLinkId, rpLinkId))
+          .limit(1);
+
+        if (masteryRow) {
+          // Use amount from payment_link entity if available
+          const paidAmount = plEntity?.amount_paid
+            ? Math.round(plEntity.amount_paid / 100)
+            : masteryRow.amount;
+
+          await onMasteryPaymentComplete({
+            masteryStudentId: masteryRow.id,
+            actorId:          0,
+            actorName:        "Razorpay",
+            amount:           paidAmount,
+            eventSource:      "payment_link",
+          }).catch(() => null);
         }
       }
 

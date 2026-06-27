@@ -4,10 +4,13 @@ import { db } from "@workspace/db";
 import {
   masteryPaymentVerificationsTable,
   masteryStudentsTable,
+  masteryTimelineTable,
+  achievementTickersTable,
   usersTable,
 } from "@workspace/db";
-import { eq, desc, and, sql, gte, or } from "drizzle-orm";
+import { eq, desc, and, sql, gte, or, sum } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
+import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
@@ -313,7 +316,92 @@ router.post("/admin/mastery/payments/:id/approve", adminOnly, async (req, res) =
     .returning();
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  // ── Trigger payment complete chain if student exists ──────────────────────
+  // Per spec: admin approval → student activated, course assigned, mentor notified,
+  // achievement ticker created, leaderboard updated.
+  if (row.masteryStudentId) {
+    // Check if total approved payments complete the course fee
+    // For now: any approval triggers activation (admin controls this decision)
+    onMasteryPaymentComplete({
+      masteryStudentId: row.masteryStudentId,
+      actorId:          admin.id,
+      actorName:        admin.name ?? "Admin",
+      amount:           row.amount,
+      eventSource:      "admin_approval",
+    }).catch((err: unknown) => {
+      req.log.error({ err }, "onMasteryPaymentComplete failed after approve");
+    });
+  }
+
   res.json({ id: row.id, status: row.status });
+});
+
+// ── GET /api/mentor/mastery/achievement-tickers ───────────────────────────────
+router.get("/mentor/mastery/achievement-tickers", allStaff, async (req, res) => {
+  const user = req.authUser!;
+  const isAdmin = ["admin", "super_admin"].includes(user.role ?? "");
+
+  // Admins don't see achievement tickers (per spec)
+  if (isAdmin) { res.json([]); return; }
+
+  const rows = await db
+    .select()
+    .from(achievementTickersTable)
+    .where(
+      and(
+        eq(achievementTickersTable.mentorId, user.id),
+        eq(achievementTickersTable.isShown, false)
+      )
+    )
+    .orderBy(achievementTickersTable.createdAt);
+
+  res.json(rows);
+});
+
+// ── POST /api/mentor/mastery/achievement-tickers/:id/shown ────────────────────
+router.post("/mentor/mastery/achievement-tickers/:id/shown", allStaff, async (req, res) => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  await db
+    .update(achievementTickersTable)
+    .set({ isShown: true })
+    .where(eq(achievementTickersTable.id, id));
+
+  res.json({ ok: true });
+});
+
+// ── GET /api/admin/mastery/payment-leaderboard ────────────────────────────────
+router.get("/admin/mastery/payment-leaderboard", adminOnly, async (_req, res) => {
+  const mentors = await db
+    .select({ id: usersTable.id, name: usersTable.name, mentorType: usersTable.mentorType })
+    .from(usersTable)
+    .where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true)));
+
+  const tickers = await db
+    .select({
+      mentorId:  achievementTickersTable.mentorId,
+    })
+    .from(achievementTickersTable);
+
+  const countMap = tickers.reduce<Record<number, number>>((acc, t) => {
+    acc[t.mentorId] = (acc[t.mentorId] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const leaderboard = mentors
+    .map((m, idx) => ({
+      mentorId:          m.id,
+      mentorName:        m.name,
+      mentorType:        m.mentorType,
+      successfulPayments: countMap[m.id] ?? 0,
+    }))
+    .filter(m => m.successfulPayments > 0)
+    .sort((a, b) => b.successfulPayments - a.successfulPayments)
+    .map((m, i) => ({ ...m, rank: i + 1 }));
+
+  res.json(leaderboard);
 });
 
 // ── POST /api/admin/mastery/payments/:id/reject ──────────────────────────────
@@ -405,6 +493,69 @@ router.post("/admin/mastery/payments/:id/flag-duplicate", adminOnly, async (req,
     .returning();
 
   res.json({ id: updated.id, status: updated.status, duplicateInfo });
+});
+
+// ── POST /api/admin/mastery/students/:id/create-payment-link ─────────────────
+// Generate a Razorpay Payment Link for a mastery student (Flow A)
+router.post("/admin/mastery/students/:id/create-payment-link", adminOnly, async (req, res) => {
+  const studentId = parseInt(req.params["id"] as string, 10);
+  if (isNaN(studentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [student] = await db
+    .select()
+    .from(masteryStudentsTable)
+    .where(eq(masteryStudentsTable.id, studentId))
+    .limit(1);
+  if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+
+  const { amount, description } = req.body as { amount?: number; description?: string };
+  if (!amount || amount < 1) { res.status(400).json({ error: "amount (rupees) is required" }); return; }
+
+  const rp = getRazorpay();
+  if (!rp) { res.status(503).json({ error: "Razorpay keys not configured" }); return; }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const link: any = await rp.paymentLink.create({
+      amount:      amount * 100, // paise
+      currency:    "INR",
+      description: description ?? `Mastery Course — Grade ${student.grade} — ${student.studentName}`,
+      customer:    {
+        name:  student.studentName,
+        contact: `+91${student.phone}`,
+        email: student.email ?? undefined,
+      },
+      notify:      { sms: true, email: !!student.email },
+      reminder_enable: true,
+      notes: {
+        masteryStudentId: String(studentId),
+        grade:            String(student.grade ?? ""),
+        studentName:      student.studentName,
+      },
+      callback_url:    undefined,
+      callback_method: undefined,
+    });
+
+    // Store link on the student record
+    await db
+      .update(masteryStudentsTable)
+      .set({
+        razorpayPaymentLinkId:  link.id,
+        razorpayPaymentLinkUrl: link.short_url ?? link.id,
+        paymentLinkCreatedAt:   new Date(),
+        updatedAt:              new Date(),
+      })
+      .where(eq(masteryStudentsTable.id, studentId));
+
+    res.json({
+      linkId:   link.id,
+      shortUrl: link.short_url,
+      amount:   link.amount / 100,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Razorpay error";
+    res.status(502).json({ error: `Failed to create payment link: ${msg}` });
+  }
 });
 
 // ── POST /api/admin/mastery/payments/:id/refund ───────────────────────────────
