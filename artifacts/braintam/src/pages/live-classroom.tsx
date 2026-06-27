@@ -293,6 +293,11 @@ export default function LiveClassroom() {
   // ── Sprint 3: Stage state ─────────────────────────────────
   const [stageSlots, setStageSlots] = useState<StageSlot[]>([]);
 
+  // ── Teacher presence (shown in camera panel for all roles) ──
+  const [teacherInfo, setTeacherInfo] = useState<{ name: string; userId: string; online: boolean } | null>(
+    isStaff ? { name, userId, online: true } : null
+  );
+
   // ── Annotation ─────────────────────────────────────────────
   const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter">("none");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -365,12 +370,17 @@ export default function LiveClassroom() {
     socket.on("roomState", (s: {
       chat: ChatMsg[]; raisedHands: RaisedHand[]; raiseHandEnabled: boolean;
       activePoll: Poll | null; stage?: StageSlot[];
+      teacher?: { name: string; userId: string } | null;
     }) => {
       setChat(s.chat);
       setRaisedHands(s.raisedHands);
       setRaiseHandEnabled(s.raiseHandEnabled);
       if (s.activePoll) { setActivePoll(s.activePoll); setPanelMode("poll"); }
       if (s.stage) setStageSlots(s.stage);
+      // Only update teacherInfo from roomState if we're not the teacher (teacher sets own info at mount)
+      if (!isStaff && s.teacher) {
+        setTeacherInfo({ name: s.teacher.name, userId: s.teacher.userId, online: true });
+      }
     });
 
     socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
@@ -430,6 +440,14 @@ export default function LiveClassroom() {
     });
     socket.on("stage:error", ({ message }: { message: string }) => alert(message));
 
+    // ── Teacher presence ──────────────────────────────────────
+    socket.on("teacher:joined", (d: { name: string; userId: string }) => {
+      setTeacherInfo({ name: d.name, userId: d.userId, online: true });
+    });
+    socket.on("teacher:left", (d: { name: string; userId: string }) => {
+      setTeacherInfo(prev => prev ? { ...prev, online: false } : { name: d.name, userId: d.userId, online: false });
+    });
+
     return () => {
       socket.off("roomState"); socket.off("chat:message");
       socket.off("pollStarted"); socket.off("pollEnded"); socket.off("pollUpdate");
@@ -438,6 +456,7 @@ export default function LiveClassroom() {
       socket.off("raiseHandToggled"); socket.off("pollSubmitted");
       socket.off("stage:studentInvited"); socket.off("stage:muteStateChanged");
       socket.off("stage:studentRemoved"); socket.off("stage:error");
+      socket.off("teacher:joined"); socket.off("teacher:left");
     };
   }, [socket, upsert]);
 
@@ -689,18 +708,55 @@ export default function LiveClassroom() {
         ═══════════════════════════════════════════════════ */}
         <div className="flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 240 }}>
 
-          {/* Camera */}
+          {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           <div className="relative bg-black flex-shrink-0" style={{ height: 150 }}>
-            <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none" }} />
-            {!cameraOn && (
-              <div className="flex flex-col items-center justify-center h-full gap-2">
-                <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-lg">👤</div>
-                <p className="text-[10px] text-gray-600">{name}</p>
+            {/* Label */}
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
+            </div>
+
+            {isStaff ? (
+              /* ── Teacher sees their own camera ── */
+              <>
+                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none" }} />
+                {!cameraOn && (
+                  <div className="flex flex-col items-center justify-center h-full gap-2">
+                    <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
+                    <p className="text-[10px] text-gray-500">{name}</p>
+                  </div>
+                )}
+                <button onClick={toggleCamera} className="absolute bottom-2 right-2 p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all" title={cameraOn ? "Turn off camera" : "Turn on camera"}>
+                  {cameraOn ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                </button>
+              </>
+            ) : teacherInfo ? (
+              teacherInfo.online ? (
+                /* ── Teacher is live — show their avatar/stream placeholder ── */
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
+                  </div>
+                  <p className="text-[11px] text-white font-semibold">{teacherInfo.name}</p>
+                </div>
+              ) : (
+                /* ── Teacher disconnected — network issue message ── */
+                <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
+                  <div className="relative opacity-40">
+                    <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gray-600 rounded-full border-2 border-black" />
+                  </div>
+                  <p className="text-[10px] text-gray-300 font-semibold">{teacherInfo.name}</p>
+                  <p className="text-[9px] text-yellow-400 leading-tight">📡 Network issue — please wait a moment</p>
+                </div>
+              )
+            ) : (
+              /* ── Teacher hasn't joined yet ── */
+              <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-gray-800/60 flex items-center justify-center text-2xl opacity-40">👤</div>
+                <p className="text-[10px] text-gray-500 leading-tight">Waiting for teacher to join…</p>
               </div>
             )}
-            <button onClick={toggleCamera} className="absolute bottom-2 right-2 p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all">
-              {cameraOn ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
-            </button>
           </div>
 
           {/* Raised hands queue (teacher/mentor) — Sprint 3: approve to stage */}

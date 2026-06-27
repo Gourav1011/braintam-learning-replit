@@ -63,6 +63,7 @@ interface SessionRoom {
   activePoll: Poll | null;
   pollAnswers: Map<string, PollAnswer>;
   stageSlots: Map<string, StageSlotEntry>;  // key = studentId
+  teacher: { name: string; userId: string } | null;
 }
 
 interface StageSlotEntry {
@@ -85,6 +86,7 @@ function getSessionRoom(sid: string): SessionRoom {
       activePoll: null,
       pollAnswers: new Map(),
       stageSlots: new Map(),
+      teacher: null,
     });
   }
   return sessionRooms.get(sid)!;
@@ -376,6 +378,7 @@ export function setupSocketIO(httpServer: HttpServer) {
           ? { ...room.activePoll, correctOptionId: undefined }
           : null,
         stage: Array.from(room.stageSlots.values()),
+        teacher: room.teacher,
       });
     })().catch(() => {
       socket.emit("roomState", {
@@ -386,6 +389,13 @@ export function setupSocketIO(httpServer: HttpServer) {
         stage: [],
       });
     });
+
+    // ── Teacher presence broadcast ─────────────────────────────
+    if (isStaff) {
+      room.teacher = { name, userId };
+      // Notify everyone already in the room that teacher is here
+      socket.to(globalRoom(sessionId)).emit("teacher:joined", { name, userId });
+    }
 
     // ── Heartbeat (students & mentors, every 15s) ─────────────
     socket.on("heartbeat:ping", () => {
@@ -611,7 +621,10 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     // ── Disconnect ────────────────────────────────────────────
     socket.on("disconnect", () => {
-      if (!isStaff) {
+      if (isStaff) {
+        room.teacher = null;
+        io.to(globalRoom(sessionId)).emit("teacher:left", { name, userId });
+      } else {
         markLeft(sessionId, userId);
         const entry = liveStateCache.get(`${sessionId}-${userId}`);
         if (entry) entry.currentStatus = "ABSENT";
