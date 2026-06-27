@@ -1659,6 +1659,7 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
   const [selectedLeads, setSelectedLeads] = useState<Set<number>>(new Set());
   const [recentDeployments, setRecentDeployments] = useState<{ id: number; grade: number | null; totalLeads: number; mentorCount: number; createdAt: string }[]>([]);
   const PER = 12;
+  const [leadsSubTab, setLeadsSubTab] = useState<"crm" | "deployment">("crm");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -1735,6 +1736,28 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
     downloadCSVFile(csv, `braintam_leads_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`);
   };
 
+  const SubTabBar = () => (
+    <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 p-1 w-fit gap-1">
+      {(["crm", "deployment"] as const).map(t => (
+        <button key={t} onClick={() => setLeadsSubTab(t)}
+          className="px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+          style={leadsSubTab === t
+            ? { background: t === "deployment" ? ORANGE : NAVY, color: "#fff" }
+            : { color: "#6B7280" }}>
+          {t === "crm" ? "📋 Lead CRM" : "🚀 Deployment"}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (leadsSubTab === "deployment") {
+    return (
+      <div className="space-y-4">
+        <SubTabBar />
+        <LeadDeploymentView flash={flash} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -1776,6 +1799,8 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
           </div>
         </div>
       )}
+
+      <SubTabBar />
 
       {/* Date Range Filter */}
       <div className="bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-100 flex flex-wrap items-center gap-3">
@@ -3561,7 +3586,6 @@ function StudentOutreachView({ flash }: { flash: (m: string, ok?: boolean) => vo
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
-  { id: "lead-deployment", label: "Lead Deployment", icon: Rocket },
   {
     id: "overview", label: "Demo Management", icon: Zap,
     children: [

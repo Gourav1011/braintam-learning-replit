@@ -1282,7 +1282,6 @@ function AdminPageInner() {
           { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
           { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "payments" },
           { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
-          { label: "Lead Deployment", icon: Package, tab: "ignite", igniteView: "lead-deployment" },
           { label: "Student Outreach", icon: UserCheck2, tab: "btl-crm" },
           { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "ignite-reports" },
         ],
