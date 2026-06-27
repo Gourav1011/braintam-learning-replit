@@ -2272,6 +2272,103 @@ function DemoStudentsView({ flash }: { flash: (m: string, ok?: boolean) => void 
   );
 }
 
+// ── Attendance Calendar ───────────────────────────────────────────────────────
+
+function AttendanceCalendar({ data }: { data: AttendanceData }) {
+  if (data.sessions.length === 0) {
+    return <div className="text-center py-12 text-gray-400 text-sm">No sessions recorded for this batch</div>;
+  }
+
+  function toISTDate(s: string) {
+    const d = new Date(new Date(s).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function dKey(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  const sessions = data.sessions.map((s, idx) => {
+    const present = data.grid.filter(e => e.days[idx]).length;
+    const total = data.grid.length;
+    return { ...s, idx, pct: total > 0 ? Math.round((present / total) * 100) : 0, present, total, date: toISTDate(s.scheduledAt) };
+  }).sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (sessions.length === 0) return null;
+
+  const sessionMap = new Map(sessions.map(s => [dKey(s.date), s]));
+  const firstDate = sessions[0].date;
+  const lastDate = sessions[sessions.length - 1].date;
+
+  const startMonday = new Date(firstDate);
+  const fd = firstDate.getDay();
+  startMonday.setDate(firstDate.getDate() - (fd === 0 ? 6 : fd - 1));
+
+  const endSunday = new Date(lastDate);
+  const ld = lastDate.getDay();
+  endSunday.setDate(lastDate.getDate() + (ld === 0 ? 0 : 7 - ld));
+
+  const weeks: Date[][] = [];
+  const cur = new Date(startMonday);
+  while (cur <= endSunday) {
+    const week: Date[] = [];
+    for (let d = 0; d < 7; d++) { week.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+    weeks.push(week);
+  }
+
+  const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
+      <div className="grid grid-cols-7 gap-1.5">
+        {DAY_LABELS.map(d => (
+          <div key={d} className="text-center text-[11px] font-bold text-gray-400 pb-1">{d}</div>
+        ))}
+      </div>
+      {weeks.map((week, wi) => (
+        <div key={wi} className="grid grid-cols-7 gap-1.5">
+          {week.map((date, di) => {
+            const key = dKey(date);
+            const s = sessionMap.get(key);
+            const inRange = date >= firstDate && date <= endSunday;
+            if (!inRange) return <div key={di} className="h-16 rounded-xl" />;
+            if (!s) return (
+              <div key={di} className="h-16 rounded-xl bg-gray-50 flex items-center justify-center">
+                <span className="text-[11px] text-gray-200 font-semibold">{date.getDate()}</span>
+              </div>
+            );
+            const color = s.pct >= 80 ? "#10B981" : s.pct >= 60 ? "#D97706" : "#EF4444";
+            const bg    = s.pct >= 80 ? "#D1FAE5" : s.pct >= 60 ? "#FEF3C7" : "#FEE2E2";
+            return (
+              <div key={di} className="h-16 rounded-xl p-1.5 flex flex-col items-center justify-center gap-0.5" style={{ background: bg }}>
+                <div className="text-[9px] font-semibold text-gray-500">
+                  {date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                </div>
+                <div className="text-[10px] font-bold text-gray-500">D{s.dayNumber}</div>
+                <div className="text-sm font-black leading-none" style={{ color }}>{s.pct}%</div>
+                <div className="text-[9px] text-gray-400">{s.present}/{s.total}</div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      <div className="flex items-center gap-4 justify-end pt-1">
+        {[
+          { color: "#10B981", bg: "#D1FAE5", label: "≥80% Present" },
+          { color: "#D97706", bg: "#FEF3C7", label: "60–79%" },
+          { color: "#EF4444", bg: "#FEE2E2", label: "<60%" },
+        ].map(l => (
+          <div key={l.label} className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded" style={{ background: l.bg, border: `1.5px solid ${l.color}` }} />
+            <span className="text-[10px] text-gray-500">{l.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Attendance View ───────────────────────────────────────────────────────────
 
 interface AttendanceData {
@@ -2289,6 +2386,7 @@ function AttendanceView({ flash }: { flash: (m: string, ok?: boolean) => void })
   const [loading, setLoading] = useState(false);
   const [batchesLoading, setBatchesLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const PER = 10;
 
   useEffect(() => {
@@ -2329,8 +2427,10 @@ function AttendanceView({ flash }: { flash: (m: string, ok?: boolean) => void })
           <p className="text-xs text-gray-500">Track demo student attendance by batch</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
-            <Calendar className="w-3.5 h-3.5" /> Calendar View
+          <button
+            onClick={() => setViewMode(v => v === "calendar" ? "table" : "calendar")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${viewMode === "calendar" ? "border-blue-300 bg-blue-50 text-blue-700 font-semibold" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+            <Calendar className="w-3.5 h-3.5" /> {viewMode === "calendar" ? "Table View" : "Calendar View"}
           </button>
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
             <Download className="w-3.5 h-3.5" /> Export
@@ -2373,7 +2473,12 @@ function AttendanceView({ flash }: { flash: (m: string, ok?: boolean) => void })
         </div>
       </div>
 
-      {/* Attendance Grid */}
+      {/* Calendar / Table toggle */}
+      {viewMode === "calendar" ? (
+        data
+          ? <AttendanceCalendar data={data} />
+          : <div className="text-center py-12 text-gray-400 text-sm">Select a batch to view calendar</div>
+      ) : (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -2466,6 +2571,7 @@ function AttendanceView({ flash }: { flash: (m: string, ok?: boolean) => void })
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

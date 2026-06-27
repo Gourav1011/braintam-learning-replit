@@ -755,13 +755,17 @@ router.delete("/admin/mentor-assignments/:id", adminOnly, async (req, res) => {
 // ── Admin: BTL CRM Overview ──────────────────────────────────────────────
 
 // Pipeline summary: count per lead stage across all assigned students
-router.get("/admin/btl-crm/pipeline", adminOnly, async (_req, res) => {
+router.get("/admin/btl-crm/pipeline", adminOnly, async (req, res) => {
+  const { since } = req.query as { since?: string };
+  const sinceDate = since ? new Date(since) : null;
+
   const students = await db
     .select({ leadStage: usersTable.leadStage })
     .from(usersTable)
     .innerJoin(mentorStudentAssignmentsTable, and(
       eq(mentorStudentAssignmentsTable.studentId, usersTable.id),
       eq(mentorStudentAssignmentsTable.isActive, true),
+      ...(sinceDate ? [gte(mentorStudentAssignmentsTable.assignedAt, sinceDate)] : []),
     ))
     .where(eq(usersTable.role, "student"));
 
@@ -784,7 +788,9 @@ router.get("/admin/btl-crm/pipeline", adminOnly, async (_req, res) => {
 });
 
 // Mentor performance table: per-mentor stats across their pipeline
-router.get("/admin/btl-crm/mentor-performance", adminOnly, async (_req, res) => {
+router.get("/admin/btl-crm/mentor-performance", adminOnly, async (req, res) => {
+  const { since } = req.query as { since?: string };
+  const sinceDate = since ? new Date(since) : null;
   const today = new Date().toISOString().slice(0, 10);
 
   const mentors = await db
@@ -811,7 +817,10 @@ router.get("/admin/btl-crm/mentor-performance", adminOnly, async (_req, res) => 
       overdue: sql<number>`count(*) filter (where next_follow_up_date < ${today} and call_status != 'completed' and next_follow_up_date is not null)`,
     })
     .from(mentorFollowUpsTable)
-    .where(inArray(mentorFollowUpsTable.mentorId, mentorIds))
+    .where(and(
+      inArray(mentorFollowUpsTable.mentorId, mentorIds),
+      ...(sinceDate ? [gte(mentorFollowUpsTable.createdAt, sinceDate)] : []),
+    ))
     .groupBy(mentorFollowUpsTable.mentorId);
   const fuMap = Object.fromEntries(followUpStats.map(r => [r.mentorId, r]));
 
@@ -823,7 +832,10 @@ router.get("/admin/btl-crm/mentor-performance", adminOnly, async (_req, res) => 
       overdue: sql<number>`count(*) filter (where status in ('pending','in_progress') and due_date < ${today})`,
     })
     .from(mentorTasksTable)
-    .where(inArray(mentorTasksTable.mentorId, mentorIds))
+    .where(and(
+      inArray(mentorTasksTable.mentorId, mentorIds),
+      ...(sinceDate ? [gte(mentorTasksTable.createdAt, sinceDate)] : []),
+    ))
     .groupBy(mentorTasksTable.mentorId);
   const taskMap = Object.fromEntries(taskStats.map(r => [r.mentorId, r]));
 

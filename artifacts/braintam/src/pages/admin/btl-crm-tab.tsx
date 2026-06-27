@@ -1122,7 +1122,32 @@ function PostTimelineForm({ students, flash }: { students: StudentOption[]; flas
   );
 }
 
+type OutreachPeriod = "week" | "2weeks" | "3weeks" | "month";
+
+const PERIOD_OPTIONS: { key: OutreachPeriod; label: string }[] = [
+  { key: "week",   label: "This Week" },
+  { key: "2weeks", label: "2 Weeks" },
+  { key: "3weeks", label: "3 Weeks" },
+  { key: "month",  label: "This Month" },
+];
+
+function getSinceDate(p: OutreachPeriod): string {
+  const now = new Date();
+  if (p === "week") {
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday.toISOString().slice(0, 10);
+  }
+  if (p === "2weeks") { const d = new Date(now); d.setDate(d.getDate() - 13); d.setHours(0,0,0,0); return d.toISOString().slice(0, 10); }
+  if (p === "3weeks") { const d = new Date(now); d.setDate(d.getDate() - 20); d.setHours(0,0,0,0); return d.toISOString().slice(0, 10); }
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+}
+
 export function BtlCrmTab({ users }: { users: { id: number; name: string; grade: number; role: string }[] }) {
+  const [period, setPeriod] = useState<OutreachPeriod>("week");
   const [pipeline, setPipeline] = useState<PipelineData | null>(null);
   const [mentorPerf, setMentorPerf] = useState<MentorPerf[]>([]);
   const [reminders, setReminders] = useState<OverdueReminder[]>([]);
@@ -1152,14 +1177,15 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
   }, []);
 
   const loadAll = useCallback(async () => {
+    const since = getSinceDate(period);
     setLoadingPipeline(true);
     setLoadingPerf(true);
     setLoadingReminders(true);
     setLoadingUnassigned(true);
 
     const [pRes, mRes, rRes, uRes, mentRes] = await Promise.all([
-      apiFetch("/admin/btl-crm/pipeline"),
-      apiFetch("/admin/btl-crm/mentor-performance"),
+      apiFetch(`/admin/btl-crm/pipeline?since=${since}`),
+      apiFetch(`/admin/btl-crm/mentor-performance?since=${since}`),
       apiFetch("/admin/btl-crm/overdue-reminders"),
       apiFetch("/admin/btl-crm/unassigned"),
       apiFetch("/admin/mentors"),
@@ -1178,7 +1204,7 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
     setLoadingUnassigned(false);
 
     if (mentRes.ok) setMentorOptions(await mentRes.json());
-  }, []);
+  }, [period]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -1212,6 +1238,20 @@ export function BtlCrmTab({ users }: { users: { id: number; name: string; grade:
             <p className="text-xs text-gray-400 mt-0.5">Pipeline + mentor performance across all relationship managers</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Period Selector */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+              {PERIOD_OPTIONS.map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setPeriod(opt.key)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={period === opt.key
+                    ? { background: NAVY, color: "#fff" }
+                    : { color: "#6B7280" }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             <Button
               size="sm"
               variant="outline"
