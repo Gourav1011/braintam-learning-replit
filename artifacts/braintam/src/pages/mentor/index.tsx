@@ -1589,9 +1589,22 @@ export default function BTLCRMPage() {
                               <span className={`font-bold ${s.hwCompletion >= 75 ? "text-green-600" : s.hwCompletion >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.hwCompletion}%</span>
                             </td>
                             <td className="px-2 py-2.5">
-                              {s.attendancePct !== null && s.attendancePct !== undefined
-                                ? <span className={`font-bold ${s.attendancePct >= 75 ? "text-green-600" : s.attendancePct >= 50 ? "text-yellow-600" : "text-red-500"}`}>{s.attendancePct}%</span>
-                                : <span className="text-gray-300">—</span>}
+                              {s.attendancePct !== null && s.attendancePct !== undefined ? (() => {
+                                const pct = s.attendancePct;
+                                const total = 7;
+                                const filled = Math.round((pct / 100) * total);
+                                return (
+                                  <div title={`${pct}% attendance`} className="flex flex-col gap-0.5">
+                                    <div className="flex gap-0.5">
+                                      {Array.from({ length: total }).map((_, i) => (
+                                        <div key={i} className="w-2 h-2 rounded-full flex-shrink-0"
+                                          style={{ background: i < filled ? (pct >= 75 ? "#22C55E" : pct >= 50 ? "#EAB308" : "#EF4444") : "#E5E7EB" }} />
+                                      ))}
+                                    </div>
+                                    <span className={`text-[9px] font-bold ${pct >= 75 ? "text-green-600" : pct >= 50 ? "text-yellow-600" : "text-red-500"}`}>{pct}%</span>
+                                  </div>
+                                );
+                              })() : <div className="flex gap-0.5">{Array.from({ length: 7 }).map((_, i) => <div key={i} className="w-2 h-2 rounded-full bg-gray-100" />)}</div>}
                             </td>
                             <td className="px-2 py-2.5 text-gray-500 text-[11px]">{s.daysSinceLogin < 999 ? `${s.daysSinceLogin}d` : "never"}</td>
                             <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
