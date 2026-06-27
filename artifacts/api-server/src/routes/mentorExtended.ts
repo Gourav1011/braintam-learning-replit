@@ -10,6 +10,8 @@ import {
   liveClassesTable,
   doubtSessionsTable,
   mentorEodReportsTable,
+  demoSessionsTable,
+  demoBatchesTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, ne } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -394,6 +396,63 @@ router.post("/mentor/eod-reports", mentorAuth, async (req, res) => {
     const [row] = await db.insert(mentorEodReportsTable).values({ mentorId, reportDate: String(reportDate), ...data }).returning();
     res.status(201).json(row);
   }
+});
+
+// ── Mentor Live Sessions (demo_sessions from mentor's batches) ────────────────
+router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const mode = String(req.query.mode ?? "upcoming");
+
+  const batches = await db.select().from(demoBatchesTable)
+    .where(eq(demoBatchesTable.mentorId, mentorId));
+
+  if (batches.length === 0) { res.json([]); return; }
+  const batchIds = batches.map(b => b.id);
+  const batchMap = Object.fromEntries(batches.map(b => [b.id, b]));
+
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+
+  let sessions;
+  if (mode === "today") {
+    sessions = await db.select().from(demoSessionsTable)
+      .where(and(
+        inArray(demoSessionsTable.batchId, batchIds),
+        gte(demoSessionsTable.scheduledAt, todayStart),
+        lte(demoSessionsTable.scheduledAt, todayEnd),
+      )).orderBy(demoSessionsTable.scheduledAt);
+  } else if (mode === "completed") {
+    sessions = await db.select().from(demoSessionsTable)
+      .where(and(
+        inArray(demoSessionsTable.batchId, batchIds),
+        lte(demoSessionsTable.scheduledAt, now),
+      )).orderBy(desc(demoSessionsTable.scheduledAt)).limit(60);
+  } else {
+    sessions = await db.select().from(demoSessionsTable)
+      .where(and(
+        inArray(demoSessionsTable.batchId, batchIds),
+        gte(demoSessionsTable.scheduledAt, now),
+      )).orderBy(demoSessionsTable.scheduledAt).limit(60);
+  }
+
+  res.json(sessions.map(s => {
+    const batch = batchMap[s.batchId];
+    return {
+      id: s.id,
+      topic: s.title,
+      dayNumber: s.dayNumber,
+      scheduledAt: s.scheduledAt.toISOString(),
+      duration: s.duration,
+      status: s.status,
+      joinUrl: s.joinUrl ?? null,
+      recordingUrl: s.recordingUrl ?? null,
+      batchId: s.batchId,
+      batchTitle: batch?.title ?? "",
+      batchGrade: batch?.grade ?? null,
+      batchSubject: batch?.subject ?? null,
+    };
+  }));
 });
 
 export default router;

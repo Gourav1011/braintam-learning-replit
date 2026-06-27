@@ -6,7 +6,7 @@ import {
   BookOpen, Users, Video, FileText, Clock, Timer, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
-  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown,
+  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown, Monitor,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -27,7 +27,7 @@ const ORANGE = "#FF6B1A";
 type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "attendance" | "assignments" | "notes" | "profile" | "checkin";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
-interface LiveClass { id: number; title: string; teacher: string; scheduledAt: string; status: string; grade: number; duration: number; joinUrl: string | null; subjectId: number; courseId: number | null; chapterId: number | null; topicId: number | null; }
+interface Session { id: number; topic: string; title: string; dayNumber: number; scheduledAt: string; status: string; duration: number; joinUrl: string | null; recordingUrl: string | null; batchId: number; batchTitle: string; batchGrade: number | null; batchSubject: string | null; grade: number; }
 interface Homework { id: number; title: string; subjectId: number; subjectName: string; grade: number; courseId: number | null; liveClassId: number | null; chapterId: number | null; topicId: number | null; dueDate: string; maxMarks: number; description: string | null; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
 interface Assignment { id: number; title: string; subjectName: string; grade: number; dueDate: string; description: string | null; maxMarks: number; attachmentUrl: string | null; }
 interface HwSubmission { id: number; homeworkId: number; homeworkTitle: string; homeworkType: string; maxMarks: number; questionsJson: string | null; studentId: number; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
@@ -82,7 +82,10 @@ export default function TeacherPage() {
 
   const [dash, setDash] = useState<DashStats | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
+  const [liveClasses, setLiveClasses] = useState<Session[]>([]);
+  const [editSession, setEditSession] = useState<Session | null>(null);
+  const [editForm, setEditForm] = useState({ topic: "", joinUrl: "", recordingUrl: "" });
+  const [editBusy, setEditBusy] = useState(false);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [hwSubmissions, setHwSubmissions] = useState<HwSubmission[]>([]);
@@ -109,11 +112,6 @@ export default function TeacherPage() {
   const [showAsgnForm, setShowAsgnForm] = useState(false);
   const [asgnForm, setAsgnForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", dueDate: "", description: "", maxMarks: "20", attachmentUrl: "" });
 
-  // Live class form
-  const [showLcForm, setShowLcForm] = useState(false);
-  const [lcForm, setLcForm] = useState({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "60", joinUrl: "", chapterId: "", topicId: "" });
-  const [lcChapters, setLcChapters] = useState<{ id: number; name: string }[]>([]);
-  const [lcTopics, setLcTopics] = useState<{ id: number; name: string }[]>([]);
 
   // Test form
   const [showTestForm, setShowTestForm] = useState(false);
@@ -165,7 +163,7 @@ export default function TeacherPage() {
     const [d, c, lc, hw, hwSub, asgnSub, testSub, subj, stu, tst, asgn, nts] = await Promise.all([
       apiFetch("/teacher/dashboard").then(r => r.ok ? r.json() : null),
       apiFetch("/teacher/courses").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/live-classes").then(r => r.ok ? r.json() : []),
+      apiFetch("/teacher/my-sessions").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/homework").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/submissions/homework").then(r => r.ok ? r.json() : []),
       apiFetch("/teacher/submissions/assignments").then(r => r.ok ? r.json() : []),
@@ -184,55 +182,42 @@ export default function TeacherPage() {
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000); }
 
-  async function loadLcChapters(courseId: string) {
-    if (!courseId) { setLcChapters([]); setLcTopics([]); return; }
-    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
-    setLcChapters(r.ok ? await r.json() : []);
-    setLcTopics([]);
-  }
-
-  async function loadLcTopics(chapterId: string) {
-    if (!chapterId) { setLcTopics([]); return; }
-    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
-    setLcTopics(r.ok ? await r.json() : []);
-  }
-
   async function loadHwChapters(courseId: string) {
     if (!courseId) { setHwChapters([]); setHwTopics([]); return; }
-    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    const r = await apiFetch(`/teacher/chapters?courseId=${courseId}`);
     setHwChapters(r.ok ? await r.json() : []);
     setHwTopics([]);
   }
 
   async function loadHwTopics(chapterId: string) {
     if (!chapterId) { setHwTopics([]); return; }
-    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    const r = await apiFetch(`/teacher/topics?chapterId=${chapterId}`);
     setHwTopics(r.ok ? await r.json() : []);
   }
 
   async function loadTestChapters(courseId: string) {
     if (!courseId) { setTestChapters([]); setTestTopics([]); return; }
-    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    const r = await apiFetch(`/teacher/chapters?courseId=${courseId}`);
     setTestChapters(r.ok ? await r.json() : []);
     setTestTopics([]);
   }
 
   async function loadTestTopics(chapterId: string) {
     if (!chapterId) { setTestTopics([]); return; }
-    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    const r = await apiFetch(`/teacher/topics?chapterId=${chapterId}`);
     setTestTopics(r.ok ? await r.json() : []);
   }
 
   async function loadNoteChapters(courseId: string) {
     if (!courseId) { setNoteChapters([]); setNoteTopics([]); return; }
-    const r = await apiFetch(`/admin/chapters?courseId=${courseId}`);
+    const r = await apiFetch(`/teacher/chapters?courseId=${courseId}`);
     setNoteChapters(r.ok ? await r.json() : []);
     setNoteTopics([]);
   }
 
   async function loadNoteTopics(chapterId: string) {
     if (!chapterId) { setNoteTopics([]); return; }
-    const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+    const r = await apiFetch(`/teacher/topics?chapterId=${chapterId}`);
     setNoteTopics(r.ok ? await r.json() : []);
   }
 
@@ -346,37 +331,23 @@ export default function TeacherPage() {
     setBusy(false);
   }
 
-  // ── Live Class Actions ─────────────────────────────────────────
-  async function createLiveClass() {
-    setBusy(true);
-    const r = await apiFetch("/teacher/live-classes", {
-      method: "POST",
-      body: JSON.stringify({
-        ...lcForm,
-        subjectId: Number(lcForm.subjectId),
-        grade: Number(lcForm.grade),
-        courseId: lcForm.courseId ? Number(lcForm.courseId) : null,
-        duration: Number(lcForm.duration),
-        scheduledAt: new Date(lcForm.scheduledAt + ":00+05:30").toISOString(),
-      }),
-    });
-    if (r.ok) {
-      flash("Live class scheduled!");
-      setShowLcForm(false);
-      setLcForm({ title: "", subjectId: "", grade: "", courseId: "", scheduledAt: "", duration: "60", joinUrl: "", chapterId: "", topicId: "" });
-      setLcChapters([]); setLcTopics([]);
-      loadAll();
-    } else {
-      const d = await r.json();
-      flash(d.error ?? "Error", false);
-    }
-    setBusy(false);
+  // ── Session Actions ────────────────────────────────────────────
+  async function updateSessionStatus(id: number, status: string) {
+    const r = await apiFetch(`/teacher/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+    if (r.ok) { flash(`Session ${status === "live" ? "started" : "ended"}`); loadAll(); }
+    else flash("Failed to update status", false);
   }
 
-  async function updateClassStatus(id: number, status: string) {
-    const r = await apiFetch(`/teacher/live-classes/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
-    if (r.ok) { flash(`Class marked as ${status}`); loadAll(); }
-    else flash("Failed to update status", false);
+  async function saveSessionEdit() {
+    if (!editSession) return;
+    setEditBusy(true);
+    const r = await apiFetch(`/teacher/sessions/${editSession.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title: editForm.topic, joinUrl: editForm.joinUrl, recordingUrl: editForm.recordingUrl }),
+    });
+    if (r.ok) { flash("Session updated!"); setEditSession(null); loadAll(); }
+    else flash("Failed to save", false);
+    setEditBusy(false);
   }
 
   // ── Test Actions ───────────────────────────────────────────────
@@ -399,7 +370,7 @@ export default function TeacherPage() {
     setTestQuestions(prev => prev.filter((_, idx) => idx !== i));
   }
 
-  // When a live class is selected for test, pre-fill subject/grade/date
+  // When a session is selected for test, pre-fill grade/date
   function pickLiveClassForTest(lcId: string) {
     if (!lcId) { setTestForm(p => ({ ...p, liveClassId: "" })); return; }
     const lc = liveClasses.find(l => l.id === Number(lcId));
@@ -408,12 +379,8 @@ export default function TeacherPage() {
       setTestForm(p => ({
         ...p,
         liveClassId: lcId,
-        subjectId: String(lc.subjectId),
         grade: String(lc.grade),
         scheduledAt: dt,
-        courseId: lc.courseId ? String(lc.courseId) : p.courseId,
-        chapterId: lc.chapterId ? String(lc.chapterId) : p.chapterId,
-        topicId: lc.topicId ? String(lc.topicId) : p.topicId,
       }));
     }
   }
@@ -422,26 +389,12 @@ export default function TeacherPage() {
     if (!lcId) { setHwForm(p => ({ ...p, liveClassId: "" })); return; }
     const lc = liveClasses.find(l => l.id === Number(lcId));
     if (!lc) { setHwForm(p => ({ ...p, liveClassId: lcId })); return; }
-    // Suggest due date = next day after the live class (in IST)
     const due = new Date(lc.scheduledAt);
     due.setUTCDate(due.getUTCDate() + 1);
     const dueIST = new Date(due.getTime() + 5.5*60*60*1000);
     const pp2 = (n: number) => String(n).padStart(2,"0");
     const dueDt = `${dueIST.getUTCFullYear()}-${pp2(dueIST.getUTCMonth()+1)}-${pp2(dueIST.getUTCDate())}T${pp2(dueIST.getUTCHours())}:${pp2(dueIST.getUTCMinutes())}`;
-    setHwForm(p => ({
-      ...p,
-      liveClassId: lcId,
-      subjectId: String(lc.subjectId),
-      grade: String(lc.grade),
-      courseId: lc.courseId ? String(lc.courseId) : p.courseId,
-      chapterId: lc.chapterId ? String(lc.chapterId) : "",
-      topicId: lc.topicId ? String(lc.topicId) : "",
-      dueDate: dueDt,
-    }));
-    if (lc.chapterId && lc.topicId) {
-      const tR = await apiFetch(`/admin/topics?chapterId=${lc.chapterId}`);
-      if (tR.ok) setHwTopics(await tR.json());
-    }
+    setHwForm(p => ({ ...p, liveClassId: lcId, grade: String(lc.grade), dueDate: dueDt }));
   }
 
   function openEditHw(h: Homework) {
@@ -841,7 +794,7 @@ export default function TeacherPage() {
             <div className="grid md:grid-cols-3 gap-3">
               {[
                 { label: "Post Homework", sub: "Assign MCQ or text questions", icon: FileText, action: () => { setShowHwForm(true); setTab("homework"); }, color: ORANGE },
-                { label: "Schedule Live Class", sub: "Set time and join link", icon: Video, action: () => { setShowLcForm(true); setTab("live"); }, color: NAVY },
+                { label: "My Sessions", sub: "View upcoming & live classes", icon: Video, action: () => setTab("live"), color: NAVY },
                 { label: `Grade Submissions`, sub: `${pendingCount} pending`, icon: CheckCircle, action: () => setTab("submissions"), color: "#22C55E" },
               ].map(a => {
                 const Icon = a.icon;
@@ -1122,111 +1075,139 @@ export default function TeacherPage() {
           </div>
         )}
 
-        {/* ── Live Classes ── */}
+        {/* ── My Sessions ── */}
         {tab === "live" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold" style={{ color: NAVY }}>My Live Classes</h3>
-              <Button size="sm" onClick={() => setShowLcForm(!showLcForm)} className="text-white gap-1.5" style={{ background: ORANGE }}>
-                <Plus className="w-3.5 h-3.5" /> Schedule
-              </Button>
-            </div>
-            {showLcForm && (
-              <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-3">
-                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Schedule Live Class</h3>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Input placeholder="Class title *" value={lcForm.title} onChange={e => setLcForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-                  <Select value={lcForm.subjectId} onValueChange={v => setLcForm(p => ({ ...p, subjectId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Subject *" /></SelectTrigger>
-                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Input placeholder="Grade *" type="number" min="1" max="10" value={lcForm.grade} onChange={e => setLcForm(p => ({ ...p, grade: e.target.value }))} />
-                  <Select value={lcForm.courseId || "__none__"} onValueChange={v => {
-                    const val = v === "__none__" ? "" : v;
-                    setLcForm(p => ({ ...p, courseId: val, chapterId: "", topicId: "" }));
-                    loadLcChapters(val);
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="① Course (optional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No course</SelectItem>
-                      {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {lcChapters.length > 0 ? (
-                    <Select value={lcForm.chapterId || "__none__"} onValueChange={v => {
-                      const val = v === "__none__" ? "" : v;
-                      setLcForm(p => ({ ...p, chapterId: val, topicId: "" }));
-                      loadLcTopics(val);
-                    }}>
-                      <SelectTrigger><SelectValue placeholder="② Chapter (optional)" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No chapter</SelectItem>
-                        {lcChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : lcForm.courseId ? (
-                    <Input placeholder="② Chapter name (optional)" value={lcForm.chapterId}
-                      onChange={e => setLcForm(p => ({ ...p, chapterId: e.target.value }))} />
-                  ) : null}
-                  {lcTopics.length > 0 ? (
-                    <Select value={lcForm.topicId || "__none__"} onValueChange={v => setLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
-                      <SelectTrigger><SelectValue placeholder="③ Topic (optional)" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No topic</SelectItem>
-                        {lcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (lcChapters.length > 0 && lcForm.chapterId) ? (
-                    <Input placeholder="③ Topic name (optional)" value={lcForm.topicId}
-                      onChange={e => setLcForm(p => ({ ...p, topicId: e.target.value }))} />
-                  ) : null}
-                  <Input type="datetime-local" value={lcForm.scheduledAt} onChange={e => setLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
-                  <Input placeholder="Duration (min)" type="number" value={lcForm.duration} onChange={e => setLcForm(p => ({ ...p, duration: e.target.value }))} />
-                  <Input placeholder="Join URL (Meet / Zoom)" value={lcForm.joinUrl} onChange={e => setLcForm(p => ({ ...p, joinUrl: e.target.value }))} className="sm:col-span-2" />
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={createLiveClass} disabled={busy || !lcForm.title || !lcForm.subjectId || !lcForm.grade || !lcForm.scheduledAt} className="text-white" style={{ background: ORANGE }}>Schedule</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowLcForm(false)}>Cancel</Button>
+            {/* Edit session modal */}
+            {editSession && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-base" style={{ color: NAVY }}>Edit Session</h3>
+                    <button onClick={() => setEditSession(null)}><X className="w-5 h-5 text-gray-400" /></button>
+                  </div>
+                  <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+                    <span className="font-semibold">{editSession.batchTitle}</span> · Day {editSession.dayNumber} · Grade {editSession.batchGrade}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Topic</label>
+                      <Input value={editForm.topic} onChange={e => setEditForm(p => ({ ...p, topic: e.target.value }))} placeholder="Session topic / title" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">📹 Meet Link (optional)</label>
+                      <Input value={editForm.joinUrl} onChange={e => setEditForm(p => ({ ...p, joinUrl: e.target.value }))} placeholder="https://meet.google.com/..." />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">🎬 Recording Link (optional)</label>
+                      <Input value={editForm.recordingUrl} onChange={e => setEditForm(p => ({ ...p, recordingUrl: e.target.value }))} placeholder="https://..." />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={saveSessionEdit} disabled={editBusy} className="text-white flex-1" style={{ background: NAVY }}>
+                      {editBusy ? "Saving…" : "Save Changes"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditSession(null)}>Cancel</Button>
+                  </div>
                 </div>
               </div>
             )}
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold" style={{ color: NAVY }}>My Sessions</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Sessions are created when batches are assigned to you</p>
+              </div>
+              <button onClick={loadAll} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500">Refresh</button>
+            </div>
+
             <div className="space-y-3">
-              {liveClasses.map(lc => (
-                <div key={lc.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${NAVY}10` }}>
-                        <Video className="w-5 h-5" style={{ color: NAVY }} />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-sm" style={{ color: NAVY }}>{lc.title}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          {new Date(lc.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} · {lc.duration} min · Grade {lc.grade}
+              {liveClasses.map(s => {
+                const isLive = s.status === "live";
+                const isDone = s.status === "completed";
+                const isScheduled = !isLive && !isDone;
+                return (
+                  <div key={s.id} className={`bg-white rounded-2xl p-4 shadow-sm border transition-all ${isLive ? "border-red-200 shadow-red-50" : "border-gray-100"}`}>
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isLive ? "bg-red-50" : "bg-navy/5"}`} style={{ background: isLive ? "#FEE2E2" : `${NAVY}10` }}>
+                          <Video className="w-5 h-5" style={{ color: isLive ? "#DC2626" : NAVY }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm truncate" style={{ color: NAVY }}>{s.topic}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${isLive ? "bg-red-100 text-red-600" : isDone ? "bg-gray-100 text-gray-400" : "bg-blue-50 text-blue-600"}`}>
+                              {isLive ? "🔴 LIVE" : isDone ? "✓ Completed" : "⏰ Upcoming"}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 mt-1.5">
+                            <div className="text-[10px] text-gray-400"><span className="font-medium text-gray-500">Batch</span><br />{s.batchTitle}</div>
+                            <div className="text-[10px] text-gray-400"><span className="font-medium text-gray-500">Grade</span><br />Grade {s.batchGrade ?? s.grade}</div>
+                            <div className="text-[10px] text-gray-400"><span className="font-medium text-gray-500">Day</span><br />Day {s.dayNumber}</div>
+                            <div className="text-[10px] text-gray-400"><span className="font-medium text-gray-500">Date</span><br />{new Date(s.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${lc.status === "live" ? "bg-red-100 text-red-600" : lc.status === "completed" ? "bg-gray-100 text-gray-400" : "bg-blue-50 text-blue-600"}`}>{lc.status}</span>
-                      {lc.status === "upcoming" && (
-                        <button onClick={() => updateClassStatus(lc.id, "live")} className="text-xs px-2 py-1 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors flex items-center gap-1">
-                          <Play className="w-3 h-3" />Start
-                        </button>
-                      )}
-                      {lc.status === "live" && (
-                        <button onClick={() => updateClassStatus(lc.id, "completed")} className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors flex items-center gap-1">
-                          <Square className="w-3 h-3" />End
-                        </button>
-                      )}
-                      {lc.joinUrl && (
-                        <a href={lc.joinUrl} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors">Join</a>
-                      )}
-                      <button onClick={() => loadAttendance(lc.id)} className="text-xs px-2 py-1 rounded-lg border hover:bg-gray-50 transition-colors text-gray-500">Attend</button>
+                      <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                        {isScheduled && (
+                          <>
+                            <button onClick={() => { setEditSession(s); setEditForm({ topic: s.topic, joinUrl: s.joinUrl ?? "", recordingUrl: s.recordingUrl ?? "" }); }}
+                              className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 flex items-center gap-1">
+                              <Pencil className="w-3 h-3" /> Edit
+                            </button>
+                            <button onClick={() => updateSessionStatus(s.id, "live")}
+                              className="text-xs px-3 py-1.5 rounded-xl text-white font-semibold flex items-center gap-1" style={{ background: "#22C55E" }}>
+                              <Play className="w-3 h-3" /> Enter Classroom
+                            </button>
+                          </>
+                        )}
+                        {isLive && (
+                          <>
+                            <a href={`/live/${s.id}?role=teacher${s.joinUrl ? `&meetLink=${encodeURIComponent(s.joinUrl)}` : ""}`}
+                              className="text-xs px-3 py-1.5 rounded-xl text-white font-semibold flex items-center gap-1" style={{ background: NAVY }}>
+                              <Monitor className="w-3 h-3" /> Enter Classroom
+                            </a>
+                            <button onClick={() => updateSessionStatus(s.id, "completed")}
+                              className="text-xs px-3 py-1.5 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1">
+                              <Square className="w-3 h-3" /> End Class
+                            </button>
+                          </>
+                        )}
+                        {isDone && (
+                          <>
+                            <button onClick={() => loadAttendance(s.id)}
+                              className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 flex items-center gap-1">
+                              <Users className="w-3 h-3" /> Attendance
+                            </button>
+                            {s.recordingUrl && (
+                              <a href={s.recordingUrl} target="_blank" rel="noreferrer"
+                                className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 flex items-center gap-1">
+                                <Play className="w-3 h-3" /> Recording
+                              </a>
+                            )}
+                            <button onClick={() => { setEditSession(s); setEditForm({ topic: s.topic, joinUrl: s.joinUrl ?? "", recordingUrl: s.recordingUrl ?? "" }); }}
+                              className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 flex items-center gap-1">
+                              <Pencil className="w-3 h-3" /> Edit
+                            </button>
+                          </>
+                        )}
+                        {s.joinUrl && (
+                          <a href={s.joinUrl} target="_blank" rel="noreferrer"
+                            className="text-xs px-2 py-1.5 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 flex items-center gap-1">
+                            📹
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+              {liveClasses.length === 0 && (
+                <div className="py-16 text-center bg-white rounded-2xl border border-gray-100">
+                  <Video className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm font-semibold">No sessions assigned yet</p>
+                  <p className="text-gray-400 text-xs mt-1">Sessions are created automatically when a batch is assigned to you</p>
                 </div>
-              ))}
-              {liveClasses.length === 0 && !showLcForm && (
-                <div className="py-12 text-center"><Video className="w-8 h-8 text-gray-300 mx-auto mb-2" /><p className="text-gray-400 text-sm">No live classes yet</p></div>
               )}
             </div>
           </div>
