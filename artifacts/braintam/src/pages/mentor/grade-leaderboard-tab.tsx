@@ -185,7 +185,7 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
                   </div>
 
                   {/* Name */}
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center justify-center gap-2 min-w-0">
                     <span
                       className="font-semibold text-sm truncate"
                       style={{ color: isMe ? ORANGE : NAVY }}
