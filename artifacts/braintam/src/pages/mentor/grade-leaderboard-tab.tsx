@@ -131,7 +131,7 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
             <div className="grid items-center px-5 py-2.5 border-b border-gray-100"
               style={{ gridTemplateColumns: "36px 1fr 52px", background: "#F8FAFF" }}>
               <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">S.No</div>
-              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Name</div>
+              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide text-center">Name</div>
               <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide text-right">Conv. %</div>
             </div>
 
