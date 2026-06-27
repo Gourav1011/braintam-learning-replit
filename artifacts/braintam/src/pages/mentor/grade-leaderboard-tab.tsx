@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, Loader2, Trophy } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const NAVY   = "#0B2B6B";
@@ -24,37 +24,6 @@ interface ApiResp {
 }
 
 const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-function denseRank(rows: LeaderboardRow[]) {
-  let rank = 1;
-  return rows.map((row, i) => {
-    if (i > 0 && rows[i].conversionRate < rows[i - 1].conversionRate) rank = i + 1;
-    return { ...row, denseRank: rank };
-  });
-}
-
-function MedalIcon({ rank }: { rank: number }) {
-  if (rank === 1) return (
-    <div className="flex flex-col items-center leading-none">
-      <span className="text-2xl">🥇</span>
-    </div>
-  );
-  if (rank === 2) return (
-    <div className="flex flex-col items-center leading-none">
-      <span className="text-2xl">🥈</span>
-    </div>
-  );
-  if (rank === 3) return (
-    <div className="flex flex-col items-center leading-none">
-      <span className="text-2xl">🥉</span>
-    </div>
-  );
-  return (
-    <span className="font-black text-base" style={{ color: NAVY }}>
-      {rank}
-    </span>
-  );
-}
 
 export function GradeLeaderboardTab({ myId }: { myId: number }) {
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
@@ -94,7 +63,11 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
 
   const lb       = data?.leaderboard ?? [];
   const myGrades = data?.myGrades ?? [];
-  const ranked   = denseRank(lb);
+
+  // Sort: highest conversionRate first; ties broken alphabetically by name
+  const sorted = [...lb].sort((a, b) =>
+    b.conversionRate - a.conversionRate || a.mentorName.localeCompare(b.mentorName)
+  );
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -125,8 +98,8 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
                 onClick={() => switchGrade(g)}
                 className="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap border"
                 style={{
-                  background: active ? NAVY : "#fff",
-                  color:      active ? "#fff" : "#374151",
+                  background:  active ? NAVY : "#fff",
+                  color:       active ? "#fff" : "#374151",
                   borderColor: active ? NAVY : "#D1D5DB",
                   borderBottomWidth: active ? "2px" : "1px",
                   borderBottomColor: active ? ORANGE : "#D1D5DB",
@@ -152,44 +125,41 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
           </div>
         ) : (
           <div className="rounded-2xl overflow-hidden border border-gray-200"
-            style={{ boxShadow: "0 2px 16px rgba(11,43,107,0.09)" }}>
+            style={{ boxShadow: "0 2px 16px rgba(11,43,107,0.07)" }}>
 
-            {/* Header */}
+            {/* Header — simple, no colored background */}
             <div
-              className="grid items-center px-5 py-3"
-              style={{ gridTemplateColumns: "64px 1fr 80px", background: NAVY }}
+              className="grid items-center px-5 py-2.5 border-b border-gray-200"
+              style={{ gridTemplateColumns: "52px 1fr 72px", background: "#F8FAFF" }}
             >
-              <div className="text-xs font-black text-white uppercase tracking-widest">S.No</div>
-              <div className="text-xs font-black text-white uppercase tracking-widest text-center">Name</div>
-              <div className="text-xs font-black text-white uppercase tracking-widest text-right">Conv. %</div>
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">S.No</div>
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center">Name</div>
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest text-right">Conv. %</div>
             </div>
 
-            {/* Rows */}
-            {ranked.map((row, idx) => {
-              const isMe  = row.mentorId === myId;
-              const isTop = row.denseRank <= 3;
+            {/* Rows — sequential 1,2,3 always */}
+            {sorted.map((row, idx) => {
+              const isMe = row.mentorId === myId;
+              const sNo  = idx + 1;
 
               return (
                 <div
                   key={row.mentorId}
-                  className="grid items-center px-5 py-4 transition-colors"
+                  className="grid items-center px-5 py-4"
                   style={{
-                    gridTemplateColumns: "64px 1fr 80px",
-                    borderBottom: idx < ranked.length - 1 ? "1px solid #F1F5F9" : "none",
+                    gridTemplateColumns: "52px 1fr 72px",
+                    borderBottom: idx < sorted.length - 1 ? "1px solid #F1F5F9" : "none",
                     background: isMe ? "#FFFBF5" : "#fff",
                   }}
                 >
-                  {/* Rank / Medal */}
-                  <div className="flex items-center">
-                    <MedalIcon rank={row.denseRank} />
+                  {/* S.No */}
+                  <div className="font-bold text-sm" style={{ color: NAVY }}>
+                    {sNo}
                   </div>
 
-                  {/* Name */}
+                  {/* Name — centered, plain black */}
                   <div className="flex items-center justify-center gap-2 min-w-0">
-                    <span
-                      className="font-semibold text-sm truncate"
-                      style={{ color: isMe ? ORANGE : NAVY }}
-                    >
+                    <span className="font-semibold text-sm truncate text-gray-900">
                       {row.mentorName}
                     </span>
                     {isMe && (
@@ -212,15 +182,6 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
                 </div>
               );
             })}
-
-            {/* Footer note */}
-            <div
-              className="flex items-center gap-2.5 px-5 py-3 text-xs text-gray-500"
-              style={{ background: "#FFF8F3", borderTop: "1px solid #F1F5F9" }}
-            >
-              <Trophy className="w-4 h-4 shrink-0" style={{ color: NAVY }} />
-              <span>Leaderboard is based on Conversion % (Converted Leads ÷ Assigned Leads × 100)</span>
-            </div>
           </div>
         )}
       </div>
