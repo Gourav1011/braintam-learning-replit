@@ -19,6 +19,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
+import { ensureThreeWeekPipeline, PIPELINE_MIN } from "../lib/assignIgniteBatch.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
@@ -1530,6 +1531,37 @@ router.get("/admin/ignite/deploy/mentors", adminOnly, async (_req, res) => {
     todaysFollowUps:   followUpsMap[m.id] ?? 0,
     conversionRate:    convMap[m.id] ? Math.round((convMap[m.id].converted / convMap[m.id].total) * 100) : 0,
   })));
+});
+
+// ── Admin: manually top-up the batch pipeline for a grade ────────────────────
+// POST /admin/ignite/ensure-pipeline/:grade
+// Safe to call at any time — idempotent. Returns how many batches now exist.
+router.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_admin"), async (req, res) => {
+  const grade = parseInt(String(req.params.grade), 10);
+  if (!grade || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "grade must be 1–10" });
+    return;
+  }
+  await ensureThreeWeekPipeline(grade);
+  const batches = await db
+    .select({
+      id: demoBatchesTable.id,
+      title: demoBatchesTable.title,
+      status: demoBatchesTable.status,
+      startDate: demoBatchesTable.startDate,
+      batchCode: demoBatchesTable.batchCode,
+    })
+    .from(demoBatchesTable)
+    .where(eq(demoBatchesTable.grade, grade))
+    .orderBy(demoBatchesTable.startDate);
+  const upcoming = batches.filter(b => b.status === "upcoming");
+  res.json({
+    grade,
+    total: batches.length,
+    upcomingCount: upcoming.length,
+    pipelineMin: PIPELINE_MIN,
+    batches,
+  });
 });
 
 export default router;
