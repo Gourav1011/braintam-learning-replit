@@ -1,0 +1,211 @@
+IGNITE BATCH MANAGEMENT UI REDESIGN
+
+Do not replace the existing batch system.
+Refactor the Batch Creation and Session Creation screens only.
+
+================================================
+BATCH SETTINGS (SIMPLIFIED)
+===========================
+
+Keep only:
+
+Batch Title
+Batch Code
+Grade
+Start Date
+End Date
+Default Batch Join Link
+Batch Status
+
+Auto-calculate:
+
+Total Days =
+number of sessions created.
+
+Remove:
+
+Teacher Name
+Sales Mentor Name
+Subject
+Description
+Manual Total Days field
+
+================================================
+EXAMPLE
+=======
+
+Batch Title:
+Braintam Ignite Grade 7 – Batch 002
+
+Batch Code:
+IGN-GR7-W28
+
+Grade:
+Grade 7
+
+Start Date:
+06 Jul 2026
+
+End Date:
+10 Jul 2026
+
+Default Batch Join Link:
+https://meet.google.com/xyz
+
+Status:
+Upcoming
+
+Total Days:
+5 (read only)
+
+================================================
+SESSIONS TAB
+============
+
+Add a dedicated tab:
+
+Batch Details | Sessions | Students | Analytics
+
+Open Sessions tab by default after creating a batch.
+
+================================================
+DEFAULT SESSION TEMPLATE
+========================
+
+When creating a new Ignite batch, auto-create:
+
+Day 1 → Maths
+Day 2 → Science
+Day 3 → Maths
+Day 4 → English
+Day 5 → Science
+
+Generate these automatically.
+
+Admin can edit everything.
+
+================================================
+SESSION TABLE DESIGN
+====================
+
+Columns:
+
+Day
+Subject
+Date
+Time
+Teacher
+Live Link
+Status
+Actions
+
+Example:
+
+Day 1 | Maths | 06 Jul | 5 PM | Ravi | Meet Link | Scheduled | Edit
+Day 2 | Science | 07 Jul | 5 PM | Neha | Meet Link | Scheduled | Edit
+Day 3 | Maths | 08 Jul | 5 PM | Ravi | Meet Link | Scheduled | Edit
+Day 4 | English | 09 Jul | 5 PM | Anjali | Meet Link | Scheduled | Edit
+Day 5 | Science | 10 Jul | 5 PM | Neha | Meet Link | Scheduled | Edit
+
+================================================
+EDIT SESSION MODAL
+==================
+
+Editable fields:
+
+Session Title
+Subject
+Teacher
+Date
+Start Time
+End Time
+Live Class Link
+Homework Link (optional)
+Recording Link (optional)
+Session Status
+
+Statuses:
+
+Scheduled
+Live
+Completed
+Cancelled
+
+================================================
+AUTOMATION
+==========
+
+Changing batch start date:
+
+Automatically move all session dates.
+
+Changing total sessions:
+
+Auto-generate missing sessions.
+
+Deleting a session:
+
+Recalculate Total Days automatically.
+
+================================================
+STUDENT PORTAL
+==============
+
+Inside My Courses:
+
+Ignite Grade 7
+Batch 002
+
+Sessions:
+
+Day 1 - Maths
+Day 2 - Science
+Day 3 - Maths
+Day 4 - English
+Day 5 - Science
+
+Clicking a session shows:
+
+Date
+Time
+Teacher
+Join Link
+Status
+
+================================================
+MOBILE UI
+=========
+
+Desktop:
+Table layout
+
+Mobile:
+Card layout
+
+Day 1
+Maths
+06 Jul 2026
+5:00 PM
+Teacher: Ravi
+[Join Class]
+
+================================================
+TYPECHECK
+=========
+
+Run:
+
+pnpm typecheck
+
+Confirm:
+
+□ Existing batches still work
+□ Existing students remain linked
+□ Session auto-generation works
+□ Session editing works
+□ Dates move correctly
+□ Mobile and desktop layouts work
+□ No TypeScript errors
+
+Refactor only.
+Do not break the current Ignite batch architecture.

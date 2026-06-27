@@ -3,7 +3,7 @@ import {
   Plus, Trash2, ChevronRight, ChevronLeft, Video, BookOpen, Calendar,
   Clock, Globe, GlobeLock, Users, Search, X, Phone, MessageSquare,
   Eye, BarChart3, Settings2, CheckCircle2, XCircle, RefreshCw, Loader2,
-  TrendingUp, MoreHorizontal, Edit2, User
+  TrendingUp, MoreHorizontal, Edit2, User, Save, Link, Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,8 +40,10 @@ interface DemoBatch {
 
 interface DemoSession {
   id: number; batchId: number; title: string; description: string | null;
-  dayNumber: number; scheduledAt: string; duration: number;
-  joinUrl: string | null; recordingUrl: string | null; homeworkText: string | null;
+  dayNumber: number; subject: string | null; teacherName: string | null;
+  scheduledAt: string; duration: number;
+  joinUrl: string | null; recordingUrl: string | null;
+  homeworkText: string | null; homeworkLink: string | null;
   status: string; isPublished: boolean;
 }
 
@@ -87,8 +89,17 @@ type StudentFilter = "all" | "converted" | "dropped" | (string & {});
 type AddMode = "search" | "csv" | "paste";
 
 const GRADES = Array.from({ length: 10 }, (_, i) => i + 1);
-const emptyBatch = { title: "", description: "", teacherName: "", mentorName: "", bannerUrl: "", joinLink: "", startDate: "", endDate: "", grade: "none", subject: "", totalDays: "5", batchCode: "" };
-const emptySession = { title: "", description: "", dayNumber: "1", scheduledAt: "", duration: "60", joinUrl: "", recordingUrl: "", homeworkText: "" };
+const SUBJECTS = ["Maths", "Science", "English", "Hindi", "General"];
+const emptyBatch = { title: "", batchCode: "", grade: "none", startDate: "", endDate: "", joinLink: "", status: "upcoming" };
+const emptySession = { title: "", subject: "", teacherName: "", dayNumber: "1", scheduledAt: "", duration: "60", joinUrl: "", recordingUrl: "", homeworkText: "", homeworkLink: "" };
+const emptyEditSessionForm = { title: "", subject: "", teacherName: "", date: "", startTime: "", endTime: "", joinUrl: "", homeworkLink: "", recordingUrl: "", status: "scheduled" };
+
+function sessionToIst(scheduledAt: string) {
+  const d = new Date(scheduledAt);
+  const istStr = d.toLocaleString("en-CA", { timeZone: "Asia/Kolkata", hour12: false });
+  const [datePart, timePart] = istStr.split(", ");
+  return { date: datePart, time: timePart?.slice(0, 5) ?? "17:00" };
+}
 
 const STATUS_COLORS: Record<string, string> = {
   upcoming: "bg-blue-100 text-blue-700",
@@ -153,6 +164,11 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   const [settingsForm, setSettingsForm] = useState(emptyBatch);
   const [settingsBusy, setSettingsBusy] = useState(false);
 
+  // Edit session modal
+  const [editingSession, setEditingSession] = useState<DemoSession | null>(null);
+  const [editSessionForm, setEditSessionForm] = useState(emptyEditSessionForm);
+  const [savingSession, setSavingSession] = useState(false);
+
   const loadBatches = useCallback(async () => {
     setLoading(true);
     try {
@@ -172,14 +188,13 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
     if (detailTab === "mentor-tracking") loadMentorTracking(selectedBatch.id);
     if (detailTab === "analytics") loadAnalytics(selectedBatch.id);
     if (detailTab === "settings") setSettingsForm({
-      title: selectedBatch.title, description: selectedBatch.description ?? "",
-      teacherName: selectedBatch.teacherName ?? "", mentorName: selectedBatch.mentorName ?? "",
-      bannerUrl: selectedBatch.bannerUrl ?? "", joinLink: selectedBatch.joinLink ?? "",
+      title: selectedBatch.title,
+      batchCode: selectedBatch.batchCode ?? "",
+      grade: selectedBatch.grade ? String(selectedBatch.grade) : "none",
       startDate: selectedBatch.startDate ? new Date(selectedBatch.startDate).toISOString().slice(0, 16) : "",
       endDate: selectedBatch.endDate ? new Date(selectedBatch.endDate).toISOString().slice(0, 16) : "",
-      grade: selectedBatch.grade ? String(selectedBatch.grade) : "none",
-      subject: selectedBatch.subject ?? "", totalDays: String(selectedBatch.totalDays),
-      batchCode: selectedBatch.batchCode ?? "",
+      joinLink: selectedBatch.joinLink ?? "",
+      status: selectedBatch.status ?? "upcoming",
     });
   }, [detailTab, selectedBatch?.id]);
 
@@ -247,24 +262,31 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   // ── Batch CRUD ──────────────────────────────────────────────
   async function createBatch() {
     if (!batchForm.title.trim()) { flash("Title required", false); return; }
+    if (!batchForm.grade || batchForm.grade === "none") { flash("Grade is required", false); return; }
     setBusy(true);
     try {
       const r = await apiFetch("/admin/demo-batches", {
         method: "POST",
         body: JSON.stringify({
-          title: batchForm.title, description: batchForm.description || undefined,
-          teacherName: batchForm.teacherName || undefined, mentorName: batchForm.mentorName || undefined,
-          bannerUrl: batchForm.bannerUrl || undefined, joinLink: batchForm.joinLink || undefined,
-          startDate: batchForm.startDate || undefined, endDate: batchForm.endDate || undefined,
-          grade: batchForm.grade && batchForm.grade !== "none" ? Number(batchForm.grade) : undefined,
-          subject: batchForm.subject || undefined, totalDays: Number(batchForm.totalDays) || 5,
+          title: batchForm.title,
           batchCode: batchForm.batchCode || undefined,
+          grade: Number(batchForm.grade),
+          startDate: batchForm.startDate || undefined,
+          endDate: batchForm.endDate || undefined,
+          joinLink: batchForm.joinLink || undefined,
+          status: batchForm.status || "upcoming",
         }),
       });
       if (!r.ok) throw new Error();
-      flash("Demo batch created");
+      const created = await r.json() as DemoBatch & { sessions: DemoSession[] };
+      flash("Demo batch created — 5 sessions auto-generated");
       setBatchForm(emptyBatch);
       setShowAddBatch(false);
+      setSessions(created.sessions ?? []);
+      // Open the batch on Sessions tab
+      const { sessions: _s, ...batchOnly } = created;
+      setSelectedBatch(batchOnly as DemoBatch);
+      setDetailTab("sessions");
       loadBatches();
     } catch { flash("Failed to create batch", false); }
     finally { setBusy(false); }
@@ -295,18 +317,19 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       const r = await apiFetch(`/admin/demo-batches/${selectedBatch.id}`, {
         method: "PUT",
         body: JSON.stringify({
-          title: settingsForm.title, description: settingsForm.description || undefined,
-          teacherName: settingsForm.teacherName || undefined, mentorName: settingsForm.mentorName || undefined,
-          bannerUrl: settingsForm.bannerUrl || undefined, joinLink: settingsForm.joinLink || undefined,
-          startDate: settingsForm.startDate || undefined, endDate: settingsForm.endDate || undefined,
-          grade: settingsForm.grade && settingsForm.grade !== "none" ? Number(settingsForm.grade) : undefined,
-          subject: settingsForm.subject || undefined, totalDays: Number(settingsForm.totalDays) || 5,
+          title: settingsForm.title,
           batchCode: settingsForm.batchCode || undefined,
+          grade: settingsForm.grade && settingsForm.grade !== "none" ? Number(settingsForm.grade) : undefined,
+          startDate: settingsForm.startDate || undefined,
+          endDate: settingsForm.endDate || undefined,
+          joinLink: settingsForm.joinLink || undefined,
+          status: settingsForm.status || undefined,
         }),
       });
       if (!r.ok) throw new Error();
-      flash("Batch updated");
+      flash("Batch updated — session dates cascaded automatically");
       loadBatches();
+      loadSessions(selectedBatch.id);
       const updated = await apiFetch(`/admin/demo-batches/${selectedBatch.id}/overview`);
       if (updated.ok) { const d = await updated.json(); setSelectedBatch(d.batch); }
     } catch { flash("Failed to update", false); }
@@ -401,23 +424,71 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       const r = await apiFetch(`/admin/demo-batches/${selectedBatch.id}/sessions`, {
         method: "POST",
         body: JSON.stringify({
-          title: sessionForm.title, description: sessionForm.description || undefined,
+          title: sessionForm.title, subject: sessionForm.subject || undefined,
+          teacherName: sessionForm.teacherName || undefined,
           dayNumber: Number(sessionForm.dayNumber) || 1, scheduledAt: sessionForm.scheduledAt,
           duration: Number(sessionForm.duration) || 60, joinUrl: sessionForm.joinUrl || undefined,
-          recordingUrl: sessionForm.recordingUrl || undefined, homeworkText: sessionForm.homeworkText || undefined,
+          recordingUrl: sessionForm.recordingUrl || undefined,
+          homeworkText: sessionForm.homeworkText || undefined,
+          homeworkLink: sessionForm.homeworkLink || undefined,
         }),
       });
       if (!r.ok) throw new Error();
       flash("Session created"); setSessionForm(emptySession); setShowAddSession(false);
       loadSessions(selectedBatch.id);
+      loadBatches(); // refresh totalDays
     } catch { flash("Failed", false); }
     finally { setBusy(false); }
   }
 
   async function deleteSession(id: number) {
-    if (!selectedBatch || !confirm("Delete session?")) return;
+    if (!selectedBatch) return;
     await apiFetch(`/admin/demo-batches/${selectedBatch.id}/sessions/${id}`, { method: "DELETE" });
-    loadSessions(selectedBatch.id); flash("Session deleted");
+    flash("Session deleted");
+    loadSessions(selectedBatch.id);
+    loadBatches(); // refresh totalDays
+  }
+
+  function openEditSession(s: DemoSession) {
+    const { date, time: startTime } = sessionToIst(s.scheduledAt);
+    const endMs = new Date(s.scheduledAt).getTime() + s.duration * 60 * 1000;
+    const { time: endTime } = sessionToIst(new Date(endMs).toISOString());
+    setEditingSession(s);
+    setEditSessionForm({
+      title: s.title, subject: s.subject ?? "", teacherName: s.teacherName ?? "",
+      date, startTime, endTime,
+      joinUrl: s.joinUrl ?? "", homeworkLink: s.homeworkLink ?? "",
+      recordingUrl: s.recordingUrl ?? "", status: s.status,
+    });
+  }
+
+  async function updateSession() {
+    if (!selectedBatch || !editingSession) return;
+    setSavingSession(true);
+    try {
+      const { date, startTime, endTime } = editSessionForm;
+      const scheduledAt = `${date}T${startTime}:00+05:30`;
+      const [sh, sm] = startTime.split(":").map(Number);
+      const [eh, em] = endTime.split(":").map(Number);
+      const duration = Math.max(15, (eh * 60 + em) - (sh * 60 + sm));
+      const r = await apiFetch(`/admin/demo-batches/${selectedBatch.id}/sessions/${editingSession.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: editSessionForm.title, subject: editSessionForm.subject || undefined,
+          teacherName: editSessionForm.teacherName || undefined,
+          scheduledAt, duration,
+          joinUrl: editSessionForm.joinUrl || undefined,
+          homeworkLink: editSessionForm.homeworkLink || undefined,
+          recordingUrl: editSessionForm.recordingUrl || undefined,
+          status: editSessionForm.status,
+        }),
+      });
+      if (!r.ok) throw new Error();
+      flash("Session updated");
+      setEditingSession(null);
+      loadSessions(selectedBatch.id);
+    } catch { flash("Failed to update session", false); }
+    finally { setSavingSession(false); }
   }
 
   // ── Filtered batch list ─────────────────────────────────────
@@ -443,6 +514,10 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       sessions={sessions} sessionsLoading={sessionsLoading}
       showAddSession={showAddSession} setShowAddSession={setShowAddSession}
       sessionForm={sessionForm} setSessionForm={setSessionForm}
+      editingSession={editingSession} editSessionForm={editSessionForm}
+      setEditSessionForm={setEditSessionForm} savingSession={savingSession}
+      onOpenEditSession={openEditSession} onUpdateSession={updateSession}
+      onCloseEditSession={() => setEditingSession(null)}
       mentorRows={mentorRows} mentorLoading={mentorLoading}
       analytics={analytics}
       settingsForm={settingsForm} setSettingsForm={setSettingsForm} settingsBusy={settingsBusy}
@@ -472,29 +547,62 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
 
       {/* Create Form */}
       {showAddBatch && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4 space-y-3">
-          <h3 className="font-semibold text-sm" style={{ color: NAVY }}>New Demo Batch</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input placeholder="Batch title *" value={batchForm.title} onChange={e => setBatchForm(p => ({ ...p, title: e.target.value }))} />
-            <Input placeholder="Batch code (e.g. MMSD0626)" value={batchForm.batchCode} onChange={e => setBatchForm(p => ({ ...p, batchCode: e.target.value }))} />
-            <Input placeholder="Teacher name" value={batchForm.teacherName} onChange={e => setBatchForm(p => ({ ...p, teacherName: e.target.value }))} />
-            <Input placeholder="Sales mentor name" value={batchForm.mentorName} onChange={e => setBatchForm(p => ({ ...p, mentorName: e.target.value }))} />
-            <Input placeholder="Subject (e.g. Mathematics)" value={batchForm.subject} onChange={e => setBatchForm(p => ({ ...p, subject: e.target.value }))} />
-            <Select value={batchForm.grade || "none"} onValueChange={v => setBatchForm(p => ({ ...p, grade: v }))}>
-              <SelectTrigger><SelectValue placeholder="Grade (optional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No grade</SelectItem>
-                {GRADES.map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Input type="number" placeholder="Total days (e.g. 5)" value={batchForm.totalDays} onChange={e => setBatchForm(p => ({ ...p, totalDays: e.target.value }))} min={1} max={30} />
-            <Input placeholder="Default join link" value={batchForm.joinLink} onChange={e => setBatchForm(p => ({ ...p, joinLink: e.target.value }))} />
-            <Input type="datetime-local" value={batchForm.startDate} onChange={e => setBatchForm(p => ({ ...p, startDate: e.target.value }))} />
-            <Input type="datetime-local" value={batchForm.endDate} onChange={e => setBatchForm(p => ({ ...p, endDate: e.target.value }))} />
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-4 space-y-4">
+          <div>
+            <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Demo Batch</h3>
+            <p className="text-xs text-gray-500 mt-0.5">5 sessions will be auto-generated at 5 PM IST after creation</p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={createBatch} disabled={busy} style={{ background: NAVY }} className="text-white text-sm">
-              {busy ? "Creating..." : "Create Batch"}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2">
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Batch Title *</label>
+              <Input placeholder="e.g. Ignite Maths Grade 6 – June 2026" value={batchForm.title}
+                onChange={e => setBatchForm(p => ({ ...p, title: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Batch Code</label>
+              <Input placeholder="e.g. MMSD0626" value={batchForm.batchCode}
+                onChange={e => setBatchForm(p => ({ ...p, batchCode: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Grade *</label>
+              <Select value={batchForm.grade || "none"} onValueChange={v => setBatchForm(p => ({ ...p, grade: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Select grade</SelectItem>
+                  {GRADES.map(g => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Start Date (IST)</label>
+              <Input type="datetime-local" value={batchForm.startDate}
+                onChange={e => setBatchForm(p => ({ ...p, startDate: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">End Date (IST)</label>
+              <Input type="datetime-local" value={batchForm.endDate}
+                onChange={e => setBatchForm(p => ({ ...p, endDate: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Default Join Link</label>
+              <Input placeholder="https://meet.google.com/..." value={batchForm.joinLink}
+                onChange={e => setBatchForm(p => ({ ...p, joinLink: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
+              <Select value={batchForm.status} onValueChange={v => setBatchForm(p => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="active">Active / In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button onClick={createBatch} disabled={busy} style={{ background: NAVY }} className="text-white text-sm gap-1.5">
+              <Plus className="w-4 h-4" /> {busy ? "Creating..." : "Create Batch + Auto-Sessions"}
             </Button>
             <Button variant="ghost" onClick={() => { setShowAddBatch(false); setBatchForm(emptyBatch); }} className="text-sm">Cancel</Button>
           </div>
@@ -648,6 +756,13 @@ interface BatchDetailProps {
   sessions: DemoSession[]; sessionsLoading: boolean;
   showAddSession: boolean; setShowAddSession: (v: boolean) => void;
   sessionForm: typeof emptySession; setSessionForm: (f: typeof emptySession) => void;
+  editingSession: DemoSession | null;
+  editSessionForm: typeof emptyEditSessionForm;
+  setEditSessionForm: (f: typeof emptyEditSessionForm) => void;
+  savingSession: boolean;
+  onOpenEditSession: (s: DemoSession) => void;
+  onUpdateSession: () => void;
+  onCloseEditSession: () => void;
   mentorRows: MentorTrackingRow[]; mentorLoading: boolean;
   analytics: AnalyticsData | null;
   settingsForm: typeof emptyBatch; setSettingsForm: (f: typeof emptyBatch) => void; settingsBusy: boolean;
@@ -749,6 +864,10 @@ function BatchDetail(p: BatchDetailProps) {
         <SessionsTab batch={batch} sessions={p.sessions} loading={p.sessionsLoading}
           showAdd={p.showAddSession} setShowAdd={p.setShowAddSession}
           form={p.sessionForm} setForm={p.setSessionForm}
+          editingSession={p.editingSession} editSessionForm={p.editSessionForm}
+          setEditSessionForm={p.setEditSessionForm} savingSession={p.savingSession}
+          onOpenEdit={p.onOpenEditSession} onUpdateSession={p.onUpdateSession}
+          onCloseEdit={p.onCloseEditSession}
           onCreate={p.onCreateSession} onDelete={p.onDeleteSession} />
       )}
       {p.detailTab === "mentor-tracking" && <MentorTrackingTab rows={p.mentorRows} loading={p.mentorLoading} flash={p.flash} />}
@@ -1105,42 +1224,82 @@ function StudentsTab(p: {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Sessions Tab
+// Sessions Tab — table layout + Edit Session Modal
 // ─────────────────────────────────────────────────────────────────
+const SESSION_STATUS_CHIP: Record<string, string> = {
+  scheduled: "bg-blue-100 text-blue-700",
+  live: "bg-red-100 text-red-700",
+  completed: "bg-gray-100 text-gray-600",
+  cancelled: "bg-yellow-100 text-yellow-700",
+};
+
 function SessionsTab(p: {
   batch: DemoBatch; sessions: DemoSession[]; loading: boolean;
   showAdd: boolean; setShowAdd: (v: boolean) => void;
   form: typeof emptySession; setForm: (f: typeof emptySession) => void;
+  editingSession: DemoSession | null;
+  editSessionForm: typeof emptyEditSessionForm;
+  setEditSessionForm: (f: typeof emptyEditSessionForm) => void;
+  savingSession: boolean;
+  onOpenEdit: (s: DemoSession) => void;
+  onUpdateSession: () => void;
+  onCloseEdit: () => void;
   onCreate: () => void; onDelete: (id: number) => void;
 }) {
-  const statusColor: Record<string, string> = {
-    upcoming: "bg-blue-100 text-blue-700",
-    live: "bg-red-100 text-red-700",
-    completed: "bg-gray-100 text-gray-600",
-  };
-
   if (p.loading) return <div className="flex items-center justify-center py-16 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading sessions...</div>;
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-sm" style={{ color: NAVY }}>{p.batch.title} — Sessions ({p.sessions.length})</h3>
+        <div>
+          <h3 className="font-bold text-sm" style={{ color: NAVY }}>Sessions ({p.sessions.length})</h3>
+          <p className="text-xs text-gray-400 mt-0.5">5 sessions auto-generated at 5 PM IST · Edit each to customise</p>
+        </div>
         <Button onClick={() => p.setShowAdd(!p.showAdd)} style={{ background: ORANGE }} className="text-white text-xs gap-1 h-8">
           <Plus className="w-3.5 h-3.5" /> Add Session
         </Button>
       </div>
 
+      {/* Add Session Form */}
       {p.showAdd && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
           <h4 className="font-semibold text-sm" style={{ color: NAVY }}>New Session</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input placeholder="Title *" value={p.form.title} onChange={e => p.setForm({ ...p.form, title: e.target.value })} />
-            <Input type="number" placeholder="Day number" value={p.form.dayNumber} onChange={e => p.setForm({ ...p.form, dayNumber: e.target.value })} min={1} />
-            <Input type="datetime-local" value={p.form.scheduledAt} onChange={e => p.setForm({ ...p.form, scheduledAt: e.target.value })} />
-            <Input type="number" placeholder="Duration (mins)" value={p.form.duration} onChange={e => p.setForm({ ...p.form, duration: e.target.value })} />
-            <Input placeholder="Join URL" value={p.form.joinUrl} onChange={e => p.setForm({ ...p.form, joinUrl: e.target.value })} />
-            <Input placeholder="Recording URL" value={p.form.recordingUrl} onChange={e => p.setForm({ ...p.form, recordingUrl: e.target.value })} />
-            <Textarea placeholder="Homework text" value={p.form.homeworkText} onChange={e => p.setForm({ ...p.form, homeworkText: e.target.value })} rows={2} className="md:col-span-2" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2">
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Title *</label>
+              <Input placeholder="e.g. Day 6 – Revision" value={p.form.title} onChange={e => p.setForm({ ...p.form, title: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Day #</label>
+              <Input type="number" value={p.form.dayNumber} onChange={e => p.setForm({ ...p.form, dayNumber: e.target.value })} min={1} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Subject</label>
+              <Select value={p.form.subject || "none"} onValueChange={v => p.setForm({ ...p.form, subject: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Teacher</label>
+              <Input placeholder="Teacher name" value={p.form.teacherName} onChange={e => p.setForm({ ...p.form, teacherName: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Scheduled At (IST)</label>
+              <Input type="datetime-local" value={p.form.scheduledAt} onChange={e => p.setForm({ ...p.form, scheduledAt: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Live Link</label>
+              <Input placeholder="https://meet.google.com/..." value={p.form.joinUrl} onChange={e => p.setForm({ ...p.form, joinUrl: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Homework Link</label>
+              <Input placeholder="https://..." value={p.form.homeworkLink} onChange={e => p.setForm({ ...p.form, homeworkLink: e.target.value })} />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={p.onCreate} style={{ background: NAVY }} className="text-white text-xs">Create Session</Button>
@@ -1149,50 +1308,208 @@ function SessionsTab(p: {
         </div>
       )}
 
+      {/* Sessions Table (desktop) / Cards (mobile) */}
       {p.sessions.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <Video className="w-8 h-8 mx-auto mb-2 opacity-20" />
-          <p className="text-sm">No sessions yet. Add your first session.</p>
+          <p className="text-sm">No sessions yet. Add a session or create a new batch with a start date to auto-generate.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {p.sessions.map(s => (
-            <div key={s.id} className="bg-white rounded-2xl border border-gray-200 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0"
-                    style={{ background: `${NAVY}15`, color: NAVY }}>
-                    {s.dayNumber}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-semibold text-gray-900 text-sm">{s.title}</span>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor[s.status] ?? "bg-gray-100 text-gray-600"}`}>{s.status}</span>
-                      {!s.isPublished && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Hidden</span>}
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100" style={{ background: `${NAVY}08` }}>
+                  {["Day", "Subject", "Date", "Time", "Teacher", "Live Link", "Status", "Actions"].map(h => (
+                    <th key={h} className="text-left px-3 py-3 font-semibold text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {p.sessions.map(s => {
+                  const { date, time } = sessionToIst(s.scheduledAt);
+                  const endMs = new Date(s.scheduledAt).getTime() + s.duration * 60 * 1000;
+                  const { time: endTime } = sessionToIst(new Date(endMs).toISOString());
+                  return (
+                    <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-3 py-3">
+                        <span className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm" style={{ background: `${NAVY}15`, color: NAVY }}>{s.dayNumber}</span>
+                      </td>
+                      <td className="px-3 py-3">
+                        {s.subject ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">{s.subject}</span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-3 py-3 text-gray-700 font-medium">{date}</td>
+                      <td className="px-3 py-3 text-gray-600">{time} – {endTime}</td>
+                      <td className="px-3 py-3 text-gray-700">{s.teacherName ?? <span className="text-gray-300">—</span>}</td>
+                      <td className="px-3 py-3">
+                        {s.joinUrl ? (
+                          <a href={s.joinUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium">
+                            <Link className="w-3 h-3" /> Join ↗
+                          </a>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`px-2 py-0.5 rounded-full font-semibold capitalize ${SESSION_STATUS_CHIP[s.status] ?? "bg-gray-100 text-gray-600"}`}>
+                          {s.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => p.onOpenEdit(s)}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 hover:text-blue-700 transition-colors" title="Edit session">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => p.onDelete(s.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors" title="Delete session">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {p.sessions.map(s => {
+              const { date, time } = sessionToIst(s.scheduledAt);
+              return (
+                <div key={s.id} className="bg-white rounded-2xl border border-gray-200 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-base flex-shrink-0"
+                        style={{ background: `${NAVY}15`, color: NAVY }}>{s.dayNumber}</span>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-semibold text-gray-900 text-sm">{s.title}</span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SESSION_STATUS_CHIP[s.status] ?? "bg-gray-100 text-gray-600"}`}>{s.status}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 space-y-0.5">
+                          {s.subject && <div className="text-purple-600 font-semibold">{s.subject}</div>}
+                          <div>{date} · {time} ({s.duration} min)</div>
+                          {s.teacherName && <div>Teacher: {s.teacherName}</div>}
+                        </div>
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-xs px-2 py-1 rounded-lg text-white font-semibold" style={{ background: GREEN }}>Join ↗</a>}
+                          {s.recordingUrl && <a href={s.recordingUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600">Recording ↗</a>}
+                          {s.homeworkLink && <a href={s.homeworkLink} target="_blank" rel="noopener noreferrer"
+                            className="text-xs px-2 py-1 rounded-lg border border-blue-200 text-blue-600">HW ↗</a>}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
-                      <span><Calendar className="w-3 h-3 inline mr-0.5" />{new Date(s.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                      <span><Clock className="w-3 h-3 inline mr-0.5" />{s.duration} min</span>
-                    </div>
-                    {s.homeworkText && <p className="text-xs text-blue-600 mt-1 truncate max-w-xs"><BookOpen className="w-3 h-3 inline mr-0.5" />{s.homeworkText}</p>}
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-xs px-2 py-1 rounded-lg text-white font-semibold" style={{ background: GREEN }}>
-                        Join Live ↗
-                      </a>}
-                      {s.recordingUrl && <a href={s.recordingUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">
-                        Recording ↗
-                      </a>}
+                    <div className="flex flex-col gap-1 flex-shrink-0">
+                      <button onClick={() => p.onOpenEdit(s)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => p.onDelete(s.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
-                <button onClick={() => p.onDelete(s.id)} className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Edit Session Modal */}
+      {p.editingSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={e => { if (e.target === e.currentTarget) p.onCloseEdit(); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit Session — Day {p.editingSession.dayNumber}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{p.editingSession.title}</p>
+              </div>
+              <button onClick={p.onCloseEdit} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Session Title</label>
+                <Input value={p.editSessionForm.title} onChange={e => p.setEditSessionForm({ ...p.editSessionForm, title: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Subject</label>
+                  <Select value={p.editSessionForm.subject || "none"} onValueChange={v => p.setEditSessionForm({ ...p.editSessionForm, subject: v === "none" ? "" : v })}>
+                    <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Teacher</label>
+                  <Input placeholder="Teacher name" value={p.editSessionForm.teacherName}
+                    onChange={e => p.setEditSessionForm({ ...p.editSessionForm, teacherName: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Date (IST)</label>
+                  <Input type="date" value={p.editSessionForm.date}
+                    onChange={e => p.setEditSessionForm({ ...p.editSessionForm, date: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Start Time</label>
+                  <Input type="time" value={p.editSessionForm.startTime}
+                    onChange={e => p.setEditSessionForm({ ...p.editSessionForm, startTime: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">End Time</label>
+                  <Input type="time" value={p.editSessionForm.endTime}
+                    onChange={e => p.setEditSessionForm({ ...p.editSessionForm, endTime: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Live Class Link</label>
+                <Input placeholder="https://meet.google.com/..." value={p.editSessionForm.joinUrl}
+                  onChange={e => p.setEditSessionForm({ ...p.editSessionForm, joinUrl: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Homework Link <span className="text-gray-300 font-normal">(optional)</span></label>
+                <Input placeholder="https://..." value={p.editSessionForm.homeworkLink}
+                  onChange={e => p.setEditSessionForm({ ...p.editSessionForm, homeworkLink: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Recording Link <span className="text-gray-300 font-normal">(optional)</span></label>
+                <Input placeholder="https://..." value={p.editSessionForm.recordingUrl}
+                  onChange={e => p.setEditSessionForm({ ...p.editSessionForm, recordingUrl: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Session Status</label>
+                <Select value={p.editSessionForm.status} onValueChange={v => p.setEditSessionForm({ ...p.editSessionForm, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          ))}
+            <div className="px-5 py-4 border-t border-gray-100 flex gap-2">
+              <Button onClick={p.onUpdateSession} disabled={p.savingSession} style={{ background: NAVY }} className="text-white text-sm gap-1.5 flex-1">
+                <Save className="w-4 h-4" /> {p.savingSession ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button variant="outline" onClick={p.onCloseEdit} className="text-sm">Cancel</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1462,7 +1779,7 @@ function AnalyticsTab({ analytics }: { analytics: AnalyticsData | null }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Settings Tab
+// Settings Tab (Batch Details)
 // ─────────────────────────────────────────────────────────────────
 function SettingsTab(p: {
   batch: DemoBatch;
@@ -1472,7 +1789,10 @@ function SettingsTab(p: {
   return (
     <div className="max-w-2xl space-y-4">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Batch Settings</h3>
+        <div className="mb-4">
+          <h3 className="font-bold text-sm" style={{ color: NAVY }}>Batch Details</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Changing Start Date will automatically shift all session dates by the same offset.</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="md:col-span-2">
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Batch Title *</label>
@@ -1481,22 +1801,6 @@ function SettingsTab(p: {
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Batch Code</label>
             <Input placeholder="e.g. MMSD0626" value={p.form.batchCode} onChange={e => p.setForm({ ...p.form, batchCode: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Total Days</label>
-            <Input type="number" value={p.form.totalDays} onChange={e => p.setForm({ ...p.form, totalDays: e.target.value })} min={1} max={30} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Teacher Name</label>
-            <Input value={p.form.teacherName} onChange={e => p.setForm({ ...p.form, teacherName: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Sales Mentor Name</label>
-            <Input value={p.form.mentorName} onChange={e => p.setForm({ ...p.form, mentorName: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Subject</label>
-            <Input value={p.form.subject} onChange={e => p.setForm({ ...p.form, subject: e.target.value })} />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Grade</label>
@@ -1509,27 +1813,42 @@ function SettingsTab(p: {
             </Select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Start Date</label>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Start Date (IST) ⚡ cascades sessions</label>
             <Input type="datetime-local" value={p.form.startDate} onChange={e => p.setForm({ ...p.form, startDate: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">End Date</label>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">End Date (IST)</label>
             <Input type="datetime-local" value={p.form.endDate} onChange={e => p.setForm({ ...p.form, endDate: e.target.value })} />
           </div>
           <div className="md:col-span-2">
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Default Join Link</label>
             <Input value={p.form.joinLink} onChange={e => p.setForm({ ...p.form, joinLink: e.target.value })} placeholder="https://meet.google.com/..." />
           </div>
-          <div className="md:col-span-2">
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Description</label>
-            <Textarea value={p.form.description} onChange={e => p.setForm({ ...p.form, description: e.target.value })} rows={3} />
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
+            <Select value={p.form.status} onValueChange={v => p.setForm({ ...p.form, status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+                <SelectItem value="active">Active / In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        <div className="flex gap-2 mt-4">
-          <Button onClick={p.onSave} disabled={p.busy} style={{ background: NAVY }} className="text-white text-sm">
-            {p.busy ? "Saving..." : "Save Changes"}
+        <div className="flex gap-2 mt-5">
+          <Button onClick={p.onSave} disabled={p.busy} style={{ background: NAVY }} className="text-white text-sm gap-1.5">
+            <Save className="w-4 h-4" /> {p.busy ? "Saving..." : "Save Changes"}
           </Button>
         </div>
+      </div>
+
+      {/* Info card */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-xs text-blue-800 space-y-1">
+        <div className="font-semibold mb-1">💡 Session Management Tips</div>
+        <div>• Total sessions (Days) is auto-calculated from the Sessions tab — no manual entry needed.</div>
+        <div>• Teacher and subject are set per-session in the Sessions tab → Edit modal.</div>
+        <div>• Changing Start Date here will shift all session dates automatically.</div>
       </div>
     </div>
   );

@@ -70,56 +70,102 @@ router.get("/admin/demo-batches", adminOnly, async (_req, res) => {
   res.json(enriched);
 });
 
+const DEFAULT_SESSION_TEMPLATE: { subject: string }[] = [
+  { subject: "Maths" },
+  { subject: "Science" },
+  { subject: "Maths" },
+  { subject: "English" },
+  { subject: "Science" },
+];
+
+function sessionDateForDay(startDate: Date, dayIndex: number): Date {
+  const istStr = startDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const [y, m, d] = istStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + dayIndex, 11, 30, 0)); // 5 PM IST = 11:30 UTC
+}
+
 router.post("/admin/demo-batches", adminOnly, async (req, res) => {
-  const { title, description, teacherName, bannerUrl, joinLink, startDate, endDate, grade, subject, totalDays, isPublic, mentorName, mentorId, batchCode } = req.body as {
-    title?: string; description?: string; teacherName?: string; bannerUrl?: string;
-    joinLink?: string; startDate?: string; endDate?: string; grade?: number;
-    subject?: string; totalDays?: number; isPublic?: boolean;
-    mentorName?: string; mentorId?: number; batchCode?: string;
+  const { title, joinLink, startDate, endDate, grade, isPublic, batchCode, status } = req.body as {
+    title?: string; joinLink?: string; startDate?: string; endDate?: string;
+    grade?: number; isPublic?: boolean; batchCode?: string; status?: string;
   };
   if (!title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
+
+  const parsedStart = startDate ? new Date(startDate) : undefined;
+
   const [row] = await db.insert(demoBatchesTable).values({
     title: title.trim(),
-    description: description?.trim(),
-    teacherName: teacherName?.trim(),
-    bannerUrl: bannerUrl?.trim(),
     joinLink: joinLink?.trim(),
-    startDate: startDate ? new Date(startDate) : undefined,
+    startDate: parsedStart,
     endDate: endDate ? new Date(endDate) : undefined,
     grade: grade ?? undefined,
-    subject: subject?.trim(),
-    totalDays: totalDays ?? 5,
+    totalDays: 5,
     isPublic: isPublic ?? true,
-    mentorName: mentorName?.trim(),
-    mentorId: mentorId ?? undefined,
     batchCode: batchCode?.trim(),
+    status: status ?? "upcoming",
   }).returning();
-  res.json(row);
+
+  // Auto-generate 5 default sessions if startDate was provided
+  const sessions: typeof demoSessionsTable.$inferSelect[] = [];
+  if (parsedStart) {
+    for (let i = 0; i < DEFAULT_SESSION_TEMPLATE.length; i++) {
+      const tpl = DEFAULT_SESSION_TEMPLATE[i];
+      const [s] = await db.insert(demoSessionsTable).values({
+        batchId: row.id,
+        title: `Day ${i + 1} – ${tpl.subject}`,
+        subject: tpl.subject,
+        dayNumber: i + 1,
+        scheduledAt: sessionDateForDay(parsedStart, i),
+        duration: 60,
+        status: "scheduled",
+      }).returning();
+      sessions.push(s);
+    }
+  }
+
+  res.json({ ...row, sessions });
 });
 
 router.put("/admin/demo-batches/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, teacherName, bannerUrl, joinLink, startDate, endDate, grade, subject, totalDays, isPublic, isActive, status, mentorName, mentorId, batchCode } = req.body as Record<string, unknown>;
+
+  // Read old batch before updating (for startDate cascade)
+  const [oldBatch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, id));
+  if (!oldBatch) { res.status(404).json({ error: "Not found" }); return; }
+
+  const { title, joinLink, startDate, endDate, grade, isPublic, isActive, status, batchCode } = req.body as Record<string, unknown>;
   const updates: Partial<typeof demoBatchesTable.$inferInsert> = {};
   if (title !== undefined) updates.title = String(title).trim();
-  if (description !== undefined) updates.description = String(description).trim();
-  if (teacherName !== undefined) updates.teacherName = String(teacherName).trim();
-  if (bannerUrl !== undefined) updates.bannerUrl = String(bannerUrl).trim();
   if (joinLink !== undefined) updates.joinLink = String(joinLink).trim();
   if (startDate !== undefined) updates.startDate = new Date(String(startDate));
   if (endDate !== undefined) updates.endDate = new Date(String(endDate));
   if (grade !== undefined) updates.grade = Number(grade);
-  if (subject !== undefined) updates.subject = String(subject).trim();
-  if (totalDays !== undefined) updates.totalDays = Number(totalDays);
   if (isPublic !== undefined) updates.isPublic = Boolean(isPublic);
   if (isActive !== undefined) updates.isActive = Boolean(isActive);
   if (status !== undefined) updates.status = String(status);
-  if (mentorName !== undefined) updates.mentorName = String(mentorName).trim();
-  if (mentorId !== undefined) updates.mentorId = Number(mentorId);
   if (batchCode !== undefined) updates.batchCode = String(batchCode).trim();
+
   const [row] = await db.update(demoBatchesTable).set(updates).where(eq(demoBatchesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Cascade startDate change to all sessions
+  if (startDate !== undefined && oldBatch.startDate) {
+    const oldStart = oldBatch.startDate.getTime();
+    const newStart = new Date(String(startDate)).getTime();
+    const offsetMs = newStart - oldStart;
+    if (offsetMs !== 0) {
+      const sessions = await db
+        .select({ id: demoSessionsTable.id, scheduledAt: demoSessionsTable.scheduledAt })
+        .from(demoSessionsTable)
+        .where(eq(demoSessionsTable.batchId, id));
+      for (const s of sessions) {
+        const newScheduledAt = new Date(s.scheduledAt.getTime() + offsetMs);
+        await db.update(demoSessionsTable).set({ scheduledAt: newScheduledAt }).where(eq(demoSessionsTable.id, s.id));
+      }
+    }
+  }
+
   res.json(row);
 });
 
@@ -417,9 +463,11 @@ router.get("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res) 
 router.post("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) { res.status(400).json({ error: "Invalid batchId" }); return; }
-  const { title, description, dayNumber, scheduledAt, duration, joinUrl, recordingUrl, homeworkText, bannerUrl } = req.body as {
-    title?: string; description?: string; dayNumber?: number; scheduledAt?: string;
-    duration?: number; joinUrl?: string; recordingUrl?: string; homeworkText?: string; bannerUrl?: string;
+  const { title, description, subject, teacherName, dayNumber, scheduledAt, duration, joinUrl, recordingUrl, homeworkText, homeworkLink, bannerUrl, status } = req.body as {
+    title?: string; description?: string; subject?: string; teacherName?: string;
+    dayNumber?: number; scheduledAt?: string; duration?: number;
+    joinUrl?: string; recordingUrl?: string; homeworkText?: string; homeworkLink?: string;
+    bannerUrl?: string; status?: string;
   };
   if (!title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
   if (!scheduledAt) { res.status(400).json({ error: "Scheduled time required" }); return; }
@@ -427,30 +475,43 @@ router.post("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res)
     batchId,
     title: title.trim(),
     description: description?.trim(),
+    subject: subject?.trim(),
+    teacherName: teacherName?.trim(),
     dayNumber: dayNumber ?? 1,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 60,
     joinUrl: joinUrl?.trim(),
     recordingUrl: recordingUrl?.trim(),
     homeworkText: homeworkText?.trim(),
+    homeworkLink: homeworkLink?.trim(),
     bannerUrl: bannerUrl?.trim(),
+    status: status ?? "scheduled",
   }).returning();
+
+  // Update totalDays to reflect actual session count
+  const [{ cnt }] = await db.select({ cnt: sql<number>`count(*)::int` })
+    .from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
+  await db.update(demoBatchesTable).set({ totalDays: cnt }).where(eq(demoBatchesTable.id, batchId));
+
   res.json(row);
 });
 
 router.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly, async (req, res) => {
   const sessionId = Number(req.params.sessionId);
   if (!sessionId) { res.status(400).json({ error: "Invalid sessionId" }); return; }
-  const { title, description, dayNumber, scheduledAt, duration, joinUrl, recordingUrl, homeworkText, bannerUrl, status, isPublished } = req.body as Record<string, unknown>;
+  const { title, description, subject, teacherName, dayNumber, scheduledAt, duration, joinUrl, recordingUrl, homeworkText, homeworkLink, bannerUrl, status, isPublished } = req.body as Record<string, unknown>;
   const updates: Partial<typeof demoSessionsTable.$inferInsert> = {};
   if (title !== undefined) updates.title = String(title).trim();
   if (description !== undefined) updates.description = String(description).trim();
+  if (subject !== undefined) updates.subject = String(subject).trim();
+  if (teacherName !== undefined) updates.teacherName = String(teacherName).trim();
   if (dayNumber !== undefined) updates.dayNumber = Number(dayNumber);
   if (scheduledAt !== undefined) updates.scheduledAt = new Date(String(scheduledAt));
   if (duration !== undefined) updates.duration = Number(duration);
   if (joinUrl !== undefined) updates.joinUrl = String(joinUrl).trim();
   if (recordingUrl !== undefined) updates.recordingUrl = String(recordingUrl).trim();
   if (homeworkText !== undefined) updates.homeworkText = String(homeworkText).trim();
+  if (homeworkLink !== undefined) updates.homeworkLink = String(homeworkLink).trim();
   if (bannerUrl !== undefined) updates.bannerUrl = String(bannerUrl).trim();
   if (status !== undefined) updates.status = String(status);
   if (isPublished !== undefined) updates.isPublished = Boolean(isPublished);
@@ -460,9 +521,18 @@ router.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly, async 
 });
 
 router.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
   const sessionId = Number(req.params.sessionId);
   if (!sessionId) { res.status(400).json({ error: "Invalid sessionId" }); return; }
   await db.delete(demoSessionsTable).where(eq(demoSessionsTable.id, sessionId));
+
+  // Update totalDays to reflect actual session count
+  if (batchId) {
+    const [{ cnt }] = await db.select({ cnt: sql<number>`count(*)::int` })
+      .from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
+    await db.update(demoBatchesTable).set({ totalDays: cnt }).where(eq(demoBatchesTable.id, batchId));
+  }
+
   res.json({ success: true });
 });
 
