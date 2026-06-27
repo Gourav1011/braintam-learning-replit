@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
+import { assignIgniteBatchAndCourse } from "../lib/assignIgniteBatch.js";
 
 const router = Router();
 
@@ -397,6 +398,22 @@ router.post("/payments/webhook", async (req, res) => {
         courseType: "ignite",
       })
       .onConflictDoNothing();
+
+    // ── 6b. Auto-assign batch + enrollment (non-fatal) ────────
+    const [igniteRecord] = await db
+      .select({ id: ignitePaidStudentsTable.id })
+      .from(ignitePaidStudentsTable)
+      .where(
+        and(
+          eq(ignitePaidStudentsTable.studentId, studentId),
+          eq(ignitePaidStudentsTable.paymentId, paymentRow.id),
+        ),
+      )
+      .limit(1);
+
+    if (igniteRecord) {
+      await assignIgniteBatchAndCourse(studentId, grade, igniteRecord.id).catch(() => null);
+    }
   } catch (err: unknown) {
     await logEnrolmentError({
       errorType: "ignite_record_fail",
@@ -698,6 +715,22 @@ router.post("/payments/verify-demo-payment", async (req, res) => {
       leadSource: "Meta Ads",
     })
     .onConflictDoNothing();
+
+  // ── 5b. Auto-assign batch + enrollment (non-fatal) ────────
+  const [verifyIgniteRecord] = await db
+    .select({ id: ignitePaidStudentsTable.id })
+    .from(ignitePaidStudentsTable)
+    .where(
+      and(
+        eq(ignitePaidStudentsTable.studentId, studentId),
+        eq(ignitePaidStudentsTable.paymentId, paymentRowId),
+      ),
+    )
+    .limit(1);
+
+  if (verifyIgniteRecord) {
+    await assignIgniteBatchAndCourse(studentId, grade, verifyIgniteRecord.id).catch(() => null);
+  }
 
   // ── 6. Add timeline entry ─────────────────────────────────
   try {

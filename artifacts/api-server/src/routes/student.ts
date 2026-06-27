@@ -5,7 +5,7 @@ import {
   testsTable, liveClassesTable, enrollmentsTable, testSubmissionsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
   coursesTable, announcementsTable, pointsLedgerTable,
-  mentorStudentAssignmentsTable, demoBatchEnrollmentsTable,
+  mentorStudentAssignmentsTable, demoBatchEnrollmentsTable, demoBatchesTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -466,6 +466,67 @@ router.get("/student/points-history", requireAuth, async (req, res) => {
 });
 
 // ── My Mentor ──────────────────────────────────────────────────────────────
+// ── GET /student/my-courses ───────────────────────────────────────
+// Returns enrolled courses enriched with batch info (for Ignite courses).
+// Called from student dashboard to show immediate course access after payment.
+router.get("/student/my-courses", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+
+  const enrollmentRows = await db
+    .select({
+      enrollmentId: enrollmentsTable.id,
+      courseId: enrollmentsTable.courseId,
+      batchId: enrollmentsTable.batchId,
+      enrollmentType: enrollmentsTable.enrollmentType,
+      enrolledAt: enrollmentsTable.enrolledAt,
+      courseTitle: coursesTable.title,
+      courseType: coursesTable.courseType,
+      courseThumbnail: coursesTable.thumbnailUrl,
+      courseDescription: coursesTable.description,
+      totalLessons: coursesTable.totalLessons,
+      courseGrade: coursesTable.grade,
+    })
+    .from(enrollmentsTable)
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .where(and(eq(enrollmentsTable.studentId, studentId), eq(coursesTable.isArchived, false)))
+    .orderBy(desc(enrollmentsTable.enrolledAt));
+
+  const batchIds = enrollmentRows.map((e) => e.batchId).filter(Boolean) as number[];
+  const batchRows = batchIds.length > 0
+    ? await db.select().from(demoBatchesTable).where(inArray(demoBatchesTable.id, batchIds))
+    : [];
+  const batchMap = new Map(batchRows.map((b) => [b.id, b]));
+
+  const result = enrollmentRows.map((e) => {
+    const batch = e.batchId ? batchMap.get(e.batchId) : null;
+    return {
+      enrollmentId: e.enrollmentId,
+      courseId: e.courseId,
+      courseTitle: e.courseTitle,
+      courseType: e.courseType,
+      courseThumbnail: e.courseThumbnail,
+      description: e.courseDescription,
+      totalLessons: e.totalLessons,
+      grade: e.courseGrade,
+      enrollmentType: e.enrollmentType,
+      enrolledAt: e.enrolledAt,
+      batch: batch
+        ? {
+            id: batch.id,
+            title: batch.title,
+            startDate: batch.startDate,
+            endDate: batch.endDate,
+            status: batch.status,
+            teacherName: batch.teacherName,
+            joinLink: batch.joinLink,
+          }
+        : null,
+    };
+  });
+
+  res.json(result);
+});
+
 router.get("/student/my-mentor", requireAuth, async (req, res) => {
   const studentId = req.authUser!.id;
   const [row] = await db

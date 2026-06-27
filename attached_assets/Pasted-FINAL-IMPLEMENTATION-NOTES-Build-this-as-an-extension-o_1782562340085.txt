@@ -1,0 +1,144 @@
+FINAL IMPLEMENTATION NOTES
+
+Build this as an extension of the existing BTL CRM architecture.
+
+Do NOT replace:
+
+* Existing Lead Deployment Center
+* Mentor Portal
+* Non-Active Lead Tracking
+* Weekly Leaderboards
+* Payment Approval System
+* Notifications
+* Analytics
+
+Reuse existing CRM modules wherever possible.
+
+===================================================================
+ADDITIONAL DATABASE IMPROVEMENTS
+================================
+
+Update leads:
+
+batch_id TEXT DEFAULT NULL
+
+Reason:
+Makes filtering easier for:
+
+Upcoming Batch Students
+Current Batch Students
+Sunday Deployment
+Batch Analytics
+Mentor Assignment
+
+Update enrollments:
+
+student_id TEXT DEFAULT NULL
+
+Reason:
+Student records and enrollment history should remain permanent even after Ignite ends.
+
+Add uniqueness validation:
+
+One lead cannot have duplicate enrollment records:
+
+(lead_id, course_id, batch_id)
+
+===================================================================
+IMPORTANT BUSINESS RULES
+========================
+
+Advertisement Students:
+
+Payment Success
+↓
+Create Lead
+↓
+Create Student
+↓
+Assign Ignite Course
+↓
+Assign Upcoming Batch
+↓
+assigned_mentor_id = NULL
+↓
+Student Portal Ready
+
+Admin Deploys Mentor Later.
+
+Mentor Conversions:
+
+Lead
+↓
+Mentor Sends Payment Link
+↓
+Parent Pays
+↓
+Find Lead
+↓
+Find Assigned Mentor
+↓
+Assign Mastery Course
+↓
+Create Enrollment
+↓
+Update Status:
+Mastery_Converted
+↓
+Credit Mentor
+
+===================================================================
+SUNDAY DEPLOYMENT
+=================
+
+Deploy only:
+
+assigned_mentor_id IS NULL
+AND
+batch_id = next_active_batch_id
+
+Update ONLY:
+
+assigned_mentor_id
+
+Never modify:
+
+course assignment
+batch assignment
+attendance
+portal access
+payment history
+enrollment history
+
+===================================================================
+STUDENT EXPERIENCE GUARANTEE
+============================
+
+Students should never:
+
+Pay
+↓
+See empty portal
+
+Students should immediately see:
+
+Ignite Grade X
+Batch:
+Start Date – End Date
+Status:
+Starts on Monday
+
+===================================================================
+IMPLEMENTATION REQUIREMENTS
+===========================
+
+Build this using:
+
+* Razorpay Webhooks
+* Node.js Express Backend
+* Existing BTL CRM Database
+* Existing Mentor Deployment System
+* Existing Notification Framework
+* Existing Analytics Framework
+
+The new Course-Batch engine should integrate seamlessly into the current BTL CRM without breaking any existing features.

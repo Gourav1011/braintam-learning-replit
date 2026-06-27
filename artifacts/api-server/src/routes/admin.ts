@@ -485,6 +485,7 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     academicYearId: coursesTable.academicYearId,
     isPublished: coursesTable.isPublished,
     status: coursesTable.status,
+    courseType: coursesTable.courseType,
     totalLessons: coursesTable.totalLessons,
     thumbnailUrl: coursesTable.thumbnailUrl,
     description: coursesTable.description,
@@ -567,6 +568,64 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
     "course_deleted", "course", id, course?.title ?? String(id),
   );
   res.json({ success: true });
+});
+
+// ── Seed 20 permanent courses ──────────────────────────────────────
+// Idempotent: skips any course that already exists (same courseType + grade).
+router.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
+  const existing = await db
+    .select({ courseType: coursesTable.courseType, grade: coursesTable.grade })
+    .from(coursesTable)
+    .where(eq(coursesTable.isArchived, false));
+
+  const existingSet = new Set(existing.map((r) => `${r.courseType}-${r.grade}`));
+
+  const IGNITE_THUMBNAIL = "https://placehold.co/400x240/0B2B6B/FFFFFF?text=Ignite";
+  const MASTERY_THUMBNAIL = "https://placehold.co/400x240/FF6B1A/FFFFFF?text=Mastery";
+
+  const toCreate: Array<{
+    title: string; grade: number; courseType: string;
+    thumbnailUrl: string; description: string; teacher: string;
+    totalLessons: number; isPublished: boolean; status: string;
+  }> = [];
+
+  for (let g = 1; g <= 10; g++) {
+    if (!existingSet.has(`ignite-${g}`)) {
+      toCreate.push({
+        title: `Braintam Ignite — Grade ${g}`,
+        grade: g,
+        courseType: "ignite",
+        thumbnailUrl: IGNITE_THUMBNAIL,
+        description: `5-day live demo program for Grade ${g} students. Experience Braintam's teaching method before joining Mastery.`,
+        teacher: "Braintam Faculty",
+        totalLessons: 5,
+        isPublished: true,
+        status: "active",
+      });
+    }
+    if (!existingSet.has(`mastery-${g}`)) {
+      toCreate.push({
+        title: `Braintam Mastery — Grade ${g}`,
+        grade: g,
+        courseType: "mastery",
+        thumbnailUrl: MASTERY_THUMBNAIL,
+        description: `Full academic year program for Grade ${g}. Complete syllabus coverage with live classes, homework, tests, and mentor support.`,
+        teacher: "Braintam Faculty",
+        totalLessons: 120,
+        isPublished: true,
+        status: "active",
+      });
+    }
+  }
+
+  if (toCreate.length === 0) {
+    res.json({ created: 0, message: "All 20 permanent courses already exist." });
+    return;
+  }
+
+  const created = await db.insert(coursesTable).values(toCreate).returning({ id: coursesTable.id, title: coursesTable.title, courseType: coursesTable.courseType, grade: coursesTable.grade });
+
+  res.json({ created: created.length, courses: created });
 });
 
 // ── Live Classes ──────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth, STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
-import { Video, BookOpen, FileText, CheckSquare, Flame, PlayCircle, Bell, X, ChevronRight, Zap, Trophy, Megaphone } from "lucide-react";
+import { Video, BookOpen, FileText, CheckSquare, Flame, PlayCircle, Bell, X, ChevronRight, Zap, Trophy, Megaphone, Calendar, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect, useRef } from "react";
 
@@ -184,6 +184,116 @@ function apiFetch(path: string, opts?: RequestInit) {
       ...opts?.headers,
     },
   });
+}
+
+// ── My Course Card ────────────────────────────────────────────────
+interface MyCourse {
+  enrollmentId: number;
+  courseId: number;
+  courseTitle: string;
+  courseType: string;
+  grade: number;
+  enrollmentType: string;
+  enrolledAt: string;
+  batch: {
+    id: number;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    status: string;
+    teacherName: string | null;
+    joinLink: string | null;
+  } | null;
+}
+
+function MyCourseCard({ course }: { course: MyCourse }) {
+  const isIgnite  = course.courseType === "ignite";
+  const isMastery = course.courseType === "mastery";
+  const batch     = course.batch;
+
+  const fmt = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : null;
+
+  const startFmt = fmt(batch?.startDate ?? null);
+  const endFmt   = fmt(batch?.endDate ?? null);
+
+  const statusLabel = batch
+    ? batch.status === "upcoming" ? "Starting Soon"
+    : batch.status === "active"   ? "Live Now"
+    : "Completed"
+    : "Batch TBA";
+
+  const statusColor = batch?.status === "active"
+    ? "bg-green-100 text-green-700"
+    : batch?.status === "upcoming"
+    ? "bg-blue-100 text-blue-700"
+    : "bg-gray-100 text-gray-500";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl overflow-hidden"
+      style={{ boxShadow: "0 2px 16px rgba(11,43,107,0.10)" }}
+    >
+      {/* Top stripe */}
+      <div
+        className="px-4 py-3 flex items-center gap-3"
+        style={{
+          background: isIgnite
+            ? "linear-gradient(135deg, #0B2B6B 0%, #1a3f8f 100%)"
+            : "linear-gradient(135deg, #FF6B1A 0%, #e55a09 100%)",
+        }}
+      >
+        <div className="text-2xl">{isIgnite ? "🎯" : isMastery ? "🚀" : "📚"}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-extrabold text-sm leading-tight truncate">{course.courseTitle}</p>
+          <p className="text-white/70 text-xs mt-0.5">
+            {isIgnite ? "5-Day Live Demo" : isMastery ? "Full Year Program" : "Course"}
+          </p>
+        </div>
+        <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${statusColor}`}>
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Batch details */}
+      <div className="bg-white px-4 py-3 space-y-2">
+        {batch ? (
+          <>
+            {(startFmt || endFmt) && (
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span>
+                  {startFmt && endFmt ? `${startFmt} – ${endFmt}` : startFmt ?? endFmt}
+                </span>
+              </div>
+            )}
+            {batch.teacherName && (
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <span className="text-gray-400">👨‍🏫</span>
+                <span>{batch.teacherName}</span>
+              </div>
+            )}
+            {batch.joinLink && batch.status === "active" && (
+              <a
+                href={batch.joinLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-xl mt-1 w-full justify-center"
+                style={{ background: "linear-gradient(135deg, #0B2B6B, #1a3f8f)" }}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Join Live Class
+              </a>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-gray-400 italic">Your batch will be assigned soon. Check back shortly!</p>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 // ── Daily Coin Popup ─────────────────────────────────────────────
@@ -469,6 +579,15 @@ export default function DashboardPage() {
 
   const { data: dashboard, isLoading } = useGetStudentDashboard();
   const { data: leaderboard }          = useGetLeaderboard();
+  const [myCourses, setMyCourses]      = useState<MyCourse[]>([]);
+
+  useEffect(() => {
+    if (!student) return;
+    apiFetch("/student/my-courses")
+      .then(r => r.ok ? r.json() : [])
+      .then((data: MyCourse[]) => setMyCourses(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [student?.id]);
 
   useEffect(() => {
     if (!student) return;
@@ -680,6 +799,18 @@ export default function DashboardPage() {
               </div>
             )}
           </motion.div>
+        )}
+
+        {/* My Courses — shown when student has enrollments */}
+        {myCourses.length > 0 && (
+          <div>
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">My Courses</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {myCourses.map((c) => (
+                <MyCourseCard key={c.enrollmentId} course={c} />
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Quick Stats */}

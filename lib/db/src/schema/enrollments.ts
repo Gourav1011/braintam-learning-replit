@@ -6,6 +6,7 @@ export const enrollmentsTable = pgTable("enrollments", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id").notNull(),
   courseId: integer("course_id").notNull(),
+  batchId: integer("batch_id"),
   enrolledBy: integer("enrolled_by"),
   enrollmentType: text("enrollment_type").notNull().default("mastery"),
   academicYear: text("academic_year"),
