@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { TrendingUp, TrendingDown, Users, Video, RefreshCw, Download, Search, Filter, ChevronDown, ChevronUp, Award, Star, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 
@@ -25,6 +25,15 @@ interface IgniteAnalytics {
   gradeWise: { grade: number; leads: number; converted: number; conversionPct: number }[];
   teacherImpact: { teacher: string; classes: number; students: number; conversions: number; conversionPct: number }[];
   counselorPerf: { counselor: string; leads: number; converted: number; conversionPct: number }[];
+  mentorLeaderboard: {
+    mentor: string; leads: number; converted: number; conversionPct: number;
+    grades: { grade: number; leads: number; converted: number; conversionPct: number }[];
+  }[];
+  gradeLeaderboard: {
+    grade: number; leads: number; converted: number; conversionPct: number;
+    topMentor: string; topMentorPct: number;
+    mentors: { mentor: string; leads: number; converted: number; conversionPct: number }[];
+  }[];
   trend: { month: string; leads: number; conversions: number; classes: number }[];
   leadStage: { stage: string; count: number }[];
   recentLeads: {
@@ -55,7 +64,8 @@ const STATUS_COLOR: Record<string, string> = {
 export function IgniteAnalyticsTab() {
   const [data, setData] = useState<IgniteAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<"overview" | "leads" | "funnel" | "grade" | "teacher" | "counselor">("overview");
+  const [activeSection, setActiveSection] = useState<"overview" | "leads" | "funnel" | "grade" | "teacher" | "counselor" | "mentor">("overview");
+  const [expandedMentor, setExpandedMentor] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -86,7 +96,7 @@ export function IgniteAnalyticsTab() {
     </div>
   );
 
-  const { kpis, funnel, gradeWise, teacherImpact, counselorPerf, trend, leadStage, recentLeads } = data;
+  const { kpis, funnel, gradeWise, teacherImpact, counselorPerf, mentorLeaderboard, gradeLeaderboard, trend, leadStage, recentLeads } = data;
 
   // Filtered leads
   const filteredLeads = recentLeads.filter(l => {
@@ -146,6 +156,7 @@ export function IgniteAnalyticsTab() {
           { id: "grade", label: "Grade-wise" },
           { id: "teacher", label: "Teachers" },
           { id: "counselor", label: "Counselors" },
+          { id: "mentor", label: "Mentors" },
         ] as const).map(s => (
           <button
             key={s.id}
@@ -736,6 +747,171 @@ export function IgniteAnalyticsTab() {
               </tbody>
             </table>
             {counselorPerf.length === 0 && <div className="text-center py-8 text-sm text-gray-400">No counselor data yet</div>}
+          </div>
+        </div>
+      )}
+
+      {/* ── MENTOR LEADERBOARD ── */}
+      {activeSection === "mentor" && (
+        <div className="space-y-4">
+          {/* Top / Bottom spotlight */}
+          {mentorLeaderboard.length >= 2 && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center"><Star className="w-3.5 h-3.5 text-white" /></div>
+                <div>
+                  <div className="text-xs font-bold text-emerald-700">🏆 Top Mentor</div>
+                  <div className="text-base font-black text-emerald-600">{mentorLeaderboard[0].mentor}</div>
+                  <div className="text-xs text-emerald-500">{mentorLeaderboard[0].conversionPct}% conversion · {mentorLeaderboard[0].converted}/{mentorLeaderboard[0].leads} leads</div>
+                </div>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-red-400 flex items-center justify-center"><TrendingDown className="w-3.5 h-3.5 text-white" /></div>
+                <div>
+                  <div className="text-xs font-bold text-red-600">⚠️ Needs Support</div>
+                  <div className="text-base font-black text-red-500">{mentorLeaderboard[mentorLeaderboard.length - 1].mentor}</div>
+                  <div className="text-xs text-red-400">{mentorLeaderboard[mentorLeaderboard.length - 1].conversionPct}% conversion · {mentorLeaderboard[mentorLeaderboard.length - 1].converted}/{mentorLeaderboard[mentorLeaderboard.length - 1].leads} leads</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bar chart */}
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <h3 className="font-bold text-sm mb-4" style={{ color: NAVY }}>Mentor Conversion Ranking</h3>
+            <ResponsiveContainer width="100%" height={Math.max(160, mentorLeaderboard.length * 40)}>
+              <BarChart data={mentorLeaderboard} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <XAxis type="number" tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="mentor" tick={{ fontSize: 10 }} width={100} />
+                <Tooltip />
+                <Bar dataKey="conversionPct" fill="#10B981" radius={[0,4,4,0]} name="Conv %" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Mentor table with expandable grade breakdown */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-sm" style={{ color: NAVY }}>Mentor Performance Table</h3>
+              <button onClick={() => exportCSV("ignite-mentors.csv", mentorLeaderboard.map((m, i) => ({
+                Rank: i + 1, Mentor: m.mentor, Leads: m.leads, Converted: m.converted, "Conv %": m.conversionPct,
+                "Best Grade": m.grades[0] ? `Grade ${m.grades[0].grade} (${m.grades[0].conversionPct}%)` : "—",
+              })))} className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg text-white" style={{ background: ORANGE }}>
+                <Download className="w-3 h-3" /> CSV
+              </button>
+            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 font-semibold">
+                  {["Rank", "Mentor", "Leads", "Converted", "Conv %", "Best Grade", ""].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {mentorLeaderboard.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">No mentor data yet</td></tr>
+                ) : mentorLeaderboard.map((m, i) => (
+                  <React.Fragment key={m.mentor}>
+                    <tr className="hover:bg-gray-50/50 cursor-pointer" onClick={() => setExpandedMentor(expandedMentor === m.mentor ? null : m.mentor)}>
+                      <td className="px-4 py-2.5">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-black"
+                          style={{ background: i === 0 ? "#F59E0B" : i === 1 ? "#6B7280" : i === 2 ? "#92400E" : NAVY }}>
+                          {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 font-semibold" style={{ color: NAVY }}>{m.mentor}</td>
+                      <td className="px-4 py-2.5 text-gray-600">{m.leads}</td>
+                      <td className="px-4 py-2.5 text-green-600 font-semibold">{m.converted}</td>
+                      <td className="px-4 py-2.5 font-bold" style={{ color: m.conversionPct >= 25 ? "#22C55E" : m.conversionPct >= 10 ? ORANGE : "#EF4444" }}>
+                        {m.conversionPct}%
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500">
+                        {m.grades[0] ? `Grade ${m.grades[0].grade}` : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-400">
+                        {expandedMentor === m.mentor ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </td>
+                    </tr>
+                    {expandedMentor === m.mentor && (
+                      <tr key={`${m.mentor}-detail`}>
+                        <td colSpan={7} className="bg-emerald-50/50 px-6 py-3">
+                          <p className="text-xs font-bold text-emerald-700 mb-2">Grade Breakdown for {m.mentor}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {m.grades.filter(g => g.grade > 0).map(g => (
+                              <div key={g.grade} className="px-3 py-1.5 rounded-lg bg-white border border-emerald-200 text-xs">
+                                <span className="font-bold" style={{ color: NAVY }}>Grade {g.grade}</span>
+                                <span className="text-gray-400 mx-1">·</span>
+                                <span className="text-gray-600">{g.leads} leads</span>
+                                <span className="text-gray-400 mx-1">·</span>
+                                <span className="font-bold" style={{ color: g.conversionPct >= 25 ? "#22C55E" : g.conversionPct >= 10 ? ORANGE : "#EF4444" }}>
+                                  {g.conversionPct}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Grade Leaderboard */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Grade-wise Mentor Leaderboard</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Ranked by conversion % · shows best mentor per grade</p>
+              </div>
+              <button onClick={() => exportCSV("ignite-grade-mentors.csv", gradeLeaderboard.map(g => ({
+                Grade: `Grade ${g.grade}`, Leads: g.leads, Converted: g.converted, "Conv %": g.conversionPct,
+                "Top Mentor": g.topMentor, "Top Mentor Conv %": g.topMentorPct,
+              })))} className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg text-white" style={{ background: ORANGE }}>
+                <Download className="w-3 h-3" /> CSV
+              </button>
+            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 font-semibold">
+                  {["Rank", "Grade", "Total Leads", "Converted", "Grade Conv %", "Top Mentor", "Mentor Conv %"].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {gradeLeaderboard.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">No grade data yet</td></tr>
+                ) : gradeLeaderboard.map((g, i) => (
+                  <tr key={g.grade} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-2.5">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-black"
+                        style={{ background: i === 0 ? "#F59E0B" : i === 1 ? "#6B7280" : i === 2 ? "#92400E" : NAVY }}>
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 font-black" style={{ color: NAVY }}>Grade {g.grade}</td>
+                    <td className="px-4 py-2.5 text-gray-600">{g.leads}</td>
+                    <td className="px-4 py-2.5 text-green-600 font-semibold">{g.converted}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-gray-100 rounded-full">
+                          <div className="h-1.5 rounded-full" style={{ width: `${Math.min(g.conversionPct, 100)}%`, background: g.conversionPct >= 25 ? "#22C55E" : g.conversionPct >= 10 ? ORANGE : "#EF4444" }} />
+                        </div>
+                        <span className="font-bold" style={{ color: g.conversionPct >= 25 ? "#22C55E" : g.conversionPct >= 10 ? ORANGE : "#EF4444" }}>{g.conversionPct}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-emerald-700">{g.topMentor}</td>
+                    <td className="px-4 py-2.5 font-bold" style={{ color: g.topMentorPct >= 25 ? "#22C55E" : g.topMentorPct >= 10 ? ORANGE : "#EF4444" }}>
+                      {g.topMentorPct}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

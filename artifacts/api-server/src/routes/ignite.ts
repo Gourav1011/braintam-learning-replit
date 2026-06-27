@@ -636,6 +636,62 @@ router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
     .map(([counselor, v]) => ({ counselor, leads: v.leads, converted: v.converted, conversionPct: pct(v.converted, v.leads) }))
     .sort((a, b) => b.conversionPct - a.conversionPct);
 
+  // ── Mentor Leaderboard (with per-grade breakdown) ──
+  const mentorDetailMap: Record<string, {
+    leads: number; converted: number;
+    grades: Record<number, { leads: number; converted: number }>;
+  }> = {};
+  for (const e of allEnrollments) {
+    const name = e.assignedMentorName ?? "Unassigned";
+    const grade = e.grade ?? 0;
+    if (!mentorDetailMap[name]) mentorDetailMap[name] = { leads: 0, converted: 0, grades: {} };
+    mentorDetailMap[name].leads += 1;
+    if (e.enrollmentStatus === "converted") mentorDetailMap[name].converted += 1;
+    if (!mentorDetailMap[name].grades[grade]) mentorDetailMap[name].grades[grade] = { leads: 0, converted: 0 };
+    mentorDetailMap[name].grades[grade].leads += 1;
+    if (e.enrollmentStatus === "converted") mentorDetailMap[name].grades[grade].converted += 1;
+  }
+  const mentorLeaderboard = Object.entries(mentorDetailMap)
+    .map(([mentor, v]) => ({
+      mentor,
+      leads: v.leads,
+      converted: v.converted,
+      conversionPct: pct(v.converted, v.leads),
+      grades: Object.entries(v.grades)
+        .map(([g, gv]) => ({ grade: Number(g), leads: gv.leads, converted: gv.converted, conversionPct: pct(gv.converted, gv.leads) }))
+        .sort((a, b) => b.conversionPct - a.conversionPct),
+    }))
+    .sort((a, b) => b.conversionPct - a.conversionPct);
+
+  // ── Grade Leaderboard (best mentor per grade) ──
+  const gradeLeadMap: Record<number, Record<string, { leads: number; converted: number }>> = {};
+  for (const e of allEnrollments) {
+    const grade = e.grade ?? 0;
+    const name = e.assignedMentorName ?? "Unassigned";
+    if (!gradeLeadMap[grade]) gradeLeadMap[grade] = {};
+    if (!gradeLeadMap[grade][name]) gradeLeadMap[grade][name] = { leads: 0, converted: 0 };
+    gradeLeadMap[grade][name].leads += 1;
+    if (e.enrollmentStatus === "converted") gradeLeadMap[grade][name].converted += 1;
+  }
+  const gradeLeaderboard = Object.entries(gradeLeadMap)
+    .filter(([g]) => Number(g) > 0)
+    .map(([g, mMap]) => {
+      const mentors = Object.entries(mMap)
+        .map(([n, v]) => ({ mentor: n, leads: v.leads, converted: v.converted, conversionPct: pct(v.converted, v.leads) }))
+        .sort((a, b) => b.conversionPct - a.conversionPct);
+      const total = Object.values(mMap).reduce((s, v) => ({ leads: s.leads + v.leads, converted: s.converted + v.converted }), { leads: 0, converted: 0 });
+      return {
+        grade: Number(g),
+        leads: total.leads,
+        converted: total.converted,
+        conversionPct: pct(total.converted, total.leads),
+        topMentor: mentors[0]?.mentor ?? "—",
+        topMentorPct: mentors[0]?.conversionPct ?? 0,
+        mentors,
+      };
+    })
+    .sort((a, b) => b.conversionPct - a.conversionPct);
+
   // ── Monthly Trend (last 12 months) ──
   const monthlyTrend: Record<string, { leads: number; conversions: number; classes: number }> = {};
   const monthKey = (d: Date | null) => {
@@ -701,6 +757,8 @@ router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
     gradeWise,
     teacherImpact,
     counselorPerf,
+    mentorLeaderboard,
+    gradeLeaderboard,
     trend,
     leadStage,
     recentLeads,
