@@ -546,6 +546,13 @@ export default function LiveClassroom() {
       students.forEach(s => upsert(s));
     });
 
+    // ── Class ended — redirect everyone out ──────────────────
+    socket.on("class:ended", () => {
+      setTimeout(() => {
+        window.location.href = isStaff ? "/teacher" : "/dashboard";
+      }, 3500);
+    });
+
     // ── Attendance 5-second heartbeat ─────────────────────────
     const attendanceTick = setInterval(() => {
       if (canSeeAttendance) socket.emit("request:attendance");
@@ -563,6 +570,7 @@ export default function LiveClassroom() {
       socket.off("teacher:joined"); socket.off("teacher:left");
       socket.off("stage:micInvite");
       socket.off("attendance:snapshot");
+      socket.off("class:ended");
     };
   }, [socket, upsert]);
 
@@ -678,6 +686,20 @@ export default function LiveClassroom() {
               style={{ background: "#7C3AED" }}>
               🎬 Recording
             </a>
+          )}
+          {/* End Class — teacher only */}
+          {isStaff && (
+            <button
+              onClick={() => {
+                if (window.confirm("End class for everyone? This will disconnect all students and mentors.")) {
+                  socket?.emit("class:end");
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "#DC2626" }}
+            >
+              ⏹ End Class
+            </button>
           )}
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isStaff ? "bg-blue-900/60 text-blue-300" : isMentor ? "bg-purple-900/60 text-purple-300" : "bg-gray-800 text-gray-400"}`}>
             {isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"} · {name}

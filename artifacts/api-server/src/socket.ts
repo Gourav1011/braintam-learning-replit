@@ -163,7 +163,7 @@ async function loadRecentChat(
             ),
       )
       .orderBy(desc(chatMessagesTable.createdAt))
-      .limit(50);
+      .limit(100);
     return rows.reverse().map(r => ({
       id: String(r.id),
       name: r.senderName,
@@ -681,6 +681,48 @@ export function setupSocketIO(httpServer: HttpServer) {
       io.to(globalRoom(sessionId)).emit("showLeaderboard", { top3 });
       room.activePoll = null;
       setTimeout(() => io.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
+    });
+
+    // ── End Class (teacher only) ──────────────────────────────
+    socket.on("class:end", () => {
+      if (!isStaff) return;
+
+      const sid = Number(sessionId);
+
+      // Mark all still-live students as left
+      for (const [key, entry] of liveStateCache.entries()) {
+        if (!key.startsWith(`${sessionId}-`)) continue;
+        if (entry.currentStatus !== "ABSENT") {
+          entry.currentStatus = "ABSENT";
+          if (!Number.isNaN(sid)) {
+            db.update(sessionAttendanceTable)
+              .set({ leftAt: new Date() })
+              .where(
+                and(
+                  eq(sessionAttendanceTable.sessionId, sid),
+                  eq(sessionAttendanceTable.studentId, entry.userId)
+                )
+              )
+              .catch(() => {});
+          }
+        }
+      }
+
+      // Clear all stage slots for this session from DB
+      if (!Number.isNaN(sid)) {
+        db.delete(stageSlotsTable)
+          .where(eq(stageSlotsTable.sessionId, sid))
+          .catch(() => {});
+      }
+
+      // Remove room from in-memory Map → frees memory
+      sessionRooms.delete(sessionId);
+
+      // Notify all connected sockets then disconnect them after 4s
+      io.to(globalRoom(sessionId)).emit("class:ended", { sessionId });
+      setTimeout(() => {
+        io.in(globalRoom(sessionId)).disconnectSockets(true);
+      }, 4000);
     });
 
     // ── Attendance snapshot on demand (5-second client heartbeat) ────
