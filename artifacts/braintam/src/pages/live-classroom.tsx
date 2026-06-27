@@ -149,6 +149,7 @@ function AttendanceSidebar({
   stageSlots: StageSlot[];
 }) {
   const [tab, setTab] = useState<"LIVE" | "BACKSTAGE" | "ABSENT">("LIVE");
+  const [search, setSearch] = useState("");
 
   const isStaff = role === "teacher" || role === "admin";
   const isMentor = role === "mentor";
@@ -159,7 +160,10 @@ function AttendanceSidebar({
     return false;
   });
 
-  const byStatus = students.filter(s => s.status === tab);
+  const q = search.trim().toLowerCase();
+  const byStatus = students.filter(s =>
+    s.status === tab && (q === "" || s.name.toLowerCase().includes(q))
+  );
 
   const counts = {
     LIVE: students.filter(s => s.status === "LIVE").length,
@@ -210,6 +214,16 @@ function AttendanceSidebar({
             <span>{tabLabel[t]}</span>
           </button>
         ))}
+      </div>
+
+      {/* Search */}
+      <div className="px-2 py-1.5 border-b border-gray-800">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search student…"
+          className="w-full bg-gray-800 text-white text-[10px] rounded-md px-2 py-1 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600"
+        />
       </div>
 
       {/* Student list */}
