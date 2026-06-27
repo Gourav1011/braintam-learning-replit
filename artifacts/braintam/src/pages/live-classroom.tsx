@@ -318,6 +318,8 @@ export default function LiveClassroom() {
   const [panelMode, setPanelMode] = useState<"chat" | "poll">("chat");
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatBlocked, setChatBlocked] = useState(false);
+  const [chatWarning, setChatWarning] = useState<{ message: string; strikeCount: number } | null>(null);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
   const [raiseHandEnabled, setRaiseHandEnabled] = useState(false);
@@ -470,6 +472,13 @@ export default function LiveClassroom() {
     });
 
     socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
+    socket.on("chat:blocked", () => {
+      setChatBlocked(true);
+    });
+    socket.on("chat:warning", (data: { message: string; strikeCount: number }) => {
+      setChatWarning(data);
+      setTimeout(() => setChatWarning(null), 6000);
+    });
 
     socket.on("pollStarted", (poll: Poll) => {
       setActivePoll(poll); setMyPollAnswer(null); setPollCounts({}); setPollTotal(0); setPanelMode("poll");
@@ -991,19 +1000,34 @@ export default function LiveClassroom() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="p-2 border-t border-gray-800 flex gap-1.5 flex-shrink-0">
-                <input
-                  className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600"
-                  placeholder={isStaff ? "Announce to all…" : "Say something…"}
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && sendChat()}
-                  maxLength={300}
-                />
-                <button onClick={sendChat} className="p-1.5 rounded-lg text-white" style={{ background: NAVY }}>
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {/* Chat warning toast */}
+              {chatWarning && (
+                <div className={`mx-2 mb-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border flex-shrink-0 ${chatWarning.strikeCount >= 2 ? "bg-red-900/40 border-red-700 text-red-300" : "bg-yellow-900/40 border-yellow-700 text-yellow-300"}`}>
+                  {chatWarning.message}
+                </div>
+              )}
+
+              {/* Blocked banner or chat input */}
+              {!isStaff && chatBlocked ? (
+                <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-red-900/50 border border-red-700 text-red-300 text-xs font-medium flex-shrink-0 text-center">
+                  🚫 Your chat access is temporarily disabled. Please contact your mentor.
+                </div>
+              ) : (
+                <div className="p-2 border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                  <input
+                    className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    placeholder={isStaff ? "Announce to all…" : "Say something…"}
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && sendChat()}
+                    maxLength={300}
+                    disabled={!isStaff && chatBlocked}
+                  />
+                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="p-1.5 rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               {/* Raise hand for students */}
               {!isStaff && !isMentor && raiseHandEnabled && (

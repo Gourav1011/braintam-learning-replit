@@ -41,6 +41,7 @@ import masteryNotificationsRouter from "./masteryNotifications";
 import ignitePerformanceRankingsRouter from "./ignitePerformanceRankings";
 import liveRouter from "./live";
 import analyticsRouter from "./analytics";
+import chatModerationRouter from "./chatModeration";
 
 const router: IRouter = Router();
 
@@ -86,5 +87,6 @@ router.use(masteryNotificationsRouter);
 router.use(ignitePerformanceRankingsRouter);
 router.use(liveRouter);
 router.use(analyticsRouter);
+router.use(chatModerationRouter);
 
 export default router;

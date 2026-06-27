@@ -63,3 +63,6 @@ export * from "./sessionAttendance";
 export * from "./pollAnalytics";
 export * from "./chatMessages";
 export * from "./stageSlots";
+export * from "./blockedWords";
+export * from "./chatViolations";
+export * from "./chatModeration";

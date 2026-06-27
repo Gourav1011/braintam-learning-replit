@@ -78,6 +78,7 @@ import { MasteryStudentsTab } from "./mastery-students-tab";
 import { MasteryPaymentVerificationTab } from "./mastery-payment-verification-tab";
 import { MasteryDeploymentTab } from "./mastery-deployment-tab";
 import { MasteryRetentionTab } from "./mastery-retention-tab";
+import { BlockedWordsTab } from "./blocked-words-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -117,6 +118,7 @@ type Tab =
   | "mastery-payments"
   | "mastery-deployment"
   | "mastery-retention"
+  | "blocked-words"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1324,6 +1326,7 @@ function AdminPageInner() {
           items: [
             { label: "Course Assignments", icon: GradCap, tab: "assignments" },
             { label: "Gamification", icon: Zap, tab: "gamification" },
+            { label: "Blocked Words", icon: Shield, tab: "blocked-words" },
             { label: "Command Center", icon: ShieldCheck, tab: "command-center" },
             { label: "Operations Center", icon: Cpu, tab: "operations-command-center" },
             { label: "Super Admin", icon: ShieldCheck, tab: "super-admin", superAdminOnly: true },
@@ -3095,6 +3098,9 @@ function AdminPageInner() {
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}
+
+        {/* ── Chat Moderation — Blocked Words ───────────────────────────── */}
+        {tab === "blocked-words" && <BlockedWordsTab />}
 
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === "settings" && (

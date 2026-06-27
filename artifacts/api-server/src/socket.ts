@@ -7,6 +7,9 @@ import {
   leaderboardAnalyticsTable,
   chatMessagesTable,
   stageSlotsTable,
+  blockedWordsTable,
+  chatViolationsTable,
+  chatModerationTable,
 } from "@workspace/db";
 import { eq, and, sql, gt, desc } from "drizzle-orm";
 
@@ -77,6 +80,117 @@ interface StageSlotEntry {
 // ── In-memory caches ───────────────────────────────────────────
 const liveStateCache = new Map<string, CacheEntry>();
 const sessionRooms   = new Map<string, SessionRoom>();
+
+// ── Chat Moderation caches ──────────────────────────────────────
+// blockedWordSet: lowercased active blocked words, refreshed every 60s
+let blockedWordSet: Set<string> = new Set();
+async function refreshBlockedWords(): Promise<void> {
+  try {
+    const rows = await db
+      .select({ word: blockedWordsTable.word })
+      .from(blockedWordsTable)
+      .where(eq(blockedWordsTable.isActive, true));
+    blockedWordSet = new Set(rows.map(r => r.word.toLowerCase()));
+  } catch { /* keep old set on error */ }
+}
+
+// chatModerationCache: per-student status loaded on join, invalidated on strike
+interface ChatModerationEntry {
+  chatStatus: string;  // 'active' | 'blocked'
+  chatViolationCount: number;
+}
+const chatModerationCache = new Map<string, ChatModerationEntry>();
+
+async function loadChatStatus(studentId: string): Promise<ChatModerationEntry> {
+  try {
+    const [row] = await db
+      .select({
+        chatStatus: chatModerationTable.chatStatus,
+        chatViolationCount: chatModerationTable.chatViolationCount,
+      })
+      .from(chatModerationTable)
+      .where(eq(chatModerationTable.studentId, studentId));
+    const entry: ChatModerationEntry = row
+      ? { chatStatus: row.chatStatus, chatViolationCount: row.chatViolationCount }
+      : { chatStatus: "active", chatViolationCount: 0 };
+    chatModerationCache.set(studentId, entry);
+    return entry;
+  } catch {
+    return { chatStatus: "active", chatViolationCount: 0 };
+  }
+}
+
+// Filter message text — replace blocked words with ---
+function filterMessage(text: string): { filtered: string; matchedWord: string | null } {
+  if (blockedWordSet.size === 0) return { filtered: text, matchedWord: null };
+  let filtered = text;
+  let matchedWord: string | null = null;
+  for (const word of blockedWordSet) {
+    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
+    if (re.test(filtered)) {
+      matchedWord = matchedWord ?? word;
+      filtered = filtered.replace(re, "---");
+    }
+  }
+  return { filtered, matchedWord };
+}
+
+async function applyStrike(
+  studentId: string,
+  studentName: string,
+  sessionId: string,
+  mentorGroupId: string | null,
+  originalMessage: string,
+  matchedWord: string,
+): Promise<{ newCount: number; nowBlocked: boolean }> {
+  // Persist violation
+  await db.insert(chatViolationsTable).values({
+    studentId,
+    studentName,
+    sessionId: Number(sessionId) || null,
+    mentorGroupId: mentorGroupId ? Number(mentorGroupId) : null,
+    message: originalMessage,
+    matchedWord,
+  }).catch(() => {});
+
+  // Upsert moderation row and increment count
+  const existing = chatModerationCache.get(studentId) ?? { chatStatus: "active", chatViolationCount: 0 };
+  const newCount = existing.chatViolationCount + 1;
+  const nowBlocked = newCount >= 3;
+
+  await db
+    .insert(chatModerationTable)
+    .values({
+      studentId,
+      studentName,
+      chatStatus: nowBlocked ? "blocked" : "active",
+      chatViolationCount: newCount,
+      chatBlockedAt: nowBlocked ? new Date() : undefined,
+      chatBlockReason: nowBlocked ? "Inappropriate Language" : undefined,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: chatModerationTable.studentId,
+      set: {
+        chatViolationCount: sql`${chatModerationTable.chatViolationCount} + 1`,
+        chatStatus: nowBlocked ? "blocked" : sql`${chatModerationTable.chatStatus}`,
+        chatBlockedAt: nowBlocked ? new Date() : sql`${chatModerationTable.chatBlockedAt}`,
+        chatBlockReason: nowBlocked
+          ? "Inappropriate Language"
+          : sql`${chatModerationTable.chatBlockReason}`,
+        updatedAt: new Date(),
+      },
+    })
+    .catch(() => {});
+
+  // Update local cache
+  chatModerationCache.set(studentId, {
+    chatStatus: nowBlocked ? "blocked" : "active",
+    chatViolationCount: newCount,
+  });
+
+  return { newCount, nowBlocked };
+}
 
 function getSessionRoom(sid: string): SessionRoom {
   if (!sessionRooms.has(sid)) {
@@ -312,6 +426,10 @@ export function setupSocketIO(httpServer: HttpServer) {
   // Seed liveStateCache immediately from DB (Sprint 2)
   seedCacheFromDB().catch(() => {});
 
+  // Load blocked words on startup + refresh every 60s
+  refreshBlockedWords().catch(() => {});
+  setInterval(() => refreshBlockedWords().catch(() => {}), 60_000);
+
   // ── Auth middleware — context from handshake query ──────────
   io.use((socket, next) => {
     const q = socket.handshake.query;
@@ -404,6 +522,17 @@ export function setupSocketIO(httpServer: HttpServer) {
       });
     });
 
+    // ── Load chat moderation status for students ───────────────
+    if (!isStaff && !isMentor) {
+      loadChatStatus(userId).then(status => {
+        if (status.chatStatus === "blocked") {
+          socket.emit("chat:blocked", {
+            message: "🚫 Chat access has been temporarily disabled. Please contact your mentor.",
+          });
+        }
+      }).catch(() => {});
+    }
+
     // ── Teacher presence broadcast ─────────────────────────────
     if (isStaff) {
       room.teacher = { name, userId };
@@ -437,24 +566,81 @@ export function setupSocketIO(httpServer: HttpServer) {
       socket.emit("heartbeat:ack");
     });
 
-    // ── Chat (Sprint 2 — DB-persisted) ─────────────────────────
+    // ── Chat (Sprint 2 — DB-persisted + moderation) ─────────────
     socket.on("chat:send", (rawText: string) => {
-      const text = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
-      if (!text) return;
+      const rawSanitized = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
+      if (!rawSanitized) return;
 
-      const msg: ChatMsg = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        name, role, text,
-        isAnnouncement: isStaff,
-        ts: Date.now(),
-      };
-
+      // Staff bypass all moderation
       if (isStaff) {
-        // Announce to everyone; null mentor_group_id = global
+        const msg: ChatMsg = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name, role, text: rawSanitized,
+          isAnnouncement: true,
+          ts: Date.now(),
+        };
         persistChat(sessionId, userId, msg, null);
         io.to(globalRoom(sessionId)).emit("chat:message", msg);
-      } else if (groupId) {
-        // Group-scoped; mirror to teacher room
+        return;
+      }
+
+      // ── Check blocked status ────────────────────────────────
+      const modEntry = chatModerationCache.get(userId) ?? { chatStatus: "active", chatViolationCount: 0 };
+      if (modEntry.chatStatus === "blocked") {
+        socket.emit("chat:blocked", {
+          message: "🚫 Chat access has been temporarily disabled. Please contact your mentor.",
+        });
+        return;
+      }
+
+      // ── Filter against blocked words ────────────────────────
+      const { filtered, matchedWord } = filterMessage(rawSanitized);
+
+      if (matchedWord) {
+        // Apply strike asynchronously then emit filtered message + warning
+        applyStrike(userId, name, sessionId, groupId, rawSanitized, matchedWord)
+          .then(({ newCount, nowBlocked }) => {
+            if (nowBlocked) {
+              socket.emit("chat:blocked", {
+                message: "🚫 Chat access has been temporarily disabled. Please contact your mentor.",
+              });
+              // Don't broadcast the message
+            } else {
+              // Broadcast filtered message to group
+              const msg: ChatMsg = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                name, role, text: filtered,
+                isAnnouncement: false,
+                ts: Date.now(),
+              };
+              if (groupId) {
+                persistChat(sessionId, userId, msg, groupId);
+                io.to(groupRoom(sessionId, groupId))
+                  .to(teacherRoom(sessionId))
+                  .emit("chat:message", msg);
+              } else {
+                socket.emit("chat:message", msg);
+              }
+
+              // Strike warning to sender only
+              const strikeMsg = newCount === 1
+                ? "⚠️ Warning (Strike 1/3): Your message contained inappropriate language and was filtered."
+                : "🚨 Final Warning (Strike 2/3): One more violation will permanently block your chat.";
+              socket.emit("chat:warning", { message: strikeMsg, strikeCount: newCount });
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+
+      // ── Clean message — broadcast normally ─────────────────
+      const msg: ChatMsg = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name, role, text: rawSanitized,
+        isAnnouncement: false,
+        ts: Date.now(),
+      };
+      if (groupId) {
         persistChat(sessionId, userId, msg, groupId);
         io.to(groupRoom(sessionId, groupId))
           .to(teacherRoom(sessionId))
@@ -709,11 +895,9 @@ export function setupSocketIO(httpServer: HttpServer) {
       }
 
       // Clear all stage slots for this session from DB
-      if (!Number.isNaN(sid)) {
-        db.delete(stageSlotsTable)
-          .where(eq(stageSlotsTable.sessionId, sid))
-          .catch(() => {});
-      }
+      db.delete(stageSlotsTable)
+        .where(eq(stageSlotsTable.sessionId, sessionId))
+        .catch(() => {});
 
       // Remove room from in-memory Map → frees memory
       sessionRooms.delete(sessionId);
