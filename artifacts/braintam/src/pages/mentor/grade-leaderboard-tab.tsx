@@ -126,6 +126,15 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
         ) : (
           <div className="bg-white rounded-2xl overflow-hidden border border-gray-100"
             style={{ boxShadow: "0 2px 12px rgba(11,43,107,0.07)" }}>
+
+            {/* Header row */}
+            <div className="grid items-center px-5 py-2.5 border-b border-gray-100"
+              style={{ gridTemplateColumns: "36px 1fr 52px", background: "#F8FAFF" }}>
+              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">S.No</div>
+              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Name</div>
+              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide text-right">Conv. %</div>
+            </div>
+
             {ranked.map((row, idx) => {
               const isMe = row.mentorId === myId;
               const isTop = row.denseRank <= 3;
@@ -151,7 +160,7 @@ export function GradeLeaderboardTab({ myId }: { myId: number }) {
                     </span>
                   </div>
 
-                  {/* Name — centered */}
+                  {/* Name — centred */}
                   <div className="flex items-center justify-center gap-2">
                     <span className="font-semibold text-sm truncate"
                       style={{ color: isMe ? ORANGE : NAVY }}>
