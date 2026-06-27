@@ -519,7 +519,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       });
       if (!r.ok) { const d = await r.json().catch(() => ({})); flash(d.error ?? "Import failed", false); return; }
       const d = await r.json();
-      flash(`✅ Imported: ${d.createdChapters} chapters, ${d.createdTopics} topics, ${d.createdClasses} live classes`, true);
+      flash(`✅ Imported: ${d.createdChapters} chapters, ${d.createdTopics} topics`, true);
       setSyllabusRows([]);
       setSyllabusFileName("");
       setReplaceExisting(false);
