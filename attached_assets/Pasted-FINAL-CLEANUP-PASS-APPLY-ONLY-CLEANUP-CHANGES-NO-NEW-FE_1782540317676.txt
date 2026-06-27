@@ -1,0 +1,330 @@
+FINAL CLEANUP PASS – APPLY ONLY CLEANUP CHANGES (NO NEW FEATURES)
+
+Goal:
+Make Braintam CRM production-ready, minimal, clean, and consistent.
+
+Do NOT add new features.
+Do NOT change business logic.
+Do NOT change database schemas unless necessary.
+This task is only for cleanup, dead-code removal, UX improvements, and consistency.
+
+────────────────────────
+
+1. REMOVE DEAD CODE
+   ────────────────────────
+
+Remove:
+
+1. PipelineTab import and render case from mentor/index.tsx
+2. fees tab placeholder
+3. certificates tab placeholder
+4. Duplicate /admin/ignite/sales-mentors endpoint in ignite.ts
+5. Unused imports and unreachable code paths
+
+Run typecheck afterwards and ensure nothing breaks.
+
+────────────────────────
+2. FIX DUPLICATE FEATURES
+────────────────────────
+
+Keep:
+
+Ignite
+→ Reports
+→ IgniteAnalyticsTab
+
+Remove:
+
+Command Center
+→ Ignite Analytics
+
+Reason:
+Same component is rendered twice.
+One analytics location is enough.
+
+────────────────────────
+3. FIX SIDEBAR CONSISTENCY
+────────────────────────
+
+Move:
+
+Reports
+
+into NAV_ITEMS.
+
+Remove hardcoded sidebar button.
+
+Every sidebar item should come from the same NAV_ITEMS configuration.
+
+Reason:
+Future maintenance becomes easier.
+
+────────────────────────
+4. FIX ADMIN SIDEBAR LABELS
+────────────────────────
+
+Rename:
+
+Teachers
+
+to:
+
+Course Assignments
+
+Reason:
+Current naming is confusing because:
+
+Teacher Analytics
+Teachers
+
+appear as two different items.
+
+Keep:
+
+Teacher Analytics
+Course Assignments
+
+────────────────────────
+5. FIX ROUTER ORDER
+────────────────────────
+
+Review:
+
+routes/index.ts
+
+Ensure:
+
+Specialized routers are mounted before generic admin routes.
+
+Prevent:
+
+admin.ts shadowing:
+
+announcements
+banners
+academic-years
+course-subjects
+chapters
+topics
+
+No duplicate routes should exist.
+
+────────────────────────
+6. EXPORT BUTTON
+────────────────────────
+
+Keep:
+
+Export Report button.
+
+Do NOT remove it.
+
+Make it functional.
+
+Export:
+
+Currently visible data
+Current filters
+Current search state
+
+Support:
+
+CSV
+
+Prepare architecture for:
+
+Excel
+PDF
+
+later.
+
+────────────────────────
+7. REMOVE DEV ENDPOINTS
+────────────────────────
+
+Review:
+
+/admin/mastery/retention/trigger-dec1
+
+Either:
+
+Remove entirely
+
+OR
+
+Protect behind:
+
+NODE_ENV === "development"
+
+It should never be accessible in production.
+
+────────────────────────
+8. CLEAN API HELPERS
+────────────────────────
+
+Create:
+
+lib/api-fetch.ts
+
+Move common apiFetch logic there.
+
+Gradually replace duplicate implementations.
+
+Do not refactor everything aggressively.
+
+Only centralize reusable helper.
+
+Reason:
+
+Easier maintenance.
+Less duplicated code.
+
+────────────────────────
+9. KEEP HISTORICAL TABLE ISSUE FOR LATER
+────────────────────────
+
+Do NOT remove:
+
+student_academic_history endpoints.
+
+Instead:
+
+Document:
+
+Schema exists in routes
+DB table missing
+
+Add TODO note.
+
+We will build Mastery historical tracking later.
+
+────────────────────────
+10. DASHBOARD CLEANUP
+────────────────────────
+
+Review every dashboard.
+
+Avoid:
+
+Huge cards
+Large empty white boxes
+Oversized KPI sections
+Excessive spacing
+Too much scrolling
+
+If information is small:
+
+Convert:
+
+Card
+→ compact stat row
+
+Card
+→ small grid
+
+Card
+→ simple text list
+
+Card
+→ badge chips
+
+Goal:
+
+Fit maximum useful information above the fold.
+
+────────────────────────
+11. CARD DESIGN RULES
+────────────────────────
+
+Use consistent:
+
+Border radius
+Padding
+Shadow
+Typography
+Icon sizes
+Spacing
+Table styling
+Badge styling
+
+No page should feel different.
+
+Everything should look like one product.
+
+────────────────────────
+12. REMOVE USELESS UI
+────────────────────────
+
+Remove:
+
+Unused dropdowns
+Unused filters
+Duplicate buttons
+Duplicate notifications
+Empty placeholders
+Testing components
+Developer components
+Redundant cards
+
+Every option should have a business purpose.
+
+────────────────────────
+13. PERFORMANCE REVIEW
+────────────────────────
+
+Review:
+
+Queries
+Re-renders
+API requests
+Large tables
+Charts
+
+Remove:
+
+Duplicate fetches
+Unused state
+Unused hooks
+Unnecessary API calls
+
+Optimize:
+
+Loading speed
+Navigation speed
+Responsiveness
+
+────────────────────────
+14. FINAL PRODUCT CHECKLIST
+────────────────────────
+
+Generate report:
+
+✔ Fixed Issues
+✔ Dead Code Removed
+✔ Duplicate Features Removed
+✔ UI Improvements
+✔ Performance Improvements
+✔ Remaining TODO Items
+✔ Routes Reviewed
+✔ Components Reviewed
+✔ Typecheck Passed
+✔ Build Passed
+
+Final Goal:
+
+Braintam CRM should feel:
+
+Clean
+Minimal
+Fast
+Professional
+Production Ready
+
+No dead code.
+No duplicate features.
+No oversized cards.
+No unnecessary scrolling.
+No confusing navigation.
+No broken buttons.
+No placeholder modules.
+Everything should have a clear operational purpose.
