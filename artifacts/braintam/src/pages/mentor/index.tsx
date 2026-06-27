@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Redirect } from "wouter";
 import {
-  Users, MessageSquare, Bell, LogOut, Home, Search, AlertTriangle,
+  Users, MessageSquare, Bell, LogOut, Home, Search, AlertTriangle, AlertCircle,
   CheckCircle2, Phone, BookOpen, Plus, RefreshCw,
   Calendar, X, Loader2, Clock, ClipboardList, ChevronDown,
   PhoneCall, PhoneOff, PhoneMissed, PhoneIncoming,
@@ -11,7 +11,7 @@ import {
   Zap, HelpCircle, ClipboardCheck, Trophy, TrendingUp, LayoutGrid, List, BarChart3,
 } from "lucide-react";
 import { LeaderboardTab } from "./leaderboard-tab";
-import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, SalesLeaderboardTab } from "./sales-calling-queue";
+import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, SalesLeaderboardTab, NonActiveLeadsTab } from "./sales-calling-queue";
 import { SalesMentorPortal } from "./sales-mentor-portal";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -40,7 +40,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students";
+type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students" | "non-active";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -1047,6 +1047,7 @@ export default function BTLCRMPage() {
     { key: "dashboard",          label: "Dashboard",        icon: Home },
     { key: "calling-queue",      label: "Today's Calling",  icon: Phone },
     { key: "assigned-leads",     label: "Assigned Leads",   icon: Users },
+    { key: "non-active",         label: "Non-Active",       icon: AlertCircle },
     { key: "converted-students", label: "Converted",        icon: CheckCircle2 },
     { key: "leaderboard",        label: "Leaderboard",      icon: Trophy },
     { key: "profile",            label: "My Profile",       icon: UserCircle },
@@ -2656,6 +2657,13 @@ export default function BTLCRMPage() {
         {/* ════ ASSIGNED LEADS (Sales SSM) ════ */}
         {tab === "assigned-leads" && (
           <AssignedLeadsTab
+            onOpenStudent={(id, name) => open360ById(id, name)}
+          />
+        )}
+
+        {/* ════ NON-ACTIVE LEADS (Sales SSM — Day 3+, no engagement) ════ */}
+        {tab === "non-active" && (
+          <NonActiveLeadsTab
             onOpenStudent={(id, name) => open360ById(id, name)}
           />
         )}

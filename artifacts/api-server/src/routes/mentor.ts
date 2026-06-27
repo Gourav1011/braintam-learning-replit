@@ -14,8 +14,11 @@ import {
   mentorReminderPrefsTable,
   doubtSessionsTable,
   leadStatusHistoryTable,
+  mentorDeploymentCyclesTable,
+  demoBatchEnrollmentsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, inArray, gte, lte, or, lt } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNotNull } from "drizzle-orm";
+import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
 import { requireRole } from "../middlewares/auth.js";
 import crypto from "crypto";
 import { runOverdueFollowUpReminders } from "../jobs/overdueFollowUpReminders.js";
@@ -1132,10 +1135,22 @@ router.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
 router.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
 
+  // Filter by current active deployment cycle (if any exists)
+  const [activeCycle] = await db
+    .select({ id: mentorDeploymentCyclesTable.id })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
   const assignments = await db
     .select({ studentId: mentorStudentAssignmentsTable.studentId })
     .from(mentorStudentAssignmentsTable)
-    .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.isActive, true)));
+    .where(and(
+      eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+      activeCycle ? eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id) : undefined,
+    ));
 
   if (assignments.length === 0) { res.json([]); return; }
   const studentIds = assignments.map(a => a.studentId);
@@ -1447,6 +1462,132 @@ router.get("/mentor/sales/leaderboard/grade", mentorAuth, async (req, res) => {
     .sort((a, b) => a - b);
 
   res.json({ grade, myGrades, leaderboard });
+});
+
+// ── Deployment Cycles ──────────────────────────────────────────────────────────
+
+// Current active cycle info
+router.get("/mentor/sales/cycle", mentorAuth, async (_req, res) => {
+  const [cycle] = await db.select()
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+  res.json(cycle ?? null);
+});
+
+// Non-active leads: Day 3+ with no successful engagement
+router.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+
+  const [activeCycle] = await db
+    .select({ id: mentorDeploymentCyclesTable.id })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
+  // Day 3+ means assigned at least 2 full days ago
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  twoDaysAgo.setHours(0, 0, 0, 0);
+
+  const assignments = await db
+    .select({
+      studentId: mentorStudentAssignmentsTable.studentId,
+      assignedAt: mentorStudentAssignmentsTable.assignedAt,
+    })
+    .from(mentorStudentAssignmentsTable)
+    .where(and(
+      eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+      lt(mentorStudentAssignmentsTable.assignedAt, twoDaysAgo),
+      activeCycle ? eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id) : undefined,
+    ));
+
+  if (assignments.length === 0) { res.json([]); return; }
+  const studentIds = assignments.map(a => a.studentId);
+
+  // Students with any successful call (Call Connected or Call Back Later)
+  const engagedRows = await db
+    .select({ studentId: mentorFollowUpsTable.studentId })
+    .from(mentorFollowUpsTable)
+    .where(and(
+      inArray(mentorFollowUpsTable.studentId, studentIds),
+      inArray(mentorFollowUpsTable.callStatus, ["Call Connected", "Call Back Later", "Picked", "Call Back"]),
+    ));
+  const engagedIds = new Set(engagedRows.map(r => r.studentId));
+
+  const nonActiveIds = studentIds.filter(id => !engagedIds.has(id));
+  if (nonActiveIds.length === 0) { res.json([]); return; }
+
+  const SKIP_STAGES = new Set(["Interested", "Highly Interested", "Converted", "Demo Booked", "Payment Pending", "Enrolled"]);
+
+  const students = await db.select({
+    id: usersTable.id, name: usersTable.name, grade: usersTable.grade,
+    school: usersTable.school, city: usersTable.city, phone: usersTable.phone,
+    parentName: usersTable.parentName, parentPhone: usersTable.parentPhone,
+    callStatus: usersTable.callStatus, leadStage: usersTable.leadStage,
+    interestLevel: usersTable.interestLevel, lastCallAt: usersTable.lastCallAt,
+    nextFollowUpAt: usersTable.nextFollowUpAt, nextFollowUpTime: usersTable.nextFollowUpTime,
+    busyReason: usersTable.busyReason,
+  }).from(usersTable).where(inArray(usersTable.id, nonActiveIds));
+
+  const assignedAtMap = Object.fromEntries(assignments.map(a => [a.studentId, a.assignedAt.toISOString()]));
+
+  const results = students
+    .filter(s => !SKIP_STAGES.has(s.leadStage ?? ""))
+    .map(s => ({
+      ...s,
+      assignedAt: assignedAtMap[s.id] ?? null,
+      daysSinceAssignment: Math.floor((Date.now() - new Date(assignedAtMap[s.id] ?? Date.now()).getTime()) / 86_400_000),
+      hwPct: null as number | null,
+      hwTotal: 0,
+      hwPending: 0,
+      attPct: null as number | null,
+      attTotal: 0,
+    }));
+
+  res.json(results);
+});
+
+// Admin: list all deployment cycles
+router.get("/admin/mentor/cycles", adminOnly, async (_req, res) => {
+  const cycles = await db.select()
+    .from(mentorDeploymentCyclesTable)
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt));
+  res.json(cycles);
+});
+
+// Admin: start a new deployment week — archives current active cycle, creates fresh one
+router.post("/admin/mentor/cycles/start-new-week", adminOnly, async (req, res) => {
+  const actor = req.authUser!;
+  const { weekLabel } = req.body as { weekLabel?: string };
+
+  await db.update(mentorDeploymentCyclesTable)
+    .set({ status: "archived", archivedAt: new Date() })
+    .where(eq(mentorDeploymentCyclesTable.status, "active"));
+
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const weekNum = Math.ceil(new Date().getDate() / 7);
+  const month = new Date().toLocaleDateString("en-IN", { month: "short", timeZone: "Asia/Kolkata" });
+  const label = weekLabel?.trim() || `${month} W${weekNum} – ${today}`;
+
+  const [newCycle] = await db.insert(mentorDeploymentCyclesTable).values({
+    weekLabel: label,
+    startDate: today,
+    status: "active",
+    createdById: actor.id,
+    createdByName: actor.name,
+  }).returning();
+
+  res.status(201).json({ ok: true, cycle: newCycle });
+});
+
+// Admin: manual trigger of 5 AM queue reset (for testing / emergency use)
+router.post("/admin/mentor/cycles/trigger-reset", adminOnly, async (_req, res) => {
+  await runDailyQueueReset();
+  res.json({ ok: true, message: "Queue reset complete: all active sales leads set to Pending" });
 });
 
 // Admin posts a timeline entry on any student

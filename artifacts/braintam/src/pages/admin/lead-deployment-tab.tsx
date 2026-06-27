@@ -259,6 +259,12 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
   const [historyLoading, setHistoryLoading] = useState(false);
   const [detailBatch, setDetailBatch] = useState<DeploymentRow | null>(null);
 
+  // Deployment Cycle
+  type Cycle = { id: number; weekLabel: string; startDate: string; status: string; createdByName: string | null; createdAt: string };
+  const [cycle, setCycle]             = useState<Cycle | null>(null);
+  const [cycleLoading, setCycleLoading] = useState(true);
+  const [startingNewWeek, setStartingNewWeek] = useState(false);
+
   // Load stats
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -292,9 +298,38 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
     } finally { setHistoryLoading(false); }
   }, []);
 
+  // Load current deployment cycle
+  const loadCycle = useCallback(async () => {
+    setCycleLoading(true);
+    try {
+      const r = await apiFetch("/admin/mentor/cycles");
+      if (r.ok) {
+        const cycles = await r.json() as Cycle[];
+        setCycle(cycles.find(c => c.status === "active") ?? null);
+      }
+    } finally { setCycleLoading(false); }
+  }, []);
+
+  async function doStartNewWeek() {
+    if (!window.confirm("Start a new deployment week? The current cycle will be archived. Existing lead assignments are preserved.")) return;
+    setStartingNewWeek(true);
+    try {
+      const r = await apiFetch("/admin/mentor/cycles/start-new-week", { method: "POST", body: JSON.stringify({}) });
+      const d = await r.json() as { ok?: boolean; cycle?: Cycle; error?: string };
+      if (d.ok && d.cycle) {
+        flash(`✅ New week started: ${d.cycle.weekLabel}`, true);
+        setCycle(d.cycle);
+      } else {
+        flash(d.error ?? "Failed to start new week", false);
+      }
+    } catch { flash("Network error", false); }
+    finally { setStartingNewWeek(false); }
+  }
+
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { loadMentors(); }, [loadMentors]);
   useEffect(() => { if (subView === "history") loadHistory(); }, [subView, loadHistory]);
+  useEffect(() => { loadCycle(); }, [loadCycle]);
 
   // Select all toggle
   const eligibleMentors = mentors.filter(m => m.isActive && m.status === "Active");
@@ -351,11 +386,33 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Lead Deployment</h1>
           <p className="text-xs text-gray-400 mt-0.5">Distribute undeployed leads to active sales mentors</p>
         </div>
-        <button onClick={() => { loadStats(); loadMentors(); }}
+        <button onClick={() => { loadStats(); loadMentors(); loadCycle(); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50">
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </button>
       </div>
+
+      {/* ── Weekly Deployment Cycle Banner ── */}
+      {!cycleLoading && (
+        <div className="flex items-center justify-between p-3 rounded-xl border"
+          style={{ background: cycle ? "#EFF6FF" : "#FFF7ED", borderColor: cycle ? "#BFDBFE" : "#FED7AA" }}>
+          <div className="min-w-0">
+            <div className="text-xs font-black" style={{ color: cycle ? "#1D4ED8" : ORANGE }}>
+              {cycle ? `📅 Active Week: ${cycle.weekLabel}` : "⚠️ No active deployment week"}
+            </div>
+            <div className="text-[10px] mt-0.5 text-gray-500">
+              {cycle
+                ? `Started ${new Date(cycle.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} · Mentors see only this week's leads in their queue`
+                : "Start a new week so deployed leads are tracked in a cycle and mentors see only this week's queue"}
+            </div>
+          </div>
+          <button onClick={doStartNewWeek} disabled={startingNewWeek}
+            className="ml-4 flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+            style={{ background: cycle ? NAVY : ORANGE }}>
+            {startingNewWeek ? "Starting…" : cycle ? "Start New Week" : "Start First Week"}
+          </button>
+        </div>
+      )}
 
       {/* ── KPI Bar ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

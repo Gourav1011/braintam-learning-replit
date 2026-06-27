@@ -476,6 +476,235 @@ function CallOutcomeModal({ lead, onClose, onSaved, onOpenProfile }: CallOutcome
   );
 }
 
+// ── Non-Active Lead type (returned by /mentor/sales/non-active) ───────────────
+interface NonActiveLead {
+  id: number;
+  name: string;
+  grade: number | null;
+  school: string | null;
+  city: string | null;
+  phone: string | null;
+  parentName: string | null;
+  parentPhone: string | null;
+  callStatus: string | null;
+  leadStage: string | null;
+  interestLevel: string | null;
+  lastCallAt: string | null;
+  nextFollowUpAt: string | null;
+  nextFollowUpTime: string | null;
+  busyReason: string | null;
+  assignedAt: string | null;
+  daysSinceAssignment: number;
+  hwPct: number | null;
+  attPct: number | null;
+}
+
+function toSalesLead(l: NonActiveLead): SalesLead {
+  return {
+    id: l.id,
+    name: l.name,
+    grade: l.grade ?? 0,
+    school: l.school,
+    city: l.city,
+    state: null,
+    phone: l.phone,
+    parentName: l.parentName,
+    parentPhone: l.parentPhone,
+    leadStage: l.leadStage ?? "Lead",
+    callStatus: l.callStatus ?? "Pending",
+    interestLevel: l.interestLevel,
+    weakSubject: null,
+    strongSubject: null,
+    repeatedCustomer: false,
+    nextFollowUpAt: l.nextFollowUpAt,
+    nextFollowUpTime: l.nextFollowUpTime,
+    lastCallAt: l.lastCallAt,
+    busyReason: l.busyReason,
+    hwPct: l.hwPct,
+    attPct: l.attPct,
+  };
+}
+
+// ── Non-Active Leads Tab ──────────────────────────────────────────────────────
+export function NonActiveLeadsTab({ onOpenStudent }: { onOpenStudent: (id: number, name: string) => void }) {
+  const [leads, setLeads] = useState<NonActiveLead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [outcomeTarget, setOutcomeTarget] = useState<SalesLead | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch("/mentor/sales/non-active");
+    if (r.ok) setLeads(await r.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = leads.filter(l => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return l.name.toLowerCase().includes(q)
+      || (l.parentPhone ?? "").includes(q)
+      || (l.phone ?? "").includes(q)
+      || (l.school ?? "").toLowerCase().includes(q);
+  });
+
+  function handleSaved(id: number, update: Partial<SalesLead>) {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...update } : l));
+    setOutcomeTarget(null);
+  }
+
+  function callDirect(l: NonActiveLead) {
+    const ph = l.parentPhone || l.phone;
+    if (ph) window.location.href = `tel:${ph}`;
+    setOutcomeTarget(toSalesLead(l));
+  }
+
+  function whatsapp(l: NonActiveLead) {
+    const ph = (l.parentPhone ?? l.phone ?? "").replace(/\D/g, "");
+    if (ph) window.open(`https://wa.me/91${ph}`, "_blank");
+  }
+
+  return (
+    <div className="p-4 max-w-full space-y-4" style={{ fontFamily: "Poppins, sans-serif" }}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-black" style={{ color: NAVY }}>Non-Active Leads</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Assigned 3+ days ago · No successful contact recorded yet</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black px-2.5 py-1 rounded-full"
+            style={{ background: leads.length > 0 ? "#FEF2F2" : "#F0FDF4", color: leads.length > 0 ? "#DC2626" : "#059669" }}>
+            {leads.length} leads
+          </span>
+          <button onClick={load} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
+            <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-xs">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, school…"
+          className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-xs outline-none" />
+      </div>
+
+      {/* Hint */}
+      <div className="text-[10px] text-gray-400 p-2 rounded-lg bg-amber-50 border border-amber-100">
+        💡 These parents haven't picked up or shown interest yet. Try calling at a different time or on WhatsApp.
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+          <CheckCircle className="w-10 h-10 mx-auto mb-3 text-green-400" />
+          <p className="font-bold text-sm" style={{ color: NAVY }}>
+            {leads.length === 0 ? "Great! No non-active leads yet." : "No results match your search."}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {leads.length === 0 ? "Leads show here after Day 3 with no successful contact." : "Try a different search term."}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs min-w-[700px]">
+              <thead>
+                <tr className="border-b border-gray-100" style={{ background: "#FFF7ED" }}>
+                  <th className="text-left px-3 py-3 font-bold text-gray-500">Student / Parent</th>
+                  <th className="text-center px-2 py-3 font-bold text-gray-500">Gr.</th>
+                  <th className="text-left px-2 py-3 font-bold text-gray-500">Phone</th>
+                  <th className="text-center px-2 py-3 font-bold text-gray-500">Day</th>
+                  <th className="text-left px-2 py-3 font-bold text-gray-500">Last Status</th>
+                  <th className="text-center px-2 py-3 font-bold text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(l => {
+                  const csMeta = CALL_STATUSES.find(c => c.key === normalizeCallStatus(l.callStatus));
+                  return (
+                    <tr key={l.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <button onClick={() => onOpenStudent(l.id, l.name)}
+                          className="font-bold hover:underline text-left leading-tight" style={{ color: NAVY }}>
+                          {l.name}
+                        </button>
+                        {l.parentName && (
+                          <div className="text-[10px] text-gray-400 mt-0.5">{l.parentName}</div>
+                        )}
+                      </td>
+                      <td className="px-2 py-2.5 text-center font-bold" style={{ color: NAVY }}>{l.grade ?? "—"}</td>
+                      <td className="px-2 py-2.5">
+                        <div className="font-mono text-[10px]">{l.parentPhone || l.phone || "—"}</div>
+                      </td>
+                      <td className="px-2 py-2.5 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black"
+                          style={{ background: "#FEF2F2", color: "#DC2626" }}>
+                          Day {l.daysSinceAssignment + 1}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2.5">
+                        {csMeta ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{ background: csMeta.bg, color: csMeta.color }}>
+                            {csMeta.label}
+                          </span>
+                        ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => callDirect(l)}
+                            title="Call & Log" className="p-1.5 rounded-lg text-white"
+                            style={{ background: GREEN }}>
+                            <Phone className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => whatsapp(l)}
+                            title="WhatsApp" className="p-1.5 rounded-lg"
+                            style={{ background: "#ECFDF5", color: GREEN }}>
+                            <MessageSquare className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => setOutcomeTarget(toSalesLead(l))}
+                            title="Log Remark" className="p-1.5 rounded-lg"
+                            style={{ background: "#FFF7ED", color: ORANGE }}>
+                            <Save className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => onOpenStudent(l.id, l.name)}
+                            title="View Profile" className="p-1.5 rounded-lg"
+                            style={{ background: "#EEF2FF", color: "#6366F1" }}>
+                            <User className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Call Outcome Modal */}
+      {outcomeTarget && (
+        <CallOutcomeModal
+          lead={outcomeTarget}
+          onClose={() => setOutcomeTarget(null)}
+          onSaved={update => handleSaved(outcomeTarget.id, update)}
+          onOpenProfile={(id, name) => { setOutcomeTarget(null); onOpenStudent(id, name); }}
+        />
+      )}
+    </div>
+  );
+}
+
 export function SalesCallingQueueTab({
   onOpenStudent,
 }: {

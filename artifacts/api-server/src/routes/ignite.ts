@@ -15,6 +15,7 @@ import {
   mentorStudentAssignmentsTable,
   leadDeploymentsTable,
   leadDeploymentGroupsTable,
+  mentorDeploymentCyclesTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -1214,6 +1215,14 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
 
   const now = new Date();
 
+  // Attach assignments to the current active deployment cycle (if any)
+  const [activeCycle] = await db
+    .select({ id: mentorDeploymentCyclesTable.id })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
   for (const g of groups) {
     const ids = g.leads.map(l => l.id);
     await db.update(usersTable).set({
@@ -1234,7 +1243,7 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
     const newIds = ids.filter(id => !existingIds.has(id));
     if (newIds.length > 0) {
       await db.insert(mentorStudentAssignmentsTable).values(
-        newIds.map(sid => ({ mentorId: g.mentor.id, studentId: sid, assignedAt: now, isActive: true }))
+        newIds.map(sid => ({ mentorId: g.mentor.id, studentId: sid, assignedAt: now, isActive: true, deploymentCycleId: activeCycle?.id ?? null }))
       );
     }
   }
