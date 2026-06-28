@@ -8,6 +8,8 @@ import {
   usersTable,
   mentorGroupsTable,
   groupStudentsTable,
+  enrollmentsTable,
+  coursesTable,
 } from "@workspace/db";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -104,14 +106,18 @@ router.get("/admin/mastery/deployment/batches", adminOnly, async (_req, res) => 
 });
 
 // ── POST /api/admin/mastery/deployment/deploy ─────────────────────────────────
-// Body: { studentIds: number[], mentorAssignments: { mentorId, mentorName, studentIds }[], grade?, notes? }
+// Body: { mentorAssignments, teacherId?, teacherName?, grade?, notes? }
 router.post("/admin/mastery/deployment/deploy", adminOnly, async (req, res) => {
   const {
     mentorAssignments,
+    teacherId,
+    teacherName,
     grade,
     notes,
   } = req.body as {
     mentorAssignments: Array<{ mentorId: number; mentorName: string; studentIds: number[] }>;
+    teacherId?: number;
+    teacherName?: string;
     grade?: number;
     notes?: string;
   };
@@ -218,6 +224,73 @@ router.post("/admin/mastery/deployment/deploy", adminOnly, async (req, res) => {
       } catch { /* non-critical */ }
     })
   ).catch(() => {});
+
+  // ── Auto-enroll in mastery course + activate student portal ──────────────────
+  // Fire-and-forget: non-critical; does not block the response
+  Promise.resolve().then(async () => {
+    try {
+      // Build grade→courseId lookup for mastery courses only
+      const masteryCourses = await db.select({ id: coursesTable.id, grade: coursesTable.grade })
+        .from(coursesTable)
+        .where(eq(coursesTable.courseType, "mastery"));
+      const courseByGrade = new Map<number, number>(
+        masteryCourses.map(c => [c.grade ?? 0, c.id])
+      );
+
+      // Fetch student grades from masteryStudentsTable
+      const students = await db.select({
+        id: masteryStudentsTable.id,
+        studentId: masteryStudentsTable.studentId,
+        grade: masteryStudentsTable.grade,
+      }).from(masteryStudentsTable)
+        .where(inArray(masteryStudentsTable.id, allStudentIds));
+
+      for (const s of students) {
+        const sGrade = s.grade ?? grade;
+        const courseId = sGrade ? courseByGrade.get(sGrade) : undefined;
+
+        // 1. Enroll in mastery course (idempotent via unique constraint)
+        if (courseId && s.studentId) {
+          await db.insert(enrollmentsTable).values({
+            studentId: s.studentId,
+            courseId,
+            enrollmentType: "mastery",
+            enrolledBy: admin.id,
+            academicYear: new Date().getFullYear().toString(),
+          }).onConflictDoNothing();
+        }
+
+        // 2. Activate student portal (set accountType=paid_student)
+        if (s.studentId) {
+          await db.update(usersTable)
+            .set({ accountType: "paid_student" })
+            .where(eq(usersTable.id, s.studentId));
+        }
+
+        // 3. Log teacher assignment in timeline if teacherId provided
+        if (teacherId && teacherName) {
+          await db.insert(masteryTimelineTable).values({
+            masteryStudentId: s.id,
+            eventType:  "teacher_assigned",
+            eventLabel: `Teacher Assigned: ${teacherName}`,
+            eventData:  JSON.stringify({ teacherId, teacherName, batchCode }),
+            actorId:    admin.id,
+            actorName:  admin.name ?? "Admin",
+          }).catch(() => null);
+        }
+
+        // 4. Log portal activation in timeline
+        await db.insert(masteryTimelineTable).values({
+          masteryStudentId: s.id,
+          eventType:  "portal_activated",
+          eventLabel: "Student Portal Activated",
+          eventData:  JSON.stringify({ courseId: courseId ?? null, batchCode }),
+          actorId:    admin.id,
+          actorName:  admin.name ?? "Admin",
+        }).catch(() => null);
+      }
+    } catch { /* non-critical */ }
+  }).catch(() => {});
 
   res.json({ batchCode, batchId: batch.id, totalAssigned: allStudentIds.length });
 });

@@ -146,7 +146,8 @@ export type IgniteView =
   | "paid-students-converted"
   | "paid-students-dropped"
   | "payments"
-  | "batch-health";
+  | "batch-health"
+  | "ignite-mentors";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -3926,6 +3927,306 @@ function BatchPipelineHealthView({ flash }: { flash: (m: string, ok?: boolean) =
   );
 }
 
+// ── Ignite Mentors View ───────────────────────────────────────────────────────
+
+type IgniteMentor = {
+  id: number; name: string; email: string; phone: string | null; isActive: boolean | null;
+  totalAssigned: number; convertedCount: number; conversionRate: number;
+  students: {
+    id: number; studentId: number | null; name: string | null;
+    grade: number | null; phone: string | null;
+    assignmentStatus: string | null; assignedBatchId: number | null;
+    attendancePct: number | null; homeworkPct: number | null;
+  }[];
+};
+
+function IgniteMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [mentors, setMentors] = useState<IgniteMentor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [assignModal, setAssignModal] = useState<{ mentorId: number; mentorName: string } | null>(null);
+  const [unassigned, setUnassigned] = useState<{ id: number; name: string | null; grade: number | null; phone: string | null }[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [reassignFrom, setReassignFrom] = useState<{ studentIgniteId: number; studentName: string } | null>(null);
+  const [reassignMentorId, setReassignMentorId] = useState<number>(0);
+  const [savingMove, setSavingMove] = useState<number | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch(`${BASE}/admin/ignite/ignite-mentors`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("braintam_staff_token") ?? ""}` },
+    }).then(r => r.json()).then(setMentors).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAssign = (mentorId: number, mentorName: string) => {
+    setAssignModal({ mentorId, mentorName });
+    setSelected(new Set());
+    fetch(`${BASE}/admin/ignite/ignite-mentors/unassigned-students`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("braintam_staff_token") ?? ""}` },
+    }).then(r => r.json()).then(setUnassigned).catch(() => {});
+  };
+
+  const doAssign = async () => {
+    if (!assignModal || selected.size === 0) return;
+    const r = await fetch(`${BASE}/admin/ignite/ignite-mentors/${assignModal.mentorId}/assign`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("braintam_staff_token") ?? ""}`,
+      },
+      body: JSON.stringify({ studentIgniteIds: [...selected] }),
+    });
+    if (r.ok) { flash(`${selected.size} student(s) assigned to ${assignModal.mentorName}`, true); setAssignModal(null); load(); }
+    else flash("Assignment failed", false);
+  };
+
+  const doReassign = async () => {
+    if (!reassignFrom || !reassignMentorId) return;
+    const r = await fetch(`${BASE}/admin/ignite/ignite-mentors/${reassignMentorId}/assign`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("braintam_staff_token") ?? ""}`,
+      },
+      body: JSON.stringify({ studentIgniteIds: [reassignFrom.studentIgniteId] }),
+    });
+    if (r.ok) { flash(`${reassignFrom.studentName} reassigned`, true); setReassignFrom(null); load(); }
+    else flash("Reassign failed", false);
+  };
+
+  const toggleActive = async (mentor: IgniteMentor) => {
+    await fetch(`${BASE}/admin/ignite/ignite-mentors/${mentor.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("braintam_staff_token") ?? ""}`,
+      },
+      body: JSON.stringify({ isActive: !mentor.isActive }),
+    });
+    flash(`${mentor.name} ${mentor.isActive ? "disabled" : "enabled"}`, true);
+    load();
+  };
+
+  const moveToMastery = async (studentIgniteId: number, studentName: string) => {
+    setSavingMove(studentIgniteId);
+    const r = await fetch(`${BASE}/admin/ignite/move-to-mastery`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("braintam_staff_token") ?? ""}`,
+      },
+      body: JSON.stringify({ igniteStudentId: studentIgniteId }),
+    });
+    setSavingMove(null);
+    if (r.ok) { flash(`${studentName} moved to Mastery`, true); load(); }
+    else { const e = await r.json().catch(() => ({})); flash(e.error ?? "Move failed", false); }
+  };
+
+  const statusColor: Record<string, string> = {
+    unassigned: "#6B7280", assigned: "#3B82F6", batch_assigned: "#8B5CF6",
+    demo_started: "#F59E0B", demo_completed: "#059669", converted: "#15803D", dropped: "#EF4444",
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Loading mentors…</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold" style={{ color: NAVY }}>Ignite Mentors</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Academic mentors managing demo students through the Ignite programme</p>
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border" style={{ color: NAVY, borderColor: NAVY }}>
+          <RefreshCw className="w-3 h-3" /> Refresh
+        </button>
+      </div>
+
+      {/* KPI bar */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: "Total Mentors",    value: mentors.length },
+          { label: "Active",           value: mentors.filter(m => m.isActive !== false).length },
+          { label: "Students Handled", value: mentors.reduce((a, m) => a + m.totalAssigned, 0) },
+          { label: "Converted",        value: mentors.reduce((a, m) => a + m.convertedCount, 0) },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
+            <div className="text-2xl font-bold" style={{ color: NAVY }}>{k.value}</div>
+            <div className="text-[10px] text-gray-500 mt-0.5 font-medium uppercase tracking-wide">{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mentor cards */}
+      {mentors.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm">
+          No academic mentors found. Add users with role <code>academic_mentor</code> to see them here.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {mentors.map(m => {
+            const expanded = expandedId === m.id;
+            const inactive = m.isActive === false;
+            return (
+              <div key={m.id} className={`bg-white rounded-xl shadow-sm border transition-all ${inactive ? "opacity-60 border-gray-200" : "border-gray-100"}`}>
+                {/* Mentor header */}
+                <div className="flex items-center gap-4 px-4 py-3 cursor-pointer select-none" onClick={() => setExpandedId(expanded ? null : m.id)}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: NAVY }}>
+                    {(m.name ?? "M")[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm" style={{ color: NAVY }}>{m.name ?? "—"}</span>
+                      {inactive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">Disabled</span>}
+                    </div>
+                    <div className="text-xs text-gray-400 truncate">{m.email}</div>
+                  </div>
+                  <div className="flex items-center gap-6 text-xs shrink-0">
+                    <div className="text-center">
+                      <div className="font-bold text-base" style={{ color: NAVY }}>{m.totalAssigned}</div>
+                      <div className="text-gray-400">Students</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-bold text-base" style={{ color: GREEN }}>{m.convertedCount}</div>
+                      <div className="text-gray-400">Converted</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-bold text-base" style={{ color: ORANGE }}>{m.conversionRate}%</div>
+                      <div className="text-gray-400">Rate</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2 shrink-0">
+                    <button onClick={e => { e.stopPropagation(); openAssign(m.id, m.name ?? ""); }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style={{ background: NAVY }}>
+                      + Assign
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); toggleActive(m); }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${inactive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                      {inactive ? "Enable" : "Disable"}
+                    </button>
+                    {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  </div>
+                </div>
+
+                {/* Student list */}
+                {expanded && (
+                  <div className="border-t border-gray-100 px-4 py-3">
+                    {m.students.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-2">No students assigned yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-7 text-[10px] font-semibold uppercase tracking-wide text-gray-400 px-2 pb-1">
+                          <span className="col-span-2">Student</span>
+                          <span>Grade</span>
+                          <span>Status</span>
+                          <span>Attend%</span>
+                          <span>HW%</span>
+                          <span>Actions</span>
+                        </div>
+                        {m.students.map(s => (
+                          <div key={s.id} className="grid grid-cols-7 items-center text-xs px-2 py-1.5 rounded-lg hover:bg-gray-50">
+                            <span className="col-span-2 font-medium text-gray-800 truncate">{s.name ?? "—"}</span>
+                            <span className="text-gray-500">Gr {s.grade ?? "?"}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-white w-fit" style={{ background: statusColor[s.assignmentStatus ?? ""] ?? "#6B7280" }}>
+                              {(s.assignmentStatus ?? "—").replace(/_/g, " ")}
+                            </span>
+                            <span className="text-gray-600">{s.attendancePct != null ? `${s.attendancePct}%` : "—"}</span>
+                            <span className="text-gray-600">{s.homeworkPct != null ? `${s.homeworkPct}%` : "—"}</span>
+                            <div className="flex gap-1.5">
+                              {s.assignmentStatus !== "converted" && (
+                                <button
+                                  disabled={savingMove === s.id}
+                                  onClick={() => moveToMastery(s.id, s.name ?? "Student")}
+                                  className="px-2 py-0.5 rounded text-[10px] font-semibold text-white disabled:opacity-50"
+                                  style={{ background: ORANGE }}>
+                                  {savingMove === s.id ? "…" : "→ Mastery"}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setReassignFrom({ studentIgniteId: s.id, studentName: s.name ?? "Student" })}
+                                className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600">
+                                Reassign
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Assign Students Modal */}
+      {assignModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-base" style={{ color: NAVY }}>Assign students to {assignModal.mentorName}</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Select unassigned demo students below</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1.5">
+              {unassigned.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">All demo students already have an assigned mentor.</p>
+              ) : unassigned.map(u => (
+                <label key={u.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" checked={selected.has(u.id)} onChange={e => {
+                    const n = new Set(selected);
+                    e.target.checked ? n.add(u.id) : n.delete(u.id);
+                    setSelected(n);
+                  }} className="rounded" />
+                  <span className="text-sm font-medium text-gray-800">{u.name ?? "—"}</span>
+                  <span className="text-xs text-gray-400">Grade {u.grade ?? "?"}</span>
+                  <span className="text-xs text-gray-400">{u.phone ?? ""}</span>
+                </label>
+              ))}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setAssignModal(null)} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button onClick={doAssign} disabled={selected.size === 0}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: NAVY }}>
+                Assign {selected.size > 0 ? `(${selected.size})` : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign Modal */}
+      {reassignFrom && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-base" style={{ color: NAVY }}>Reassign {reassignFrom.studentName}</h3>
+            </div>
+            <div className="px-5 py-4">
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Transfer to mentor</label>
+              <select value={reassignMentorId} onChange={e => setReassignMentorId(Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                <option value={0}>— Select mentor —</option>
+                {mentors.filter(m => m.isActive !== false).map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setReassignFrom(null)} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button onClick={doReassign} disabled={!reassignMentorId}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: NAVY }}>
+                Reassign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
@@ -3956,6 +4257,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "batch-health", label: "Batch Health", icon: ShieldCheck },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "sales-mentors", label: "Sales Mentors", icon: Award },
+  { id: "ignite-mentors", label: "Ignite Mentors", icon: UserCog },
   { id: "student-outreach", label: "Student Outreach", icon: UserCheck },
   { id: "performance-rankings", label: "Performance Rankings", icon: BarChart2 },
   { id: "ignite-reports", label: "Reports", icon: BarChart3 },
@@ -5445,6 +5747,7 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} role={role} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "sales-mentors": return <SalesMentorsView flash={flash} />;
+    case "ignite-mentors": return <IgniteMentorsView flash={flash} />;
     case "student-outreach": return <StudentOutreachView flash={flash} />;
     case "ignite-reports": return <IgniteAnalyticsTab />;
     case "performance-rankings": return <IgnitePerformanceRankingsTab />;
@@ -5485,6 +5788,7 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "sales-mentors": return <SalesMentorsView flash={flash} />;
+      case "ignite-mentors": return <IgniteMentorsView flash={flash} />;
       case "student-outreach": return <StudentOutreachView flash={flash} />;
       case "ignite-reports": return <IgniteAnalyticsTab />;
       case "performance-rankings": return <IgnitePerformanceRankingsTab />;

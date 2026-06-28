@@ -1723,4 +1723,88 @@ router.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_
   }
 });
 
+// ── Ignite Mentors Management ───────────────────────────────────────────────
+
+router.get("/admin/ignite/ignite-mentors", adminOnly, async (_req, res) => {
+  const mentors = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    phone: usersTable.phone, isActive: usersTable.isActive,
+  }).from(usersTable)
+    .where(eq(usersTable.role, "academic_mentor"))
+    .orderBy(usersTable.name);
+
+  const result = await Promise.all(mentors.map(async m => {
+    const students = await db.select({
+      id: ignitePaidStudentsTable.id,
+      studentId: ignitePaidStudentsTable.studentId,
+      name: usersTable.name,
+      grade: ignitePaidStudentsTable.grade,
+      phone: ignitePaidStudentsTable.phone,
+      assignmentStatus: ignitePaidStudentsTable.assignmentStatus,
+      assignedBatchId: ignitePaidStudentsTable.assignedBatchId,
+      attendancePct: ignitePaidStudentsTable.attendancePct,
+      homeworkPct: ignitePaidStudentsTable.homeworkPct,
+    }).from(ignitePaidStudentsTable)
+      .leftJoin(usersTable, eq(usersTable.id, ignitePaidStudentsTable.studentId))
+      .where(eq(ignitePaidStudentsTable.assignedMentorId, m.id));
+
+    const total = students.length;
+    const converted = students.filter(s => s.assignmentStatus === "converted").length;
+    return {
+      ...m,
+      totalAssigned: total,
+      convertedCount: converted,
+      conversionRate: total > 0 ? Math.round((converted / total) * 100) : 0,
+      students,
+    };
+  }));
+
+  res.json(result);
+});
+
+// Assign demo students (ignitePaidStudents ids) to an academic mentor
+router.patch("/admin/ignite/ignite-mentors/:mentorId/assign", adminOnly, async (req, res) => {
+  const mentorId = parseInt(req.params["mentorId"] as string, 10);
+  const { studentIgniteIds } = req.body as { studentIgniteIds: number[] };
+  if (!Array.isArray(studentIgniteIds) || studentIgniteIds.length === 0) {
+    res.status(400).json({ error: "studentIgniteIds required" }); return;
+  }
+
+  const [mentor] = await db.select({ name: usersTable.name }).from(usersTable)
+    .where(eq(usersTable.id, mentorId)).limit(1);
+  if (!mentor) { res.status(404).json({ error: "Mentor not found" }); return; }
+
+  await db.update(ignitePaidStudentsTable)
+    .set({ assignedMentorId: mentorId, assignedMentorName: mentor.name })
+    .where(inArray(ignitePaidStudentsTable.id, studentIgniteIds));
+
+  res.json({ ok: true, assigned: studentIgniteIds.length, mentorName: mentor.name });
+});
+
+// Enable / disable an academic mentor
+router.patch("/admin/ignite/ignite-mentors/:mentorId", adminOnly, async (req, res) => {
+  const mentorId = parseInt(req.params["mentorId"] as string, 10);
+  const { isActive } = req.body as { isActive?: boolean };
+  await db.update(usersTable)
+    .set({ isActive: isActive ?? true })
+    .where(eq(usersTable.id, mentorId));
+  res.json({ ok: true });
+});
+
+// Unassigned demo students (no academic mentor yet) — for the assign modal
+router.get("/admin/ignite/ignite-mentors/unassigned-students", adminOnly, async (_req, res) => {
+  const rows = await db.select({
+    id: ignitePaidStudentsTable.id,
+    studentId: ignitePaidStudentsTable.studentId,
+    name: usersTable.name,
+    grade: ignitePaidStudentsTable.grade,
+    phone: ignitePaidStudentsTable.phone,
+    assignmentStatus: ignitePaidStudentsTable.assignmentStatus,
+  }).from(ignitePaidStudentsTable)
+    .leftJoin(usersTable, eq(usersTable.id, ignitePaidStudentsTable.studentId))
+    .where(isNull(ignitePaidStudentsTable.assignedMentorId))
+    .orderBy(usersTable.name);
+  res.json(rows);
+});
+
 export default router;

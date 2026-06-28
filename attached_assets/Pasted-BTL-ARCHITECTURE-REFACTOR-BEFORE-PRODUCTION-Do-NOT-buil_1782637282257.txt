@@ -1,0 +1,159 @@
+BTL ARCHITECTURE REFACTOR (BEFORE PRODUCTION)
+
+Do NOT build new features outside this scope.
+
+This is an architecture cleanup and flow refactor.
+
+==================================================
+
+1. MASTERY COURSES
+   ==================================================
+
+Problem:
+Mastery portal is showing Ignite courses.
+
+Expected:
+
+Mastery should ONLY contain long-term courses.
+
+Examples:
+
+Grade 1 Mastery
+Grade 2 Mastery
+...
+Grade 10 Mastery
+
+Ignite courses must exist ONLY inside Ignite.
+
+Remove all Ignite courses from Mastery views, filters, APIs and dashboards.
+
+==================================================
+2. IGNITE MENTORS
+=================
+
+Ignite is the sales/demo pipeline.
+
+Create an "Ignite Mentors" tab under Ignite.
+
+Expected menu:
+
+Ignite
+├── Dashboard
+├── Leads
+├── Demo Batches
+├── Sales Mentors
+├── Ignite Mentors
+├── Attendance Analytics
+├── Conversion Center
+├── Payments
+└── Reports
+
+Ignite Mentors screen should manage demo students only.
+
+Actions:
+
+✓ Assign students/leads
+✓ Reassign students/leads
+✓ Edit mentor
+✓ Disable mentor
+✓ View assigned students
+✓ View mentor performance
+✓ Move student to Mastery
+
+There should NOT be any "Move to Sales" option.
+
+If these features already exist elsewhere, consolidate them into one screen.
+
+==================================================
+3. STUDENT CONVERSION FLOW
+==========================
+
+Lead Created
+↓
+Assigned to Sales Mentor
+↓
+Demo Paid
+↓
+Added to Demo Batch
+↓
+Ignite Mentor Assigned
+↓
+5-Day Demo Classes
+↓
+Student Purchases Mastery
+↓
+Move To Mastery
+↓
+Mastery Course Auto Assignment
+↓
+Mastery Mentor Assignment
+↓
+Teacher Assignment
+↓
+Sessions Generated
+↓
+Live Classes Generated
+↓
+Student Portal Activated
+
+==================================================
+4. MASTERY DEPLOYMENT
+=====================
+
+After payment confirmation:
+
+1. Create Mastery Enrollment
+2. Assign Grade Mastery Course automatically
+3. Assign Mastery Mentor
+4. Assign Teacher
+5. Generate Sessions automatically
+6. Generate Live Classes automatically
+7. Activate student portal
+
+Admin should only need to:
+
+Select Mentor
+Select Teacher
+Click Deploy
+
+Everything else should happen automatically.
+
+==================================================
+5. DATA MODEL
+=============
+
+A student should never belong to both systems simultaneously.
+
+Student Status:
+
+lead
+↓
+ignite_student
+↓
+mastery_student
+
+When moved to Mastery:
+
+✓ Close Ignite enrollment
+✓ Preserve Ignite attendance and reports as history
+✓ Create Mastery enrollment
+✓ Generate Mastery sessions
+✓ Generate Mastery live classes
+
+==================================================
+6. AUDIT
+========
+
+After refactor:
+
+✓ Check all dashboards
+✓ Check all counters
+✓ Check all APIs
+✓ Check filters
+✓ Check portal permissions
+✓ Check live class visibility
+✓ Check mentor visibility
+✓ Check student visibility
+✓ Ensure there are no duplicate screens or duplicate course records
+
+Provide a short architecture report after implementation.

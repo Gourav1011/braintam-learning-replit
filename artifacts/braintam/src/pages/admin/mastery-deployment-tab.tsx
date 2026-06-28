@@ -71,6 +71,7 @@ export function MasteryDeploymentTab() {
   const [stats, setStats]               = useState<DeploymentStats | null>(null);
   const [students, setStudents]         = useState<UnassignedStudent[]>([]);
   const [mentors, setMentors]           = useState<Mentor[]>([]);
+  const [teachers, setTeachers]         = useState<{ id: number; name: string; email: string | null }[]>([]);
   const [batches, setBatches]           = useState<DeploymentBatch[]>([]);
   const [loading, setLoading]           = useState(true);
   const [activeView, setActiveView]     = useState<"deploy" | "batches">("deploy");
@@ -79,6 +80,7 @@ export function MasteryDeploymentTab() {
   const [gradeFilter, setGradeFilter]   = useState("");
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [selectedMentors, setSelectedMentors]   = useState<number[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number>(0);
   const [step, setStep]                 = useState<"students" | "mentors" | "preview" | "done">("students");
   const [distribution, setDistribution] = useState<MentorAssignment[]>([]);
   const [deploying, setDeploying]       = useState(false);
@@ -86,14 +88,16 @@ export function MasteryDeploymentTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [sr, mr, br] = await Promise.all([
+    const [sr, mr, br, tr] = await Promise.all([
       apiFetch("/admin/mastery/deployment/stats"),
       apiFetch("/admin/mastery/deployment/mentors"),
       apiFetch("/admin/mastery/deployment/batches"),
+      apiFetch("/admin/analytics/teachers"),
     ]);
     if (sr.ok) setStats(await sr.json() as DeploymentStats);
     if (mr.ok) setMentors(await mr.json() as Mentor[]);
     if (br.ok) setBatches(await br.json() as DeploymentBatch[]);
+    if (tr.ok) setTeachers(await tr.json() as { id: number; name: string; email: string | null }[]);
     setLoading(false);
   }, []);
 
@@ -141,11 +145,14 @@ export function MasteryDeploymentTab() {
 
   async function deploy() {
     setDeploying(true);
+    const teacher = teachers.find(t => t.id === selectedTeacherId);
     const r = await apiFetch("/admin/mastery/deployment/deploy", {
       method: "POST",
       body: JSON.stringify({
         mentorAssignments: distribution,
         grade: gradeFilter ? parseInt(gradeFilter, 10) : undefined,
+        teacherId: teacher?.id,
+        teacherName: teacher?.name,
       }),
     });
     if (r.ok) {
@@ -164,6 +171,7 @@ export function MasteryDeploymentTab() {
     setStep("students");
     setSelectedStudents([]);
     setSelectedMentors([]);
+    setSelectedTeacherId(0);
     setDistribution([]);
     setLastBatch(null);
   }
@@ -392,6 +400,19 @@ export function MasteryDeploymentTab() {
                     );
                   })}
                 </div>
+              </div>
+              {/* Teacher selection */}
+              <div className="px-5 py-3 border-t border-gray-100">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                  Assign Teacher <span className="font-normal text-gray-400">(optional — logged in timeline)</span>
+                </label>
+                <select value={selectedTeacherId} onChange={e => setSelectedTeacherId(Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800">
+                  <option value={0}>— No teacher selected —</option>
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}{t.email ? ` (${t.email})` : ""}</option>
+                  ))}
+                </select>
               </div>
               <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
                 <button onClick={() => setStep("students")} className="px-4 py-2.5 rounded-xl text-gray-600 text-xs font-semibold border border-gray-200 hover:bg-gray-50">
