@@ -3328,6 +3328,228 @@ function AutoBalanceModal({ mentors, flash, onClose }: {
   );
 }
 
+// ── Mentor Lead Modals ────────────────────────────────────────────────────────
+
+function MentorLeadsModal({ mentor, allMentors, onClose, flash }: {
+  mentor: SalesMentor; allMentors: SalesMentor[];
+  onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [reassignId, setReassignId] = useState<number | null>(null);
+  const [newMentorId, setNewMentorId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/leads").then(r => r.json()).then((d: LeadRow[]) => {
+      setLeads(Array.isArray(d) ? d.filter(l => l.assignedMentorId === mentor.id) : []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [mentor.id]);
+
+  const doReassign = async (lead: LeadRow) => {
+    if (!newMentorId) return;
+    setSaving(true);
+    try {
+      const r = await apiFetch(`/admin/ignite/leads/${lead.id}/reassign`, {
+        method: "POST", body: JSON.stringify({ newMentorId: Number(newMentorId) }),
+      });
+      if (r.ok) {
+        flash("Lead reassigned!", true);
+        setLeads(prev => prev.filter(l => l.id !== lead.id));
+        setReassignId(null); setNewMentorId("");
+      } else flash("Failed to reassign", false);
+    } finally { setSaving(false); }
+  };
+
+  const shown = leads.filter(l =>
+    !search || l.name.toLowerCase().includes(search.toLowerCase()) ||
+    (l.phone ?? "").includes(search) || (l.grade?.toString() ?? "").includes(search)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Assigned Leads</h3>
+            <p className="text-xs text-gray-400">{mentor.name} · {leads.length} lead{leads.length !== 1 ? "s" : ""}</p>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="px-5 py-2.5 border-b border-gray-100 shrink-0">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, phone, grade…"
+              className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400" />
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-14"><RefreshCw className="w-5 h-5 animate-spin text-gray-300" /></div>
+          ) : shown.length === 0 ? (
+            <div className="text-center py-14 text-gray-400 text-sm">{leads.length === 0 ? "No leads assigned to this mentor yet." : "No matching leads."}</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="border-b border-gray-100 sticky top-0" style={{ background: "#F8FAFF" }}>
+                <tr>
+                  {["Lead","Grade","Phone","Stage","Source",""].map((h, i) => (
+                    <th key={i} className="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(l => (
+                  <tr key={l.id} className="border-b border-gray-50 hover:bg-blue-50/20">
+                    <td className="px-4 py-2.5 font-semibold text-gray-800 whitespace-nowrap">{l.name}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{l.grade ? `G${l.grade}` : "–"}</td>
+                    <td className="px-4 py-2.5 font-mono text-gray-500">{l.phone ?? "–"}</td>
+                    <td className="px-4 py-2.5"><StageBadge stage={l.leadStage} /></td>
+                    <td className="px-4 py-2.5 text-gray-400">{l.leadSource ?? "–"}</td>
+                    <td className="px-4 py-2.5 relative">
+                      {reassignId === l.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <select value={newMentorId} onChange={e => setNewMentorId(e.target.value)}
+                            className="text-[10px] rounded-lg border border-gray-200 px-1.5 py-1 outline-none focus:border-blue-400 bg-white max-w-[110px]">
+                            <option value="">Pick mentor…</option>
+                            {allMentors.filter(m => m.id !== mentor.id && m.isActive).map(m => (
+                              <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => doReassign(l)} disabled={!newMentorId || saving}
+                            className="text-[10px] px-2 py-1 rounded-lg text-white font-bold disabled:opacity-40" style={{ background: NAVY }}>
+                            {saving ? "…" : "Go"}
+                          </button>
+                          <button onClick={() => { setReassignId(null); setNewMentorId(""); }}
+                            className="text-[10px] text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setReassignId(l.id)}
+                          className="text-[10px] px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 font-semibold">
+                          Reassign
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex justify-end">
+          <button onClick={onClose} className="px-5 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssignLeadModal({ mentor, onSave, onClose, flash }: {
+  mentor: SalesMentor; onSave: () => void;
+  onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/leads").then(r => r.json()).then((d: LeadRow[]) => {
+      setLeads(Array.isArray(d) ? d.filter(l => !l.assignedMentorId && l.isActive && l.leadStage !== "Lost" && l.leadStage !== "Converted") : []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const doAssign = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const r = await apiFetch(`/admin/ignite/leads/${selected}`, {
+        method: "PUT",
+        body: JSON.stringify({ assignedMentorId: mentor.id, assignmentStatus: "assigned" }),
+      });
+      if (r.ok) { flash(`Lead assigned to ${mentor.name.split(" ")[0]}!`, true); onSave(); }
+      else flash("Failed to assign lead", false);
+    } finally { setSaving(false); }
+  };
+
+  const shown = leads.filter(l =>
+    !search || l.name.toLowerCase().includes(search.toLowerCase()) ||
+    (l.phone ?? "").includes(search) || (l.grade?.toString() ?? "").includes(search) ||
+    (l.leadSource ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Assign Lead</h3>
+            <p className="text-xs text-gray-400">Pick an unassigned lead → assign to <strong>{mentor.name}</strong></p>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="px-5 py-2.5 border-b border-gray-100 shrink-0">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, phone, grade, source…"
+              className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400" />
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-14"><RefreshCw className="w-5 h-5 animate-spin text-gray-300" /></div>
+          ) : shown.length === 0 ? (
+            <div className="text-center py-14 text-gray-400 text-sm">{leads.length === 0 ? "No unassigned leads available." : "No matching leads."}</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="border-b border-gray-100 sticky top-0" style={{ background: "#F8FAFF" }}>
+                <tr>
+                  {["","Lead","Grade","Phone","Stage","Source"].map((h, i) => (
+                    <th key={i} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(l => {
+                  const isSel = selected === l.id;
+                  return (
+                    <tr key={l.id} onClick={() => setSelected(isSel ? null : l.id)}
+                      className={`border-b border-gray-50 cursor-pointer transition-colors ${isSel ? "bg-blue-50" : "hover:bg-gray-50"}`}>
+                      <td className="px-3 py-2.5">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${isSel ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+                          {isSel && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 font-semibold text-gray-800 whitespace-nowrap">{l.name}</td>
+                      <td className="px-3 py-2.5 text-gray-500">{l.grade ? `G${l.grade}` : "–"}</td>
+                      <td className="px-3 py-2.5 font-mono text-gray-500">{l.phone ?? "–"}</td>
+                      <td className="px-3 py-2.5"><StageBadge stage={l.leadStage} /></td>
+                      <td className="px-3 py-2.5 text-gray-400">{l.leadSource ?? "–"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex items-center justify-between gap-3">
+          <span className="text-[10px] text-gray-400">{shown.length} unassigned lead{shown.length !== 1 ? "s" : ""}{selected ? " · 1 selected" : ""}</span>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+            <button onClick={doAssign} disabled={!selected || saving}
+              className="px-5 py-2 rounded-xl text-white text-sm font-bold disabled:opacity-40" style={{ background: NAVY }}>
+              {saving ? "Assigning…" : `Assign to ${mentor.name.split(" ")[0]}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Sales Mentors CRM Module ──────────────────────────────────────────────────
 
 interface SalesMentor {
@@ -3367,6 +3589,8 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState<SalesMentor | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [viewLeadsMentor, setViewLeadsMentor] = useState<SalesMentor | null>(null);
+  const [assignLeadMentor, setAssignLeadMentor] = useState<SalesMentor | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -3560,15 +3784,18 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                           {actionMenu === m.id && (
                             <div className="absolute right-2 top-9 z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-52">
                               <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Lead Management</div>
-                              {([
-                                { l: "View Assigned Leads", ic: Eye },
-                                { l: "Reassign Leads", ic: ArrowRightLeft },
-                              ] as { l: string; ic: React.ElementType }[]).map(it => (
-                                <button key={it.l} onClick={() => { flash(`${it.l} — coming soon`, true); setActionMenu(null); }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                  <it.ic className="w-3.5 h-3.5 text-blue-400" /> {it.l}
-                                </button>
-                              ))}
+                              <button onClick={() => { setViewLeadsMentor(m); setActionMenu(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50">
+                                <Eye className="w-3.5 h-3.5 text-blue-400" /> View Assigned Leads
+                              </button>
+                              <button onClick={() => { setAssignLeadMentor(m); setActionMenu(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-green-50">
+                                <Plus className="w-3.5 h-3.5 text-green-500" /> Assign Lead
+                              </button>
+                              <button onClick={() => { setViewLeadsMentor(m); setActionMenu(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50">
+                                <ArrowRightLeft className="w-3.5 h-3.5 text-orange-400" /> Reassign Leads
+                              </button>
                               <div className="h-px bg-gray-100 my-1" />
                               <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Mentor Management</div>
                               <button onClick={() => { setEditMentor(m); setActionMenu(null); }}
@@ -3741,6 +3968,8 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
       {changeGradesMentor && <ChangeGradesModal mentor={changeGradesMentor} allGrades={grades} allMentors={mentors} onSave={() => { load(); setChangeGradesMentor(null); }} onClose={() => setChangeGradesMentor(null)} flash={flash} />}
       {showManageGrades && <ManageAllGradesModal grades={grades} mentors={mentors} onSave={() => { load(); setShowManageGrades(false); }} onClose={() => setShowManageGrades(false)} flash={flash} />}
       {showBulkModal && <AutoBalanceModal mentors={mentors} flash={flash} onClose={() => { load(); setShowBulkModal(false); }} />}
+      {viewLeadsMentor && <MentorLeadsModal mentor={viewLeadsMentor} allMentors={mentors} onClose={() => setViewLeadsMentor(null)} flash={flash} />}
+      {assignLeadMentor && <AssignLeadModal mentor={assignLeadMentor} onSave={() => { load(); setAssignLeadMentor(null); }} onClose={() => setAssignLeadMentor(null)} flash={flash} />}
     </div>
   );
 }
