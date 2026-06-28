@@ -16,6 +16,8 @@ import {
   leadStatusHistoryTable,
   mentorDeploymentCyclesTable,
   demoBatchEnrollmentsTable,
+  demoBatchesTable,
+  demoSessionsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNull, isNotNull } from "drizzle-orm";
 import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
@@ -450,6 +452,99 @@ router.get("/mentor/live-classes", mentorAuth, async (req, res) => {
     .limit(upcoming ? 20 : 100);
 
   res.json(classes);
+});
+
+// ── Demo sessions for mentor live-classes tab ─────────────────────────────
+router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
+  const mentorId = req.authUser!.id;
+  const mode = String(req.query.mode ?? "upcoming"); // today | upcoming | completed
+
+  // 1. Find batches directly assigned to this mentor OR matching grades of assigned students
+  const studentIds = await getMentorStudentIds(mentorId);
+  const gradeSet: number[] = [];
+  if (studentIds.length > 0) {
+    const grades = await db.select({ grade: usersTable.grade }).from(usersTable)
+      .where(inArray(usersTable.id, studentIds));
+    grades.forEach(g => { if (g.grade && !gradeSet.includes(g.grade)) gradeSet.push(g.grade); });
+  }
+
+  // Batches directly assigned to mentor
+  const directBatches = await db.select({ id: demoBatchesTable.id })
+    .from(demoBatchesTable)
+    .where(eq(demoBatchesTable.mentorId, mentorId));
+  const directBatchIds = directBatches.map(b => b.id);
+
+  // Batches by grade (for academic mentors whose students are enrolled)
+  const gradeBatches = gradeSet.length > 0
+    ? await db.select({ id: demoBatchesTable.id }).from(demoBatchesTable)
+        .where(inArray(demoBatchesTable.grade, gradeSet))
+    : [];
+  const gradeBatchIds = gradeBatches.map(b => b.id);
+
+  const allBatchIds = [...new Set([...directBatchIds, ...gradeBatchIds])];
+  if (allBatchIds.length === 0) { res.json([]); return; }
+
+  // 2. Time filter by mode (IST = UTC+5:30)
+  const nowUtc = new Date();
+  // IST midnight = today in UTC+5:30; floor UTC ms to IST day boundary
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istNowMs = nowUtc.getTime() + IST_OFFSET_MS;
+  const istMidnightMs = istNowMs - (istNowMs % 86400000);
+  const todayIst = new Date(istMidnightMs - IST_OFFSET_MS);  // back to UTC
+  const tomorrowIst = new Date(todayIst.getTime() + 86400000);
+
+  let sessions;
+  if (mode === "today") {
+    sessions = await db.select({
+      id: demoSessionsTable.id, topic: demoSessionsTable.title,
+      dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
+      duration: demoSessionsTable.duration, status: demoSessionsTable.status,
+      joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
+      batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
+      batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
+    }).from(demoSessionsTable)
+      .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+      .where(and(
+        inArray(demoSessionsTable.batchId, allBatchIds),
+        gte(demoSessionsTable.scheduledAt, todayIst),
+        lte(demoSessionsTable.scheduledAt, tomorrowIst),
+      ))
+      .orderBy(demoSessionsTable.scheduledAt);
+  } else if (mode === "upcoming") {
+    sessions = await db.select({
+      id: demoSessionsTable.id, topic: demoSessionsTable.title,
+      dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
+      duration: demoSessionsTable.duration, status: demoSessionsTable.status,
+      joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
+      batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
+      batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
+    }).from(demoSessionsTable)
+      .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+      .where(and(
+        inArray(demoSessionsTable.batchId, allBatchIds),
+        gte(demoSessionsTable.scheduledAt, nowUtc),
+      ))
+      .orderBy(demoSessionsTable.scheduledAt)
+      .limit(30);
+  } else {
+    sessions = await db.select({
+      id: demoSessionsTable.id, topic: demoSessionsTable.title,
+      dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
+      duration: demoSessionsTable.duration, status: demoSessionsTable.status,
+      joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
+      batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
+      batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
+    }).from(demoSessionsTable)
+      .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+      .where(and(
+        inArray(demoSessionsTable.batchId, allBatchIds),
+        lte(demoSessionsTable.scheduledAt, nowUtc),
+      ))
+      .orderBy(desc(demoSessionsTable.scheduledAt))
+      .limit(30);
+  }
+
+  res.json(sessions);
 });
 
 // ── Attendance CRUD ──────────────────────────────────────────────────────
