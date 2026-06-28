@@ -1,0 +1,154 @@
+Do not start building yet. First, confirm that you understand the business flow exactly.
+
+Our model is NOT traditional batches (Morning/Evening/Weekend).
+
+Business Model:
+
+Ignite (5-Day Demo)
+↓
+Student pays and attends demo classes
+↓
+Student converts by:
+
+* Payment during live class
+* Mentor payment link
+* Partial payment approved by Admin
+* Full payment approved by Admin
+  ↓
+  System immediately enrolls student into Long-Term Mastery Course
+  ↓
+  Course instantly appears in Student App → My Courses
+
+---
+
+Ignite Structure
+
+Example:
+
+Grade 3
+├── Mentor A → 100 Leads
+└── Mentor B → 100 Leads
+
+Total Leads = 200
+
+Mentors handle only leads and conversions.
+
+---
+
+Mastery Structure
+
+Example:
+
+Mastery Grade 3
+
+Initially:
+
+Course A
+Students: 2,034 -2500
+Admissions: Active
+
+All new Grade 3 conversions go into Course A.
+
+---
+
+Later, if we decide to start another intake:
+
+Create:
+Grade 3 - Course B
+
+Initially:
+
+Course B
+Admissions: Inactive
+
+Admin clicks:
+
+"Activate Admissions"
+
+Result:
+
+Course A
+Students: 2,034
+Admissions: Closed
+Classes: Continue Running
+
+Course B
+Students: 0
+Admissions: Active
+
+All future Grade 3 admissions now go into Course B.
+
+---
+
+Important Rules
+
+1. Existing students must NEVER move automatically.
+
+2. Course A continues until completion:
+
+* Classes
+* Recordings
+* Homework
+* Reports
+* Mentor communication
+
+Everything continues normally.
+
+3. Only future admissions go into Course B.
+
+4. Maximum we may have two running courses for one grade, not unlimited batches.
+
+5. This is not a timing batch system.
+
+It is simply:
+
+* Current admission course
+* Previous running course
+
+---
+
+Required Enrollment Logic
+
+Payment Approved
+↓
+Read lead.grade = Grade 3
+↓
+Find:
+Mastery Grade 3
+↓
+Find:
+Admission Active Course Instance
+↓
+Create Enrollment
+↓
+Student instantly sees the course in Student App
+
+---
+
+Questions before building:
+
+1. Can we support this by adding a lightweight course_instances table?
+
+Example:
+
+course_instances
+
+* id
+* course_id
+* instance_name (Course A, Course B)
+* admission_status (active/closed)
+* status (active/completed)
+* student_count
+* start_date
+* end_date
+
+2. Should only ONE course instance per grade be allowed to have:
+   admission_status = active ?
+
+3. Can we reuse most of the existing conversion flow and only add:
+
+* course instance lookup
+* student enrollment creation
+* student app course visibility
+
+Please review the existing codebase and propose the leanest implementation before writing any migrations or UI.
