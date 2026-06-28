@@ -3725,55 +3725,52 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
 
           {/* Table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs min-w-[860px]">
+            <div>
+              <table className="w-full text-xs">
                 <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
                   <tr>
-                    {["Mentor","Email / Phone","Grade","Leads","Converted","Conv %","Status",""].map((h, i) => (
-                      <th key={i} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                    {["Mentor","Email / Phone","Gr.","Leads","Conv.","Conv %","Status",""].map((h, i) => (
+                      <th key={i} className="px-2 py-2 text-left text-[10px] font-semibold text-gray-400 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={8} className="text-center py-14">
-                      <RefreshCw className="w-5 h-5 animate-spin mx-auto text-gray-300" />
+                    <tr><td colSpan={8} className="text-center py-10">
+                      <RefreshCw className="w-4 h-4 animate-spin mx-auto text-gray-300" />
                     </td></tr>
                   ) : paged.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-14 text-gray-400 text-sm">No sales mentors found.</td></tr>
+                    <tr><td colSpan={8} className="text-center py-10 text-gray-400 text-xs">No sales mentors found.</td></tr>
                   ) : paged.map(m => {
                     const initials = m.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
                     return (
                       <tr key={m.id} className="border-b border-gray-50 hover:bg-blue-50/20 transition-colors">
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0"
                               style={{ background: m.isActive ? NAVY : "#9CA3AF" }}>{initials}</div>
-                            <div>
-                              <div className="font-semibold text-gray-800 leading-none">{m.name}</div>
-                              <div className="text-[10px] text-gray-400 mt-0.5">Last: {m.lastLoginDate ? fmt(m.lastLoginDate) : "Never"}</div>
-                            </div>
+                            <span className="font-semibold text-gray-800 text-xs leading-none">{m.name}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5">
-                          <div className="text-[11px] text-gray-500 truncate max-w-[140px]">{m.email ?? "–"}</div>
-                          <div className="text-[10px] font-mono text-gray-400 mt-0.5">{m.phone ?? "–"}</div>
+                        <td className="px-2 py-2 max-w-[150px]">
+                          <div className="text-[10px] text-gray-500 truncate">{m.email ?? "–"}</div>
+                          <div className="text-[9px] font-mono text-gray-400">{m.phone ?? "–"}</div>
                         </td>
-                        <td className="px-3 py-2.5">
+                        <td className="px-2 py-2">
                           {(() => { const g = m.gradesManaged[0]; return g
-                            ? <span className="text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap" style={{ background: "#EEF2FF", color: NAVY }}>G{g}</span>
-                            : <span className="text-gray-300 text-[10px]">–</span>; })()}
+                            ? <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "#EEF2FF", color: NAVY }}>G{g}</span>
+                            : <span className="text-gray-300">–</span>; })()}
                         </td>
-                        <td className="px-3 py-2.5 font-semibold text-gray-700">{m.assignedLeads || "–"}</td>
-                        <td className="px-3 py-2.5 font-semibold" style={{ color: GREEN }}>{m.converted || "–"}</td>
-                        <td className="px-3 py-2.5">
-                          <span className="font-black text-xs whitespace-nowrap" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
+                        <td className="px-2 py-2 font-semibold text-gray-700 text-center">{m.assignedLeads || "–"}</td>
+                        <td className="px-2 py-2 font-semibold text-center" style={{ color: GREEN }}>{m.converted || "–"}</td>
+                        <td className="px-2 py-2">
+                          <span className="font-black text-[11px]" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
                             {m.conversionRate}%
                           </span>
                         </td>
-                        <td className="px-3 py-2.5">
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                            {m.isActive ? "Active" : "Inactive"}
+                        <td className="px-2 py-2">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                            {m.isActive ? "Active" : "Off"}
                           </span>
                         </td>
                         <td className="px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
