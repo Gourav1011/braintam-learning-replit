@@ -208,6 +208,12 @@ router.post("/admin/users", adminOnly, async (req, res) => {
     const existingPhone = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
     if (existingPhone.length > 0) { res.status(400).json({ error: "Phone already in use" }); return; }
   }
+  const defaultAccountType =
+    role === "teacher" ? "teacher" :
+    role === "admin" ? "admin" :
+    role === "student" ? "lead" :
+    "lead";
+
   const [user] = await db.insert(usersTable).values({
     name,
     email: email ?? null,
@@ -216,7 +222,7 @@ router.post("/admin/users", adminOnly, async (req, res) => {
 
     role,
 
-    accountType: accountType ?? null,
+    accountType: accountType ?? defaultAccountType,
     leadStage: leadStage ?? null,
 
     parentName: parentName ?? null,

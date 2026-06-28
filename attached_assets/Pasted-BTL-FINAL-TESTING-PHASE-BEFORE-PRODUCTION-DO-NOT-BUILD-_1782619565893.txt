@@ -1,0 +1,160 @@
+BTL FINAL TESTING PHASE (BEFORE PRODUCTION)
+
+DO NOT BUILD NEW FEATURES RIGHT NOW.
+
+First stabilize and verify the complete flow.
+
+Create fresh test data only.
+End to end testing
+
+Sales Mentors (3)
+
+* sales_mentor_1
+* sales_mentor_2
+* sales_mentor_3
+
+Academic Mentors (3)
+
+* academic_mentor_1
+* academic_mentor_2
+* academic_mentor_3
+
+Teachers (6)
+
+* teacher_1
+* teacher_2
+* teacher_3
+* teacher_4
+* teacher_5
+* teacher_6
+
+IMPORTANT:
+Teachers are global resources.
+Teachers can teach both Ignite and Mastery.
+Do not separate teachers by module.
+
+Students (6)
+
+* student_1
+* student_2
+* student_3
+* student_4
+* student_5
+* student_6
+
+Verify and fix:
+
+✓ Lead creation
+✓ Lead assignment
+✓ Reassign lead
+✓ Mentor list loading
+✓ Teacher list loading
+✓ Batch deployment
+✓ Batch reassignment
+✓ Teacher assignment
+✓ Mentor assignment
+✓ Search and filters
+✓ Student assignment under mentor groups
+
+Lead Created
+↓
+Sales Mentor Assigned
+↓
+Demo Paid
+↓
+Deploy to Batch
+↓
+Academic Mentor Assigned
+↓
+Teacher Assigned
+↓
+Batch Auto Created
+↓
+Sessions Auto Created
+↓
+Live Classes Auto Created
+↓
+Teacher Joins
+↓
+Mentor Joins
+↓
+Students Join
+↓
+Class Ends
+↓
+Attendance Generated
+↓
+Reports Generated
+
+Teacher:
+✓ Enter Classroom
+✓ End Class
+✓ Search Students
+✓ Give Mic
+✓ Polls
+✓ Leaderboard
+✓ Presentation
+✓ Recording
+✓ Attendance
+
+Mentor:
+✓ Join Daily Classes
+✓ View Schedule
+✓ Group Chat
+✓ Attendance
+✓ Student Insights
+
+Student:
+✓ Join Class
+✓ Chat
+✓ Raise Hand
+✓ Polls
+✓ Leaderboard
+✓ Payment Badge
+✓ Attendance
+✓ Recording Access
+
+Create Mastery Course
+Upload Syllabus CSV
+
+CSV Format:
+
+Date,Chapter,Topic,Description
+
+System should:
+
+✓ Create Chapters
+✓ Create Topics
+✓ Generate Unique IDs
+✓ Prevent Duplicates
+✓ Auto-create Live Sessions
+✓ Show Full Syllabus to Students
+✓ Show Upcoming Classes
+✓ Allow Teacher Editing
+
+Check entire platform for:
+
+✓ Dead tabs
+✓ Broken redirects
+✓ Old UI pages
+✓ Missing connections
+✓ Hidden errors
+✓ Old APIs still being called
+✓ Missing permissions
+✓ Session creation issues
+✓ Assignment issues
+✓ Dashboard inconsistencies
+
+ONLY AFTER EVERYTHING PASSES:
+
+Delete:
+
+* Test Leads
+* Test Students
+* Test Mentors
+* Test Teachers
+* Test Batches
+* Test Sessions
+* Test Analytics
+
+# Then create production data manually or through automation.
