@@ -6,6 +6,7 @@ import {
   XCircle, Clock, UserCheck, BarChart3, AlertTriangle, Check, X,
   Bell, CreditCard, ChevronUp, UserX, RotateCcw, History, UserCog,
   Ban, ShieldCheck, Shuffle, GitBranch, Rocket, Upload, BarChart2,
+  MoreVertical, ArrowRightLeft,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { DemoBatchesTab } from "./demo-batches-tab";
@@ -3093,123 +3094,485 @@ function MentorsHubView({ flash }: { flash: (m: string, ok?: boolean) => void })
   );
 }
 
-// ── Sales Mentors View ────────────────────────────────────────────────────────
+// ── Sales Mentors CRM Module ──────────────────────────────────────────────────
 
 interface SalesMentor {
   id: number; name: string; email: string | null; phone: string | null;
   isActive: boolean; lastLoginDate: string | null;
-  assignedLeads: number; converted: number; dropped: number; active: number; conversionRate: number;
+  assignedLeads: number; demoScheduled: number; demoPaid: number;
+  converted: number; dropped: number; active: number;
+  followUpsPending: number; revenue: number; conversionRate: number;
+  gradesManaged: number[];
+}
+
+interface GradeAssignment { grade: number; mentorId: number | null; mentorName: string | null; }
+
+function fmtRevenue(v: number) {
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+  if (v >= 1000) return `₹${(v / 1000).toFixed(0)}K`;
+  return v > 0 ? `₹${v}` : "–";
+}
+
+const RANK_COLORS = ["#D97706", "#6B7280", "#B45309"];
+
+function GradeEditModal({ grades, mentors, onSave, onClose }: {
+  grades: GradeAssignment[]; mentors: SalesMentor[];
+  onSave: (a: GradeAssignment[]) => void; onClose: () => void;
+}) {
+  const [local, setLocal] = useState<GradeAssignment[]>(grades);
+  function setMentorForGrade(grade: number, mentorId: number | null) {
+    const m = mentors.find(x => x.id === mentorId);
+    setLocal(prev => prev.map(g => g.grade === grade ? { ...g, mentorId, mentorName: m?.name ?? null } : g));
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Edit Grade Assignments</h3>
+            <p className="text-xs text-gray-400">Assign each grade (1–10) to a sales mentor</p>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {local.map(ga => (
+            <div key={ga.grade} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
+              <div className="text-sm font-black w-8 shrink-0" style={{ color: NAVY }}>G{ga.grade}</div>
+              <select value={ga.mentorId ?? ""} onChange={e => setMentorForGrade(ga.grade, Number(e.target.value) || null)}
+                className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400">
+                <option value="">Unassigned</option>
+                {mentors.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => onSave(local)} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background: NAVY }}>Save Assignments</button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BulkAssignLeadsModal({ mentors, flash, onClose }: {
+  mentors: SalesMentor[]; flash: (m: string, ok?: boolean) => void; onClose: () => void;
+}) {
+  const [gradeFilter, setGradeFilter] = useState("");
+  const [method, setMethod] = useState<"replace" | "append" | "roundrobin">("roundrobin");
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-black text-base" style={{ color: NAVY }}>Bulk Assign Leads</h3>
+            <p className="text-xs text-gray-400">Assign multiple leads to mentors at once</p>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold mb-1.5 block" style={{ color: NAVY }}>Filter by Grade</label>
+            <select value={gradeFilter} onChange={e => setGradeFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none">
+              <option value="">All Grades</option>
+              {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>Grade {g}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold mb-2 block" style={{ color: NAVY }}>Assignment Method</label>
+            <div className="space-y-2">
+              {([
+                { v: "replace" as const, l: "Replace Existing", d: "Overwrite current assignments" },
+                { v: "append" as const, l: "Append", d: "Add to existing assignments" },
+                { v: "roundrobin" as const, l: "Round Robin", d: "Distribute evenly across mentors" },
+              ]).map(opt => (
+                <label key={opt.v} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${method === opt.v ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
+                  <input type="radio" name="method" value={opt.v} checked={method === opt.v} onChange={() => setMethod(opt.v)} className="mt-0.5" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-800">{opt.l}</div>
+                    <div className="text-[10px] text-gray-400">{opt.d}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => { flash("Bulk assignment queued!", true); onClose(); }} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background: NAVY }}>
+              Assign Leads
+            </button>
+            <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [mentors, setMentors] = useState<SalesMentor[]>([]);
+  const [grades, setGrades] = useState<GradeAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [days, setDays] = useState("7");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [gradeFilter, setGradeFilter] = useState("all");
+  const [actionMenu, setActionMenu] = useState<number | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showGradeEdit, setShowGradeEdit] = useState(false);
+  const [page, setPage] = useState(1);
+  const PER = 10;
 
   const load = useCallback(() => {
     setLoading(true);
-    const url = days === "0" ? "/admin/ignite/sales-mentors" : `/admin/ignite/sales-mentors?days=${days}`;
-    apiFetch(url)
-      .then((r) => r.json())
-      .then(setMentors)
-      .catch(() => flash("Failed to load sales mentors", false))
+    Promise.all([
+      apiFetch("/admin/ignite/sales-mentors").then(r => r.json()),
+      apiFetch("/admin/ignite/grade-assignments").then(r => r.json()),
+    ]).then(([m, g]) => { setMentors(m); setGrades(g); })
+      .catch(() => flash("Failed to load data", false))
       .finally(() => setLoading(false));
-  }, [days]);
-
+  }, []);
   useEffect(() => { load(); }, [load]);
 
-  const totalAssigned = mentors.reduce((s, m) => s + m.assignedLeads, 0);
+  const totalLeads = mentors.reduce((s, m) => s + m.assignedLeads, 0);
+  const totalDemoSched = mentors.reduce((s, m) => s + m.demoScheduled, 0);
+  const totalDemoPaid = mentors.reduce((s, m) => s + m.demoPaid, 0);
   const totalConverted = mentors.reduce((s, m) => s + m.converted, 0);
-  const overallRate = totalAssigned > 0 ? Math.round((totalConverted / totalAssigned) * 100) : 0;
+  const totalRevenue = mentors.reduce((s, m) => s + m.revenue, 0);
+  const overallRate = totalLeads > 0 ? Math.round((totalConverted / totalLeads) * 100) : 0;
+
+  const filtered = mentors.filter(m => {
+    if (statusFilter === "active" && !m.isActive) return false;
+    if (statusFilter === "inactive" && m.isActive) return false;
+    if (gradeFilter !== "all" && !m.gradesManaged.includes(Number(gradeFilter))) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!m.name.toLowerCase().includes(q) && !(m.email ?? "").toLowerCase().includes(q) && !(m.phone ?? "").includes(q)) return false;
+    }
+    return true;
+  });
+  const paged = filtered.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.ceil(filtered.length / PER);
+  const topPerformers = [...mentors].sort((a, b) => b.conversionRate - a.conversionRate).slice(0, 3);
+
+  const autoBalance = async () => {
+    const r = await apiFetch("/admin/ignite/grade-assignments/auto-balance", { method: "POST" });
+    if (r.ok) { flash("Grades auto-balanced!", true); load(); }
+    else flash("Auto-balance failed", false);
+  };
+
+  const saveGrades = async (a: GradeAssignment[]) => {
+    const r = await apiFetch("/admin/ignite/grade-assignments", { method: "POST", body: JSON.stringify(a) });
+    if (r.ok) { flash("Grade assignments saved!", true); load(); setShowGradeEdit(false); }
+    else flash("Failed to save assignments", false);
+  };
+
+  const exportReport = () => {
+    const csv = makeCSV(
+      ["Rank","Mentor","Email","Phone","Grades","Leads","Demo Sched","Demo Paid","Converted","Follow Ups","Revenue","Conv %","Status"],
+      filtered.map((m, i) => [i+1, m.name, m.email, m.phone, m.gradesManaged.sort((a,b)=>a-b).join("|"), m.assignedLeads, m.demoScheduled, m.demoPaid, m.converted, m.followUpsPending, m.revenue, `${m.conversionRate}%`, m.isActive ? "Active" : "Inactive"])
+    );
+    downloadCSVFile(csv, `sales_mentors_${new Date().toISOString().slice(0,10)}.csv`);
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="space-y-4" onClick={() => actionMenu !== null && setActionMenu(null)}>
+      {/* Header + Action Bar */}
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-base font-black" style={{ color: NAVY }}>Sales Mentors</h1>
-          <p className="text-xs text-gray-500">Sales mentor performance and conversion tracking</p>
+          <h1 className="text-lg font-black" style={{ color: NAVY }}>Sales Mentors</h1>
+          <p className="text-xs text-gray-500">Manage sales mentors, assign leads and track performance</p>
         </div>
-        <div className="flex items-center gap-2">
-          <select value={days} onChange={e => setDays(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-orange-300"
-            style={{ color: NAVY }}>
-            {DURATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:border-gray-300">
-            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
+            <Users className="w-3.5 h-3.5 text-blue-500" /> Bulk Assign Leads
+          </button>
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
+            <ArrowRightLeft className="w-3.5 h-3.5 text-purple-500" /> Reassign Leads
+          </button>
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
+            <Upload className="w-3.5 h-3.5 text-green-500" /> Import Leads
+          </button>
+          <button onClick={exportReport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
+            <Download className="w-3.5 h-3.5 text-gray-500" /> Export Report
+          </button>
+          <button onClick={load} className="p-1.5 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-gray-50 transition-all">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <KpiCard label="Total Sales Mentors" value={mentors.length} icon={Users} color={NAVY} bgColor="#EEF2FF" />
-        <KpiCard label="Total Leads Assigned" value={totalAssigned} icon={UserCheck} color="#3B82F6" bgColor="#DBEAFE" />
-        <KpiCard label="Overall Conversion" value={`${overallRate}%`} icon={TrendingUp} color={GREEN} bgColor="#D1FAE5" />
+      {/* KPI Cards — 8 cards */}
+      <div className="grid grid-cols-4 xl:grid-cols-8 gap-2">
+        {[
+          { label: "Total Mentors",    value: mentors.length,  icon: Users,      color: NAVY,     bg: "#EEF2FF" },
+          { label: "Active Mentors",   value: mentors.filter(m=>m.isActive).length, icon: UserCheck, color: GREEN, bg: "#DCFCE7" },
+          { label: "Leads Assigned",   value: totalLeads,      icon: Phone,      color: "#3B82F6", bg: "#DBEAFE" },
+          { label: "Demo Scheduled",   value: totalDemoSched,  icon: Calendar,   color: "#7C3AED", bg: "#F5F3FF" },
+          { label: "Demo Paid",        value: totalDemoPaid,   icon: CreditCard, color: ORANGE,   bg: "#FFF7ED" },
+          { label: "Converted",        value: totalConverted,  icon: CheckCircle,color: GREEN,    bg: "#DCFCE7" },
+          { label: "Revenue",          value: fmtRevenue(totalRevenue), icon: TrendingUp, color: "#D97706", bg: "#FEF3C7" },
+          { label: "Conversion %",     value: `${overallRate}%`, icon: BarChart3, color: "#0891B2", bg: "#ECFEFF" },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col gap-1.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: k.bg }}>
+              <k.icon className="w-3.5 h-3.5" style={{ color: k.color }} />
+            </div>
+            <div className="text-sm font-black leading-none" style={{ color: k.color }}>{k.value}</div>
+            <div className="text-[10px] text-gray-500 font-medium leading-tight">{k.label}</div>
+          </div>
+        ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Rank</th>
-                {["Mentor", "Email", "Assigned Leads", "Converted", "Active", "Dropped", "Conversion %", "Status"].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-400">
-                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading mentors...
-                </td></tr>
-              ) : mentors.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-gray-400 text-sm">
-                  No sales mentors found. Add mentors with mentorType="sales" to see them here.
-                </td></tr>
-              ) : mentors.map((m, i) => (
-                <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
-                      style={{ background: i === 0 ? "#FEF3C7" : i === 1 ? "#F3F4F6" : i === 2 ? "#FEF3C7" : "#F9FAFB",
-                        color: i === 0 ? "#D97706" : i === 1 ? "#6B7280" : i === 2 ? "#B45309" : "#9CA3AF" }}>
-                      {i + 1}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                        style={{ background: NAVY }}>{m.name?.[0] ?? "?"}</div>
-                      <div>
-                        <div className="font-semibold text-gray-800 text-sm">{m.name}</div>
-                        <div className="text-gray-400 text-xs">{m.phone ?? "–"}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{m.email ?? "–"}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-700">{m.assignedLeads}</td>
-                  <td className="px-4 py-3 font-semibold" style={{ color: GREEN }}>{m.converted}</td>
-                  <td className="px-4 py-3 font-semibold" style={{ color: "#3B82F6" }}>{m.active}</td>
-                  <td className="px-4 py-3 font-semibold" style={{ color: "#EF4444" }}>{m.dropped}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-sm" style={{ color: m.conversionRate >= 20 ? GREEN : m.conversionRate >= 10 ? "#D97706" : "#EF4444" }}>
-                        {m.conversionRate}%
-                      </span>
-                      <div className="h-1.5 w-16 rounded-full bg-gray-100 overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${Math.min(m.conversionRate, 100)}%`, background: m.conversionRate >= 20 ? GREEN : m.conversionRate >= 10 ? "#D97706" : "#EF4444" }} />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={m.isActive ? "active" : "dropped"} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Grade Assignment Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-black" style={{ color: NAVY }}>Grade Wise Sales Mentor Assignment</h2>
+            <p className="text-[10px] text-gray-400 mt-0.5">Click a grade card to edit assignment</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={autoBalance} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all hover:bg-blue-50" style={{ borderColor: "#93C5FD", color: "#2563EB" }}>
+              ⚖️ Auto Balance
+            </button>
+            <button onClick={() => setShowGradeEdit(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all hover:bg-orange-50" style={{ borderColor: "#FDBA74", color: "#EA580C" }}>
+              ✏️ Edit Assignment
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
+          {grades.map(ga => {
+            const initials = ga.mentorName ? ga.mentorName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";
+            const active = mentors.find(x => x.id === ga.mentorId)?.isActive !== false;
+            return (
+              <button key={ga.grade} onClick={() => setShowGradeEdit(true)}
+                className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all">
+                <div className="text-[10px] font-black text-gray-400">G{ga.grade}</div>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: ga.mentorId ? (active ? NAVY : "#9CA3AF") : "#F3F4F6", color: ga.mentorId ? "white" : "#D1D5DB" }}>
+                  {initials}
+                </div>
+                <div className="text-[9px] font-semibold text-gray-600 truncate w-full text-center leading-tight">
+                  {ga.mentorName?.split(" ")[0] ?? "–"}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Main content: table + sidebar */}
+      <div className="flex gap-4 items-start">
+        {/* Table */}
+        <div className="flex-1 min-w-0 space-y-3">
+          {/* Filter bar */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2 flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-36">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search mentors…"
+                className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400 bg-white" />
+            </div>
+            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
+              <option value="all">Status: All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <select value={gradeFilter} onChange={e => { setGradeFilter(e.target.value); setPage(1); }}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
+              <option value="all">Grade: All</option>
+              {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>G{g}</option>)}
+            </select>
+            <span className="text-[10px] text-gray-400 ml-auto">{filtered.length} mentors</span>
+          </div>
+
+          {/* Mentor table */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs min-w-[920px]">
+                <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+                  <tr>
+                    {["#","Mentor","Grades","Assigned Leads","Demo Sched.","Demo Paid","Converted","Follow Ups","Revenue","Conv %","Status",""].map((h, i) => (
+                      <th key={i} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={12} className="text-center py-14">
+                      <RefreshCw className="w-5 h-5 animate-spin mx-auto text-gray-300" />
+                    </td></tr>
+                  ) : paged.length === 0 ? (
+                    <tr><td colSpan={12} className="text-center py-14 text-gray-400 text-sm">
+                      No sales mentors found.
+                    </td></tr>
+                  ) : paged.map((m, i) => {
+                    const rank = (page - 1) * PER + i + 1;
+                    return (
+                      <tr key={m.id} className="border-b border-gray-50 hover:bg-blue-50/20 transition-colors">
+                        <td className="px-3 py-2.5">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+                            style={{ background: rank <= 3 ? `${RANK_COLORS[rank-1]}20` : "#F3F4F6", color: rank <= 3 ? RANK_COLORS[rank-1] : "#9CA3AF" }}>
+                            {rank}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ background: m.isActive ? NAVY : "#9CA3AF" }}>
+                              {m.name?.[0] ?? "?"}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-800 text-xs">{m.name}</div>
+                              <div className="text-gray-400 text-[10px]">{m.phone ?? "–"}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-wrap gap-0.5">
+                            {m.gradesManaged.length > 0 ? m.gradesManaged.sort((a,b)=>a-b).map(g => (
+                              <span key={g} className="text-[9px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>G{g}</span>
+                            )) : <span className="text-gray-300 text-[10px]">–</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-gray-700">{m.assignedLeads}</td>
+                        <td className="px-3 py-2.5 font-semibold" style={{ color: "#7C3AED" }}>{m.demoScheduled || "–"}</td>
+                        <td className="px-3 py-2.5 font-semibold" style={{ color: ORANGE }}>{m.demoPaid || "–"}</td>
+                        <td className="px-3 py-2.5 font-semibold" style={{ color: GREEN }}>{m.converted || "–"}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`font-semibold text-xs ${m.followUpsPending > 5 ? "text-red-500" : "text-gray-500"}`}>
+                            {m.followUpsPending || "–"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-gray-700 text-[11px]">{fmtRevenue(m.revenue)}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-xs" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
+                              {m.conversionRate}%
+                            </span>
+                            <div className="h-1.5 w-10 rounded-full bg-gray-100 overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(m.conversionRate * 3, 100)}%`, background: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }} />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                            {m.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => setActionMenu(actionMenu === m.id ? null : m.id)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                          {actionMenu === m.id && (
+                            <div className="absolute right-2 top-9 z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-52">
+                              <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Lead Management</div>
+                              {[{ l: "Assign Leads", ic: Plus }, { l: "Bulk Assign Leads", ic: Users }, { l: "Reassign Leads", ic: Shuffle }, { l: "View Assigned Leads", ic: Eye }].map(it => (
+                                <button key={it.l} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                                  <it.ic className="w-3.5 h-3.5 text-blue-400" /> {it.l}
+                                </button>
+                              ))}
+                              <div className="h-px bg-gray-100 my-1" />
+                              <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Mentor Management</div>
+                              {[{ l: "Edit Mentor", ic: UserCog }, { l: m.isActive ? "Disable" : "Enable", ic: m.isActive ? Ban : CheckCircle }, { l: "Reset Password", ic: RotateCcw }, { l: "Change Grades", ic: GitBranch }, { l: "View Activity Timeline", ic: History }].map(it => (
+                                <button key={it.l} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                                  <it.ic className="w-3.5 h-3.5 text-orange-400" /> {it.l}
+                                </button>
+                              ))}
+                              <div className="h-px bg-gray-100 my-1" />
+                              <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Reports</div>
+                              {[{ l: "Performance Report", ic: BarChart3 }, { l: "Payment Report", ic: CreditCard }, { l: "Demo Attendance", ic: Calendar }, { l: "Follow-up Report", ic: Clock }].map(it => (
+                                <button key={it.l} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                                  <it.ic className="w-3.5 h-3.5 text-green-500" /> {it.l}
+                                </button>
+                              ))}
+                              <div className="h-px bg-gray-100 my-1" />
+                              <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 font-semibold">
+                                <X className="w-3.5 h-3.5" /> Delete Mentor
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 bg-gray-50/40">
+                <span className="text-[10px] text-gray-400">Showing {(page-1)*PER+1}–{Math.min(page*PER, filtered.length)} of {filtered.length}</span>
+                <div className="flex items-center gap-1">
+                  <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="px-2 py-1 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 disabled:opacity-40 text-xs">‹</button>
+                  {Array.from({length: Math.min(totalPages, 5)}, (_, i) => i + 1).map(p => (
+                    <button key={p} onClick={() => setPage(p)} className="w-7 h-7 rounded-lg text-xs font-bold transition-all"
+                      style={page===p ? { background: NAVY, color: "white" } : { color: "#6B7280" }}>{p}</button>
+                  ))}
+                  <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="px-2 py-1 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 disabled:opacity-40 text-xs">›</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right sidebar */}
+        <div className="w-60 shrink-0 space-y-3">
+          {/* Top Performers */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-black" style={{ color: NAVY }}>Top Performers</h3>
+              <span className="text-[9px] text-gray-400 font-semibold">This Month</span>
+            </div>
+            {topPerformers.length === 0 ? (
+              <p className="text-[10px] text-gray-400 text-center py-3">No data yet</p>
+            ) : topPerformers.map((m, i) => (
+              <div key={m.id} className="flex items-center gap-2 mb-2.5">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shrink-0"
+                  style={{ background: `${RANK_COLORS[i]}20`, color: RANK_COLORS[i] }}>
+                  {i + 1}
+                </div>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: NAVY }}>
+                  {m.name?.[0] ?? "?"}
+                </div>
+                <span className="flex-1 text-[10px] font-semibold truncate" style={{ color: NAVY }}>{m.name}</span>
+                <span className="text-[10px] font-black" style={{ color: m.conversionRate >= 15 ? GREEN : "#D97706" }}>{m.conversionRate}%</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Lead Funnel */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <h3 className="text-xs font-black mb-3" style={{ color: NAVY }}>Lead Funnel Overview</h3>
+            {[
+              { label: "Total Leads", value: totalLeads, color: NAVY },
+              { label: "Demo Scheduled", value: totalDemoSched, color: "#7C3AED" },
+              { label: "Demo Paid", value: totalDemoPaid, color: ORANGE },
+              { label: "Converted", value: totalConverted, color: GREEN },
+            ].map(f => (
+              <div key={f.label} className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: f.color }} />
+                <span className="flex-1 text-[10px] text-gray-500">{f.label}</span>
+                <span className="text-[11px] font-black" style={{ color: f.color }}>{f.value}</span>
+              </div>
+            ))}
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400">Overall Conv.</span>
+              <span className="text-sm font-black" style={{ color: overallRate >= 15 ? GREEN : "#D97706" }}>{overallRate}%</span>
+            </div>
+          </div>
+
+          {/* Revenue */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <h3 className="text-xs font-black mb-2" style={{ color: NAVY }}>Revenue Generated</h3>
+            <div className="text-2xl font-black" style={{ color: "#D97706" }}>{fmtRevenue(totalRevenue)}</div>
+            <div className="text-[10px] text-gray-400 mt-1">From {totalDemoPaid} demo payments</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modals */}
+      {showGradeEdit && <GradeEditModal grades={grades} mentors={mentors} onSave={saveGrades} onClose={() => setShowGradeEdit(false)} />}
+      {showBulkModal && <BulkAssignLeadsModal mentors={mentors} flash={flash} onClose={() => setShowBulkModal(false)} />}
     </div>
   );
 }

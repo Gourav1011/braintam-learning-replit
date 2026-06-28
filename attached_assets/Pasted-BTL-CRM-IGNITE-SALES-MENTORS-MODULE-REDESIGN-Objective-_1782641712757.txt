@@ -1,0 +1,175 @@
+BTL CRM – IGNITE SALES MENTORS MODULE REDESIGN
+
+Objective:
+Convert the current "Sales Mentors" page from a statistics dashboard into a complete Sales CRM management module. It should be operational, not just analytical.
+
+Keep Braintam's blue/orange theme and modern card-based UI.
+
+-----------------------------------------------------
+TOP ACTION BAR
+-----------------------------------------------------
+Buttons:
++ Add Sales Mentor
+📤 Bulk Assign Leads
+🔄 Reassign Leads
+📥 Import Leads
+📊 Export Report
+
+-----------------------------------------------------
+KPI CARDS
+-----------------------------------------------------
+Show:
+
+- Total Sales Mentors
+- Active Mentors
+- Leads Assigned
+- Demo Scheduled
+- Demo Paid
+- Converted Students
+- Revenue Generated
+- Conversion %
+
+-----------------------------------------------------
+GRADE ASSIGNMENT SECTION
+-----------------------------------------------------
+Create Grade 1–10 assignment cards.
+
+Example:
+
+G1 → Poonam
+G2 → Poonam
+G3 → Akshay
+G4 → Akshay
+G5 → Sales Mentor 1
+G6 → Sales Mentor 2
+G7 → Sales Mentor 2
+G8 → Sales Mentor 3
+G9 → Sales Mentor 3
+G10 → Poonam
+
+Actions:
+✏️ Edit Assignment
+⚖️ Auto Balance Leads
+
+Auto Balance should distribute leads evenly based on mentor workload.
+
+-----------------------------------------------------
+MENTOR TABLE
+-----------------------------------------------------
+Columns:
+
+Rank
+Mentor
+Phone
+Email
+Grades Managed
+Assigned Leads
+Demo Scheduled
+Demo Paid
+Converted
+Follow Ups Pending
+Revenue
+Conversion %
+Status
+Actions
+
+-----------------------------------------------------
+ACTIONS MENU (⋮)
+-----------------------------------------------------
+
+Lead Management:
+- Assign Leads
+- Bulk Assign Leads
+- Reassign Leads
+- View Assigned Leads
+
+Mentor Management:
+- Edit Mentor
+- Enable/Disable
+- Reset Password
+- Change Grades
+- View Activity Timeline
+
+Reports:
+- Conversion Report
+- Demo Attendance Report
+- Payment Report
+- Follow-up Report
+
+Danger Zone:
+- Archive Mentor
+- Delete Mentor
+
+-----------------------------------------------------
+LEAD ASSIGNMENT ENGINE
+-----------------------------------------------------
+
+When a new lead is created:
+
+1. Read student grade.
+2. Find assigned sales mentor for that grade.
+3. Check mentor workload.
+4. Assign automatically.
+5. Create notification.
+
+If Auto Balance is enabled:
+Assign using Round Robin.
+
+-----------------------------------------------------
+BULK ASSIGN MODAL
+-----------------------------------------------------
+
+Filters:
+- Grade
+- Lead Source
+- Status
+- Date Range
+
+Assignment Methods:
+○ Replace Existing
+○ Append
+○ Round Robin
+
+-----------------------------------------------------
+MENTOR PROFILE DRAWER
+-----------------------------------------------------
+
+Sections:
+
+Basic Information
+Performance Metrics
+Lead Funnel
+Assigned Leads
+Upcoming Follow Ups
+Revenue Generated
+Recent Activities
+Conversion Trend Chart
+
+-----------------------------------------------------
+NOTIFICATIONS
+-----------------------------------------------------
+
+Show alerts:
+
+- Follow Ups Due
+- No Login > 7 Days
+- Overloaded Mentors
+- Unassigned Leads
+- Low Conversion %
+
+-----------------------------------------------------
+UI IMPROVEMENTS
+-----------------------------------------------------
+
+Add:
+- Search
+- Status Filter
+- Grade Filter
+- Sort by Conversion
+- Sort by Revenue
+- Pagination
+- Responsive Design
+
+Use cards, tables, drawers, and side panels similar to HubSpot CRM.
+
+This page should function as a complete operational Sales Mentor Management System and not just a reporting dashboard.

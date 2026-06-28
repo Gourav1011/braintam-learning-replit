@@ -66,3 +66,4 @@ export * from "./stageSlots";
 export * from "./blockedWords";
 export * from "./chatViolations";
 export * from "./chatModeration";
+export * from "./mentorGradeAssignments";

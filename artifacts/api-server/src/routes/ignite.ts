@@ -18,6 +18,7 @@ import {
   mentorDeploymentCyclesTable,
   mentorGroupsTable,
   groupStudentsTable,
+  mentorGradeAssignmentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -479,55 +480,102 @@ router.get("/admin/ignite/follow-ups", adminOnly, async (_req, res) => {
   res.json(followUps);
 });
 
-router.get("/admin/ignite/sales-mentors", adminOnly, async (req, res) => {
-  const daysParam = Number(req.query.days);
-  const since = daysParam > 0 ? new Date(Date.now() - daysParam * 86400000) : null;
-
+router.get("/admin/ignite/sales-mentors", adminOnly, async (_req, res) => {
+  const mentorWhere = and(
+    or(eq(usersTable.role, "sales_mentor"), and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales")))!,
+    eq(usersTable.isArchived, false)
+  );
   const mentors = await db
     .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, lastLoginDate: usersTable.lastLoginDate })
-    .from(usersTable)
-    .where(and(
-      or(
-        eq(usersTable.role, "sales_mentor"),
-        and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"))
-      )!,
-      eq(usersTable.isArchived, false)
-    ));
+    .from(usersTable).where(mentorWhere);
 
   if (mentors.length === 0) { res.json([]); return; }
-
   const mentorIds = mentors.map((m) => m.id);
-  const enrollmentWhere = since
-    ? and(inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds), gte(demoBatchEnrollmentsTable.enrolledAt, since))
-    : inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds);
-  const demoStats = await db
-    .select({
+
+  const [demoStats, leadStats, revenueStats, gradeAssignments] = await Promise.all([
+    db.select({
       mentorId: demoBatchEnrollmentsTable.assignedMentorId,
       total: count(),
       converted: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus} = 'converted' THEN 1 ELSE 0 END)`,
       dropped: sql<number>`SUM(CASE WHEN ${demoBatchEnrollmentsTable.enrollmentStatus} = 'dropped' THEN 1 ELSE 0 END)`,
-    })
-    .from(demoBatchEnrollmentsTable)
-    .where(enrollmentWhere)
-    .groupBy(demoBatchEnrollmentsTable.assignedMentorId);
+    }).from(demoBatchEnrollmentsTable)
+      .where(inArray(demoBatchEnrollmentsTable.assignedMentorId, mentorIds))
+      .groupBy(demoBatchEnrollmentsTable.assignedMentorId),
 
-  const statsMap = Object.fromEntries(
-    demoStats.map((r) => [r.mentorId!, { total: Number(r.total), converted: Number(r.converted), dropped: Number(r.dropped) }]),
-  );
+    db.select({
+      mentorId: usersTable.assignedMentorId,
+      demoScheduled: sql<number>`SUM(CASE WHEN ${usersTable.leadStage} = 'Demo Scheduled' THEN 1 ELSE 0 END)`,
+      demoPaid: sql<number>`SUM(CASE WHEN ${usersTable.leadStage} IN ('Payment Sent','Converted') THEN 1 ELSE 0 END)`,
+      followUpsPending: sql<number>`SUM(CASE WHEN ${usersTable.nextFollowUpAt} IS NOT NULL THEN 1 ELSE 0 END)`,
+    }).from(usersTable)
+      .where(inArray(usersTable.assignedMentorId, mentorIds))
+      .groupBy(usersTable.assignedMentorId),
 
-  const enriched = mentors.map((m) => {
-    const s = statsMap[m.id] ?? { total: 0, converted: 0, dropped: 0 };
-    return {
-      ...m,
-      assignedLeads: s.total,
-      converted: s.converted,
-      dropped: s.dropped,
-      active: s.total - s.converted - s.dropped,
-      conversionRate: s.total > 0 ? Math.round((s.converted / s.total) * 100) : 0,
-    };
+    db.select({
+      mentorId: usersTable.assignedMentorId,
+      revenue: sql<number>`SUM(${ignitePaidStudentsTable.amountPaise})`,
+      demoPaidCount: count(),
+    }).from(ignitePaidStudentsTable)
+      .innerJoin(usersTable, eq(ignitePaidStudentsTable.studentId, usersTable.id))
+      .where(inArray(usersTable.assignedMentorId, mentorIds))
+      .groupBy(usersTable.assignedMentorId),
+
+    db.select().from(mentorGradeAssignmentsTable),
+  ]);
+
+  const sMap = Object.fromEntries(demoStats.map(r => [r.mentorId!, { total: Number(r.total), converted: Number(r.converted), dropped: Number(r.dropped) }]));
+  const lMap = Object.fromEntries(leadStats.map(r => [r.mentorId!, { demoScheduled: Number(r.demoScheduled), demoPaid: Number(r.demoPaid), followUpsPending: Number(r.followUpsPending) }]));
+  const rMap = Object.fromEntries(revenueStats.map(r => [r.mentorId!, { revenue: Math.round(Number(r.revenue) / 100), demoPaidCount: Number(r.demoPaidCount) }]));
+  const gradesByMentor: Record<number, number[]> = {};
+  for (const ga of gradeAssignments) {
+    if (ga.mentorId) { gradesByMentor[ga.mentorId] = gradesByMentor[ga.mentorId] ?? []; gradesByMentor[ga.mentorId].push(ga.grade); }
+  }
+
+  const enriched = mentors.map(m => {
+    const s = sMap[m.id] ?? { total: 0, converted: 0, dropped: 0 };
+    const l = lMap[m.id] ?? { demoScheduled: 0, demoPaid: 0, followUpsPending: 0 };
+    const r = rMap[m.id] ?? { revenue: 0, demoPaidCount: 0 };
+    return { ...m, assignedLeads: s.total, converted: s.converted, dropped: s.dropped, active: s.total - s.converted - s.dropped,
+      demoScheduled: l.demoScheduled, demoPaid: Math.max(l.demoPaid, r.demoPaidCount), followUpsPending: l.followUpsPending,
+      revenue: r.revenue, conversionRate: s.total > 0 ? Math.round((s.converted / s.total) * 100) : 0,
+      gradesManaged: gradesByMentor[m.id] ?? [] };
   }).sort((a, b) => b.conversionRate - a.conversionRate);
 
   res.json(enriched);
+});
+
+router.get("/admin/ignite/grade-assignments", adminOnly, async (_req, res) => {
+  const rows = await db.select().from(mentorGradeAssignmentsTable);
+  const map = Object.fromEntries(rows.map(r => [r.grade, r]));
+  res.json(Array.from({ length: 10 }, (_, i) => map[i + 1] ?? { grade: i + 1, mentorId: null, mentorName: null }));
+});
+
+router.post("/admin/ignite/grade-assignments", adminOnly, async (req, res) => {
+  const assignments = req.body as { grade: number; mentorId: number | null; mentorName: string | null }[];
+  for (const a of assignments) {
+    await db.insert(mentorGradeAssignmentsTable)
+      .values({ grade: a.grade, mentorId: a.mentorId, mentorName: a.mentorName })
+      .onConflictDoUpdate({ target: mentorGradeAssignmentsTable.grade, set: { mentorId: a.mentorId, mentorName: a.mentorName, updatedAt: new Date() } });
+  }
+  res.json({ ok: true });
+});
+
+router.post("/admin/ignite/grade-assignments/auto-balance", adminOnly, async (_req, res) => {
+  const active = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable)
+    .where(and(
+      or(eq(usersTable.role, "sales_mentor"), and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales")))!,
+      eq(usersTable.isActive, true), eq(usersTable.isArchived, false)
+    ));
+  if (active.length === 0) { res.status(400).json({ error: "No active sales mentors" }); return; }
+  const assignments = Array.from({ length: 10 }, (_, i) => ({
+    grade: i + 1, mentorId: active[i % active.length].id, mentorName: active[i % active.length].name,
+  }));
+  for (const a of assignments) {
+    await db.insert(mentorGradeAssignmentsTable)
+      .values({ grade: a.grade, mentorId: a.mentorId, mentorName: a.mentorName })
+      .onConflictDoUpdate({ target: mentorGradeAssignmentsTable.grade, set: { mentorId: a.mentorId, mentorName: a.mentorName, updatedAt: new Date() } });
+  }
+  res.json(assignments);
 });
 
 router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
