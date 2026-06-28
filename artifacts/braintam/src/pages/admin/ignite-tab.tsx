@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   LayoutDashboard, Users, BookOpen, Calendar, ClipboardList,
   Phone, TrendingUp, ChevronDown, ChevronRight, Search, Filter,
@@ -3571,6 +3572,97 @@ function fmtRevenue(v: number) {
 
 const RANK_COLORS = ["#D97706", "#6B7280", "#B45309"];
 
+function MentorRowMenu({
+  m, togglingId, onViewLeads, onAssignLead, onReassignLeads,
+  onEdit, onToggle, onChangeGrades, onReport,
+}: {
+  m: SalesMentor; togglingId: number | null;
+  onViewLeads: () => void; onAssignLead: () => void; onReassignLeads: () => void;
+  onEdit: () => void; onToggle: () => void; onChangeGrades: () => void;
+  onReport: (label: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler() { setOpen(false); }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  function toggle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right - 4 });
+    }
+    setOpen(o => !o);
+  }
+
+  function close() { setOpen(false); }
+
+  return (
+    <>
+      <button ref={btnRef} onClick={toggle}
+        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+        <MoreVertical className="w-3.5 h-3.5" />
+      </button>
+      {open && createPortal(
+        <div
+          style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
+          className="bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-52 text-xs"
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Lead Management</div>
+          <button onClick={() => { close(); onViewLeads(); }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-blue-50">
+            <Eye className="w-3.5 h-3.5 text-blue-400" /> View Assigned Leads
+          </button>
+          <button onClick={() => { close(); onAssignLead(); }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-green-50">
+            <Plus className="w-3.5 h-3.5 text-green-500" /> Assign Lead
+          </button>
+          <button onClick={() => { close(); onReassignLeads(); }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-orange-50">
+            <ArrowRightLeft className="w-3.5 h-3.5 text-orange-400" /> Reassign Leads
+          </button>
+          <div className="h-px bg-gray-100 my-1" />
+          <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Mentor Management</div>
+          <button onClick={() => { close(); onEdit(); }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+            <UserCog className="w-3.5 h-3.5 text-orange-400" /> Edit Mentor
+          </button>
+          <button onClick={() => { close(); onToggle(); }} disabled={togglingId === m.id}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+            {m.isActive ? <Ban className="w-3.5 h-3.5 text-red-400" /> : <CheckCircle className="w-3.5 h-3.5 text-green-400" />}
+            {togglingId === m.id ? "Updating…" : m.isActive ? "Disable Mentor" : "Enable Mentor"}
+          </button>
+          <button onClick={() => { close(); onChangeGrades(); }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+            <GitBranch className="w-3.5 h-3.5 text-purple-400" /> Change Grades
+          </button>
+          <div className="h-px bg-gray-100 my-1" />
+          <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Reports</div>
+          {([
+            { l: "Performance Report", ic: BarChart3 },
+            { l: "Payment Report",     ic: CreditCard },
+            { l: "Follow-up Report",   ic: Clock },
+          ] as { l: string; ic: React.ElementType }[]).map(it => (
+            <button key={it.l} onClick={() => { close(); onReport(it.l); }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+              <it.ic className="w-3.5 h-3.5 text-green-500" /> {it.l}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [mentors, setMentors] = useState<SalesMentor[]>([]);
   const [grades, setGrades] = useState<GradeAssignment[]>([]);
@@ -3773,58 +3865,18 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                             {m.isActive ? "Active" : "Off"}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => setActionMenu(actionMenu === m.id ? null : m.id)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
-                            <MoreVertical className="w-3.5 h-3.5" />
-                          </button>
-                          {actionMenu === m.id && (
-                            <div className="absolute right-2 top-9 z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-52">
-                              <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Lead Management</div>
-                              <button onClick={() => { setViewLeadsMentor(m); setActionMenu(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50">
-                                <Eye className="w-3.5 h-3.5 text-blue-400" /> View Assigned Leads
-                              </button>
-                              <button onClick={() => { setAssignLeadMentor(m); setActionMenu(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-green-50">
-                                <Plus className="w-3.5 h-3.5 text-green-500" /> Assign Lead
-                              </button>
-                              <button onClick={() => { setViewLeadsMentor(m); setActionMenu(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50">
-                                <ArrowRightLeft className="w-3.5 h-3.5 text-orange-400" /> Reassign Leads
-                              </button>
-                              <div className="h-px bg-gray-100 my-1" />
-                              <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Mentor Management</div>
-                              <button onClick={() => { setEditMentor(m); setActionMenu(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                <UserCog className="w-3.5 h-3.5 text-orange-400" /> Edit Mentor
-                              </button>
-                              <button onClick={() => { setConfirmToggle(m); setActionMenu(null); }}
-                                disabled={togglingId === m.id}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                                {m.isActive
-                                  ? <Ban className="w-3.5 h-3.5 text-red-400" />
-                                  : <CheckCircle className="w-3.5 h-3.5 text-green-400" />}
-                                {togglingId === m.id ? "Updating…" : m.isActive ? "Disable Mentor" : "Enable Mentor"}
-                              </button>
-                              <button onClick={() => { setChangeGradesMentor(m); setActionMenu(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                <GitBranch className="w-3.5 h-3.5 text-purple-400" /> Change Grades
-                              </button>
-                              <div className="h-px bg-gray-100 my-1" />
-                              <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Reports</div>
-                              {([
-                                { l: "Performance Report", ic: BarChart3 },
-                                { l: "Payment Report",    ic: CreditCard },
-                                { l: "Follow-up Report",  ic: Clock },
-                              ] as { l: string; ic: React.ElementType }[]).map(it => (
-                                <button key={it.l} onClick={() => { flash(`${it.l} — coming soon`, true); setActionMenu(null); }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                  <it.ic className="w-3.5 h-3.5 text-green-500" /> {it.l}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                        <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                          <MentorRowMenu
+                            m={m}
+                            togglingId={togglingId}
+                            onViewLeads={() => setViewLeadsMentor(m)}
+                            onAssignLead={() => setAssignLeadMentor(m)}
+                            onReassignLeads={() => setViewLeadsMentor(m)}
+                            onEdit={() => setEditMentor(m)}
+                            onToggle={() => setConfirmToggle(m)}
+                            onChangeGrades={() => setChangeGradesMentor(m)}
+                            onReport={(label) => flash(`${label} — coming soon`, true)}
+                          />
                         </td>
                       </tr>
                     );
