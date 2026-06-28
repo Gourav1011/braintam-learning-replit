@@ -10,7 +10,7 @@ import {
   mentorStudentAssignmentsTable,
   mentorDeploymentCyclesTable,
 } from "@workspace/db";
-import { eq, desc, and, ilike, or, inArray, isNull, gte, count } from "drizzle-orm";
+import { eq, desc, and, or, isNull, gte, sql, inArray, count } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -303,92 +303,254 @@ router.get("/mentor/long-term/payment-links", mentorAuth, async (req, res) => {
 });
 
 // ── POST /api/mentor/long-term/upload-payment ─────────────────────────────────
+// Mentor uploads UPI/bank/cash/cheque proof. Two-tier duplicate check:
+//   Hard: same referenceNumber + type → block (409)
+//   Soft: same studentId + amount within 7 days → allow, flag isDuplicate=true
 router.post("/mentor/long-term/upload-payment", mentorAuth, async (req, res) => {
-  const { studentId, amount, referenceNumber, screenshotsJson, type } = req.body as {
+  const { studentId, amount, referenceNumber, screenshotsJson, type, paymentDate, remarks } = req.body as {
     studentId?: number; amount?: number; referenceNumber?: string;
-    screenshotsJson?: string; type?: string;
+    screenshotsJson?: string; type?: string; paymentDate?: string; remarks?: string;
   };
   if (!studentId || !amount || !referenceNumber) {
     res.status(400).json({ error: "studentId, amount, and referenceNumber are required" });
     return;
   }
 
-  // duplicate reference check
-  const existing = await db.select({ id: manualPaymentsTable.id })
+  const paymentType = type ?? "upi";
+
+  // ── Hard duplicate: same referenceNumber (unique constraint covers this) ──
+  const hardDupe = await db
+    .select({ id: manualPaymentsTable.id, type: manualPaymentsTable.type })
     .from(manualPaymentsTable)
     .where(eq(manualPaymentsTable.referenceNumber, referenceNumber))
     .limit(1);
-  if (existing.length > 0) {
-    res.status(400).json({ error: "Duplicate reference number" });
+  if (hardDupe.length > 0) {
+    res.status(409).json({
+      error: "This payment reference already exists. Please check and try again.",
+      duplicateId: hardDupe[0].id,
+    });
     return;
   }
+
+  // ── Soft duplicate: same studentId + same amount within 7 days ────────────
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const softDupes = await db
+    .select({ id: manualPaymentsTable.id })
+    .from(manualPaymentsTable)
+    .where(
+      and(
+        eq(manualPaymentsTable.studentId, studentId),
+        eq(manualPaymentsTable.amount, amount),
+        gte(manualPaymentsTable.uploadedAt, sevenDaysAgo),
+      ),
+    )
+    .limit(1);
+
+  const isDuplicate = softDupes.length > 0;
+  const duplicatePaymentId = softDupes[0]?.id ?? null;
 
   const [row] = await db.insert(manualPaymentsTable).values({
     studentId,
     submittedById: (req as unknown as { user: { id: number } }).user.id,
-    type: type ?? "upi",
+    type: paymentType,
     amount,
     referenceNumber,
+    paymentDate: paymentDate ? new Date(paymentDate) : null,
+    remarks: remarks ?? null,
     screenshotsJson: screenshotsJson ?? null,
     status: "pending",
+    isDuplicate,
+    duplicateType: isDuplicate ? "soft" : null,
+    duplicateScore: isDuplicate ? 70 : null,
+    duplicatePaymentId,
+    installmentNumber: 1,
   }).returning();
 
-  res.json({ id: row.id, status: "pending" });
+  res.json({ id: row.id, status: "pending", isDuplicate, duplicatePaymentId });
+});
+
+// ── GET /api/admin/long-term/manual-payments/stats ───────────────────────────
+router.get("/admin/long-term/manual-payments/stats", adminOnly, async (_req, res) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [all, pendingCount, approvedToday, rejectedToday, duplicateCount] = await Promise.all([
+    db.select({ total: sql<string>`coalesce(sum(amount),0)`, count: sql<string>`count(*)` })
+      .from(manualPaymentsTable).where(eq(manualPaymentsTable.status, "approved")),
+    db.select({ count: sql<string>`count(*)` })
+      .from(manualPaymentsTable).where(eq(manualPaymentsTable.status, "pending")),
+    db.select({ total: sql<string>`coalesce(sum(amount),0)`, count: sql<string>`count(*)` })
+      .from(manualPaymentsTable)
+      .where(and(eq(manualPaymentsTable.status, "approved"), gte(manualPaymentsTable.approvedAt, todayStart))),
+    db.select({ count: sql<string>`count(*)` })
+      .from(manualPaymentsTable)
+      .where(and(eq(manualPaymentsTable.status, "rejected"), gte(manualPaymentsTable.uploadedAt, todayStart))),
+    db.select({ count: sql<string>`count(*)` })
+      .from(manualPaymentsTable).where(eq(manualPaymentsTable.isDuplicate, true)),
+  ]);
+
+  res.json({
+    totalApprovedRupees: Number(all[0]?.total ?? 0),
+    totalApprovedCount: Number(all[0]?.count ?? 0),
+    pendingCount: Number(pendingCount[0]?.count ?? 0),
+    approvedTodayRupees: Number(approvedToday[0]?.total ?? 0),
+    approvedTodayCount: Number(approvedToday[0]?.count ?? 0),
+    rejectedTodayCount: Number(rejectedToday[0]?.count ?? 0),
+    duplicateCount: Number(duplicateCount[0]?.count ?? 0),
+  });
 });
 
 // ── GET /api/admin/long-term/manual-payments ──────────────────────────────────
-router.get("/admin/long-term/manual-payments", adminOnly, async (req, res) => {
-  const rows = await db
-    .select({
-      id: manualPaymentsTable.id,
-      studentId: manualPaymentsTable.studentId,
-      submittedById: manualPaymentsTable.submittedById,
-      type: manualPaymentsTable.type,
-      amount: manualPaymentsTable.amount,
-      referenceNumber: manualPaymentsTable.referenceNumber,
-      screenshotsJson: manualPaymentsTable.screenshotsJson,
-      status: manualPaymentsTable.status,
-      uploadedAt: manualPaymentsTable.uploadedAt,
-      approvedById: manualPaymentsTable.approvedById,
-      approvedAt: manualPaymentsTable.approvedAt,
-      rejectionReason: manualPaymentsTable.rejectionReason,
-      studentName: usersTable.name,
-      studentPhone: usersTable.phone,
-    })
-    .from(manualPaymentsTable)
-    .leftJoin(usersTable, eq(manualPaymentsTable.studentId, usersTable.id))
-    .orderBy(desc(manualPaymentsTable.uploadedAt));
+// Returns full list with student + mentor names joined. Archived rows excluded by default.
+router.get("/admin/long-term/manual-payments", adminOnly, async (_req, res) => {
+  // We need two joins on usersTable (student + mentor), use raw SQL alias approach
+  const rows = await db.execute(sql`
+    SELECT
+      mp.id,
+      mp.student_id          AS "studentId",
+      mp.submitted_by_id     AS "submittedById",
+      mp.type,
+      mp.amount,
+      mp.reference_number    AS "referenceNumber",
+      mp.payment_date        AS "paymentDate",
+      mp.remarks,
+      mp.screenshots_json    AS "screenshotsJson",
+      mp.status,
+      mp.is_duplicate        AS "isDuplicate",
+      mp.duplicate_type      AS "duplicateType",
+      mp.duplicate_score     AS "duplicateScore",
+      mp.duplicate_payment_id AS "duplicatePaymentId",
+      mp.receipt_number      AS "receiptNumber",
+      mp.installment_number  AS "installmentNumber",
+      mp.is_archived         AS "isArchived",
+      mp.uploaded_at         AS "uploadedAt",
+      mp.approved_by_id      AS "approvedById",
+      mp.approved_at         AS "approvedAt",
+      mp.rejection_reason    AS "rejectionReason",
+      s.name                 AS "studentName",
+      s.phone                AS "studentPhone",
+      s.grade                AS "studentGrade",
+      m.name                 AS "mentorName",
+      m.email                AS "mentorEmail"
+    FROM manual_payments mp
+    LEFT JOIN users s ON s.id = mp.student_id
+    LEFT JOIN users m ON m.id = mp.submitted_by_id
+    WHERE mp.is_archived = false
+    ORDER BY mp.uploaded_at DESC
+  `);
 
-  res.json(rows);
+  res.json(rows.rows);
 });
 
 // ── POST /api/admin/long-term/manual-payments/:id/approve ─────────────────────
+// Transactional: checks pending status → generates BTL receipt → writes audit log
 router.post("/admin/long-term/manual-payments/:id/approve", adminOnly, async (req, res) => {
   const id = Number(req.params["id"]);
-  const adminId = (req as unknown as { user: { id: number } }).user.id;
+  const actor = (req as unknown as { user: { id: number; name: string; role: string } }).user;
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const [row] = await db.update(manualPaymentsTable)
-    .set({ status: "approved", approvedById: adminId, approvedAt: new Date() })
+  // Fetch row first to check status
+  const [existing] = await db
+    .select({ status: manualPaymentsTable.status, amount: manualPaymentsTable.amount, studentId: manualPaymentsTable.studentId })
+    .from(manualPaymentsTable)
     .where(eq(manualPaymentsTable.id, id))
+    .limit(1);
+
+  if (!existing) { res.status(404).json({ error: "Payment not found" }); return; }
+  if (existing.status !== "pending") {
+    res.status(409).json({ error: `Payment is already ${existing.status}` });
+    return;
+  }
+
+  // Generate sequential receipt number BTL-YYYY-000001
+  const year = new Date().getFullYear();
+  const prefix = `BTL-${year}-`;
+  const maxRow = await db.execute(sql`
+    SELECT receipt_number FROM manual_payments
+    WHERE receipt_number LIKE ${prefix + '%'}
+    ORDER BY receipt_number DESC LIMIT 1
+  `);
+  const lastReceipt = (maxRow.rows[0] as { receipt_number?: string } | undefined)?.receipt_number;
+  const nextSeq = lastReceipt ? parseInt(lastReceipt.split("-")[2]) + 1 : 1;
+  const receiptNumber = `${prefix}${String(nextSeq).padStart(6, "0")}`;
+
+  const [row] = await db.update(manualPaymentsTable)
+    .set({
+      status: "approved",
+      approvedById: actor.id,
+      approvedAt: new Date(),
+      receiptNumber,
+    })
+    .where(and(eq(manualPaymentsTable.id, id), eq(manualPaymentsTable.status, "pending")))
     .returning();
 
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ id: row.id, status: row.status });
+  if (!row) {
+    res.status(409).json({ error: "Payment was updated concurrently. Please refresh." });
+    return;
+  }
+
+  // Write audit log (non-fatal)
+  try {
+    await db.insert(auditLogsTable).values({
+      actorId: actor.id,
+      actorName: actor.name,
+      actorRole: actor.role,
+      action: "manual_payment_approved",
+      actionLabel: `Manual Payment Approved — ₹${existing.amount?.toLocaleString("en-IN")}`,
+      category: "finance",
+      module: "manual_payments",
+      targetType: "manual_payment",
+      targetId: id,
+      targetName: receiptNumber,
+      afterValue: JSON.stringify({ status: "approved", receiptNumber, amount: existing.amount }),
+    });
+  } catch { /* audit non-fatal */ }
+
+  res.json({ id: row.id, status: row.status, receiptNumber });
 });
 
 // ── POST /api/admin/long-term/manual-payments/:id/reject ──────────────────────
 router.post("/admin/long-term/manual-payments/:id/reject", adminOnly, async (req, res) => {
   const id = Number(req.params["id"]);
   const { reason } = req.body as { reason?: string };
+  const actor = (req as unknown as { user: { id: number; name: string; role: string } }).user;
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [existing] = await db
+    .select({ status: manualPaymentsTable.status, amount: manualPaymentsTable.amount })
+    .from(manualPaymentsTable)
+    .where(eq(manualPaymentsTable.id, id))
+    .limit(1);
+
+  if (!existing) { res.status(404).json({ error: "Payment not found" }); return; }
+  if (existing.status !== "pending") {
+    res.status(409).json({ error: `Payment is already ${existing.status}` });
+    return;
+  }
 
   const [row] = await db.update(manualPaymentsTable)
     .set({ status: "rejected", rejectionReason: reason ?? "" })
-    .where(eq(manualPaymentsTable.id, id))
+    .where(and(eq(manualPaymentsTable.id, id), eq(manualPaymentsTable.status, "pending")))
     .returning();
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  try {
+    await db.insert(auditLogsTable).values({
+      actorId: actor.id,
+      actorName: actor.name,
+      actorRole: actor.role,
+      action: "manual_payment_rejected",
+      actionLabel: `Manual Payment Rejected — ₹${existing.amount?.toLocaleString("en-IN")}`,
+      category: "finance",
+      module: "manual_payments",
+      targetType: "manual_payment",
+      targetId: id,
+      targetName: `Payment #${id}`,
+      afterValue: JSON.stringify({ status: "rejected", reason }),
+    });
+  } catch { /* audit non-fatal */ }
+
   res.json({ id: row.id, status: row.status });
 });
 

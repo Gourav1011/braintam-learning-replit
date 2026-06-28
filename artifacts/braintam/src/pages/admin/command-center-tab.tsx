@@ -11,6 +11,7 @@ import { MentorManagementView } from "./command-center-mentors-tab";
 import { TeacherManagementView } from "./command-center-teachers-tab";
 import { RolesPermissionsView } from "./command-center-roles-tab";
 import { AuditLogsView } from "./command-center-audit-logs-tab";
+import { LongTermPaymentsView } from "./long-term-payments-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 const NAVY   = "#0B2B6B";
@@ -36,6 +37,7 @@ type CCView =
   | "roles-permissions"
   | "audit-logs"
   | "course-pricing"
+  | "long-term-payments"
   | "settings";
 
 interface DashboardData {
@@ -337,6 +339,7 @@ const NAV: NavItem[] = [
   { key: "roles-permissions",  label: "Roles & Permissions", icon: ShieldCheck,     description: "Database-driven role and permission system",  status: "live"        },
   { key: "audit-logs",         label: "Audit Logs",          icon: FileText,        description: "Full trail of all system actions",            status: "live"        },
   { key: "course-pricing",     label: "Course Pricing",      icon: DollarSign,      description: "Set per-grade, per-subject long-term fees",   status: "live"        },
+  { key: "long-term-payments", label: "Payment Uploads",     icon: CheckCircle2,    description: "Review and approve mentor-uploaded cash payments", status: "live"     },
   { key: "settings",           label: "Settings",            icon: Settings,        description: "Platform-wide configuration and preferences", status: "coming-soon" },
 ];
 
@@ -346,8 +349,9 @@ const ROADMAPS: Record<Exclude<CCView, "dashboard">, { phase: string; items: str
   "teacher-management": [{ phase: "Phase C Step 4", items: ["Teacher roster with class load", "Subject–teacher mapping", "Attendance submission tracking", "Schedule overview"] }, { phase: "Phase C+", items: ["Teacher performance metrics", "Student feedback per teacher"] }],
   "roles-permissions":  [{ phase: "Phase D Step 5", items: ["DB-driven roles table", "Per-module action permissions (View/Create/Edit/Delete/Assign)", "Super Admin permission editor UI", "Role hierarchy enforcement"] }, { phase: "Phase D+", items: ["Permission inheritance", "Custom role creation", "Audit log of permission changes"] }],
   "audit-logs":         [{ phase: "Phase H Step 6", items: ["Who changed what and when", "Old value → new value diffs", "Filter by user, module, date", "Export to CSV"] }, { phase: "Phase H+", items: ["Real-time audit stream", "Alert on suspicious actions"] }],
-  "course-pricing":     [{ phase: "Phase 1 — Live", items: ["Per-grade, per-subject pricing grid", "Full & partial payment support", "Seed defaults on startup", "Edit any cell inline"] }, { phase: "Phase 2", items: ["Discount codes", "Bulk-grade pricing", "Pricing history & audit trail"] }],
-  "settings":           [{ phase: "Phase B+", items: ["Platform name & branding", "Academic year configuration", "Session timeout settings", "Feature flags"] }, { phase: "Later", items: ["Email notification templates", "Maintenance mode toggle", "Integration toggles"] }],
+  "course-pricing":       [{ phase: "Phase 1 — Live", items: ["Per-grade, per-subject pricing grid", "Full & partial payment support", "Seed defaults on startup", "Edit any cell inline"] }, { phase: "Phase 2", items: ["Discount codes", "Bulk-grade pricing", "Pricing history & audit trail"] }],
+  "long-term-payments":   [{ phase: "Phase 1 — Live", items: ["Admin review queue with tabs (All/Pending/Approved/Rejected/Duplicate)", "Hard & soft duplicate detection", "Receipt generation (BTL-YYYY-000001)", "Detail drawer with screenshots & approve/reject flow", "Audit log on every action"] }, { phase: "Phase 2", items: ["Student fee ledger & installment tracking", "SMS notification on approval", "CSV export", "Overpayment protection"] }],
+  "settings":             [{ phase: "Phase B+", items: ["Platform name & branding", "Academic year configuration", "Session timeout settings", "Feature flags"] }, { phase: "Later", items: ["Email notification templates", "Maintenance mode toggle", "Integration toggles"] }],
 };
 
 function StatusBadge({ status }: { status: NavItem["status"] }) {
@@ -705,7 +709,8 @@ export function CommandCenterTab() {
         {view === "roles-permissions"   && <RolesPermissionsView   flash={flash} />}
         {view === "audit-logs"          && <AuditLogsView          flash={flash} />}
         {view === "course-pricing"      && <CoursePricingView />}
-        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && view !== "teacher-management" && view !== "roles-permissions" && view !== "audit-logs" && view !== "course-pricing" && <ComingSoonView view={view} />}
+        {view === "long-term-payments"  && <LongTermPaymentsView />}
+        {view !== "dashboard" && view !== "staff-management" && view !== "mentor-management" && view !== "teacher-management" && view !== "roles-permissions" && view !== "audit-logs" && view !== "course-pricing" && view !== "long-term-payments" && <ComingSoonView view={view} />}
       </div>
     </div>
   );
