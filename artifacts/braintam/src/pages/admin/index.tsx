@@ -78,6 +78,7 @@ import { MasteryStudentsTab } from "./mastery-students-tab";
 import { MasteryPaymentVerificationTab } from "./mastery-payment-verification-tab";
 import { MasteryDeploymentTab } from "./mastery-deployment-tab";
 import { MasteryRetentionTab } from "./mastery-retention-tab";
+import { MasteryAttendanceAnalyticsTab } from "./mastery-attendance-analytics-tab";
 import { BlockedWordsTab } from "./blocked-words-tab";
 
 import { API_BASE as BASE } from "@/lib/api-base";
@@ -118,6 +119,7 @@ type Tab =
   | "mastery-payments"
   | "mastery-deployment"
   | "mastery-retention"
+  | "mastery-attendance"
   | "blocked-words"
   | "profile";
 
@@ -1304,7 +1306,7 @@ function AdminPageInner() {
           { label: "Mentors", icon: UserCheck2, tab: "mentors" },
           { label: "Assessments", icon: ClipboardList, tab: "assessments" },
           { label: "Announcements", icon: Bell, tab: "announcements" },
-          { label: "Attendance", icon: CheckSquare, tab: "health" },
+          { label: "Attendance Analytics", icon: CheckSquare, tab: "mastery-attendance" },
         ],
       }],
     },
@@ -3095,6 +3097,7 @@ function AdminPageInner() {
         {tab === "mastery-payments"    && <MasteryPaymentVerificationTab />}
         {tab === "mastery-deployment" && <MasteryDeploymentTab />}
         {tab === "mastery-retention"  && <MasteryRetentionTab />}
+        {tab === "mastery-attendance" && <MasteryAttendanceAnalyticsTab />}
 
         {/* ── Gamification ─────────────────────────────────────────────── */}
         {tab === "gamification" && <GamificationTab />}
