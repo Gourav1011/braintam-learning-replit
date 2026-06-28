@@ -1,0 +1,140 @@
+Architecture is approved.
+
+Final confirmations:
+
+✅ No limit on the number of courses per grade.
+✅ Only one course per grade can have admissionStatus = active at a time.
+✅ Existing students never move automatically.
+✅ All content modules are already linked by course_id, so Course A and Course B remain completely isolated.
+✅ assignedCourseId in masteryStudentsTable remains the source of truth.
+✅ No student_enrollments table.
+✅ No course_instances table.
+✅ Only one known blocker exists: masteryDeployment.ts Map<grade, courseId> assumption.
+
+Before starting implementation:
+
+==================================================
+IMPLEMENTATION ORDER
+====================
+
+Phase 1
+Database Migration
+
+Add to coursesTable:
+
+* instanceName
+* admissionStatus
+
+Defaults:
+admissionStatus = active
+
+No new tables.
+
+==================================================
+Phase 2
+Critical Bug Fix
+
+Fix:
+
+masteryDeployment.ts
+
+Remove all assumptions that:
+
+one grade = one course
+
+Whenever the system needs the admission destination, use:
+
+grade = X
+courseType = mastery
+status = active
+admissionStatus = active
+
+==================================================
+Phase 3
+Course Management
+
+Update Course CRUD:
+
+Create Course
+Edit Course
+Course Listing
+
+Features:
+
+* Auto-generate:
+  Course A
+  Course B
+  Course C
+  ...
+
+* Allow admin rename.
+
+* Add:
+  Activate Admissions
+
+When activated:
+
+Close current active admission course for that grade.
+Activate selected course.
+
+This operation must be atomic.
+
+==================================================
+Phase 4
+Payment Conversion Flow
+
+Trigger:
+
+Payment Approved
+
+Flow:
+
+Read lead.grade
+↓
+Find active admission course
+↓
+Create or update mastery student
+↓
+Populate assignedCourseId
+↓
+Mark lead converted
+↓
+Create timeline entry
+↓
+Course instantly appears in Student App
+
+If no active course exists:
+
+* Payment still succeeds
+* Warning log created
+* Admin notification shown:
+  "No active Mastery course found for Grade X."
+
+==================================================
+Phase 5
+Student App
+
+My Courses should read:
+
+masteryStudentsTable.assignedCourseId
+
+and immediately display:
+
+Mastery Grade 3
+Course A
+
+Student remains attached to that course permanently unless manually changed by an admin.
+
+==================================================
+FINAL REQUIREMENT
+=================
+
+Before writing code, provide:
+
+1. Exact migration files
+2. Exact backend files being modified
+3. Exact frontend files being modified
+4. API contract changes
+5. Rollback plan if migration fails
+
+After this implementation plan is reviewed, then start coding.
