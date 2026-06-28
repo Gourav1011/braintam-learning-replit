@@ -1,0 +1,184 @@
+BTL Testing & Data Reset Plan
+
+Objective:
+Remove dependency on old employee data and test the complete Braintam workflow from Lead Creation → Mentor Assignment → Teacher Assignment → Live Class → Attendance → Analytics.
+
+=================================================
+PHASE 1 - CREATE TEST USERS
+===========================
+
+Create fresh test accounts only.
+
+Mentors (6 Total)
+Sales Mentors
+
+1. Sales Mentor 1
+2. Sales Mentor 2
+3. Sales Mentor 3
+
+Academic Mentors
+4. Academic Mentor 1
+5. Academic Mentor 2
+6. Academic Mentor 3
+
+Teachers (6 Total)
+
+Teachers should NOT belong only to Ignite or Mastery.
+
+Teachers are global resources and can take classes anywhere.
+
+Teacher 1
+Teacher 2
+Teacher 3
+Teacher 4
+Teacher 5
+Teacher 6
+
+=================================================
+PHASE 2 - FIX USER MANAGEMENT
+=============================
+
+Verify:
+
+✓ Create Mentor
+✓ Edit Mentor
+✓ Disable Mentor
+✓ Reassign Mentor
+✓ Mentor list loading
+✓ Search Mentor
+✓ Filters working
+
+Verify:
+
+✓ Create Teacher
+✓ Edit Teacher
+✓ Disable Teacher
+✓ Teacher list loading
+✓ Search Teacher
+✓ Filters working
+
+=================================================
+PHASE 3 - IGNITE FLOW TEST
+==========================
+
+Step 1
+Create Lead
+
+Step 2
+Assign Lead to Sales Mentor
+
+Step 3
+Convert Lead to Demo Paid
+
+Step 4
+Deploy Lead to Batch
+
+Step 5
+Assign Academic Mentor
+
+Step 6
+Assign Teacher
+
+Step 7
+Auto-create Batch Sessions
+
+Step 8
+Auto-create Live Classes
+
+Step 9
+Teacher enters class
+
+Step 10
+Mentor joins class
+
+Step 11
+Student joins class
+
+=================================================
+PHASE 4 - LIVE CLASS TESTING
+============================
+
+Test every feature.
+
+✓ Teacher Join
+✓ Mentor Join
+✓ Student Join
+✓ Attendance Tracking
+✓ Live / Backstage / Absent
+✓ Search Student
+✓ Group Chat
+✓ Group Mentor Chat
+✓ Poll
+✓ Leaderboard
+✓ Raise Hand
+✓ Give Mic
+✓ Stage System
+✓ Accept Request
+✓ Canva Presentation
+✓ Recording Link
+✓ Payment Badge
+✓ End Class
+✓ Reconnect Handling
+✓ Chat Moderation
+✓ Attendance Reports
+✓ Analytics
+✓ Student Portal Visibility
+
+=================================================
+PHASE 5 - MASTERY FLOW TEST
+===========================
+
+Create Mastery Course
+
+Upload syllabus CSV.
+
+CSV:
+
+Date,Chapter,Topic,Description
+
+System should:
+
+✓ Create Chapters
+✓ Create Topics
+✓ Generate Unique IDs
+✓ Prevent Duplicates
+✓ Display Syllabus to Students
+✓ Auto-create Topic Live Sessions
+✓ Show upcoming sessions in student portal
+✓ Allow teacher editing of session details
+
+=================================================
+PHASE 6 - VERIFY AUTOMATIONS
+============================
+
+Batch Created
+↓
+Sessions Auto Created
+↓
+Teacher Auto Assigned
+↓
+Live Classes Auto Created
+↓
+Mentor Sees Schedule
+↓
+Students See Schedule
+↓
+Attendance Recorded
+↓
+Reports Generated
+
+=================================================
+PHASE 7 - FINAL RESET
+=====================
+
+After all testing is successful:
+
+1. Delete test leads.
+2. Delete test students.
+3. Delete test mentors.
+4. Delete test teachers.
+5. Delete test batches.
+6. Delete test sessions.
+7. Reset analytics data.
+
+Then start production setup using automation or manual creation.
