@@ -1,0 +1,462 @@
+# Braintam CRM - Ignite Grade Teams & Organization Structure Redesign
+
+Replace the current "Manage Grade Assignments" dropdown system completely.
+
+The existing system (1 grade → 1 mentor dropdown) is not scalable and must be redesigned for 200+ mentors and thousands of leads.
+
+---
+
+# Core Principle
+
+Keep these two modules completely separate:
+
+## Module 1
+
+Ignite → Grade Teams
+
+Purpose:
+
+* Assign mentors to grades
+* Multiple mentors per grade
+* Lead distribution
+* Lead transfer
+* Grade-level reporting
+
+---
+
+## Module 2
+
+Organization → Team Structure
+
+Purpose:
+
+* Manager hierarchy
+* Assistant Manager hierarchy
+* Mentor reporting structure
+* Performance reporting
+* Leaderboards
+
+Managers and Assistant Managers must NOT be configured inside Grade Assignments.
+
+A mentor's reporting manager can change without affecting grade assignments.
+
+---
+
+# Grade Teams Module
+
+Navigation:
+
+Ignite
+→ Grade Teams
+
+---
+
+# Grade Cards UI
+
+Display G1-G10 as cards.
+
+Example:
+
+G1
+👥 12 Mentors
+📞 356 Leads
+🎯 42 Conversions
+[Manage Team]
+[Assign Leads]
+
+G2
+👥 8 Mentors
+📞 214 Leads
+🎯 31 Conversions
+[Manage Team]
+[Assign Leads]
+
+Do NOT use mentor dropdowns.
+
+---
+
+# Database Structure
+
+Create:
+
+grade_mentor_assignments
+
+Fields:
+
+* id
+* grade
+* mentor_id
+* assigned_at
+* assigned_by
+* is_active
+* created_at
+* updated_at
+
+Relationship:
+
+One Grade
+→ Many Mentors
+
+One Mentor
+→ Multiple Grades
+
+---
+
+# Manage Team Modal
+
+When clicking Manage Team:
+
+Display:
+
+Search mentors...
+
+Selected Mentors:
+[Akshay] [Poonam] [Ravi]
+
+Mentor List:
+
+☑ Akshay
+☑ Poonam
+☐ Priya
+☑ Ravi
+☐ Mohit
+
+Buttons:
+
+Save Changes
+Cancel
+
+Requirements:
+
+* Search by mentor name
+* Search by email
+* Search by phone
+* Multi-select checkboxes
+* Add mentor
+* Remove mentor
+* Save without losing existing assignments
+
+---
+
+# Mentor Profile
+
+Display:
+
+Akshay
+
+Grades:
+✓ G1
+✓ G2
+✓ G5
+
+Leads Assigned: 183
+Conversions: 34
+
+---
+
+# Assignment Method
+
+Each grade should support:
+
+Round Robin
+Manual Assignment
+
+Store:
+
+assignment_method
+
+Values:
+
+round_robin
+manual
+
+---
+
+# Round Robin Distribution
+
+Example:
+
+G4 Mentors:
+
+Akshay
+Poonam
+Ravi
+Priya
+
+Lead Assignment:
+
+Lead 1 → Akshay
+Lead 2 → Poonam
+Lead 3 → Ravi
+Lead 4 → Priya
+Lead 5 → Akshay
+
+System should continue rotation automatically.
+
+Store last assigned mentor position.
+
+---
+
+# Manual Assignment
+
+Admin can:
+
+Select Leads
+Assign Selected Leads
+Choose Mentor
+
+Bulk assignment supported.
+
+---
+
+# Lead Transfer System
+
+Inside each grade:
+
+Transfer Leads
+
+Options:
+
+Transfer Selected Leads
+Transfer All Leads
+
+Example:
+
+Transfer From:
+Poonam
+
+Transfer To:
+Akshay
+
+Leads:
+214
+
+[Transfer]
+
+Transfer should move:
+
+* Active Leads
+* Follow Ups
+* Demo Bookings
+* Notes
+* Payment Status references
+
+Maintain audit logs.
+
+---
+
+# Organization Module
+
+Navigation:
+
+Command Center
+→ Organization
+→ Team Structure
+
+This module is completely independent from Grade Teams.
+
+---
+
+# Team Hierarchy
+
+Manager
+↓
+Assistant Manager
+↓
+Mentor
+
+Example:
+
+Manager Rahul
+
+Assistant Manager Poonam
+├── Akshay
+├── Ravi
+├── Priya
+
+Assistant Manager Mohit
+├── Karan
+├── Sneha
+├── Deepak
+
+---
+
+# Database
+
+team_hierarchy
+
+Fields:
+
+* id
+* manager_id
+* assistant_manager_id
+* mentor_id
+* assigned_at
+* assigned_by
+* is_active
+* created_at
+* updated_at
+
+A mentor belongs to one reporting hierarchy.
+
+A mentor can still belong to multiple grades.
+
+Changing managers must NOT change grade assignments.
+
+Changing grades must NOT change reporting hierarchy.
+
+---
+
+# Organization Screen
+
+Manager: Rahul
+Assistant Managers: 3
+Mentors: 24
+
+Assistant Manager Poonam
+├── Akshay
+├── Ravi
+├── Priya
+
+Assistant Manager Mohit
+├── Karan
+├── Sneha
+├── Deepak
+
+Support:
+
+* Search
+* Drag and move mentor between Assistant Managers
+* Reassign mentor
+* Remove mentor
+* Add mentor
+
+---
+
+# Permissions
+
+Super Admin
+
+* Full access
+
+Ignite Admin
+
+* Manage Grade Teams
+* Assign mentors
+* Transfer leads
+
+Manager
+
+* View own hierarchy
+* View team reports
+
+Assistant Manager
+
+* View assigned mentors
+* View reports
+
+Sales Mentor
+
+* View own grades only
+* View own leads only
+
+---
+
+# Reports
+
+Grade Reports:
+
+* Total Mentors
+* Total Leads
+* Active Leads
+* Converted Leads
+* Conversion Rate
+
+Mentor Reports:
+
+* Leads Assigned
+* Demo Bookings
+* Conversions
+* Conversion Percentage
+
+Manager Reports:
+
+* Team Leads
+* Team Conversions
+* Team Performance
+
+---
+
+# Audit Logs
+
+Track:
+
+Mentor added to grade
+Mentor removed from grade
+Assignment method changed
+Lead transferred
+Mentor reassigned to Assistant Manager
+Manager changed
+Hierarchy updated
+
+Never delete logs.
+
+---
+
+# Automatic Testing Required
+
+Test 1:
+Multiple mentors assigned to same grade.
+
+Test 2:
+One mentor assigned to multiple grades.
+
+Test 3:
+Search mentors works.
+
+Test 4:
+Round Robin assignment works.
+
+Test 5:
+Manual assignment works.
+
+Test 6:
+Transfer selected leads works.
+
+Test 7:
+Transfer all leads works.
+
+Test 8:
+Changing manager does not affect grades.
+
+Test 9:
+Changing grades does not affect hierarchy.
+
+Test 10:
+Manager reports work.
+
+Test 11:
+Assistant Manager reports work.
+
+Test 12:
+Permission checks work.
+
+Test 13:
+Audit logs created correctly.
+
+---
+
+# Deliverables Required
+
+After implementation provide:
+
+1. Database migration summary
+2. APIs created/updated
+3. Components created
+4. Files modified
+5. Test execution report
+6. Pass/Fail matrix for all test cases
+7. Remaining technical debt
+8. Production readiness score out of 10
+
+Do not consider this feature complete until every test passes successfully.

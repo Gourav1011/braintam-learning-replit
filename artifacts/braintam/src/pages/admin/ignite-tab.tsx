@@ -148,7 +148,8 @@ export type IgniteView =
   | "paid-students-converted"
   | "paid-students-dropped"
   | "payments"
-  | "batch-health";
+  | "batch-health"
+  | "grade-teams";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -3066,6 +3067,364 @@ function FollowUpsView({ flash, role = "admin" }: { flash: (m: string, ok?: bool
 
 // ── Mentors Hub View ─────────────────────────────────────────────────────────
 
+// ── Grade Teams View ──────────────────────────────────────────────────────────
+
+interface GradeTeamMentor {
+  id: number; name: string; email: string | null;
+  phone: string | null; isActive: boolean | null;
+  assignedAt: string | null;
+}
+interface GradeTeamCard {
+  grade: number; mentors: GradeTeamMentor[];
+  mentorCount: number; totalLeads: number;
+  conversions: number; conversionRate: number;
+}
+interface AllMentor {
+  id: number; name: string; email: string | null;
+  phone: string | null; isActive: boolean;
+}
+
+const GRADE_COLORS: Record<number, { bg: string; text: string; ring: string }> = {
+  1:  { bg: "#EFF6FF", text: "#1D4ED8", ring: "#BFDBFE" },
+  2:  { bg: "#F0FDF4", text: "#15803D", ring: "#BBF7D0" },
+  3:  { bg: "#FFF7ED", text: "#C2410C", ring: "#FED7AA" },
+  4:  { bg: "#FDF4FF", text: "#7E22CE", ring: "#E9D5FF" },
+  5:  { bg: "#FFF1F2", text: "#BE123C", ring: "#FECDD3" },
+  6:  { bg: "#F0FDFA", text: "#0F766E", ring: "#99F6E4" },
+  7:  { bg: "#FEFCE8", text: "#A16207", ring: "#FEF08A" },
+  8:  { bg: "#F8FAFC", text: "#334155", ring: "#CBD5E1" },
+  9:  { bg: "#FFF7ED", text: "#EA580C", ring: "#FDBA74" },
+  10: { bg: "#EEF2FF", text: "#4338CA", ring: "#C7D2FE" },
+};
+
+function ManageTeamModal({ grade, currentMentorIds, allMentors, onSave, onClose, flash }: {
+  grade: number; currentMentorIds: number[]; allMentors: AllMentor[];
+  onSave: () => void; onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set(currentMentorIds));
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const filtered = allMentors.filter(m => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return m.name.toLowerCase().includes(q)
+      || (m.email ?? "").toLowerCase().includes(q)
+      || (m.phone ?? "").includes(q);
+  });
+
+  const toggle = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const r = await apiFetch(`/admin/ignite/grade-teams/${grade}/mentors`, {
+        method: "PUT",
+        body: JSON.stringify({ mentorIds: Array.from(selected) }),
+      });
+      if (r.ok) { flash(`Grade ${grade} team updated — ${selected.size} mentor${selected.size !== 1 ? "s" : ""} assigned`, true); onSave(); }
+      else { const d = await r.json().catch(() => ({} as Record<string,string>)); flash(d.error ?? "Failed to save", false); }
+    } finally { setSaving(false); }
+  };
+
+  const colors = GRADE_COLORS[grade] ?? { bg: "#F8FAFC", text: NAVY, ring: "#E2E8F0" };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: "90vh" }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm"
+              style={{ background: colors.bg, color: colors.text, border: `2px solid ${colors.ring}` }}>
+              G{grade}
+            </div>
+            <div>
+              <h3 className="font-black text-base" style={{ color: NAVY }}>Manage Grade {grade} Team</h3>
+              <p className="text-xs text-gray-400">Select mentors for this grade</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Selected summary */}
+        {selected.size > 0 && (
+          <div className="px-5 py-2.5 border-b border-gray-100 bg-blue-50 shrink-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Selected ({selected.size}):</span>
+              {Array.from(selected).map(id => {
+                const m = allMentors.find(x => x.id === id);
+                return m ? (
+                  <span key={id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={{ background: colors.bg, color: colors.text }}>
+                    {m.name.split(" ")[0]}
+                    <button onClick={() => toggle(id)} className="ml-0.5 opacity-60 hover:opacity-100">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ) : null;
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Search */}
+        <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, email or phone…"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-blue-400 bg-gray-50"
+            />
+          </div>
+        </div>
+
+        {/* Mentor list */}
+        <div className="flex-1 overflow-y-auto px-5 py-2">
+          {filtered.length === 0 ? (
+            <div className="py-8 text-center text-gray-400 text-xs">No mentors found</div>
+          ) : (
+            <div className="space-y-1">
+              {filtered.map(m => {
+                const checked = selected.has(m.id);
+                return (
+                  <button key={m.id} onClick={() => toggle(m.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
+                      checked
+                        ? "border border-blue-200"
+                        : "hover:bg-gray-50 border border-transparent"
+                    }`}
+                    style={checked ? { background: `${colors.bg}` } : {}}>
+                    {/* Checkbox */}
+                    <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border-2 transition-all ${
+                      checked ? "border-blue-500 bg-blue-500" : "border-gray-300 bg-white"
+                    }`}>
+                      {checked && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    {/* Avatar */}
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                      style={{ background: m.isActive ? NAVY : "#9CA3AF" }}>
+                      {m.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-xs text-gray-800 flex items-center gap-1.5">
+                        {m.name}
+                        {!m.isActive && <span className="text-[9px] text-red-500 font-bold">(inactive)</span>}
+                      </div>
+                      <div className="text-[10px] text-gray-400 truncate">{m.email ?? m.phone ?? "–"}</div>
+                    </div>
+                    {checked && (
+                      <Check className="w-3.5 h-3.5 shrink-0" style={{ color: colors.text }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 flex gap-2 shrink-0">
+          <button onClick={save} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-all"
+            style={{ background: NAVY }}>
+            {saving ? "Saving…" : `Save Changes (${selected.size} mentor${selected.size !== 1 ? "s" : ""})`}
+          </button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GradeTeamsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [grades, setGrades] = useState<GradeTeamCard[]>([]);
+  const [allMentors, setAllMentors] = useState<AllMentor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [managingGrade, setManagingGrade] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await apiFetch("/admin/ignite/grade-teams");
+      if (!r.ok) throw new Error("Failed to load grade teams");
+      const d = await r.json() as { grades: GradeTeamCard[]; allMentors: AllMentor[] };
+      setGrades(d.grades ?? []);
+      setAllMentors(d.allMentors ?? []);
+    } catch {
+      flash("Failed to load grade teams", false);
+    } finally {
+      setLoading(false);
+    }
+  }, [flash]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const totalMentors = allMentors.filter(m => m.isActive).length;
+  const totalLeads = grades.reduce((s, g) => s + g.totalLeads, 0);
+  const totalConversions = grades.reduce((s, g) => s + g.conversions, 0);
+  const overallRate = totalLeads > 0 ? Math.round((totalConversions / totalLeads) * 100) : 0;
+
+  const managingCard = grades.find(g => g.grade === managingGrade);
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-black" style={{ color: NAVY }}>Grade Teams</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Assign multiple mentors to each grade — leads are distributed across the team</p>
+        </div>
+        <button onClick={load} disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+          <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </button>
+      </div>
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {([
+          { label: "Active Mentors",  value: totalMentors,    icon: Users,       color: NAVY,    bg: "#EEF2FF" },
+          { label: "Total Leads",     value: totalLeads,      icon: Phone,       color: "#3B82F6", bg: "#DBEAFE" },
+          { label: "Conversions",     value: totalConversions,icon: CheckCircle, color: GREEN,   bg: "#DCFCE7" },
+          { label: "Conversion Rate", value: `${overallRate}%`, icon: TrendingUp, color: "#8B5CF6", bg: "#EDE9FE" },
+        ] as { label: string; value: string | number; icon: React.ElementType; color: string; bg: string }[]).map(k => (
+          <div key={k.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: k.bg }}>
+              <k.icon className="w-4 h-4" style={{ color: k.color }} />
+            </div>
+            <div>
+              <div className="text-lg font-black leading-none" style={{ color: k.color }}>{k.value}</div>
+              <div className="text-[10px] text-gray-400 font-medium mt-0.5">{k.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Explainer */}
+      <div className="bg-white rounded-2xl border border-blue-100 p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#EEF2FF" }}>
+          <GitBranch className="w-4 h-4" style={{ color: NAVY }} />
+        </div>
+        <div className="text-xs text-gray-600 leading-relaxed">
+          <span className="font-black" style={{ color: NAVY }}>Multi-mentor grades: </span>
+          Each grade can have multiple sales mentors. Click <strong>Manage Team</strong> on any grade card to add or remove mentors. 
+          This replaces the old single-mentor dropdown system.
+        </div>
+      </div>
+
+      {/* Grade cards grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <RefreshCw className="w-6 h-6 animate-spin text-gray-300" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {grades.map(card => {
+            const colors = GRADE_COLORS[card.grade] ?? { bg: "#F8FAFC", text: NAVY, ring: "#E2E8F0" };
+            const convRate = card.conversionRate;
+            return (
+              <div key={card.grade}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+                {/* Grade badge + stats */}
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg"
+                    style={{ background: colors.bg, color: colors.text, border: `2px solid ${colors.ring}` }}>
+                    G{card.grade}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Conv. Rate</div>
+                    <div className="text-base font-black" style={{ color: convRate > 15 ? GREEN : convRate > 5 ? ORANGE : "#9CA3AF" }}>
+                      {convRate}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-4 text-xs">
+                  <div>
+                    <div className="font-black text-sm" style={{ color: NAVY }}>{card.mentorCount}</div>
+                    <div className="text-gray-400 text-[10px]">👥 Mentors</div>
+                  </div>
+                  <div className="h-6 w-px bg-gray-100" />
+                  <div>
+                    <div className="font-black text-sm text-blue-600">{card.totalLeads}</div>
+                    <div className="text-gray-400 text-[10px]">📞 Leads</div>
+                  </div>
+                  <div className="h-6 w-px bg-gray-100" />
+                  <div>
+                    <div className="font-black text-sm" style={{ color: GREEN }}>{card.conversions}</div>
+                    <div className="text-gray-400 text-[10px]">🎯 Converted</div>
+                  </div>
+                </div>
+
+                {/* Mentor name chips */}
+                <div className="min-h-[28px]">
+                  {card.mentors.length === 0 ? (
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 border border-dashed border-gray-200 rounded-xl px-3 py-2">
+                      <Users className="w-3 h-3" /> No mentors assigned yet
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {card.mentors.slice(0, 4).map(m => (
+                        <span key={m.id}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                          style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.ring}` }}>
+                          {m.name.split(" ")[0]}
+                        </span>
+                      ))}
+                      {card.mentors.length > 4 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">
+                          +{card.mentors.length - 4} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Manage Team button */}
+                <button
+                  onClick={() => setManagingGrade(card.grade)}
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-bold border-2 transition-all hover:shadow-sm"
+                  style={{ borderColor: colors.ring, color: colors.text, background: colors.bg }}>
+                  <Users className="w-3.5 h-3.5" />
+                  Manage Team
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Manage Team Modal */}
+      {managingGrade !== null && managingCard && (
+        <ManageTeamModal
+          grade={managingGrade}
+          currentMentorIds={managingCard.mentors.map(m => m.id)}
+          allMentors={allMentors}
+          onSave={() => { setManagingGrade(null); load(); }}
+          onClose={() => setManagingGrade(null)}
+          flash={flash}
+        />
+      )}
+    </div>
+  );
+}
+
 function MentorsHubView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   return <SalesMentorsView flash={flash} />;
 }
@@ -5096,6 +5455,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { id: "batch-health", label: "Batch Health", icon: ShieldCheck },
   { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "grade-teams", label: "Grade Teams", icon: GitBranch },
   { id: "sales-mentors", label: "Mentors", icon: Award },
   { id: "student-outreach", label: "Student Outreach", icon: UserCheck },
   { id: "performance-rankings", label: "Performance Rankings", icon: BarChart2 },
@@ -6585,6 +6945,7 @@ export function IgniteContentArea({
     case "homework": return <HomeworkView flash={flash} />;
     case "follow-ups": return <FollowUpsView flash={flash} role={role} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
+    case "grade-teams": return <GradeTeamsView flash={flash} />;
     case "sales-mentors": return <MentorsHubView flash={flash} />;
     case "student-outreach": return <StudentOutreachView flash={flash} />;
     case "ignite-reports": return <IgniteAnalyticsTab />;
@@ -6625,6 +6986,7 @@ export function IgniteTab({
       case "homework": return <HomeworkView flash={flash} />;
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
+      case "grade-teams": return <GradeTeamsView flash={flash} />;
       case "sales-mentors": return <MentorsHubView flash={flash} />;
       case "student-outreach": return <StudentOutreachView flash={flash} />;
       case "ignite-reports": return <IgniteAnalyticsTab />;

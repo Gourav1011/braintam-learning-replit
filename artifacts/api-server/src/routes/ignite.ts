@@ -19,6 +19,7 @@ import {
   mentorGroupsTable,
   groupStudentsTable,
   mentorGradeAssignmentsTable,
+  gradeMentorAssignmentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -1853,6 +1854,100 @@ router.get("/admin/ignite/ignite-mentors/unassigned-students", adminOnly, async 
     .where(isNull(ignitePaidStudentsTable.assignedMentorId))
     .orderBy(usersTable.name);
   res.json(rows);
+});
+
+// ── Grade Teams (many-to-many grade ↔ mentor) ────────────────────────────────
+
+router.get("/admin/ignite/grade-teams", adminOnly, async (_req, res) => {
+  const [assignments, mentors, leadStats] = await Promise.all([
+    db.select({
+      id: gradeMentorAssignmentsTable.id,
+      grade: gradeMentorAssignmentsTable.grade,
+      mentorId: gradeMentorAssignmentsTable.mentorId,
+      isActive: gradeMentorAssignmentsTable.isActive,
+      assignedAt: gradeMentorAssignmentsTable.assignedAt,
+      mentorName: usersTable.name,
+      mentorEmail: usersTable.email,
+      mentorPhone: usersTable.phone,
+      mentorIsActive: usersTable.isActive,
+    })
+      .from(gradeMentorAssignmentsTable)
+      .leftJoin(usersTable, eq(usersTable.id, gradeMentorAssignmentsTable.mentorId))
+      .where(eq(gradeMentorAssignmentsTable.isActive, true)),
+    db.select({
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      phone: usersTable.phone, isActive: usersTable.isActive,
+    })
+      .from(usersTable)
+      .where(and(
+        or(
+          eq(usersTable.role, "sales_mentor"),
+          and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"))
+        )!,
+        eq(usersTable.isArchived, false)
+      ))
+      .orderBy(usersTable.name),
+    db.select({
+      grade: ignitePaidStudentsTable.grade,
+      total: count(),
+      converted: sql<number>`count(*) filter (where ${ignitePaidStudentsTable.assignmentStatus} = 'converted')`,
+    })
+      .from(ignitePaidStudentsTable)
+      .groupBy(ignitePaidStudentsTable.grade),
+  ]);
+
+  const grades = Array.from({ length: 10 }, (_, i) => {
+    const g = i + 1;
+    const gradeAssignments = assignments.filter(a => a.grade === g);
+    const stat = leadStats.find(s => s.grade === g);
+    const totalLeads = stat?.total ?? 0;
+    const conversions = stat?.converted ?? 0;
+    return {
+      grade: g,
+      mentors: gradeAssignments.map(a => ({
+        id: a.mentorId,
+        name: a.mentorName ?? "Unknown",
+        email: a.mentorEmail,
+        phone: a.mentorPhone,
+        isActive: a.mentorIsActive,
+        assignedAt: a.assignedAt,
+      })),
+      mentorCount: gradeAssignments.length,
+      totalLeads,
+      conversions,
+      conversionRate: totalLeads > 0 ? Math.round((conversions / totalLeads) * 100) : 0,
+    };
+  });
+
+  res.json({ grades, allMentors: mentors });
+});
+
+router.put("/admin/ignite/grade-teams/:grade/mentors", adminOnly, async (req, res) => {
+  const grade = parseInt(String(req.params.grade), 10);
+  if (!grade || grade < 1 || grade > 10) { res.status(400).json({ error: "Invalid grade" }); return; }
+  const { mentorIds } = req.body as { mentorIds: number[] };
+  if (!Array.isArray(mentorIds)) { res.status(400).json({ error: "mentorIds array required" }); return; }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminId: number | null = (req as any).user?.id ?? null;
+
+  // Deactivate all current assignments for this grade
+  await db.update(gradeMentorAssignmentsTable)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(eq(gradeMentorAssignmentsTable.grade, grade));
+
+  // Re-insert / reactivate selected mentors
+  if (mentorIds.length > 0) {
+    for (const mentorId of mentorIds) {
+      await db.insert(gradeMentorAssignmentsTable)
+        .values({ grade, mentorId, isActive: true, assignedById: adminId ?? null, assignedAt: new Date() })
+        .onConflictDoUpdate({
+          target: [gradeMentorAssignmentsTable.grade, gradeMentorAssignmentsTable.mentorId],
+          set: { isActive: true, updatedAt: new Date(), assignedById: adminId ?? null, assignedAt: new Date() },
+        });
+    }
+  }
+
+  res.json({ ok: true, grade, mentorCount: mentorIds.length });
 });
 
 export default router;
