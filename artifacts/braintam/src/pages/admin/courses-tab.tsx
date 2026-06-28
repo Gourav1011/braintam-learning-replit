@@ -174,14 +174,14 @@ function StatCard({ label, value, icon: Icon, sub, color }: {
   label: string; value: string | number; icon: React.ElementType; sub?: string; color?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 min-w-0">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex items-center gap-2.5 min-w-0">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
         style={{ background: color ?? "#EFF6FF" }}>
-        <Icon className="w-5 h-5" style={{ color: color ? "white" : NAVY }} />
+        <Icon className="w-4 h-4" style={{ color: color ? "white" : NAVY }} />
       </div>
       <div className="min-w-0">
-        <p className="text-2xl font-extrabold leading-none" style={{ color: NAVY }}>{value}</p>
-        <p className="text-xs text-gray-500 mt-0.5 font-medium">{label}</p>
+        <p className="text-xl font-extrabold leading-none" style={{ color: NAVY }}>{value}</p>
+        <p className="text-[11px] text-gray-500 mt-0.5 font-medium truncate">{label}</p>
         {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -1309,37 +1309,37 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           COURSE DASHBOARD VIEW
           ════════════════════════════════════════════════════════ */}
       {view === "dashboard" && selectedCourse && (
-        <div className="space-y-5">
+        <div className="space-y-3">
 
           {/* ── Dashboard Header ─────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-extrabold flex-shrink-0"
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-extrabold flex-shrink-0"
                   style={{ background: NAVY }}>
                   {selectedCourse.grade === 0 ? "X" : selectedCourse.grade}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="font-extrabold text-lg" style={{ color: NAVY }}>
+                    <h1 className="font-extrabold text-base leading-tight" style={{ color: NAVY }}>
                       {selectedCourse.title}
                     </h1>
                     {selectedCourse.instanceName && (
-                      <span className="text-xs px-2.5 py-1 rounded-full font-bold" style={{ background: "#FFF3E6", color: ORANGE }}>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#FFF3E6", color: ORANGE }}>
                         {selectedCourse.instanceName}
                       </span>
                     )}
                     {selectedCourse.admissionStatus === "active" ? (
-                      <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-green-50 text-green-600 border border-green-200">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-green-50 text-green-600 border border-green-200">
                         Admissions Active
                       </span>
                     ) : (
-                      <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-gray-100 text-gray-500">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">
                         Admissions Closed
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">
+                  <p className="text-xs text-gray-500 mt-0.5">
                     {gradeLabel(selectedCourse.grade)}
                     {selectedCourse.board ? ` · ${selectedCourse.board}` : ""}
                     {selectedCourse.academicYearId ? ` · ${yearName_(selectedCourse.academicYearId)}` : ""}
@@ -1391,20 +1391,20 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             <StatCard label="Subjects" value={dashLoading ? "…" : (courseStats?.subjects ?? 0)} icon={BookOpen} />
             <StatCard label="Curriculum Topics" value={dashLoading ? "…" : (courseStats?.topics ?? 0)} icon={Tag} />
             <StatCard label="Live Classes" value={dashLoading ? "…" : (courseStats?.liveClasses ?? 0)} icon={Video} />
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: selectedCourse.status === "active" ? "#DCFCE7" : "#F3F4F6" }}>
-                <div className={`w-3 h-3 rounded-full ${selectedCourse.status === "active" ? "bg-green-500" : "bg-gray-400"}`} />
+                <div className={`w-2.5 h-2.5 rounded-full ${selectedCourse.status === "active" ? "bg-green-500" : "bg-gray-400"}`} />
               </div>
               <div>
-                <p className="text-lg font-extrabold leading-none capitalize" style={{ color: NAVY }}>{selectedCourse.status}</p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">Status</p>
+                <p className="text-xl font-extrabold leading-none capitalize" style={{ color: NAVY }}>{selectedCourse.status}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5 font-medium">Status</p>
               </div>
             </div>
           </div>
 
           {/* ── Tab Bar ──────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
             <div className="flex border-b border-gray-100 min-w-max">
               {COURSE_TABS.map(tab => {
                 const Icon = tab.icon;
