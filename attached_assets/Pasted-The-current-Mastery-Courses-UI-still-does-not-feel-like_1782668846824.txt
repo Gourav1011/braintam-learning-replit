@@ -1,0 +1,243 @@
+The current Mastery Courses UI still does not feel like a premium CRM.
+
+Problems:
+
+1. Statistic cards are too large.
+2. Icons are oversized and consume unnecessary space.
+3. Too much empty whitespace.
+4. Information density is low.
+5. Course cards are too tall and require excessive scrolling.
+6. Large banners/images waste screen space.
+7. Important actions are hidden below the fold.
+8. The page should show significantly more information without feeling crowded.
+9. On page load, there is a "Failed to Load" error. Investigate and fix the API error, loading states, and any failing requests.
+
+==================================================
+REDESIGN GOAL
+=============
+
+Design it similar to:
+
+* Linear
+* Stripe Dashboard
+* HubSpot
+* Notion
+* Vercel Dashboard
+
+Compact, information-dense, modern SaaS dashboard.
+
+==================================================
+TOP SECTION
+===========
+
+Single compact header:
+
+Mastery Courses
+Create and manage long-term mastery programs.
+
+Right side:
+
+* Create Course
+  Import Syllabus
+  Refresh
+
+==================================================
+ANALYTICS CARDS
+===============
+
+Reduce height by 40%.
+
+Current cards are too large.
+
+Each card should be:
+
+Icon | Value
+Label
+Small subtext
+
+Example:
+
+🎓 20
+Courses
++2 this month
+
+👥 4,230
+Students
++120 this week
+
+📚 180
+Topics
+
+🎥 86
+Live Classes
+
+💰 ₹1.2 Cr
+Revenue
+
+Cards should fit in one row without wasting vertical space.
+
+==================================================
+FILTER BAR
+==========
+
+Single row:
+
+Search
+Grade
+Board
+Status
+Admission Status
+Academic Year
+Refresh
+Card/Table Toggle
+
+Sticky on scroll.
+
+Reduce padding.
+
+==================================================
+STATUS TABS
+===========
+
+All Courses (20)
+Admissions Active (10)
+Admissions Closed (6)
+Upcoming (2)
+Completed (1)
+Archived (1)
+
+Compact pill tabs.
+
+==================================================
+COURSE DISPLAY
+==============
+
+Remove:
+
+* Huge banners
+* Placeholder images
+* Large thumbnails
+
+Each course should be a compact card.
+
+Example:
+
+────────────────────────
+Grade 3 — Course A
+CBSE • 2026-27
+Admissions Active
+
+👥 2,034 Students
+👨‍🏫 8 Teachers
+📚 120 Topics
+🎥 96 Classes
+
+Next Class:
+Maths
+Today • 5:00 PM
+
+Actions:
+Manage
+Students
+⋮
+────────────────────────
+
+Card height:
+Maximum 220px.
+
+Show 4-5 cards per row on desktop.
+
+==================================================
+TABLE VIEW
+==========
+
+Columns:
+
+Code
+Course
+Grade
+Board
+Admission
+Status
+Students
+Teachers
+Topics
+Live Classes
+Start Date
+Actions
+
+Dense enterprise table.
+
+==================================================
+QUICK ACTIONS
+=============
+
+Move to top right:
+
+Upload Syllabus
+Generate Curriculum
+Assign Teachers
+Schedule Classes
+
+These are frequently used actions and should not be hidden at the bottom.
+
+==================================================
+COURSE MANAGEMENT HUB
+=====================
+
+Each course card should show:
+
+Grade 3 — Course A
+Admissions Active
+
+2,034 Students
+8 Teachers
+120 Topics
+96 Classes
+
+Buttons:
+Manage
+View Students
+Activate Admissions
+More
+
+==================================================
+PERFORMANCE FIXES
+=================
+
+Investigate the "Failed to Load" issue.
+
+Check:
+
+* Which API request is failing
+* Network response
+* Console errors
+* Infinite re-renders
+* Missing loading states
+* Missing query parameters
+* Undefined data causing crashes
+
+Requirements:
+
+* Skeleton loaders
+* Empty states
+* Error boundaries
+* Retry button
+* No blank page
+* No console errors
+* No refresh loops
+
+==================================================
+DESIGN PRINCIPLES
+=================
+
+* Information-dense
+* Minimal scrolling
+* Compact cards
+* Smaller icons
+* Reduced whitespace
+* Enterprise CRM feel
+* Premium SaaS design
+* Mobile responsive
+* Fast loading
+* Maximum information per screen without looking crowded

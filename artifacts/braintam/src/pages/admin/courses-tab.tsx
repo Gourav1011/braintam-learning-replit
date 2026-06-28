@@ -869,35 +869,53 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           COURSES LIST VIEW
           ════════════════════════════════════════════════════════ */}
       {view === "courses" && (
-        <div className="space-y-5">
+        <div className="space-y-3">
 
-          {/* ── SUMMARY STAT CARDS ── */}
+          {/* ── PAGE HEADER ── */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight" style={{ color: NAVY }}>Mastery Courses</h1>
+              <p className="text-xs text-gray-500">Create and manage long-term mastery programs for all grades.</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs font-medium border-gray-200 text-gray-600">
+                <FileUp className="w-3.5 h-3.5" /> Import Syllabus
+              </Button>
+              <Button size="sm" onClick={() => { setShowAddCourse(p => !p); setEditingCourse(null); }}
+                className="h-8 gap-1.5 text-xs text-white font-semibold" style={{ background: ORANGE }}>
+                <Plus className="w-3.5 h-3.5" /> Create Course
+              </Button>
+            </div>
+          </div>
+
+          {/* ── COMPACT STAT CARDS ── */}
           {(() => {
-            const mc = courses.filter(c => !c.courseType || c.courseType === "mastery");
+            const mc = courses;
             const totalStudents = mc.reduce((s, c) => s + (c.enrolledCount ?? 0), 0);
             const totalSubjects = mc.reduce((s, c) => s + (c.subjectsCount ?? 0), 0);
+            const totalTopics   = mc.reduce((s, c) => s + (c.topicsCount ?? 0), 0);
+            const activeAdm     = mc.filter(c => c.admissionStatus === "active").length;
             const totalRevenue  = mc.reduce((s, c) => s + (c.enrolledCount ?? 0) * (c.originalPrice ?? 0), 0);
-            const activeAdm = mc.filter(c => c.admissionStatus === "active").length;
-            type StatCard = { label: string; value: string|number; sub: string; icon: React.ElementType; bg: string; clr: string; iconBg: string };
-            const CARDS: StatCard[] = [
-              { label: "Total Courses",     value: mc.length,                                                     sub: "View all",             icon: GraduationCap, bg: "#EEF2FF", clr: "#4F46E5", iconBg: "linear-gradient(135deg,#6366F1,#4F46E5)" },
-              { label: "Active Admissions", value: activeAdm,                                                     sub: "+3 this week",         icon: CheckCircle2,  bg: "#F0FDF4", clr: "#16A34A", iconBg: "linear-gradient(135deg,#4ADE80,#16A34A)" },
-              { label: "Total Students",    value: totalStudents > 0 ? totalStudents.toLocaleString("en-IN") : "0", sub: "+342 this week",     icon: Users,         bg: "#FFF7ED", clr: "#EA580C", iconBg: "linear-gradient(135deg,#FB923C,#EA580C)" },
-              { label: "Subjects",          value: totalSubjects,                                                  sub: "View all",            icon: BookOpen,      bg: "#EFF6FF", clr: "#2563EB", iconBg: "linear-gradient(135deg,#60A5FA,#2563EB)" },
-              { label: "Live Classes",      value: allLiveClasses.length,                                         sub: `This week: ${allLiveClasses.filter(lc => { const d=new Date(lc.scheduledAt); const n=new Date(); const s=new Date(n); s.setDate(n.getDate()-n.getDay()); return d>=s; }).length}`, icon: Video, bg: "#FEF2F2", clr: "#DC2626", iconBg: "linear-gradient(135deg,#F87171,#DC2626)" },
-              { label: "Revenue (YTD)",     value: totalRevenue > 0 ? `₹${(totalRevenue/100000).toFixed(2).replace(/\.?0+$/,"")  }L` : "—",  sub: "+18.6% vs last year", icon: TrendingUp, bg: "#F0FDF4", clr: "#059669", iconBg: "linear-gradient(135deg,#34D399,#059669)" },
+            type SC = { label: string; value: string|number; sub: string; icon: React.ElementType; iconBg: string };
+            const CARDS: SC[] = [
+              { label: "Total Courses",     value: mc.length,                                                          sub: "View all",            icon: GraduationCap, iconBg: "linear-gradient(135deg,#6366F1,#4338CA)" },
+              { label: "Active Admissions", value: activeAdm,                                                          sub: "+3 this week",        icon: CheckCircle2,  iconBg: "linear-gradient(135deg,#4ADE80,#16A34A)" },
+              { label: "Total Students",    value: totalStudents > 0 ? totalStudents.toLocaleString("en-IN") : "0",   sub: "+342 this week",      icon: Users,         iconBg: "linear-gradient(135deg,#FB923C,#EA580C)" },
+              { label: "Subjects",          value: totalSubjects,                                                      sub: `${totalTopics} topics`, icon: BookOpen,    iconBg: "linear-gradient(135deg,#60A5FA,#2563EB)" },
+              { label: "Live Classes",      value: allLiveClasses.length,                                              sub: "This week: " + String(allLiveClasses.filter(lc => { const d=new Date(lc.scheduledAt); const s=new Date(); s.setDate(s.getDate()-s.getDay()); s.setHours(0,0,0,0); return d>=s; }).length), icon: Video, iconBg: "linear-gradient(135deg,#F87171,#DC2626)" },
+              { label: "Revenue (YTD)",     value: totalRevenue > 0 ? "₹" + (totalRevenue >= 10000000 ? (totalRevenue/10000000).toFixed(1)+"Cr" : (totalRevenue/100000).toFixed(1)+"L") : "—", sub: "+18.6% vs last year", icon: TrendingUp, iconBg: "linear-gradient(135deg,#34D399,#059669)" },
             ];
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                {CARDS.map(({ label, value, sub, icon: Icon, bg, clr, iconBg }) => (
-                  <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 min-w-0 hover:shadow-md transition-shadow">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
-                      <Icon className="w-7 h-7 text-white" />
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-2.5">
+                {CARDS.map(({ label, value, sub, icon: Icon, iconBg }) => (
+                  <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex items-center gap-2.5 hover:shadow-md transition-shadow min-w-0">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+                      <Icon className="w-5 h-5 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-2xl font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
-                      <p className="text-xs font-semibold text-gray-600 mt-0.5 truncate">{label}</p>
-                      <p className={`text-[10px] mt-0.5 font-medium ${sub.startsWith("+") ? "text-green-600" : "text-gray-400"}`}>{sub}</p>
+                      <p className="text-xl font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
+                      <p className="text-[11px] font-medium text-gray-600 truncate mt-0.5">{label}</p>
+                      <p className={`text-[10px] truncate ${sub.startsWith("+") ? "text-green-600 font-medium" : "text-gray-400"}`}>{sub}</p>
                     </div>
                   </div>
                 ))}
@@ -905,32 +923,32 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             );
           })()}
 
-          {/* ── ACADEMIC YEARS (collapsible) ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <button className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold"
+          {/* ── ACADEMIC YEARS ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <button className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold"
               style={{ color: NAVY }} onClick={() => setShowYearPanel(p => !p)}>
-              <span className="flex items-center gap-2">
-                <GraduationCap className="w-4 h-4" /> Academic Years
-                <span className="text-xs font-normal text-gray-400">({academicYears.length})</span>
+              <span className="flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5" /> Academic Years
+                <span className="text-[10px] font-normal text-gray-400">({academicYears.length})</span>
               </span>
-              {showYearPanel ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              {showYearPanel ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
             </button>
             {showYearPanel && (
-              <div className="px-5 pb-4 space-y-3 border-t border-gray-100">
-                <div className="flex gap-2 mt-3">
+              <div className="px-4 pb-3 space-y-2 border-t border-gray-100">
+                <div className="flex gap-1.5 mt-2">
                   <Input placeholder="e.g. 2026-27" value={yearName} onChange={e => setYearName(e.target.value)}
-                    className="flex-1 text-sm h-8" onKeyDown={e => e.key === "Enter" && createYear()} />
-                  <Button size="sm" onClick={createYear} disabled={busy || !yearName.trim()} className="text-white h-8" style={{ background: ORANGE }}>
-                    <Plus className="w-3.5 h-3.5" />
+                    className="flex-1 text-xs h-7" onKeyDown={e => e.key === "Enter" && createYear()} />
+                  <Button size="sm" onClick={createYear} disabled={busy || !yearName.trim()} className="text-white h-7 px-2" style={{ background: ORANGE }}>
+                    <Plus className="w-3 h-3" />
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {academicYears.map(yr => (
-                    <div key={yr.id} className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-medium"
+                    <div key={yr.id} className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium"
                       style={{ borderColor: yr.isActive ? NAVY : "#E5E7EB", color: yr.isActive ? NAVY : "#9CA3AF" }}>
                       {yr.name}
-                      <button onClick={() => toggleYear(yr)} className="ml-1 opacity-60 hover:opacity-100">{yr.isActive ? "✓" : "○"}</button>
-                      <button onClick={() => deleteYear(yr.id)} className="ml-0.5 text-red-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                      <button onClick={() => toggleYear(yr)} className="ml-0.5 opacity-60 hover:opacity-100">{yr.isActive ? "✓" : "○"}</button>
+                      <button onClick={() => deleteYear(yr.id)} className="ml-0.5 text-red-400 hover:text-red-600"><Trash2 className="w-2.5 h-2.5" /></button>
                     </div>
                   ))}
                   {academicYears.length === 0 && <p className="text-xs text-gray-400">No academic years yet.</p>}
@@ -940,92 +958,72 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           </div>
 
           {/* ── FILTER BAR ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <Input placeholder="Search by course name or code…" value={courseSearch}
-                  onChange={e => { setCourseSearch(e.target.value); setTablePage(1); }} className="pl-9 h-9 text-xs" />
+                  onChange={e => { setCourseSearch(e.target.value); setTablePage(1); }} className="pl-8 h-8 text-xs" />
               </div>
-              <Select value={courseGradeFilter} onValueChange={v => { setCourseGradeFilter(v); setTablePage(1); }}>
-                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Grades" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={boardFilter} onValueChange={v => { setBoardFilter(v); setTablePage(1); }}>
-                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Boards" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Boards</SelectItem>
-                  {BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={courseStatusFilter} onValueChange={v => { setCourseStatusFilter(v); setTablePage(1); }}>
-                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={courseYearFilter} onValueChange={v => { setCourseYearFilter(v); setTablePage(1); }}>
-                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Years" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {([
+                { val: courseGradeFilter,   set: (v:string) => { setCourseGradeFilter(v); setTablePage(1); },    placeholder: "All Grades",
+                  items: [["all","All Grades"], ...GRADES.map(g=>[String(g),gradeLabel(g)])] as [string,string][] },
+                { val: boardFilter,         set: (v:string) => { setBoardFilter(v); setTablePage(1); },          placeholder: "All Boards",
+                  items: [["all","All Boards"], ...BOARDS.map(b=>[b,b])] as [string,string][] },
+                { val: courseStatusFilter,  set: (v:string) => { setCourseStatusFilter(v); setTablePage(1); },   placeholder: "All Status",
+                  items: [["all","All Status"],["active","Active"],["draft","Draft"],["archived","Archived"]] as [string,string][] },
+                { val: courseYearFilter,    set: (v:string) => { setCourseYearFilter(v); setTablePage(1); },     placeholder: "All Years",
+                  items: [["all","All Years"], ...academicYears.map(y=>[String(y.id),y.name])] as [string,string][] },
+              ] as { val:string; set:(v:string)=>void; placeholder:string; items:[string,string][] }[]).map(({ val, set, placeholder, items }) => (
+                <Select key={placeholder} value={val} onValueChange={set}>
+                  <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder={placeholder} /></SelectTrigger>
+                  <SelectContent>
+                    {items.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ))}
               <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-                <Button size="sm" variant="outline" onClick={loadBase} className="h-9 gap-1.5 text-xs font-medium">
+                <Button size="sm" variant="outline" onClick={loadBase} className="h-8 gap-1 text-xs font-medium">
                   <RotateCcw className="w-3.5 h-3.5" /> Refresh
                 </Button>
-                <div className="flex border border-gray-200 rounded-lg overflow-hidden ml-1">
-                  <button onClick={() => setViewMode("card")}
-                    className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-colors ${viewMode === "card" ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
-                    style={{ background: viewMode === "card" ? NAVY : undefined }}>
-                    <LayoutGrid className="w-3.5 h-3.5" /> Card View
-                  </button>
-                  <button onClick={() => setViewMode("table")}
-                    className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 border-l border-gray-200 transition-colors ${viewMode === "table" ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
-                    style={{ background: viewMode === "table" ? NAVY : undefined }}>
-                    <List className="w-3.5 h-3.5" /> Table View
-                  </button>
+                <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+                  {(["card","table"] as const).map(m => (
+                    <button key={m} onClick={() => setViewMode(m)}
+                      className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1 transition-colors border-l border-gray-200 first:border-l-0 ${viewMode===m ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                      style={{ background: viewMode===m ? NAVY : undefined }}>
+                      {m === "card" ? <><LayoutGrid className="w-3.5 h-3.5" /> Card</> : <><List className="w-3.5 h-3.5" /> Table</>}
+                    </button>
+                  ))}
                 </div>
+                {(courseSearch || courseGradeFilter!=="all" || boardFilter!=="all" || courseYearFilter!=="all" || courseStatusFilter!=="all") && (
+                  <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setBoardFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setTablePage(1); }}
+                    className="text-[11px] text-gray-400 hover:text-gray-600 underline ml-1">Clear</button>
+                )}
               </div>
-              {(courseSearch || courseGradeFilter !== "all" || boardFilter !== "all" || courseYearFilter !== "all" || courseStatusFilter !== "all" || admissionTabFilter !== "all") && (
-                <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setBoardFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setAdmissionTabFilter("all"); setTablePage(1); }}
-                  className="text-xs text-gray-400 hover:text-gray-600 underline">Clear all</button>
-              )}
             </div>
           </div>
 
           {/* ── STATUS TABS ── */}
           {(() => {
-            const mc = courses.filter(c => !c.courseType || c.courseType === "mastery");
             const nowTs = new Date();
             const TABS = [
-              { id: "all",               label: "All Courses" },
-              { id: "admissions_active", label: "Admissions Active",  count: mc.filter(c => c.admissionStatus === "active").length },
-              { id: "admissions_closed", label: "Admissions Closed",  count: mc.filter(c => c.admissionStatus !== "active").length },
-              { id: "upcoming",          label: "Upcoming",           count: mc.filter(c => c.startDate && new Date(c.startDate) > nowTs).length },
-              { id: "completed",         label: "Completed",          count: mc.filter(c => c.endDate && new Date(c.endDate) < nowTs).length },
-              { id: "archived",          label: "Archived",           count: mc.filter(c => c.status === "archived").length },
+              { id: "all",               label: "All Courses",        count: filteredCourses.length },
+              { id: "admissions_active", label: "Admissions Active",  count: courses.filter(c => c.admissionStatus==="active").length },
+              { id: "admissions_closed", label: "Admissions Closed",  count: courses.filter(c => c.admissionStatus!=="active").length },
+              { id: "upcoming",          label: "Upcoming",           count: courses.filter(c => c.startDate && new Date(c.startDate)>nowTs).length },
+              { id: "completed",         label: "Completed",          count: courses.filter(c => c.endDate && new Date(c.endDate)<nowTs).length },
+              { id: "archived",          label: "Archived",           count: courses.filter(c => c.status==="archived").length },
             ];
             return (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
                 <div className="flex border-b border-gray-100 min-w-max">
                   {TABS.map(tab => {
-                    const isActive = admissionTabFilter === tab.id;
-                    const cnt = tab.id === "all" ? filteredCourses.length : (tab as {count?:number}).count ?? 0;
+                    const active = admissionTabFilter === tab.id;
                     return (
                       <button key={tab.id} onClick={() => { setAdmissionTabFilter(tab.id); setTablePage(1); }}
-                        className={`flex items-center gap-2 px-5 py-3.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${isActive ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${active ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                         {tab.label}
-                        {(tab.id !== "all" || isActive) && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-500"}`}>{cnt}</span>
-                        )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-500"}`}>{tab.count}</span>
                       </button>
                     );
                   })}
@@ -1036,12 +1034,10 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
           {/* ── ADD / EDIT COURSE FORMS ── */}
           {showAddCourse && (
-            <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
+            <div className="bg-white rounded-xl p-4 border border-orange-200 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Course</h3>
-                <button onClick={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}>
-                  <X className="w-4 h-4 text-gray-400" />
-                </button>
+                <button onClick={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}><X className="w-4 h-4 text-gray-400" /></button>
               </div>
               <CourseForm form={courseForm} setForm={setCourseForm} academicYears={academicYears}
                 onSubmit={createCourse} onCancel={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}
@@ -1049,7 +1045,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             </div>
           )}
           {editingCourse && (
-            <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-4">
+            <div className="bg-white rounded-xl p-4 border-2 border-blue-200 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit — <span className="font-mono text-xs">{editingCourse.courseCode}</span></h3>
                 <button onClick={() => setEditingCourse(null)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -1060,218 +1056,219 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             </div>
           )}
 
-          {/* ── COURSE CARDS (horizontal scroll) ── */}
-          {viewMode === "card" && (
-            loading ? (
-              <div className="flex gap-4 overflow-hidden">
-                {[1,2,3,4,5].map(i => <div key={i} className="min-w-[230px] bg-white rounded-2xl border border-gray-100 h-72 animate-pulse flex-shrink-0" />)}
-              </div>
-            ) : filteredCourses.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
-                {courses.length === 0 ? "No courses yet. Click \"Create Course\" to get started." : "No courses match your filters."}
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="flex gap-4 overflow-x-auto pb-3 snap-x" style={{ scrollbarWidth: "thin" }}>
-                  {filteredCourses.map(c => {
-                    const admActive = c.admissionStatus === "active";
-                    const isUpcoming = !admActive && c.startDate && new Date(c.startDate) > new Date();
-                    const nextCls = getNextClass(c.id);
-                    return (
-                      <div key={c.id} className="flex-shrink-0 snap-start bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all flex flex-col overflow-hidden" style={{ minWidth: "230px", maxWidth: "230px" }}>
-                        {/* Accent top bar */}
-                        <div className="h-1" style={{ background: admActive ? "#16A34A" : isUpcoming ? "#3B82F6" : c.status === "archived" ? "#9CA3AF" : NAVY }} />
-                        <div className="p-4 flex flex-col gap-2.5 flex-1">
-                          {/* Admission badge + student count */}
-                          <div className="flex items-center justify-between gap-1">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 ${admActive ? "bg-green-50 text-green-600" : isUpcoming ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
-                              {admActive ? <><Zap className="w-2.5 h-2.5 mr-0.5" />Admissions Active</> : isUpcoming ? <><Clock className="w-2.5 h-2.5 mr-0.5" />Upcoming</> : "Admissions Closed"}
-                            </span>
-                            <span className="flex items-center gap-0.5 text-xs font-bold text-gray-500 flex-shrink-0">
-                              <Users className="w-3 h-3" /> {(c.enrolledCount ?? 0).toLocaleString("en-IN")}
-                            </span>
-                          </div>
-                          {/* Course name */}
-                          <div>
-                            <h3 className="font-bold text-sm leading-tight" style={{ color: NAVY }}>{c.title}</h3>
-                            <div className="flex flex-wrap items-center gap-1 mt-1">
-                              {c.board && <span className="text-[10px] font-semibold text-gray-500">{c.board}</span>}
-                              {c.board && c.academicYearId && <span className="text-gray-300 text-[10px]">•</span>}
-                              {c.academicYearId && <span className="text-[10px] font-semibold text-gray-500">{yearName_(c.academicYearId)}</span>}
-                              {c.instanceName && <><span className="text-gray-300 text-[10px]">•</span><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span></>}
-                            </div>
-                          </div>
-                          {/* Subjects + Topics */}
-                          <div className="flex items-center gap-2 text-xs border-t border-gray-50 pt-2">
-                            <span className="flex items-center gap-1 text-gray-500"><BookOpen className="w-3 h-3" />{c.subjectsCount ?? 0} Subjects</span>
-                            <span className="flex items-center gap-1 text-gray-500"><Tag className="w-3 h-3" />{c.topicsCount ?? 0} Topics</span>
-                          </div>
-                          {/* Next Class + Teacher */}
-                          <div className="grid grid-cols-2 gap-2 border-t border-gray-50 pt-2">
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Next Class</p>
-                              {nextCls ? (
-                                <>
-                                  <p className="text-[10px] font-semibold text-gray-800 leading-tight">{fmtNextClassDate(nextCls.scheduledAt)}</p>
-                                  <p className="text-[9px] text-gray-500 truncate leading-tight mt-0.5">{nextCls.title}</p>
-                                </>
-                              ) : (
-                                <p className="text-[10px] text-gray-400">Not Scheduled</p>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Teacher</p>
-                              {c.teacher ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0" style={{ background: NAVY }}>{c.teacher.charAt(0)}</div>
-                                  <span className="text-[10px] text-gray-700 truncate">{c.teacher}</span>
-                                </div>
-                              ) : <span className="text-[10px] text-gray-400">—</span>}
-                            </div>
-                          </div>
-                          {/* Action buttons */}
-                          <div className="flex gap-1.5 mt-auto pt-1">
-                            <button onClick={() => selectCourseFixed(c)}
-                              className="flex-1 text-[11px] py-1.5 rounded-lg font-semibold text-white flex items-center justify-center gap-0.5 hover:opacity-90"
-                              style={{ background: NAVY }}>
-                              Manage
-                            </button>
-                            <button onClick={() => selectCourseFixed(c)} title="View Students"
-                              className="flex items-center gap-0.5 text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600 font-semibold">
-                              <Users className="w-3 h-3" /> View Students
-                            </button>
-                            {c.courseType !== "mastery" || admActive ? null : (
-                              <button onClick={() => activateAdmissions(c)} title="Activate Admissions"
-                                className="p-1.5 rounded-lg border border-green-200 text-green-600 hover:bg-green-50">
-                                <Shield className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
+          {/* ── LOADING SKELETON ── */}
+          {loading && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[1,2,3,4,5].map(i => <div key={i} className="bg-white rounded-xl border border-gray-100 h-48 animate-pulse" />)}
+            </div>
+          )}
+
+          {/* ── EMPTY STATE ── */}
+          {!loading && filteredCourses.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
+              <GraduationCap className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm font-medium text-gray-500">{courses.length === 0 ? "No courses yet" : "No courses match your filters"}</p>
+              <p className="text-xs text-gray-400 mt-1">{courses.length === 0 ? "Click \"Create Course\" to get started." : "Try adjusting your search or filters."}</p>
+              {courses.length === 0 && (
+                <Button size="sm" className="mt-3 text-white" style={{ background: ORANGE }}
+                  onClick={() => { setShowAddCourse(true); setEditingCourse(null); }}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Create Course
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* ── CARD VIEW ── */}
+          {!loading && filteredCourses.length > 0 && viewMode === "card" && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {filteredCourses.map(c => {
+                const admActive  = c.admissionStatus === "active";
+                const isUpcoming = !admActive && c.startDate && new Date(c.startDate) > new Date();
+                const nextCls    = getNextClass(c.id);
+                const liveCount  = allLiveClasses.filter(lc => lc.courseId === c.id).length;
+                return (
+                  <div key={c.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all flex flex-col overflow-hidden group">
+                    {/* Coloured top accent */}
+                    <div className="h-0.5 flex-shrink-0" style={{ background: admActive ? "#16A34A" : isUpcoming ? "#3B82F6" : "#94A3B8" }} />
+                    <div className="p-3 flex flex-col gap-2 flex-1">
+                      {/* Badge row */}
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 leading-tight ${admActive ? "bg-green-50 text-green-700" : isUpcoming ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
+                          {admActive ? <><Zap className="w-2.5 h-2.5" />Adm. Active</> : isUpcoming ? <>Upcoming</> : <>Adm. Closed</>}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-mono">{`CRS${String(c.id).padStart(4,"0")}`}</span>
+                      </div>
+                      {/* Course name */}
+                      <div>
+                        <h3 className="font-bold text-[13px] leading-tight line-clamp-2" style={{ color: NAVY }}>{c.title}</h3>
+                        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 mt-1">
+                          {c.board && <span className="text-[10px] text-gray-500 font-medium">{c.board}</span>}
+                          {c.academicYearId && <><span className="text-gray-200 text-[10px]">•</span><span className="text-[10px] text-gray-500">{yearName_(c.academicYearId)}</span></>}
+                          {c.instanceName && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-tight" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )
+                      {/* 4-stat row */}
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1.5 border-t border-gray-50 text-[10px]">
+                        <span className="flex items-center gap-1 text-gray-600"><Users className="w-2.5 h-2.5 text-blue-400" />{(c.enrolledCount??0).toLocaleString("en-IN")} Students</span>
+                        <span className="flex items-center gap-1 text-gray-600"><UserCheck className="w-2.5 h-2.5 text-purple-400" />{c.teachersCount??0} Teachers</span>
+                        <span className="flex items-center gap-1 text-gray-600"><BookOpen className="w-2.5 h-2.5 text-green-400" />{c.topicsCount??0} Topics</span>
+                        <span className="flex items-center gap-1 text-gray-600"><Video className="w-2.5 h-2.5 text-red-400" />{liveCount} Classes</span>
+                      </div>
+                      {/* Next Class */}
+                      <div className="pt-1.5 border-t border-gray-50">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Next Class</p>
+                        {nextCls ? (
+                          <p className="text-[10px] font-semibold text-gray-700 mt-0.5 truncate">{fmtNextClassDate(nextCls.scheduledAt)} · {nextCls.title}</p>
+                        ) : c.startDate ? (
+                          <p className="text-[10px] text-gray-500 mt-0.5">Starts {fmtDate(c.startDate)}</p>
+                        ) : (
+                          <p className="text-[10px] text-gray-400 mt-0.5">Not Scheduled</p>
+                        )}
+                      </div>
+                      {/* Teacher */}
+                      {c.teacher && (
+                        <div className="flex items-center gap-1.5 pt-1.5 border-t border-gray-50">
+                          <div className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0" style={{ background: NAVY }}>{c.teacher.charAt(0)}</div>
+                          <span className="text-[10px] text-gray-600 truncate">{c.teacher}</span>
+                        </div>
+                      )}
+                      {/* Actions */}
+                      <div className="flex gap-1.5 mt-auto">
+                        <button onClick={() => selectCourseFixed(c)}
+                          className="flex-1 text-[11px] py-1.5 rounded-lg font-semibold text-white flex items-center justify-center gap-0.5 hover:opacity-90"
+                          style={{ background: NAVY }}>
+                          Manage
+                        </button>
+                        <button onClick={() => selectCourseFixed(c)}
+                          className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600 font-medium flex items-center gap-0.5">
+                          <Users className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => {
+                            setEditingCourse(c);
+                            setEditCourseForm({ title: c.title, grade: String(c.grade), board: c.board??"", academicYearId: c.academicYearId ? String(c.academicYearId) : "", status: c.status??"active", courseType: c.courseType??"mastery", description: c.description??"", annualFee: c.originalPrice ? String(c.originalPrice) : "", registrationFee: c.registrationFee ? String(c.registrationFee) : "", studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "", startDate: c.startDate??"", endDate: c.endDate??"", bannerUrl: c.bannerUrl??c.thumbnailUrl??"", brochureUrl: c.brochureUrl??"" });
+                            setShowAddCourse(false);
+                          }}
+                          className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 font-medium">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {/* ── TABLE VIEW ── */}
-          {viewMode === "table" && (() => {
+          {!loading && filteredCourses.length > 0 && viewMode === "table" && (() => {
             const PAGE_SIZE = 10;
             const totalPages = Math.ceil(filteredCourses.length / PAGE_SIZE);
-            const safePage = Math.min(tablePage, Math.max(1, totalPages));
-            const paged = filteredCourses.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-            return loading ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-2">
-                {[1,2,3].map(i => <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />)}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            const safePage   = Math.min(tablePage, Math.max(1, totalPages));
+            const paged      = filteredCourses.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/80">
-                        <th className="w-10 px-3 py-3"><input type="checkbox" className="rounded" /></th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500 whitespace-nowrap">Course Code</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Course Name</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Grade</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Board</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Instance</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500 whitespace-nowrap">Admission Status</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Status</th>
-                        <th className="text-center px-3 py-3 font-semibold text-gray-500">Students</th>
-                        <th className="text-center px-3 py-3 font-semibold text-gray-500">Teachers</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500 whitespace-nowrap">Start Date</th>
-                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Actions</th>
+                        <th className="w-8 px-2 py-2.5 text-center"><input type="checkbox" className="rounded" /></th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500 whitespace-nowrap">Code</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500">Course</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500">Grade</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500">Board</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500">Instance</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500 whitespace-nowrap">Admission</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500">Status</th>
+                        <th className="text-center px-3 py-2.5 font-semibold text-gray-500">Students</th>
+                        <th className="text-center px-3 py-2.5 font-semibold text-gray-500">Teachers</th>
+                        <th className="text-center px-3 py-2.5 font-semibold text-gray-500">Topics</th>
+                        <th className="text-center px-3 py-2.5 font-semibold text-gray-500">Classes</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500 whitespace-nowrap">Start Date</th>
+                        <th className="text-left px-3 py-2.5 font-semibold text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paged.map((c, idx) => (
-                        <tr key={c.id}
-                          className={`border-b border-gray-50 hover:bg-blue-50/20 transition-colors cursor-pointer ${idx % 2 === 0 ? "" : "bg-gray-50/20"}`}
+                        <tr key={c.id} className={`border-b border-gray-50 hover:bg-blue-50/20 cursor-pointer ${idx%2===0?"":"bg-gray-50/20"}`}
                           onClick={() => selectCourseFixed(c)}>
-                          <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
+                          <td className="px-2 py-2 text-center" onClick={e=>e.stopPropagation()}>
                             <input type="checkbox" className="rounded" />
                           </td>
-                          <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                            <span className="font-mono text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.courseCode}</span>
+                          <td className="px-3 py-2" onClick={e=>e.stopPropagation()}>
+                            <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{`CRS${String(c.id).padStart(4,"0")}`}</span>
                           </td>
-                          <td className="px-3 py-3 max-w-[200px]">
-                            <p className="font-semibold text-gray-800 truncate">{c.title}</p>
+                          <td className="px-3 py-2 max-w-[180px]">
+                            <p className="font-semibold text-gray-800 truncate text-xs">{c.title}</p>
                           </td>
-                          <td className="px-3 py-3">
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium whitespace-nowrap">{gradeLabel(c.grade)}</span>
+                          <td className="px-3 py-2">
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium whitespace-nowrap">{gradeLabel(c.grade)}</span>
                           </td>
-                          <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{c.board ?? "—"}</td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{c.board??"—"}</td>
+                          <td className="px-3 py-2">
                             {c.instanceName
-                              ? <span className="text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>
+                              ? <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background:"#FFF3E6",color:ORANGE }}>{c.instanceName}</span>
                               : <span className="text-gray-400">—</span>}
                           </td>
-                          <td className="px-3 py-3">
-                            <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold ${c.admissionStatus === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${c.admissionStatus === "active" ? "bg-green-500" : "bg-gray-400"}`} />
-                              {c.admissionStatus === "active" ? "Active" : "Closed"}
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${c.admissionStatus==="active"?"bg-green-50 text-green-700":"bg-gray-100 text-gray-500"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${c.admissionStatus==="active"?"bg-green-500":"bg-gray-400"}`} />
+                              {c.admissionStatus==="active"?"Active":"Closed"}
                             </span>
                           </td>
-                          <td className="px-3 py-3">
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold capitalize ${statusBadge(c.status)}`}>{c.status}</span>
+                          <td className="px-3 py-2">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold capitalize ${statusBadge(c.status)}`}>{c.status}</span>
                           </td>
-                          <td className="px-3 py-3 font-bold text-gray-800 text-center">{(c.enrolledCount ?? 0).toLocaleString("en-IN")}</td>
-                          <td className="px-3 py-3 font-semibold text-gray-700 text-center">{c.teachersCount ?? 0}</td>
-                          <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{c.startDate ? fmtDate(c.startDate) : "—"}</td>
-                          <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                          <td className="px-3 py-2 font-bold text-gray-800 text-center text-xs">{(c.enrolledCount??0).toLocaleString("en-IN")}</td>
+                          <td className="px-3 py-2 font-semibold text-gray-700 text-center text-xs">{c.teachersCount??0}</td>
+                          <td className="px-3 py-2 font-semibold text-gray-600 text-center text-xs">{c.topicsCount??0}</td>
+                          <td className="px-3 py-2 font-semibold text-gray-600 text-center text-xs">{allLiveClasses.filter(lc=>lc.courseId===c.id).length}</td>
+                          <td className="px-3 py-2 text-gray-500 whitespace-nowrap text-[11px]">{c.startDate ? fmtDate(c.startDate) : "—"}</td>
+                          <td className="px-3 py-2" onClick={e=>e.stopPropagation()}>
                             <div className="flex items-center gap-1">
                               <button onClick={() => selectCourseFixed(c)} title="View"
-                                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors">
-                                <Eye className="w-3.5 h-3.5" />
+                                className="p-1 rounded border border-gray-200 text-gray-500 hover:text-blue-500 hover:border-blue-300 transition-colors">
+                                <Eye className="w-3 h-3" />
                               </button>
                               <button title="Edit" onClick={() => {
-                                setEditingCourse(c);
-                                setEditCourseForm({ title: c.title, grade: String(c.grade), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", status: c.status ?? "active", courseType: c.courseType ?? "mastery", description: c.description ?? "", annualFee: c.originalPrice ? String(c.originalPrice) : "", registrationFee: c.registrationFee ? String(c.registrationFee) : "", studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "", startDate: c.startDate ?? "", endDate: c.endDate ?? "", bannerUrl: c.bannerUrl ?? c.thumbnailUrl ?? "", brochureUrl: c.brochureUrl ?? "" });
-                                setShowAddCourse(false);
-                              }} className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
-                                <Pencil className="w-3.5 h-3.5" />
+                                  setEditingCourse(c);
+                                  setEditCourseForm({ title:c.title, grade:String(c.grade), board:c.board??"", academicYearId:c.academicYearId?String(c.academicYearId):"", status:c.status??"active", courseType:c.courseType??"mastery", description:c.description??"", annualFee:c.originalPrice?String(c.originalPrice):"", registrationFee:c.registrationFee?String(c.registrationFee):"", studentCapacity:c.studentCapacity?String(c.studentCapacity):"", startDate:c.startDate??"", endDate:c.endDate??"", bannerUrl:c.bannerUrl??c.thumbnailUrl??"", brochureUrl:c.brochureUrl??""});
+                                  setShowAddCourse(false);
+                                }} className="p-1 rounded border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 transition-colors">
+                                <Pencil className="w-3 h-3" />
                               </button>
                               <button onClick={() => deleteCourse(c.id, c.title)} title="Delete"
-                                className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-500 transition-colors">
-                                <Trash2 className="w-3.5 h-3.5" />
+                                className="p-1 rounded border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors">
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
                           </td>
                         </tr>
                       ))}
-                      {paged.length === 0 && (
-                        <tr><td colSpan={12} className="px-4 py-12 text-center text-gray-400 text-sm">
-                          {courses.length === 0 ? "No courses yet. Click \"Create Course\" to get started." : "No courses match your filters."}
-                        </td></tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
                 {/* Pagination */}
-                <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
                   <span className="text-[11px] text-gray-500">
-                    Showing {filteredCourses.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1} to {Math.min(safePage * PAGE_SIZE, filteredCourses.length)} of {filteredCourses.length} courses
+                    Showing {filteredCourses.length===0?0:(safePage-1)*PAGE_SIZE+1} to {Math.min(safePage*PAGE_SIZE, filteredCourses.length)} of {filteredCourses.length} courses
                   </span>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setTablePage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
-                      className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                    <button onClick={() => setTablePage(p => Math.max(1,p-1))} disabled={safePage<=1}
+                      className="p-1 rounded border border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed">
                       <ChevronRight className="w-3.5 h-3.5 rotate-180" />
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1).map((p, i, arr) => (
-                      <>
-                        {i > 0 && arr[i-1] !== p - 1 && <span key={`e${p}`} className="text-[11px] text-gray-400 px-1">…</span>}
-                        <button key={p} onClick={() => setTablePage(p)}
-                          className={`w-7 h-7 rounded-lg text-[11px] font-semibold border transition-colors ${safePage === p ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
-                          style={{ background: safePage === p ? NAVY : undefined }}>
+                    {Array.from({length:totalPages},(_,i)=>i+1).filter(p=>p===1||p===totalPages||Math.abs(p-safePage)<=1).map((p,i,arr) => (
+                      <span key={p} className="flex items-center gap-1">
+                        {i>0 && arr[i-1]!==p-1 && <span className="text-[11px] text-gray-400 px-0.5">…</span>}
+                        <button onClick={() => setTablePage(p)}
+                          className={`w-7 h-7 rounded text-[11px] font-semibold border transition-colors ${safePage===p?"text-white border-transparent":"border-gray-200 text-gray-600 hover:border-gray-300"}`}
+                          style={{ background: safePage===p ? NAVY : undefined }}>
                           {p}
                         </button>
-                      </>
+                      </span>
                     ))}
-                    <button onClick={() => setTablePage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-                      className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                    <button onClick={() => setTablePage(p => Math.min(totalPages,p+1))} disabled={safePage>=totalPages}
+                      className="p-1 rounded border border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed">
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1281,25 +1278,25 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             );
           })()}
 
-          {/* ── BOTTOM QUICK ACTIONS ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Quick Actions</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* ── QUICK ACTIONS (compact bottom strip) ── */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Quick Actions</span>
               {([
-                { icon: FileUp,    label: "Upload Syllabus",       sub: "Upload PDF/Doc or Excel",       bg: "#EEF2FF", clr: "#4F46E5" },
-                { icon: BookOpen,  label: "Generate Curriculum",   sub: "Auto create topics & modules",  bg: "#FFF7ED", clr: ORANGE    },
-                { icon: Video,     label: "Schedule Live Classes", sub: "Auto generate class schedule",  bg: "#F0FDF4", clr: "#16A34A" },
-                { icon: UserCheck, label: "Assign Teachers",       sub: "Assign teachers to subjects",   bg: "#F5F3FF", clr: "#7C3AED" },
+                { icon: FileUp,    label: "Upload Syllabus",       sub: "PDF / Excel",                   bg: "#EEF2FF", clr: "#4F46E5" },
+                { icon: BookOpen,  label: "Generate Curriculum",   sub: "Auto create topics",            bg: "#FFF7ED", clr: ORANGE    },
+                { icon: Video,     label: "Schedule Classes",      sub: "Auto generate schedule",        bg: "#F0FDF4", clr: "#16A34A" },
+                { icon: UserCheck, label: "Assign Teachers",       sub: "Assign to subjects",            bg: "#F5F3FF", clr: "#7C3AED" },
                 { icon: BarChart3, label: "View Reports",          sub: "Analytics & performance",       bg: "#FEF2F2", clr: "#DC2626" },
               ] as { icon: React.ElementType; label: string; sub: string; bg: string; clr: string }[]).map(({ icon: Icon, label, sub, bg, clr }) => (
                 <button key={label}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all text-left">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-                    <Icon className="w-5 h-5" style={{ color: clr }} />
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all text-left flex-1 min-w-[130px]">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+                    <Icon className="w-4 h-4" style={{ color: clr }} />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-800">{label}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+                    <p className="text-[11px] font-semibold text-gray-800 leading-tight">{label}</p>
+                    <p className="text-[10px] text-gray-400">{sub}</p>
                   </div>
                 </button>
               ))}
