@@ -453,6 +453,8 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
   const [err, setErr] = useState("");
   const [parentPhone, setParentPhone] = useState<string | null>(null);
   const [autoPrice, setAutoPrice] = useState<number | null>(null);
+  const [autoMrp, setAutoMrp] = useState<number | null>(null);
+  const [autoScholarshipPct, setAutoScholarshipPct] = useState<number>(0);
   const [priceLoading, setPriceLoading] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<number>(lead.grade ?? 1);
 
@@ -461,9 +463,17 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
     if (!selectedGrade) return;
     setPriceLoading(true);
     setAutoPrice(null);
+    setAutoMrp(null);
+    setAutoScholarshipPct(0);
     apiFetch(`/mentor/long-term/pricing/${selectedGrade}`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.available) setAutoPrice(d.finalPriceRupees); })
+      .then(d => {
+        if (d?.available) {
+          setAutoPrice(d.finalPriceRupees);
+          setAutoMrp(d.fullPriceRupees ?? null);
+          setAutoScholarshipPct(d.scholarshipPct ?? 0);
+        }
+      })
       .catch(() => {})
       .finally(() => setPriceLoading(false));
   }, [selectedGrade]);
@@ -621,11 +631,39 @@ function PaymentPopup({ lead, initialMode = "full", onClose }: { lead: Lead; ini
 
           {mode === "full" && (
             <div className="p-3 rounded-xl" style={{ background: `${NAVY}08` }}>
-              <div className="text-[10px] font-bold text-gray-500 mb-1">Amount</div>
+              <div className="text-[10px] font-bold text-gray-500 mb-2">Amount</div>
               {priceLoading ? (
-                <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: NAVY }} /><span className="text-xs text-gray-400">Loading price...</span></div>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: NAVY }} />
+                  <span className="text-xs text-gray-400">Loading price…</span>
+                </div>
               ) : autoPrice ? (
-                <div className="text-xl font-black" style={{ color: NAVY }}>₹{autoPrice.toLocaleString("en-IN")}</div>
+                <div>
+                  {/* Show scholarship display if discount exists */}
+                  {autoScholarshipPct > 0 && autoMrp && autoMrp > autoPrice ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="line-through text-gray-400 text-xs">
+                          ₹{autoMrp.toLocaleString("en-IN")}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black"
+                          style={{ background: "#FFF7ED", color: "#EA580C" }}>
+                          {autoScholarshipPct}% Scholarship
+                        </span>
+                      </div>
+                      <div className="text-2xl font-black" style={{ color: NAVY }}>
+                        ₹{autoPrice.toLocaleString("en-IN")}
+                      </div>
+                      <div className="text-[10px] text-green-600 font-semibold">
+                        You save ₹{(autoMrp - autoPrice).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-2xl font-black" style={{ color: NAVY }}>
+                      ₹{autoPrice.toLocaleString("en-IN")}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-xs text-red-500 font-semibold">No active pricing for Grade {selectedGrade}. Contact admin.</div>
               )}

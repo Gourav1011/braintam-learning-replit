@@ -436,11 +436,17 @@ function ComingSoonView({ view }: { view: Exclude<CCView, "dashboard"> }) {
 // ── Course Pricing Master ─────────────────────────────────────────────────────
 interface PricingRow {
   id: number;
-  gradeNumber: number;
-  subject: string;
-  fullYearPrice: number;
-  halfYearPrice: number;
-  quarterYearPrice: number;
+  grade: number;
+  fullPrice: number;      // paise (÷100 to get rupees)
+  scholarshipPct: number; // 0–100
+  finalPrice: number;     // paise — what student pays
+  status: string;         // active | inactive
+}
+
+interface PricingDraft {
+  mrpRupees: string;       // what admin types (rupees)
+  scholarshipPct: string;  // percentage
+  status: string;
 }
 
 const GRADE_LABELS: Record<number, string> = {
@@ -448,13 +454,46 @@ const GRADE_LABELS: Record<number, string> = {
   6: "Grade 6", 7: "Grade 7", 8: "Grade 8", 9: "Grade 9", 10: "Grade 10",
 };
 
+function rupees(paise: number) {
+  return Math.round(paise / 100);
+}
+function fmt(paise: number) {
+  return "₹" + rupees(paise).toLocaleString("en-IN");
+}
+
+function ScholarshipDisplay({ mrp, pct, pays, size = "sm" }: { mrp: number; pct: number; pays: number; size?: "sm" | "lg" }) {
+  if (pct <= 0) {
+    return (
+      <div className={`font-black ${size === "lg" ? "text-2xl" : "text-base"}`} style={{ color: GREEN }}>
+        ₹{pays.toLocaleString("en-IN")}
+      </div>
+    );
+  }
+  return (
+    <div className={`space-y-0.5 ${size === "lg" ? "" : ""}`}>
+      <div className={`line-through text-gray-400 ${size === "lg" ? "text-sm" : "text-[10px]"}`}>
+        ₹{mrp.toLocaleString("en-IN")}
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className={`px-1.5 py-0.5 rounded-full font-bold ${size === "lg" ? "text-xs" : "text-[9px]"}`}
+          style={{ background: `${ORANGE}20`, color: ORANGE }}>
+          {pct}% Scholarship
+        </span>
+      </div>
+      <div className={`font-black ${size === "lg" ? "text-2xl" : "text-sm"}`} style={{ color: GREEN }}>
+        ₹{pays.toLocaleString("en-IN")}
+      </div>
+    </div>
+  );
+}
+
 function CoursePricingView() {
   const [rows, setRows] = useState<PricingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<number | null>(null);
   const [flash, setFlash] = useState<{ text: string; ok: boolean } | null>(null);
-  const [editing, setEditing] = useState<Record<number, Partial<PricingRow>>>({});
+  const [drafts, setDrafts] = useState<Record<number, PricingDraft>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const showFlash = (text: string, ok = true) => {
@@ -466,7 +505,7 @@ function CoursePricingView() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch("/mentor/long-term/pricing");
+      const res = await apiFetch("/admin/course-pricing");
       if (!res.ok) throw new Error("Failed to load pricing");
       const data = await res.json() as PricingRow[];
       setRows(data);
@@ -481,62 +520,81 @@ function CoursePricingView() {
 
   const startEdit = (row: PricingRow) => {
     setEditingId(row.id);
-    setEditing(prev => ({ ...prev, [row.id]: {
-      fullYearPrice: row.fullYearPrice,
-      halfYearPrice: row.halfYearPrice,
-      quarterYearPrice: row.quarterYearPrice,
-    }}));
+    setDrafts(prev => ({
+      ...prev,
+      [row.id]: {
+        mrpRupees: String(rupees(row.fullPrice)),
+        scholarshipPct: String(row.scholarshipPct),
+        status: row.status,
+      },
+    }));
   };
 
   const cancelEdit = (id: number) => {
     setEditingId(null);
-    setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setDrafts(prev => { const n = { ...prev }; delete n[id]; return n; });
   };
 
   const saveRow = async (row: PricingRow) => {
-    const patch = editing[row.id];
-    if (!patch) return;
-    setSaving(true);
+    const d = drafts[row.id];
+    if (!d) return;
+    const mrp = parseFloat(d.mrpRupees);
+    const pct = parseFloat(d.scholarshipPct);
+    if (isNaN(mrp) || mrp <= 0) { showFlash("Enter a valid MRP (₹)", false); return; }
+    if (isNaN(pct) || pct < 0 || pct > 100) { showFlash("Scholarship must be 0–100%", false); return; }
+
+    setSaving(row.grade);
     try {
-      const body = {
-        gradeNumber: row.gradeNumber,
-        subject: row.subject,
-        fullYearPrice: Number(patch.fullYearPrice ?? row.fullYearPrice),
-        halfYearPrice: Number(patch.halfYearPrice ?? row.halfYearPrice),
-        quarterYearPrice: Number(patch.quarterYearPrice ?? row.quarterYearPrice),
-      };
-      const res = await apiFetch("/mentor/long-term/pricing", {
-        method: "POST",
-        body: JSON.stringify(body),
+      const res = await apiFetch(`/admin/course-pricing/${row.grade}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          fullPrice: Math.round(mrp * 100),   // convert rupees → paise
+          scholarshipPct: Math.round(pct),
+          status: d.status,
+        }),
       });
       if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(d.error ?? "Save failed");
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? "Save failed");
       }
       await load();
       cancelEdit(row.id);
-      showFlash("Pricing saved!");
+      showFlash(`Grade ${row.grade} pricing saved ✓`);
     } catch (e) {
       showFlash((e as Error).message, false);
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
-  const subjects = [...new Set(rows.map(r => r.subject))].sort();
-  const grades = [...new Set(rows.map(r => r.gradeNumber))].sort((a, b) => a - b);
+  // Live preview of student pays while editing
+  const previewPays = (id: number, row: PricingRow) => {
+    const d = drafts[id];
+    if (!d) return rupees(row.finalPrice);
+    const mrp = parseFloat(d.mrpRupees) || 0;
+    const pct = parseFloat(d.scholarshipPct) || 0;
+    return Math.round(mrp * (1 - pct / 100));
+  };
 
   return (
     <div className="space-y-5">
+      {/* Flash */}
+      {flash && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold text-white flex items-center gap-2 ${flash.ok ? "bg-green-500" : "bg-red-500"}`}>
+          {flash.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+          {flash.text}
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: `${GREEN}15` }}>
             <DollarSign className="w-6 h-6" style={{ color: GREEN }} />
           </div>
           <div>
             <h2 className="text-lg font-black" style={{ color: NAVY }}>Course Pricing Master</h2>
-            <p className="text-sm text-gray-400 mt-0.5">Per-grade, per-subject long-term payment fees</p>
+            <p className="text-sm text-gray-400 mt-0.5">Set MRP + scholarship % per grade — propagates to all mentor &amp; Mastery payment links automatically</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -550,13 +608,19 @@ function CoursePricingView() {
         </div>
       </div>
 
-      {/* Flash */}
-      {flash && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold text-white flex items-center gap-2 ${flash.ok ? "bg-green-500" : "bg-red-500"}`}>
-          {flash.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-          {flash.text}
+      {/* How it works banner */}
+      <div className="rounded-2xl p-4 border border-orange-100 flex items-start gap-3" style={{ background: `${ORANGE}08` }}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${ORANGE}20` }}>
+          <ArrowRight className="w-4 h-4" style={{ color: ORANGE }} />
         </div>
-      )}
+        <div className="text-xs text-gray-600 leading-relaxed">
+          <span className="font-black" style={{ color: ORANGE }}>How it works: </span>
+          Set the <strong>MRP</strong> (original price) and <strong>Scholarship %</strong> for each grade.
+          The student-facing amount auto-calculates. Mentor Razorpay links, Mastery program links, and all payment pages use this pricing automatically.
+          <br />
+          <span className="text-gray-400">Example: MRP ₹30,000 + 50% scholarship → student pays <strong className="text-green-600">₹15,000</strong></span>
+        </div>
+      </div>
 
       {loading && (
         <div className="bg-white rounded-2xl p-10 border border-gray-100 shadow-sm flex items-center justify-center gap-2 text-gray-400">
@@ -571,62 +635,141 @@ function CoursePricingView() {
         </div>
       )}
 
-      {!loading && !error && subjects.map(subject => (
-        <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2" style={{ background: `${NAVY}06` }}>
-            <span className="text-xs font-black uppercase tracking-widest" style={{ color: NAVY }}>{subject}</span>
-            <span className="text-[10px] text-gray-400 ml-1">— {grades.length} grades</span>
-          </div>
+      {!loading && !error && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-2.5 font-bold text-gray-500 w-28">Grade</th>
-                  <th className="text-right px-4 py-2.5 font-bold text-gray-500">Full Year (₹)</th>
-                  <th className="text-right px-4 py-2.5 font-bold text-gray-500">Half Year (₹)</th>
-                  <th className="text-right px-4 py-2.5 font-bold text-gray-500">Quarter Year (₹)</th>
-                  <th className="text-center px-4 py-2.5 font-bold text-gray-500 w-24">Action</th>
+                <tr className="border-b border-gray-100 bg-gray-50 text-left">
+                  <th className="px-5 py-3 font-bold text-gray-500 w-28">Grade</th>
+                  <th className="px-5 py-3 font-bold text-gray-500">MRP (Original Price)</th>
+                  <th className="px-5 py-3 font-bold text-gray-500 text-center">Scholarship %</th>
+                  <th className="px-5 py-3 font-bold text-gray-500">Student Pays</th>
+                  <th className="px-5 py-3 font-bold text-gray-500 text-center">Status</th>
+                  <th className="px-5 py-3 font-bold text-gray-500 text-center w-36">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {grades.map(grade => {
-                  const row = rows.find(r => r.gradeNumber === grade && r.subject === subject);
-                  if (!row) return null;
+                {rows.map(row => {
                   const isEditing = editingId === row.id;
-                  const draft = editing[row.id] ?? {};
+                  const d = drafts[row.id];
+                  const isSaving = saving === row.grade;
+                  const previewMrp = isEditing ? (parseFloat(d?.mrpRupees || "0") || 0) : rupees(row.fullPrice);
+                  const previewPct = isEditing ? (parseFloat(d?.scholarshipPct || "0") || 0) : row.scholarshipPct;
+                  const previewPaysVal = previewPays(row.id, row);
+
                   return (
-                    <tr key={grade} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5 font-bold" style={{ color: NAVY }}>{GRADE_LABELS[grade] ?? `Grade ${grade}`}</td>
-                      {(["fullYearPrice", "halfYearPrice", "quarterYearPrice"] as const).map(field => (
-                        <td key={field} className="px-4 py-2.5 text-right">
-                          {isEditing ? (
+                    <tr key={row.id}
+                      className={`border-b border-gray-50 transition-colors ${isEditing ? "bg-orange-50/40" : "hover:bg-gray-50"}`}>
+                      {/* Grade */}
+                      <td className="px-5 py-4">
+                        <span className="font-black text-sm" style={{ color: NAVY }}>
+                          {GRADE_LABELS[row.grade] ?? `Grade ${row.grade}`}
+                        </span>
+                      </td>
+
+                      {/* MRP */}
+                      <td className="px-5 py-4">
+                        {isEditing ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-500 font-semibold">₹</span>
                             <input
                               type="number"
                               min={0}
-                              value={draft[field] ?? row[field]}
-                              onChange={e => setEditing(prev => ({ ...prev, [row.id]: { ...prev[row.id], [field]: Number(e.target.value) } }))}
-                              className="w-24 px-2 py-1 rounded-lg border border-orange-300 text-right text-xs outline-none focus:border-orange-400 bg-orange-50"
+                              step={100}
+                              value={d?.mrpRupees ?? ""}
+                              onChange={e => setDrafts(prev => ({ ...prev, [row.id]: { ...prev[row.id], mrpRupees: e.target.value } }))}
+                              className="w-28 px-2.5 py-1.5 rounded-xl border-2 border-orange-300 text-right text-xs font-bold outline-none focus:border-orange-500 bg-white"
+                              style={{ color: NAVY }}
                             />
-                          ) : (
-                            <span className="font-semibold text-gray-700">₹{row[field].toLocaleString("en-IN")}</span>
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-4 py-2.5 text-center">
+                          </div>
+                        ) : (
+                          <span className="font-semibold text-gray-600">{fmt(row.fullPrice)}</span>
+                        )}
+                      </td>
+
+                      {/* Scholarship % */}
+                      <td className="px-5 py-4 text-center">
+                        {isEditing ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={5}
+                              value={d?.scholarshipPct ?? ""}
+                              onChange={e => setDrafts(prev => ({ ...prev, [row.id]: { ...prev[row.id], scholarshipPct: e.target.value } }))}
+                              className="w-16 px-2.5 py-1.5 rounded-xl border-2 border-orange-300 text-center text-xs font-bold outline-none focus:border-orange-500 bg-white"
+                              style={{ color: ORANGE }}
+                            />
+                            <span className="text-gray-500 font-semibold">%</span>
+                          </div>
+                        ) : (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            row.scholarshipPct > 0
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {row.scholarshipPct > 0 ? `${row.scholarshipPct}% off` : "No discount"}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Student Pays — live preview */}
+                      <td className="px-5 py-4">
+                        <ScholarshipDisplay
+                          mrp={previewMrp}
+                          pct={previewPct}
+                          pays={previewPaysVal}
+                          size="sm"
+                        />
+                        {isEditing && (
+                          <p className="text-[9px] text-gray-400 mt-1">Live preview ↑</p>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-5 py-4 text-center">
+                        {isEditing ? (
+                          <select
+                            value={d?.status ?? row.status}
+                            onChange={e => setDrafts(prev => ({ ...prev, [row.id]: { ...prev[row.id], status: e.target.value } }))}
+                            className="px-2 py-1 rounded-xl border-2 border-orange-300 text-[10px] font-bold outline-none bg-white"
+                            style={{ color: NAVY }}
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            row.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-400"
+                          }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${row.status === "active" ? "bg-green-500" : "bg-gray-300"}`} />
+                            {row.status === "active" ? "Active" : "Inactive"}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-5 py-4 text-center">
                         {isEditing ? (
                           <div className="flex items-center justify-center gap-1.5">
-                            <button onClick={() => saveRow(row)} disabled={saving}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors">
-                              <Save className="w-2.5 h-2.5" /> Save
+                            <button onClick={() => saveRow(row)} disabled={isSaving}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black text-white disabled:opacity-50 transition-colors"
+                              style={{ background: GREEN }}>
+                              {isSaving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
+                              Save
                             </button>
-                            <button onClick={() => cancelEdit(row.id)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors">
+                            <button onClick={() => cancelEdit(row.id)} disabled={isSaving}
+                              className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-bold bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors disabled:opacity-40">
                               <X className="w-2.5 h-2.5" /> Cancel
                             </button>
                           </div>
                         ) : (
                           <button onClick={() => startEdit(row)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-gray-200 text-gray-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-colors mx-auto">
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border border-gray-200 text-gray-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-colors mx-auto">
                             <Pencil className="w-2.5 h-2.5" /> Edit
                           </button>
                         )}
@@ -637,12 +780,16 @@ function CoursePricingView() {
               </tbody>
             </table>
           </div>
-        </div>
-      ))}
 
-      {!loading && !error && rows.length === 0 && (
-        <div className="bg-white rounded-2xl p-10 border border-gray-100 shadow-sm text-center text-gray-400 text-sm">
-          No pricing data found. Restart the API server to seed defaults.
+          {rows.length === 0 && (
+            <div className="p-10 text-center text-gray-400 text-sm">
+              No pricing data found. Restart the API server to seed defaults.
+            </div>
+          )}
+
+          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 text-[11px] text-gray-400">
+            Changes take effect immediately for all new payment links and Razorpay links generated by mentors.
+          </div>
         </div>
       )}
     </div>
