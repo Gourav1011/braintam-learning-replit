@@ -47,6 +47,8 @@ interface DemoSession {
   status: string; isPublished: boolean;
 }
 
+interface Teacher { id: number; name: string; email: string; }
+
 interface DemoEnrollment {
   enrollmentId: number; studentId: number; enrolledAt: string;
   enrollmentStatus: string; lastDayAttended: number | null;
@@ -172,6 +174,10 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   // Grade filter
   const [gradeFilter, setGradeFilter] = useState<number | null>(null);
 
+  // Teachers
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teacherSuggestions, setTeacherSuggestions] = useState<Record<string, string>>({});
+
   const loadBatches = useCallback(async () => {
     setLoading(true);
     try {
@@ -181,6 +187,16 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   }, []);
 
   useEffect(() => { loadBatches(); }, [loadBatches]);
+
+  useEffect(() => {
+    apiFetch("/admin/ignite/teachers").then(async r => {
+      if (r.ok) {
+        const data = await r.json();
+        setTeachers(data.teachers ?? []);
+        setTeacherSuggestions(data.suggestions ?? {});
+      }
+    });
+  }, []);
 
   // Load detail data when tab changes
   useEffect(() => {
@@ -543,6 +559,7 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
       setEditSessionForm={setEditSessionForm} savingSession={savingSession}
       onOpenEditSession={openEditSession} onUpdateSession={updateSession}
       onCloseEditSession={() => setEditingSession(null)}
+      teachers={teachers} teacherSuggestions={teacherSuggestions}
       mentorRows={mentorRows} mentorLoading={mentorLoading}
       analytics={analytics}
       settingsForm={settingsForm} setSettingsForm={setSettingsForm} settingsBusy={settingsBusy}
@@ -817,6 +834,7 @@ interface BatchDetailProps {
   onOpenEditSession: (s: DemoSession) => void;
   onUpdateSession: () => void;
   onCloseEditSession: () => void;
+  teachers: Teacher[]; teacherSuggestions: Record<string, string>;
   mentorRows: MentorTrackingRow[]; mentorLoading: boolean;
   analytics: AnalyticsData | null;
   settingsForm: typeof emptyBatch; setSettingsForm: (f: typeof emptyBatch) => void; settingsBusy: boolean;
@@ -935,7 +953,8 @@ function BatchDetail(p: BatchDetailProps) {
           setEditSessionForm={p.setEditSessionForm} savingSession={p.savingSession}
           onOpenEdit={p.onOpenEditSession} onUpdateSession={p.onUpdateSession}
           onCloseEdit={p.onCloseEditSession}
-          onCreate={p.onCreateSession} onDelete={p.onDeleteSession} onGenerate={p.onGenerateSessions} />
+          onCreate={p.onCreateSession} onDelete={p.onDeleteSession} onGenerate={p.onGenerateSessions}
+          teachers={p.teachers} teacherSuggestions={p.teacherSuggestions} />
       )}
       {p.detailTab === "mentor-tracking" && <MentorTrackingTab rows={p.mentorRows} loading={p.mentorLoading} flash={p.flash} />}
       {p.detailTab === "analytics" && <AnalyticsTab analytics={p.analytics} />}
@@ -1312,6 +1331,7 @@ function SessionsTab(p: {
   onUpdateSession: () => void;
   onCloseEdit: () => void;
   onCreate: () => void; onDelete: (id: number) => void; onGenerate: () => void;
+  teachers: Teacher[]; teacherSuggestions: Record<string, string>;
 }) {
   if (p.loading) return <div className="flex items-center justify-center py-16 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading sessions...</div>;
 
@@ -1343,7 +1363,11 @@ function SessionsTab(p: {
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Subject</label>
-              <Select value={p.form.subject || "none"} onValueChange={v => p.setForm({ ...p.form, subject: v === "none" ? "" : v })}>
+              <Select value={p.form.subject || "none"} onValueChange={v => {
+                const subj = v === "none" ? "" : v;
+                const suggested = subj ? (p.teacherSuggestions[subj] ?? "") : "";
+                p.setForm({ ...p.form, subject: subj, teacherName: suggested });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
@@ -1353,7 +1377,13 @@ function SessionsTab(p: {
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Teacher</label>
-              <Input placeholder="Teacher name" value={p.form.teacherName} onChange={e => p.setForm({ ...p.form, teacherName: e.target.value })} />
+              <Select value={p.form.teacherName || "none"} onValueChange={v => p.setForm({ ...p.form, teacherName: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— No teacher —</SelectItem>
+                  {p.teachers.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Scheduled At (IST)</label>
@@ -1531,8 +1561,13 @@ function SessionsTab(p: {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Teacher</label>
-                  <Input placeholder="Teacher name" value={p.editSessionForm.teacherName}
-                    onChange={e => p.setEditSessionForm({ ...p.editSessionForm, teacherName: e.target.value })} />
+                  <Select value={p.editSessionForm.teacherName || "none"} onValueChange={v => p.setEditSessionForm({ ...p.editSessionForm, teacherName: v === "none" ? "" : v })}>
+                    <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— No teacher —</SelectItem>
+                      {p.teachers.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">

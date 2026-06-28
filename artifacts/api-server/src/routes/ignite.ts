@@ -33,6 +33,29 @@ import {
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
 
+router.get("/admin/ignite/teachers", adminOnly, async (_req, res) => {
+  const [teachers, recentSessions] = await Promise.all([
+    db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true)))
+      .orderBy(usersTable.name),
+    db
+      .select({ subject: demoSessionsTable.subject, teacherName: demoSessionsTable.teacherName, createdAt: demoSessionsTable.createdAt })
+      .from(demoSessionsTable)
+      .where(and(isNotNull(demoSessionsTable.teacherName), isNotNull(demoSessionsTable.subject)))
+      .orderBy(desc(demoSessionsTable.createdAt))
+      .limit(200),
+  ]);
+  const suggestions: Record<string, string> = {};
+  for (const s of recentSessions) {
+    if (s.subject && s.teacherName && !suggestions[s.subject]) {
+      suggestions[s.subject] = s.teacherName;
+    }
+  }
+  res.json({ teachers, suggestions });
+});
+
 router.get("/admin/ignite/dashboard", adminOnly, async (_req, res) => {
   const [batches, enrollments] = await Promise.all([
     db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.createdAt)),
