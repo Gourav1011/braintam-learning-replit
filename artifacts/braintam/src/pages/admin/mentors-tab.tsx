@@ -707,7 +707,7 @@ export function MentorsTab({ flash }: { flash: (msg: string, ok?: boolean) => vo
   const TABS = [
     { key: "all"      as const, label: "All Mentors", count: mentors.length       },
     { key: "active"   as const, label: "Active",      count: activeCount           },
-    { key: "inactive" as const, label: "Inactive",    count: mentors.length - activeCount },
+    { key: "inactive" as const, label: "Disabled",    count: mentors.length - activeCount },
   ];
 
   return (

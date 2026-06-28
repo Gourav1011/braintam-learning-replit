@@ -3472,12 +3472,15 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                 placeholder="Search by name, email or phone…"
                 className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400 bg-white" />
             </div>
-            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+            <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden text-[11px] font-semibold">
+              {([["all","All"],["active","Active"],["inactive","Disabled"]] as [string,string][]).map(([val,lbl]) => (
+                <button key={val} onClick={() => { setStatusFilter(val); setPage(1); }}
+                  className={`px-3 py-1.5 transition-colors ${statusFilter === val ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                  style={statusFilter === val ? { background: val === "inactive" ? "#EF4444" : NAVY } : {}}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
             <span className="text-[10px] text-gray-400 ml-auto">{filtered.length} mentors</span>
           </div>
 
@@ -3502,18 +3505,18 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
               <table className="w-full text-xs min-w-[860px]">
                 <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
                   <tr>
-                    {["Mentor","Phone","Email","Grade","Leads","Converted","Conv %","Status",""].map((h, i) => (
+                    {["Mentor","Email / Phone","Grade","Leads","Converted","Conv %","Status",""].map((h, i) => (
                       <th key={i} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={9} className="text-center py-14">
+                    <tr><td colSpan={8} className="text-center py-14">
                       <RefreshCw className="w-5 h-5 animate-spin mx-auto text-gray-300" />
                     </td></tr>
                   ) : paged.length === 0 ? (
-                    <tr><td colSpan={9} className="text-center py-14 text-gray-400 text-sm">No sales mentors found.</td></tr>
+                    <tr><td colSpan={8} className="text-center py-14 text-gray-400 text-sm">No sales mentors found.</td></tr>
                   ) : paged.map(m => {
                     const initials = m.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
                     return (
@@ -3528,8 +3531,10 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 font-mono text-[11px] text-gray-600 whitespace-nowrap">{m.phone ?? "–"}</td>
-                        <td className="px-3 py-2.5 text-gray-500 text-[11px] max-w-[120px] truncate">{m.email ?? "–"}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="text-[11px] text-gray-500 truncate max-w-[140px]">{m.email ?? "–"}</div>
+                          <div className="text-[10px] font-mono text-gray-400 mt-0.5">{m.phone ?? "–"}</div>
+                        </td>
                         <td className="px-3 py-2.5">
                           {(() => { const g = m.gradesManaged[0]; return g
                             ? <span className="text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap" style={{ background: "#EEF2FF", color: NAVY }}>G{g}</span>
