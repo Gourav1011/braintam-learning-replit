@@ -146,8 +146,7 @@ export type IgniteView =
   | "paid-students-converted"
   | "paid-students-dropped"
   | "payments"
-  | "batch-health"
-  | "ignite-mentors";
+  | "batch-health";
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
@@ -3063,6 +3062,37 @@ function FollowUpsView({ flash, role = "admin" }: { flash: (m: string, ok?: bool
   );
 }
 
+// ── Mentors Hub View (Sales + Academic combined) ──────────────────────────────
+
+function MentorsHubView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [tab, setTab] = useState<"sales" | "academic">("sales");
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-base font-black" style={{ color: NAVY }}>Mentors</h1>
+          <p className="text-xs text-gray-500">Sales mentor performance &amp; Ignite academic mentor management</p>
+        </div>
+        <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-xl">
+          {([
+            { id: "sales" as const,    label: "💼 Sales Mentors",   },
+            { id: "academic" as const, label: "📚 Ignite Mentors",  },
+          ] as const).map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all ${
+                tab === t.id ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+              style={tab === t.id ? { color: NAVY } : {}}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {tab === "sales" ? <SalesMentorsView flash={flash} /> : <IgniteMentorsView flash={flash} />}
+    </div>
+  );
+}
+
 // ── Sales Mentors View ────────────────────────────────────────────────────────
 
 interface SalesMentor {
@@ -4256,8 +4286,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { id: "batch-health", label: "Batch Health", icon: ShieldCheck },
   { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "sales-mentors", label: "Sales Mentors", icon: Award },
-  { id: "ignite-mentors", label: "Ignite Mentors", icon: UserCog },
+  { id: "sales-mentors", label: "Mentors", icon: Award },
   { id: "student-outreach", label: "Student Outreach", icon: UserCheck },
   { id: "performance-rankings", label: "Performance Rankings", icon: BarChart2 },
   { id: "ignite-reports", label: "Reports", icon: BarChart3 },
@@ -5746,8 +5775,7 @@ export function IgniteContentArea({
     case "homework": return <HomeworkView flash={flash} />;
     case "follow-ups": return <FollowUpsView flash={flash} role={role} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
-    case "sales-mentors": return <SalesMentorsView flash={flash} />;
-    case "ignite-mentors": return <IgniteMentorsView flash={flash} />;
+    case "sales-mentors": return <MentorsHubView flash={flash} />;
     case "student-outreach": return <StudentOutreachView flash={flash} />;
     case "ignite-reports": return <IgniteAnalyticsTab />;
     case "performance-rankings": return <IgnitePerformanceRankingsTab />;
@@ -5787,8 +5815,7 @@ export function IgniteTab({
       case "homework": return <HomeworkView flash={flash} />;
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
-      case "sales-mentors": return <SalesMentorsView flash={flash} />;
-      case "ignite-mentors": return <IgniteMentorsView flash={flash} />;
+      case "sales-mentors": return <MentorsHubView flash={flash} />;
       case "student-outreach": return <StudentOutreachView flash={flash} />;
       case "ignite-reports": return <IgniteAnalyticsTab />;
       case "performance-rankings": return <IgnitePerformanceRankingsTab />;

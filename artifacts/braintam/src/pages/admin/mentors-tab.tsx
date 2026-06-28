@@ -578,14 +578,9 @@ function CreateMentorModal({ onClose, onCreated, flash }: { onClose: () => void;
           </div>
           <div>
             <label className="block text-xs font-semibold mb-1.5" style={{ color: NAVY }}>Mentor Type *</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[{ v: "academic" as const, l: "📚 Academic", c: GREEN }, { v: "sales" as const, l: "💼 Sales (SSM)", c: "#D97706" }].map(t => (
-                <button key={t.v} type="button" onClick={() => setMentorType(t.v)}
-                  className="py-2.5 rounded-xl text-xs font-bold border-2 transition-all"
-                  style={{ borderColor: mentorType === t.v ? t.c : "#E5E7EB", background: mentorType === t.v ? `${t.c}15` : "white", color: mentorType === t.v ? t.c : "#6B7280" }}>
-                  {t.l}
-                </button>
-              ))}
+            <div className="px-3 py-2.5 rounded-xl border-2 text-xs font-bold flex items-center gap-2"
+              style={{ borderColor: GREEN, background: `${GREEN}15`, color: GREEN }}>
+              📚 Academic Mentor
             </div>
           </div>
           <div className="flex gap-2 pt-2">
@@ -743,16 +738,14 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [alerts, setAlerts] = useState<AlertsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"all" | "academic" | "sales" | "inactive">("all");
+  const [activeTab, setActiveTab] = useState<"academic" | "inactive">("academic");
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [workloadFilter, setWorkloadFilter] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "healthScore", dir: "desc" });
   const [page, setPage] = useState(1);
   const [profileId, setProfileId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showAssign, setShowAssign] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -770,19 +763,6 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
     setLoading(false);
   }, []);
 
-  async function convertMentorType(mentorId: number, mentorName: string, currentType: string) {
-    const toSales = currentType !== "sales";
-    const targetType = toSales ? "sales" : "academic";
-    const label = toSales ? "Ignite (Sales)" : "Mastery (Academic)";
-    if (!window.confirm(`Move ${mentorName} to ${label}?\n\nThis will change their mentor type and reassign their leads accordingly.`)) return;
-    const r = await apiFetch(`/admin/mentors/${mentorId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ mentorType: targetType }),
-    });
-    if (r.ok) { flash(`${mentorName} moved to ${label}!`, true); loadData(); }
-    else { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed to update mentor type", false); }
-  }
-
   useEffect(() => { loadData(); }, [loadData]);
 
   function handleSort(key: SortKey) {
@@ -791,15 +771,12 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
   }
 
   const filtered = useMemo(() => {
-    let list = [...mentors];
-    if (activeTab === "academic") list = list.filter(m => (m.mentorType ?? "academic") === "academic");
-    else if (activeTab === "sales") list = list.filter(m => m.mentorType === "sales");
-    else if (activeTab === "inactive") list = list.filter(m => !m.isActive);
+    let list = [...mentors].filter(m => (m.mentorType ?? "academic") === "academic");
+    if (activeTab === "inactive") list = list.filter(m => !m.isActive);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || (m.phone ?? "").includes(q));
     }
-    if (typeFilter !== "all") list = list.filter(m => m.mentorType === typeFilter);
     if (statusFilter !== "all") list = list.filter(m => statusFilter === "active" ? m.isActive : !m.isActive);
     if (workloadFilter !== "all") list = list.filter(m => m.workload.toLowerCase() === workloadFilter);
     list.sort((a, b) => {
@@ -811,7 +788,7 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       return sort.dir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
     });
     return list;
-  }, [mentors, activeTab, search, typeFilter, workloadFilter, sort]);
+  }, [mentors, activeTab, search, statusFilter, workloadFilter, sort]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageData = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -840,10 +817,9 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
     URL.revokeObjectURL(url);
   }
 
+  const academicTotal = mentors.filter(m => (m.mentorType ?? "academic") === "academic").length;
   const TABS = [
-    { key: "all" as const, label: "All Mentors", count: mentors.length },
-    { key: "academic" as const, label: "Academic Mentors", count: stats?.academic ?? 0 },
-    { key: "sales" as const, label: "Sales Mentors", count: stats?.sales ?? 0 },
+    { key: "academic" as const, label: "Active Mentors", count: academicTotal },
     { key: "inactive" as const, label: "Inactive", count: stats?.inactive ?? 0 },
   ];
 
@@ -852,8 +828,8 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-black text-lg" style={{ color: NAVY }}>Mentor Management Center</h3>
-          <p className="text-xs text-gray-500">Manage academic and sales mentors · track performance, workload &amp; alerts</p>
+          <h3 className="font-black text-lg" style={{ color: NAVY }}>Mastery Mentors</h3>
+          <p className="text-xs text-gray-500">Manage academic mentors · track performance, workload &amp; student health</p>
         </div>
         <div className="flex gap-2 items-center">
           <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all">
@@ -866,9 +842,6 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
             </button>
             {showBulkMenu && (
               <div className="absolute right-0 top-9 z-30 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-48">
-                <button onClick={() => { setShowBulkMenu(false); setShowAssign(true); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                  <Users className="w-3.5 h-3.5 text-blue-500" /> Assign to Batch
-                </button>
                 <button onClick={() => { setShowBulkMenu(false); setShowBulk(true); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
                   <GraduationCap className="w-3.5 h-3.5 text-orange-500" /> Enable / Disable
                 </button>
@@ -896,21 +869,19 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-          <StatCard icon={<Users className="w-5 h-5" />} label="Total Mentors" value={stats?.total ?? 0} sub="View all mentors" color={NAVY} bg="#EEF2FF" />
-          <StatCard icon={<BookOpen className="w-5 h-5" />} label="Academic Mentors" value={stats?.academic ?? 0} sub={`${stats?.total ? Math.round(((stats.academic ?? 0) / stats.total) * 100) : 0}% of total`} color="#7C3AED" bg="#F5F3FF" />
-          <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Sales Mentors" value={stats?.sales ?? 0} sub={`${stats?.total ? Math.round(((stats.sales ?? 0) / stats.total) * 100) : 0}% of total`} color="#D97706" bg="#FFFBEB" />
-          <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Active Mentors" value={stats?.active ?? 0} sub={`${stats?.total ? Math.round(((stats.active ?? 0) / stats.total) * 100) : 0}% of total`} color={GREEN} bg="#ECFDF5" />
-          <StatCard icon={<XCircle className="w-5 h-5" />} label="Inactive Mentors" value={stats?.inactive ?? 0} sub={`${stats?.total ? Math.round(((stats.inactive ?? 0) / stats.total) * 100) : 0}% of total`} color="#DC2626" bg="#FEF2F2" />
+          <StatCard icon={<Users className="w-5 h-5" />} label="Total Mentors" value={stats?.academic ?? 0} sub="Academic mentors" color={NAVY} bg="#EEF2FF" />
+          <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Active" value={stats?.active ?? 0} sub={`${stats?.academic ? Math.round(((stats.active ?? 0) / stats.academic) * 100) : 0}% of total`} color={GREEN} bg="#ECFDF5" />
+          <StatCard icon={<XCircle className="w-5 h-5" />} label="Inactive" value={stats?.inactive ?? 0} sub={`${stats?.academic ? Math.round(((stats.inactive ?? 0) / stats.academic) * 100) : 0}% of total`} color="#DC2626" bg="#FEF2F2" />
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#FFF7ED" }}>
-              <Trophy className="w-5 h-5" style={{ color: ORANGE }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F5F3FF" }}>
+              <Trophy className="w-5 h-5" style={{ color: "#7C3AED" }} />
             </div>
             <div className="min-w-0">
-              <div className="text-xs text-gray-500 font-medium">Top Performer (Sales)</div>
+              <div className="text-xs text-gray-500 font-medium">Top Performer</div>
               {stats?.topPerformer ? (
                 <>
                   <div className="text-sm font-black leading-tight truncate" style={{ color: NAVY }}>{stats.topPerformer.name}</div>
-                  <div className="text-[10px] text-orange-500 font-bold">{stats.topPerformer.convPct}% Conversion</div>
+                  <div className="text-[10px] font-bold" style={{ color: GREEN }}>{stats.topPerformer.convPct}% Health Score</div>
                 </>
               ) : <div className="text-xs text-gray-400 mt-0.5">—</div>}
             </div>
@@ -940,12 +911,6 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                 placeholder="Search by name, email or phone…"
                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400 bg-white" />
             </div>
-            <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
-              <option value="all">Type: All</option>
-              <option value="academic">Academic</option>
-              <option value="sales">Sales (SSM)</option>
-            </select>
             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
               className="px-3 py-2 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
               <option value="all">Status: All</option>
@@ -959,8 +924,8 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
               <option value="medium">Busy</option>
               <option value="high">Overloaded</option>
             </select>
-            {(search || typeFilter !== "all" || statusFilter !== "all" || workloadFilter !== "all") && (
-              <button onClick={() => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); setWorkloadFilter("all"); setPage(1); }}
+            {(search || statusFilter !== "all" || workloadFilter !== "all") && (
+              <button onClick={() => { setSearch(""); setStatusFilter("all"); setWorkloadFilter("all"); setPage(1); }}
                 className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600 bg-white" title="Reset filters">
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -997,7 +962,6 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                       {pageData.map(m => {
                         const hc = healthColor(m.healthLabel);
                         const wc = workloadColor(m.workload);
-                        const isSales = m.mentorType === "sales";
                         return (
                           <tr key={m.id} className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => setProfileId(m.id)}>
                             <td className="px-4 py-3">
@@ -1011,36 +975,24 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                style={{ background: isSales ? "#FFFBEB" : "#ECFDF5", color: isSales ? "#D97706" : "#059669" }}>
-                                {isSales ? "💼 Sales" : "📚 Academic"}
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700">
+                                📚 Academic
                               </span>
                             </td>
                             <td className="px-3 py-3 text-center">
-                              <div className="text-sm font-black" style={{ color: NAVY }}>
-                                {isSales ? (m.assignedDemoStudents || "—") : (m.assignedStudents || "—")}
-                              </div>
-                              <div className="text-[10px] text-gray-400">{isSales ? "demo leads" : "students"}</div>
-                              {isSales && m.conversions > 0 && (
-                                <div className="text-[10px] text-green-600 font-bold">{m.conversions} converted</div>
-                              )}
+                              <div className="text-sm font-black" style={{ color: NAVY }}>{m.assignedStudents || "—"}</div>
+                              <div className="text-[10px] text-gray-400">students</div>
                             </td>
                             <td className="px-3 py-3 text-center">
                               <div className="text-sm font-black" style={{ color: hc.text }}>{m.healthScore}%</div>
                               <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: hc.bg, color: hc.text }}>{m.healthLabel}</span>
-                              {isSales ? (
-                                <div className="text-[10px] text-gray-400 mt-0.5">Conv: {m.conversionPct > 0 ? `${m.conversionPct}%` : "—"}</div>
-                              ) : (
-                                <div className="text-[10px] text-gray-400 mt-0.5">Att: {m.attendancePct !== null ? `${m.attendancePct}%` : "—"}</div>
-                              )}
+                              <div className="text-[10px] text-gray-400 mt-0.5">Att: {m.attendancePct !== null ? `${m.attendancePct}%` : "—"}</div>
                             </td>
                             <td className="px-3 py-3 text-center">
                               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: wc.bg, color: wc.text }}>
                                 {workloadDisplay(m.workload)}
                               </span>
-                              <div className="text-[10px] text-gray-400 mt-1">
-                                {isSales ? m.assignedDemoStudents : m.assignedStudents} / 60
-                              </div>
+                              <div className="text-[10px] text-gray-400 mt-1">{m.assignedStudents} / 60</div>
                             </td>
                             <td className="px-3 py-3 text-center text-[10px] text-gray-500">{timeAgo(m.lastLoginAt)}</td>
                             <td className="px-3 py-3 text-center">
@@ -1049,29 +1001,10 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                               </span>
                             </td>
                             <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
-                              <div className="flex items-center justify-center gap-1">
-                                <button onClick={() => setProfileId(m.id)}
-                                  className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all" title="View profile">
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                {isSales ? (
-                                  <button
-                                    onClick={() => convertMentorType(m.id, m.name, m.mentorType)}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm"
-                                    style={{ borderColor: "#059669", color: "#059669", background: "#F0FDF4" }}
-                                    title="Move to Mastery (change to Academic mentor)">
-                                    <GraduationCap className="w-3 h-3" /> Ignite → Mastery
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => convertMentorType(m.id, m.name, m.mentorType)}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all hover:shadow-sm"
-                                    style={{ borderColor: "#D97706", color: "#D97706", background: "#FFFBEB" }}
-                                    title="Move to Ignite (change to Sales mentor)">
-                                    <TrendingUp className="w-3 h-3" /> Mastery → Ignite
-                                  </button>
-                                )}
-                              </div>
+                              <button onClick={() => setProfileId(m.id)}
+                                className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-all" title="View profile">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1206,9 +1139,9 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                     <span className="text-xs font-black text-green-600">{m.convPct}%</span>
                   </div>
                 ))}
-                <button onClick={() => { setActiveTab("sales"); setSort({ key: "conversionPct", dir: "desc" }); setPage(1); tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                <button onClick={() => { setActiveTab("academic"); setPage(1); tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
                   className="w-full text-center text-[10px] text-blue-500 hover:text-blue-600 font-semibold mt-1 pt-1 border-t border-gray-100 transition-colors">
-                  View All Sales →
+                  View All Mentors →
                 </button>
               </div>
             )}
@@ -1301,23 +1234,7 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
                   names: alerts.noStudents.slice(0, 2).map(m => m.name),
                   color: "#7C3AED", bg: "#F5F3FF",
                   icon: <Users className="w-3.5 h-3.5" />,
-                  onClick: () => { setTypeFilter("academic"); setPage(1); },
-                },
-                {
-                  label: "Sales: low conversion (<10%)",
-                  count: alerts.lowConversion.length,
-                  names: alerts.lowConversion.slice(0, 2).map(m => m.name),
-                  color: "#0B2B6B", bg: "#EEF2FF",
-                  icon: <TrendingUp className="w-3.5 h-3.5" />,
-                  onClick: () => { setTypeFilter("sales"); setSort({ key: "conversionPct", dir: "asc" }); setPage(1); },
-                },
-                {
-                  label: "Sales: no demo leads",
-                  count: alerts.noLeads.length,
-                  names: alerts.noLeads.slice(0, 2).map(m => m.name),
-                  color: "#0891B2", bg: "#ECFEFF",
-                  icon: <Star className="w-3.5 h-3.5" />,
-                  onClick: () => { setTypeFilter("sales"); setPage(1); },
+                  onClick: () => { setActiveTab("academic"); setPage(1); },
                 },
               ].map(alert => (
                 <button key={alert.label} onClick={alert.onClick}
@@ -1356,11 +1273,6 @@ export function MentorsTab({ flash, users }: { flash: (msg: string, ok?: boolean
       {/* Create Mentor Modal */}
       {showCreate && (
         <CreateMentorModal onClose={() => setShowCreate(false)} onCreated={loadData} flash={flash} />
-      )}
-
-      {/* Assign to Batch Modal */}
-      {showAssign && (
-        <AssignToBatchModal mentors={mentors} onClose={() => setShowAssign(false)} flash={flash} />
       )}
 
       {/* Bulk Update Modal */}
