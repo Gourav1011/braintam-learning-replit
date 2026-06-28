@@ -1,0 +1,145 @@
+The audit looks good. I agree with the findings.
+
+==================================================
+FINAL FINDINGS
+==============
+
+Hidden Issues Found:
+
+1. masteryDeployment.ts
+
+* Current Map<grade, courseId> assumption is a blocker.
+* Must be fixed before supporting multiple courses per grade.
+
+2. admin.ts seed-permanent endpoint
+
+* Existing logic:
+  courseType + grade
+* This assumes one course per grade.
+
+Since this is a setup utility and not part of production flows, either:
+
+* Disable this endpoint after initial setup, or
+* Update it to support multiple courses per grade.
+
+3. Student Course Access
+   Current logic:
+
+if (course.grade !== user.grade)
+
+This is no longer sufficient.
+
+After introducing multiple courses per grade, access should be validated using:
+
+assignedCourseId
+
+A student should only access the course to which they are assigned.
+
+Example:
+
+Grade 3
+├── Course A
+└── Course B
+
+Student enrolled in Course A
+→ Can access Course A only.
+
+Student enrolled in Course B
+→ Can access Course B only.
+
+No cross-course access.
+
+==================================================
+CONTENT MODULES
+===============
+
+Homework
+Tests
+Assignments
+Live Classes
+Recordings
+Reports
+
+All are already linked using:
+
+course_id
+
+This is excellent because:
+
+Grade 3 → Course A
+and
+Grade 3 → Course B
+
+remain completely isolated.
+
+No content bleed risk exists.
+
+==================================================
+TESTING REQUIREMENTS
+====================
+
+Please test:
+
+Backend APIs
+
+* GET /admin/courses
+* POST /admin/courses
+* PUT /admin/courses/:id
+* PATCH /admin/courses/:id/activate-admissions
+* POST /admin/mastery/payments/:id/approve
+* POST /admin/ignite/move-to-mastery
+* GET /admin/mastery/students
+* GET /student/dashboard
+* GET /admin/mastery/deployments
+
+Frontend Screens
+
+* Courses List
+* Create Course
+* Activate Admissions
+* Mastery Students List
+* Student → My Courses
+* Payment Approval Flow
+* Deployment Flow
+
+==================================================
+REPORTS AND ANALYTICS
+=====================
+
+Please review:
+
+* Mastery Dashboard
+* Revenue Analytics
+* Conversion Funnel Reports
+
+Anywhere that currently displays:
+
+Grade 3
+
+may need to display:
+
+Grade 3 — Course A
+Grade 3 — Course B
+
+where appropriate.
+
+==================================================
+ONE ADDITIONAL REQUEST BEFORE CODING
+====================================
+
+Please also verify the following:
+
+1. Notifications
+2. Certificates
+3. Attendance
+4. Leaderboards
+5. WhatsApp communications
+6. Scheduled jobs and cron tasks
+7. Export and CSV reports
+8. Search APIs and global search
+
+Confirm whether any of these still assume:
+
+one grade = one course.
+
+Once this final verification is complete, we can proceed with implementation.
