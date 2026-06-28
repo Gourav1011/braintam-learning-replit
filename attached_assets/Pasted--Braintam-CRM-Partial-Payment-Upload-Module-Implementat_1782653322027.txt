@@ -1,0 +1,379 @@
+# Braintam CRM – Partial Payment Upload Module Implementation & QA Prompt
+
+Implement the remaining Partial Payment Upload + Duplicate Detection + Admin Approval system exactly as specified below.
+
+## Objectives
+
+Build a secure, production-ready payment upload system with complete auditability and finance controls.
+
+---
+
+# Payment Flow
+
+Student Pays
+↓
+Mentor Uploads Payment Proof
+↓
+Duplicate Detection Engine
+↓
+manual_payments (status=pending)
+↓
+Admin Review Queue
+↓
+Approve / Reject
+↓
+Student Fee Ledger Update
+↓
+Receipt Generation
+↓
+Notifications
+↓
+Audit Logs
+
+---
+
+# Mentor Upload Screen
+
+Fields:
+
+* Student
+* Payment Amount
+* Payment Mode (UPI, Bank Transfer, Cash, Cheque)
+* Reference Number / UTR
+* Payment Date
+* Multiple Screenshot Upload
+* Notes
+
+Permissions:
+
+* Mentor can upload payments.
+* Mentor cannot approve payments.
+* Mentor cannot edit approved payments.
+* Mentor cannot delete payments.
+* Mentor cannot see duplicate analysis.
+
+---
+
+# Duplicate Detection Engine
+
+## Hard Duplicate
+
+Check:
+referenceNumber + paymentMode
+
+If found:
+
+* Block upload.
+* Return:
+  "This payment reference already exists."
+
+---
+
+## Soft Duplicate
+
+Check:
+studentId + amount within last 7 days
+
+If found:
+
+* Allow upload.
+* Set:
+
+isDuplicate = true
+duplicateType = 'soft'
+duplicateScore = 70
+
+Store duplicatePaymentId.
+
+---
+
+# Database Fields
+
+manual_payments table must include:
+
+* status
+* isDuplicate
+* duplicateType
+* duplicateScore
+* duplicatePaymentId
+* paymentDate
+* remarks
+* approvedById
+* approvedAt
+* rejectionReason
+* receiptNumber
+* installmentNumber
+* paymentSequence
+* courseFeeSnapshot
+* paidTillDateSnapshot
+* remainingBeforeSnapshot
+* remainingAfterSnapshot
+* isArchived
+* archivedAt
+
+Never physically delete records.
+
+---
+
+# Overpayment Protection
+
+Before upload:
+
+remainingFee =
+courseFee - approvedPayments
+
+If uploaded amount > remainingFee:
+
+* Show warning.
+* Allow only Finance Admin override.
+
+---
+
+# Student Ledger Rules
+
+Student ledger updates ONLY when:
+
+status = approved
+
+Rejected and pending payments must never affect balances.
+
+---
+
+# Receipt Generation
+
+After approval:
+
+Generate:
+
+BTL-YYYY-000001
+BTL-YYYY-000002
+
+Receipt number must be unique.
+
+---
+
+# Audit Logs
+
+Track:
+
+* uploadedBy
+* approvedBy
+* rejectedBy
+* adjustedBy
+* timestamps
+* reasons
+* old values
+* new values
+
+Never delete logs.
+
+---
+
+# Admin Module
+
+Location:
+Command Center
+→ Finance
+→ Long-Term Payment Uploads
+
+Tabs:
+
+* All
+* Pending
+* Approved
+* Rejected
+* Duplicate
+
+Filters:
+
+* Student Name
+* Parent Number
+* Mentor
+* Amount
+* Reference Number
+* Date
+* Grade
+
+Columns:
+
+* Mentor
+* Student
+* Grade
+* Parent Phone
+* Amount
+* Mode
+* Reference Number
+* Duplicate Badge
+* Status
+* Uploaded At
+
+---
+
+# Payment Detail Drawer
+
+Display:
+
+* Student details
+* Parent details
+* Mentor details
+* Amount
+* Payment mode
+* Reference number
+* Payment date
+* Screenshot previews
+* Duplicate comparison panel
+* Timeline
+* Audit history
+
+Actions:
+Approve
+Reject
+View receipt
+View history
+
+---
+
+# Approval Workflow
+
+Approval must run inside a single database transaction.
+
+Pseudo Flow:
+
+BEGIN TRANSACTION
+
+Lock payment row
+
+IF status != pending
+RETURN error
+
+Update payment status
+
+Update student ledger
+
+Generate receipt
+
+Create notifications
+
+Create audit logs
+
+COMMIT
+
+Rollback everything if any step fails.
+
+Prevent double approvals from multiple admins.
+
+---
+
+# Notifications
+
+Mentor:
+"Payment approved."
+
+Parent:
+"₹X received successfully. Outstanding amount: ₹Y."
+
+Admin:
+"New payment uploaded."
+
+---
+
+# Finance Dashboard Cards
+
+* Pending Verification
+* Duplicate Payments
+* Today's Collection
+* Monthly Collection
+* Outstanding Fees
+* Rejected Payments
+
+---
+
+# Reports
+
+Support export:
+
+* Excel
+* CSV
+
+Filters:
+
+* Date Range
+* Grade
+* Mentor
+* Status
+* Payment Mode
+
+---
+
+# Archive Rules
+
+Financial records cannot be deleted.
+
+Use:
+
+isArchived
+archivedAt
+
+---
+
+# Mandatory Automated Test Cases
+
+## Duplicate Tests
+
+1. Upload same UTR twice → second upload blocked.
+2. Upload same amount for same student within 7 days → warning badge only.
+
+## Payment Workflow Tests
+
+3. Upload payment → status pending.
+4. Approve payment → ledger updated.
+5. Reject payment → ledger unchanged.
+6. Approve same payment twice → impossible.
+
+## Permission Tests
+
+7. Mentor cannot approve.
+8. Mentor cannot delete.
+9. Non-finance admin cannot override overpayment.
+
+## Ledger Tests
+
+10. Multiple installments calculate correctly.
+11. Overpayment warning works.
+12. Pending payments do not affect balances.
+
+## Receipt Tests
+
+13. Receipt numbers are unique.
+14. Receipts generated only after approval.
+
+## Concurrency Tests
+
+15. Two admins click Approve simultaneously → only one succeeds.
+
+## Audit Tests
+
+16. Every action creates audit logs.
+17. Logs cannot be modified.
+
+## Archive Tests
+
+18. Archived payments remain searchable.
+19. Archived payments cannot be edited.
+
+---
+
+# Deliverables Required After Implementation
+
+After coding, automatically provide:
+
+1. Database migration summary
+2. API endpoints added or changed
+3. Components created
+4. Files modified
+5. Test execution report
+6. Pass/Fail matrix for all 19 scenarios
+7. Any remaining bugs or technical debt
+8. Production readiness score out of 10
+
+Do not mark the feature complete until all tests pass successfully.
