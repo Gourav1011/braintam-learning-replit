@@ -190,9 +190,9 @@ function StatCard({ label, value, icon: Icon, sub, color }: {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-      <span className="text-xs text-gray-500 w-32 flex-shrink-0 mt-0.5">{label}</span>
-      <span className="text-sm font-medium text-gray-800 flex-1">{value}</span>
+    <div className="flex items-center gap-2 py-1 border-b border-gray-50 last:border-0">
+      <span className="text-[11px] text-gray-400 w-28 flex-shrink-0">{label}</span>
+      <span className="text-xs font-medium text-gray-800 flex-1">{value}</span>
     </div>
   );
 }
@@ -1383,25 +1383,35 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             </div>
           </div>
 
-          {/* ── Stat Cards ───────────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <StatCard label="Students Enrolled" value={dashLoading ? "…" : (courseStats?.studentsEnrolled ?? 0)}
-              icon={Users} sub={courseStats?.studentsEnrolled ? "+this week" : undefined} />
-            <StatCard label="Teachers Assigned" value={dashLoading ? "…" : (courseStats?.teachersAssigned ?? 0)} icon={UserCheck} />
-            <StatCard label="Subjects" value={dashLoading ? "…" : (courseStats?.subjects ?? 0)} icon={BookOpen} />
-            <StatCard label="Curriculum Topics" value={dashLoading ? "…" : (courseStats?.topics ?? 0)} icon={Tag} />
-            <StatCard label="Live Classes" value={dashLoading ? "…" : (courseStats?.liveClasses ?? 0)} icon={Video} />
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: selectedCourse.status === "active" ? "#DCFCE7" : "#F3F4F6" }}>
-                <div className={`w-2.5 h-2.5 rounded-full ${selectedCourse.status === "active" ? "bg-green-500" : "bg-gray-400"}`} />
+          {/* ── Stat Strip ───────────────────────────────────── */}
+          {(() => {
+            const stats = [
+              { label: "Students Enrolled", value: dashLoading ? "…" : (courseStats?.studentsEnrolled ?? 0), sub: "Total enrolled", icon: Users, iconBg: "#EEF2FF", iconClr: "#4F46E5" },
+              { label: "Teachers",          value: dashLoading ? "…" : (courseStats?.teachersAssigned ?? 0), sub: "View All",       icon: UserCheck, iconBg: "#F0FDF4", iconClr: "#16A34A" },
+              { label: "Subjects",          value: dashLoading ? "…" : (courseStats?.subjects ?? 0),         sub: "View All",       icon: BookOpen,  iconBg: "#FFF7ED", iconClr: "#EA580C" },
+              { label: "Curriculum Topics", value: dashLoading ? "…" : (courseStats?.topics ?? 0),           sub: "View Curriculum",icon: Tag,        iconBg: "#F5F3FF", iconClr: "#7C3AED" },
+              { label: "Live Classes",      value: dashLoading ? "…" : (courseStats?.liveClasses ?? 0),      sub: `This Week: ${courseLiveClasses.filter(lc => { const d=new Date(lc.scheduledAt); const s=new Date(); s.setDate(s.getDate()-s.getDay()); s.setHours(0,0,0,0); return d>=s; }).length}`, icon: Video, iconBg: "#FEF2F2", iconClr: "#DC2626" },
+              { label: "Status",            value: selectedCourse.status,                                    sub: selectedCourse.admissionStatus === "active" ? "Admissions Active" : "Admissions Closed", icon: selectedCourse.status === "active" ? CheckCircle2 : Archive, iconBg: selectedCourse.status === "active" ? "#F0FDF4" : "#F3F4F6", iconClr: selectedCourse.status === "active" ? "#16A34A" : "#6B7280" },
+            ] as { label: string; value: string|number; sub: string; icon: React.ElementType; iconBg: string; iconClr: string }[];
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="flex divide-x divide-gray-100 overflow-x-auto">
+                  {stats.map(({ label, value, sub, icon: Icon, iconBg, iconClr }) => (
+                    <div key={label} className="flex items-center gap-2.5 px-4 py-3 flex-1 min-w-[130px]">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+                        <Icon className="w-4 h-4" style={{ color: iconClr }} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xl font-extrabold leading-none capitalize" style={{ color: NAVY }}>{value}</p>
+                        <p className="text-[11px] font-medium text-gray-600 mt-0.5 truncate">{label}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <p className="text-xl font-extrabold leading-none capitalize" style={{ color: NAVY }}>{selectedCourse.status}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5 font-medium">Status</p>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* ── Tab Bar ──────────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
@@ -1426,8 +1436,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
             {/* ── TAB: OVERVIEW ─────────────────────────────── */}
             {courseTab === "overview" && (
-              <div className="p-5 space-y-5">
-                <div className="grid lg:grid-cols-3 gap-5">
+              <div className="p-4 space-y-4">
+                <div className="grid lg:grid-cols-3 gap-4">
                   {/* Course Overview card */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between mb-3">
