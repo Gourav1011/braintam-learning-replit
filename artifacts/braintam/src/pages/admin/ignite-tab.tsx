@@ -3425,8 +3425,8 @@ function GradeTeamsView({ flash }: { flash: (m: string, ok?: boolean) => void })
   );
 }
 
-function MentorsHubView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
-  return <SalesMentorsView flash={flash} />;
+function MentorsHubView({ flash, setView }: { flash: (m: string, ok?: boolean) => void; setView: (v: IgniteView) => void }) {
+  return <SalesMentorsView flash={flash} setView={setView} />;
 }
 
 // ── Sales Mentors — Modals ────────────────────────────────────────────────────
@@ -4022,7 +4022,7 @@ function MentorRowMenu({
   );
 }
 
-function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+function SalesMentorsView({ flash, setView }: { flash: (m: string, ok?: boolean) => void; setView: (v: IgniteView) => void }) {
   const [mentors, setMentors] = useState<SalesMentor[]>([]);
   const [grades, setGrades] = useState<GradeAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4104,8 +4104,8 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
           <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
             <Shuffle className="w-3.5 h-3.5 text-blue-500" /> Auto Balance
           </button>
-          <button onClick={() => setShowManageGrades(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
-            <GitBranch className="w-3.5 h-3.5 text-purple-500" /> Manage Grades
+          <button onClick={() => setView("grade-teams")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <GitBranch className="w-3.5 h-3.5 text-purple-500" /> Grade Teams
           </button>
           <button onClick={exportReport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
             <Download className="w-3.5 h-3.5 text-gray-500" /> Export CSV
@@ -4320,8 +4320,8 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                 );
               })}
             </div>
-            <button onClick={() => setShowManageGrades(true)} className="mt-3 w-full py-1.5 rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-500 hover:bg-gray-50 font-semibold">
-              ✏️ Edit Assignments
+            <button onClick={() => setView("grade-teams")} className="mt-3 w-full py-1.5 rounded-lg border border-dashed border-purple-300 text-[10px] text-purple-600 hover:bg-purple-50 font-semibold">
+              ✏️ Manage Grade Teams
             </button>
           </div>
 
@@ -4332,7 +4332,7 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
               {([
                 { l: "Add Sales Mentor",    ic: Plus,     action: () => setShowAdd(true),          color: NAVY,     bg: "#EEF2FF" },
                 { l: "Auto Balance Grades", ic: Shuffle,  action: () => setShowBulkModal(true),    color: "#7C3AED", bg: "#F5F3FF" },
-                { l: "Manage Grades",       ic: GitBranch,action: () => setShowManageGrades(true), color: GREEN,    bg: "#DCFCE7" },
+                { l: "Grade Teams",          ic: GitBranch,action: () => setView("grade-teams"),   color: "#7C3AED", bg: "#F5F3FF" },
                 { l: "Export Report",       ic: Download, action: exportReport,                    color: "#D97706", bg: "#FEF3C7" },
               ] as { l: string; ic: React.ElementType; action: () => void; color: string; bg: string }[]).map(qa => (
                 <button key={qa.l} onClick={qa.action}
@@ -6946,7 +6946,7 @@ export function IgniteContentArea({
     case "follow-ups": return <FollowUpsView flash={flash} role={role} />;
     case "conversion": return <ConversionCenterView setView={setView} />;
     case "grade-teams": return <GradeTeamsView flash={flash} />;
-    case "sales-mentors": return <MentorsHubView flash={flash} />;
+    case "sales-mentors": return <MentorsHubView flash={flash} setView={setView} />;
     case "student-outreach": return <StudentOutreachView flash={flash} />;
     case "ignite-reports": return <IgniteAnalyticsTab />;
     case "performance-rankings": return <IgnitePerformanceRankingsTab />;
@@ -6987,7 +6987,7 @@ export function IgniteTab({
       case "follow-ups": return <FollowUpsView flash={flash} />;
       case "conversion": return <ConversionCenterView setView={setView} />;
       case "grade-teams": return <GradeTeamsView flash={flash} />;
-      case "sales-mentors": return <MentorsHubView flash={flash} />;
+      case "sales-mentors": return <MentorsHubView flash={flash} setView={setView} />;
       case "student-outreach": return <StudentOutreachView flash={flash} />;
       case "ignite-reports": return <IgniteAnalyticsTab />;
       case "performance-rankings": return <IgnitePerformanceRankingsTab />;
