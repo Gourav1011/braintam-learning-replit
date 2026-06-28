@@ -1,0 +1,252 @@
+BTL CRM – Sales Mentors Module Redesign & Functional Fixes
+
+First audit the complete Sales Mentors module end-to-end. Check UI, APIs, database queries, permissions, and all buttons. Fix everything that is broken.
+
+PROBLEMS FOUND
+
+1. Grade Assignment UI is wrong
+   Current design shows G1–G10 dropdown assignments in a popup. This will completely fail when we have 100–200 mentors.
+
+Redesign it.
+
+Requirements:
+
+* Remove fixed grade assignment cards.
+* Use a scalable assignment system.
+* Create a "Manage Grades" modal.
+* Left side:
+
+  * Grade 1
+  * Grade 2
+  * …
+  * Grade 10
+* Right side:
+
+  * Multi-select mentor checklist with search
+  * Checkbox selection
+  * Select All
+  * Remove All
+* One grade can have multiple mentors.
+* One mentor can handle multiple grades.
+* Show lead count beside each mentor.
+* Show workload percentage.
+* Show overload warning if mentor exceeds limit.
+
+Example:
+
+Grade 6
+☑ Akshay (35 Leads)
+☑ Poonam (28 Leads)
+☐ Sales Mentor 1 (5 Leads)
+☐ Sales Mentor 2 (0 Leads)
+
+Add:
+
+* Auto Balance button
+* Suggested Assignment button
+* Save Assignment button
+
+2. Remove wasted space
+   Current page wastes too much space.
+
+Remove:
+
+* Huge grade cards at top.
+* Large empty sections.
+
+Replace with:
+
+Compact Grade Tabs:
+All | G1 | G2 | G3 | G4 | G5 | G6 | G7 | G8 | G9 | G10
+
+Selecting a grade filters mentors instantly.
+
+3. Remove top-right "Ignite Mentors" toggle
+   This switch is confusing.
+
+Instead:
+
+Ignite
+├── Sales Mentors
+├── Academic Mentors
+
+Separate pages.
+
+No top-right switches.
+
+4. Sales Mentor Table redesign
+   Columns:
+
+Mentor
+Phone
+Email
+Grades
+Assigned Leads
+Demo Scheduled
+Demo Paid
+Converted
+Follow Ups Pending
+Conversion %
+Status
+Actions
+
+Show grades as chips:
+
+G1
+G2
+G5
+
+Add:
+
+* Search
+* Status filter
+* Grade filter
+* Lead source filter
+
+5. Every Action button must work
+   Currently most functions are not working.
+
+Audit and fix:
+
+LEAD MANAGEMENT
+
+* Assign Leads
+* Bulk Assign Leads
+* Reassign Leads
+* View Assigned Leads
+
+MENTOR MANAGEMENT
+
+* Edit Mentor
+* Disable Mentor
+* Reset Password
+* Change Grades
+* View Activity Timeline
+
+REPORTS
+
+* Performance Report
+* Payment Report
+* Demo Attendance Report
+* Follow-up Report
+
+All buttons must:
+
+* Open correct modal/page
+* Call correct APIs
+* Update database
+* Refresh UI automatically
+* Show success/error toasts
+
+6. Remove Delete Mentor
+   Never permanently delete mentors.
+
+Replace:
+Delete Mentor
+
+with:
+
+Disable Mentor
+
+Requirements:
+
+* Soft delete only.
+* Set:
+  isActive = false
+  status = disabled
+
+Disabled mentors:
+
+* Cannot login
+* Cannot receive leads
+* Cannot be assigned grades
+* Still appear in reports/history.
+
+7. Add Sales Mentor Quick Actions
+   Top buttons:
+
+* Add Sales Mentor
+  Bulk Assign Leads
+  Reassign Leads
+  Import Leads
+  Export Report
+
+All buttons must function.
+
+8. Add Mentor Details Drawer
+   Click mentor row opens side drawer.
+
+Sections:
+
+Profile
+Assigned Grades
+Assigned Leads
+Demo Performance
+Payments
+Follow-ups
+Recent Activity
+Notes
+
+Actions:
+Edit
+Disable
+Reset Password
+Assign Leads
+Change Grades
+
+9. Add proper dashboard cards
+   Compact cards only:
+
+Total Mentors
+Active Mentors
+Assigned Leads
+Demo Scheduled
+Demo Paid
+Converted
+Revenue
+Conversion %
+
+Cards should be single-row compact cards.
+
+10. Backend Audit
+    Verify:
+
+* Lead assignment APIs
+* Reassign APIs
+* Grade assignment APIs
+* Filters
+* Pagination
+* Search
+* Permissions
+* Role checks
+* Counts
+* Analytics queries
+
+Fix any broken endpoints.
+
+11. End-to-End Testing Required
+    After implementation automatically test:
+
+Create Mentor
+Assign Grades
+Assign Leads
+Bulk Assign Leads
+Reassign Leads
+Disable Mentor
+Reset Password
+Performance Report
+Payment Report
+Filters
+Search
+Pagination
+Dashboard counters
+
+Provide final report:
+
+✅ Working features
+❌ Broken features
+⚠ Warnings
+🔧 Fixes applied
+📋 Remaining recommendations
+
+Do not add random new features. Focus on scalability, production readiness, working functionality, and a cleaner UI.

@@ -3063,33 +3063,254 @@ function FollowUpsView({ flash, role = "admin" }: { flash: (m: string, ok?: bool
   );
 }
 
-// ── Mentors Hub View (Sales + Academic combined) ──────────────────────────────
+// ── Mentors Hub View ─────────────────────────────────────────────────────────
 
 function MentorsHubView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
-  const [tab, setTab] = useState<"sales" | "academic">("sales");
+  return <SalesMentorsView flash={flash} />;
+}
+
+// ── Sales Mentors — Modals ────────────────────────────────────────────────────
+
+function AddSalesMentorModal({ onSave, onClose, flash }: {
+  onSave: () => void; onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState(""); const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) { flash("Name, email and password required", false); return; }
+    setSaving(true);
+    try {
+      const r = await apiFetch("/admin/mentors", { method: "POST", body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim() || null, password: password.trim(), mentorType: "sales" }) });
+      if (r.ok) { flash("Sales mentor added!", true); onSave(); }
+      else { const d = await r.json().catch(() => ({} as Record<string,string>)); flash(d.error ?? "Failed to add mentor", false); }
+    } finally { setSaving(false); }
+  };
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-base font-black" style={{ color: NAVY }}>Mentors</h1>
-          <p className="text-xs text-gray-500">Sales mentor performance &amp; Ignite academic mentor management</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Add Sales Mentor</h3>
+            <p className="text-xs text-gray-400">Create a new sales mentor account</p></div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
-        <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-xl">
+        <div className="space-y-3">
           {([
-            { id: "sales" as const,    label: "💼 Sales Mentors",   },
-            { id: "academic" as const, label: "📚 Ignite Mentors",  },
-          ] as const).map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all ${
-                tab === t.id ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-              style={tab === t.id ? { color: NAVY } : {}}>
-              {t.label}
-            </button>
+            { label: "Full Name *", val: name, set: setName, ph: "e.g. Riya Sharma", type: "text" },
+            { label: "Email *", val: email, set: setEmail, ph: "mentor@braintam.com", type: "email" },
+            { label: "Phone", val: phone, set: setPhone, ph: "+91 XXXXX XXXXX", type: "tel" },
+            { label: "Password *", val: password, set: setPassword, ph: "Set login password", type: "password" },
+          ] as { label: string; val: string; set: (v: string) => void; ph: string; type: string }[]).map(f => (
+            <div key={f.label}>
+              <label className="text-xs font-bold mb-1 block" style={{ color: NAVY }}>{f.label}</label>
+              <input type={f.type} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-blue-400" />
+            </div>
           ))}
         </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={submit} disabled={saving} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ background: NAVY }}>
+            {saving ? "Adding…" : "Add Mentor"}
+          </button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+        </div>
       </div>
-      {tab === "sales" ? <SalesMentorsView flash={flash} /> : <IgniteMentorsView flash={flash} />}
+    </div>
+  );
+}
+
+function EditSalesMentorModal({ mentor, onSave, onClose, flash }: {
+  mentor: SalesMentor; onSave: () => void; onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [name, setName] = useState(mentor.name);
+  const [email, setEmail] = useState(mentor.email ?? "");
+  const [phone, setPhone] = useState(mentor.phone ?? "");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (!name.trim()) { flash("Name is required", false); return; }
+    setSaving(true);
+    try {
+      const body: Record<string, unknown> = { name: name.trim(), email: email.trim() || null, phone: phone.trim() || null };
+      if (password.trim()) body.password = password.trim();
+      const r = await apiFetch(`/admin/mentors/${mentor.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      if (r.ok) { flash("Mentor updated!", true); onSave(); }
+      else { const d = await r.json().catch(() => ({} as Record<string,string>)); flash(d.error ?? "Failed to update", false); }
+    } finally { setSaving(false); }
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Edit Mentor</h3>
+            <p className="text-xs text-gray-400">{mentor.name}</p></div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="space-y-3">
+          {([
+            { label: "Full Name *", val: name, set: setName, ph: "Mentor name", type: "text" },
+            { label: "Email", val: email, set: setEmail, ph: "mentor@braintam.com", type: "email" },
+            { label: "Phone", val: phone, set: setPhone, ph: "+91 XXXXX XXXXX", type: "tel" },
+            { label: "New Password (leave blank to keep)", val: password, set: setPassword, ph: "New password…", type: "password" },
+          ] as { label: string; val: string; set: (v: string) => void; ph: string; type: string }[]).map(f => (
+            <div key={f.label}>
+              <label className="text-xs font-bold mb-1 block" style={{ color: NAVY }}>{f.label}</label>
+              <input type={f.type} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-blue-400" />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={submit} disabled={saving} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ background: NAVY }}>
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChangeGradesModal({ mentor, allGrades, allMentors, onSave, onClose, flash }: {
+  mentor: SalesMentor; allGrades: GradeAssignment[]; allMentors: SalesMentor[];
+  onSave: () => void; onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set(mentor.gradesManaged));
+  const [saving, setSaving] = useState(false);
+  const toggle = (g: number) => setSelected(prev => { const s = new Set(prev); s.has(g) ? s.delete(g) : s.add(g); return s; });
+  const getOwnerName = (g: number) => {
+    const ga = allGrades.find(x => x.grade === g);
+    if (!ga?.mentorId || ga.mentorId === mentor.id) return null;
+    return ga.mentorName ?? allMentors.find(m => m.id === ga.mentorId)?.name ?? null;
+  };
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const updates = allGrades.map(ga => {
+        if (selected.has(ga.grade)) return { grade: ga.grade, mentorId: mentor.id, mentorName: mentor.name };
+        if (ga.mentorId === mentor.id) return { grade: ga.grade, mentorId: null as number | null, mentorName: null as string | null };
+        return ga;
+      });
+      const r = await apiFetch("/admin/ignite/grade-assignments", { method: "POST", body: JSON.stringify(updates) });
+      if (r.ok) { flash("Grade assignments updated!", true); onSave(); }
+      else flash("Failed to update grades", false);
+    } finally { setSaving(false); }
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Change Grade Assignments</h3>
+            <p className="text-xs text-gray-400">{mentor.name} — select grades to manage</p></div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="grid grid-cols-5 gap-2 mb-4">
+          {[1,2,3,4,5,6,7,8,9,10].map(g => {
+            const ownerName = getOwnerName(g);
+            const isSel = selected.has(g);
+            return (
+              <button key={g} onClick={() => toggle(g)}
+                className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all ${isSel ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300 bg-gray-50"}`}>
+                <span className={`text-sm font-black ${isSel ? "text-blue-700" : "text-gray-500"}`}>G{g}</span>
+                {ownerName && <span className="text-[9px] text-orange-500 font-semibold leading-tight">{ownerName.split(" ")[0]}</span>}
+                {!ownerName && <span className="text-[9px] text-gray-400">{isSel ? "✓" : "Free"}</span>}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-4">
+          ⚠ Orange = owned by another mentor. Selecting will reassign to {mentor.name.split(" ")[0]}.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={submit} disabled={saving} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ background: NAVY }}>
+            {saving ? "Saving…" : `Save — ${selected.size} Grade${selected.size !== 1 ? "s" : ""}`}
+          </button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ManageAllGradesModal({ grades, mentors, onSave, onClose, flash }: {
+  grades: GradeAssignment[]; mentors: SalesMentor[];
+  onSave: () => void; onClose: () => void; flash: (m: string, ok?: boolean) => void;
+}) {
+  const [local, setLocal] = useState<GradeAssignment[]>(grades);
+  const [saving, setSaving] = useState(false);
+  const setMentorForGrade = (grade: number, mentorId: number | null) => {
+    const m = mentors.find(x => x.id === mentorId);
+    setLocal(prev => prev.map(g => g.grade === grade ? { ...g, mentorId, mentorName: m?.name ?? null } : g));
+  };
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const r = await apiFetch("/admin/ignite/grade-assignments", { method: "POST", body: JSON.stringify(local) });
+      if (r.ok) { flash("Grade assignments saved!", true); onSave(); }
+      else flash("Failed to save assignments", false);
+    } finally { setSaving(false); }
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Manage Grade Assignments</h3>
+            <p className="text-xs text-gray-400">Assign each grade (G1–G10) to a primary sales mentor</p></div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {local.map(ga => (
+            <div key={ga.grade} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="text-sm font-black w-8 shrink-0" style={{ color: NAVY }}>G{ga.grade}</div>
+              <select value={ga.mentorId ?? ""} onChange={e => setMentorForGrade(ga.grade, Number(e.target.value) || null)}
+                className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400 bg-white">
+                <option value="">— Unassigned —</option>
+                {mentors.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={submit} disabled={saving} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ background: NAVY }}>
+            {saving ? "Saving…" : "Save All Assignments"}
+          </button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AutoBalanceModal({ mentors, flash, onClose }: {
+  mentors: SalesMentor[]; flash: (m: string, ok?: boolean) => void; onClose: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const r = await apiFetch("/admin/ignite/grade-assignments/auto-balance", { method: "POST" });
+      if (r.ok) { flash("Grades auto-balanced across active mentors!", true); onClose(); }
+      else flash("Auto-balance failed", false);
+    } finally { setSaving(false); }
+  };
+  const active = mentors.filter(m => m.isActive).length;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Auto Balance Grades</h3>
+            <p className="text-xs text-gray-400">Distribute grades evenly across active mentors</p></div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4 text-xs text-blue-700">
+          Grades G1–G10 will be distributed in round-robin across <strong>{active} active mentor{active !== 1 ? "s" : ""}</strong>. Existing assignments will be replaced.
+        </div>
+        <div className="flex gap-2">
+          <button onClick={submit} disabled={saving || active === 0} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ background: NAVY }}>
+            {saving ? "Balancing…" : "Auto Balance"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -3115,120 +3336,32 @@ function fmtRevenue(v: number) {
 
 const RANK_COLORS = ["#D97706", "#6B7280", "#B45309"];
 
-function GradeEditModal({ grades, mentors, onSave, onClose }: {
-  grades: GradeAssignment[]; mentors: SalesMentor[];
-  onSave: (a: GradeAssignment[]) => void; onClose: () => void;
-}) {
-  const [local, setLocal] = useState<GradeAssignment[]>(grades);
-  function setMentorForGrade(grade: number, mentorId: number | null) {
-    const m = mentors.find(x => x.id === mentorId);
-    setLocal(prev => prev.map(g => g.grade === grade ? { ...g, mentorId, mentorName: m?.name ?? null } : g));
-  }
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="font-black text-base" style={{ color: NAVY }}>Edit Grade Assignments</h3>
-            <p className="text-xs text-gray-400">Assign each grade (1–10) to a sales mentor</p>
-          </div>
-          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-        </div>
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {local.map(ga => (
-            <div key={ga.grade} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
-              <div className="text-sm font-black w-8 shrink-0" style={{ color: NAVY }}>G{ga.grade}</div>
-              <select value={ga.mentorId ?? ""} onChange={e => setMentorForGrade(ga.grade, Number(e.target.value) || null)}
-                className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400">
-                <option value="">Unassigned</option>
-                {mentors.filter(m => m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => onSave(local)} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background: NAVY }}>Save Assignments</button>
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BulkAssignLeadsModal({ mentors, flash, onClose }: {
-  mentors: SalesMentor[]; flash: (m: string, ok?: boolean) => void; onClose: () => void;
-}) {
-  const [gradeFilter, setGradeFilter] = useState("");
-  const [method, setMethod] = useState<"replace" | "append" | "roundrobin">("roundrobin");
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="font-black text-base" style={{ color: NAVY }}>Bulk Assign Leads</h3>
-            <p className="text-xs text-gray-400">Assign multiple leads to mentors at once</p>
-          </div>
-          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-bold mb-1.5 block" style={{ color: NAVY }}>Filter by Grade</label>
-            <select value={gradeFilter} onChange={e => setGradeFilter(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs outline-none">
-              <option value="">All Grades</option>
-              {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>Grade {g}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold mb-2 block" style={{ color: NAVY }}>Assignment Method</label>
-            <div className="space-y-2">
-              {([
-                { v: "replace" as const, l: "Replace Existing", d: "Overwrite current assignments" },
-                { v: "append" as const, l: "Append", d: "Add to existing assignments" },
-                { v: "roundrobin" as const, l: "Round Robin", d: "Distribute evenly across mentors" },
-              ]).map(opt => (
-                <label key={opt.v} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${method === opt.v ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
-                  <input type="radio" name="method" value={opt.v} checked={method === opt.v} onChange={() => setMethod(opt.v)} className="mt-0.5" />
-                  <div>
-                    <div className="text-xs font-bold text-gray-800">{opt.l}</div>
-                    <div className="text-[10px] text-gray-400">{opt.d}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button onClick={() => { flash("Bulk assignment queued!", true); onClose(); }} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold" style={{ background: NAVY }}>
-              Assign Leads
-            </button>
-            <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
   const [mentors, setMentors] = useState<SalesMentor[]>([]);
   const [grades, setGrades] = useState<GradeAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState("all");
+  const [gradeTab, setGradeTab] = useState<"all" | number>("all");
   const [actionMenu, setActionMenu] = useState<number | null>(null);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [showGradeEdit, setShowGradeEdit] = useState(false);
   const [page, setPage] = useState(1);
   const PER = 10;
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [editMentor, setEditMentor] = useState<SalesMentor | null>(null);
+  const [changeGradesMentor, setChangeGradesMentor] = useState<SalesMentor | null>(null);
+  const [showManageGrades, setShowManageGrades] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [confirmToggle, setConfirmToggle] = useState<SalesMentor | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       apiFetch("/admin/ignite/sales-mentors").then(r => r.json()),
       apiFetch("/admin/ignite/grade-assignments").then(r => r.json()),
-    ]).then(([m, g]) => { setMentors(m); setGrades(g); })
-      .catch(() => flash("Failed to load data", false))
+    ]).then(([m, g]) => { setMentors(Array.isArray(m) ? m : []); setGrades(Array.isArray(g) ? g : []); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -3238,12 +3371,14 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
   const totalDemoPaid = mentors.reduce((s, m) => s + m.demoPaid, 0);
   const totalConverted = mentors.reduce((s, m) => s + m.converted, 0);
   const totalRevenue = mentors.reduce((s, m) => s + m.revenue, 0);
+  const totalPending = mentors.reduce((s, m) => s + m.followUpsPending, 0);
   const overallRate = totalLeads > 0 ? Math.round((totalConverted / totalLeads) * 100) : 0;
+  const topPerformers = [...mentors].sort((a, b) => b.conversionRate - a.conversionRate).slice(0, 3);
 
   const filtered = mentors.filter(m => {
     if (statusFilter === "active" && !m.isActive) return false;
     if (statusFilter === "inactive" && m.isActive) return false;
-    if (gradeFilter !== "all" && !m.gradesManaged.includes(Number(gradeFilter))) return false;
+    if (gradeTab !== "all" && !m.gradesManaged.includes(gradeTab as number)) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
       if (!m.name.toLowerCase().includes(q) && !(m.email ?? "").toLowerCase().includes(q) && !(m.phone ?? "").includes(q)) return false;
@@ -3252,18 +3387,14 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
   });
   const paged = filtered.slice((page - 1) * PER, page * PER);
   const totalPages = Math.ceil(filtered.length / PER);
-  const topPerformers = [...mentors].sort((a, b) => b.conversionRate - a.conversionRate).slice(0, 3);
 
-  const autoBalance = async () => {
-    const r = await apiFetch("/admin/ignite/grade-assignments/auto-balance", { method: "POST" });
-    if (r.ok) { flash("Grades auto-balanced!", true); load(); }
-    else flash("Auto-balance failed", false);
-  };
-
-  const saveGrades = async (a: GradeAssignment[]) => {
-    const r = await apiFetch("/admin/ignite/grade-assignments", { method: "POST", body: JSON.stringify(a) });
-    if (r.ok) { flash("Grade assignments saved!", true); load(); setShowGradeEdit(false); }
-    else flash("Failed to save assignments", false);
+  const handleToggleActive = async (m: SalesMentor) => {
+    setTogglingId(m.id);
+    try {
+      const r = await apiFetch(`/admin/mentors/${m.id}`, { method: "PATCH", body: JSON.stringify({ isActive: !m.isActive }) });
+      if (r.ok) { flash(m.isActive ? "Mentor disabled" : "Mentor enabled", true); load(); }
+      else flash("Failed to update mentor", false);
+    } finally { setTogglingId(null); setConfirmToggle(null); }
   };
 
   const exportReport = () => {
@@ -3276,45 +3407,45 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
 
   return (
     <div className="space-y-4" onClick={() => actionMenu !== null && setActionMenu(null)}>
-      {/* Header + Action Bar */}
+      {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-lg font-black" style={{ color: NAVY }}>Sales Mentors</h1>
-          <p className="text-xs text-gray-500">Manage sales mentors, assign leads and track performance</p>
+          <p className="text-xs text-gray-500">Manage sales mentors, grade assignments and conversion performance</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
-            <Users className="w-3.5 h-3.5 text-blue-500" /> Bulk Assign Leads
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90 transition-all" style={{ background: NAVY }}>
+            <Plus className="w-3.5 h-3.5" /> Add Mentor
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
-            <ArrowRightLeft className="w-3.5 h-3.5 text-purple-500" /> Reassign Leads
+          <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <Shuffle className="w-3.5 h-3.5 text-blue-500" /> Auto Balance
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
-            <Upload className="w-3.5 h-3.5 text-green-500" /> Import Leads
+          <button onClick={() => setShowManageGrades(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <GitBranch className="w-3.5 h-3.5 text-purple-500" /> Manage Grades
           </button>
-          <button onClick={exportReport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all">
-            <Download className="w-3.5 h-3.5 text-gray-500" /> Export Report
+          <button onClick={exportReport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <Download className="w-3.5 h-3.5 text-gray-500" /> Export CSV
           </button>
-          <button onClick={load} className="p-1.5 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-gray-50 transition-all">
+          <button onClick={load} className="p-1.5 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-gray-50">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* KPI Cards — 8 cards */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-4 xl:grid-cols-8 gap-2">
-        {[
-          { label: "Total Mentors",    value: mentors.length,  icon: Users,      color: NAVY,     bg: "#EEF2FF" },
-          { label: "Active Mentors",   value: mentors.filter(m=>m.isActive).length, icon: UserCheck, color: GREEN, bg: "#DCFCE7" },
-          { label: "Leads Assigned",   value: totalLeads,      icon: Phone,      color: "#3B82F6", bg: "#DBEAFE" },
-          { label: "Demo Scheduled",   value: totalDemoSched,  icon: Calendar,   color: "#7C3AED", bg: "#F5F3FF" },
-          { label: "Demo Paid",        value: totalDemoPaid,   icon: CreditCard, color: ORANGE,   bg: "#FFF7ED" },
-          { label: "Converted",        value: totalConverted,  icon: CheckCircle,color: GREEN,    bg: "#DCFCE7" },
-          { label: "Revenue",          value: fmtRevenue(totalRevenue), icon: TrendingUp, color: "#D97706", bg: "#FEF3C7" },
-          { label: "Conversion %",     value: `${overallRate}%`, icon: BarChart3, color: "#0891B2", bg: "#ECFEFF" },
-        ].map(k => (
+        {([
+          { label: "Total Mentors",  value: mentors.length,                         icon: Users,       color: NAVY,     bg: "#EEF2FF" },
+          { label: "Active",         value: mentors.filter(m => m.isActive).length, icon: UserCheck,   color: GREEN,    bg: "#DCFCE7" },
+          { label: "Leads Assigned", value: totalLeads,                             icon: Phone,       color: "#3B82F6", bg: "#DBEAFE" },
+          { label: "Demo Scheduled", value: totalDemoSched,                         icon: Calendar,    color: "#7C3AED", bg: "#F5F3FF" },
+          { label: "Demo Paid",      value: totalDemoPaid,                          icon: CreditCard,  color: ORANGE,   bg: "#FFF7ED" },
+          { label: "Converted",      value: totalConverted,                         icon: CheckCircle, color: GREEN,    bg: "#DCFCE7" },
+          { label: "Follow Ups",     value: totalPending,                           icon: Clock,       color: "#D97706", bg: "#FEF3C7" },
+          { label: "Conv %",         value: `${overallRate}%`,                      icon: BarChart3,   color: "#0891B2", bg: "#ECFEFF" },
+        ] as { label: string; value: string | number; icon: React.ElementType; color: string; bg: string }[]).map(k => (
           <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col gap-1.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: k.bg }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: k.bg }}>
               <k.icon className="w-3.5 h-3.5" style={{ color: k.color }} />
             </div>
             <div className="text-sm font-black leading-none" style={{ color: k.color }}>{k.value}</div>
@@ -3323,76 +3454,49 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
         ))}
       </div>
 
-      {/* Grade Assignment Section */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-sm font-black" style={{ color: NAVY }}>Grade Wise Sales Mentor Assignment</h2>
-            <p className="text-[10px] text-gray-400 mt-0.5">Click a grade card to edit assignment</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={autoBalance} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all hover:bg-blue-50" style={{ borderColor: "#93C5FD", color: "#2563EB" }}>
-              ⚖️ Auto Balance
-            </button>
-            <button onClick={() => setShowGradeEdit(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all hover:bg-orange-50" style={{ borderColor: "#FDBA74", color: "#EA580C" }}>
-              ✏️ Edit Assignment
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
-          {grades.map(ga => {
-            const initials = ga.mentorName ? ga.mentorName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";
-            const active = mentors.find(x => x.id === ga.mentorId)?.isActive !== false;
-            return (
-              <button key={ga.grade} onClick={() => setShowGradeEdit(true)}
-                className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all">
-                <div className="text-[10px] font-black text-gray-400">G{ga.grade}</div>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"
-                  style={{ background: ga.mentorId ? (active ? NAVY : "#9CA3AF") : "#F3F4F6", color: ga.mentorId ? "white" : "#D1D5DB" }}>
-                  {initials}
-                </div>
-                <div className="text-[9px] font-semibold text-gray-600 truncate w-full text-center leading-tight">
-                  {ga.mentorName?.split(" ")[0] ?? "–"}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Main content: table + sidebar */}
+      {/* Main layout */}
       <div className="flex gap-4 items-start">
-        {/* Table */}
+        {/* Left: filters + table */}
         <div className="flex-1 min-w-0 space-y-3">
-          {/* Filter bar */}
+          {/* Search + status filter */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2 flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 min-w-36">
               <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search mentors…"
+                placeholder="Search by name, email or phone…"
                 className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs outline-none focus:border-blue-400 bg-white" />
             </div>
             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
               className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
-              <option value="all">Status: All</option>
+              <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-            </select>
-            <select value={gradeFilter} onChange={e => { setGradeFilter(e.target.value); setPage(1); }}
-              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs bg-white outline-none focus:border-blue-400">
-              <option value="all">Grade: All</option>
-              {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g}>G{g}</option>)}
             </select>
             <span className="text-[10px] text-gray-400 ml-auto">{filtered.length} mentors</span>
           </div>
 
-          {/* Mentor table */}
+          {/* Grade tabs */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {(["all" as const, 1,2,3,4,5,6,7,8,9,10]).map(g => {
+              const isActive = gradeTab === g;
+              const cnt = g === "all" ? mentors.length : mentors.filter(m => m.gradesManaged.includes(g)).length;
+              return (
+                <button key={g} onClick={() => { setGradeTab(g); setPage(1); }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${isActive ? "text-white shadow-sm" : "bg-white border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600"}`}
+                  style={isActive ? { background: NAVY } : {}}>
+                  {g === "all" ? `All (${mentors.length})` : `G${g}${cnt > 0 ? ` · ${cnt}` : ""}`}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs min-w-[920px]">
+              <table className="w-full text-xs min-w-[860px]">
                 <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
                   <tr>
-                    {["#","Mentor","Grades","Assigned Leads","Demo Sched.","Demo Paid","Converted","Follow Ups","Revenue","Conv %","Status",""].map((h, i) => (
+                    {["Mentor","Phone","Email","Grades","Leads","Demo Sched","Demo Paid","Converted","Follow Ups","Conv %","Status",""].map((h, i) => (
                       <th key={i} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -3403,50 +3507,42 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                       <RefreshCw className="w-5 h-5 animate-spin mx-auto text-gray-300" />
                     </td></tr>
                   ) : paged.length === 0 ? (
-                    <tr><td colSpan={12} className="text-center py-14 text-gray-400 text-sm">
-                      No sales mentors found.
-                    </td></tr>
-                  ) : paged.map((m, i) => {
-                    const rank = (page - 1) * PER + i + 1;
+                    <tr><td colSpan={12} className="text-center py-14 text-gray-400 text-sm">No sales mentors found.</td></tr>
+                  ) : paged.map(m => {
+                    const initials = m.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
                     return (
                       <tr key={m.id} className="border-b border-gray-50 hover:bg-blue-50/20 transition-colors">
                         <td className="px-3 py-2.5">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
-                            style={{ background: rank <= 3 ? `${RANK_COLORS[rank-1]}20` : "#F3F4F6", color: rank <= 3 ? RANK_COLORS[rank-1] : "#9CA3AF" }}>
-                            {rank}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ background: m.isActive ? NAVY : "#9CA3AF" }}>
-                              {m.name?.[0] ?? "?"}
-                            </div>
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                              style={{ background: m.isActive ? NAVY : "#9CA3AF" }}>{initials}</div>
                             <div>
-                              <div className="font-bold text-gray-800 text-xs">{m.name}</div>
-                              <div className="text-gray-400 text-[10px]">{m.phone ?? "–"}</div>
+                              <div className="font-semibold text-gray-800 leading-none">{m.name}</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">Last: {m.lastLoginDate ? fmt(m.lastLoginDate) : "Never"}</div>
                             </div>
                           </div>
                         </td>
+                        <td className="px-3 py-2.5 font-mono text-[11px] text-gray-600 whitespace-nowrap">{m.phone ?? "–"}</td>
+                        <td className="px-3 py-2.5 text-gray-500 text-[11px] max-w-[120px] truncate">{m.email ?? "–"}</td>
                         <td className="px-3 py-2.5">
                           <div className="flex flex-wrap gap-0.5">
-                            {m.gradesManaged.length > 0 ? m.gradesManaged.sort((a,b)=>a-b).map(g => (
-                              <span key={g} className="text-[9px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>G{g}</span>
-                            )) : <span className="text-gray-300 text-[10px]">–</span>}
+                            {m.gradesManaged.length === 0
+                              ? <span className="text-gray-300 text-[10px]">–</span>
+                              : m.gradesManaged.sort((a, b) => a - b).map(g => (
+                                <span key={g} className="text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap" style={{ background: "#EEF2FF", color: NAVY }}>G{g}</span>
+                              ))}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 font-bold text-gray-700">{m.assignedLeads}</td>
+                        <td className="px-3 py-2.5 font-semibold text-gray-700">{m.assignedLeads || "–"}</td>
                         <td className="px-3 py-2.5 font-semibold" style={{ color: "#7C3AED" }}>{m.demoScheduled || "–"}</td>
                         <td className="px-3 py-2.5 font-semibold" style={{ color: ORANGE }}>{m.demoPaid || "–"}</td>
                         <td className="px-3 py-2.5 font-semibold" style={{ color: GREEN }}>{m.converted || "–"}</td>
                         <td className="px-3 py-2.5">
-                          <span className={`font-semibold text-xs ${m.followUpsPending > 5 ? "text-red-500" : "text-gray-500"}`}>
-                            {m.followUpsPending || "–"}
-                          </span>
+                          <span className={`font-semibold ${m.followUpsPending > 5 ? "text-red-500" : "text-gray-500"}`}>{m.followUpsPending || "–"}</span>
                         </td>
-                        <td className="px-3 py-2.5 font-bold text-gray-700 text-[11px]">{fmtRevenue(m.revenue)}</td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-black text-xs" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
+                            <span className="font-black text-xs whitespace-nowrap" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
                               {m.conversionRate}%
                             </span>
                             <div className="h-1.5 w-10 rounded-full bg-gray-100 overflow-hidden">
@@ -3467,29 +3563,45 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                           {actionMenu === m.id && (
                             <div className="absolute right-2 top-9 z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-52">
                               <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Lead Management</div>
-                              {[{ l: "Assign Leads", ic: Plus }, { l: "Bulk Assign Leads", ic: Users }, { l: "Reassign Leads", ic: Shuffle }, { l: "View Assigned Leads", ic: Eye }].map(it => (
-                                <button key={it.l} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                              {([
+                                { l: "View Assigned Leads", ic: Eye },
+                                { l: "Reassign Leads", ic: ArrowRightLeft },
+                              ] as { l: string; ic: React.ElementType }[]).map(it => (
+                                <button key={it.l} onClick={() => { flash(`${it.l} — coming soon`, true); setActionMenu(null); }}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                                   <it.ic className="w-3.5 h-3.5 text-blue-400" /> {it.l}
                                 </button>
                               ))}
                               <div className="h-px bg-gray-100 my-1" />
                               <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Mentor Management</div>
-                              {[{ l: "Edit Mentor", ic: UserCog }, { l: m.isActive ? "Disable" : "Enable", ic: m.isActive ? Ban : CheckCircle }, { l: "Reset Password", ic: RotateCcw }, { l: "Change Grades", ic: GitBranch }, { l: "View Activity Timeline", ic: History }].map(it => (
-                                <button key={it.l} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
-                                  <it.ic className="w-3.5 h-3.5 text-orange-400" /> {it.l}
-                                </button>
-                              ))}
+                              <button onClick={() => { setEditMentor(m); setActionMenu(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                                <UserCog className="w-3.5 h-3.5 text-orange-400" /> Edit Mentor
+                              </button>
+                              <button onClick={() => { setConfirmToggle(m); setActionMenu(null); }}
+                                disabled={togglingId === m.id}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                                {m.isActive
+                                  ? <Ban className="w-3.5 h-3.5 text-red-400" />
+                                  : <CheckCircle className="w-3.5 h-3.5 text-green-400" />}
+                                {togglingId === m.id ? "Updating…" : m.isActive ? "Disable Mentor" : "Enable Mentor"}
+                              </button>
+                              <button onClick={() => { setChangeGradesMentor(m); setActionMenu(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                                <GitBranch className="w-3.5 h-3.5 text-purple-400" /> Change Grades
+                              </button>
                               <div className="h-px bg-gray-100 my-1" />
                               <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">Reports</div>
-                              {[{ l: "Performance Report", ic: BarChart3 }, { l: "Payment Report", ic: CreditCard }, { l: "Demo Attendance", ic: Calendar }, { l: "Follow-up Report", ic: Clock }].map(it => (
-                                <button key={it.l} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                              {([
+                                { l: "Performance Report", ic: BarChart3 },
+                                { l: "Payment Report",    ic: CreditCard },
+                                { l: "Follow-up Report",  ic: Clock },
+                              ] as { l: string; ic: React.ElementType }[]).map(it => (
+                                <button key={it.l} onClick={() => { flash(`${it.l} — coming soon`, true); setActionMenu(null); }}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                                   <it.ic className="w-3.5 h-3.5 text-green-500" /> {it.l}
                                 </button>
                               ))}
-                              <div className="h-px bg-gray-100 my-1" />
-                              <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 font-semibold">
-                                <X className="w-3.5 h-3.5" /> Delete Mentor
-                              </button>
                             </div>
                           )}
                         </td>
@@ -3505,7 +3617,7 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                 <div className="flex items-center gap-1">
                   <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="px-2 py-1 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 disabled:opacity-40 text-xs">‹</button>
                   {Array.from({length: Math.min(totalPages, 5)}, (_, i) => i + 1).map(p => (
-                    <button key={p} onClick={() => setPage(p)} className="w-7 h-7 rounded-lg text-xs font-bold transition-all"
+                    <button key={p} onClick={() => setPage(p)} className="w-7 h-7 rounded-lg text-xs font-bold"
                       style={page===p ? { background: NAVY, color: "white" } : { color: "#6B7280" }}>{p}</button>
                   ))}
                   <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)} className="px-2 py-1 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-100 disabled:opacity-40 text-xs">›</button>
@@ -3517,21 +3629,44 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
 
         {/* Right sidebar */}
         <div className="w-60 shrink-0 space-y-3">
+          {/* Lead Funnel */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <h3 className="text-xs font-black mb-3" style={{ color: NAVY }}>Lead Funnel</h3>
+            {([
+              { label: "Leads Assigned", value: totalLeads,     color: NAVY,     pct: 100 },
+              { label: "Demo Scheduled", value: totalDemoSched, color: "#7C3AED", pct: totalLeads > 0 ? Math.round(totalDemoSched/totalLeads*100) : 0 },
+              { label: "Demo Paid",      value: totalDemoPaid,  color: ORANGE,   pct: totalLeads > 0 ? Math.round(totalDemoPaid/totalLeads*100) : 0 },
+              { label: "Converted",      value: totalConverted, color: GREEN,    pct: totalLeads > 0 ? Math.round(totalConverted/totalLeads*100) : 0 },
+            ] as { label: string; value: number; color: string; pct: number }[]).map(f => (
+              <div key={f.label} className="mb-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-gray-500">{f.label}</span>
+                  <span className="text-[11px] font-black" style={{ color: f.color }}>{f.value}</span>
+                </div>
+                <div className="h-1 rounded-full bg-gray-100">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${f.pct}%`, background: f.color }} />
+                </div>
+              </div>
+            ))}
+            <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400">Overall Conv.</span>
+              <span className="text-sm font-black" style={{ color: overallRate >= 15 ? GREEN : "#D97706" }}>{overallRate}%</span>
+            </div>
+          </div>
+
           {/* Top Performers */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-black" style={{ color: NAVY }}>Top Performers</h3>
-              <span className="text-[9px] text-gray-400 font-semibold">This Month</span>
+              <span className="text-[9px] text-gray-400 font-semibold">By Conv %</span>
             </div>
             {topPerformers.length === 0 ? (
               <p className="text-[10px] text-gray-400 text-center py-3">No data yet</p>
             ) : topPerformers.map((m, i) => (
               <div key={m.id} className="flex items-center gap-2 mb-2.5">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shrink-0"
-                  style={{ background: `${RANK_COLORS[i]}20`, color: RANK_COLORS[i] }}>
-                  {i + 1}
-                </div>
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: NAVY }}>
+                  style={{ background: `${RANK_COLORS[i]}20`, color: RANK_COLORS[i] }}>{i+1}</div>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: NAVY }}>
                   {m.name?.[0] ?? "?"}
                 </div>
                 <span className="flex-1 text-[10px] font-semibold truncate" style={{ color: NAVY }}>{m.name}</span>
@@ -3540,42 +3675,81 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
             ))}
           </div>
 
-          {/* Lead Funnel */}
+          {/* Grade Coverage */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <h3 className="text-xs font-black mb-3" style={{ color: NAVY }}>Lead Funnel Overview</h3>
-            {[
-              { label: "Total Leads", value: totalLeads, color: NAVY },
-              { label: "Demo Scheduled", value: totalDemoSched, color: "#7C3AED" },
-              { label: "Demo Paid", value: totalDemoPaid, color: ORANGE },
-              { label: "Converted", value: totalConverted, color: GREEN },
-            ].map(f => (
-              <div key={f.label} className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: f.color }} />
-                <span className="flex-1 text-[10px] text-gray-500">{f.label}</span>
-                <span className="text-[11px] font-black" style={{ color: f.color }}>{f.value}</span>
-              </div>
-            ))}
-            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-gray-400">Overall Conv.</span>
-              <span className="text-sm font-black" style={{ color: overallRate >= 15 ? GREEN : "#D97706" }}>{overallRate}%</span>
+            <h3 className="text-xs font-black mb-3" style={{ color: NAVY }}>Grade Coverage</h3>
+            <div className="grid grid-cols-5 gap-1">
+              {grades.map(ga => {
+                const mentor = mentors.find(m => m.id === ga.mentorId);
+                return (
+                  <div key={ga.grade} className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg"
+                    style={{ background: ga.mentorId ? "#EEF2FF" : "#F9FAFB" }}>
+                    <span className="text-[9px] font-black" style={{ color: NAVY }}>G{ga.grade}</span>
+                    <span className="text-[8px] text-gray-500 truncate w-full text-center">{mentor?.name?.split(" ")[0] ?? "–"}</span>
+                  </div>
+                );
+              })}
             </div>
+            <button onClick={() => setShowManageGrades(true)} className="mt-3 w-full py-1.5 rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-500 hover:bg-gray-50 font-semibold">
+              ✏️ Edit Assignments
+            </button>
           </div>
 
-          {/* Revenue */}
+          {/* Quick Actions */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <h3 className="text-xs font-black mb-2" style={{ color: NAVY }}>Revenue Generated</h3>
-            <div className="text-2xl font-black" style={{ color: "#D97706" }}>{fmtRevenue(totalRevenue)}</div>
-            <div className="text-[10px] text-gray-400 mt-1">From {totalDemoPaid} demo payments</div>
+            <h3 className="text-xs font-black mb-3" style={{ color: NAVY }}>Quick Actions</h3>
+            <div className="space-y-2">
+              {([
+                { l: "Add Sales Mentor",    ic: Plus,     action: () => setShowAdd(true),          color: NAVY,     bg: "#EEF2FF" },
+                { l: "Auto Balance Grades", ic: Shuffle,  action: () => setShowBulkModal(true),    color: "#7C3AED", bg: "#F5F3FF" },
+                { l: "Manage Grades",       ic: GitBranch,action: () => setShowManageGrades(true), color: GREEN,    bg: "#DCFCE7" },
+                { l: "Export Report",       ic: Download, action: exportReport,                    color: "#D97706", bg: "#FEF3C7" },
+              ] as { l: string; ic: React.ElementType; action: () => void; color: string; bg: string }[]).map(qa => (
+                <button key={qa.l} onClick={qa.action}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-90 transition-all"
+                  style={{ background: qa.bg, color: qa.color }}>
+                  <qa.ic className="w-3.5 h-3.5" /> {qa.l}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Confirm Toggle */}
+      {confirmToggle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="font-black text-base mb-2" style={{ color: NAVY }}>
+              {confirmToggle.isActive ? "Disable" : "Enable"} Mentor
+            </h3>
+            <p className="text-xs text-gray-500 mb-5">
+              {confirmToggle.isActive
+                ? `${confirmToggle.name} will be marked inactive and won't appear in assignment flows.`
+                : `${confirmToggle.name} will be re-activated and can be assigned leads again.`}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => handleToggleActive(confirmToggle)} disabled={togglingId === confirmToggle.id}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50"
+                style={{ background: confirmToggle.isActive ? "#EF4444" : GREEN }}>
+                {togglingId === confirmToggle.id ? "Updating…" : confirmToggle.isActive ? "Yes, Disable" : "Yes, Enable"}
+              </button>
+              <button onClick={() => setConfirmToggle(null)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modals */}
-      {showGradeEdit && <GradeEditModal grades={grades} mentors={mentors} onSave={saveGrades} onClose={() => setShowGradeEdit(false)} />}
-      {showBulkModal && <BulkAssignLeadsModal mentors={mentors} flash={flash} onClose={() => setShowBulkModal(false)} />}
+      {showAdd && <AddSalesMentorModal onSave={() => { load(); setShowAdd(false); }} onClose={() => setShowAdd(false)} flash={flash} />}
+      {editMentor && <EditSalesMentorModal mentor={editMentor} onSave={() => { load(); setEditMentor(null); }} onClose={() => setEditMentor(null)} flash={flash} />}
+      {changeGradesMentor && <ChangeGradesModal mentor={changeGradesMentor} allGrades={grades} allMentors={mentors} onSave={() => { load(); setChangeGradesMentor(null); }} onClose={() => setChangeGradesMentor(null)} flash={flash} />}
+      {showManageGrades && <ManageAllGradesModal grades={grades} mentors={mentors} onSave={() => { load(); setShowManageGrades(false); }} onClose={() => setShowManageGrades(false)} flash={flash} />}
+      {showBulkModal && <AutoBalanceModal mentors={mentors} flash={flash} onClose={() => { load(); setShowBulkModal(false); }} />}
     </div>
   );
 }
+
 
 // ── Payments View ────────────────────────────────────────────────────────────
 
