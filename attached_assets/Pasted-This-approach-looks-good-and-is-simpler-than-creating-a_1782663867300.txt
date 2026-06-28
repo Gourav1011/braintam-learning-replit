@@ -1,0 +1,112 @@
+This approach looks good and is simpler than creating a separate course_instances table.
+
+My understanding:
+
+We already have coursesTable.
+Each row itself can represent a course instance.
+
+Example:
+
+Mastery Grade 3 - Course A
+grade = 3
+courseType = mastery
+instanceName = Course A
+admissionStatus = open
+status = active
+
+Students: 2,034-2,500
+
+---
+
+Later we create:
+
+Mastery Grade 3 - Course B
+grade = 3
+courseType = mastery
+instanceName = Course B
+admissionStatus = closed
+status = active
+
+When Admin clicks:
+
+Activate Admissions
+
+System automatically:
+
+Course A
+admissionStatus = closed
+
+Course B
+admissionStatus = open
+
+All future Grade 3 admissions now go to Course B.
+
+---
+
+Important Rules
+
+1. Existing students must NEVER move automatically.
+
+2. Students already enrolled in Course A remain attached to Course A until completion.
+
+3. Course A continues normally:
+
+* Classes
+* Recordings
+* Homework
+* Reports
+* Notifications
+* Mentor communication
+
+4. Only future admissions should go to Course B.
+
+5. Maximum two running courses per grade:
+
+* Current admission course
+* Previous running course
+
+This is not a timing batch system.
+
+---
+
+Enrollment Flow
+
+Payment Approved
+↓
+Read lead.grade
+↓
+Find:
+grade = lead.grade
+courseType = mastery
+admissionStatus = open
+status = active
+↓
+Populate assignedCourseId
+↓
+Mark lead converted
+↓
+Student instantly sees course in My Courses
+
+---
+
+Questions before building:
+
+1. Should the system auto-generate instance names?
+
+Example:
+Course A
+Course B
+Course C
+
+but allow Admin to edit them?
+
+2. Should we restrict creating more than two active mastery courses for the same grade?
+
+3. If Course A finishes, should Admin mark:
+   status = completed
+
+and then allow creating another course instance?
+
+4. Since masteryStudentsTable already has assignedCourseId, do we still need a separate student_enrollments table, or can assignedCourseId be the single source of truth?
+
+Please confirm these business rules before starting migrations or UI work.
