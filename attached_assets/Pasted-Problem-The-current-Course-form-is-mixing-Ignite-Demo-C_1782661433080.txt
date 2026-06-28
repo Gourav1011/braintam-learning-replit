@@ -1,0 +1,219 @@
+Problem:
+The current Course form is mixing Ignite Demo Course fields and Mastery Course fields. This creates confusion and duplicate data management.
+
+Proposed Architecture:
+
+========================
+COURSE MASTER
+=============
+
+Basic Information
+
+* Course Name
+* Grade
+* Board
+* Academic Year
+* Status (Active/Inactive)
+* Course Start Date
+* Course End Date
+* Duration (Automatically calculated)
+
+Academic Configuration
+
+* Subjects Included
+* Weekly Classes
+* Class Schedule
+* Student Capacity
+* Assigned Faculty Team
+* Course Coordinator
+
+========================
+PRICING CONFIGURATION
+=====================
+
+Remove:
+
+* Original Price
+* Scholarship Price
+* Registration Fee
+* Payment Plans text box
+
+Instead create:
+
+Fee Structure
+
+* Course Fee
+* Registration Fee
+* Monthly Fee (optional)
+* Quarterly Fee (optional)
+* Half-Yearly Fee (optional)
+* Annual Fee
+* Discount Rules
+
+Examples:
+
+Grade 1
+Annual Fee: ₹24,999
+6 Months: ₹14,999
+Registration Fee: ₹999
+
+Grade 6
+Annual Fee: ₹30,999
+6 Months: ₹17,999
+Registration Fee: ₹999
+
+Pricing should be configured separately and reused across batches.
+
+========================
+MENTOR ASSIGNMENT
+=================
+
+Remove:
+Assigned Mentor IDs (comma-separated)
+
+Replace with:
+
+Assigned Team
+
+* Unit Manager
+* Manager
+* Assistant Manager
+* Mentors
+
+Mentors should never be entered manually by IDs.
+
+The system should automatically pull mentors from:
+Manage Grade Teams
+
+Example:
+
+Grade 1
+Manager A
+Assistant Manager 1
+Mentor 1
+Mentor 2
+Mentor 3
+
+Whenever a new mentor is added to Grade 1, the course automatically reflects it.
+
+========================
+MEDIA
+=====
+
+Remove:
+Banner Image URL
+Brochure URL
+
+Replace with:
+
+Upload Course Banner
+Upload Brochure PDF
+
+Store files directly instead of requiring URLs.
+
+========================
+BATCH MANAGEMENT
+================
+
+Add:
+
+Create Batch
+
+* Batch Name
+* Start Date
+* End Date
+* Timings
+* Capacity
+* Faculty
+
+Examples:
+
+Grade 1 Morning Batch
+Grade 1 Evening Batch
+Grade 1 Weekend Batch
+
+Students are enrolled into batches, not directly into courses.
+
+========================
+IGNITE TO MASTERY FLOW
+======================
+
+Ignite Demo
+↓
+Student Attends Demo
+↓
+Student Pays
+↓
+Student Converts
+↓
+Select Mastery Plan
+↓
+Enroll into Batch
+↓
+Assign Grade Team Automatically
+
+No manual mentor assignment required.
+
+========================
+DATABASE DESIGN
+===============
+
+courses
+
+* id
+* name
+* grade_id
+* board_id
+* academic_year
+* status
+* start_date
+* end_date
+
+course_fee_plans
+
+* id
+* course_id
+* duration
+* fee
+* registration_fee
+* discount
+
+course_batches
+
+* id
+* course_id
+* batch_name
+* faculty_id
+* capacity
+* start_time
+* end_time
+* status
+
+student_enrollments
+
+* id
+* student_id
+* batch_id
+* mentor_id
+* manager_id
+* assistant_manager_id
+
+mentor_id, manager_id and assistant_manager_id should be populated automatically from Manage Grade Teams.
+
+========================
+UI REDESIGN
+===========
+
+Tab 1: Basic Information
+Tab 2: Fee Plans
+Tab 3: Batches
+Tab 4: Faculty Team
+Tab 5: Documents
+
+Keep the form short and role-based.
+
+The Course screen should only define the academic program.
+Pricing should define fee plans.
+Batches should define schedules.
+Manage Grade Teams should define mentors.
+Student enrollment should connect everything automatically.
