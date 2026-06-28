@@ -40,7 +40,7 @@ interface CourseItem {
   academicYearId: number | null; subjectId: number | null;
   isPublished: boolean; status: string; teacher: string | null;
   description: string | null; thumbnailUrl: string | null;
-  courseCode: string;
+  courseCode: string; courseType?: string | null;
   // Extended Mastery fields
   duration?: string | null;
   originalPrice?: number | null;
@@ -206,6 +206,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [courseGradeFilter, setCourseGradeFilter] = useState("all");
   const [courseYearFilter, setCourseYearFilter] = useState("all");
   const [courseStatusFilter, setCourseStatusFilter] = useState("all");
+  const [courseTypeFilter, setCourseTypeFilter] = useState("all");
 
   const [yearName, setYearName] = useState("");
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
@@ -519,7 +520,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       });
       if (!r.ok) { const d = await r.json().catch(() => ({})); flash(d.error ?? "Import failed", false); return; }
       const d = await r.json();
-      flash(`✅ Imported: ${d.createdChapters} chapters, ${d.createdTopics} topics`, true);
+      flash(`✅ Imported: ${d.createdChapters} chapters, ${d.createdTopics} topics, ${d.createdClasses} live classes`, true);
       setSyllabusRows([]);
       setSyllabusFileName("");
       setReplaceExisting(false);
@@ -539,6 +540,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
     if (courseGradeFilter !== "all" && String(c.grade) !== courseGradeFilter) return false;
     if (courseYearFilter !== "all" && String(c.academicYearId) !== courseYearFilter) return false;
     if (courseStatusFilter !== "all" && c.status !== courseStatusFilter) return false;
+    if (courseTypeFilter !== "all" && (c as CourseItem & { courseType?: string }).courseType !== courseTypeFilter) return false;
     if (courseSearch) {
       const q = courseSearch.toLowerCase();
       return c.title.toLowerCase().includes(q) || (c.teacher ?? "").toLowerCase().includes(q) || (c.courseCode ?? "").toLowerCase().includes(q);
@@ -743,8 +745,16 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
-            {(courseSearch || courseGradeFilter !== "all" || courseYearFilter !== "all" || courseStatusFilter !== "all") && (
-              <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); }}
+            <Select value={courseTypeFilter} onValueChange={setCourseTypeFilter}>
+              <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="All Types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="mastery">Mastery</SelectItem>
+                <SelectItem value="ignite">Ignite</SelectItem>
+              </SelectContent>
+            </Select>
+            {(courseSearch || courseGradeFilter !== "all" || courseYearFilter !== "all" || courseStatusFilter !== "all" || courseTypeFilter !== "all") && (
+              <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setCourseTypeFilter("all"); }}
                 className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
             )}
           </div>

@@ -643,11 +643,26 @@ router.post("/admin/courses/:courseId/syllabus-import", adminOnly, async (req, r
   let topicOrder = 0;
   let createdChapters = 0;
   let createdTopics = 0;
+  let createdClasses = 0;
+  // Default start date: 1 week from now at 10am IST
+  let lastDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   for (const row of rows) {
     const chapterName = (row.chapter ?? "").trim();
     const topicName = (row.topic ?? "").trim();
     if (!chapterName || !topicName) continue;
+
+    // Parse date DD/MM/YYYY → Date (10am IST)
+    if (row.date) {
+      const parts = row.date.trim().split("/");
+      if (parts.length === 3) {
+        const [d, m, y] = parts.map(Number);
+        if (d && m && y) {
+          const utcMs = Date.UTC(y, m - 1, d, 4, 30); // 10:00 IST = 04:30 UTC
+          lastDate = new Date(utcMs);
+        }
+      }
+    }
 
     // Find or create chapter
     if (chapterMap[chapterName] === undefined) {
@@ -692,20 +707,38 @@ router.post("/admin/courses/:courseId/syllabus-import", adminOnly, async (req, r
       if (existing) continue; // skip duplicate topic
     }
 
-    await db.insert(topicsTable).values({
+    const [tp] = await db.insert(topicsTable).values({
       name: topicName, chapterId,
       description: (row.description ?? "").trim() || null,
       order: topicOrder, topicStatus: "active",
-    });
+    }).returning({ id: topicsTable.id });
     topicOrder++;
     createdTopics++;
+
+    // Auto-create a scheduled live class for this topic
+    await db.insert(liveClassesTable).values({
+      title: topicName,
+      grade: course.grade,
+      courseId,
+      chapterId,
+      topicId: tp.id,
+      courseSubjectId: courseSubjectId ?? null,
+      scheduledAt: lastDate,
+      duration: 60,
+      teacher: course.teacher || "Braintam Faculty",
+      status: "upcoming",
+      isPublished: true,
+    });
+    createdClasses++;
+    // Advance default date by 7 days for next un-dated row
+    lastDate = new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000);
   }
 
   await logAudit(req.authUser!.id, req.authUser!.name,
     "syllabus_imported", "course", courseId, course.title,
-    JSON.stringify({ createdChapters, createdTopics, replaceExisting }));
+    JSON.stringify({ createdChapters, createdTopics, createdClasses, replaceExisting }));
 
-  res.json({ success: true, createdChapters, createdTopics });
+  res.json({ success: true, createdChapters, createdTopics, createdClasses });
 });
 
 // ── Seed 20 permanent courses ──────────────────────────────────────
