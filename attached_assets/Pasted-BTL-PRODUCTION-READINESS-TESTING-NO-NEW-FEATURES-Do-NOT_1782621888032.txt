@@ -1,0 +1,229 @@
+BTL PRODUCTION READINESS TESTING (NO NEW FEATURES)
+
+Do NOT build any new features.
+
+Enter Full End-to-End QA and UAT Testing Mode.
+
+Create fresh test accounts only:
+
+* 3 Sales Mentors
+* 3 Academic Mentors
+* 6 Teachers
+* 6 Students
+
+Teachers are global resources and can teach in both Ignite and Mastery.
+
+==================================================
+TEST COMPLETE USER JOURNEY
+==========================
+
+PHASE 1 - USER MANAGEMENT
+
+Verify:
+✓ Mentor creation
+✓ Teacher creation
+✓ Student creation
+✓ Login for all users
+✓ Permissions
+✓ Search and filters
+✓ Edit users
+✓ Disable users
+✓ Reassign users
+
+==================================================
+PHASE 2 - LEAD FLOW
+
+Test:
+
+Lead Created
+↓
+Assign Sales Mentor
+↓
+Demo Paid
+↓
+Deploy to Batch
+↓
+Assign Academic Mentor
+↓
+Assign Teacher
+↓
+Batch Created
+↓
+Sessions Created
+↓
+Live Classes Created
+
+Verify:
+✓ Lead assignment
+✓ Lead reassignment
+✓ Mentor assignment
+✓ Teacher assignment
+✓ Batch deployment
+✓ Dashboard counters
+✓ Notifications
+✓ Search and filters
+
+==================================================
+PHASE 3 - SESSION & LIVE CLASS FLOW
+
+Verify:
+
+✓ Auto batch creation
+✓ Auto session creation
+✓ Auto live class creation
+✓ Session status changes
+✓ Session editing
+✓ Topic editing
+✓ Recording links
+✓ Google Meet links
+✓ Zoom links
+✓ Join buttons
+
+==================================================
+PHASE 4 - LIVE CLASS TESTING
+
+Teacher:
+✓ Enter classroom
+✓ Presentation
+✓ Polls
+✓ Leaderboard
+✓ Search student
+✓ Give Mic
+✓ End class
+✓ Attendance
+✓ Refresh browser
+✓ Disconnect and reconnect
+
+Mentor:
+✓ Join classroom
+✓ View schedule
+✓ Group chat
+✓ Attendance
+✓ Refresh browser
+✓ Disconnect and reconnect
+
+Student:
+✓ Join classroom
+✓ Raise hand
+✓ Chat
+✓ Polls
+✓ Leaderboard
+✓ Payment badge
+✓ Attendance
+✓ Refresh browser
+✓ Disconnect and reconnect
+
+==================================================
+PHASE 5 - CHAT & STAGE TESTING
+
+Verify:
+
+✓ Chat messages
+✓ Group chat isolation
+✓ Teacher messages
+✓ Mentor messages
+✓ Chat moderation
+✓ Bad word filtering
+✓ Auto chat blocking
+✓ Unblock chat flow
+✓ Give Mic flow
+✓ Accept request flow
+✓ Stage removal flow
+✓ Network interruption recovery
+
+==================================================
+PHASE 6 - ATTENDANCE & ANALYTICS
+
+Verify:
+
+✓ Join timestamps
+✓ Leave timestamps
+✓ Attendance duration
+✓ Attendance percentage
+✓ Poll analytics
+✓ Leaderboard analytics
+✓ Payment analytics
+✓ Reports generation
+
+==================================================
+PHASE 7 - IGNITE TO MASTERY
+
+Test both:
+
+Automatic graduation:
+Ignite Completed
+↓
+Student moved to Mastery
+
+Manual graduation:
+Admin manually moves student to Mastery.
+
+Verify:
+
+✓ Student portal updates
+✓ Mentor assignment updates
+✓ Teacher assignment updates
+✓ Sessions update correctly
+✓ Live classes update correctly
+
+==================================================
+PHASE 8 - MASTERY COURSE TESTING
+
+Verify:
+
+✓ Course creation
+✓ CSV syllabus upload
+✓ Duplicate prevention
+✓ Chapters creation
+✓ Topics creation
+✓ Session generation
+✓ Student syllabus visibility
+✓ Teacher editing
+
+==================================================
+PHASE 9 - PORTAL AUDIT
+
+Walk through every page in:
+
+Admin Portal
+Teacher Portal
+Mentor Portal
+Student Portal
+
+Find and fix:
+
+✓ Dead tabs
+✓ Broken redirects
+✓ Old UI screens
+✓ Old APIs
+✓ Missing buttons
+✓ Missing permissions
+✓ Missing data
+✓ Alignment issues
+✓ Mobile issues
+✓ Console errors
+✓ API errors
+✓ Loading issues
+
+==================================================
+PHASE 10 - FINAL REPORT
+
+Prepare a Production Readiness Report containing:
+
+1. Passed tests
+2. Failed tests
+3. Bugs fixed
+4. Remaining issues
+5. Suggested improvements
+6. Screenshots of critical flows
+7. Confirmation that all portals work end-to-end
+
+DO NOT remove old demo data yet.
+
+After all tests pass:
+
+1. I will personally login using the generated test accounts.
+2. I will manually test live classes.
+3. I will test refresh and reconnect scenarios.
+4. After my approval, remove demo data and test data.
+5. Then prepare the system for production onboarding and real users.

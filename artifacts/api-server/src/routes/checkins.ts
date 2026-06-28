@@ -5,7 +5,7 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
-const staffAuth = requireRole("admin", "teacher", "mentor");
+const staffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 
 function parseUA(ua: string): { browser: string; device: string } {
   const browser = ua.includes("Edg") ? "Edge" : ua.includes("Chrome") ? "Chrome" : ua.includes("Firefox") ? "Firefox" : ua.includes("Safari") ? "Safari" : "Browser";

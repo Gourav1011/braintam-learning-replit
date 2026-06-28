@@ -1,3 +1,4 @@
 - [Homework MCQ type detection](homework-mcq-type.md) — DB default 'writing' vs questionsJson presence; always detect MCQ from questionsJson, not homework_type column.
 - [IST datetime handling](ist-datetime.md) — India-only app: always append ":00+05:30" when parsing datetime-local inputs; use UTC arithmetic for edit pre-fill; add timeZone:"Asia/Kolkata" to display toLocaleString calls.
 - [Points recompute wipes non-activity pts](points-recompute.md) — recomputeAndSavePoints must include pointsLedger SUM + dailyCoinClaims SUM or login/streak/coin points vanish every time a student submits work.
+- [Mentor role variants require middleware update](mentor-role-variants.md) — adding sales_mentor/academic_mentor roles requires updating requireRole() in ALL route files that gate on "mentor".

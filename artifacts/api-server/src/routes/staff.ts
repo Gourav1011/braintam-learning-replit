@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
-const staffAuth = requireRole("admin", "teacher", "mentor");
+const staffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 
 router.get("/staff/me", staffAuth, async (req, res) => {
   const id = req.authUser!.id;

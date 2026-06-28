@@ -14,7 +14,7 @@ import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
-const allStaff  = requireRole("mentor", "admin", "super_admin", "teacher");
+const allStaff  = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 
 function makeBatchCode(): string {
   const now = new Date();

@@ -10,7 +10,7 @@ const router = Router();
  * Any staff member can fetch their own permissions.
  * Admin/super_admin can fetch anyone's.
  */
-router.get("/permissions/me", requireRole("admin", "super_admin", "teacher", "mentor"), async (req, res) => {
+router.get("/permissions/me", requireRole("admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor"), async (req, res) => {
   const userId = req.authUser!.id;
   const role = req.authUser!.role;
 

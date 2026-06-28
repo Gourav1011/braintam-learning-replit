@@ -34,7 +34,7 @@ import crypto from "crypto";
 
 const router = Router();
 const adminOnly = requireRole("admin");
-const allStaffAuth = requireRole("admin", "teacher", "mentor");
+const allStaffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 
 function hashPassword(pw: string): string {
   return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
@@ -135,7 +135,18 @@ router.get("/admin/stats", adminOnly, async (req, res) => {
 
 // ── User Management ──────────────────────────────────────────────
 router.get("/admin/users", adminOnly, async (req, res) => {
-  const { role, accountType } = req.query;
+  const { role, accountType, search } = req.query;
+  const conditions = [eq(usersTable.isArchived, false)];
+  if (role) conditions.push(eq(usersTable.role, String(role)));
+  if (accountType) conditions.push(eq(usersTable.accountType, String(accountType)));
+  if (search) {
+    const q = `%${String(search)}%`;
+    conditions.push(or(
+      ilike(usersTable.name, q),
+      ilike(usersTable.email, q),
+      ilike(usersTable.phone, q),
+    )!);
+  }
   const users = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -151,12 +162,7 @@ router.get("/admin/users", adminOnly, async (req, res) => {
     lastLoginAt: usersTable.lastLoginDate,
   })
     .from(usersTable)
-    .where(and(
-      eq(usersTable.isArchived, false),
-      role ? eq(usersTable.role, String(role)) :
-      accountType ? eq(usersTable.accountType, String(accountType)) :
-      undefined,
-    ))
+    .where(and(...conditions))
     .orderBy(desc(usersTable.createdAt));
   res.json(users);
 });
@@ -1312,7 +1318,7 @@ router.get("/admin/dashboard", adminOnly, async (_req, res) => {
   ] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), eq(usersTable.isActive, true))),
     db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))),
-    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true))),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(inArray(usersTable.role, ["mentor", "sales_mentor", "academic_mentor"]), eq(usersTable.isActive, true))),
     db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "admin"), eq(usersTable.isActive, true))),
     db.select({ count: sql<number>`count(*)` }).from(coursesTable),
     db.select({ count: sql<number>`count(*)` }).from(liveClassesTable).where(gte(liveClassesTable.scheduledAt, thisWeek)),
@@ -1337,7 +1343,7 @@ router.get("/admin/dashboard", adminOnly, async (_req, res) => {
       id: usersTable.id, name: usersTable.name, email: usersTable.email,
       isActive: usersTable.isActive,
       studentCount: sql<number>`(select count(*) from mentor_student_assignments where mentor_id = users.id and is_active = true)`,
-    }).from(usersTable).where(eq(usersTable.role, "mentor")).orderBy(usersTable.name),
+    }).from(usersTable).where(inArray(usersTable.role, ["mentor", "sales_mentor", "academic_mentor"])).orderBy(usersTable.name),
   ]);
 
   res.json({

@@ -5,7 +5,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
-const allStaff = requireRole("mentor", "admin", "super_admin", "teacher");
+const allStaff = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 const adminOnly = requireRole("admin", "super_admin");
 
 // ── GET /api/mentor/mastery/notifications ─────────────────────────────────────

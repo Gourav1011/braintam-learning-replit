@@ -28,7 +28,7 @@ function hashPassword(pw: string): string {
 }
 
 const router = Router();
-const mentorAuth = requireRole("mentor", "admin");
+const mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");
 
 async function getMentorStudentIds(mentorId: number): Promise<number[]> {
   const rows = await db

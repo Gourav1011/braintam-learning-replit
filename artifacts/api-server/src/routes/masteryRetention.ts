@@ -12,7 +12,7 @@ import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
 const adminOnly  = requireRole("admin", "super_admin");
-const allStaff   = requireRole("mentor", "admin", "super_admin", "teacher");
+const allStaff   = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 
 // ── GET /api/admin/mastery/retention ─────────────────────────────────────────
 router.get("/admin/mastery/retention", adminOnly, async (req, res) => {

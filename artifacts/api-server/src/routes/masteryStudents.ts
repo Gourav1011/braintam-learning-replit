@@ -11,7 +11,7 @@ import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
-const allStaff = requireRole("admin", "super_admin", "teacher", "mentor");
+const allStaff = requireRole("admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

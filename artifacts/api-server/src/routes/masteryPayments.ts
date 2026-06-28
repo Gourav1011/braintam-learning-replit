@@ -14,7 +14,7 @@ import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
-const allStaff  = requireRole("mentor", "admin", "super_admin", "teacher");
+const allStaff  = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 
 function getRazorpay(): Razorpay | null {
   const keyId     = process.env.RAZORPAY_KEY_ID;

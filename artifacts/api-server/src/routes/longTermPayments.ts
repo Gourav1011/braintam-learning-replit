@@ -15,7 +15,7 @@ import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
-const mentorAuth = requireRole("mentor", "admin", "super_admin");
+const mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin");
 
 function getRazorpay(): Razorpay {
   const keyId = process.env.RAZORPAY_KEY_ID;

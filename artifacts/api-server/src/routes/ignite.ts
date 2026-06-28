@@ -486,7 +486,13 @@ router.get("/admin/ignite/sales-mentors", adminOnly, async (req, res) => {
   const mentors = await db
     .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, lastLoginDate: usersTable.lastLoginDate })
     .from(usersTable)
-    .where(and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"), eq(usersTable.isArchived, false)));
+    .where(and(
+      or(
+        eq(usersTable.role, "sales_mentor"),
+        and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"))
+      )!,
+      eq(usersTable.isArchived, false)
+    ));
 
   if (mentors.length === 0) { res.json([]); return; }
 
