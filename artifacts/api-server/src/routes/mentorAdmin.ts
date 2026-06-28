@@ -9,6 +9,7 @@ import {
   demoBatchEnrollmentsTable,
   mentorTasksTable,
   studentTimelineTable,
+  mentorGradeAssignmentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, count } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -675,6 +676,26 @@ router.get("/admin/mentors/:id/profile", adminOnly, async (req, res) => {
     recentFollowUps,
     tasks,
   });
+});
+
+// ── Grade Assignments ─────────────────────────────────────────────────────────
+router.get("/admin/mentors/grade-assignments", adminOnly, async (req, res) => {
+  try {
+    const rows = await db
+      .select({ grade: mentorGradeAssignmentsTable.grade, mentorId: mentorGradeAssignmentsTable.mentorId })
+      .from(mentorGradeAssignmentsTable);
+    const map = new Map<number, number[]>();
+    for (const r of rows) {
+      if (r.mentorId == null) continue;
+      if (!map.has(r.mentorId)) map.set(r.mentorId, []);
+      map.get(r.mentorId)!.push(r.grade);
+    }
+    const result = [...map.entries()].map(([mentorId, grades]) => ({ mentorId, grades: grades.sort((a, b) => a - b) }));
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "grade assignments error");
+    res.status(500).json({ error: "Failed" });
+  }
 });
 
 export default router;
