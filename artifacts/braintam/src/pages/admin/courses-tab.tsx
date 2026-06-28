@@ -369,7 +369,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [topicForm, setTopicForm] = useState(emptyTopicForm);
 
   // ── Syllabus import state ──
-  const [syllabusSubjectId, setSyllabusSubjectId] = useState<string>("");
+  const [syllabusSubjectId, setSyllabusSubjectId] = useState<string>("none");
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [syllabusRows, setSyllabusRows] = useState<ParsedRow[]>([]);
   const [syllabusImporting, setSyllabusImporting] = useState(false);
@@ -730,7 +730,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       const r = await apiFetch(`/admin/courses/${selectedCourse.id}/syllabus-import`, {
         method: "POST",
         body: JSON.stringify({
-          courseSubjectId: syllabusSubjectId ? Number(syllabusSubjectId) : null,
+          courseSubjectId: syllabusSubjectId && syllabusSubjectId !== "none" ? Number(syllabusSubjectId) : null,
           replaceExisting,
           rows: syllabusRows,
         }),
@@ -1283,13 +1283,13 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Quick Actions</span>
               {([
-                { icon: FileUp,    label: "Upload Syllabus",       sub: "PDF / Excel",                   bg: "#EEF2FF", clr: "#4F46E5" },
-                { icon: BookOpen,  label: "Generate Curriculum",   sub: "Auto create topics",            bg: "#FFF7ED", clr: ORANGE    },
-                { icon: Video,     label: "Schedule Classes",      sub: "Auto generate schedule",        bg: "#F0FDF4", clr: "#16A34A" },
-                { icon: UserCheck, label: "Assign Teachers",       sub: "Assign to subjects",            bg: "#F5F3FF", clr: "#7C3AED" },
-                { icon: BarChart3, label: "View Reports",          sub: "Analytics & performance",       bg: "#FEF2F2", clr: "#DC2626" },
-              ] as { icon: React.ElementType; label: string; sub: string; bg: string; clr: string }[]).map(({ icon: Icon, label, sub, bg, clr }) => (
-                <button key={label}
+                { icon: FileUp,    label: "Upload Syllabus",       sub: "PDF / Excel",             bg: "#EEF2FF", clr: "#4F46E5", action: () => flash("Select a course and open Curriculum → Syllabus tab to upload.", true) },
+                { icon: BookOpen,  label: "Generate Curriculum",   sub: "Auto create topics",      bg: "#FFF7ED", clr: ORANGE,    action: () => flash("Open a course → Curriculum tab to manage subjects & topics.", true) },
+                { icon: Video,     label: "Schedule Classes",      sub: "Auto generate schedule",  bg: "#F0FDF4", clr: "#16A34A", action: () => flash("Open a course → Live Classes tab to schedule classes.", true) },
+                { icon: UserCheck, label: "Assign Teachers",       sub: "Assign to subjects",      bg: "#F5F3FF", clr: "#7C3AED", action: () => flash("Open a course → Teachers tab to assign teachers.", true) },
+                { icon: BarChart3, label: "View Reports",          sub: "Analytics & performance", bg: "#FEF2F2", clr: "#DC2626", action: () => flash("Open a course → Reports tab for analytics.", true) },
+              ] as { icon: React.ElementType; label: string; sub: string; bg: string; clr: string; action: () => void }[]).map(({ icon: Icon, label, sub, bg, clr, action }) => (
+                <button key={label} onClick={action}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all text-left flex-1 min-w-[130px]">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
                     <Icon className="w-4 h-4" style={{ color: clr }} />
@@ -1574,10 +1574,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                         })}
                       </div>
                     )}
-                    <button onClick={() => { setCourseTab("teachers"); loadAllTeachers(); }}
-                      className="mt-2 text-[11px] font-semibold text-orange-500 hover:underline">
-                      View All Teachers →
-                    </button>
                   </div>
 
                   {/* Student Progress — Donut */}
@@ -1659,8 +1655,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                         { icon: Wand2,     label: "Generate Live Classes", sub: "Auto-generate classes from topics",  iconBg: "#F5F3FF", iconClr: "#7C3AED", action: () => setCourseTab("liveclasses") },
                         { icon: UserCheck, label: "Assign Teachers",       sub: "Assign teachers to subjects",        iconBg: "#FFF7ED", iconClr: "#EA580C", action: () => { setCourseTab("teachers"); loadAllTeachers(); } },
                         { icon: BookOpen,  label: "Study Materials",       sub: "Upload study materials & resources", iconBg: "#EFF6FF", iconClr: "#2563EB", action: () => setCourseTab("documents") },
-                        { icon: Megaphone, label: "Send Announcement",     sub: "Notify students & parents",          iconBg: "#EFF6FF", iconClr: "#3B82F6", action: () => flash("Announcement feature coming soon", false) },
-                        { icon: Download,  label: "Export Students",       sub: "Export student list & data",         iconBg: "#F0FDF4", iconClr: "#16A34A", action: () => flash("Export feature coming soon", false) },
+                        { icon: Megaphone, label: "Send Announcement",     sub: "Notify students & parents",          iconBg: "#EFF6FF", iconClr: "#3B82F6", action: () => flash("Announcement feature coming soon — stay tuned!", true) },
+                        { icon: Download,  label: "Export Students",       sub: "Export student list & data",         iconBg: "#F0FDF4", iconClr: "#16A34A", action: () => flash("Export feature coming soon — stay tuned!", true) },
                       ] as { icon: React.ElementType; label: string; sub: string; iconBg: string; iconClr: string; action: () => void }[]).map(({ icon: Icon, label, sub, iconBg, iconClr, action }) => (
                         <button key={label} onClick={action}
                           className="flex flex-col items-start gap-1 p-2.5 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all text-left">
@@ -1864,7 +1860,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                         <Select value={syllabusSubjectId} onValueChange={setSyllabusSubjectId}>
                           <SelectTrigger className="text-sm"><SelectValue placeholder="Select a subject" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No specific subject</SelectItem>
+                            <SelectItem value="none">No specific subject</SelectItem>
                             {courseSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
