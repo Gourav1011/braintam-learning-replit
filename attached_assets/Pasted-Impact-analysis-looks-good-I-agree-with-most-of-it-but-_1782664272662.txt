@@ -1,0 +1,241 @@
+Impact analysis looks good. I agree with most of it, but let's finalize these decisions before writing code.
+
+==================================================
+
+1. COURSE LIMIT
+   ==================================================
+
+Do NOT put any limit on the number of courses.
+
+Business today:
+We may usually have:
+
+* Course A
+* Course B
+
+Future:
+We may have:
+
+* Course A
+* Course B
+* Course C
+* Course D
+* Or more
+
+The architecture must support unlimited courses per grade.
+
+Do not hardcode any limits in the database or application layer.
+
+==================================================
+2. admissionStatus ENUM
+=======================
+
+Instead of:
+
+open
+closed
+
+Use:
+
+active
+closed
+
+Reason:
+All future admissions always go into:
+
+admissionStatus = active
+
+Only ONE course per grade should have:
+
+admissionStatus = active
+
+When admin activates another course:
+
+Transaction:
+
+UPDATE Grade 3 courses
+SET admissionStatus = 'closed'
+WHERE grade = 3
+AND admissionStatus = 'active';
+
+UPDATE selected course
+SET admissionStatus = 'active';
+
+This should happen atomically.
+
+==================================================
+3. COURSE STATUS
+================
+
+Keep:
+
+status
+
+* active
+* completed
+* archived
+
+Example:
+
+Course A
+status = active
+admissionStatus = closed
+
+Classes still continue normally.
+
+When the course completely finishes:
+
+status = completed
+
+All historical data remains available.
+
+==================================================
+4. AUTO ENROLLMENT FLOW
+=======================
+
+Payment Approved
+↓
+Read lead.grade
+↓
+Find:
+
+grade = lead.grade
+courseType = mastery
+status = active
+admissionStatus = active
+
+This query should return exactly one row.
+
+If none is found:
+
+DO NOT fail payment approval.
+
+Instead:
+
+1. Approve payment
+2. Create warning log
+3. Show admin notification:
+
+"No active Mastery course found for Grade 3."
+
+Admin can fix the issue and retry assignment.
+
+==================================================
+5. assignedCourseId
+===================
+
+I agree.
+
+Do NOT create a student_enrollments table right now.
+
+Use:
+
+masteryStudentsTable.assignedCourseId
+
+as the source of truth.
+
+==================================================
+6. CRITICAL BUG FIX
+===================
+
+masteryDeployment.ts
+
+This is now a blocker.
+
+Current:
+
+Map<grade, courseId>
+
+This breaks as soon as multiple courses exist.
+
+Every query that assumes:
+
+one grade = one course
+
+must be audited.
+
+Please search the entire codebase for:
+
+* WHERE grade =
+* Map(grade
+* courseByGrade
+* grade → course
+
+and verify there are no other hidden assumptions.
+
+==================================================
+7. STUDENT COURSE ACCESS
+========================
+
+Student App:
+
+My Courses
+
+Mastery Grade 3
+Course A
+
+Student remains attached to that course permanently unless manually changed by an admin.
+
+If Course B becomes active:
+
+New students
+→ Course B
+
+Old students
+→ Still Course A
+
+No automatic migration. Ever.
+
+==================================================
+8. COURSE CREATION
+==================
+
+On create:
+
+System auto-generates:
+
+Course A
+Course B
+Course C
+...
+
+Admin can rename them.
+
+Examples:
+
+* 2026 Intake
+* Wave 2
+* Foundation Cohort
+
+Auto-generated names are only defaults.
+
+==================================================
+9. IMPORTANT QUESTION BEFORE CODING
+===================================
+
+Homework
+Tests
+Live Classes
+Recordings
+Assignments
+Reports
+
+Are these currently linked to:
+
+grade_id
+or
+course_id ?
+
+If any module is linked only by grade_id, then:
+
+Grade 3
+├── Course A
+└── Course B
+
+may accidentally share content.
+
+Please audit these modules first.
+
+This is the only remaining area that could become a major issue after introducing multiple courses for the same grade.
+
+Only after confirming this should we start migrations and implementation.
