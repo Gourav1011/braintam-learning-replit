@@ -1,0 +1,231 @@
+Perfect. This is the final agreed architecture. Do not start coding until you review and confirm every point.
+
+==================================================
+MASTERY COURSE MODEL
+====================
+
+This is NOT a Morning/Evening/Weekend batch system.
+
+This is a Course Instance system.
+
+For each grade, we can have a maximum of TWO running courses:
+
+1. Current Admission Course
+2. Previous Running Course
+
+Example:
+
+Grade 3
+
+Course A
+Students: 2,034–2,500
+Admissions: Active
+Status: Active
+
+When we want to start a new intake:
+
+Create:
+
+Course B
+Students: 0
+Admissions: Closed
+Status: Active
+
+Admin clicks:
+
+Activate Admissions
+
+Result:
+
+Course A
+Admissions: Closed
+Status: Active
+Students continue normally.
+
+Course B
+Admissions: Active
+Status: Active
+All new admissions go here.
+
+==================================================
+VERY IMPORTANT RULE
+===================
+
+Existing students must NEVER move automatically.
+
+Students already enrolled in Course A remain in Course A until completion.
+
+Course A continues:
+
+* Live Classes
+* Recordings
+* Homework
+* Reports
+* Mentor Communication
+* Student Dashboard
+* Progress Data
+* Certificates (if applicable)
+
+Nothing should break or move.
+
+Only future admissions go into Course B.
+
+==================================================
+COURSE LIMIT
+============
+
+Maximum:
+2 Active Mastery Courses per Grade.
+
+Example:
+
+Allowed:
+
+Grade 3
+├── Course A → Active
+└── Course B → Active
+
+Not Allowed:
+
+Grade 3
+├── Course A
+├── Course B
+└── Course C
+
+To create Course C:
+
+Course A must first become:
+
+Status = Completed
+
+Only then can another course instance be created.
+
+==================================================
+COURSE NAMING
+=============
+
+System auto-generates:
+
+Course A
+Course B
+Course C
+
+But Admin can edit names.
+
+Examples:
+
+Course A
+Foundation Batch
+2026 Intake
+Wave 2
+
+The auto-generated name is only the default.
+
+==================================================
+DATABASE APPROACH
+=================
+
+Do NOT create a separate course_instances table.
+
+Reuse existing coursesTable.
+
+Add only:
+
+instanceName
+admissionStatus
+
+Example:
+
+Mastery Grade 3
+courseType = mastery
+grade = 3
+instanceName = Course A
+admissionStatus = open
+status = active
+
+==================================================
+STUDENT ENROLLMENT
+==================
+
+Do NOT create student_enrollments table right now.
+
+Reuse:
+
+masteryStudentsTable.assignedCourseId
+
+This becomes the source of truth.
+
+One student can have only one active Mastery course.
+
+==================================================
+AUTO CONVERSION FLOW
+====================
+
+Grade 3
+
+Mentor A
+100 Leads
+
+Mentor B
+100 Leads
+
+Total:
+200 Leads
+
+Student can convert through:
+
+* Payment during live class
+* Mentor payment link
+* Partial payment approved by Admin
+* Full payment approved by Admin
+
+The moment payment becomes APPROVED:
+
+Read:
+lead.grade
+
+Find:
+
+grade = lead.grade
+courseType = mastery
+admissionStatus = open
+status = active
+
+Then:
+
+1. Create or update Mastery Student
+2. Populate assignedCourseId
+3. Mark Ignite lead as converted
+4. Log timeline
+5. Immediately show course inside Student App → My Courses
+
+No manual enrollment.
+No manual course selection.
+No cron jobs.
+
+Everything happens instantly after payment approval.
+
+==================================================
+QUESTIONS BEFORE BUILDING
+=========================
+
+1. Does any existing logic depend on there being only ONE Mastery course per grade?
+
+2. Will adding:
+
+* instanceName
+* admissionStatus
+
+break any existing reports, APIs, dashboards, or queries?
+
+3. Which APIs need updates to support:
+
+* Create Course
+* Activate Admissions
+* Auto-close previous admission course
+* Payment Approval → Auto Enrollment
+* Student App → My Courses
+
+4. Please identify every affected file, route, query, and UI screen before writing migrations or code.
+
+I want a full impact analysis and implementation plan first. Only after that should we start building.
