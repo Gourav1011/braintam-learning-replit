@@ -1,0 +1,174 @@
+The implementation plan looks good. I agree with the overall approach with a few adjustments and clarifications before coding.
+
+==================================================
+PHASE 1 — DATABASE MIGRATION
+============================
+
+Add to coursesTable:
+
+* instanceName
+* admissionStatus
+
+Defaults:
+
+admissionStatus = active
+
+No new tables.
+
+All existing courses should automatically receive:
+
+admissionStatus = active
+
+because they are currently acting as the only admission course for their grade.
+
+==================================================
+PHASE 2 — CRITICAL BUG FIX
+==========================
+
+masteryDeployment.ts is currently a blocker.
+
+The system can no longer assume:
+
+one grade = one course.
+
+Any logic that maps:
+
+grade → courseId
+
+must be reviewed.
+
+Whenever the system needs the admission destination, always query:
+
+grade = X
+courseType = mastery
+status = active
+admissionStatus = active
+
+This query should return exactly one course.
+
+Please audit the entire codebase one more time for any hidden assumptions of:
+
+* one grade = one course
+* grade → courseId
+* Map<grade, courseId>
+* WHERE grade =
+
+==================================================
+PHASE 3 — COURSE MANAGEMENT
+===========================
+
+Course creation:
+
+System should auto-generate:
+
+Course A
+Course B
+Course C
+...
+
+Admin can rename them.
+
+Examples:
+
+* 2026 Intake
+* Wave 2
+* Foundation Cohort
+
+Auto-generated names are only defaults.
+
+==================================================
+ADMISSION ACTIVATION
+====================
+
+For each grade:
+
+Unlimited courses can exist.
+
+However, only ONE course per grade should have:
+
+admissionStatus = active
+
+When Admin clicks:
+
+Activate Admissions
+
+The operation should be atomic:
+
+1. Close the currently active admission course for that grade.
+2. Activate the selected course.
+
+Existing students must NEVER move automatically.
+
+==================================================
+PHASE 4 — PAYMENT CONVERSION FLOW
+=================================
+
+Trigger:
+
+Payment Approved
+
+Flow:
+
+Read lead.grade
+↓
+Find active admission course
+↓
+Create or update Mastery Student
+↓
+Populate assignedCourseId
+↓
+Mark lead converted
+↓
+Create timeline entry
+↓
+Course instantly appears in Student App
+
+If no active course exists:
+
+* Payment must still succeed.
+* Create warning log.
+* Create admin notification:
+
+"No active Mastery course found for Grade X."
+
+Admin can later fix and manually retry assignment.
+
+==================================================
+PHASE 5 — STUDENT APP
+=====================
+
+My Courses should read:
+
+masteryStudentsTable.assignedCourseId
+
+and display:
+
+Mastery Grade 3
+Course A
+
+Students remain attached to the course they enrolled in unless manually changed by an admin.
+
+No automatic migration. Ever.
+
+==================================================
+CONTENT MODULE AUDIT
+====================
+
+Since Homework, Tests, Live Classes, Recordings, Assignments and Reports are already linked using course_id, there should be no content sharing between:
+
+Grade 3 → Course A
+Grade 3 → Course B
+
+This architecture is correct and future-proof.
+
+==================================================
+ONE ADDITIONAL REQUEST
+======================
+
+Before coding, please also provide:
+
+1. Which existing APIs and frontend screens will require testing after deployment.
+2. Any existing reports, dashboards, exports or analytics that may need updates because multiple courses can now exist for the same grade.
+3. A deployment checklist and rollback checklist for production.
+
+After this final review, we can begin implementation.
