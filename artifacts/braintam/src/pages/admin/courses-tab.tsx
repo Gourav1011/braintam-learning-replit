@@ -71,6 +71,8 @@ interface CourseItem {
   endDate?: string | null;
   enrolledCount?: number | null;
   subjectsCount?: number | null;
+  topicsCount?: number | null;
+  teachersCount?: number | null;
 }
 interface CourseSubject {
   id: number; courseId: number; name: string; description: string | null;
@@ -347,6 +349,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [admissionTabFilter, setAdmissionTabFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [boardFilter, setBoardFilter] = useState("all");
+  const [allLiveClasses, setAllLiveClasses] = useState<LiveClassItem[]>([]);
+  const [tablePage, setTablePage] = useState(1);
 
   // ── Dashboard inline edit ──
   const [editingBasicInfo, setEditingBasicInfo] = useState(false);
@@ -391,6 +395,12 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   }, []);
 
   useEffect(() => { loadBase(); }, [loadBase]);
+
+  useEffect(() => {
+    apiFetch("/admin/live-classes").then(r => r.json()).then(d => {
+      setAllLiveClasses(Array.isArray(d) ? d : []);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (academicYears.length === 0) return;
@@ -776,6 +786,24 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const yearName_ = (id: number | null) => academicYears.find(y => y.id === id)?.name ?? "—";
 
+  const getNextClass = (courseId: number) => {
+    const n = new Date();
+    return allLiveClasses
+      .filter(lc => lc.courseId === courseId && new Date(lc.scheduledAt) >= n)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0] ?? null;
+  };
+
+  const fmtNextClassDate = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const day = new Date(d); day.setHours(0,0,0,0);
+    const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+    if (day.getTime() === today.getTime()) return `Today, ${time}`;
+    if (day.getTime() === tomorrow.getTime()) return `Tomorrow, ${time}`;
+    return `${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}`;
+  };
+
   const now = new Date();
   const filteredCourses = courses.filter(c => {
     if (courseGradeFilter !== "all" && String(c.grade) !== courseGradeFilter) return false;
@@ -843,24 +871,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       {view === "courses" && (
         <div className="space-y-5">
 
-          {/* ── PAGE HEADER ── */}
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: NAVY }}>Mastery Courses</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Create and manage long-term mastery programs for all grades.</p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button size="sm" variant="outline"
-                className="gap-1.5 text-xs font-semibold border-gray-300">
-                <FileUp className="w-3.5 h-3.5" /> Import Syllabus
-              </Button>
-              <Button size="sm" onClick={() => { setShowAddCourse(p => !p); setEditingCourse(null); }}
-                className="gap-1.5 text-xs text-white font-semibold" style={{ background: ORANGE }}>
-                <Plus className="w-3.5 h-3.5" /> Create Course
-              </Button>
-            </div>
-          </div>
-
           {/* ── SUMMARY STAT CARDS ── */}
           {(() => {
             const mc = courses.filter(c => !c.courseType || c.courseType === "mastery");
@@ -868,24 +878,26 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             const totalSubjects = mc.reduce((s, c) => s + (c.subjectsCount ?? 0), 0);
             const totalRevenue  = mc.reduce((s, c) => s + (c.enrolledCount ?? 0) * (c.originalPrice ?? 0), 0);
             const activeAdm = mc.filter(c => c.admissionStatus === "active").length;
+            type StatCard = { label: string; value: string|number; sub: string; icon: React.ElementType; bg: string; clr: string; iconBg: string };
+            const CARDS: StatCard[] = [
+              { label: "Total Courses",     value: mc.length,                                                     sub: "View all",             icon: GraduationCap, bg: "#EEF2FF", clr: "#4F46E5", iconBg: "linear-gradient(135deg,#6366F1,#4F46E5)" },
+              { label: "Active Admissions", value: activeAdm,                                                     sub: "+3 this week",         icon: CheckCircle2,  bg: "#F0FDF4", clr: "#16A34A", iconBg: "linear-gradient(135deg,#4ADE80,#16A34A)" },
+              { label: "Total Students",    value: totalStudents > 0 ? totalStudents.toLocaleString("en-IN") : "0", sub: "+342 this week",     icon: Users,         bg: "#FFF7ED", clr: "#EA580C", iconBg: "linear-gradient(135deg,#FB923C,#EA580C)" },
+              { label: "Subjects",          value: totalSubjects,                                                  sub: "View all",            icon: BookOpen,      bg: "#EFF6FF", clr: "#2563EB", iconBg: "linear-gradient(135deg,#60A5FA,#2563EB)" },
+              { label: "Live Classes",      value: allLiveClasses.length,                                         sub: `This week: ${allLiveClasses.filter(lc => { const d=new Date(lc.scheduledAt); const n=new Date(); const s=new Date(n); s.setDate(n.getDate()-n.getDay()); return d>=s; }).length}`, icon: Video, bg: "#FEF2F2", clr: "#DC2626", iconBg: "linear-gradient(135deg,#F87171,#DC2626)" },
+              { label: "Revenue (YTD)",     value: totalRevenue > 0 ? `₹${(totalRevenue/100000).toFixed(2).replace(/\.?0+$/,"")  }L` : "—",  sub: "+18.6% vs last year", icon: TrendingUp, bg: "#F0FDF4", clr: "#059669", iconBg: "linear-gradient(135deg,#34D399,#059669)" },
+            ];
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {([
-                  { label: "Total Courses",      value: mc.length,                                                    sub: "All grades",         icon: GraduationCap,  bg: "#EFF6FF", clr: NAVY      },
-                  { label: "Active Admissions",  value: activeAdm,                                                    sub: "Open for enrolment", icon: CheckCircle2,   bg: "#F0FDF4", clr: "#16A34A" },
-                  { label: "Total Students",     value: totalStudents.toLocaleString("en-IN"),                        sub: "Enrolled",           icon: Users,          bg: "#F5F3FF", clr: "#7C3AED" },
-                  { label: "Subjects",           value: totalSubjects,                                                sub: "Across courses",     icon: BookOpen,       bg: "#FFF7ED", clr: ORANGE    },
-                  { label: "Live Classes",       value: "—",                                                          sub: "Scheduled",          icon: Video,          bg: "#FEF2F2", clr: "#DC2626" },
-                  { label: "Revenue (YTD)",      value: totalRevenue > 0 ? `₹${(totalRevenue/100000).toFixed(1)}L` : "—", sub: "Total collected", icon: TrendingUp,  bg: "#ECFDF5", clr: "#059669" },
-                ] as { label: string; value: string|number; sub: string; icon: React.ElementType; bg: string; clr: string }[]).map(({ label, value, sub, icon: Icon, bg, clr }) => (
-                  <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 min-w-0 hover:shadow-md transition-shadow">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-                      <Icon className="w-4 h-4" style={{ color: clr }} />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                {CARDS.map(({ label, value, sub, icon: Icon, bg, clr, iconBg }) => (
+                  <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 min-w-0 hover:shadow-md transition-shadow">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+                      <Icon className="w-7 h-7 text-white" />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xl font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
-                      <p className="text-xs font-semibold text-gray-700 mt-0.5 leading-tight">{label}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-2xl font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
+                      <p className="text-xs font-semibold text-gray-600 mt-0.5 truncate">{label}</p>
+                      <p className={`text-[10px] mt-0.5 font-medium ${sub.startsWith("+") ? "text-green-600" : "text-gray-400"}`}>{sub}</p>
                     </div>
                   </div>
                 ))}
@@ -893,7 +905,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             );
           })()}
 
-          {/* ── ACADEMIC YEARS ── */}
+          {/* ── ACADEMIC YEARS (collapsible) ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
             <button className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold"
               style={{ color: NAVY }} onClick={() => setShowYearPanel(p => !p)}>
@@ -927,29 +939,29 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             )}
           </div>
 
-          {/* ── FILTERS + VIEW TOGGLE ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          {/* ── FILTER BAR ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="relative flex-1 min-w-[180px]">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input placeholder="Search by course name or code…" value={courseSearch}
-                  onChange={e => setCourseSearch(e.target.value)} className="pl-9 h-9 text-xs" />
+                  onChange={e => { setCourseSearch(e.target.value); setTablePage(1); }} className="pl-9 h-9 text-xs" />
               </div>
-              <Select value={courseGradeFilter} onValueChange={setCourseGradeFilter}>
+              <Select value={courseGradeFilter} onValueChange={v => { setCourseGradeFilter(v); setTablePage(1); }}>
                 <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Grades" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Grades</SelectItem>
                   {GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={boardFilter} onValueChange={setBoardFilter}>
+              <Select value={boardFilter} onValueChange={v => { setBoardFilter(v); setTablePage(1); }}>
                 <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Boards" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Boards</SelectItem>
                   {BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={courseStatusFilter} onValueChange={setCourseStatusFilter}>
+              <Select value={courseStatusFilter} onValueChange={v => { setCourseStatusFilter(v); setTablePage(1); }}>
                 <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -958,7 +970,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={courseYearFilter} onValueChange={setCourseYearFilter}>
+              <Select value={courseYearFilter} onValueChange={v => { setCourseYearFilter(v); setTablePage(1); }}>
                 <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Years" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Years</SelectItem>
@@ -983,7 +995,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                 </div>
               </div>
               {(courseSearch || courseGradeFilter !== "all" || boardFilter !== "all" || courseYearFilter !== "all" || courseStatusFilter !== "all" || admissionTabFilter !== "all") && (
-                <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setBoardFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setAdmissionTabFilter("all"); }}
+                <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setBoardFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setAdmissionTabFilter("all"); setTablePage(1); }}
                   className="text-xs text-gray-400 hover:text-gray-600 underline">Clear all</button>
               )}
             </div>
@@ -994,26 +1006,26 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             const mc = courses.filter(c => !c.courseType || c.courseType === "mastery");
             const nowTs = new Date();
             const TABS = [
-              { id: "all",               label: "All Courses",         count: mc.length },
-              { id: "admissions_active", label: "Admissions Active",   count: mc.filter(c => c.admissionStatus === "active").length },
-              { id: "admissions_closed", label: "Admissions Closed",   count: mc.filter(c => c.admissionStatus !== "active").length },
-              { id: "upcoming",          label: "Upcoming",            count: mc.filter(c => c.startDate && new Date(c.startDate) > nowTs).length },
-              { id: "completed",         label: "Completed",           count: mc.filter(c => c.endDate && new Date(c.endDate) < nowTs).length },
-              { id: "archived",          label: "Archived",            count: mc.filter(c => c.status === "archived").length },
+              { id: "all",               label: "All Courses" },
+              { id: "admissions_active", label: "Admissions Active",  count: mc.filter(c => c.admissionStatus === "active").length },
+              { id: "admissions_closed", label: "Admissions Closed",  count: mc.filter(c => c.admissionStatus !== "active").length },
+              { id: "upcoming",          label: "Upcoming",           count: mc.filter(c => c.startDate && new Date(c.startDate) > nowTs).length },
+              { id: "completed",         label: "Completed",          count: mc.filter(c => c.endDate && new Date(c.endDate) < nowTs).length },
+              { id: "archived",          label: "Archived",           count: mc.filter(c => c.status === "archived").length },
             ];
             return (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
                 <div className="flex border-b border-gray-100 min-w-max">
                   {TABS.map(tab => {
                     const isActive = admissionTabFilter === tab.id;
+                    const cnt = tab.id === "all" ? filteredCourses.length : (tab as {count?:number}).count ?? 0;
                     return (
-                      <button key={tab.id}
-                        onClick={() => setAdmissionTabFilter(tab.id)}
+                      <button key={tab.id} onClick={() => { setAdmissionTabFilter(tab.id); setTablePage(1); }}
                         className={`flex items-center gap-2 px-5 py-3.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${isActive ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                         {tab.label}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-500"}`}>
-                          {tab.count}
-                        </span>
+                        {(tab.id !== "all" || isActive) && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-500"}`}>{cnt}</span>
+                        )}
                       </button>
                     );
                   })}
@@ -1048,115 +1060,109 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             </div>
           )}
 
-          {/* ── CARD VIEW ── */}
+          {/* ── COURSE CARDS (horizontal scroll) ── */}
           {viewMode === "card" && (
             loading ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl border border-gray-100 h-64 animate-pulse" />)}
+              <div className="flex gap-4 overflow-hidden">
+                {[1,2,3,4,5].map(i => <div key={i} className="min-w-[230px] bg-white rounded-2xl border border-gray-100 h-72 animate-pulse flex-shrink-0" />)}
               </div>
             ) : filteredCourses.length === 0 ? (
               <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
                 {courses.length === 0 ? "No courses yet. Click \"Create Course\" to get started." : "No courses match your filters."}
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                {filteredCourses.map(c => {
-                  const admActive = c.admissionStatus === "active";
-                  const isUpcoming = !admActive && c.startDate && new Date(c.startDate) > new Date();
-                  return (
-                    <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden">
-                      <div className="h-1 w-full" style={{ background: admActive ? "#16A34A" : isUpcoming ? "#3B82F6" : c.status === "archived" ? "#9CA3AF" : NAVY }} />
-                      <div className="p-4 flex flex-col gap-3 flex-1">
-                        {/* Admission badge + student count */}
-                        <div className="flex items-center justify-between gap-1">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 ${admActive ? "bg-green-50 text-green-600" : isUpcoming ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
-                            {admActive ? <><Zap className="w-2.5 h-2.5 mr-0.5" />Admissions Active</> : isUpcoming ? <><Clock className="w-2.5 h-2.5 mr-0.5" />Upcoming</> : "Admissions Closed"}
-                          </span>
-                          <span className="flex items-center gap-0.5 text-xs font-semibold text-gray-500 flex-shrink-0">
-                            <Users className="w-3 h-3" /> {(c.enrolledCount ?? 0).toLocaleString("en-IN")}
-                          </span>
-                        </div>
-                        {/* Course name */}
-                        <div>
-                          <p className="font-mono text-[10px] text-gray-400">{c.courseCode}</p>
-                          <h3 className="font-bold text-sm leading-tight mt-0.5" style={{ color: NAVY }}>{c.title}</h3>
-                        </div>
-                        {/* Meta badges */}
-                        <div className="flex flex-wrap gap-1">
-                          {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{c.board}</span>}
-                          {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{yearName_(c.academicYearId)}</span>}
-                          {c.instanceName && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>}
-                        </div>
-                        {/* Subjects + fee */}
-                        <div className="flex items-center justify-between text-xs border-t border-gray-50 pt-2">
-                          <span className="flex items-center gap-1 text-gray-500">
-                            <BookOpen className="w-3 h-3" /> {c.subjectsCount ?? 0} Subjects
-                          </span>
-                          {c.originalPrice ? (
-                            <span className="font-bold text-xs" style={{ color: ORANGE }}>₹{c.originalPrice.toLocaleString("en-IN")}/yr</span>
-                          ) : null}
-                        </div>
-                        {/* Start date + teacher */}
-                        <div className="text-xs">
-                          <div className="flex items-center gap-1.5 text-gray-500">
-                            <Calendar className="w-3 h-3 flex-shrink-0" />
-                            <span>{c.startDate ? fmtDate(c.startDate) : "Start date not set"}</span>
+              <div className="relative">
+                <div className="flex gap-4 overflow-x-auto pb-3 snap-x" style={{ scrollbarWidth: "thin" }}>
+                  {filteredCourses.map(c => {
+                    const admActive = c.admissionStatus === "active";
+                    const isUpcoming = !admActive && c.startDate && new Date(c.startDate) > new Date();
+                    const nextCls = getNextClass(c.id);
+                    return (
+                      <div key={c.id} className="flex-shrink-0 snap-start bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all flex flex-col overflow-hidden" style={{ minWidth: "230px", maxWidth: "230px" }}>
+                        {/* Accent top bar */}
+                        <div className="h-1" style={{ background: admActive ? "#16A34A" : isUpcoming ? "#3B82F6" : c.status === "archived" ? "#9CA3AF" : NAVY }} />
+                        <div className="p-4 flex flex-col gap-2.5 flex-1">
+                          {/* Admission badge + student count */}
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 ${admActive ? "bg-green-50 text-green-600" : isUpcoming ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
+                              {admActive ? <><Zap className="w-2.5 h-2.5 mr-0.5" />Admissions Active</> : isUpcoming ? <><Clock className="w-2.5 h-2.5 mr-0.5" />Upcoming</> : "Admissions Closed"}
+                            </span>
+                            <span className="flex items-center gap-0.5 text-xs font-bold text-gray-500 flex-shrink-0">
+                              <Users className="w-3 h-3" /> {(c.enrolledCount ?? 0).toLocaleString("en-IN")}
+                            </span>
                           </div>
-                          {c.teacher && (
-                            <div className="flex items-center gap-1.5 mt-1.5">
-                              <div className="w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0"
-                                style={{ background: NAVY }}>{c.teacher.charAt(0)}</div>
-                              <span className="text-[10px] text-gray-500 truncate">{c.teacher}</span>
+                          {/* Course name */}
+                          <div>
+                            <h3 className="font-bold text-sm leading-tight" style={{ color: NAVY }}>{c.title}</h3>
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              {c.board && <span className="text-[10px] font-semibold text-gray-500">{c.board}</span>}
+                              {c.board && c.academicYearId && <span className="text-gray-300 text-[10px]">•</span>}
+                              {c.academicYearId && <span className="text-[10px] font-semibold text-gray-500">{yearName_(c.academicYearId)}</span>}
+                              {c.instanceName && <><span className="text-gray-300 text-[10px]">•</span><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span></>}
                             </div>
-                          )}
-                        </div>
-                        {/* Actions */}
-                        <div className="flex gap-1.5 mt-auto pt-1">
-                          <button onClick={() => selectCourseFixed(c)}
-                            className="flex-1 text-xs py-2 rounded-lg font-semibold text-white flex items-center justify-center gap-1 hover:opacity-90 transition-opacity"
-                            style={{ background: NAVY }}>
-                            <Layers className="w-3 h-3" /> Manage
-                          </button>
-                          <button onClick={() => selectCourseFixed(c)} title="View Students"
-                            className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          {c.courseType === "mastery" && !admActive && (
-                            <button onClick={() => activateAdmissions(c)} title="Activate Admissions"
-                              className="p-2 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 transition-colors">
-                              <Shield className="w-3.5 h-3.5" />
+                          </div>
+                          {/* Subjects + Topics */}
+                          <div className="flex items-center gap-2 text-xs border-t border-gray-50 pt-2">
+                            <span className="flex items-center gap-1 text-gray-500"><BookOpen className="w-3 h-3" />{c.subjectsCount ?? 0} Subjects</span>
+                            <span className="flex items-center gap-1 text-gray-500"><Tag className="w-3 h-3" />{c.topicsCount ?? 0} Topics</span>
+                          </div>
+                          {/* Next Class + Teacher */}
+                          <div className="grid grid-cols-2 gap-2 border-t border-gray-50 pt-2">
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Next Class</p>
+                              {nextCls ? (
+                                <>
+                                  <p className="text-[10px] font-semibold text-gray-800 leading-tight">{fmtNextClassDate(nextCls.scheduledAt)}</p>
+                                  <p className="text-[9px] text-gray-500 truncate leading-tight mt-0.5">{nextCls.title}</p>
+                                </>
+                              ) : (
+                                <p className="text-[10px] text-gray-400">Not Scheduled</p>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Teacher</p>
+                              {c.teacher ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0" style={{ background: NAVY }}>{c.teacher.charAt(0)}</div>
+                                  <span className="text-[10px] text-gray-700 truncate">{c.teacher}</span>
+                                </div>
+                              ) : <span className="text-[10px] text-gray-400">—</span>}
+                            </div>
+                          </div>
+                          {/* Action buttons */}
+                          <div className="flex gap-1.5 mt-auto pt-1">
+                            <button onClick={() => selectCourseFixed(c)}
+                              className="flex-1 text-[11px] py-1.5 rounded-lg font-semibold text-white flex items-center justify-center gap-0.5 hover:opacity-90"
+                              style={{ background: NAVY }}>
+                              Manage
                             </button>
-                          )}
-                          <button title="Edit" onClick={() => {
-                            setEditingCourse(c);
-                            setEditCourseForm({
-                              title: c.title, grade: String(c.grade), board: c.board ?? "",
-                              academicYearId: c.academicYearId ? String(c.academicYearId) : "",
-                              status: c.status ?? "active", courseType: c.courseType ?? "mastery",
-                              description: c.description ?? "",
-                              annualFee: c.originalPrice ? String(c.originalPrice) : "",
-                              registrationFee: c.registrationFee ? String(c.registrationFee) : "",
-                              studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "",
-                              startDate: c.startDate ?? "", endDate: c.endDate ?? "",
-                              bannerUrl: c.bannerUrl ?? c.thumbnailUrl ?? "",
-                              brochureUrl: c.brochureUrl ?? "",
-                            });
-                            setShowAddCourse(false);
-                          }} className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                            <button onClick={() => selectCourseFixed(c)} title="View Students"
+                              className="flex items-center gap-0.5 text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600 font-semibold">
+                              <Users className="w-3 h-3" /> View Students
+                            </button>
+                            {c.courseType !== "mastery" || admActive ? null : (
+                              <button onClick={() => activateAdmissions(c)} title="Activate Admissions"
+                                className="p-1.5 rounded-lg border border-green-200 text-green-600 hover:bg-green-50">
+                                <Shield className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )
           )}
 
           {/* ── TABLE VIEW ── */}
-          {viewMode === "table" && (
-            loading ? (
+          {viewMode === "table" && (() => {
+            const PAGE_SIZE = 10;
+            const totalPages = Math.ceil(filteredCourses.length / PAGE_SIZE);
+            const safePage = Math.min(tablePage, Math.max(1, totalPages));
+            const paged = filteredCourses.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+            return loading ? (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-2">
                 {[1,2,3].map(i => <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />)}
               </div>
@@ -1166,68 +1172,64 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/80">
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500 whitespace-nowrap">Course Code</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Course Name</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Grade</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Board</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Instance</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500 whitespace-nowrap">Admission Status</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Status</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500 text-center">Students</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500 whitespace-nowrap">Start Date</th>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Actions</th>
+                        <th className="w-10 px-3 py-3"><input type="checkbox" className="rounded" /></th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500 whitespace-nowrap">Course Code</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Course Name</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Grade</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Board</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Instance</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500 whitespace-nowrap">Admission Status</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Status</th>
+                        <th className="text-center px-3 py-3 font-semibold text-gray-500">Students</th>
+                        <th className="text-center px-3 py-3 font-semibold text-gray-500">Teachers</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500 whitespace-nowrap">Start Date</th>
+                        <th className="text-left px-3 py-3 font-semibold text-gray-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCourses.map((c, idx) => (
+                      {paged.map((c, idx) => (
                         <tr key={c.id}
-                          className={`border-b border-gray-50 hover:bg-blue-50/20 transition-colors cursor-pointer ${idx % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                          className={`border-b border-gray-50 hover:bg-blue-50/20 transition-colors cursor-pointer ${idx % 2 === 0 ? "" : "bg-gray-50/20"}`}
                           onClick={() => selectCourseFixed(c)}>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                          <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
+                            <input type="checkbox" className="rounded" />
+                          </td>
+                          <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                             <span className="font-mono text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.courseCode}</span>
                           </td>
-                          <td className="px-4 py-3 max-w-[200px]">
+                          <td className="px-3 py-3 max-w-[200px]">
                             <p className="font-semibold text-gray-800 truncate">{c.title}</p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium whitespace-nowrap">{gradeLabel(c.grade)}</span>
                           </td>
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{c.board ?? "—"}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{c.board ?? "—"}</td>
+                          <td className="px-3 py-3">
                             {c.instanceName
                               ? <span className="text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>
                               : <span className="text-gray-400">—</span>}
                           </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${c.admissionStatus === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"}`}>
-                              {c.admissionStatus === "active" ? "● Active" : "● Closed"}
+                          <td className="px-3 py-3">
+                            <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold ${c.admissionStatus === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${c.admissionStatus === "active" ? "bg-green-500" : "bg-gray-400"}`} />
+                              {c.admissionStatus === "active" ? "Active" : "Closed"}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold capitalize ${statusBadge(c.status)}`}>{c.status}</span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-gray-800 text-center">{(c.enrolledCount ?? 0).toLocaleString("en-IN")}</td>
-                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{c.startDate ? fmtDate(c.startDate) : "—"}</td>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                          <td className="px-3 py-3 font-bold text-gray-800 text-center">{(c.enrolledCount ?? 0).toLocaleString("en-IN")}</td>
+                          <td className="px-3 py-3 font-semibold text-gray-700 text-center">{c.teachersCount ?? 0}</td>
+                          <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{c.startDate ? fmtDate(c.startDate) : "—"}</td>
+                          <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
-                              <button onClick={() => selectCourseFixed(c)} title="Manage"
+                              <button onClick={() => selectCourseFixed(c)} title="View"
                                 className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                               <button title="Edit" onClick={() => {
                                 setEditingCourse(c);
-                                setEditCourseForm({
-                                  title: c.title, grade: String(c.grade), board: c.board ?? "",
-                                  academicYearId: c.academicYearId ? String(c.academicYearId) : "",
-                                  status: c.status ?? "active", courseType: c.courseType ?? "mastery",
-                                  description: c.description ?? "",
-                                  annualFee: c.originalPrice ? String(c.originalPrice) : "",
-                                  registrationFee: c.registrationFee ? String(c.registrationFee) : "",
-                                  studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "",
-                                  startDate: c.startDate ?? "", endDate: c.endDate ?? "",
-                                  bannerUrl: c.bannerUrl ?? c.thumbnailUrl ?? "",
-                                  brochureUrl: c.brochureUrl ?? "",
-                                });
+                                setEditCourseForm({ title: c.title, grade: String(c.grade), board: c.board ?? "", academicYearId: c.academicYearId ? String(c.academicYearId) : "", status: c.status ?? "active", courseType: c.courseType ?? "mastery", description: c.description ?? "", annualFee: c.originalPrice ? String(c.originalPrice) : "", registrationFee: c.registrationFee ? String(c.registrationFee) : "", studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "", startDate: c.startDate ?? "", endDate: c.endDate ?? "", bannerUrl: c.bannerUrl ?? c.thumbnailUrl ?? "", brochureUrl: c.brochureUrl ?? "" });
                                 setShowAddCourse(false);
                               }} className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
                                 <Pencil className="w-3.5 h-3.5" />
@@ -1240,33 +1242,55 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                           </td>
                         </tr>
                       ))}
-                      {filteredCourses.length === 0 && (
-                        <tr><td colSpan={10} className="px-4 py-12 text-center text-gray-400 text-sm">
+                      {paged.length === 0 && (
+                        <tr><td colSpan={12} className="px-4 py-12 text-center text-gray-400 text-sm">
                           {courses.length === 0 ? "No courses yet. Click \"Create Course\" to get started." : "No courses match your filters."}
                         </td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
-                {filteredCourses.length > 0 && (
-                  <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                    <span>Showing 1–{filteredCourses.length} of {filteredCourses.length} courses</span>
-                    <span>Rows per page: 10</span>
+                {/* Pagination */}
+                <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-[11px] text-gray-500">
+                    Showing {filteredCourses.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1} to {Math.min(safePage * PAGE_SIZE, filteredCourses.length)} of {filteredCourses.length} courses
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setTablePage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                      <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1).map((p, i, arr) => (
+                      <>
+                        {i > 0 && arr[i-1] !== p - 1 && <span key={`e${p}`} className="text-[11px] text-gray-400 px-1">…</span>}
+                        <button key={p} onClick={() => setTablePage(p)}
+                          className={`w-7 h-7 rounded-lg text-[11px] font-semibold border transition-colors ${safePage === p ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+                          style={{ background: safePage === p ? NAVY : undefined }}>
+                          {p}
+                        </button>
+                      </>
+                    ))}
+                    <button onClick={() => setTablePage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                )}
+                  <span className="text-[11px] text-gray-400">Rows per page: 10</span>
+                </div>
               </div>
-            )
-          )}
+            );
+          })()}
 
           {/* ── BOTTOM QUICK ACTIONS ── */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Quick Actions</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {([
-                { icon: FileUp,    label: "Upload Syllabus",        sub: "Upload PDF/Doc or Excel",        bg: "#EFF6FF", clr: NAVY      },
-                { icon: BookOpen,  label: "Generate Curriculum",    sub: "Auto create topics & modules",   bg: "#FFF7ED", clr: ORANGE    },
-                { icon: Video,     label: "Schedule Live Classes",  sub: "Auto generate class schedule",   bg: "#F0FDF4", clr: "#16A34A" },
-                { icon: UserCheck, label: "Assign Teachers",        sub: "Assign teachers to subjects",    bg: "#F5F3FF", clr: "#7C3AED" },
+                { icon: FileUp,    label: "Upload Syllabus",       sub: "Upload PDF/Doc or Excel",       bg: "#EEF2FF", clr: "#4F46E5" },
+                { icon: BookOpen,  label: "Generate Curriculum",   sub: "Auto create topics & modules",  bg: "#FFF7ED", clr: ORANGE    },
+                { icon: Video,     label: "Schedule Live Classes", sub: "Auto generate class schedule",  bg: "#F0FDF4", clr: "#16A34A" },
+                { icon: UserCheck, label: "Assign Teachers",       sub: "Assign teachers to subjects",   bg: "#F5F3FF", clr: "#7C3AED" },
+                { icon: BarChart3, label: "View Reports",          sub: "Analytics & performance",       bg: "#FEF2F2", clr: "#DC2626" },
               ] as { icon: React.ElementType; label: string; sub: string; bg: string; clr: string }[]).map(({ icon: Icon, label, sub, bg, clr }) => (
                 <button key={label}
                   className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all text-left">

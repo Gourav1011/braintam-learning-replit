@@ -518,6 +518,8 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     endDate: coursesTable.endDate,
     enrolledCount: sql<number>`(SELECT COUNT(*)::int FROM mastery_students WHERE assigned_course_id = ${coursesTable.id})`,
     subjectsCount: sql<number>`(SELECT COUNT(*)::int FROM course_subjects WHERE course_id = ${coursesTable.id})`,
+    topicsCount: sql<number>`(SELECT COUNT(*)::int FROM topics JOIN chapters ON topics.chapter_id = chapters.id WHERE chapters.course_id = ${coursesTable.id})`,
+    teachersCount: sql<number>`(SELECT COUNT(*)::int FROM teacher_courses WHERE course_id = ${coursesTable.id})`,
   })
     .from(coursesTable)
     .where(eq(coursesTable.isArchived, false))
