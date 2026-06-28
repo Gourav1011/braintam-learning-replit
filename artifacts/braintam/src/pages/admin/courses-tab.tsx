@@ -6,6 +6,7 @@ import {
   Users, Upload, ImageIcon, FileUp, AlertCircle, CheckCircle,
   BarChart3, Calendar, DollarSign, UserCheck, ArrowLeft,
   BookMarked, TrendingUp, Send, Zap, Shield,
+  Eye, LayoutGrid, List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,8 @@ interface CourseItem {
   admissionStatus?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  enrolledCount?: number | null;
+  subjectsCount?: number | null;
 }
 interface CourseSubject {
   id: number; courseId: number; name: string; description: string | null;
@@ -341,6 +344,9 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [courseTypeFilter, setCourseTypeFilter] = useState("all");
   const [yearName, setYearName] = useState("");
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
+  const [admissionTabFilter, setAdmissionTabFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"card" | "table">("card");
+  const [boardFilter, setBoardFilter] = useState("all");
 
   // ── Dashboard inline edit ──
   const [editingBasicInfo, setEditingBasicInfo] = useState(false);
@@ -770,11 +776,18 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
 
   const yearName_ = (id: number | null) => academicYears.find(y => y.id === id)?.name ?? "—";
 
+  const now = new Date();
   const filteredCourses = courses.filter(c => {
     if (courseGradeFilter !== "all" && String(c.grade) !== courseGradeFilter) return false;
     if (courseYearFilter !== "all" && String(c.academicYearId) !== courseYearFilter) return false;
     if (courseStatusFilter !== "all" && c.status !== courseStatusFilter) return false;
     if (courseTypeFilter !== "all" && c.courseType !== courseTypeFilter) return false;
+    if (boardFilter !== "all" && c.board !== boardFilter) return false;
+    if (admissionTabFilter === "admissions_active" && c.admissionStatus !== "active") return false;
+    if (admissionTabFilter === "admissions_closed" && c.admissionStatus === "active") return false;
+    if (admissionTabFilter === "upcoming" && !(c.startDate && new Date(c.startDate) > now)) return false;
+    if (admissionTabFilter === "completed" && !(c.endDate && new Date(c.endDate) < now)) return false;
+    if (admissionTabFilter === "archived" && c.status !== "archived") return false;
     if (courseSearch) {
       const q = courseSearch.toLowerCase();
       return c.title.toLowerCase().includes(q) || (c.teacher ?? "").toLowerCase().includes(q) || (c.courseCode ?? "").toLowerCase().includes(q);
@@ -828,23 +841,74 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           COURSES LIST VIEW
           ════════════════════════════════════════════════════════ */}
       {view === "courses" && (
-        <>
-          {/* Academic Years Panel */}
+        <div className="space-y-5">
+
+          {/* ── PAGE HEADER ── */}
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: NAVY }}>Mastery Courses</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Create and manage long-term mastery programs for all grades.</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button size="sm" variant="outline"
+                className="gap-1.5 text-xs font-semibold border-gray-300">
+                <FileUp className="w-3.5 h-3.5" /> Import Syllabus
+              </Button>
+              <Button size="sm" onClick={() => { setShowAddCourse(p => !p); setEditingCourse(null); }}
+                className="gap-1.5 text-xs text-white font-semibold" style={{ background: ORANGE }}>
+                <Plus className="w-3.5 h-3.5" /> Create Course
+              </Button>
+            </div>
+          </div>
+
+          {/* ── SUMMARY STAT CARDS ── */}
+          {(() => {
+            const mc = courses.filter(c => !c.courseType || c.courseType === "mastery");
+            const totalStudents = mc.reduce((s, c) => s + (c.enrolledCount ?? 0), 0);
+            const totalSubjects = mc.reduce((s, c) => s + (c.subjectsCount ?? 0), 0);
+            const totalRevenue  = mc.reduce((s, c) => s + (c.enrolledCount ?? 0) * (c.originalPrice ?? 0), 0);
+            const activeAdm = mc.filter(c => c.admissionStatus === "active").length;
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {([
+                  { label: "Total Courses",      value: mc.length,                                                    sub: "All grades",         icon: GraduationCap,  bg: "#EFF6FF", clr: NAVY      },
+                  { label: "Active Admissions",  value: activeAdm,                                                    sub: "Open for enrolment", icon: CheckCircle2,   bg: "#F0FDF4", clr: "#16A34A" },
+                  { label: "Total Students",     value: totalStudents.toLocaleString("en-IN"),                        sub: "Enrolled",           icon: Users,          bg: "#F5F3FF", clr: "#7C3AED" },
+                  { label: "Subjects",           value: totalSubjects,                                                sub: "Across courses",     icon: BookOpen,       bg: "#FFF7ED", clr: ORANGE    },
+                  { label: "Live Classes",       value: "—",                                                          sub: "Scheduled",          icon: Video,          bg: "#FEF2F2", clr: "#DC2626" },
+                  { label: "Revenue (YTD)",      value: totalRevenue > 0 ? `₹${(totalRevenue/100000).toFixed(1)}L` : "—", sub: "Total collected", icon: TrendingUp,  bg: "#ECFDF5", clr: "#059669" },
+                ] as { label: string; value: string|number; sub: string; icon: React.ElementType; bg: string; clr: string }[]).map(({ label, value, sub, icon: Icon, bg, clr }) => (
+                  <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 min-w-0 hover:shadow-md transition-shadow">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+                      <Icon className="w-4 h-4" style={{ color: clr }} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xl font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
+                      <p className="text-xs font-semibold text-gray-700 mt-0.5 leading-tight">{label}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* ── ACADEMIC YEARS ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <button className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold"
+            <button className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold"
               style={{ color: NAVY }} onClick={() => setShowYearPanel(p => !p)}>
               <span className="flex items-center gap-2">
                 <GraduationCap className="w-4 h-4" /> Academic Years
                 <span className="text-xs font-normal text-gray-400">({academicYears.length})</span>
               </span>
-              {showYearPanel ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {showYearPanel ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
             </button>
             {showYearPanel && (
               <div className="px-5 pb-4 space-y-3 border-t border-gray-100">
                 <div className="flex gap-2 mt-3">
-                  <Input placeholder="e.g. 2025-26" value={yearName} onChange={e => setYearName(e.target.value)}
-                    className="flex-1 text-sm" onKeyDown={e => e.key === "Enter" && createYear()} />
-                  <Button size="sm" onClick={createYear} disabled={busy || !yearName.trim()} className="text-white" style={{ background: ORANGE }}>
+                  <Input placeholder="e.g. 2026-27" value={yearName} onChange={e => setYearName(e.target.value)}
+                    className="flex-1 text-sm h-8" onKeyDown={e => e.key === "Enter" && createYear()} />
+                  <Button size="sm" onClick={createYear} disabled={busy || !yearName.trim()} className="text-white h-8" style={{ background: ORANGE }}>
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -853,60 +917,40 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     <div key={yr.id} className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-medium"
                       style={{ borderColor: yr.isActive ? NAVY : "#E5E7EB", color: yr.isActive ? NAVY : "#9CA3AF" }}>
                       {yr.name}
-                      <button onClick={() => toggleYear(yr)} className="ml-1 opacity-60 hover:opacity-100 text-xs">{yr.isActive ? "✓" : "○"}</button>
+                      <button onClick={() => toggleYear(yr)} className="ml-1 opacity-60 hover:opacity-100">{yr.isActive ? "✓" : "○"}</button>
                       <button onClick={() => deleteYear(yr.id)} className="ml-0.5 text-red-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                     </div>
                   ))}
-                  {academicYears.length === 0 && <p className="text-gray-400 text-xs">No academic years yet.</p>}
+                  {academicYears.length === 0 && <p className="text-xs text-gray-400">No academic years yet.</p>}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Toolbar */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="text-sm text-gray-500">Long-term academic programs — Courses → Subjects → Chapters → Topics.</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={loadBase} className="gap-1 text-xs">
-                  <RotateCcw className="w-3.5 h-3.5" /> Refresh
-                </Button>
-                <Button size="sm" onClick={() => { setShowAddCourse(p => !p); setEditingCourse(null); }} className="text-white gap-1" style={{ background: ORANGE }}>
-                  <Plus className="w-3.5 h-3.5" /> Add Course
-                </Button>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <Input placeholder="Search…" value={courseSearch} onChange={e => setCourseSearch(e.target.value)} className="pl-8 h-8 text-xs w-48" />
+          {/* ── FILTERS + VIEW TOGGLE ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input placeholder="Search by course name or code…" value={courseSearch}
+                  onChange={e => setCourseSearch(e.target.value)} className="pl-9 h-9 text-xs" />
               </div>
               <Select value={courseGradeFilter} onValueChange={setCourseGradeFilter}>
-                <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="All Grades" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Grades" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Grades</SelectItem>
                   {GRADES.map(g => <SelectItem key={g} value={String(g)}>{gradeLabel(g)}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={courseYearFilter} onValueChange={setCourseYearFilter}>
-                <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="All Years" /></SelectTrigger>
+              <Select value={boardFilter} onValueChange={setBoardFilter}>
+                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Boards" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={courseTypeFilter} onValueChange={setCourseTypeFilter}>
-                <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="All Types" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="mastery">Mastery</SelectItem>
-                  <SelectItem value="ignite">Ignite</SelectItem>
+                  <SelectItem value="all">All Boards</SelectItem>
+                  {BOARDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={courseStatusFilter} onValueChange={setCourseStatusFilter}>
-                <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="All Status" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
@@ -914,79 +958,176 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-              {(courseSearch || courseGradeFilter !== "all" || courseYearFilter !== "all" || courseStatusFilter !== "all" || courseTypeFilter !== "all") && (
-                <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setCourseTypeFilter("all"); }}
-                  className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
+              <Select value={courseYearFilter} onValueChange={setCourseYearFilter}>
+                <SelectTrigger className="h-9 text-xs w-32"><SelectValue placeholder="All Years" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {academicYears.map(y => <SelectItem key={y.id} value={String(y.id)}>{y.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+                <Button size="sm" variant="outline" onClick={loadBase} className="h-9 gap-1.5 text-xs font-medium">
+                  <RotateCcw className="w-3.5 h-3.5" /> Refresh
+                </Button>
+                <div className="flex border border-gray-200 rounded-lg overflow-hidden ml-1">
+                  <button onClick={() => setViewMode("card")}
+                    className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-colors ${viewMode === "card" ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                    style={{ background: viewMode === "card" ? NAVY : undefined }}>
+                    <LayoutGrid className="w-3.5 h-3.5" /> Card View
+                  </button>
+                  <button onClick={() => setViewMode("table")}
+                    className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 border-l border-gray-200 transition-colors ${viewMode === "table" ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                    style={{ background: viewMode === "table" ? NAVY : undefined }}>
+                    <List className="w-3.5 h-3.5" /> Table View
+                  </button>
+                </div>
+              </div>
+              {(courseSearch || courseGradeFilter !== "all" || boardFilter !== "all" || courseYearFilter !== "all" || courseStatusFilter !== "all" || admissionTabFilter !== "all") && (
+                <button onClick={() => { setCourseSearch(""); setCourseGradeFilter("all"); setBoardFilter("all"); setCourseYearFilter("all"); setCourseStatusFilter("all"); setAdmissionTabFilter("all"); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline">Clear all</button>
               )}
             </div>
+          </div>
 
-            {/* Add course form */}
-            {showAddCourse && (
-              <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-5">
-                <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Course</h3>
-                <CourseForm form={courseForm} setForm={setCourseForm} academicYears={academicYears}
-                  onSubmit={createCourse} onCancel={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}
-                  submitLabel="Create Course" busy={busy} />
-              </div>
-            )}
-
-            {/* Edit course form */}
-            {editingCourse && (
-              <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit — <span className="font-mono text-xs">{editingCourse.courseCode}</span></h3>
-                  <button onClick={() => setEditingCourse(null)}><X className="w-4 h-4 text-gray-400" /></button>
+          {/* ── STATUS TABS ── */}
+          {(() => {
+            const mc = courses.filter(c => !c.courseType || c.courseType === "mastery");
+            const nowTs = new Date();
+            const TABS = [
+              { id: "all",               label: "All Courses",         count: mc.length },
+              { id: "admissions_active", label: "Admissions Active",   count: mc.filter(c => c.admissionStatus === "active").length },
+              { id: "admissions_closed", label: "Admissions Closed",   count: mc.filter(c => c.admissionStatus !== "active").length },
+              { id: "upcoming",          label: "Upcoming",            count: mc.filter(c => c.startDate && new Date(c.startDate) > nowTs).length },
+              { id: "completed",         label: "Completed",           count: mc.filter(c => c.endDate && new Date(c.endDate) < nowTs).length },
+              { id: "archived",          label: "Archived",            count: mc.filter(c => c.status === "archived").length },
+            ];
+            return (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+                <div className="flex border-b border-gray-100 min-w-max">
+                  {TABS.map(tab => {
+                    const isActive = admissionTabFilter === tab.id;
+                    return (
+                      <button key={tab.id}
+                        onClick={() => setAdmissionTabFilter(tab.id)}
+                        className={`flex items-center gap-2 px-5 py-3.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${isActive ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                        {tab.label}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-500"}`}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <CourseForm form={editCourseForm} setForm={setEditCourseForm} academicYears={academicYears}
-                  onSubmit={updateCourse} onCancel={() => setEditingCourse(null)}
-                  submitLabel="Save Changes" busy={busy} />
               </div>
-            )}
+            );
+          })()}
 
-            {/* Course grid */}
-            {loading ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => <div key={i} className="bg-white rounded-2xl p-4 animate-pulse h-40" />)}
+          {/* ── ADD / EDIT COURSE FORMS ── */}
+          {showAddCourse && (
+            <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>New Course</h3>
+                <button onClick={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}>
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+              <CourseForm form={courseForm} setForm={setCourseForm} academicYears={academicYears}
+                onSubmit={createCourse} onCancel={() => { setShowAddCourse(false); setCourseForm(emptyCourseForm); }}
+                submitLabel="Create Course" busy={busy} />
+            </div>
+          )}
+          {editingCourse && (
+            <div className="bg-white rounded-2xl p-5 border-2 border-blue-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-sm" style={{ color: NAVY }}>Edit — <span className="font-mono text-xs">{editingCourse.courseCode}</span></h3>
+                <button onClick={() => setEditingCourse(null)}><X className="w-4 h-4 text-gray-400" /></button>
+              </div>
+              <CourseForm form={editCourseForm} setForm={setEditCourseForm} academicYears={academicYears}
+                onSubmit={updateCourse} onCancel={() => setEditingCourse(null)}
+                submitLabel="Save Changes" busy={busy} />
+            </div>
+          )}
+
+          {/* ── CARD VIEW ── */}
+          {viewMode === "card" && (
+            loading ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl border border-gray-100 h-64 animate-pulse" />)}
+              </div>
+            ) : filteredCourses.length === 0 ? (
+              <div className="text-center py-16 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
+                {courses.length === 0 ? "No courses yet. Click \"Create Course\" to get started." : "No courses match your filters."}
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredCourses.map(c => (
-                  <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="h-1.5 w-full" style={{ background: c.status === "active" ? NAVY : c.status === "archived" ? "#9CA3AF" : "#F59E0B" }} />
-                    <div className="p-4 space-y-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-mono text-[10px] text-gray-400">{c.courseCode}</p>
-                          <h3 className="font-semibold text-sm leading-snug" style={{ color: NAVY }}>{c.title}</h3>
-                        </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 flex items-center gap-0.5 ${statusBadge(c.status)}`}>
-                          {statusIcon(c.status)} {c.status?.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{gradeLabel(c.grade)}</span>
-                        {c.instanceName && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>
-                        )}
-                        {c.courseType === "mastery" && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.admissionStatus === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
-                            {c.admissionStatus === "active" ? "Admissions Open" : "Admissions Closed"}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                {filteredCourses.map(c => {
+                  const admActive = c.admissionStatus === "active";
+                  const isUpcoming = !admActive && c.startDate && new Date(c.startDate) > new Date();
+                  return (
+                    <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden">
+                      <div className="h-1 w-full" style={{ background: admActive ? "#16A34A" : isUpcoming ? "#3B82F6" : c.status === "archived" ? "#9CA3AF" : NAVY }} />
+                      <div className="p-4 flex flex-col gap-3 flex-1">
+                        {/* Admission badge + student count */}
+                        <div className="flex items-center justify-between gap-1">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 ${admActive ? "bg-green-50 text-green-600" : isUpcoming ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"}`}>
+                            {admActive ? <><Zap className="w-2.5 h-2.5 mr-0.5" />Admissions Active</> : isUpcoming ? <><Clock className="w-2.5 h-2.5 mr-0.5" />Upcoming</> : "Admissions Closed"}
                           </span>
-                        )}
-                        {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{c.board}</span>}
-                        {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{yearName_(c.academicYearId)}</span>}
-                      </div>
-                      {c.originalPrice && (
-                        <p className="text-sm font-bold" style={{ color: ORANGE }}>₹{c.originalPrice.toLocaleString("en-IN")} / yr</p>
-                      )}
-                      <div className="flex gap-1.5 pt-1">
-                        <button onClick={() => selectCourseFixed(c)}
-                          className="flex-1 text-xs py-1.5 rounded-lg font-semibold text-white flex items-center justify-center gap-1"
-                          style={{ background: NAVY }}>
-                          <Layers className="w-3 h-3" /> Manage
-                        </button>
-                        <button
-                          onClick={() => {
+                          <span className="flex items-center gap-0.5 text-xs font-semibold text-gray-500 flex-shrink-0">
+                            <Users className="w-3 h-3" /> {(c.enrolledCount ?? 0).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        {/* Course name */}
+                        <div>
+                          <p className="font-mono text-[10px] text-gray-400">{c.courseCode}</p>
+                          <h3 className="font-bold text-sm leading-tight mt-0.5" style={{ color: NAVY }}>{c.title}</h3>
+                        </div>
+                        {/* Meta badges */}
+                        <div className="flex flex-wrap gap-1">
+                          {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{c.board}</span>}
+                          {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{yearName_(c.academicYearId)}</span>}
+                          {c.instanceName && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>}
+                        </div>
+                        {/* Subjects + fee */}
+                        <div className="flex items-center justify-between text-xs border-t border-gray-50 pt-2">
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <BookOpen className="w-3 h-3" /> {c.subjectsCount ?? 0} Subjects
+                          </span>
+                          {c.originalPrice ? (
+                            <span className="font-bold text-xs" style={{ color: ORANGE }}>₹{c.originalPrice.toLocaleString("en-IN")}/yr</span>
+                          ) : null}
+                        </div>
+                        {/* Start date + teacher */}
+                        <div className="text-xs">
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <Calendar className="w-3 h-3 flex-shrink-0" />
+                            <span>{c.startDate ? fmtDate(c.startDate) : "Start date not set"}</span>
+                          </div>
+                          {c.teacher && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <div className="w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0"
+                                style={{ background: NAVY }}>{c.teacher.charAt(0)}</div>
+                              <span className="text-[10px] text-gray-500 truncate">{c.teacher}</span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Actions */}
+                        <div className="flex gap-1.5 mt-auto pt-1">
+                          <button onClick={() => selectCourseFixed(c)}
+                            className="flex-1 text-xs py-2 rounded-lg font-semibold text-white flex items-center justify-center gap-1 hover:opacity-90 transition-opacity"
+                            style={{ background: NAVY }}>
+                            <Layers className="w-3 h-3" /> Manage
+                          </button>
+                          <button onClick={() => selectCourseFixed(c)} title="View Students"
+                            className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {c.courseType === "mastery" && !admActive && (
+                            <button onClick={() => activateAdmissions(c)} title="Activate Admissions"
+                              className="p-2 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 transition-colors">
+                              <Shield className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button title="Edit" onClick={() => {
                             setEditingCourse(c);
                             setEditCourseForm({
                               title: c.title, grade: String(c.grade), board: c.board ?? "",
@@ -1001,46 +1142,148 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                               brochureUrl: c.brochureUrl ?? "",
                             });
                             setShowAddCourse(false);
-                          }}
-                          className="text-xs p-1.5 rounded-lg border border-blue-200 hover:border-blue-400 text-blue-500">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        {c.status !== "archived" ? (
-                          <button onClick={() => updateCourseStatus(c, "archived")} title="Archive"
-                            className="text-xs p-1.5 rounded-lg border border-gray-200 text-gray-400">
-                            <Archive className="w-3.5 h-3.5" />
+                          }} className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
-                        ) : (
-                          <button onClick={() => updateCourseStatus(c, "active")} title="Activate"
-                            className="text-xs p-1.5 rounded-lg border border-green-200 text-green-500">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {c.courseType === "mastery" && c.admissionStatus !== "active" && (
-                          <button onClick={() => activateAdmissions(c)} title="Activate Admissions"
-                            className="text-xs p-1.5 rounded-lg border border-green-200 text-green-600">
-                            <Shield className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button onClick={() => deleteCourse(c.id, c.title)}
-                          className="text-xs p-1.5 rounded-lg border border-gray-200 text-red-400 hover:text-red-600">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                {filteredCourses.length === 0 && (
-                  <div className="sm:col-span-2 lg:col-span-3 text-center py-12 text-gray-400 text-sm bg-white rounded-2xl border border-dashed border-gray-200">
-                    {courses.length === 0 ? "No courses yet. Click \"Add Course\" to create one." : "No courses match your filters."}
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {/* ── TABLE VIEW ── */}
+          {viewMode === "table" && (
+            loading ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-2">
+                {[1,2,3].map(i => <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />)}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/80">
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500 whitespace-nowrap">Course Code</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Course Name</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Grade</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Board</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Instance</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500 whitespace-nowrap">Admission Status</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Status</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500 text-center">Students</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500 whitespace-nowrap">Start Date</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCourses.map((c, idx) => (
+                        <tr key={c.id}
+                          className={`border-b border-gray-50 hover:bg-blue-50/20 transition-colors cursor-pointer ${idx % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                          onClick={() => selectCourseFixed(c)}>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <span className="font-mono text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.courseCode}</span>
+                          </td>
+                          <td className="px-4 py-3 max-w-[200px]">
+                            <p className="font-semibold text-gray-800 truncate">{c.title}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium whitespace-nowrap">{gradeLabel(c.grade)}</span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{c.board ?? "—"}</td>
+                          <td className="px-4 py-3">
+                            {c.instanceName
+                              ? <span className="text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>
+                              : <span className="text-gray-400">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${c.admissionStatus === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"}`}>
+                              {c.admissionStatus === "active" ? "● Active" : "● Closed"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold capitalize ${statusBadge(c.status)}`}>{c.status}</span>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-800 text-center">{(c.enrolledCount ?? 0).toLocaleString("en-IN")}</td>
+                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{c.startDate ? fmtDate(c.startDate) : "—"}</td>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => selectCourseFixed(c)} title="Manage"
+                                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button title="Edit" onClick={() => {
+                                setEditingCourse(c);
+                                setEditCourseForm({
+                                  title: c.title, grade: String(c.grade), board: c.board ?? "",
+                                  academicYearId: c.academicYearId ? String(c.academicYearId) : "",
+                                  status: c.status ?? "active", courseType: c.courseType ?? "mastery",
+                                  description: c.description ?? "",
+                                  annualFee: c.originalPrice ? String(c.originalPrice) : "",
+                                  registrationFee: c.registrationFee ? String(c.registrationFee) : "",
+                                  studentCapacity: c.studentCapacity ? String(c.studentCapacity) : "",
+                                  startDate: c.startDate ?? "", endDate: c.endDate ?? "",
+                                  bannerUrl: c.bannerUrl ?? c.thumbnailUrl ?? "",
+                                  brochureUrl: c.brochureUrl ?? "",
+                                });
+                                setShowAddCourse(false);
+                              }} className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => deleteCourse(c.id, c.title)} title="Delete"
+                                className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-500 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredCourses.length === 0 && (
+                        <tr><td colSpan={10} className="px-4 py-12 text-center text-gray-400 text-sm">
+                          {courses.length === 0 ? "No courses yet. Click \"Create Course\" to get started." : "No courses match your filters."}
+                        </td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredCourses.length > 0 && (
+                  <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
+                    <span>Showing 1–{filteredCourses.length} of {filteredCourses.length} courses</span>
+                    <span>Rows per page: 10</span>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </>
-      )}
+            )
+          )}
 
+          {/* ── BOTTOM QUICK ACTIONS ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Quick Actions</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {([
+                { icon: FileUp,    label: "Upload Syllabus",        sub: "Upload PDF/Doc or Excel",        bg: "#EFF6FF", clr: NAVY      },
+                { icon: BookOpen,  label: "Generate Curriculum",    sub: "Auto create topics & modules",   bg: "#FFF7ED", clr: ORANGE    },
+                { icon: Video,     label: "Schedule Live Classes",  sub: "Auto generate class schedule",   bg: "#F0FDF4", clr: "#16A34A" },
+                { icon: UserCheck, label: "Assign Teachers",        sub: "Assign teachers to subjects",    bg: "#F5F3FF", clr: "#7C3AED" },
+              ] as { icon: React.ElementType; label: string; sub: string; bg: string; clr: string }[]).map(({ icon: Icon, label, sub, bg, clr }) => (
+                <button key={label}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all text-left">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+                    <Icon className="w-5 h-5" style={{ color: clr }} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-800">{label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
       {/* ════════════════════════════════════════════════════════
           COURSE DASHBOARD VIEW
           ════════════════════════════════════════════════════════ */}
