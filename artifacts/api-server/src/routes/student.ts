@@ -485,6 +485,7 @@ router.get("/student/my-courses", requireAuth, async (req, res) => {
       courseDescription: coursesTable.description,
       totalLessons: coursesTable.totalLessons,
       courseGrade: coursesTable.grade,
+    instanceName: coursesTable.instanceName,
     })
     .from(enrollmentsTable)
     .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
@@ -510,6 +511,7 @@ router.get("/student/my-courses", requireAuth, async (req, res) => {
       grade: e.courseGrade,
       enrollmentType: e.enrollmentType,
       enrolledAt: e.enrolledAt,
+      instanceName: e.instanceName ?? null,
       batch: batch
         ? {
             id: batch.id,

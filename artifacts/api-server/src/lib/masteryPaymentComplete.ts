@@ -17,7 +17,7 @@ import {
   coursesTable,
   enrollmentsTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 interface PaymentCompleteOpts {
   masteryStudentId: number;
@@ -52,7 +52,7 @@ export async function onMasteryPaymentComplete(opts: PaymentCompleteOpts): Promi
     })
     .where(eq(masteryStudentsTable.id, masteryStudentId));
 
-  // 3. Auto-assign mastery course by grade (find first mastery course for this grade)
+  // 3. Auto-assign the active-admission mastery course for this grade
   let assignedCourseId: number | null = null;
   if (student.grade) {
     const [course] = await db
@@ -62,6 +62,8 @@ export async function onMasteryPaymentComplete(opts: PaymentCompleteOpts): Promi
         and(
           eq(coursesTable.grade, student.grade),
           eq(coursesTable.courseType, "mastery"),
+          eq(coursesTable.status, "active"),
+          eq(coursesTable.admissionStatus, "active"),
         )
       )
       .limit(1);
@@ -82,6 +84,20 @@ export async function onMasteryPaymentComplete(opts: PaymentCompleteOpts): Promi
           .values({ studentId: student.studentId, courseId: course.id })
           .onConflictDoNothing();
       }
+    } else {
+      // No active-admission course found — warn admin via notification
+      await db
+        .insert(masteryNotificationsTable)
+        .values({
+          mentorId:         actorId,
+          type:             "system_warning",
+          title:            "No Active Mastery Course",
+          body:             `Payment approved for ${student.studentName} (Grade ${student.grade}) but no active-admission Mastery course was found for this grade. Please activate a course and manually assign the student.`,
+          masteryStudentId,
+          studentName:      student.studentName,
+          amount:           0,
+        })
+        .catch(() => null);
     }
   }
 

@@ -50,6 +50,9 @@ interface CourseItem {
   bannerUrl?: string | null;
   brochureUrl?: string | null;
   mentorIdsJson?: string | null;
+  // Course instance fields
+  instanceName?: string | null;
+  admissionStatus?: string | null;
 }
 interface CourseSubject {
   id: number; courseId: number; name: string; description: string | null;
@@ -335,6 +338,17 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       await apiFetch(`/admin/courses/${id}`, { method: "DELETE" });
       setCourses(p => p.filter(c => c.id !== id));
       flash("Course deleted", true);
+    } finally { setBusy(false); }
+  };
+
+  const activateAdmissions = async (course: CourseItem) => {
+    if (!confirm(`Activate admissions for "${course.title}"?\n\nThis will close admissions on all other ${course.courseType === "mastery" ? "Mastery" : ""} courses for Grade ${course.grade}. Existing enrolled students will NOT be moved.`)) return;
+    setBusy(true);
+    try {
+      const r = await apiFetch(`/admin/courses/${course.id}/activate-admissions`, { method: "PATCH" });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed", false); return; }
+      await loadBase();
+      flash(`Admissions activated for ${course.title}`, true);
     } finally { setBusy(false); }
   };
 
@@ -812,6 +826,14 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     </div>
                     <div className="flex flex-wrap gap-1">
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{gradeLabel(c.grade)}</span>
+                      {c.instanceName && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#FFF3E6", color: ORANGE }}>{c.instanceName}</span>
+                      )}
+                      {c.courseType === "mastery" && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.admissionStatus === "active" ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                          {c.admissionStatus === "active" ? "Admissions Open" : "Admissions Closed"}
+                        </span>
+                      )}
                       {c.board && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{c.board}</span>}
                       {c.academicYearId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{yearName_(c.academicYearId)}</span>}
                       {c.duration && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-medium">{c.duration}</span>}
@@ -862,6 +884,13 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                       ) : (
                         <button onClick={() => updateCourseStatus(c, "active")}
                           title="Activate" className="text-xs p-1.5 rounded-lg border border-green-200 text-green-500">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {c.courseType === "mastery" && c.admissionStatus !== "active" && (
+                        <button onClick={() => activateAdmissions(c)}
+                          title="Activate Admissions"
+                          className="text-xs p-1.5 rounded-lg border border-green-200 hover:border-green-400 text-green-600 font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </button>
                       )}

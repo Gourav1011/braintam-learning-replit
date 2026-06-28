@@ -1,0 +1,184 @@
+Final verification looks good.
+
+Architecture is approved with the following mandatory fixes before launch:
+
+==================================================
+MANDATORY FIXES
+===============
+
+1. masteryDeployment.ts
+   🔴 Blocker
+
+Current:
+Map<grade, courseId>
+
+This must be fixed.
+
+The system can no longer assume:
+
+one grade = one course.
+
+Whenever an admission destination is needed, always query:
+
+grade = X
+courseType = mastery
+status = active
+admissionStatus = active
+
+==================================================
+
+2. Student Course Access
+   🟡 Required
+
+Current:
+
+if (course.grade !== user.grade)
+
+This is no longer valid.
+
+After multiple courses exist for the same grade:
+
+Grade 3
+├── Course A
+└── Course B
+
+A student enrolled in Course A must only access:
+
+* Course A classes
+* Course A recordings
+* Course A homework
+* Course A tests
+* Course A assignments
+
+A student enrolled in Course B must only access Course B content.
+
+Access checks should use:
+
+assignedCourseId
+
+instead of only:
+
+grade
+
+==================================================
+
+3. seed-permanent Endpoint
+   🟡 Required
+
+This endpoint assumes:
+
+courseType + grade = unique course
+
+Since it is only a setup utility and not a production workflow:
+
+* Disable it after initial setup, or
+* Update it to support multiple courses per grade.
+
+==================================================
+CONFIRMED SAFE
+==============
+
+No hidden assumptions found in:
+
+✅ Notifications
+✅ Attendance
+✅ Leaderboards
+✅ WhatsApp / SMS
+✅ Scheduled Jobs / Cron
+✅ Search APIs
+✅ Homework
+✅ Tests
+✅ Assignments
+✅ Live Classes
+✅ Recordings
+✅ Reports and Analytics
+✅ CSV Exports
+
+Content isolation is already correct because everything is linked using:
+
+course_id
+
+Therefore:
+
+Grade 3 → Course A
+and
+Grade 3 → Course B
+
+remain completely isolated.
+
+==================================================
+OPTIONAL IMPROVEMENTS
+=====================
+
+Where reports and exports currently display:
+
+Grade 3
+
+consider displaying:
+
+Grade 3 — Course A
+Grade 3 — Course B
+
+This is a presentation improvement only and not required for launch.
+
+==================================================
+FINAL IMPLEMENTATION ORDER
+==========================
+
+Phase 1
+
+* Database migration
+* Add:
+  instanceName
+  admissionStatus
+
+Phase 2
+
+* Fix masteryDeployment.ts blocker
+
+Phase 3
+
+* Update Course CRUD
+* Add Activate Admissions flow
+
+Phase 4
+
+* Payment Approval → Auto Enrollment
+* Populate assignedCourseId
+* Mark lead converted
+* Timeline entry
+* Warning notification if no active course exists
+
+Phase 5
+
+* Fix student access control using assignedCourseId
+* Update Student App → My Courses
+* Display correct course instance
+
+Phase 6
+
+* End-to-end testing
+
+Test flow:
+
+Lead Assigned
+↓
+Ignite Demo
+↓
+Payment Approved
+↓
+Mastery Student Created
+↓
+assignedCourseId Populated
+↓
+Lead Converted
+↓
+Course Appears in Student App
+↓
+Student Can Access Only Assigned Course Content
+
+==================================================
+GO-LIVE CONDITION
+=================
+
+Do not deploy until all three mandatory fixes are completed and the full end-to-end flow has been tested successfully.

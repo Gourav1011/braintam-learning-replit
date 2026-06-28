@@ -512,10 +512,12 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     bannerUrl: coursesTable.bannerUrl,
     brochureUrl: coursesTable.brochureUrl,
     mentorIdsJson: coursesTable.mentorIdsJson,
+    instanceName: coursesTable.instanceName,
+    admissionStatus: coursesTable.admissionStatus,
   })
     .from(coursesTable)
     .where(eq(coursesTable.isArchived, false))
-    .orderBy(desc(coursesTable.createdAt));
+    .orderBy(coursesTable.grade, coursesTable.courseType, desc(coursesTable.createdAt));
   res.json(courses.map(c => ({
     ...c,
     subjectName: null,
@@ -524,14 +526,30 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson } = req.body;
+  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus, courseType } = req.body;
   if (!title || grade === undefined || grade === null || grade === "") {
     res.status(400).json({ error: "title and grade are required" });
     return;
   }
   try {
+    // Auto-generate instanceName if not provided (Course A, B, C, ...)
+    let resolvedInstanceName: string | null = instanceName ?? null;
+    if (!resolvedInstanceName) {
+      const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const existing = await db
+        .select({ id: coursesTable.id })
+        .from(coursesTable)
+        .where(and(
+          eq(coursesTable.grade, Number(grade)),
+          eq(coursesTable.courseType, courseType ?? "mastery"),
+          eq(coursesTable.isArchived, false),
+        ));
+      resolvedInstanceName = `Course ${LETTERS[existing.length] ?? String(existing.length + 1)}`;
+    }
+
     const [course] = await db.insert(coursesTable).values({
       title, subjectId: subjectId ? Number(subjectId) : null, grade: Number(grade),
+      courseType: courseType ?? "mastery",
       totalLessons: totalLessons ?? 0,
       thumbnailUrl: thumbnailUrl || bannerUrl || "",
       description: description ?? null,
@@ -550,6 +568,8 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
       bannerUrl: bannerUrl ?? null,
       brochureUrl: brochureUrl ?? null,
       mentorIdsJson: mentorIdsJson ?? null,
+      instanceName: resolvedInstanceName,
+      admissionStatus: admissionStatus ?? "active",
     }).returning();
 
     await logAudit(
@@ -568,7 +588,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
 router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson } = req.body;
+  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus } = req.body;
   const updates: Record<string, unknown> = {};
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
@@ -588,6 +608,8 @@ router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   if (bannerUrl !== undefined) { updates.bannerUrl = bannerUrl || null; if (bannerUrl) updates.thumbnailUrl = bannerUrl; }
   if (brochureUrl !== undefined) updates.brochureUrl = brochureUrl || null;
   if (mentorIdsJson !== undefined) updates.mentorIdsJson = mentorIdsJson || null;
+  if (instanceName !== undefined) updates.instanceName = instanceName || null;
+  if (admissionStatus !== undefined) updates.admissionStatus = admissionStatus;
   const [course] = await db.update(coursesTable).set(updates as never).where(eq(coursesTable.id, id)).returning();
   if (!course) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...course, courseCode: `CRS${String(course.id).padStart(4, "0")}` });
@@ -607,6 +629,47 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
     "course_deleted", "course", id, course?.title ?? String(id),
   );
   res.json({ success: true });
+});
+
+// ── PATCH /admin/courses/:id/activate-admissions ──────────────────────────────
+// Atomic swap: closes all other mastery courses for the same grade, then opens
+// this one.  Existing students are NEVER moved — only new admissions are affected.
+router.patch("/admin/courses/:id/activate-admissions", adminOnly, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [target] = await db
+    .select({ id: coursesTable.id, grade: coursesTable.grade, courseType: coursesTable.courseType, title: coursesTable.title })
+    .from(coursesTable)
+    .where(eq(coursesTable.id, id));
+
+  if (!target) { res.status(404).json({ error: "Course not found" }); return; }
+  if (target.courseType !== "mastery") {
+    res.status(400).json({ error: "Admission activation only applies to mastery courses" });
+    return;
+  }
+
+  // Step 1: Close all mastery courses for this grade
+  await db.update(coursesTable)
+    .set({ admissionStatus: "closed" })
+    .where(and(
+      eq(coursesTable.grade, target.grade),
+      eq(coursesTable.courseType, "mastery"),
+      eq(coursesTable.isArchived, false),
+    ));
+
+  // Step 2: Activate this course
+  const [updated] = await db.update(coursesTable)
+    .set({ admissionStatus: "active" })
+    .where(eq(coursesTable.id, id))
+    .returning({ id: coursesTable.id, admissionStatus: coursesTable.admissionStatus, title: coursesTable.title });
+
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "course_admissions_activated", "course", id, target.title,
+  );
+
+  res.json({ success: true, id: updated.id, admissionStatus: updated.admissionStatus });
 });
 
 // ── Syllabus CSV Import ───────────────────────────────────────────
@@ -770,6 +833,7 @@ router.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
     title: string; grade: number; courseType: string;
     thumbnailUrl: string; description: string; teacher: string;
     totalLessons: number; isPublished: boolean; status: string;
+    instanceName: string; admissionStatus: string;
   }> = [];
 
   for (let g = 1; g <= 10; g++) {
@@ -784,6 +848,8 @@ router.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
         totalLessons: 5,
         isPublished: true,
         status: "active",
+        instanceName: "Course A",
+        admissionStatus: "active",
       });
     }
     if (!existingSet.has(`mastery-${g}`)) {
@@ -797,6 +863,8 @@ router.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
         totalLessons: 120,
         isPublished: true,
         status: "active",
+        instanceName: "Course A",
+        admissionStatus: "active",
       });
     }
   }

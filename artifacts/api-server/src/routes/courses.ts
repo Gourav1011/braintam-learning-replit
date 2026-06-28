@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { coursesTable, lessonsTable, enrollmentsTable } from "@workspace/db";
+import { coursesTable, lessonsTable, enrollmentsTable, masteryStudentsTable } from "@workspace/db";
 import { ListCoursesQueryParams, GetCourseParams } from "@workspace/api-zod";
 import { eq, and, ilike, inArray } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
@@ -62,11 +62,29 @@ router.get("/courses/:id", attachUser, async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const user = req.authUser;
-  if (user && user.role === "student" && user.grade) {
-    const [course] = await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, parsed.data.id));
-    if (course && course.grade !== user.grade) {
-      res.status(403).json({ error: "This course is not available for your grade" });
-      return;
+  if (user && user.role === "student") {
+    // Students may only access the specific course they are assigned to.
+    // First check via masteryStudentsTable.assignedCourseId; fall back to
+    // enrollmentsTable for non-mastery (Ignite) courses.
+    const [masteryRecord] = await db
+      .select({ assignedCourseId: masteryStudentsTable.assignedCourseId })
+      .from(masteryStudentsTable)
+      .where(eq(masteryStudentsTable.studentId, user.id))
+      .limit(1);
+
+    if (masteryRecord) {
+      // Mastery student — must access their assigned course only
+      if (masteryRecord.assignedCourseId !== parsed.data.id) {
+        res.status(403).json({ error: "You do not have access to this course" });
+        return;
+      }
+    } else if (user.grade) {
+      // Non-mastery student — fall back to grade-level check
+      const [course] = await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, parsed.data.id));
+      if (course && course.grade !== user.grade) {
+        res.status(403).json({ error: "This course is not available for your grade" });
+        return;
+      }
     }
   }
 

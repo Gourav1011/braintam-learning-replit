@@ -229,10 +229,14 @@ router.post("/admin/mastery/deployment/deploy", adminOnly, async (req, res) => {
   // Fire-and-forget: non-critical; does not block the response
   Promise.resolve().then(async () => {
     try {
-      // Build grade→courseId lookup for mastery courses only
+      // Build grade→courseId lookup: only the single active-admission course per grade
       const masteryCourses = await db.select({ id: coursesTable.id, grade: coursesTable.grade })
         .from(coursesTable)
-        .where(eq(coursesTable.courseType, "mastery"));
+        .where(and(
+          eq(coursesTable.courseType, "mastery"),
+          eq(coursesTable.status, "active"),
+          eq(coursesTable.admissionStatus, "active"),
+        ));
       const courseByGrade = new Map<number, number>(
         masteryCourses.map(c => [c.grade ?? 0, c.id])
       );

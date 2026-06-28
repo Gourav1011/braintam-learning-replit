@@ -31,6 +31,9 @@ export const coursesTable = pgTable("courses", {
   bannerUrl: text("banner_url"),
   brochureUrl: text("brochure_url"),
   mentorIdsJson: text("mentor_ids_json"),
+  // Course instance fields (supports multiple intakes per grade)
+  instanceName: text("instance_name"),          // e.g. "Course A", "2026 Intake" — auto-generated, admin-editable
+  admissionStatus: text("admission_status").notNull().default("active"), // 'active' | 'closed'
 });
 
 export const lessonsTable = pgTable("lessons", {

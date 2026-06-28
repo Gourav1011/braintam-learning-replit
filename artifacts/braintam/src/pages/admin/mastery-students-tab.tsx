@@ -52,6 +52,8 @@ interface MasteryStudent {
   promotedGrade: number | null;
   notes: string | null;
   computedStatus: string;
+  assignedCourseId?: number | null;
+  assignedCourseName?: string | null;
 }
 
 interface Stats {
@@ -738,6 +740,7 @@ export function MasteryStudentsTab({ flash, role = "admin" }: { flash: (msg: str
                     Grade <SortIcon col="grade" />
                   </th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-500">Board</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-500">Course</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-500">Mentor</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-500 cursor-pointer"
                     onClick={() => toggleSort("admissionDate")}>
@@ -769,6 +772,11 @@ export function MasteryStudentsTab({ flash, role = "admin" }: { flash: (msg: str
                         style={{ background: "#EEF2FF", color: NAVY }}>Gr {s.grade}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{s.board ?? "–"}</td>
+                    <td className="px-4 py-3">
+                      {s.assignedCourseName
+                        ? <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "#FFF3E6", color: "#FF6B1A" }}>{s.assignedCourseName}</span>
+                        : <span className="text-gray-300">–</span>}
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{s.mentorName ?? <span className="text-gray-300">–</span>}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(s.admissionDate)}</td>
                     <td className="px-4 py-3 text-gray-500">{s.academicYear ?? "–"}</td>

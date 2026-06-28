@@ -5,8 +5,9 @@ import {
   masteryTimelineTable,
   ignitePaidStudentsTable,
   usersTable,
+  coursesTable,
 } from "@workspace/db";
-import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
@@ -182,6 +183,15 @@ router.get("/admin/mastery/students", allStaff, async (req, res) => {
     .from(masteryStudentsTable)
     .orderBy(desc(masteryStudentsTable.admissionDate));
 
+  // Build assignedCourseId → instanceName map for all students in one query
+  const courseIds = [...new Set(rows.map(r => r.assignedCourseId).filter(Boolean))] as number[];
+  const courseRows = courseIds.length > 0
+    ? await db.select({ id: coursesTable.id, instanceName: coursesTable.instanceName, title: coursesTable.title })
+        .from(coursesTable)
+        .where(inArray(coursesTable.id, courseIds))
+    : [];
+  const courseNameMap = new Map(courseRows.map(c => [c.id, c.instanceName ?? c.title]));
+
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -197,7 +207,8 @@ router.get("/admin/mastery/students", allStaff, async (req, res) => {
     } else {
       computedStatus = "existing";
     }
-    return { ...r, computedStatus };
+    const assignedCourseName = r.assignedCourseId ? (courseNameMap.get(r.assignedCourseId) ?? null) : null;
+    return { ...r, computedStatus, assignedCourseName };
   });
 
   // Filters
