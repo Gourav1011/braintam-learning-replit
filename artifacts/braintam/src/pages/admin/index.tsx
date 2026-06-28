@@ -76,6 +76,7 @@ import { CommandCenterTab } from "./command-center-tab";
 import { ReportsAnalyticsTab } from "./reports-analytics-tab";
 import { MasteryStudentsTab } from "./mastery-students-tab";
 import { MasteryPaymentVerificationTab } from "./mastery-payment-verification-tab";
+import { RevenueAnalyticsTab } from "./revenue-analytics-tab";
 import { MasteryDeploymentTab } from "./mastery-deployment-tab";
 import { MasteryRetentionTab } from "./mastery-retention-tab";
 import { MasteryAttendanceAnalyticsTab } from "./mastery-attendance-analytics-tab";
@@ -1920,20 +1921,7 @@ function AdminPageInner() {
         )}
 
         {/* ── Revenue Analytics ────────────────────────────────────────── */}
-        {tab === "revenue-analytics" && (
-          <ModulePage
-            icon={DollarSign}
-            title="Revenue Analytics"
-            description="Fee collection trends, payment forecasting, and Razorpay reconciliation reports."
-            emoji="💰"
-            statusLabel="Coming Soon"
-            statusColor="purple"
-            roadmap={[
-              { phase: "Phase 1", items: ["Total collections vs pending overview", "Monthly revenue trend chart", "Razorpay order reconciliation", "Per-course revenue breakdown"] },
-              { phase: "Phase 2", items: ["Subscription & renewal tracking", "Overdue payment alerts", "Revenue forecasting model", "Export to CSV / PDF"] },
-            ]}
-          />
-        )}
+        {tab === "revenue-analytics" && <RevenueAnalyticsTab />}
 
         {/* ── Overview ─────────────────────────────────────────────────── */}
         {tab === "overview" && stats && (

@@ -43,6 +43,7 @@ import ignitePerformanceRankingsRouter from "./ignitePerformanceRankings";
 import liveRouter from "./live";
 import analyticsRouter from "./analytics";
 import chatModerationRouter from "./chatModeration";
+import revenueAnalyticsRouter from "./revenueAnalytics";
 
 const router: IRouter = Router();
 
@@ -90,5 +91,6 @@ router.use(ignitePerformanceRankingsRouter);
 router.use(liveRouter);
 router.use(analyticsRouter);
 router.use(chatModerationRouter);
+router.use(revenueAnalyticsRouter);
 
 export default router;
