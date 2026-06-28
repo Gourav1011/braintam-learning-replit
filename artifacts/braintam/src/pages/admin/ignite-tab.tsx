@@ -3174,9 +3174,10 @@ function ChangeGradesModal({ mentor, allGrades, allMentors, onSave, onClose, fla
   mentor: SalesMentor; allGrades: GradeAssignment[]; allMentors: SalesMentor[];
   onSave: () => void; onClose: () => void; flash: (m: string, ok?: boolean) => void;
 }) {
-  const [selected, setSelected] = useState<Set<number>>(new Set(mentor.gradesManaged));
+  // One grade per sales mentor — single-select only
+  const currentGrade = mentor.gradesManaged[0] ?? null;
+  const [selected, setSelected] = useState<number | null>(currentGrade);
   const [saving, setSaving] = useState(false);
-  const toggle = (g: number) => setSelected(prev => { const s = new Set(prev); s.has(g) ? s.delete(g) : s.add(g); return s; });
   const getOwnerName = (g: number) => {
     const ga = allGrades.find(x => x.grade === g);
     if (!ga?.mentorId || ga.mentorId === mentor.id) return null;
@@ -3185,44 +3186,56 @@ function ChangeGradesModal({ mentor, allGrades, allMentors, onSave, onClose, fla
   const submit = async () => {
     setSaving(true);
     try {
+      // Clear old grade → assign new one, leave all others untouched
       const updates = allGrades.map(ga => {
-        if (selected.has(ga.grade)) return { grade: ga.grade, mentorId: mentor.id, mentorName: mentor.name };
+        if (ga.grade === selected) return { grade: ga.grade, mentorId: mentor.id, mentorName: mentor.name };
         if (ga.mentorId === mentor.id) return { grade: ga.grade, mentorId: null as number | null, mentorName: null as string | null };
         return ga;
       });
       const r = await apiFetch("/admin/ignite/grade-assignments", { method: "POST", body: JSON.stringify(updates) });
-      if (r.ok) { flash("Grade assignments updated!", true); onSave(); }
-      else flash("Failed to update grades", false);
+      if (r.ok) { flash(selected ? `G${selected} assigned to ${mentor.name.split(" ")[0]}!` : "Grade unassigned", true); onSave(); }
+      else flash("Failed to update grade", false);
     } finally { setSaving(false); }
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-4">
-          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Change Grade Assignments</h3>
-            <p className="text-xs text-gray-400">{mentor.name} — select grades to manage</p></div>
+          <div><h3 className="font-black text-base" style={{ color: NAVY }}>Assign Grade</h3>
+            <p className="text-xs text-gray-400">{mentor.name} — pick exactly one grade</p></div>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="grid grid-cols-5 gap-2 mb-4">
           {[1,2,3,4,5,6,7,8,9,10].map(g => {
             const ownerName = getOwnerName(g);
-            const isSel = selected.has(g);
+            const isSel = selected === g;
+            const isMine = currentGrade === g;
             return (
-              <button key={g} onClick={() => toggle(g)}
-                className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all ${isSel ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300 bg-gray-50"}`}>
-                <span className={`text-sm font-black ${isSel ? "text-blue-700" : "text-gray-500"}`}>G{g}</span>
-                {ownerName && <span className="text-[9px] text-orange-500 font-semibold leading-tight">{ownerName.split(" ")[0]}</span>}
-                {!ownerName && <span className="text-[9px] text-gray-400">{isSel ? "✓" : "Free"}</span>}
+              <button key={g} onClick={() => setSelected(isSel ? null : g)}
+                className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${
+                  isSel
+                    ? "border-blue-500 bg-blue-50 shadow-sm"
+                    : ownerName
+                      ? "border-orange-200 bg-orange-50/50 hover:border-orange-400"
+                      : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                }`}>
+                <span className={`text-sm font-black ${isSel ? "text-blue-700" : ownerName ? "text-orange-600" : "text-gray-500"}`}>G{g}</span>
+                {isSel && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                {!isSel && ownerName && <span className="text-[9px] text-orange-500 font-semibold leading-tight truncate w-full text-center">{ownerName.split(" ")[0]}</span>}
+                {!isSel && !ownerName && <span className="text-[9px] text-gray-400">{isMine ? "Current" : "Free"}</span>}
               </button>
             );
           })}
         </div>
-        <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-4">
-          ⚠ Orange = owned by another mentor. Selecting will reassign to {mentor.name.split(" ")[0]}.
-        </p>
-        <div className="flex gap-2">
-          <button onClick={submit} disabled={saving} className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ background: NAVY }}>
-            {saving ? "Saving…" : `Save — ${selected.size} Grade${selected.size !== 1 ? "s" : ""}`}
+        {selected !== currentGrade && selected !== null && getOwnerName(selected) && (
+          <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-4">
+            ⚠ G{selected} is currently owned by <strong>{getOwnerName(selected)}</strong>. Saving will reassign it to {mentor.name.split(" ")[0]}.
+          </p>
+        )}
+        <div className="flex gap-2 mt-2">
+          <button onClick={submit} disabled={saving || selected === currentGrade}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-40" style={{ background: NAVY }}>
+            {saving ? "Saving…" : selected ? `Assign G${selected} to ${mentor.name.split(" ")[0]}` : "Unassign Grade"}
           </button>
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">Cancel</button>
         </div>
