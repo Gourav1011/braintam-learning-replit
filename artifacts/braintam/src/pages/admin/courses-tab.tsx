@@ -1128,7 +1128,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                       {/* Teacher */}
                       {c.teacher && (
                         <div className="flex items-center gap-1.5 pt-1.5 border-t border-gray-50">
-                          <div className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0" style={{ background: NAVY }}>{c.teacher.charAt(0)}</div>
+                          <div className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0" style={{ background: NAVY }}>{(c.teacher ?? "?").charAt(0)}</div>
                           <span className="text-[10px] text-gray-600 truncate">{c.teacher}</span>
                         </div>
                       )}
@@ -1562,9 +1562,9 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                             <div key={tc.id} className="flex items-center gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
                               <div className="w-7 h-7 rounded-full text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0"
                                 style={{ background: avatarColors[idx % avatarColors.length] }}>
-                                {tc.teacherName.charAt(0).toUpperCase()}
+                                {(tc.teacherName ?? "?").charAt(0).toUpperCase()}
                               </div>
-                              <span className="text-xs font-medium text-gray-800 flex-1 min-w-0 truncate">{tc.teacherName}</span>
+                              <span className="text-xs font-medium text-gray-800 flex-1 min-w-0 truncate">{tc.teacherName ?? "Unknown"}</span>
                               <span className="text-[10px] text-gray-400 hidden sm:block truncate max-w-[60px]">{subj}</span>
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${isPrimary ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-600"}`}>
                                 {isPrimary ? "Primary" : "Backup"}
@@ -2059,9 +2059,9 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     {courseTeachers.map(tc => (
                       <div key={tc.id} className="bg-white rounded-xl border border-gray-100 p-3 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl text-white text-sm font-bold flex items-center justify-center flex-shrink-0"
-                          style={{ background: NAVY }}>{tc.teacherName.charAt(0).toUpperCase()}</div>
+                          style={{ background: NAVY }}>{(tc.teacherName ?? "?").charAt(0).toUpperCase()}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-gray-800">{tc.teacherName}</p>
+                          <p className="font-semibold text-sm text-gray-800">{tc.teacherName ?? "Unknown"}</p>
                           <p className="text-xs text-gray-400">Assigned {new Date(tc.assignedAt).toLocaleDateString("en-IN")}</p>
                         </div>
                         <button onClick={() => removeTeacher(tc.id, tc.teacherName)}
