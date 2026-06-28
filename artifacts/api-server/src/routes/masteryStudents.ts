@@ -173,10 +173,12 @@ router.post("/admin/ignite/move-to-mastery", adminOnly, async (req, res) => {
 
 // ── GET /admin/mastery/students ────────────────────────────────────────────
 router.get("/admin/mastery/students", allStaff, async (req, res) => {
-  const status    = String(req.query.status ?? "");
-  const grade     = String(req.query.grade ?? "");
-  const mentorIdQ = String(req.query.mentorId ?? "");
-  const q         = String(req.query.q ?? "");
+  const status          = String(req.query.status ?? "");
+  const grade           = String(req.query.grade ?? "");
+  const mentorIdQ       = String(req.query.mentorId ?? "");
+  const q               = String(req.query.q ?? "");
+  const assignedCourseIdQ = String(req.query.assignedCourseId ?? "");
+  const limitQ          = req.query.limit ? Number(req.query.limit) : undefined;
 
   const rows = await db
     .select()
@@ -214,8 +216,9 @@ router.get("/admin/mastery/students", allStaff, async (req, res) => {
   // Filters
   let filtered = enriched;
   if (status) filtered = filtered.filter((r) => r.computedStatus === status || r.masteryStatus === status);
-  if (grade)     filtered = filtered.filter((r) => r.grade === Number(grade));
-  if (mentorIdQ) filtered = filtered.filter((r) => r.mentorId === Number(mentorIdQ));
+  if (grade)              filtered = filtered.filter((r) => r.grade === Number(grade));
+  if (mentorIdQ)          filtered = filtered.filter((r) => r.mentorId === Number(mentorIdQ));
+  if (assignedCourseIdQ)  filtered = filtered.filter((r) => r.assignedCourseId === Number(assignedCourseIdQ));
   if (q) {
     const lq = q.toLowerCase();
     filtered = filtered.filter(
@@ -233,7 +236,7 @@ router.get("/admin/mastery/students", allStaff, async (req, res) => {
 
   res.json({
     stats: { total, newAdmissions, existing, active, retentionDue, renewed },
-    students: filtered,
+    students: limitQ ? filtered.slice(0, limitQ) : filtered,
   });
 });
 

@@ -1,0 +1,108 @@
+Design a modern, premium SaaS dashboard for an EdTech CRM called "BTL CRM" focused on the Mastery Courses module.
+
+Layout:
+
+* Clean white background with subtle shadows and rounded corners (16px radius).
+* Left sidebar navigation with sections:
+  Dashboard, Leads, Students, Payments,
+  Ignite (Leads, Demo Batches, Demo Classes),
+  Mastery (Overview, Courses, Students, Live Classes, Enrollments, Mentors, Assessments, Retention),
+  Communication, Analytics, Reports, Settings.
+
+Top Header:
+
+* Page title: "Mastery Courses"
+* Subtitle: "Create and manage long-term mastery programs for all grades."
+* Date/time widget
+* Notification icon
+* User profile
+* Buttons:
+  "Import Syllabus"
+  "Create Course"
+
+Top Analytics Cards (6 cards):
+
+* Total Courses
+* Active Admissions
+* Total Students
+* Subjects
+* Live Classes
+* Revenue (YTD)
+
+Filters Section:
+
+* Search by course name or code
+* Grade filter
+* Board filter
+* Status filter
+* Admission Status filter
+* Academic Year filter
+* Refresh button
+* Toggle buttons:
+  Card View | Table View | By Grade
+
+Status Tabs:
+
+* All Courses
+* Admissions Active
+* Admissions Closed
+* Upcoming
+* Completed
+* Archived
+  Each tab shows a count badge.
+
+Course Cards:
+Create compact horizontal cards (not big banners and no huge images).
+
+Each card contains:
+
+* Admission badge (Active, Closed, Upcoming)
+* Student count
+* Course name:
+  Grade 3 – Course A
+* Board and Academic Year
+* Course instance badge
+* Number of subjects
+* Number of syllabus topics
+* Next class information
+* Assigned teacher
+
+Action buttons:
+
+* Manage
+* View Students
+* Activate Admissions (only if closed)
+* More (three dots)
+
+Below cards:
+Responsive table view with columns:
+Course Code
+Course Name
+Grade
+Board
+Instance
+Admission Status
+Status
+Students
+Teachers
+Start Date
+Actions
+
+Bottom Quick Actions Panel:
+
+* Upload Syllabus
+* Generate Curriculum
+* Schedule Live Classes
+* Assign Teachers
+* View Reports
+
+Design Style:
+
+* Premium SaaS dashboard similar to Linear, Notion, Stripe Dashboard and HubSpot.
+* Minimal, spacious, modern typography.
+* Soft pastel badges and icons.
+* Purple and orange accent colors matching Braintam branding.
+* Fully responsive.
+* Professional enterprise CRM look.
+* No large course banners or placeholder images.
+* Information-dense but visually clean.

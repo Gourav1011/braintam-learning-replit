@@ -6,7 +6,7 @@ import {
   liveClassesTable, homeworkTable, assignmentsTable,
   recordingsTable, testsTable,
   homeworkSubmissionsTable, assignmentSubmissionsTable, testSubmissionsTable,
-  auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable,
+  auditLogsTable, courseSubjectsTable, chaptersTable, topicsTable, masteryStudentsTable,
   academicYearsTable, announcementsTable, bannersTable, pointsLedgerTable,
   mentorStudentAssignmentsTable, studentTimelineTable, mentorFollowUpsTable, mentorAttendanceTable,
   attendanceTable,
@@ -514,6 +514,8 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
     mentorIdsJson: coursesTable.mentorIdsJson,
     instanceName: coursesTable.instanceName,
     admissionStatus: coursesTable.admissionStatus,
+    startDate: coursesTable.startDate,
+    endDate: coursesTable.endDate,
   })
     .from(coursesTable)
     .where(eq(coursesTable.isArchived, false))
@@ -526,7 +528,7 @@ router.get("/admin/courses", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/courses", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus, courseType } = req.body;
+  const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus, courseType, startDate, endDate } = req.body;
   if (!title || grade === undefined || grade === null || grade === "") {
     res.status(400).json({ error: "title and grade are required" });
     return;
@@ -570,6 +572,8 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
       mentorIdsJson: mentorIdsJson ?? null,
       instanceName: resolvedInstanceName,
       admissionStatus: admissionStatus ?? "active",
+      startDate: startDate ?? null,
+      endDate: endDate ?? null,
     }).returning();
 
     await logAudit(
@@ -588,7 +592,7 @@ router.post("/admin/courses", adminOnly, async (req, res) => {
 router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus } = req.body;
+  const { title, description, teacher, board, academicYearId, isPublished, thumbnailUrl, status, grade, duration, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus, startDate, endDate } = req.body;
   const updates: Record<string, unknown> = {};
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
@@ -610,6 +614,8 @@ router.put("/admin/courses/:id", adminOnly, async (req, res) => {
   if (mentorIdsJson !== undefined) updates.mentorIdsJson = mentorIdsJson || null;
   if (instanceName !== undefined) updates.instanceName = instanceName || null;
   if (admissionStatus !== undefined) updates.admissionStatus = admissionStatus;
+  if (startDate !== undefined) updates.startDate = startDate || null;
+  if (endDate !== undefined) updates.endDate = endDate || null;
   const [course] = await db.update(coursesTable).set(updates as never).where(eq(coursesTable.id, id)).returning();
   if (!course) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...course, courseCode: `CRS${String(course.id).padStart(4, "0")}` });
@@ -629,6 +635,52 @@ router.delete("/admin/courses/:id", adminOnly, async (req, res) => {
     "course_deleted", "course", id, course?.title ?? String(id),
   );
   res.json({ success: true });
+});
+
+// ── GET /admin/courses/:id/stats ──────────────────────────────────────────────
+router.get("/admin/courses/:id/stats", adminOnly, async (req, res) => {
+  const courseId = Number(req.params.id);
+  if (!courseId) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [course] = await db.select({ status: coursesTable.status })
+    .from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
+  if (!course) { res.status(404).json({ error: "Not found" }); return; }
+
+  const [studentsRow, teachersRow, subjectsRow, liveClassesRow] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(masteryStudentsTable)
+      .where(eq(masteryStudentsTable.assignedCourseId, courseId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(teacherCoursesTable)
+      .where(eq(teacherCoursesTable.courseId, courseId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(courseSubjectsTable)
+      .where(eq(courseSubjectsTable.courseId, courseId)),
+    db.select({ count: sql<number>`count(*)::int` }).from(liveClassesTable)
+      .where(eq(liveClassesTable.courseId, courseId)),
+  ]);
+
+  const subjectIds = await db.select({ id: courseSubjectsTable.id })
+    .from(courseSubjectsTable).where(eq(courseSubjectsTable.courseId, courseId));
+
+  let topics = 0;
+  if (subjectIds.length > 0) {
+    const chapterRows = await db.select({ id: chaptersTable.id })
+      .from(chaptersTable)
+      .where(inArray(chaptersTable.courseSubjectId, subjectIds.map(s => s.id)));
+    if (chapterRows.length > 0) {
+      const [tRow] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(topicsTable)
+        .where(inArray(topicsTable.chapterId, chapterRows.map(c => c.id)));
+      topics = tRow?.count ?? 0;
+    }
+  }
+
+  res.json({
+    studentsEnrolled: studentsRow[0]?.count ?? 0,
+    teachersAssigned: teachersRow[0]?.count ?? 0,
+    subjects: subjectsRow[0]?.count ?? 0,
+    topics,
+    liveClasses: liveClassesRow[0]?.count ?? 0,
+    status: course.status,
+  });
 });
 
 // ── PATCH /admin/courses/:id/activate-admissions ──────────────────────────────

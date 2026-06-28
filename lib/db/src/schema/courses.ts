@@ -34,6 +34,9 @@ export const coursesTable = pgTable("courses", {
   // Course instance fields (supports multiple intakes per grade)
   instanceName: text("instance_name"),          // e.g. "Course A", "2026 Intake" — auto-generated, admin-editable
   admissionStatus: text("admission_status").notNull().default("active"), // 'active' | 'closed'
+  // Academic schedule
+  startDate: text("start_date"),
+  endDate: text("end_date"),
 });
 
 export const lessonsTable = pgTable("lessons", {

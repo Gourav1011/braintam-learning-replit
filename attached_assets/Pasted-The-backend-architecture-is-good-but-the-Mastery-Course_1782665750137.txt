@@ -1,0 +1,247 @@
+The backend architecture is good, but the Mastery Course UI still feels wrong and does not match our actual business process.
+
+The current screen still looks like:
+
+* Original Price
+* Scholarship Price
+* Payment Plans
+* Assigned Mentor IDs
+* Banner URL
+* Brochure URL
+
+This no longer makes sense.
+
+==================================================
+PROPOSED MASTERY COURSE UI
+==========================
+
+Mastery Grade 3
+CBSE
+Academic Year: 2026-27
+
+Badges:
+Course A
+Admissions Active
+Students: 2,034
+Status: Active
+
+Actions:
+Edit
+Activate Admissions
+Archive
+View Students
+View Curriculum
+
+==================================================
+TAB 1 — BASIC INFORMATION
+=========================
+
+Course Name
+Grade
+Board
+Academic Year
+Status
+Start Date
+End Date
+Annual Fee
+Registration Fee
+Student Capacity
+Description
+
+Remove:
+
+* Original Price
+* Scholarship Price
+* Payment Plans
+* Assigned Mentor IDs
+
+==================================================
+TAB 2 — CURRICULUM
+==================
+
+This should connect with the existing syllabus system.
+
+Options:
+
+Upload Syllabus
+Import Existing Syllabus
+Edit Topics
+
+Example:
+
+Maths
+├── Numbers
+├── Addition
+├── Subtraction
+
+English
+├── Nouns
+├── Pronouns
+
+Science
+├── Plants
+├── Animals
+
+==================================================
+AUTO CURRICULUM FLOW
+====================
+
+Upload Syllabus
+↓
+Parse topics
+↓
+Create Curriculum
+↓
+Create Modules
+↓
+Create Lessons
+
+This system already exists.
+
+Please reuse it.
+
+==================================================
+TAB 3 — LIVE CLASSES
+====================
+
+This should connect with the existing live class generator.
+
+Example:
+
+Topic:
+Numbers
+
+Teacher:
+Teacher A
+
+Schedule:
+Monday
+5 PM
+
+Topic:
+Addition
+
+Teacher:
+Teacher B
+
+Schedule:
+Wednesday
+5 PM
+
+==================================================
+AUTO LIVE CLASS FLOW
+====================
+
+Upload syllabus
+↓
+Generate curriculum topics
+↓
+Generate live class placeholders
+↓
+Assign teachers
+↓
+Publish schedule
+
+This functionality is already built.
+
+Please expose it inside the Course UI instead of forcing admins to configure everything separately.
+
+==================================================
+TAB 4 — TEACHERS
+================
+
+Teacher Assignment
+
+Subject
+Teacher
+Backup Teacher
+
+Maths
+Teacher A
+
+English
+Teacher B
+
+Science
+Teacher C
+
+No manual IDs.
+
+Use dropdowns.
+
+==================================================
+AUTO TEACHER FLOW
+=================
+
+Assign teacher to subject
+↓
+All generated classes for that subject automatically inherit the teacher.
+
+Admin can override individual classes if needed.
+
+==================================================
+TAB 5 — STUDENTS
+================
+
+Show:
+
+Students: 2,034
+
+Actions:
+View Students
+Export Students
+Communication
+Progress Reports
+
+==================================================
+TAB 6 — DOCUMENTS
+=================
+
+Upload:
+Banner
+Brochure
+Worksheets
+Study Material
+
+Use uploads.
+
+No URL fields.
+
+==================================================
+COURSE DASHBOARD
+================
+
+Grade 3
+Course A
+Admissions: Active
+Students: 2,034
+Teachers: 8
+Subjects: 5
+Curriculum Topics: 120
+Live Classes Scheduled: 96
+
+Buttons:
+Curriculum
+Live Classes
+Teachers
+Students
+Reports
+Activate Admissions
+
+==================================================
+IMPORTANT
+=========
+
+Please review all already-built modules:
+
+* Syllabus Upload
+* Curriculum Builder
+* Topic Generator
+* Live Class Generator
+* Teacher Assignment
+* Study Material
+* Reports
+
+and integrate them directly into the Course screen.
+
+The Course should become the central management hub instead of making admins jump between multiple modules.
