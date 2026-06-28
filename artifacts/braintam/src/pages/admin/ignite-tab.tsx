@@ -3380,11 +3380,7 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
   useEffect(() => { load(); }, [load]);
 
   const totalLeads = mentors.reduce((s, m) => s + m.assignedLeads, 0);
-  const totalDemoSched = mentors.reduce((s, m) => s + m.demoScheduled, 0);
-  const totalDemoPaid = mentors.reduce((s, m) => s + m.demoPaid, 0);
   const totalConverted = mentors.reduce((s, m) => s + m.converted, 0);
-  const totalRevenue = mentors.reduce((s, m) => s + m.revenue, 0);
-  const totalPending = mentors.reduce((s, m) => s + m.followUpsPending, 0);
   const overallRate = totalLeads > 0 ? Math.round((totalConverted / totalLeads) * 100) : 0;
   const topPerformers = [...mentors].sort((a, b) => b.conversionRate - a.conversionRate).slice(0, 3);
 
@@ -3412,8 +3408,8 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
 
   const exportReport = () => {
     const csv = makeCSV(
-      ["Rank","Mentor","Email","Phone","Grades","Leads","Demo Sched","Demo Paid","Converted","Follow Ups","Revenue","Conv %","Status"],
-      filtered.map((m, i) => [i+1, m.name, m.email, m.phone, m.gradesManaged.sort((a,b)=>a-b).join("|"), m.assignedLeads, m.demoScheduled, m.demoPaid, m.converted, m.followUpsPending, m.revenue, `${m.conversionRate}%`, m.isActive ? "Active" : "Inactive"])
+      ["Rank","Mentor","Email","Phone","Grade","Leads","Converted","Conv %","Status"],
+      filtered.map((m, i) => [i+1, m.name, m.email, m.phone, m.gradesManaged[0] ? `G${m.gradesManaged[0]}` : "–", m.assignedLeads, m.converted, `${m.conversionRate}%`, m.isActive ? "Active" : "Inactive"])
     );
     downloadCSVFile(csv, `sales_mentors_${new Date().toISOString().slice(0,10)}.csv`);
   };
@@ -3446,15 +3442,12 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 xl:grid-cols-8 gap-2">
+      <div className="grid grid-cols-3 xl:grid-cols-5 gap-2">
         {([
           { label: "Total Mentors",  value: mentors.length,                         icon: Users,       color: NAVY,     bg: "#EEF2FF" },
           { label: "Active",         value: mentors.filter(m => m.isActive).length, icon: UserCheck,   color: GREEN,    bg: "#DCFCE7" },
           { label: "Leads Assigned", value: totalLeads,                             icon: Phone,       color: "#3B82F6", bg: "#DBEAFE" },
-          { label: "Demo Scheduled", value: totalDemoSched,                         icon: Calendar,    color: "#7C3AED", bg: "#F5F3FF" },
-          { label: "Demo Paid",      value: totalDemoPaid,                          icon: CreditCard,  color: ORANGE,   bg: "#FFF7ED" },
           { label: "Converted",      value: totalConverted,                         icon: CheckCircle, color: GREEN,    bg: "#DCFCE7" },
-          { label: "Follow Ups",     value: totalPending,                           icon: Clock,       color: "#D97706", bg: "#FEF3C7" },
           { label: "Conv %",         value: `${overallRate}%`,                      icon: BarChart3,   color: "#0891B2", bg: "#ECFEFF" },
         ] as { label: string; value: string | number; icon: React.ElementType; color: string; bg: string }[]).map(k => (
           <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col gap-1.5">
@@ -3509,18 +3502,18 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
               <table className="w-full text-xs min-w-[860px]">
                 <thead className="border-b border-gray-100" style={{ background: "#F8FAFF" }}>
                   <tr>
-                    {["Mentor","Phone","Email","Grades","Leads","Demo Sched","Demo Paid","Converted","Follow Ups","Conv %","Status",""].map((h, i) => (
+                    {["Mentor","Phone","Email","Grade","Leads","Converted","Conv %","Status",""].map((h, i) => (
                       <th key={i} className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={12} className="text-center py-14">
+                    <tr><td colSpan={9} className="text-center py-14">
                       <RefreshCw className="w-5 h-5 animate-spin mx-auto text-gray-300" />
                     </td></tr>
                   ) : paged.length === 0 ? (
-                    <tr><td colSpan={12} className="text-center py-14 text-gray-400 text-sm">No sales mentors found.</td></tr>
+                    <tr><td colSpan={9} className="text-center py-14 text-gray-400 text-sm">No sales mentors found.</td></tr>
                   ) : paged.map(m => {
                     const initials = m.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
                     return (
@@ -3538,30 +3531,16 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
                         <td className="px-3 py-2.5 font-mono text-[11px] text-gray-600 whitespace-nowrap">{m.phone ?? "–"}</td>
                         <td className="px-3 py-2.5 text-gray-500 text-[11px] max-w-[120px] truncate">{m.email ?? "–"}</td>
                         <td className="px-3 py-2.5">
-                          <div className="flex flex-wrap gap-0.5">
-                            {m.gradesManaged.length === 0
-                              ? <span className="text-gray-300 text-[10px]">–</span>
-                              : m.gradesManaged.sort((a, b) => a - b).map(g => (
-                                <span key={g} className="text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap" style={{ background: "#EEF2FF", color: NAVY }}>G{g}</span>
-                              ))}
-                          </div>
+                          {(() => { const g = m.gradesManaged[0]; return g
+                            ? <span className="text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap" style={{ background: "#EEF2FF", color: NAVY }}>G{g}</span>
+                            : <span className="text-gray-300 text-[10px]">–</span>; })()}
                         </td>
                         <td className="px-3 py-2.5 font-semibold text-gray-700">{m.assignedLeads || "–"}</td>
-                        <td className="px-3 py-2.5 font-semibold" style={{ color: "#7C3AED" }}>{m.demoScheduled || "–"}</td>
-                        <td className="px-3 py-2.5 font-semibold" style={{ color: ORANGE }}>{m.demoPaid || "–"}</td>
                         <td className="px-3 py-2.5 font-semibold" style={{ color: GREEN }}>{m.converted || "–"}</td>
                         <td className="px-3 py-2.5">
-                          <span className={`font-semibold ${m.followUpsPending > 5 ? "text-red-500" : "text-gray-500"}`}>{m.followUpsPending || "–"}</span>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-black text-xs whitespace-nowrap" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
-                              {m.conversionRate}%
-                            </span>
-                            <div className="h-1.5 w-10 rounded-full bg-gray-100 overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${Math.min(m.conversionRate * 3, 100)}%`, background: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }} />
-                            </div>
-                          </div>
+                          <span className="font-black text-xs whitespace-nowrap" style={{ color: m.conversionRate >= 15 ? GREEN : m.conversionRate >= 8 ? "#D97706" : "#EF4444" }}>
+                            {m.conversionRate}%
+                          </span>
                         </td>
                         <td className="px-3 py-2.5">
                           <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
@@ -3646,10 +3625,8 @@ function SalesMentorsView({ flash }: { flash: (m: string, ok?: boolean) => void 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <h3 className="text-xs font-black mb-3" style={{ color: NAVY }}>Lead Funnel</h3>
             {([
-              { label: "Leads Assigned", value: totalLeads,     color: NAVY,     pct: 100 },
-              { label: "Demo Scheduled", value: totalDemoSched, color: "#7C3AED", pct: totalLeads > 0 ? Math.round(totalDemoSched/totalLeads*100) : 0 },
-              { label: "Demo Paid",      value: totalDemoPaid,  color: ORANGE,   pct: totalLeads > 0 ? Math.round(totalDemoPaid/totalLeads*100) : 0 },
-              { label: "Converted",      value: totalConverted, color: GREEN,    pct: totalLeads > 0 ? Math.round(totalConverted/totalLeads*100) : 0 },
+              { label: "Leads Assigned", value: totalLeads,     color: NAVY,  pct: 100 },
+              { label: "Converted",      value: totalConverted, color: GREEN, pct: totalLeads > 0 ? Math.round(totalConverted/totalLeads*100) : 0 },
             ] as { label: string; value: number; color: string; pct: number }[]).map(f => (
               <div key={f.label} className="mb-2.5">
                 <div className="flex items-center justify-between mb-1">
