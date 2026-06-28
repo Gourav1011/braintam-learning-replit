@@ -3,6 +3,7 @@ import {
   Phone, MessageSquare, ChevronRight, Bell, ChevronDown, X,
   Search, Filter, ArrowLeft, Copy, Check, Loader2,
   CreditCard, BookOpen, BarChart2, ClipboardList, Save, AlertCircle, Upload, Trophy,
+  Video, Calendar, Clock, Monitor, RefreshCw,
 } from "lucide-react";
 import { GradeLeaderboardTab } from "./grade-leaderboard-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
@@ -1406,6 +1407,134 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
   );
 }
 
+// ── Live Classes View ───────────────────────────────────────────────────────
+interface LiveSession {
+  id: number; topic: string; dayNumber: number; scheduledAt: string;
+  duration: number; status: string; joinUrl: string | null;
+  recordingUrl: string | null; batchId: number; batchTitle: string;
+  batchGrade: number | null; batchSubject: string | null;
+}
+
+function fmtSessionDate(d: string) {
+  return new Date(d).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+}
+function fmtSessionTime(d: string) {
+  return new Date(d).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
+}
+
+function LiveClassesView() {
+  const [tab, setTab] = useState<"upcoming" | "completed">("upcoming");
+  const [sessions, setSessions] = useState<LiveSession[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async (t: "upcoming" | "completed") => {
+    setLoading(true);
+    try {
+      const r = await apiFetch(`/mentor/live-sessions?mode=${t}`);
+      setSessions(r.ok ? await r.json() : []);
+    } catch { setSessions([]); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(tab); }, [tab, load]);
+
+  function join(s: LiveSession) {
+    const url = `/live/${s.id}?role=mentor${s.joinUrl ? `&meetLink=${encodeURIComponent(s.joinUrl)}` : ""}`;
+    window.open(url, "_blank");
+  }
+
+  return (
+    <div className="flex-1 overflow-auto p-5">
+      <div className="max-w-2xl mx-auto space-y-4">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-black" style={{ color: NAVY }}>Live Classes</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Sessions from your assigned batches</p>
+          </div>
+          <button onClick={() => load(tab)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-gray-50 text-gray-500">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+          {(["upcoming", "completed"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize"
+              style={{ background: tab === t ? "white" : "transparent", color: tab === t ? NAVY : "#6B7280", boxShadow: tab === t ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
+              {t === "upcoming" ? "Upcoming" : "Completed"}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: NAVY }} /></div>
+        ) : sessions.length === 0 ? (
+          <div className="text-center py-14 bg-white rounded-2xl border border-gray-100">
+            <Video className="w-9 h-9 mx-auto text-gray-200 mb-2" />
+            <p className="text-sm font-semibold text-gray-400">No {tab} sessions</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {tab === "upcoming" ? "No upcoming sessions in your batches" : "No completed sessions yet"}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {sessions.map(s => {
+              const isJoinable = s.status === "live" || s.status === "scheduled";
+              return (
+                <div key={s.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 hover:shadow-sm transition-shadow">
+                  {/* Left: info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm truncate" style={{ color: NAVY }}>{s.topic}</span>
+                      {s.status === "live" && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">🔴 LIVE</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400 flex-wrap">
+                      <span className="font-medium text-gray-600">{s.batchTitle}</span>
+                      {s.batchGrade && <span>Grade {s.batchGrade}</span>}
+                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtSessionDate(s.scheduledAt)}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{fmtSessionTime(s.scheduledAt)}</span>
+                      <span>{s.duration} min</span>
+                    </div>
+                  </div>
+
+                  {/* Right: actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isJoinable && (
+                      <button onClick={() => join(s)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
+                        style={{ background: s.status === "live" ? "#DC2626" : NAVY }}>
+                        <Monitor className="w-3.5 h-3.5" /> Join
+                      </button>
+                    )}
+                    {s.joinUrl && isJoinable && (
+                      <a href={s.joinUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors">
+                        📹 Meet
+                      </a>
+                    )}
+                    {s.recordingUrl && tab === "completed" && (
+                      <a href={s.recordingUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
+                        ▶ Recording
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Payment Status View ────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { bg: string; border: string; color: string; label: string }> = {
   paid:      { bg: "#F0FDF4", border: "#86EFAC", color: "#16A34A", label: "Paid" },
@@ -1624,7 +1753,7 @@ export function SalesMentorPortal({ user, onLogout }: {
   user: { id: number; name: string; avatarUrl?: string | null };
   onLogout: () => void;
 }) {
-  const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status" | "leaderboard">("my-leads");
+  const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status" | "leaderboard" | "live-classes">("my-leads");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1686,6 +1815,7 @@ export function SalesMentorPortal({ user, onLogout }: {
   const NAV = [
     { key: "my-leads"       as const, label: "My Leads" },
     { key: "payment-status" as const, label: "Payment Status" },
+    { key: "live-classes"   as const, label: "Live Classes", icon: Video },
     { key: "leaderboard"    as const, label: "Leaderboard", icon: Trophy },
   ];
 
@@ -1790,6 +1920,9 @@ export function SalesMentorPortal({ user, onLogout }: {
         )}
         {view === "payment-status" && (
           <PaymentStatusView />
+        )}
+        {view === "live-classes" && (
+          <LiveClassesView />
         )}
         {view === "leaderboard" && (
           <GradeLeaderboardTab myId={user.id} />
