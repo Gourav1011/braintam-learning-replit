@@ -1,0 +1,122 @@
+Do not start building yet. First, let's discuss and finalize the architecture.
+
+After reviewing the current Mastery Course screen, it feels like it was copied from Ignite and does not match our actual business process.
+
+Our Business Model is very simple:
+
+1. Ignite Course
+
+* Demo course only
+* Fixed demo fee
+* Purpose is lead conversion
+* Student either converts or drops
+
+2. Mastery Course
+
+* Long-term annual course only
+* One annual fee per grade
+* No monthly, quarterly, half-yearly, or multiple fee plans
+* No scholarship pricing for now
+* No complex pricing structure
+
+Questions and discussion points:
+
+1. Do we even need a separate course_fee_plans table?
+   Since we only have an annual fee, can annual_fee and registration_fee simply remain inside the courses table?
+
+2. Do we need batches?
+   Do we actually have:
+
+* Morning Batch
+* Evening Batch
+* Weekend Batch
+
+Or does each grade have one schedule only?
+
+If there is only one schedule per grade, then a course_batches table may be unnecessary and could be added later when required.
+
+3. Mentor Assignment
+   The current field:
+   "Assigned Mentor IDs (comma-separated)"
+
+does not make sense.
+
+Mentors should never be manually typed.
+
+Mentors should come automatically from:
+Manage Grade Teams
+
+Example:
+
+Grade 1
+Manager A
+Assistant Manager 1
+Mentor 1
+Mentor 2
+Mentor 3
+
+When a student enrolls in Grade 1, the system should read the Grade Team and assign the academic team automatically.
+
+4. Course Screen Simplification
+
+Proposed screen:
+
+Basic Information
+
+* Course Name
+* Grade
+* Board
+* Academic Year
+* Status
+* Start Date
+* End Date
+* Duration
+* Description
+
+Pricing
+
+* Annual Fee
+* Registration Fee (optional)
+
+Academic Information
+
+* Student Capacity
+
+Documents
+
+* Banner Upload
+* Brochure Upload
+
+Remove:
+
+* Scholarship Price
+* Payment Plans
+* Monthly/Quarterly/Half-yearly fees
+* Assigned Mentor IDs
+* Anything copied from Ignite that is not required.
+
+5. Ignite → Mastery Conversion
+
+I understand the conversion API already exists partially:
+Ignite Paid Student
+→ Convert to Mastery Student
+→ Student record created
+
+Questions:
+
+* What exactly already exists?
+* What is missing?
+* Is batch assignment required?
+* Is academic mentor assignment required?
+* Should enrollment simply assign the student to the Grade Team automatically?
+
+6. Database Review
+
+Before building, please audit the current database and tell me:
+
+* Which existing tables and columns can be reused?
+* Which columns are unnecessary and should be removed?
+* Which new tables are genuinely required?
+* What can be postponed until Phase 2?
+
+I want to keep the system simple and scalable. Please propose the leanest architecture that matches our real business process before writing any migrations or UI code.

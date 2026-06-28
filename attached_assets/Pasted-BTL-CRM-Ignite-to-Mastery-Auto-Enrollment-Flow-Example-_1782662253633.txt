@@ -1,0 +1,107 @@
+BTL CRM – Ignite to Mastery Auto Enrollment Flow
+
+Example:
+
+Grade 3
+├── Mentor A → 100 Leads
+└── Mentor B → 100 Leads
+
+Total Leads = 200
+
+During the 5-day Ignite Demo:
+
+Lead #145 pays using any method:
+
+1. Payment during live class
+2. Mentor-generated payment link
+3. Partial payment uploaded and approved by Admin
+4. Full payment uploaded and approved by Admin
+
+The moment payment status becomes PAID or APPROVED:
+
+System should automatically:
+
+Step 1:
+Find the lead's grade.
+Example:
+lead.grade = Grade 3
+
+Step 2:
+Find the active Mastery course.
+
+Query:
+course_type = 'mastery'
+grade = 'Grade 3'
+status = 'active'
+
+Example Result:
+Mastery Grade 3 (Academic Year 2026-27)
+
+Step 3:
+Create Mastery enrollment.
+
+student_enrollment
+
+* student_id
+* course_id
+* grade_id
+* enrolled_at
+* enrollment_source = 'ignite_conversion'
+* status = 'active'
+
+Step 4:
+Mark Ignite lead.
+
+lead_status = converted
+converted_at = timestamp
+
+Step 5:
+Immediately grant access.
+
+Student App:
+My Courses
+────────────────
+Ignite Grade 3
+✓ Completed
+
+Mastery Grade 3
+✓ Active
+────────────────
+
+The new Mastery course should appear instantly in the student's Courses section without admin intervention.
+
+Important Rules:
+
+1. No manual enrollment.
+2. No admin selecting courses.
+3. No admin moving students between systems.
+4. Payment approval is the trigger.
+5. Grade is the single source of truth.
+
+Flow:
+
+Lead
+↓
+Assigned to Grade 3 Mentor
+↓
+Attends 5-Day Ignite Demo
+↓
+Payment Success / Admin Approval
+↓
+System reads Grade = Grade 3
+↓
+Find Active Mastery Grade 3 Course
+↓
+Create Enrollment
+↓
+Mark Lead Converted
+↓
+Course instantly appears in Student App
+
+Questions before building:
+
+1. Does this conversion already partially exist?
+2. Which APIs and tables can be reused?
+3. What is missing to make the process fully automatic?
+4. Can this be implemented using events/hooks on payment approval instead of cron jobs?
+5. Ensure duplicate enrollments cannot happen even if payment approval is clicked multiple times.
