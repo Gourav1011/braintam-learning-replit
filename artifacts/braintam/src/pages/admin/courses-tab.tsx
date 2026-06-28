@@ -2205,24 +2205,26 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     </div>
 
                     {/* Worksheets */}
-                    <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 space-y-2">
+                    <button onClick={() => flash("Worksheets feature coming soon — stay tuned!", true)}
+                      className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 space-y-2 text-left hover:border-orange-200 hover:bg-orange-50/20 transition-all w-full cursor-pointer">
                       <div className="flex items-center gap-2 opacity-60">
                         <ClipboardList className="w-4 h-4 text-gray-400" />
                         <p className="font-semibold text-sm text-gray-500">Worksheets</p>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 font-semibold">Coming Soon</span>
                       </div>
                       <p className="text-xs text-gray-400">Upload subject-wise worksheets and practice papers.</p>
-                    </div>
+                    </button>
 
                     {/* Study Material */}
-                    <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 space-y-2">
+                    <button onClick={() => flash("Study Materials feature coming soon — stay tuned!", true)}
+                      className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 space-y-2 text-left hover:border-orange-200 hover:bg-orange-50/20 transition-all w-full cursor-pointer">
                       <div className="flex items-center gap-2 opacity-60">
                         <BookOpen className="w-4 h-4 text-gray-400" />
                         <p className="font-semibold text-sm text-gray-500">Study Material</p>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 font-semibold">Coming Soon</span>
                       </div>
                       <p className="text-xs text-gray-400">Manage and distribute study materials for students.</p>
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>

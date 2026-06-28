@@ -1626,14 +1626,15 @@ function AdminPageInner() {
           <Student360Page key={student360Id} userId={student360Id} onBack={() => setStudent360Id(null)} />
         </div>
       )}
+      {/* Toast — fixed so it's visible regardless of scroll position */}
+      {msg && (
+        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl text-sm font-semibold flex items-center gap-3 shadow-lg min-w-[260px] max-w-[520px] ${msg.ok ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}
+          style={{ pointerEvents: "all" }}>
+          <span className="flex-1">{msg.text}</span>
+          <button onClick={() => setMsg(null)} className="opacity-70 hover:opacity-100 flex-shrink-0"><X className="w-4 h-4" /></button>
+        </div>
+      )}
       <div className="p-5 space-y-5">
-        {/* Toast */}
-        {msg && (
-          <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-between shadow-sm ${msg.ok ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
-            <span>{msg.text}</span>
-            <button onClick={() => setMsg(null)}><X className="w-4 h-4" /></button>
-          </div>
-        )}
 
         {/* ── Analytics ───────────────────────────────────────────────── */}
         {tab === "analytics" && analytics && (() => {
