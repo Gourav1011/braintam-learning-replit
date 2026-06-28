@@ -1279,11 +1279,206 @@ router.patch("/admin/ignite/leads/:id/restore", adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── GET /admin/ignite/deploy-preview ──────────────────────────────────────────
+router.get("/admin/ignite/deploy-preview", adminOnly, async (_req, res) => {
+  const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  const [assignments, pendingLeads] = await Promise.all([
+    db.select({
+      grade: gradeMentorAssignmentsTable.grade,
+      mentorId: gradeMentorAssignmentsTable.mentorId,
+      mentorName: usersTable.name,
+    })
+      .from(gradeMentorAssignmentsTable)
+      .innerJoin(usersTable, and(
+        eq(usersTable.id, gradeMentorAssignmentsTable.mentorId),
+        eq(usersTable.isActive, true),
+        eq(usersTable.isDeleted, false),
+      ))
+      .where(eq(gradeMentorAssignmentsTable.isActive, true)),
+
+    db.select({ grade: usersTable.grade, cnt: count() })
+      .from(usersTable)
+      .where(and(
+        inArray(usersTable.accountType, ["lead", "demo_student"]),
+        eq(usersTable.isDeleted, false),
+        eq(usersTable.isActive, true),
+        isNull(usersTable.assignedMentorId),
+        or(isNull(usersTable.leadStage), notInArray(usersTable.leadStage, ["Lost", "Converted"])),
+      ))
+      .groupBy(usersTable.grade),
+  ]);
+
+  const leadsByGrade: Record<number, number> = {};
+  for (const r of pendingLeads) { leadsByGrade[r.grade ?? 0] = Number(r.cnt); }
+
+  const mentorsByGrade: Record<number, { id: number; name: string }[]> = {};
+  for (const a of assignments) {
+    (mentorsByGrade[a.grade] ??= []).push({ id: a.mentorId, name: a.mentorName ?? "" });
+  }
+
+  const grades = GRADES.map(g => ({
+    grade: g,
+    activeMentors: mentorsByGrade[g]?.length ?? 0,
+    pendingLeads: leadsByGrade[g] ?? 0,
+    mentors: mentorsByGrade[g] ?? [],
+  }));
+
+  res.json({
+    grades,
+    totalPending: grades.reduce((s, g) => s + g.pendingLeads, 0),
+    totalMentors: [...new Set(assignments.map(a => a.mentorId))].length,
+  });
+});
+
+// ── deployAllGradesAuto helper ────────────────────────────────────────────────
+async function deployAllGradesAuto(req: any, res: any, actor: { id: number | null; name: string; role: string }) {
+  const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const now = new Date();
+
+  const [allAssignments, allPending] = await Promise.all([
+    db.select({
+      grade: gradeMentorAssignmentsTable.grade,
+      mentorId: gradeMentorAssignmentsTable.mentorId,
+      mentorName: usersTable.name,
+    })
+      .from(gradeMentorAssignmentsTable)
+      .innerJoin(usersTable, and(
+        eq(usersTable.id, gradeMentorAssignmentsTable.mentorId),
+        eq(usersTable.isActive, true),
+        eq(usersTable.isDeleted, false),
+      ))
+      .where(eq(gradeMentorAssignmentsTable.isActive, true)),
+
+    db.select({ id: usersTable.id, grade: usersTable.grade })
+      .from(usersTable)
+      .where(and(
+        inArray(usersTable.accountType, ["lead", "demo_student"]),
+        eq(usersTable.isDeleted, false),
+        eq(usersTable.isActive, true),
+        isNull(usersTable.assignedMentorId),
+        or(isNull(usersTable.leadStage), notInArray(usersTable.leadStage, ["Lost", "Converted"])),
+      )),
+  ]);
+
+  if (allPending.length === 0) {
+    res.json({ ok: false, message: "No pending unassigned leads to deploy", deployed: 0 });
+    return;
+  }
+
+  const mentorsByGrade: Record<number, { id: number; name: string }[]> = {};
+  for (const a of allAssignments) {
+    (mentorsByGrade[a.grade] ??= []).push({ id: a.mentorId, name: a.mentorName ?? "" });
+  }
+
+  const leadsByGrade: Record<number, { id: number; grade: number | null }[]> = {};
+  for (const lead of allPending) {
+    const g = lead.grade ?? 0;
+    (leadsByGrade[g] ??= []).push(lead);
+  }
+
+  const allGroups: { mentor: { id: number; name: string }; leads: { id: number; grade: number | null }[] }[] = [];
+  const skippedGrades: number[] = [];
+
+  for (const g of GRADES) {
+    const leads = leadsByGrade[g] ?? [];
+    const mentors = mentorsByGrade[g] ?? [];
+    if (leads.length === 0) continue;
+    if (mentors.length === 0) { skippedGrades.push(g); continue; }
+    const base = Math.floor(leads.length / mentors.length);
+    const rem = leads.length % mentors.length;
+    let cursor = 0;
+    mentors.forEach((mentor, i) => {
+      const size = base + (i < rem ? 1 : 0);
+      if (size > 0) { allGroups.push({ mentor, leads: leads.slice(cursor, cursor + size) }); cursor += size; }
+    });
+  }
+
+  if (allGroups.length === 0) {
+    const skipMsg = skippedGrades.length > 0 ? ` Grades ${skippedGrades.join(", ")} have leads but no assigned mentors.` : "";
+    res.json({ ok: false, message: `No deployable groups found.${skipMsg} Set up Grade Teams first.`, deployed: 0 });
+    return;
+  }
+
+  const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
+  for (const g of allGroups) {
+    const ids = g.leads.map(l => l.id);
+    await db.update(usersTable).set({ assignedMentorId: g.mentor.id, assignedAt: now, assignmentStatus: "assigned", deploymentStatus: "Assigned", updatedAt: now }).where(inArray(usersTable.id, ids));
+    const existing = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).where(and(eq(mentorStudentAssignmentsTable.mentorId, g.mentor.id), inArray(mentorStudentAssignmentsTable.studentId, ids)));
+    const existingIds = new Set(existing.map(e => e.studentId));
+    const newIds = ids.filter(id => !existingIds.has(id));
+    if (newIds.length > 0) {
+      await db.insert(mentorStudentAssignmentsTable).values(newIds.map(sid => ({ mentorId: g.mentor.id, studentId: sid, assignedAt: now, isActive: true, deploymentCycleId: activeCycle?.id ?? null })));
+    }
+  }
+
+  const totalDeployed = allGroups.reduce((s, g) => s + g.leads.length, 0);
+  const batchYear = new Date().getFullYear();
+  const [{ seqCount }] = await db.select({ seqCount: count() }).from(leadDeploymentsTable);
+  const seq = Number(seqCount) + 1;
+  const batchCode = `BTL-GALL-${batchYear}-${String(seq).padStart(3, "0")}`;
+
+  const [deployment] = await db.insert(leadDeploymentsTable).values({
+    batchCode, grade: null, createdById: actor.id, createdByName: actor.name ?? "Admin",
+    totalLeads: totalDeployed, mentorCount: allGroups.length,
+    distributionMethod: "grade-team-auto", selectedMentorIds: null, status: "completed",
+  }).returning();
+
+  await db.insert(leadDeploymentGroupsTable).values(allGroups.map(g => ({ deploymentId: deployment.id, mentorId: g.mentor.id, mentorName: g.mentor.name, leadCount: g.leads.length })));
+
+  const timelineRows = allGroups.flatMap(g => g.leads.map(lead => ({
+    studentId: lead.id, createdById: actor.id ?? null, createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin", noteType: "deployment",
+    remark: `Lead assigned.\n\nMentor: ${g.mentor.name}\nDeployment Batch: ${batchCode}\nAssigned By: ${actor.name ?? "Admin"}`,
+  })));
+  for (let i = 0; i < timelineRows.length; i += 100) {
+    await db.insert(studentTimelineTable).values(timelineRows.slice(i, i + 100)).catch(() => {});
+  }
+
+  const allDeployedIds = allGroups.flatMap(g => g.leads.map(l => l.id));
+  for (let i = 0; i < allDeployedIds.length; i += 500) {
+    await db.update(usersTable).set({ deploymentBatchId: deployment.id }).where(inArray(usersTable.id, allDeployedIds.slice(i, i + 500)));
+  }
+
+  await logLeadAudit(req, "deploy_leads", 0, "batch", { grade: null, totalLeads: totalDeployed, mentors: allGroups.length, batchCode, mode: "grade-team-auto" });
+
+  const skippedNote = skippedGrades.length > 0 ? ` (Grades ${skippedGrades.join(", ")} skipped — no mentors assigned)` : "";
+  res.json({
+    ok: true, deployed: totalDeployed, mentorsUsed: allGroups.length,
+    deploymentId: deployment.id, batchCode, skippedGrades,
+    groups: allGroups.map(g => ({ mentorId: g.mentor.id, mentorName: g.mentor.name, count: g.leads.length })),
+    message: `Deployed ${totalDeployed} leads across grade teams.${skippedNote}`,
+  });
+}
+
 // ── POST /admin/ignite/deploy ─────────────────────────────────────────────────
 // Distributes all unassigned pending leads (optionally filtered by grade) across active sales mentors.
 router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
-  const { grade, mentorIds: requestedMentorIds } = req.body as { grade?: number | null; mentorIds?: number[] };
+  const { grade, mentorIds: requestedMentorIds, autoMode } = req.body as { grade?: number | null; mentorIds?: number[]; autoMode?: boolean };
   const actor = (req as any).user ?? { id: null, name: "Admin", role: "admin" };
+
+  // ── Auto mode: resolve mentors from grade_mentor_assignments ──
+  let resolvedMentorIds: number[] | undefined = requestedMentorIds?.length ? requestedMentorIds : undefined;
+  if (autoMode && !resolvedMentorIds?.length) {
+    if (grade) {
+      const ga = await db.select({ mentorId: gradeMentorAssignmentsTable.mentorId })
+        .from(gradeMentorAssignmentsTable)
+        .innerJoin(usersTable, and(eq(usersTable.id, gradeMentorAssignmentsTable.mentorId), eq(usersTable.isActive, true), eq(usersTable.isDeleted, false)))
+        .where(and(eq(gradeMentorAssignmentsTable.grade, Number(grade)), eq(gradeMentorAssignmentsTable.isActive, true)));
+      resolvedMentorIds = ga.map(a => a.mentorId);
+      if (resolvedMentorIds.length === 0) {
+        res.json({ ok: false, message: `No active mentors assigned to Grade ${grade}. Set up Grade Teams first.`, deployed: 0 });
+        return;
+      }
+    } else {
+      return deployAllGradesAuto(req, res, actor);
+    }
+  }
 
   const pendingLeads = await db.select({ id: usersTable.id, grade: usersTable.grade, leadStage: usersTable.leadStage })
     .from(usersTable)
@@ -1303,16 +1498,15 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
     return;
   }
 
-  const mentorsQuery = db.select({ id: usersTable.id, name: usersTable.name })
+  const mentors = await db.select({ id: usersTable.id, name: usersTable.name })
     .from(usersTable)
     .where(and(
       eq(usersTable.role, "mentor"),
       eq(usersTable.mentorType, "sales"),
       eq(usersTable.isActive, true),
       eq(usersTable.isDeleted, false),
-      ...(requestedMentorIds?.length ? [inArray(usersTable.id, requestedMentorIds)] : []),
+      ...(resolvedMentorIds?.length ? [inArray(usersTable.id, resolvedMentorIds)] : []),
     ));
-  const mentors = await mentorsQuery;
 
   if (mentors.length === 0) {
     res.json({ ok: false, message: "No active sales mentors available", deployed: 0 });
@@ -1384,7 +1578,7 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
     totalLeads: n,
     mentorCount: groups.length,
     distributionMethod: "equal",
-    selectedMentorIds: requestedMentorIds?.length ? JSON.stringify(requestedMentorIds) : null,
+    selectedMentorIds: resolvedMentorIds?.length ? JSON.stringify(resolvedMentorIds) : null,
     status: "completed",
   }).returning();
 

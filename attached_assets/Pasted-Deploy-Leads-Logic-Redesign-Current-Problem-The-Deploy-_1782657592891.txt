@@ -1,0 +1,173 @@
+Deploy Leads Logic Redesign
+
+Current Problem:
+The Deploy Leads popup asks users to manually select mentors every time leads are deployed. This will not work when we have 200-300 mentors.
+
+Required Flow:
+
+Step 1: Manage Grade Teams
+This module becomes the source of truth.
+
+Example:
+
+Grade 1
+├── Manager A
+│   ├── Assistant Manager 1
+│   │   ├── Mentor 1
+│   │   ├── Mentor 2
+│   │   ├── Mentor 3
+│   ├── Assistant Manager 2
+│       ├── Mentor 4
+│       ├── Mentor 5
+
+Grade 2
+├── Manager B
+│   ├── Assistant Manager 3
+│       ├── Mentor 6
+│       ├── Mentor 7
+
+Mentors are assigned to grades only once in Manage Grade Teams.
+
+---
+
+Step 2: Deploy Leads Screen
+
+Grade Pool:
+[Grade 1 ▼]
+
+System automatically shows:
+
+Grade 1
+Active Mentors: 8
+Managers: 2
+Assistant Managers: 3
+Pending Leads: 150
+
+Message:
+"150 leads will be equally distributed among 8 active mentors of Grade 1."
+
+Buttons:
+Cancel
+Deploy
+
+No mentor checkboxes should be shown by default.
+
+---
+
+When "All Grades" is selected:
+
+Grade 1 → 150 Leads → 8 Mentors
+Grade 2 → 90 Leads → 5 Mentors
+Grade 3 → 70 Leads → 4 Mentors
+
+Total:
+310 Leads
+17 Active Mentors
+
+System automatically distributes leads using mentor-grade mappings.
+
+---
+
+Distribution Algorithm
+
+Deploy Grade 1:
+150 leads
+8 mentors
+
+Result:
+Mentor 1 → 19
+Mentor 2 → 19
+Mentor 3 → 19
+Mentor 4 → 19
+Mentor 5 → 19
+Mentor 6 → 19
+Mentor 7 → 18
+Mentor 8 → 18
+
+Use round-robin assignment.
+
+Rules:
+
+* Only Active mentors receive leads.
+* Skip inactive mentors automatically.
+* Store assignment_week and assignment_month.
+* Never overwrite historical assignments.
+
+---
+
+Manual Override
+
+Advanced Options button:
+
+□ Use automatic mentor assignment
+□ Select mentors manually
+
+If manual mode is enabled:
+
+* Search mentors
+* Multi-select mentors
+* Select by Manager
+* Select by Assistant Manager
+
+This should be used only in exceptional cases.
+
+---
+
+Weekly Flow
+
+Every Monday:
+
+1. Create new assignment cycle.
+2. Read mentor-grade mappings from Manage Grade Teams.
+3. Fetch active mentors of each grade.
+4. Deploy leads automatically.
+5. Save deployment history.
+
+Historical data should remain unchanged.
+
+---
+
+Database Tables
+
+mentor_grade_assignment
+
+* id
+* mentor_id
+* grade_id
+* manager_id
+* assistant_manager_id
+* assignment_week
+* assignment_month
+* active
+
+lead_assignment
+
+* lead_id
+* mentor_id
+* grade_id
+* assignment_week
+* assigned_at
+* assigned_by
+
+---
+
+Backend APIs
+
+GET /api/grade-teams
+GET /api/grades/{id}/active-mentors
+POST /api/leads/deploy
+POST /api/leads/manual-deploy
+GET /api/leads/deployment-history
+
+---
+
+Performance Requirements
+
+* Support 300+ mentors
+* Support thousands of leads
+* No page refresh loops
+* No infinite API calls
+* Use pagination and lazy loading
+* Cache grade-team data
+* Re-render only changed components
+* Deployment should finish in seconds even with thousands of leads.
