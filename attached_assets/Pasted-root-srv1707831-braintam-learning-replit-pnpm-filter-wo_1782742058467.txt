@@ -1,0 +1,1162 @@
+root@srv1707831:~/braintam-learning-replit# pnpm --filter @workspace/api-server build
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+│ Use pnpm instead
+└─ Failed in 32ms at /root/braintam-learning-replit
+[ELIFECYCLE] Command failed with exit code 1.
+[ERROR] Command failed with exit code 1: pnpm install
+
+pnpm: Command failed with exit code 1: pnpm install
+    at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+    at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+    at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+    at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+    at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+    at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+    at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+    at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+    at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+    at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+root@srv1707831:~/braintam-learning-replit# pnpm --filter @workspace/api-server build
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+│ Use pnpm instead
+└─ Failed in 57ms at /root/braintam-learning-replit
+[ELIFECYCLE] Command failed with exit code 1.
+[ERROR] Command failed with exit code 1: pnpm install
+
+pnpm: Command failed with exit code 1: pnpm install
+    at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+    at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+    at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+    at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+    at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+    at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+    at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+    at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+    at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+    at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+root@srv1707831:~/braintam-learning-replit# pm2 restart braintam-api
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [braintam-api](ids: [ 1 ])
+[PM2] [braintam-api](1) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ braintam-api       │ fork     │ 971  │ online    │ 0%       │ 3.1mb    │
+│ 0  │ braintam-live      │ fork     │ 21   │ online    │ 0%       │ 110.7mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+root@srv1707831:~/braintam-learning-replit# pm2 logs braintam-api --lines 503
+[TAILING] Tailing last 503 lines for [braintam-api] process (change the value with --lines option)
+/root/.pm2/logs/braintam-api-error.log last 503 lines:
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | node:internal/modules/cjs/loader:1386
+1|braintam |   throw err;
+1|braintam |   ^
+1|braintam |
+1|braintam | Error: Cannot find module '/root/braintam-learning-replit/artifacts/api-server/dist/index.mjs'
+1|braintam |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1|braintam |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1|braintam |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1|braintam |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+1|braintam |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1|braintam |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1|braintam |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+1|braintam |     at node:internal/main/run_main_module:36:49 {
+1|braintam |   code: 'MODULE_NOT_FOUND',
+1|braintam |   requireStack: []
+1|braintam | }
+1|braintam |
+1|braintam | Node.js v22.22.2
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:945740) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:946442) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | RAZORPAY CREATE ORDER ERROR: {
+1|braintam |   statusCode: 401,
+1|braintam |   error: { description: 'Authentication failed', code: 'BAD_REQUEST_ERROR' }
+1|braintam | }
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:947047) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | RAZORPAY CREATE ORDER ERROR: {
+1|braintam |   "statusCode": 401,
+1|braintam |   "error": {
+1|braintam |     "description": "Authentication failed",
+1|braintam |     "code": "BAD_REQUEST_ERROR"
+1|braintam |   }
+1|braintam | }
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:947282) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:947321) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | Error: ENOENT: no such file or directory, stat '/root/braintam-learning-replit/artifacts/braintam/dist/public/index.html'
+1|braintam | Error: ENOENT: no such file or directory, stat '/root/braintam-learning-replit/artifacts/braintam/dist/public/index.html'
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:952165) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | Error: ENOENT: no such file or directory, stat '/root/braintam-learning-replit/artifacts/braintam/dist/public/index.html'
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:954188) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | Error: ENOENT: no such file or directory, stat '/root/braintam-learning-replit/artifacts/braintam/dist/public/index.html'
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:954926) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:955263) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:955931) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:956268) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:957413) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:957486) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:957627) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:958135) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:965748) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:967360) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:967540) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:967868) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+1|braintam | $ node --enable-source-maps ./dist/index.mjs
+1|braintam | (node:984028) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+1|braintam | In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+1|braintam |
+1|braintam | To prepare for this change:
+1|braintam | - If you want the current behavior, explicitly use 'sslmode=verify-full'
+1|braintam | - If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+1|braintam |
+1|braintam | See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+1|braintam | (Use `node --trace-warnings ...` to show where the warning was created)
+
+/root/.pm2/logs/braintam-api-out.log last 503 lines:
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam | [ERROR] Command was killed with SIGINT (User interruption with CTRL-C): pnpm install
+1|braintam |
+1|braintam | pnpm: Command was killed with SIGINT (User interruption with CTRL-C): pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+1|braintam |
+1|braintam | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam | . preinstall: Use pnpm instead
+1|braintam | . preinstall: Failed
+1|braintam | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam |
+1|braintam | pnpm: Command failed with exit code 1: pnpm install
+1|braintam |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam | Scope: all 10 workspace projects
+1|braintam | Lockfile is up to date, resolution step is skipped
+1|braintam | Already up to date
+
+1|braintam-api  | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam-api  | . preinstall: Use pnpm instead
+1|braintam-api  | . preinstall: Failed
+1|braintam-api  | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam-api  | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam-api  | pnpm: Command failed with exit code 1: pnpm install
+1|braintam-api  |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam-api  |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam-api  |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam-api  |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam-api  |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam-api  |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam-api  |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam-api  |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam-api  |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam-api  |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam-api  | Scope: all 10 workspace projects
+1|braintam-api  | Lockfile is up to date, resolution step is skipped
+1|braintam-api  | Already up to date
+1|braintam-api  | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam-api  | . preinstall: Use pnpm instead
+1|braintam-api  | . preinstall: Failed
+1|braintam-api  | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam-api  | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam-api  | pnpm: Command failed with exit code 1: pnpm install
+1|braintam-api  |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam-api  |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam-api  |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam-api  |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam-api  |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam-api  |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam-api  |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam-api  |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam-api  |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam-api  |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam-api  | Scope: all 10 workspace projects
+1|braintam-api  | Lockfile is up to date, resolution step is skipped
+1|braintam-api  | Already up to date
+1|braintam-api  | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam-api  | . preinstall: Use pnpm instead
+1|braintam-api  | . preinstall: Failed
+1|braintam-api  | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam-api  | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam-api  | pnpm: Command failed with exit code 1: pnpm install
+1|braintam-api  |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam-api  |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam-api  |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam-api  |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam-api  |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam-api  |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam-api  |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam-api  |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam-api  |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam-api  |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam-api  | Scope: all 10 workspace projects
+1|braintam-api  | Lockfile is up to date, resolution step is skipped
+1|braintam-api  | Already up to date
+1|braintam-api  | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam-api  | . preinstall: Use pnpm instead
+1|braintam-api  | . preinstall: Failed
+1|braintam-api  | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam-api  | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam-api  | pnpm: Command failed with exit code 1: pnpm install
+1|braintam-api  |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam-api  |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam-api  |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam-api  |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam-api  |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam-api  |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam-api  |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam-api  |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam-api  |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam-api  |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+1|braintam-api  | Scope: all 10 workspace projects
+1|braintam-api  | Lockfile is up to date, resolution step is skipped
+1|braintam-api  | Already up to date
+1|braintam-api  | . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+1|braintam-api  | . preinstall: Use pnpm instead
+1|braintam-api  | . preinstall: Failed
+1|braintam-api  | [ELIFECYCLE] Command failed with exit code 1.
+1|braintam-api  | [ERROR] Command failed with exit code 1: pnpm install
+1|braintam-api  | pnpm: Command failed with exit code 1: pnpm install
+1|braintam-api  |     at getFinalError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:29514:14)
+1|braintam-api  |     at makeError (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:31821:21)
+1|braintam-api  |     at getSyncResult (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33665:10)
+1|braintam-api  |     at spawnSubprocessSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33625:14)
+1|braintam-api  |     at execaCoreSync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:33555:23)
+1|braintam-api  |     at callBoundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36083:23)
+1|braintam-api  |     at boundExeca (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36060:49)
+1|braintam-api  |     at sync (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:36215:14)
+1|braintam-api  |     at runPnpmCli (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:213568:5)
+1|braintam-api  |     at runDepsStatusCheck (file:///usr/local/lib/node_modules/pnpm/dist/pnpm.mjs:215280:7)
+^C
+root@srv1707831:~/braintam-learning-replit# netstat -tulpn | grep node
+tcp6       0      0 :::3000                 :::*                    LISTEN      991915/node
+root@srv1707831:~/braintam-learning-replit# echo $npm_config_user_agent
+
+root@srv1707831:~/braintam-learning-replit#

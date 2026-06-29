@@ -1,7 +1,11 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # compiled output
-dist
+# Allow artifacts/api-server/dist and artifacts/braintam/dist so VPS (PM2) deployments work
+lib/*/dist/
+scripts/dist/
+artifacts/braintam-android/dist/
+artifacts/mockup-sandbox/dist/
 tmp
 out-tsc
 *.tsbuildinfo
