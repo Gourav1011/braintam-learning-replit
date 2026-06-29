@@ -42,7 +42,7 @@ export default function MentorLoginPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Invalid credentials"); return; }
-      if (data.student?.role !== "mentor" && data.student?.role !== "admin" && data.student?.role !== "super_admin") {
+      if (!["mentor", "academic_mentor", "sales_mentor", "super_admin"].includes(data.student?.role)) {
         setError("This account does not have mentor access.");
         return;
       }
