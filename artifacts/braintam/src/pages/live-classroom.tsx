@@ -744,18 +744,6 @@ export default function LiveClassroom() {
           <span className="text-gray-600 text-xs">#{sessionId}</span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Only staff/mentor see class counts */}
-          {(isStaff || isMentor) && (
-            <>
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <Users className="w-3 h-3" />
-                {Array.from(registry.values()).filter(r => r.status === "LIVE").length || userCount}
-              </span>
-              <span className="text-[10px] text-gray-500">
-                {Array.from(registry.values()).filter(r => r.status === "BACKSTAGE").length} backstage
-              </span>
-            </>
-          )}
           {/* Sprint 2 — Meet + Recording quick-access */}
           {meetLink && (
             <a href={meetLink} target="_blank" rel="noreferrer"
@@ -970,7 +958,7 @@ export default function LiveClassroom() {
                 {!cameraOn && (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
-                    <p className="text-[10px] text-gray-500">{name}</p>
+                    <p className="text-[10px] text-gray-500">Teacher</p>
                   </div>
                 )}
                 <button onClick={toggleCamera} className="absolute bottom-2 right-2 p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all" title={cameraOn ? "Turn off camera" : "Turn on camera"}>
@@ -985,7 +973,7 @@ export default function LiveClassroom() {
                     <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
                     <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
                   </div>
-                  <p className="text-[11px] text-white font-semibold">{teacherInfo.name}</p>
+                  <p className="text-[11px] text-white font-semibold">Teacher</p>
                 </div>
               ) : (
                 /* ── Teacher disconnected — reconnecting placeholder ── */
@@ -995,7 +983,7 @@ export default function LiveClassroom() {
                     <span className="absolute inset-0 rounded-full animate-ping bg-yellow-500/30" />
                     <div className="relative w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl opacity-60">👤</div>
                   </div>
-                  <p className="text-[10px] text-gray-300 font-semibold">{teacherInfo.name}</p>
+                  <p className="text-[10px] text-gray-300 font-semibold">Teacher</p>
                   <p className="text-[9px] text-yellow-400 leading-tight font-bold">📡 Teacher is reconnecting…</p>
                   <p className="text-[8px] text-gray-500 leading-tight">Stream will restore automatically</p>
                 </div>
