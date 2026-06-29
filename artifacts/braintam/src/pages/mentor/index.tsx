@@ -790,13 +790,13 @@ export default function BTLCRMPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && (role === "mentor" || role === "admin")) {
+    if (!isLoading && (role === "mentor" || role === "admin" || role === "super_admin")) {
       fetchDashboard(); fetchStudents(); fetchFollowUps(); fetchTasks();
     }
   }, [isLoading, role]);
 
   useEffect(() => {
-    if (isLoading || (role !== "mentor" && role !== "admin")) return;
+    if (isLoading || (role !== "mentor" && role !== "admin" && role !== "super_admin")) return;
     const id = setInterval(() => { fetchFollowUps(); }, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [isLoading, role, fetchFollowUps]);
@@ -815,7 +815,7 @@ export default function BTLCRMPage() {
   const [completeLoading, setCompleteLoading] = useState(false);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
-  if (!student || (role !== "mentor" && role !== "admin")) return <Redirect to="/mentor/login" />;
+  if (!student || (role !== "mentor" && role !== "admin" && role !== "super_admin")) return <Redirect to="/mentor/login" />;
   // Wait for dashboard so we know mentorType before rendering either portal
   if (!dashboard) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}><Loader2 className="w-8 h-8 animate-spin" style={{ color: NAVY }} /></div>;
 
