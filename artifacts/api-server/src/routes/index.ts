@@ -44,6 +44,7 @@ import liveRouter from "./live";
 import analyticsRouter from "./analytics";
 import chatModerationRouter from "./chatModeration";
 import revenueAnalyticsRouter from "./revenueAnalytics";
+import slidesRouter from "./slides";
 
 const router: IRouter = Router();
 
@@ -92,5 +93,6 @@ router.use(liveRouter);
 router.use(analyticsRouter);
 router.use(chatModerationRouter);
 router.use(revenueAnalyticsRouter);
+router.use(slidesRouter);
 
 export default router;

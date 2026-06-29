@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { io, type Socket } from "socket.io-client";
 import {
   Video, VideoOff, Users, MessageSquare, BarChart2, Send,
-  Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, X,
+  Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, X, Upload,
 } from "lucide-react";
 
 const NAVY = "#0B2B6B";
@@ -359,6 +359,10 @@ export default function LiveClassroom() {
   // ── State ──────────────────────────────────────────────────
   const [presentationUrl, setPresentationUrl] = useState(search.get("url") ?? "");
   const [urlInput, setUrlInput] = useState(search.get("url") ?? "");
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [panelMode, setPanelMode] = useState<"chat" | "poll" | "staffchat">("chat");
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -446,6 +450,56 @@ export default function LiveClassroom() {
   const clearAnnotations = useCallback(() => {
     const c = canvasRef.current;
     if (c) c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
+  }, []);
+
+  // ── Slide upload ────────────────────────────────────────────
+  const cleanupUploadedSlide = useCallback(async (filename: string) => {
+    try {
+      await fetch(`/api/slides/${filename}`, { method: "DELETE" });
+    } catch { /* best-effort */ }
+  }, []);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/slides/upload", { method: "POST", body: formData });
+      if (!res.ok) { alert("Upload failed — file may be too large or wrong type."); return; }
+      const data = await res.json() as { filename: string; fileUrl: string; isPptx: boolean };
+
+      // Cleanup previous uploaded file if any
+      if (uploadedFilename) void cleanupUploadedSlide(uploadedFilename);
+      setUploadedFilename(data.filename);
+
+      if (data.isPptx) {
+        // Use Office Online viewer for PPT/PPTX
+        const publicBase = window.location.origin;
+        const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicBase + data.fileUrl)}`;
+        setPresentationUrl(embedUrl);
+      } else {
+        // PDF — serve directly from our server (same origin, browser renders natively)
+        setPresentationUrl(data.fileUrl);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }, [uploadedFilename, cleanupUploadedSlide]);
+
+  // ── Slide navigation (arrow buttons) ───────────────────────
+  const navigateSlide = useCallback((dir: "prev" | "next") => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    // Try to focus the iframe and send an arrow key event
+    iframe.focus();
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.dispatchEvent(new KeyboardEvent("keydown", {
+        key: dir === "next" ? "ArrowRight" : "ArrowLeft",
+        code: dir === "next" ? "ArrowRight" : "ArrowLeft",
+        bubbles: true, cancelable: true,
+      }));
+    } catch { /* cross-origin — Canva has own nav */ }
   }, []);
 
   // ── Camera ─────────────────────────────────────────────────
@@ -765,6 +819,7 @@ export default function LiveClassroom() {
             <button
               onClick={() => {
                 if (window.confirm("End class for everyone? This will disconnect all students and mentors.")) {
+                  if (uploadedFilename) void cleanupUploadedSlide(uploadedFilename);
                   socket?.emit("class:end");
                 }
               }}
@@ -808,9 +863,17 @@ export default function LiveClassroom() {
         ═══════════════════════════════════════════════════ */}
         <div className="flex flex-col relative bg-gray-950 flex-1 min-w-0">
 
-          {/* URL bar (teacher only, no URL yet) */}
+          {/* URL bar + Upload (teacher only, no URL yet) */}
           {isStaff && !presentationUrl && (
             <div className="flex gap-2 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.ppt,.pptx"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); e.target.value = ""; }}
+              />
               <input
                 className="flex-1 bg-gray-800 text-white text-sm rounded-xl px-4 py-2 border border-gray-700 focus:border-blue-500 outline-none placeholder-gray-600"
                 placeholder="Canva: Share → Embed link   |   or paste a PDF URL"
@@ -820,16 +883,29 @@ export default function LiveClassroom() {
               />
               <button
                 onClick={() => setPresentationUrl(urlInput)}
-                className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+                disabled={!urlInput.trim()}
+                className="px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-40"
                 style={{ background: NAVY }}
               >Present</button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="Upload PDF or PPT"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-all hover:opacity-90"
+                style={{ background: "#059669" }}
+              >
+                {isUploading
+                  ? <span className="animate-spin text-base">⏳</span>
+                  : <Upload className="w-4 h-4" />}
+                <span>{isUploading ? "Uploading…" : "Upload PPT/PDF"}</span>
+              </button>
             </div>
           )}
 
           {/* Slides / PDF */}
           <div className="relative flex-1 overflow-hidden">
             {embedUrl ? (
-              <iframe src={embedUrl} className="w-full h-full border-0" allow="fullscreen" title="Presentation" allowFullScreen />
+              <iframe ref={iframeRef} src={embedUrl} className="w-full h-full border-0" allow="fullscreen" title="Presentation" allowFullScreen />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
@@ -931,10 +1007,27 @@ export default function LiveClassroom() {
               )}
               <button onClick={clearAnnotations} className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-1">🗑 Clear</button>
               {presentationUrl && (
-                <button onClick={() => { setPresentationUrl(""); setUrlInput(""); }}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-auto">
-                  <Settings className="w-3 h-3 inline mr-1" />Change Slide
-                </button>
+                <>
+                  {/* ‹ › slide navigation — always visible when presenting */}
+                  <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-3">
+                    <button
+                      onClick={() => navigateSlide("prev")}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                      title="Previous slide">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => navigateSlide("next")}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                      title="Next slide">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <button onClick={() => { setPresentationUrl(""); setUrlInput(""); if (uploadedFilename) { void cleanupUploadedSlide(uploadedFilename); setUploadedFilename(null); } }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-2">
+                    <Settings className="w-3 h-3 inline mr-1" />Change Slide
+                  </button>
+                </>
               )}
             </div>
           )}
