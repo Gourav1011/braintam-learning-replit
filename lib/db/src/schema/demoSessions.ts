@@ -9,6 +9,7 @@ export const demoSessionsTable = pgTable("demo_sessions", {
   description: text("description"),
   dayNumber: integer("day_number").notNull().default(1),
   subject: text("subject"),
+  teacherId: integer("teacher_id"),
   teacherName: text("teacher_name"),
   scheduledAt: timestamp("scheduled_at").notNull(),
   duration: integer("duration").notNull().default(60),

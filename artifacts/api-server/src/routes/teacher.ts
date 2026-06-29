@@ -786,16 +786,14 @@ router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
       .filter(b => b.teacherId === teacher.id)
       .map(b => b.id);
 
-    // Find sessions assigned to this teacher by name (grade-neutral assignment)
+    // Match by teacher_id (primary) OR teacherName (fallback) OR batch assignment
+    const conditions = [
+      eq(demoSessionsTable.teacherId, teacher.id),
+      sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`,
+      ...(assignedBatchIds.length > 0 ? [inArray(demoSessionsTable.batchId, assignedBatchIds)] : []),
+    ];
     sessions = await db.select().from(demoSessionsTable)
-      .where(
-        assignedBatchIds.length > 0
-          ? or(
-              sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`,
-              inArray(demoSessionsTable.batchId, assignedBatchIds)
-            )
-          : sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`
-      )
+      .where(or(...conditions))
       .orderBy(desc(demoSessionsTable.scheduledAt));
   }
 

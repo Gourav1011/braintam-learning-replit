@@ -506,7 +506,7 @@ router.post("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res)
   if (!title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
   if (!scheduledAt) { res.status(400).json({ error: "Scheduled time required" }); return; }
 
-  // Resolve teacherName → teacher_id for assignment-based visibility
+  // Resolve teacherName → teacher_id (source of truth for assignment-based visibility)
   let resolvedTeacherId: number | null = null;
   if (teacherName?.trim()) {
     const [tUser] = await db.select({ id: usersTable.id })
@@ -524,6 +524,7 @@ router.post("/admin/demo-batches/:batchId/sessions", adminOnly, async (req, res)
     title: title.trim(),
     description: description?.trim(),
     subject: subject?.trim(),
+    teacherId: resolvedTeacherId,
     teacherName: teacherName?.trim(),
     dayNumber: dayNumber ?? 1,
     scheduledAt: new Date(scheduledAt),
@@ -564,15 +565,20 @@ router.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly, async 
   if (status !== undefined) updates.status = String(status);
   if (isPublished !== undefined) updates.isPublished = Boolean(isPublished);
 
-  // Resolve teacherName → teacher_id and update batch assignment
-  if (teacherName !== undefined && String(teacherName).trim()) {
+  // Resolve teacherName → teacher_id (source of truth) and update batch assignment
+  if (teacherName !== undefined) {
     const tName = String(teacherName).trim();
-    const [tUser] = await db.select({ id: usersTable.id })
-      .from(usersTable)
-      .where(sql`lower(${usersTable.name}) = lower(${tName})`);
-    if (tUser) {
-      const batchId = Number(req.params.batchId);
-      await db.update(demoBatchesTable).set({ teacherId: tUser.id }).where(eq(demoBatchesTable.id, batchId));
+    if (tName) {
+      const [tUser] = await db.select({ id: usersTable.id })
+        .from(usersTable)
+        .where(sql`lower(${usersTable.name}) = lower(${tName})`);
+      if (tUser) {
+        updates.teacherId = tUser.id;
+        const batchId = Number(req.params.batchId);
+        await db.update(demoBatchesTable).set({ teacherId: tUser.id }).where(eq(demoBatchesTable.id, batchId));
+      }
+    } else {
+      updates.teacherId = null; // clearing teacher
     }
   }
 

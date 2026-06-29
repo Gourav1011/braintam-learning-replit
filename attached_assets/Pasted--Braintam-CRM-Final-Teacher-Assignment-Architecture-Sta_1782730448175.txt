@@ -1,0 +1,257 @@
+# Braintam CRM – Final Teacher Assignment Architecture
+
+## Status
+
+Teacher1 can now see assigned batches and sessions.
+
+Current Results:
+✅ Batches found: 2
+✅ Sessions found: 7
+✅ Existing data backfilled successfully
+✅ Grade dependency removed
+✅ Teacher portal now works on assignment basis
+
+---
+
+# Final Braintam Rule
+
+Teachers must be completely Grade-Neutral.
+
+Teachers should never be permanently attached to any grade.
+
+Teachers are resources that can be assigned anywhere.
+
+Examples:
+
+Teacher A
+
+* Grade 3 Maths
+* Grade 5 Science
+* Grade 8 Revision Session
+
+Teacher B
+
+* Demo Batch
+* Ignite Batch
+* Olympiad Batch
+* Scholarship Session
+
+Teacher C
+
+* Substitute Teacher
+* Doubt Session Teacher
+* Weekend Masterclass Teacher
+
+All these use cases must work without any grade dependency.
+
+---
+
+# Assignment Hierarchy
+
+Teacher
+→ Assigned Sessions
+→ Assigned Batches
+→ Assigned Live Classes
+→ Assigned Subjects
+
+NOT
+
+Teacher
+→ Grade
+→ Batch
+→ Session
+
+---
+
+# Visibility Rules
+
+## My Batches
+
+Show a batch if:
+
+1. batch.teacher_id = teacher.id
+   OR
+2. Any session inside the batch is assigned to the teacher
+
+Teacher should not lose access simply because batch.teacher_id is NULL.
+
+---
+
+## My Sessions
+
+Show a session if:
+
+1. session.teacher_id = teacher.id
+   OR
+2. session.teacherName matches teacher name
+
+---
+
+## My Live Classes
+
+Show a live class if:
+
+1. liveClass.teacher_id = teacher.id
+   OR
+2. liveClass.session_id belongs to a session assigned to the teacher
+   OR
+3. liveClass.batch_id belongs to a batch assigned to the teacher
+
+---
+
+# Remove Name-Based Dependency Long-Term
+
+Current:
+
+session.teacherName
+
+This can break because:
+
+Math Teacher
+math teacher
+Math Teacher 1
+Teacher name changed
+
+Names are not stable identifiers.
+
+Use:
+
+teacher_id
+
+Store:
+
+teacher_id
+teacher_email
+teacher_name
+
+teacher_id should always be the source of truth.
+
+teacher_name should be display only.
+
+---
+
+# Recommended Database Structure
+
+Sessions
+
+* id
+* batch_id
+* teacher_id
+* teacher_name
+* subject
+* date
+* time
+
+Live Classes
+
+* id
+* batch_id
+* session_id
+* teacher_id
+* teacher_name
+* meeting_link
+* status
+
+Batches
+
+* id
+* name
+* primary_teacher_id (optional)
+
+---
+
+# Batch Teacher Field
+
+batch.teacher_id should become:
+
+primary_teacher_id
+
+Reason:
+
+A batch may have:
+
+Math Teacher
+Science Teacher
+English Teacher
+Substitute Teacher
+
+A batch should never assume there is only one teacher.
+
+---
+
+# Future-Proof Assignment Table
+
+teacher_assignments
+
+* id
+* teacher_id
+* batch_id
+* session_id
+* live_class_id
+* subject_id
+* role
+* assigned_by
+* assigned_at
+* is_active
+
+Benefits:
+
+✅ One teacher → many batches
+✅ One batch → many teachers
+✅ Substitute teachers
+✅ Demo classes
+✅ Doubt sessions
+✅ Ignite classes
+✅ Special workshops
+✅ Future expansion to Grades 1–10
+
+---
+
+# Teacher Dashboard
+
+Cards:
+
+My Batches
+Today's Sessions
+Upcoming Live Classes
+Recordings
+Attendance
+Assignments
+
+All data must come from assignments.
+
+Never from grade.
+
+---
+
+# Access Rules
+
+Teacher can see:
+
+Assigned Batch
+Assigned Session
+Assigned Live Class
+Recordings of assigned classes
+Attendance of assigned classes
+
+Teacher cannot see:
+
+Other teachers' batches
+Other teachers' sessions
+Other teachers' attendance
+
+unless role = Admin.
+
+---
+
+# Braintam Principle
+
+Permission Source = Assignment
+
+Grade = Academic Information Only
+
+Grades should organize students and curriculum.
+
+Grades should NEVER determine teacher permissions.
+
+Teacher access should be driven entirely by assignments.
