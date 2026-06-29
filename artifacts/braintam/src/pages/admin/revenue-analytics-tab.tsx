@@ -202,15 +202,15 @@ export function RevenueAnalyticsTab() {
           { label: "Conversion Rate",         value: `${kpis.conversionRate}%`,            sub: "Demo → Mastery",  icon: TrendingUp,    bg: "#FFE4E6", clr: "#E11D48" },
           { label: "Avg Revenue / Admission", value: kpis.avgRevenuePerAdmission > 0 ? rsShort(kpis.avgRevenuePerAdmission) : "—", sub: "Per student", icon: DollarSign, bg: "#FEF9C3", clr: "#CA8A04" },
         ].map(k => (
-          <div key={k.label} className="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: k.bg }}>
-                <k.icon className="w-4 h-4" style={{ color: k.clr }} />
-              </div>
+          <div key={k.label} className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: k.bg }}>
+              <k.icon className="w-4 h-4" style={{ color: k.clr }} />
             </div>
-            <div className="text-xl font-black leading-tight truncate" style={{ color: NAVY }}>{k.value}</div>
-            <div className="text-[10px] font-semibold text-gray-500 mt-0.5 truncate leading-tight">{k.label}</div>
-            <div className="text-[9px] text-gray-400 mt-0.5 leading-tight">{k.sub}</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-base font-extrabold leading-none truncate" style={{ color: NAVY }}>{k.value}</div>
+              <div className="text-[10px] font-medium text-gray-600 truncate mt-0.5 leading-tight">{k.label}</div>
+              <div className="text-[9px] text-gray-400 truncate leading-tight">{k.sub}</div>
+            </div>
           </div>
         ))}
       </div>
