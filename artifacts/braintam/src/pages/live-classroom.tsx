@@ -81,10 +81,12 @@ function getEmbedUrl(url: string): string {
   if (!url.trim()) return "";
   try {
     if (url.includes("canva.com/design/")) {
-      const u = new URL(url);
-      if (!u.pathname.includes("/view")) u.pathname = u.pathname.replace(/\/?$/, "/view");
-      u.searchParams.set("embed", "");
-      return u.toString();
+      // Extract the design ID (first segment after /design/)
+      // Handles: /design/<id>/view, /design/<id>/<hash>/edit, /design/<id>/<hash>/view, etc.
+      const match = url.match(/canva\.com\/design\/([A-Za-z0-9_-]+)/);
+      if (match) {
+        return `https://www.canva.com/design/${match[1]}/view?embed`;
+      }
     }
   } catch { /* fall through */ }
   return url;
@@ -812,7 +814,7 @@ export default function LiveClassroom() {
             <div className="flex gap-2 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
               <input
                 className="flex-1 bg-gray-800 text-white text-sm rounded-xl px-4 py-2 border border-gray-700 focus:border-blue-500 outline-none placeholder-gray-600"
-                placeholder="Paste Canva share link or PDF URL to start presenting…"
+                placeholder="Canva: Share → Embed link   |   or paste a PDF URL"
                 value={urlInput}
                 onChange={e => setUrlInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && setPresentationUrl(urlInput)}
