@@ -908,14 +908,14 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
             return (
               <div className="grid grid-cols-3 lg:grid-cols-6 gap-2.5">
                 {CARDS.map(({ label, value, sub, icon: Icon, iconBg }) => (
-                  <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex items-center gap-2.5 hover:shadow-md transition-shadow min-w-0">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
-                      <Icon className="w-5 h-5 text-white" />
+                  <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-2.5 flex items-center gap-2 hover:shadow-md transition-shadow min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+                      <Icon className="w-4 h-4 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xl font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
-                      <p className="text-[11px] font-medium text-gray-600 truncate mt-0.5">{label}</p>
-                      <p className={`text-[10px] truncate ${sub.startsWith("+") ? "text-green-600 font-medium" : "text-gray-400"}`}>{sub}</p>
+                      <p className="text-base font-extrabold leading-none truncate" style={{ color: NAVY }}>{value}</p>
+                      <p className="text-[10px] font-medium text-gray-600 truncate mt-0.5 leading-tight">{label}</p>
+                      <p className={`text-[9px] truncate leading-tight ${sub.startsWith("+") ? "text-green-600 font-medium" : "text-gray-400"}`}>{sub}</p>
                     </div>
                   </div>
                 ))}
@@ -1007,7 +1007,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           {(() => {
             const nowTs = new Date();
             const TABS = [
-              { id: "all",               label: "All Courses",        count: filteredCourses.length },
+              { id: "all",               label: "All Courses",        count: courses.length },
               { id: "admissions_active", label: "Admissions Active",  count: courses.filter(c => c.admissionStatus==="active").length },
               { id: "admissions_closed", label: "Admissions Closed",  count: courses.filter(c => c.admissionStatus!=="active").length },
               { id: "upcoming",          label: "Upcoming",           count: courses.filter(c => c.startDate && new Date(c.startDate)>nowTs).length },
