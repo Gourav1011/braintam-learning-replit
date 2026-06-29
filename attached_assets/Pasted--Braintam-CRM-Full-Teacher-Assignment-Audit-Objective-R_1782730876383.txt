@@ -1,0 +1,289 @@
+# Braintam CRM – Full Teacher Assignment Audit
+
+## Objective
+
+Remove all grade-based teacher dependencies.
+
+Teachers must be Grade-Neutral throughout the entire system.
+
+Permissions must be Assignment-Based only.
+
+---
+
+# Audit Areas
+
+## 1. Teacher Portal
+
+Status:
+✅ Fixed
+
+Verify:
+
+* My Batches
+* My Sessions
+* Live Classes
+* Recordings
+* Attendance
+* Dashboard counts
+
+Queries should use:
+
+teacher_id
+batch assignments
+session assignments
+live class assignments
+
+No grade filtering.
+
+---
+
+## 2. Admin Portal
+
+Check:
+
+Teacher Management
+Assign Teacher
+Teacher Details
+Teacher Dashboard
+Teacher Reports
+
+Verify:
+
+❌ teacher.gradeId
+❌ teacher.gradeIds
+❌ WHERE grade_id = ?
+
+Should not determine visibility.
+
+Admin should be able to assign any teacher to any:
+
+Batch
+Session
+Live Class
+Course
+Mastery Course
+Demo Class
+Special Session
+
+---
+
+## 3. Demo Batches
+
+Check:
+
+Create Batch
+Edit Batch
+Assign Teacher
+Batch Listing
+Batch Sessions
+Live Classes
+
+Verify:
+
+When assigning teacher:
+
+teacher_id saved
+teacher_name saved for display
+
+Batch should not disappear because of grade mismatch.
+
+---
+
+## 4. Demo Sessions
+
+Status:
+✅ teacher_id added
+
+Verify:
+
+Create Session
+Edit Session
+Duplicate Session
+Reschedule Session
+Delete Session
+Session Listing
+
+All operations should save:
+
+teacher_id
+teacher_name
+
+teacher_name must never be the source of truth.
+
+---
+
+## 5. Live Classes
+
+Check:
+
+Create Live Class
+Edit Live Class
+Join Live Class
+My Live Classes
+Attendance Reports
+Recordings
+
+Visibility:
+
+live_class.teacher_id
+OR session.teacher_id
+OR assignment table
+
+Never:
+
+live_class.grade_id
+
+---
+
+## 6. Mastery Courses
+
+Very important.
+
+Check:
+
+Mastery Courses
+Mastery Batches
+Mastery Sessions
+Mastery Live Classes
+
+Possible problem:
+
+WHERE grade_id = teacher.grade_id
+
+Remove this.
+
+Visibility should use:
+
+teacher_id assignments only.
+
+---
+
+## 7. Mastery Teachers
+
+Check:
+
+Assign Teacher
+Change Teacher
+Teacher Dashboard
+Batch Visibility
+Course Visibility
+
+Teacher can teach:
+
+Grade 3
+Grade 5
+Grade 8
+Olympiad
+Ignite
+
+simultaneously.
+
+No grade restrictions.
+
+---
+
+## 8. Courses Module
+
+Check:
+
+Course List
+Course Teachers
+Teacher Courses
+Course Sessions
+Course Dashboard
+
+Verify:
+
+course.teacher_id
+course_session.teacher_id
+
+No:
+
+teacher.grade_id
+
+---
+
+## 9. Dashboard Cards
+
+Teacher Dashboard:
+
+My Batches
+Today's Classes
+Upcoming Live Classes
+Pending Recordings
+Attendance
+
+Admin Dashboard:
+
+Teacher Load
+Teacher Assignments
+Teacher Reports
+
+Counts should come from assignments.
+
+Not grades.
+
+---
+
+## 10. Reports
+
+Check:
+
+Teacher Reports
+Attendance Reports
+Batch Reports
+Course Reports
+
+No hidden filters:
+
+grade_id
+teacher.grade_id
+
+---
+
+# Global Search Required
+
+Search entire codebase for:
+
+teacher.gradeId
+teacher.grade_id
+teacher.grades
+gradeIds
+WHERE grade_id
+teacherGrade
+assignedGrade
+batch.gradeId === teacher.gradeId
+session.gradeId === teacher.gradeId
+course.gradeId === teacher.gradeId
+
+Review every occurrence.
+
+---
+
+# Final Braintam Principle
+
+Teacher = Neutral Resource
+
+Teacher
+↓
+Assignments
+↓
+Batches
+↓
+Sessions
+↓
+Live Classes
+↓
+Courses
+
+NOT
+
+Teacher
+↓
+Grade
+↓
+Everything Else
+
+Grades are academic entities.
+
+Assignments determine permissions.
