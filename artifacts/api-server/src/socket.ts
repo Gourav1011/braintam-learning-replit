@@ -912,6 +912,28 @@ export function setupSocketIO(httpServer: HttpServer) {
       }, 4000);
     });
 
+    // ── Mentor silently suggests a student to the teacher ─────
+    socket.on("mentor:suggestStudent", (payload: { studentId: string; studentName: string }) => {
+      if (!isMentor) return;
+      // No popup — just highlight the student at top of teacher's list
+      io.to(teacherRoom(sessionId)).emit("teacher:studentSuggested", {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+      });
+    });
+
+    // ── Staff Chat (teacher + mentor private channel) ──────────
+    socket.on("staffChat:send", (rawText: string) => {
+      if (!isStaff && !isMentor) return;
+      const text = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
+      if (!text) return;
+      const msg = {
+        id: `sc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name, role, text, ts: Date.now(),
+      };
+      io.to(teacherRoom(sessionId)).emit("staffChat:message", msg);
+    });
+
     // ── Attendance snapshot on demand (5-second client heartbeat) ────
     socket.on("request:attendance", () => {
       const snap = Array.from(liveStateCache.entries())

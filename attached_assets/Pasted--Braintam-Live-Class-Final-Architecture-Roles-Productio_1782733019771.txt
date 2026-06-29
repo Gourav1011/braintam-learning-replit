@@ -1,0 +1,474 @@
+# Braintam Live Class – Final Architecture & Roles (Production Version)
+
+## Core Philosophy
+
+Teacher = Teaching
+
+Mentor = Operations
+
+Student = Learning
+
+The live classroom should keep every role simple and focused. Teachers should never be overloaded with attendance management, and mentors should never control teaching functions.
+
+---
+
+# Video Architecture
+
+## Teacher
+
+* Teacher video remains ON throughout the class.
+* Teacher can share:
+
+  * PPT
+  * PDF
+  * Whiteboard
+  * Video
+  * Screen Share
+* Teacher can switch between:
+
+  * Presentation Mode
+  * Demonstration Mode
+  * Split View
+
+---
+
+## Mentors
+
+* Camera OFF
+* Microphone OFF
+* Join as viewers only.
+
+Mentors are moderators and student support staff.
+
+---
+
+## Students
+
+* Camera OFF by default.
+* Microphone OFF by default.
+* Join as viewers only.
+
+Students can only become publishers temporarily when invited on stage.
+
+---
+
+# Stage System
+
+Teacher controls the stage.
+
+Maximum stage participants:
+2–5 students.
+
+Flow:
+
+Student raises hand
+↓
+Teacher approves
+↓
+Student receives invitation
+↓
+Camera and microphone enabled
+↓
+Student appears on stage
+↓
+60-second timer starts
+↓
+10-second warning
+↓
+Auto remove from stage
+↓
+Student returns to viewer mode
+
+Teacher controls:
+
+✅ Give Mic
+✅ Extend Time (+30 sec)
+✅ Extend Time (+60 sec)
+✅ Mute Student
+✅ Remove Student
+
+Only the teacher can control the stage.
+
+Mentors cannot bring students on stage.
+
+---
+
+# Teacher Panel
+
+Teacher should NOT see:
+
+❌ Live
+❌ Backstage
+❌ Absent
+
+Reason:
+Teacher should focus entirely on teaching.
+
+---
+
+## Present Student List
+
+Teacher sees only students currently present in class.
+
+Example:
+
+Rahul Sharma
+Priya Singh
+Arjun Patel
+...
+
+---
+
+## Search Box
+
+🔍 Search student name...
+
+Teacher can search:
+
+Rahul
+
+Result:
+
+Rahul Sharma
+Grade 3
+Group 1
+
+[🎤 Give Mic]
+
+---
+
+## Suggested Students
+
+When mentors suggest students, the teacher should NOT receive:
+
+❌ Popup
+❌ Notification
+❌ Message
+❌ Mentor name
+
+Instead:
+
+The student's name should automatically:
+
+* Move to the top of the Present Student List
+* Be highlighted using a different color
+
+Example:
+
+Present Students
+
+🟣 Rahul Sharma
+🟢 Priya Singh
+🟢 Arjun Patel
+
+Legend:
+
+🟢 Present Student
+🟣 Mentor Suggested Student
+🔴 Student Currently On Stage
+
+This allows the teacher to instantly notice recommended students without being distracted.
+
+Teacher can:
+
+🎤 Give Mic
+or
+Ignore and continue teaching.
+
+---
+
+# Mentor Panel
+
+Mentor is responsible for student operations.
+
+Example:
+
+Group 1 (34 Students)
+
+🟢 Live: 29
+🟡 Backstage: 2
+🔴 Absent: 3
+
+[📞 Call]
+
+---
+
+## Call Button
+
+Clicking Call:
+
+Absent Students
+
+Rahul Sharma      📞
+Priya Singh       📞
+Arjun Patel       📞
+
+Mentor taps the phone icon and calls the student directly.
+
+---
+
+## Group Chat
+
+Mentor sees only their assigned group's chat.
+
+Example:
+
+Group 1 Chat
+
+Rahul:
+I didn't understand the question.
+
+Mentor:
+I'll explain after this example.
+
+Mentors cannot see chats of other groups.
+
+---
+
+## Raise Hand Queue
+
+Raise Hand appears only when the teacher enables it.
+
+Students raise hand.
+
+Mentor sees raised-hand requests only from their assigned group.
+
+Example:
+
+Group 1 Raise Hand Queue
+
+✋ Rahul Sharma
+✋ Priya Singh
+
+Mentor action:
+
+[Suggest]
+
+When Suggest is clicked:
+
+* Student moves to the top of the teacher's Present Student List.
+* Student name changes color.
+* No popup appears.
+* No mentor name is shown.
+
+Mentors cannot:
+
+❌ Give Mic
+❌ Bring students on stage
+❌ Control stage timer
+❌ Control teacher video
+
+---
+
+## Mentor Permissions
+
+Mentor can:
+
+✅ Watch class
+✅ Group chat
+✅ Call absent students
+✅ Monitor attendance
+✅ Suggest students for mic
+✅ View raised-hand queue of assigned group only
+
+Mentor cannot:
+
+❌ Use camera
+❌ Use microphone
+❌ Control stage
+❌ Control polls
+❌ Control teacher video
+❌ Give mic directly
+
+---
+
+# Student Panel
+
+Student sees:
+
+Teacher video
+PPT / Presentation
+Group Chat
+Polls
+Raise Hand
+
+---
+
+## Group Chat
+
+Students can see:
+
+Only their assigned mentor group's chat.
+
+Example:
+
+Group 1 students:
+Can only see Group 1 messages.
+
+Group 2 students:
+Can only see Group 2 messages.
+
+Students cannot see other groups.
+
+---
+
+## Raise Hand
+
+Raise Hand button appears only when teacher enables it.
+
+Flow:
+
+Raise Hand
+↓
+Mentor sees request
+↓
+Mentor can suggest student
+↓
+Teacher sees highlighted student
+↓
+Teacher may give mic
+↓
+Student joins stage
+
+---
+
+## Student Restrictions
+
+Students cannot:
+
+❌ See attendance panels
+❌ See other groups
+❌ See absent students
+❌ See backstage students
+❌ See mentor staff chat
+❌ Turn on camera themselves
+❌ Turn on microphone themselves
+
+---
+
+# Internal Teacher ↔ Mentor Chat
+
+Add a completely separate tab:
+
+Chat
+Poll
+Staff Chat
+
+Staff Chat is private.
+
+Students cannot see this tab.
+
+Purpose:
+
+Mentor → Teacher
+
+Examples:
+
+"Rahul's internet is poor."
+
+"Three students are absent."
+
+"Please repeat the last question."
+
+Teacher → Mentor
+
+"Call absent students."
+
+"Send worksheet in group."
+
+"Ask Group 2 to stay after class."
+
+"Check Rahul's internet issue."
+
+Purpose:
+
+Teachers and mentors communicate privately during class without using WhatsApp or external apps.
+
+---
+
+# Right Panel Layout
+
+## Teacher
+
+Teacher Video
+
+Chat
+Poll
+Staff Chat
+
+Present Students
+
+🔍 Search Student
+🎤 Give Mic
+
+Present Students:
+
+🟣 Rahul Sharma
+🟢 Priya Singh
+🟢 Arjun Patel
+
+---
+
+## Mentor
+
+Teacher Video
+
+Group 1
+
+🟢 Live: 29
+🟡 Backstage: 2
+🔴 Absent: 3
+
+[📞 Call]
+
+Group Chat
+Staff Chat
+
+Raise Hand Queue
+
+✋ Rahul Sharma      [Suggest]
+✋ Priya Singh       [Suggest]
+
+---
+
+## Student
+
+Teacher Video
+
+Chat
+Poll
+Raise Hand
+
+---
+
+# Final Braintam Live Class Philosophy
+
+Teacher = Teaching
+
+Mentor = Student Operations
+
+Student = Learning
+
+Teacher focuses only on:
+
+* Teaching
+* Presentation
+* Student interaction
+* Giving mic
+
+Mentor focuses only on:
+
+* Attendance
+* Group chat
+* Calling absent students
+* Supporting students
+* Suggesting students for stage
+
+Student focuses only on:
+
+* Watching class
+* Participating in chat
+* Raising hand
+* Coming on stage only when invited
+
+This architecture is designed for large-scale classes (500–1,000+ students per class) while keeping the interface simple, scalable, and easy to use.
