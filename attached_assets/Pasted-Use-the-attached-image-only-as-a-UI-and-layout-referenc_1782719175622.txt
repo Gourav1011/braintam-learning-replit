@@ -1,0 +1,242 @@
+Use the attached image only as a UI and layout reference.
+
+IMPORTANT:
+Do NOT use fake, demo, hardcoded, random, or generated data anywhere in the Revenue & Admissions Analytics dashboard.
+
+Everything must come from real database queries and actual CRM data.
+
+==================================================
+REAL DATA ONLY
+==============
+
+Never show:
+
+₹12,45,000
+342 Admissions
+2.1% Conversion
+
+unless those values actually exist in the database.
+
+No placeholders.
+No mock values.
+No static arrays.
+No sample charts.
+
+If data does not exist:
+
+Show:
+
+0
+No Data Available
+No admissions yet
+No revenue recorded
+
+==================================================
+EMPTY STATES
+============
+
+Charts:
+"No data available for selected period."
+
+Tables:
+"No admissions found."
+
+Revenue:
+"Revenue data will appear after payments are approved."
+
+Mentor Performance:
+"No mentor conversions yet."
+
+Grade Performance:
+"No admissions data available."
+
+==================================================
+LOADING STATES
+==============
+
+Use:
+
+* Skeleton cards
+* Skeleton charts
+* Skeleton tables
+
+Never show fake numbers while loading.
+
+==================================================
+DATE FILTERING
+==============
+
+All widgets should react to the selected date range.
+
+Filters:
+
+Today
+This Week
+This Month
+This Year
+Custom Range
+
+Changing the date range should refresh all analytics using real queries.
+
+==================================================
+TOP KPI CARDS
+=============
+
+Values must be calculated from actual data.
+
+Examples:
+
+Total Revenue
+= Sum of approved/captured payments.
+
+Total Admissions
+= Count of actual converted and enrolled students.
+
+Demo Paid Students
+= Count of actual demo payments.
+
+Mastery Conversions
+= Count of actual Ignite → Mastery conversions.
+
+Conversion Rate
+= Actual calculation from CRM data.
+
+Average Revenue Per Admission
+= Total Revenue ÷ Total Admissions.
+
+==================================================
+ADMISSIONS FUNNEL
+=================
+
+Calculate from actual CRM pipeline:
+
+Leads
+↓
+Demo Paid
+↓
+Demo Attended
+↓
+Converted
+↓
+Enrolled
+
+Every count and percentage must be real.
+
+No assumptions.
+
+==================================================
+GRADE PERFORMANCE
+=================
+
+Query actual data:
+
+Grade
+Leads
+Demo Paid
+Converted
+Revenue
+Conversion %
+
+Sort and filter using live database values.
+
+==================================================
+MENTOR PERFORMANCE
+==================
+
+Use actual mentor assignments.
+
+Mentor
+Assigned Leads
+Demo Paid
+Converted
+Revenue
+Conversion %
+
+No fake mentor names.
+No random revenue.
+
+==================================================
+COURSE PERFORMANCE
+==================
+
+Display actual course instances.
+
+Course
+Admissions
+Students
+Revenue
+Conversion %
+
+Values must come from:
+
+courses
+masteryStudents
+payments
+enrollments
+
+==================================================
+REVENUE BREAKDOWN
+=================
+
+Charts must use real aggregations:
+
+By Grade
+By Course
+By Mentor
+By Source
+
+No hardcoded percentages.
+
+==================================================
+RECENT CONVERSIONS
+==================
+
+Display actual conversions only.
+
+Student
+Grade
+Mentor
+Course
+Amount
+Date
+
+If there are no conversions:
+
+"No recent conversions."
+
+==================================================
+AI INSIGHTS
+===========
+
+Generate insights only from real data.
+
+Examples:
+
+"Grade 3 generated the highest revenue this month."
+
+"Mentor Akshay achieved the highest conversion rate."
+
+"Revenue increased by 18% compared to last month."
+
+Do not generate insights when insufficient data exists.
+
+==================================================
+PERFORMANCE REQUIREMENTS
+========================
+
+* Query real data only.
+* Use server-side aggregation.
+* Avoid multiple unnecessary queries.
+* Cache expensive analytics calculations where appropriate.
+* Lazy load heavy charts.
+* Show loading states during calculations.
+
+==================================================
+FINAL GOAL
+==========
+
+This dashboard should behave like an executive command center powered entirely by live CRM data.
+
+If the database is empty, the dashboard should gracefully show empty states.
+
+If the database has data, every chart, card, percentage, insight, and table should automatically reflect the real numbers from BTL CRM.
