@@ -1,0 +1,316 @@
+# Braintam CRM – Teacher Assignment & Visibility Architecture Fix
+
+## Issue Found
+
+I assigned `teacher1@braintam.com` to:
+
+Demo Batch → Test Batch
+
+However, when logging into the Teacher Portal:
+
+* No batch is visible.
+* No live classes are visible.
+* The teacher dashboard appears empty.
+
+This indicates that the Teacher Portal is likely dependent on **Grade Assignment** instead of **direct Batch/Class Assignment**.
+
+---
+
+# Root Cause
+
+Currently, the system appears to work like this:
+
+Grade
+→ Batch
+→ Class
+→ Teacher
+
+Because the teacher is not assigned to the Grade, the portal blocks access even though the teacher has been assigned to the Batch.
+
+This architecture will create many problems in Braintam because teachers frequently teach across multiple grades, batches, demo classes, revision classes, doubt sessions, and special sessions.
+
+---
+
+# Required Architecture Change
+
+Teachers should be completely Grade-Neutral.
+
+Teachers should never be permanently attached to a specific grade.
+
+Instead, teacher access should be based entirely on assignments.
+
+New hierarchy:
+
+Teacher
+→ Assigned Batches
+→ Assigned Classes
+→ Assigned Live Sessions
+
+NOT
+
+Teacher
+→ Grade
+→ Batch
+→ Class
+
+---
+
+# Why Grade-Neutral Teachers are Required in Braintam
+
+Examples:
+
+Teacher A:
+
+* Grade 3 Maths
+* Grade 4 Science
+* Grade 6 Mental Ability
+* Grade 8 Revision Session
+
+Teacher B:
+
+* Demo Batch for Grades 3-5
+* Scholarship Batch
+* Olympiad Batch
+
+Teacher C:
+
+* Emergency Substitute Teacher
+
+These use cases are common in Braintam.
+
+A teacher cannot be locked to one grade.
+
+---
+
+# New Teacher Assignment System
+
+## Teacher Profile
+
+Teacher:
+
+* Name
+* Email
+* Subjects
+* Status
+* Assigned Batches
+* Assigned Classes
+* Assigned Live Sessions
+
+No mandatory Grade field.
+
+Grade field should be optional or removed completely from permission logic.
+
+---
+
+# Assignment Rules
+
+Admin can assign teachers to:
+
+1. Batch
+2. Class
+3. Live Session
+4. Subject
+5. Recording Session
+6. Demo Session
+
+A teacher can belong to unlimited batches and classes.
+
+---
+
+# Visibility Rules
+
+## My Batches
+
+Teacher sees only batches assigned to them.
+
+Examples:
+
+Teacher A assigned:
+
+* Grade 3 Batch A
+* Grade 4 Batch B
+* Demo Batch
+
+Teacher Portal shows:
+
+My Batches
+
+* Grade 3 Batch A
+* Grade 4 Batch B
+* Demo Batch
+
+---
+
+## My Classes
+
+Teacher sees only classes assigned to them.
+
+Examples:
+
+Today:
+
+* Grade 3 Maths
+* Grade 4 Science
+* Demo Session
+
+Only these classes should appear.
+
+---
+
+## Live Classes
+
+Teacher sees:
+
+Live Classes
+
+* Upcoming
+* Ongoing
+* Completed
+
+Only assigned sessions should appear.
+
+---
+
+# Assignment Sources
+
+Teacher should receive visibility if assigned through ANY of these:
+
+Batch Assignment
+OR
+Class Assignment
+OR
+Live Session Assignment
+
+Any one assignment should grant access.
+
+No Grade assignment should be required.
+
+---
+
+# Database Changes
+
+Teacher Table
+
+Do not use:
+
+teacher.gradeId
+
+Instead use:
+
+TeacherAssignments
+
+* id
+* teacherId
+* batchId
+* classId
+* liveClassId
+* subjectId
+* assignedBy
+* assignedAt
+* isActive
+
+A teacher can have multiple active assignments.
+
+---
+
+# Dashboard Cards
+
+Teacher Dashboard
+
+Today's Classes
+Upcoming Live Classes
+My Batches
+My Subjects
+Pending Recordings
+Attendance Reports
+
+All cards should be generated from assignments.
+
+Never from grade.
+
+---
+
+# Batch Visibility Logic
+
+Wrong:
+
+if (teacher.gradeId === batch.gradeId)
+
+Correct:
+
+if (teacher is assigned to batch)
+
+show batch
+
+---
+
+# Live Class Visibility Logic
+
+Wrong:
+
+teacher
+→ grade
+→ batch
+→ class
+
+Correct:
+
+teacher
+→ liveClassAssignment
+
+show live class
+
+---
+
+# Special Braintam Cases
+
+## Demo Batches
+
+Teachers may conduct demo sessions for students from multiple grades.
+
+## Ignite Classes
+
+Teachers may teach students from different grades together.
+
+## Doubt Sessions
+
+Any teacher may be assigned temporarily.
+
+## Substitute Teachers
+
+Admin may assign another teacher if the regular teacher is absent.
+
+## Master Classes
+
+One teacher may teach Grades 3, 4 and 5 together.
+
+All these cases become impossible if teachers are locked to grades.
+
+---
+
+# Required Investigation
+
+Please investigate why:
+
+[teacher1@braintam.com](mailto:teacher1@braintam.com)
+→ assigned to Demo Batch
+→ assigned to Test Batch
+
+still cannot see:
+
+* Batch
+* Class
+* Live Class
+
+Check:
+
+1. Teacher portal queries
+2. API filters
+3. Permission middleware
+4. Grade-based conditions
+5. Batch fetching logic
+6. Live class fetching logic
+
+Remove every dependency between Teacher and Grade.
+
+Teacher access in Braintam must be completely Assignment-Based and Grade-Neutral.

@@ -11,11 +11,11 @@ import {
   demoSessionsTable, demoBatchesTable,
   chaptersTable, topicsTable,
 } from "@workspace/db";
-import { eq, and, inArray, desc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, gte, lte, or } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 
 const router = Router();
-const teacherOrAdmin = requireRole("teacher", "admin");
+const teacherOrAdmin = requireRole("teacher", "admin", "super_admin");
 
 async function getTeacherCourseIds(teacherId: number): Promise<number[]> {
   const rows = await db
@@ -722,10 +722,25 @@ router.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
 
 // ── Teacher's batches list ─────────────────────────────────────────
 router.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
-  const teacherId = req.authUser!.id;
-  const isAdmin = req.authUser!.role === "admin";
+  const teacher = req.authUser!;
+  const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
+  if (isAdmin) {
+    const batches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
+    res.json(batches.map(b => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
+    return;
+  }
+  // Include batches assigned by FK OR batches that have sessions assigned to this teacher by name
+  const sessionBatches = await db
+    .selectDistinct({ batchId: demoSessionsTable.batchId })
+    .from(demoSessionsTable)
+    .where(sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`);
+  const sessionBatchIds = sessionBatches.map(r => r.batchId);
   const batches = await db.select().from(demoBatchesTable)
-    .where(isAdmin ? undefined : eq(demoBatchesTable.teacherId, teacherId))
+    .where(
+      sessionBatchIds.length > 0
+        ? or(eq(demoBatchesTable.teacherId, teacher.id), inArray(demoBatchesTable.id, sessionBatchIds))
+        : eq(demoBatchesTable.teacherId, teacher.id)
+    )
     .orderBy(desc(demoBatchesTable.id));
   res.json(batches.map(b => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
 });
@@ -754,19 +769,35 @@ router.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
 
 // ── My Sessions (demo_sessions for teacher's batches) ──────────────
 router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
-  const teacherId = req.authUser!.id;
-  const isAdmin = req.authUser!.role === "admin";
+  const teacher = req.authUser!;
+  const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
 
-  const batches = await db.select().from(demoBatchesTable)
-    .where(isAdmin ? undefined : eq(demoBatchesTable.teacherId, teacherId));
+  // Load ALL batches for the batchMap (needed for session metadata)
+  const allBatches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
+  const batchMap = Object.fromEntries(allBatches.map(b => [b.id, b]));
 
-  if (batches.length === 0) { res.json([]); return; }
-  const batchIds = batches.map(b => b.id);
-  const batchMap = Object.fromEntries(batches.map(b => [b.id, b]));
+  let sessions;
+  if (isAdmin) {
+    sessions = await db.select().from(demoSessionsTable)
+      .orderBy(desc(demoSessionsTable.scheduledAt));
+  } else {
+    // Find batches assigned to this teacher by FK
+    const assignedBatchIds = allBatches
+      .filter(b => b.teacherId === teacher.id)
+      .map(b => b.id);
 
-  const sessions = await db.select().from(demoSessionsTable)
-    .where(inArray(demoSessionsTable.batchId, batchIds))
-    .orderBy(desc(demoSessionsTable.scheduledAt));
+    // Find sessions assigned to this teacher by name (grade-neutral assignment)
+    sessions = await db.select().from(demoSessionsTable)
+      .where(
+        assignedBatchIds.length > 0
+          ? or(
+              sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`,
+              inArray(demoSessionsTable.batchId, assignedBatchIds)
+            )
+          : sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`
+      )
+      .orderBy(desc(demoSessionsTable.scheduledAt));
+  }
 
   res.json(sessions.map(s => {
     const batch = batchMap[s.batchId];
