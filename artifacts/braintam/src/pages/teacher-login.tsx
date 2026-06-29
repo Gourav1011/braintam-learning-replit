@@ -38,7 +38,8 @@ export default function TeacherLoginPage() {
         setError(data.error ?? "Invalid credentials");
         return;
       }
-      if (data.student?.role !== "teacher" && data.student?.role !== "admin") {
+      const allowedTeacherRoles = ["teacher", "admin", "super_admin", "academic_mentor"];
+      if (!allowedTeacherRoles.includes(data.student?.role)) {
         setError("This account does not have teacher access.");
         return;
       }
