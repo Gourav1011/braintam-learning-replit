@@ -1,0 +1,274 @@
+# Braintam CRM – Final Teacher Assignment System (Production Architecture)
+
+## Current Status
+
+✅ Added teacher_id to demo_sessions
+✅ Backfilled all existing sessions
+✅ Backfilled batches
+✅ Session create/update saves teacher_id
+✅ Teacher Portal is grade-neutral
+✅ Teacher1 can see:
+
+* 2 batches
+* 7 sessions
+* No grade dependency
+
+---
+
+# Core Principle
+
+Permission Source = Assignment
+
+Grade = Academic Information Only
+
+Grades organize students and curriculum.
+
+Grades must NEVER determine teacher access.
+
+---
+
+# Source of Truth
+
+Always use:
+
+teacher_id
+
+Display only:
+
+teacher_name
+teacher_email
+
+Never use teacher_name for permissions because names can:
+
+* Change
+* Be duplicated
+* Have different spellings
+* Be edited by admins
+
+IDs never change.
+
+---
+
+# Final Visibility Rules
+
+## My Sessions
+
+Show session if:
+
+session.teacher_id = teacher.id
+
+Fallback:
+
+session.teacher_name = teacher.name
+
+Fallback should remain temporarily only for old data migration.
+
+Goal:
+
+100% teacher_id-based.
+
+---
+
+## My Batches
+
+Show batch if:
+
+batch.primary_teacher_id = teacher.id
+
+OR
+
+EXISTS (
+SELECT 1
+FROM demo_sessions
+WHERE
+demo_sessions.batch_id = batch.id
+AND demo_sessions.teacher_id = teacher.id
+)
+
+This is important because:
+
+A batch can have:
+
+Math Teacher
+Science Teacher
+English Teacher
+Substitute Teacher
+
+One batch can have multiple teachers.
+
+---
+
+## My Live Classes
+
+Show live class if:
+
+live_class.teacher_id = teacher.id
+
+OR
+
+live_class.session_id belongs to teacher
+
+OR
+
+live_class.batch_id belongs to teacher
+
+---
+
+# Remove Single-Teacher Assumption
+
+Current:
+
+batch.teacher_id
+
+Recommended:
+
+batch.primary_teacher_id
+
+Reason:
+
+A batch can have:
+
+Primary Teacher
+Assistant Teacher
+Substitute Teacher
+Demo Teacher
+Special Workshop Teacher
+
+Do not assume only one teacher exists per batch.
+
+---
+
+# Future Table (Recommended)
+
+teacher_assignments
+
+id
+teacher_id
+batch_id
+session_id
+live_class_id
+role
+assigned_by
+assigned_at
+is_active
+
+role values:
+
+PRIMARY
+SUBSTITUTE
+ASSISTANT
+DEMO
+SPECIAL_SESSION
+
+Benefits:
+
+✅ Multiple teachers per batch
+✅ Multiple batches per teacher
+✅ Substitute teachers
+✅ Demo sessions
+✅ Olympiad sessions
+✅ Revision sessions
+✅ Workshops
+✅ Temporary assignments
+
+---
+
+# Teacher Dashboard
+
+Cards:
+
+My Batches
+Today's Classes
+Upcoming Live Classes
+Recordings
+Attendance
+Assignments
+
+Every card must use assignment-based queries.
+
+Never use grade filters.
+
+---
+
+# Example
+
+Teacher A:
+
+Grade 3 Maths
+Grade 5 Science
+Grade 8 Revision
+Demo Batch
+Olympiad Workshop
+
+Teacher Portal should automatically show:
+
+My Batches:
+
+* Grade 3 Batch A
+* Grade 5 Batch B
+* Demo Batch
+
+Today's Sessions:
+
+* Grade 3 Maths
+* Grade 5 Science
+* Olympiad Workshop
+
+Upcoming Live Classes:
+
+* Demo Session
+* Revision Session
+
+No grade assignment required.
+
+---
+
+# Migration Plan
+
+Phase 1
+✅ Add teacher_id
+✅ Backfill sessions
+✅ Backfill batches
+
+Phase 2
+✅ Save teacher_id on create/update
+
+Phase 3
+Keep teacher_name only for display.
+
+Phase 4
+Introduce teacher_assignments table.
+
+Phase 5
+Remove all name-based permission checks.
+
+Phase 6
+Remove all grade-based teacher permissions.
+
+---
+
+# Final Braintam Architecture
+
+Teacher
+↓
+Teacher Assignments
+↓
+Batches
+↓
+Sessions
+↓
+Live Classes
+
+NOT
+
+Teacher
+↓
+Grade
+↓
+Batch
+↓
+Session
+↓
+Live Class
+
+This architecture supports Grades 1–10, Ignite, Demo Classes, Olympiads, Revision Sessions, Doubt Classes, and future expansion without permission issues.

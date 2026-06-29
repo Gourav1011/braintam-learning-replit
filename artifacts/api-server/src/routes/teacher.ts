@@ -729,11 +729,15 @@ router.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
     res.json(batches.map(b => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
     return;
   }
-  // Include batches assigned by FK OR batches that have sessions assigned to this teacher by name
+  // Find batches where teacher is assigned via session.teacher_id (primary)
+  // OR session.teacherName (fallback for old data) OR batch.teacher_id directly
   const sessionBatches = await db
     .selectDistinct({ batchId: demoSessionsTable.batchId })
     .from(demoSessionsTable)
-    .where(sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`);
+    .where(or(
+      eq(demoSessionsTable.teacherId, teacher.id),
+      sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`
+    ));
   const sessionBatchIds = sessionBatches.map(r => r.batchId);
   const batches = await db.select().from(demoBatchesTable)
     .where(
