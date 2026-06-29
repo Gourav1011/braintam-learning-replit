@@ -1,0 +1,108 @@
+WebRTC Trtc Logo
+Products
+Choose the product that suits you best through comparison.
+Solutions
+Developers
+Start building easily with quick start tutorials, code samples, key resources and more.
+Demo
+Pricing
+Get complete pricing proposal tailored to your needs.
+Company
+Unlock Industry-Leading 25% Commissions with Tencent RTC Affiliate Program
+EN
+
+Talk to us
+
+Get Started
+🚀
+Tencent RTC x Cartesia Strategic Partnership
+Powers next-gen conversational AI with lifelike voice interactions and lightning-fast response times!
+Conversational AI
+Build conversational AI in minutes. Ultra-low latency, human-like, and cross-platform support!
+Affiliate Program
+Earn up to 25% recurring commission. Monetize your influence today!
+🚀
+Tencent RTC x Cartesia Strategic Partnership
+Powers next-gen conversational AI with lifelike voice interactions and lightning-fast response times!
+Conversational AI
+Build conversational AI in minutes. Ultra-low latency, human-like, and cross-platform support!
+Affiliate Program
+Earn up to 25% recurring commission. Monetize your influence today!
+🚀
+Tencent RTC x Cartesia Strategic Partnership
+Powers next-gen conversational AI with lifelike voice interactions and lightning-fast response times!
+Conversational AI
+Build conversational AI in minutes. Ultra-low latency, human-like, and cross-platform support!
+Affiliate Program
+Earn up to 25% recurring commission. Monetize your influence today!
+Pricing Calculator
+
+Start Free Trial
+
+Talk to Sales
+
+Pricing Calculator
+Products
+Select Products
+Call
+Call
+UIKit
+Conference
+Conference
+UIKit
+Live
+Live
+UIKit
+RTC Engine
+RTC Engine
+Chat
+Chat
+UIKit
+Select Live Scene
+Info
+Voice Room
+Video Room
+Expected Rooms per Month
+480
+Expected Duration (min) per Room
+90
+Live Stream Resolution per Anchor
+HD
+720p
+FHD
+1080p
+2K
+4K
+Anchors per Room
+1
+Audience Size per Room
+500
+Value-added Function (Optional)
+
+On-Cloud Recording
+
+On-Cloud MixTranscoding
+Monthly Estimate
+Free Minutes:
+
+10,000mins/month
+$0
+Monthly Package:
+
+Pro
+450,000mins/month
+$899
+Costs for Excess:
+
+Duration: (480 rooms x 90 min x 1 anchors - 10000 free minutes / 4 deduction ratio - 450000 package minutes / 4 deduction ratio) x 0.00399 unit price + (480 rooms x 90 min x 500 audience - 287200 usage after deducting anchor time / 2 deduction ratio) x 0.002 unit price
+$42,912.80
+On-Cloud Recording: 480 rooms x 90 min x 0.00599 unit price
+$258.77
+Estimated Total
+
+$44,070.57
+Contact us to get a customized pricing! 🥳
+Volume Discounts
+Customized Solutions
+1-on-1 Technical Support
+
