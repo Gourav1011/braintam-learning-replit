@@ -98,9 +98,17 @@ function fmtDuration(sec: number): string {
 }
 
 // ── Annotation canvas ──────────────────────────────────────────
+const PEN_COLORS = [
+  { id: "orange", hex: "#FF6B1A", label: "Orange" },
+  { id: "red",    hex: "#EF4444", label: "Red" },
+  { id: "blue",   hex: "#3B82F6", label: "Blue" },
+  { id: "green",  hex: "#22C55E", label: "Green" },
+] as const;
+type PenColorId = typeof PEN_COLORS[number]["id"];
+
 function AnnotationCanvas({
-  mode, canvasRef,
-}: { mode: "none" | "pen" | "highlighter"; canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
+  mode, penColor, canvasRef,
+}: { mode: "none" | "pen" | "highlighter"; penColor: string; canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
   const isDrawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
 
@@ -119,8 +127,8 @@ function AnnotationCanvas({
     const p = pos(e);
     ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    if (mode === "pen") { ctx.strokeStyle = ORANGE; ctx.lineWidth = 3; ctx.globalAlpha = 1; }
-    else { ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 22; ctx.globalAlpha = 0.35; }
+    if (mode === "pen") { ctx.strokeStyle = penColor; ctx.lineWidth = 3; ctx.globalAlpha = 1; }
+    else { ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 24; ctx.globalAlpha = 0.18; }
     ctx.stroke(); ctx.globalAlpha = 1; last.current = p;
   };
   const onUp = () => { isDrawing.current = false; last.current = null; };
@@ -431,6 +439,8 @@ export default function LiveClassroom() {
 
   // ── Annotation ─────────────────────────────────────────────
   const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter">("none");
+  const [penColorId, setPenColorId] = useState<PenColorId>("orange");
+  const penColor = PEN_COLORS.find(c => c.id === penColorId)?.hex ?? ORANGE;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clearAnnotations = useCallback(() => {
     const c = canvasRef.current;
@@ -840,7 +850,7 @@ export default function LiveClassroom() {
               </div>
             )}
             {/* Annotation canvas — always present so pen/highlight/clear always work */}
-            {isStaff && <AnnotationCanvas mode={annotMode} canvasRef={canvasRef} />}
+            {isStaff && <AnnotationCanvas mode={annotMode} penColor={penColor} canvasRef={canvasRef} />}
 
             {/* Sprint 3 — "You're on stage" banner for invited students */}
             {myOnStage && !isStaff && (
@@ -906,16 +916,30 @@ export default function LiveClassroom() {
 
           {/* Annotation toolbar (teacher only) */}
           {isStaff && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0 flex-wrap">
               <span className="text-[10px] text-gray-500 font-semibold mr-1 uppercase tracking-wide">Annotate</span>
               {(["none", "pen", "highlighter"] as const).map(m => (
                 <button key={m} onClick={() => setAnnotMode(m)}
                   className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${annotMode === m
-                    ? m === "pen" ? "bg-orange-600 text-white" : m === "highlighter" ? "bg-yellow-600 text-white" : "bg-gray-700 text-white"
+                    ? m === "pen" ? "bg-orange-600 text-white" : m === "highlighter" ? "bg-yellow-500 text-black" : "bg-gray-700 text-white"
                     : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
                   {m === "none" ? "Off" : m === "pen" ? "✏️ Pen" : "🖍️ Highlight"}
                 </button>
               ))}
+              {/* Pen color swatches — only visible in pen mode */}
+              {annotMode === "pen" && (
+                <div className="flex items-center gap-1 ml-1 border-l border-gray-700 pl-2">
+                  {PEN_COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      title={c.label}
+                      onClick={() => setPenColorId(c.id)}
+                      className={`w-5 h-5 rounded-full border-2 transition-all ${penColorId === c.id ? "border-white scale-110" : "border-transparent hover:border-gray-400"}`}
+                      style={{ background: c.hex }}
+                    />
+                  ))}
+                </div>
+              )}
               <button onClick={clearAnnotations} className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-1">🗑 Clear</button>
               {presentationUrl && (
                 <button onClick={() => { setPresentationUrl(""); setUrlInput(""); }}
@@ -930,10 +954,10 @@ export default function LiveClassroom() {
         {/* ═══════════════════════════════════════════════════
             RIGHT PANEL (20% fixed)
         ═══════════════════════════════════════════════════ */}
-        <div className="flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 240 }}>
+        <div className="flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
-          <div className="relative bg-black flex-shrink-0" style={{ height: 150 }}>
+          <div className="relative bg-black flex-shrink-0" style={{ height: 190 }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
