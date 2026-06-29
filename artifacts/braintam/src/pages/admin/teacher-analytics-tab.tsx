@@ -489,13 +489,13 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {kpis.map(k => (
-          <div key={k.label} className="rounded-2xl p-4 border border-white/50 shadow-sm" style={{ background: k.bg }}>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "white", color: k.color }}>{k.icon}</div>
+          <div key={k.label} className="rounded-xl p-2.5 border border-white/50 shadow-sm flex items-center gap-2 min-w-0" style={{ background: k.bg }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "white", color: k.color }}>{k.icon}</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-base font-extrabold leading-none truncate" style={{ color: k.color }}>{k.value}</div>
+              <div className="text-[10px] font-medium text-gray-600 truncate mt-0.5 leading-tight">{k.label}</div>
+              <div className="text-[9px] text-gray-400 truncate leading-tight">{k.sub}</div>
             </div>
-            <div className="text-2xl font-black" style={{ color: k.color }}>{k.value}</div>
-            <div className="text-[10px] font-semibold text-gray-600 mt-0.5">{k.label}</div>
-            <div className="text-[9px] text-gray-400 mt-0.5">{k.sub}</div>
           </div>
         ))}
       </div>
