@@ -81,12 +81,13 @@ function getEmbedUrl(url: string): string {
   if (!url.trim()) return "";
   try {
     if (url.includes("canva.com/design/")) {
-      // Extract the design ID (first segment after /design/)
-      // Handles: /design/<id>/view, /design/<id>/<hash>/edit, /design/<id>/<hash>/view, etc.
-      const match = url.match(/canva\.com\/design\/([A-Za-z0-9_-]+)/);
-      if (match) {
-        return `https://www.canva.com/design/${match[1]}/view?embed`;
-      }
+      const u = new URL(url);
+      // Keep the full path (design ID + hash) — only replace the trailing
+      // /edit or /view segment, then add /view?embed
+      // e.g. /design/<id>/<hash>/edit  →  /design/<id>/<hash>/view?embed
+      // e.g. /design/<id>/<hash>/view  →  /design/<id>/<hash>/view?embed
+      const cleanPath = u.pathname.replace(/\/(edit|view)\/?$/, "");
+      return `https://www.canva.com${cleanPath}/view?embed`;
     }
   } catch { /* fall through */ }
   return url;
