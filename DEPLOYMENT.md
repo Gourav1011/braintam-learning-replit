@@ -1,5 +1,11 @@
 # Braintam — Production Deployment Guide
 
+> **Canonical Architecture (as of Jun 24 2026, permanent):**
+> All production traffic runs through a **single Express process on `localhost:5000`**.
+> Port 3000 is not used. The `braintam-live` PM2 process is deprecated and removed.
+> PM2 should contain exactly **one** process: `braintam-api → online`.
+
+
 ## Architecture
 
 ```
@@ -323,9 +329,29 @@ Vite dev server differ between environments.
 
 ## What NOT to Run on VPS
 
-| Command | Reason |
-|---|---|
-| `pnpm run dev` | Dev-only — starts Vite HMR, not for production |
-| Any separate frontend server | Not needed — Express serves the build |
-| `braintam-live` PM2 process | Removed — was the old separate frontend |
-| Vite preview server | Not needed — Express serves `dist/public` |
+| Command / Process | Status | Reason |
+|---|---|---|
+| `pnpm run dev` | ❌ Dev only | Starts Vite HMR — not for production |
+| Any frontend server on port 3000 | ❌ Deprecated | Port 3000 is not used in production |
+| `braintam-live` PM2 process | ❌ Removed | Was the old separate Vite frontend server |
+| Vite preview server | ❌ Not needed | Express serves `dist/public` directly |
+| Multiple PM2 processes | ❌ Wrong | Only `braintam-api → online` should exist |
+
+### Expected PM2 state on VPS
+
+```
+$ pm2 list
+┌────┬──────────────────┬─────────────┬─────────┬────────┬──────────────┐
+│ id │ name             │ namespace   │ version │ mode   │ status       │
+├────┼──────────────────┼─────────────┼─────────┼────────┼──────────────┤
+│  0 │ braintam-api     │ default     │ N/A     │ fork   │ online       │
+└────┴──────────────────┴─────────────┴─────────┴────────┴──────────────┘
+```
+
+If you see `braintam-live` or any process on port 3000, remove it:
+
+```bash
+pm2 stop braintam-live 2>/dev/null || true
+pm2 delete braintam-live 2>/dev/null || true
+pm2 save
+```

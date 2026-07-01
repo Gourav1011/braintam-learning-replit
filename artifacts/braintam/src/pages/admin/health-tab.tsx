@@ -134,11 +134,31 @@ export function HealthTab() {
           <Server className="w-4 h-4" style={{ color: NAVY }} />
           <span className="text-sm font-bold" style={{ color: NAVY }}>System Info</span>
           {!verLoading && frontendVer && backendVer && (
-            <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${versionMatch ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-              {versionMatch ? "✓ In sync" : "⚠ Version mismatch"}
+            <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${versionMatch ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              {versionMatch ? "✓ In sync" : "⚠ Deployment Out Of Sync"}
             </span>
           )}
         </div>
+
+        {/* Out-of-sync banner */}
+        {!verLoading && frontendVer && backendVer && !versionMatch && (
+          <div className="mx-4 mt-4 mb-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-red-800">⚠ Deployment Out Of Sync</p>
+                <p className="text-[11px] text-red-600">
+                  Frontend commit <span className="font-mono font-bold">{frontendVer.commit}</span> does not match backend commit <span className="font-mono font-bold">{backendVer.commit}</span>.
+                  The VPS may be running stale code.
+                </p>
+                <div>
+                  <p className="text-[10px] font-semibold text-red-700 mb-1">Suggested Fix:</p>
+                  <pre className="text-[10px] font-mono bg-red-100 text-red-900 rounded-lg px-3 py-2 leading-relaxed">{`cd ~/braintam-learning-replit\n./deploy.sh`}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 divide-x divide-gray-100">
           {/* Frontend */}
           <div className="px-5 py-4 space-y-3">
