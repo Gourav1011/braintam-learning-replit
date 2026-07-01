@@ -1,0 +1,186 @@
+Redesign the Learning Health Dashboard to be compact, modern, and admin-friendly. The current page has too much empty space, oversized cards, and requires unnecessary scrolling. Optimize it for quick insights and manager usability.
+
+Goals
+Fit most important information within the first screen without scrolling.
+Reduce vertical spacing and padding.
+Make it look like a professional CRM dashboard (similar to PW/OdaClass internal admin tools).
+Maintain all existing functionality and APIs.
+1. Header
+
+Keep:
+
+Title: Learning Health Dashboard
+Subtitle: Identify students who need attention and take action
+
+Right side:
+
+Refresh button
+Current date/time
+2. Alert Bar
+
+Show a single compact warning banner:
+
+⚠ 40 students need attention across all categories.
+Review the lists below and take appropriate action.
+
+Add:
+
+[View Communication Tools]
+
+button on the right.
+
+Height should be small (~60px).
+
+3. KPI Cards (Compact)
+
+Replace oversized cards with one responsive row:
+
+Card 1
+
+Icon
+Never Logged In
+Count: 15
+
+Card 2
+
+Icon
+Inactive 7+ Days
+Count: 3
+
+Card 3
+
+Icon
+No Test Activity
+Count: 22
+
+Card 4
+
+Icon
+Total Attention Required
+Count: 40
+
+Requirements:
+
+Maximum height around 80px
+Equal width cards
+Large count
+Small label
+Soft colored backgrounds
+Responsive on tablet/mobile
+4. System Status
+
+Remove the large System Info box.
+
+Replace it with one compact row:
+
+🟢 API Status          Online
+🟢 Frontend            v2026.xx
+🟢 Backend             v2026.xx
+🟢 Database            Connected
+
+Requirements:
+
+Single line cards
+Green dot for healthy status
+Red dot for unhealthy status
+Minimal height
+No large empty containers
+5. Student Category Sections
+
+Replace huge sections with compact accordion cards.
+
+Categories:
+
+Never Logged In (15)
+Inactive 7+ Days (3)
+No Test Activity (22)
+
+Requirements:
+
+Accordion expand/collapse
+Closed by default
+Show only first 5 students initially
+Add:
+View All 15 Students →
+View All 3 Students →
+View All 22 Students →
+
+at bottom.
+
+6. Student Rows
+
+Current rows are too tall.
+
+Make each row compact:
+
+Avatar   Student Name
+         Grade • Joined Date
+
+Examples:
+
+BTL Test Lead
+Grade 7 • Joined 28 Jun
+
+Neha Patel
+Grade 10 • Joined 28 Jun
+
+For inactive students:
+
+Grade 1 • Last active 31 May
+
+For no test activity:
+
+Grade 6 • No tests yet
+
+Maximum row height:
+40–48px.
+
+7. Design Guidelines
+Reduce unnecessary padding/margins.
+Reduce empty whitespace.
+Use cards with subtle borders.
+Use existing Braintam admin theme.
+Modern CRM appearance.
+Fully responsive.
+No horizontal scrolling.
+First screen should show:
+Alert banner
+KPI cards
+System status
+Start of student categories
+
+without requiring scrolling.
+
+8. Performance Requirements
+
+Do NOT change:
+
+Existing APIs
+Existing database queries
+Existing business logic
+Existing permissions
+Existing routes
+
+Only improve:
+
+Layout
+Components
+Responsiveness
+User experience
+9. Before Saying DONE (Mandatory)
+
+Before replying DONE:
+
+Verify dashboard loads without errors.
+Verify all existing data loads correctly.
+Verify API status works.
+Verify frontend and backend version status works.
+Verify accordion expand/collapse works.
+Verify Refresh button works.
+Verify View All navigation works.
+Verify mobile responsiveness.
+Verify there are no console errors.
+Verify no existing functionality has broken.
+Run local testing and manually test all interactions.
+
+Do not reply DONE until everything has been tested and is working perfectly.
