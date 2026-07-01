@@ -82,6 +82,7 @@ router.get("/admin/mastery/payments", adminOnly, async (req, res) => {
     duplicateSuspected:  rows.filter(r => r.status === "duplicate_suspected").length,
     verificationFailed:  rows.filter(r => r.status === "verification_failed").length,
     totalThisMonth:      rows.filter(r => new Date(r.uploadedAt) >= monthAgo).length,
+    archived:            rows.filter(r => r.status === "archived").length,
   };
 
   // Build mentor breakdown from ALL rows (not filtered)
@@ -462,6 +463,26 @@ router.post("/admin/mastery/payments/:id/reject", adminOnly, async (req, res) =>
 });
 
 // ── POST /api/admin/mastery/payments/:id/flag-duplicate ──────────────────────
+// ── POST /api/admin/mastery/payments/:id/archive ──────────────────────────────
+router.post("/admin/mastery/payments/:id/archive", adminOnly, async (req, res) => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const admin = req.authUser!;
+  const [row] = await db
+    .update(masteryPaymentVerificationsTable)
+    .set({
+      status:        "archived",
+      verificationNotes: `Archived by ${admin.name ?? "Admin"} on ${new Date().toISOString()}`,
+      updatedAt:     new Date(),
+    })
+    .where(eq(masteryPaymentVerificationsTable.id, id))
+    .returning();
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ id: row.id, status: row.status });
+});
+
 router.post("/admin/mastery/payments/:id/flag-duplicate", adminOnly, async (req, res) => {
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }

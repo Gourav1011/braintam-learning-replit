@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   RefreshCw, Search, Check, Ban, Flag, Copy, Eye, X,
   AlertTriangle, Clock, CheckCircle2, XCircle, Loader2,
-  ShieldCheck, ChevronDown, ChevronUp, GraduationCap,
+  ShieldCheck, ChevronDown, ChevronUp, Archive,
   TrendingUp, Users, IndianRupee, CalendarDays,
 } from "lucide-react";
 import { API_BASE } from "@/lib/api-base";
@@ -39,7 +39,7 @@ interface Payment {
   rejectedAt: string | null; rejectionReason: string | null; approvedByName: string | null; refundedAt: string | null;
 }
 interface MentorStat { id: number; name: string; total: number; today: number; yesterday: number; week: number; month: number; }
-interface CollStats { pendingVerification: number; approvedToday: number; rejectedToday: number; duplicateSuspected: number; verificationFailed: number; totalThisMonth: number; }
+interface CollStats { pendingVerification: number; approvedToday: number; rejectedToday: number; duplicateSuspected: number; verificationFailed: number; totalThisMonth: number; archived: number; }
 interface RevSummary {
   totalStudents: number; totalRevenue: number; totalPending: number;
   today: { students: number; revenue: number }; yesterday: { students: number; revenue: number };
@@ -60,6 +60,7 @@ const SC: Record<string, { label: string; color: string; bg: string; Icon: React
   rejected:             { label: "Rejected",  color: RED,    bg: "#FEE2E2", Icon: XCircle },
   duplicate_suspected:  { label: "Duplicate", color: PURPLE, bg: "#EDE9FE", Icon: Flag },
   verification_failed:  { label: "Failed",    color: RED,    bg: "#FEE2E2", Icon: AlertTriangle },
+  archived:             { label: "Archived",  color: "#64748B", bg: "#F1F5F9", Icon: AlertTriangle },
 };
 const sc = (s: string) => SC[s] ?? { label: s, color: AMBER, bg: "#FEF3C7", Icon: Clock };
 
@@ -162,19 +163,41 @@ function DetailPanel({ p, onClose, onRefresh }: { p: Payment; onClose: () => voi
             </div>
           )}
           {p.rejectionReason && <div className="bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700"><strong>Rejected:</strong> {p.rejectionReason}</div>}
-          {!["approved","refunded"].includes(p.status) && !rejectOpen && (
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => act(`/admin/mastery/payments/${p.id}/approve`)} disabled={busy}
-                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: GREEN }}>
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Check className="w-3.5 h-3.5"/>} Approve
+          {!["approved","refunded","archived"].includes(p.status) && !rejectOpen && (
+            <div className="space-y-2 pt-1">
+              <div className="flex gap-2">
+                <button onClick={() => act(`/admin/mastery/payments/${p.id}/approve`)} disabled={busy}
+                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: GREEN }}>
+                  {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Check className="w-3.5 h-3.5"/>} Approve
+                </button>
+                <button onClick={() => setRejectOpen(true)} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: RED }}>
+                  <Ban className="w-3.5 h-3.5"/> Reject
+                </button>
+                <button onClick={() => act(`/admin/mastery/payments/${p.id}/flag-duplicate`)} disabled={busy}
+                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: PURPLE }}>
+                  <Flag className="w-3.5 h-3.5"/> Flag
+                </button>
+              </div>
+              <button onClick={() => act(`/admin/mastery/payments/${p.id}/archive`)} disabled={busy}
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-500 hover:bg-gray-50">
+                <Archive className="w-3.5 h-3.5"/> Archive — keep for later review
               </button>
-              <button onClick={() => setRejectOpen(true)} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: RED }}>
-                <Ban className="w-3.5 h-3.5"/> Reject
-              </button>
-              <button onClick={() => act(`/admin/mastery/payments/${p.id}/flag-duplicate`)} disabled={busy}
-                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: PURPLE }}>
-                <Flag className="w-3.5 h-3.5"/> Flag
-              </button>
+            </div>
+          )}
+          {p.status === "archived" && (
+            <div className="pt-1 space-y-1.5">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600">
+                <strong>Archived</strong> — held for later review. You can still approve or reject.
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => act(`/admin/mastery/payments/${p.id}/approve`)} disabled={busy}
+                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: GREEN }}>
+                  <Check className="w-3.5 h-3.5"/> Approve
+                </button>
+                <button onClick={() => setRejectOpen(true)} className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-white text-xs font-semibold" style={{ background: RED }}>
+                  <Ban className="w-3.5 h-3.5"/> Reject
+                </button>
+              </div>
             </div>
           )}
           {rejectOpen && (
@@ -199,7 +222,7 @@ function DetailPanel({ p, onClose, onRefresh }: { p: Payment; onClose: () => voi
 // ──────────────────────────────────────────────────────────────────────────────
 function CollectionView() {
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [stats, setStats]       = useState<CollStats>({ pendingVerification:0,approvedToday:0,rejectedToday:0,duplicateSuspected:0,verificationFailed:0,totalThisMonth:0 });
+  const [stats, setStats]       = useState<CollStats>({ pendingVerification:0,approvedToday:0,rejectedToday:0,duplicateSuspected:0,verificationFailed:0,totalThisMonth:0,archived:0 });
   const [mentors, setMentors]   = useState<MentorStat[]>([]);
   const [loading, setLoading]   = useState(true);
   const [statusF, setStatusF]   = useState("all");
@@ -255,6 +278,7 @@ function CollectionView() {
           { label: "Rejected",      value: stats.rejectedToday,       color: RED,    filter: "rejected" },
           { label: "Duplicate",     value: stats.duplicateSuspected,  color: PURPLE, filter: "duplicate_suspected" },
           { label: "Failed",        value: stats.verificationFailed,  color: RED,    filter: "verification_failed" },
+          { label: "Archived",      value: stats.archived,            color: "#64748B", filter: "archived" },
           { label: "This Month",    value: stats.totalThisMonth,      color: NAVY,   filter: "" },
         ].map(x => (
           <Pill key={x.label} label={x.label} value={x.value} color={x.color}

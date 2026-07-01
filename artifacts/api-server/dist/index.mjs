@@ -109190,9 +109190,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-01-1530" : "dev",
-    commit: true ? "14007f7" : "unknown",
-    buildTime: true ? "2026-07-01T15:30:24.119Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-01-1543" : "dev",
+    commit: true ? "da66f67" : "unknown",
+    buildTime: true ? "2026-07-01T15:43:36.484Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -123411,7 +123411,8 @@ router36.get("/admin/mastery/payments", adminOnly15, async (req, res) => {
     rejectedToday: rows.filter((r) => r.status === "rejected" && r.rejectedAt && new Date(r.rejectedAt) >= today).length,
     duplicateSuspected: rows.filter((r) => r.status === "duplicate_suspected").length,
     verificationFailed: rows.filter((r) => r.status === "verification_failed").length,
-    totalThisMonth: rows.filter((r) => new Date(r.uploadedAt) >= monthAgo).length
+    totalThisMonth: rows.filter((r) => new Date(r.uploadedAt) >= monthAgo).length,
+    archived: rows.filter((r) => r.status === "archived").length
   };
   const mentorMap = /* @__PURE__ */ new Map();
   for (const r of rows) {
@@ -123702,6 +123703,24 @@ router36.post("/admin/mastery/payments/:id/reject", adminOnly15, async (req, res
     status: "rejected",
     rejectionReason: reason ?? "",
     rejectedAt: /* @__PURE__ */ new Date(),
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(masteryPaymentVerificationsTable.id, id)).returning();
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json({ id: row.id, status: row.status });
+});
+router36.post("/admin/mastery/payments/:id/archive", adminOnly15, async (req, res) => {
+  const id = parseInt(req.params["id"], 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const admin = req.authUser;
+  const [row] = await db.update(masteryPaymentVerificationsTable).set({
+    status: "archived",
+    verificationNotes: `Archived by ${admin.name ?? "Admin"} on ${(/* @__PURE__ */ new Date()).toISOString()}`,
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq(masteryPaymentVerificationsTable.id, id)).returning();
   if (!row) {
