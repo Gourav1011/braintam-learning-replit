@@ -316,7 +316,7 @@ function MentorRoute({ component: Component }: { component: React.ComponentType 
   const { student, role, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
   if (!student) return <Redirect to="/mentor/login" />;
-  if (role !== "mentor" && role !== "admin") return <Redirect to="/dashboard" />;
+  if (!["mentor", "academic_mentor", "sales_mentor", "admin", "super_admin"].includes(role ?? "")) return <Redirect to="/dashboard" />;
   return <Component />;
 }
 
