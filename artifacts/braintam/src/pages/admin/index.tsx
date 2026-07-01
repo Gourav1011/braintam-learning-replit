@@ -1322,6 +1322,7 @@ function AdminPageInner() {
             { label: "Mastery Analytics", icon: BarChart3, tab: "analytics" },
             { label: "Revenue Analytics", icon: DollarSign, tab: "revenue-analytics" },
             { label: "Reports & Analytics", icon: BarChart3, tab: "reports-analytics" },
+            { label: "Learning Health", icon: AlertTriangle, tab: "health" },
           ],
         },
         {
