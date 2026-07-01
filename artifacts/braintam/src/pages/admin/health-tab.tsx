@@ -103,7 +103,7 @@ function StatusPill({ ok, label, value }: { ok: boolean; label: string; value: s
 // ── Accordion section ────────────────────────────────────────────────────────
 function AccordionSection({
   title, count, icon: Icon, headerBg, headerColor, borderColor, students,
-  loading, subText, emptyMsg, viewAllHref,
+  loading, subText, emptyMsg, onViewAll,
 }: {
   title: string;
   count: number;
@@ -115,7 +115,7 @@ function AccordionSection({
   loading: boolean;
   subText: (s: HealthStudent) => string;
   emptyMsg: string;
-  viewAllHref: string;
+  onViewAll?: () => void;
 }) {
   const [open, setOpen] = useState(true);
   const shown = students.slice(0, 5);
@@ -161,13 +161,13 @@ function AccordionSection({
             )}
           </div>
           {!loading && count > 0 && (
-            <a
-              href={viewAllHref}
-              className="flex items-center justify-center gap-1 text-[11px] font-semibold py-2.5 border-t border-gray-100 hover:bg-gray-50 transition-colors"
+            <button
+              onClick={onViewAll}
+              className="flex items-center justify-center gap-1 text-[11px] font-semibold py-2.5 border-t border-gray-100 hover:bg-gray-50 transition-colors w-full"
               style={{ color: headerColor }}
             >
               View All {count} Students <ArrowRight className="w-3 h-3" />
-            </a>
+            </button>
           )}
         </div>
       )}
@@ -176,7 +176,7 @@ function AccordionSection({
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-export function HealthTab() {
+export function HealthTab({ onViewStudents }: { onViewStudents?: () => void }) {
   const [data, setData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [frontendVer, setFrontendVer] = useState<VersionInfo | null>(null);
@@ -340,7 +340,7 @@ export function HealthTab() {
           loading={loading}
           subText={s => `Grade ${s.grade > 0 ? s.grade : "—"} · Joined ${s.createdAt ? fmtDate(s.createdAt) : "—"}`}
           emptyMsg="All students have logged in."
-          viewAllHref="/admin?tab=students&filter=never-logged-in"
+          onViewAll={onViewStudents}
         />
         <AccordionSection
           title="Inactive 7+ Days"
@@ -353,7 +353,7 @@ export function HealthTab() {
           loading={loading}
           subText={s => `Grade ${s.grade > 0 ? s.grade : "—"} · Last active ${s.lastLoginAt ? fmtDate(s.lastLoginAt) : "—"}`}
           emptyMsg="All students are active."
-          viewAllHref="/admin?tab=students&filter=inactive"
+          onViewAll={onViewStudents}
         />
         <AccordionSection
           title="No Test Activity"
@@ -366,7 +366,7 @@ export function HealthTab() {
           loading={loading}
           subText={s => `Grade ${s.grade > 0 ? s.grade : "—"} · No tests yet`}
           emptyMsg="All students have taken a test."
-          viewAllHref="/admin?tab=students&filter=no-tests"
+          onViewAll={onViewStudents}
         />
       </div>
 

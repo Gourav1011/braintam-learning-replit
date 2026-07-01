@@ -3072,7 +3072,7 @@ function AdminPageInner() {
         {tab === "teacher-analytics" && <TeacherAnalyticsTab flash={flash} />}
 
         {/* ── Learning Health ───────────────────────────────────────────── */}
-        {tab === "health" && <HealthTab />}
+        {tab === "health" && <HealthTab onViewStudents={() => setTab("mastery-students")} />}
 
         {/* ── Assessments ──────────────────────────────────────────────── */}
         {tab === "assessments" && <AssessmentsTab flash={flash} />}
