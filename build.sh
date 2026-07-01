@@ -1,57 +1,54 @@
 #!/usr/bin/env bash
-
-# ===================================================================
-# Braintam Production Build Script
-# ===================================================================
-# Run this on your Linux VPS to build the entire project for production.
+# =============================================================================
+# Braintam Local Build Script
+# =============================================================================
+# Run this in the Replit environment (or locally) to produce the dist/ files
+# that get committed to git and deployed to the VPS.
 #
-# IMPORTANT: Before first execution, make this script executable:
+# For VPS deployment, use deploy.sh instead.
+#
+# Usage:
 #   chmod +x build.sh
-#
-# Then run it with:
 #   ./build.sh
-# ===================================================================
+# =============================================================================
 
 set -euo pipefail
 
-echo "══════════════════════════════════════════════════════════════════════════════════"
-echo "  Braintam Production Build"
-echo "═══════════════════════════════════════════════════════════════════════════════════════════"
-
-# Set required environment variables for production build
-export PORT=3000
-export BASE_PATH=/
-
 echo ""
-echo "[1/3] Environment variables set:"
-echo "      PORT=$PORT"
-echo "      BASE_PATH=$BASE_PATH"
-echo ""
+echo "══════════════════════════════════════════════════════════"
+echo "  Braintam Build  —  $(date '+%Y-%m-%d %H:%M:%S')"
+echo "══════════════════════════════════════════════════════════"
 
 # Ensure pnpm is available
-if ! command -v pnpm &> /dev/null; then
-    echo "ERROR: pnpm is not installed. Please install it first:"
-    echo "       npm install -g pnpm"
-    exit 1
+if ! command -v pnpm &>/dev/null; then
+  echo "ERROR: pnpm is not installed. Run: npm install -g pnpm"
+  exit 1
 fi
 
-echo "[2/3] Installing dependencies with pnpm..."
-pnpm install --frozen-lockfile
+# ── 1. Build React frontend ────────────────────────────────────
+echo ""
+echo "[1/2] Building React frontend..."
+BASE_PATH=/ pnpm --filter @workspace/braintam run build
+echo "      ✓ artifacts/braintam/dist/public/"
+
+# ── 2. Build API server ────────────────────────────────────────
+echo ""
+echo "[2/2] Building API server..."
+pnpm --filter @workspace/api-server run build
+echo "      ✓ artifacts/api-server/dist/index.mjs"
 
 echo ""
-echo "[3/3] Building all packages for production..."
-pnpm run build
-
+echo "══════════════════════════════════════════════════════════"
+echo "  Build complete!"
+echo "══════════════════════════════════════════════════════════"
 echo ""
-echo "══════════════════════════════════════════════════════════════════════════════════"
-echo "  Build completed successfully!"
-echo "═══════════════════════════════════════════════════════════════════════════════════════════"
+echo "  To commit and deploy:"
+echo "    git add artifacts/api-server/dist/ artifacts/braintam/dist/"
+echo "    git commit -m 'Deploy: <description>'"
+echo "    git push origin main"
+echo "    # then on VPS: ./deploy.sh"
 echo ""
-echo "  Static files:  artifacts/braintam/dist/public/"
-echo "  API server:    artifacts/api-server/dist/"
-echo ""
-echo "  Next steps on your VPS:"
-echo "    • Serve the frontend (e.g., nginx -> dist/public)"
-echo "    • Run the API server:  PORT=3000 node artifacts/api-server/dist/index.js"
-echo "    • Set DATABASE_URL and SESSION_SECRET in your server env"
+echo "  Production entrypoint:"
+echo "    PORT=5000 NODE_ENV=production node --enable-source-maps \\"
+echo "      artifacts/api-server/dist/index.mjs"
 echo ""
