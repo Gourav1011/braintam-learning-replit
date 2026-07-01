@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-export type UserRole = "super_admin" | "admin" | "teacher" | "mentor" | "student";
+export type UserRole = "super_admin" | "admin" | "teacher" | "mentor" | "sales_mentor" | "academic_mentor" | "student";
 
 export interface AuthUser {
   id: number;

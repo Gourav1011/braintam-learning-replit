@@ -655,4 +655,68 @@ router.get("/admin/mastery/payments/:id/check-duplicate", adminOnly, async (req,
   res.json({ isDuplicate: duplicates.length > 0, duplicates });
 });
 
+// ── GET /api/admin/mastery/revenue ────────────────────────────────────────────
+router.get("/admin/mastery/revenue", adminOnly, async (req, res) => {
+  const { grade, mentorId, dateFrom, dateTo, academicYear } = req.query as Record<string, string>;
+
+  const rows = await db
+    .select()
+    .from(masteryStudentsTable)
+    .orderBy(desc(masteryStudentsTable.admissionDate));
+
+  let filtered = rows;
+  if (grade)        { const g = parseInt(grade, 10); if (!isNaN(g)) filtered = filtered.filter(r => r.grade === g); }
+  if (mentorId)     { const mid = parseInt(mentorId, 10); if (!isNaN(mid)) filtered = filtered.filter(r => r.mentorId === mid); }
+  if (academicYear) { filtered = filtered.filter(r => r.academicYear === academicYear); }
+  if (dateFrom)     { const from = new Date(dateFrom + "T00:00:00+05:30"); if (!isNaN(from.getTime())) filtered = filtered.filter(r => new Date(r.admissionDate) >= from); }
+  if (dateTo)       { const to   = new Date(dateTo   + "T23:59:59+05:30"); if (!isNaN(to.getTime()))   filtered = filtered.filter(r => new Date(r.admissionDate) <= to);   }
+
+  const now       = new Date();
+  const today     = todayStart();
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo   = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo  = new Date(today); monthAgo.setDate(monthAgo.getDate() - 30);
+  const yearAgo   = new Date(today); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+
+  const sumAmt    = (list: typeof filtered) => list.reduce((s, r) => s + r.amountPaid, 0);
+  const sumPend   = (list: typeof filtered) => list.reduce((s, r) => s + r.amountPending, 0);
+  const inRange   = (list: typeof filtered, from: Date, to?: Date) =>
+    list.filter(r => { const d = new Date(r.admissionDate); return d >= from && (!to || d < to); });
+
+  const summary = {
+    totalStudents:  filtered.length,
+    totalRevenue:   sumAmt(filtered),
+    totalPending:   sumPend(filtered),
+    today:     { students: inRange(filtered, today).length,     revenue: sumAmt(inRange(filtered, today)) },
+    yesterday: { students: inRange(filtered, yesterday, today).length, revenue: sumAmt(inRange(filtered, yesterday, today)) },
+    week:      { students: inRange(filtered, weekAgo).length,   revenue: sumAmt(inRange(filtered, weekAgo)) },
+    month:     { students: inRange(filtered, monthAgo).length,  revenue: sumAmt(inRange(filtered, monthAgo)) },
+    year:      { students: inRange(filtered, yearAgo).length,   revenue: sumAmt(inRange(filtered, yearAgo)) },
+  };
+
+  // Grade breakdown
+  const gradeMap = new Map<number, { grade: number; students: number; revenue: number; pending: number }>();
+  for (const r of filtered) {
+    const e = gradeMap.get(r.grade) ?? { grade: r.grade, students: 0, revenue: 0, pending: 0 };
+    e.students++; e.revenue += r.amountPaid; e.pending += r.amountPending;
+    gradeMap.set(r.grade, e);
+  }
+  const byGrade = Array.from(gradeMap.values()).sort((a, b) => a.grade - b.grade);
+
+  // Mentor breakdown
+  const mentorMap = new Map<string, { mentorId: number | null; mentorName: string; students: number; revenue: number; pending: number }>();
+  for (const r of filtered) {
+    const key = String(r.mentorId ?? r.mentorName ?? "Unknown");
+    const e = mentorMap.get(key) ?? { mentorId: r.mentorId, mentorName: r.mentorName ?? "Unknown", students: 0, revenue: 0, pending: 0 };
+    e.students++; e.revenue += r.amountPaid; e.pending += r.amountPending;
+    mentorMap.set(key, e);
+  }
+  const byMentor = Array.from(mentorMap.values()).sort((a, b) => b.revenue - a.revenue);
+
+  // Academic years list from all rows
+  const academicYears = [...new Set(rows.map(r => r.academicYear).filter(Boolean))].sort().reverse() as string[];
+
+  res.json({ summary, byGrade, byMentor, students: filtered, academicYears });
+});
+
 export default router;

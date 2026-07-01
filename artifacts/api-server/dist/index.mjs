@@ -109190,9 +109190,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-01-1502" : "dev",
-    commit: true ? "95e09c6" : "unknown",
-    buildTime: true ? "2026-07-01T15:02:04.017Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-01-1530" : "dev",
+    commit: true ? "14007f7" : "unknown",
+    buildTime: true ? "2026-07-01T15:30:24.119Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -123370,7 +123370,7 @@ function todayStart2() {
   return d;
 }
 router36.get("/admin/mastery/payments", adminOnly15, async (req, res) => {
-  const { status, grade, search } = req.query;
+  const { status, grade, search, mentorId, dateFrom, dateTo } = req.query;
   const rows = await db.select().from(masteryPaymentVerificationsTable).orderBy(desc(masteryPaymentVerificationsTable.uploadedAt));
   let filtered = rows;
   if (status && status !== "all") {
@@ -123380,21 +123380,61 @@ router36.get("/admin/mastery/payments", adminOnly15, async (req, res) => {
     const g = parseInt(grade, 10);
     if (!isNaN(g)) filtered = filtered.filter((r) => r.studentGrade === g);
   }
+  if (mentorId) {
+    const mid = parseInt(mentorId, 10);
+    if (!isNaN(mid)) filtered = filtered.filter((r) => r.submittedById === mid);
+  }
+  if (dateFrom) {
+    const from = /* @__PURE__ */ new Date(dateFrom + "T00:00:00+05:30");
+    if (!isNaN(from.getTime())) filtered = filtered.filter((r) => new Date(r.uploadedAt) >= from);
+  }
+  if (dateTo) {
+    const to = /* @__PURE__ */ new Date(dateTo + "T23:59:59+05:30");
+    if (!isNaN(to.getTime())) filtered = filtered.filter((r) => new Date(r.uploadedAt) <= to);
+  }
   if (search) {
     const q = search.toLowerCase();
     filtered = filtered.filter(
-      (r) => r.studentName?.toLowerCase().includes(q) || r.utrNumber?.toLowerCase().includes(q) || r.razorpayPaymentId?.toLowerCase().includes(q)
+      (r) => r.studentName?.toLowerCase().includes(q) || r.submittedByName?.toLowerCase().includes(q) || r.utrNumber?.toLowerCase().includes(q) || r.razorpayPaymentId?.toLowerCase().includes(q)
     );
   }
   const today = todayStart2();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(today);
+  monthAgo.setDate(monthAgo.getDate() - 30);
   const stats = {
     pendingVerification: rows.filter((r) => r.status === "pending_verification").length,
     approvedToday: rows.filter((r) => r.status === "approved" && r.approvedAt && new Date(r.approvedAt) >= today).length,
     rejectedToday: rows.filter((r) => r.status === "rejected" && r.rejectedAt && new Date(r.rejectedAt) >= today).length,
     duplicateSuspected: rows.filter((r) => r.status === "duplicate_suspected").length,
-    verificationFailed: rows.filter((r) => r.status === "verification_failed").length
+    verificationFailed: rows.filter((r) => r.status === "verification_failed").length,
+    totalThisMonth: rows.filter((r) => new Date(r.uploadedAt) >= monthAgo).length
   };
-  res.json({ payments: filtered, stats });
+  const mentorMap = /* @__PURE__ */ new Map();
+  for (const r of rows) {
+    if (!r.submittedById) continue;
+    const existing = mentorMap.get(r.submittedById) ?? {
+      id: r.submittedById,
+      name: r.submittedByName ?? "Unknown",
+      total: 0,
+      today: 0,
+      yesterday: 0,
+      week: 0,
+      month: 0
+    };
+    const d = new Date(r.uploadedAt);
+    existing.total++;
+    if (d >= today) existing.today++;
+    if (d >= yesterday && d < today) existing.yesterday++;
+    if (d >= weekAgo) existing.week++;
+    if (d >= monthAgo) existing.month++;
+    mentorMap.set(r.submittedById, existing);
+  }
+  const mentors = Array.from(mentorMap.values()).sort((a, b) => b.total - a.total);
+  res.json({ payments: filtered, stats, mentors });
 });
 router36.post("/admin/mastery/payments", adminOnly15, async (req, res) => {
   const {
@@ -123823,6 +123863,77 @@ router36.get("/admin/mastery/payments/:id/check-duplicate", adminOnly15, async (
   }).from(masteryPaymentVerificationsTable).where(or(...conditions));
   const duplicates = matches2.filter((m) => m.id !== id);
   res.json({ isDuplicate: duplicates.length > 0, duplicates });
+});
+router36.get("/admin/mastery/revenue", adminOnly15, async (req, res) => {
+  const { grade, mentorId, dateFrom, dateTo, academicYear } = req.query;
+  const rows = await db.select().from(masteryStudentsTable).orderBy(desc(masteryStudentsTable.admissionDate));
+  let filtered = rows;
+  if (grade) {
+    const g = parseInt(grade, 10);
+    if (!isNaN(g)) filtered = filtered.filter((r) => r.grade === g);
+  }
+  if (mentorId) {
+    const mid = parseInt(mentorId, 10);
+    if (!isNaN(mid)) filtered = filtered.filter((r) => r.mentorId === mid);
+  }
+  if (academicYear) {
+    filtered = filtered.filter((r) => r.academicYear === academicYear);
+  }
+  if (dateFrom) {
+    const from = /* @__PURE__ */ new Date(dateFrom + "T00:00:00+05:30");
+    if (!isNaN(from.getTime())) filtered = filtered.filter((r) => new Date(r.admissionDate) >= from);
+  }
+  if (dateTo) {
+    const to = /* @__PURE__ */ new Date(dateTo + "T23:59:59+05:30");
+    if (!isNaN(to.getTime())) filtered = filtered.filter((r) => new Date(r.admissionDate) <= to);
+  }
+  const now = /* @__PURE__ */ new Date();
+  const today = todayStart2();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(today);
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  const yearAgo = new Date(today);
+  yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  const sumAmt = (list) => list.reduce((s2, r) => s2 + r.amountPaid, 0);
+  const sumPend = (list) => list.reduce((s2, r) => s2 + r.amountPending, 0);
+  const inRange = (list, from, to) => list.filter((r) => {
+    const d = new Date(r.admissionDate);
+    return d >= from && (!to || d < to);
+  });
+  const summary = {
+    totalStudents: filtered.length,
+    totalRevenue: sumAmt(filtered),
+    totalPending: sumPend(filtered),
+    today: { students: inRange(filtered, today).length, revenue: sumAmt(inRange(filtered, today)) },
+    yesterday: { students: inRange(filtered, yesterday, today).length, revenue: sumAmt(inRange(filtered, yesterday, today)) },
+    week: { students: inRange(filtered, weekAgo).length, revenue: sumAmt(inRange(filtered, weekAgo)) },
+    month: { students: inRange(filtered, monthAgo).length, revenue: sumAmt(inRange(filtered, monthAgo)) },
+    year: { students: inRange(filtered, yearAgo).length, revenue: sumAmt(inRange(filtered, yearAgo)) }
+  };
+  const gradeMap = /* @__PURE__ */ new Map();
+  for (const r of filtered) {
+    const e = gradeMap.get(r.grade) ?? { grade: r.grade, students: 0, revenue: 0, pending: 0 };
+    e.students++;
+    e.revenue += r.amountPaid;
+    e.pending += r.amountPending;
+    gradeMap.set(r.grade, e);
+  }
+  const byGrade = Array.from(gradeMap.values()).sort((a, b) => a.grade - b.grade);
+  const mentorMap = /* @__PURE__ */ new Map();
+  for (const r of filtered) {
+    const key = String(r.mentorId ?? r.mentorName ?? "Unknown");
+    const e = mentorMap.get(key) ?? { mentorId: r.mentorId, mentorName: r.mentorName ?? "Unknown", students: 0, revenue: 0, pending: 0 };
+    e.students++;
+    e.revenue += r.amountPaid;
+    e.pending += r.amountPending;
+    mentorMap.set(key, e);
+  }
+  const byMentor = Array.from(mentorMap.values()).sort((a, b) => b.revenue - a.revenue);
+  const academicYears = [...new Set(rows.map((r) => r.academicYear).filter(Boolean))].sort().reverse();
+  res.json({ summary, byGrade, byMentor, students: filtered, academicYears });
 });
 var masteryPayments_default = router36;
 
