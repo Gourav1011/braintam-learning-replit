@@ -32,7 +32,7 @@ function todayStart(): Date {
 
 // ── GET /api/admin/mastery/payments ───────────────────────────────────────────
 router.get("/admin/mastery/payments", adminOnly, async (req, res) => {
-  const { status, grade, search } = req.query as Record<string, string>;
+  const { status, grade, search, mentorId, dateFrom, dateTo } = req.query as Record<string, string>;
 
   const rows = await db
     .select()
@@ -48,25 +48,61 @@ router.get("/admin/mastery/payments", adminOnly, async (req, res) => {
     const g = parseInt(grade, 10);
     if (!isNaN(g)) filtered = filtered.filter(r => r.studentGrade === g);
   }
+  if (mentorId) {
+    const mid = parseInt(mentorId, 10);
+    if (!isNaN(mid)) filtered = filtered.filter(r => r.submittedById === mid);
+  }
+  if (dateFrom) {
+    const from = new Date(dateFrom + "T00:00:00+05:30");
+    if (!isNaN(from.getTime())) filtered = filtered.filter(r => new Date(r.uploadedAt) >= from);
+  }
+  if (dateTo) {
+    const to = new Date(dateTo + "T23:59:59+05:30");
+    if (!isNaN(to.getTime())) filtered = filtered.filter(r => new Date(r.uploadedAt) <= to);
+  }
   if (search) {
     const q = search.toLowerCase();
     filtered = filtered.filter(r =>
       r.studentName?.toLowerCase().includes(q) ||
+      r.submittedByName?.toLowerCase().includes(q) ||
       r.utrNumber?.toLowerCase().includes(q) ||
       r.razorpayPaymentId?.toLowerCase().includes(q)
     );
   }
 
   const today = todayStart();
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo   = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo  = new Date(today); monthAgo.setDate(monthAgo.getDate() - 30);
+
   const stats = {
     pendingVerification: rows.filter(r => r.status === "pending_verification").length,
     approvedToday:       rows.filter(r => r.status === "approved" && r.approvedAt && new Date(r.approvedAt) >= today).length,
     rejectedToday:       rows.filter(r => r.status === "rejected" && r.rejectedAt && new Date(r.rejectedAt) >= today).length,
     duplicateSuspected:  rows.filter(r => r.status === "duplicate_suspected").length,
     verificationFailed:  rows.filter(r => r.status === "verification_failed").length,
+    totalThisMonth:      rows.filter(r => new Date(r.uploadedAt) >= monthAgo).length,
   };
 
-  res.json({ payments: filtered, stats });
+  // Build mentor breakdown from ALL rows (not filtered)
+  const mentorMap = new Map<number, { id: number; name: string; total: number; today: number; yesterday: number; week: number; month: number }>();
+  for (const r of rows) {
+    if (!r.submittedById) continue;
+    const existing = mentorMap.get(r.submittedById) ?? {
+      id: r.submittedById, name: r.submittedByName ?? "Unknown",
+      total: 0, today: 0, yesterday: 0, week: 0, month: 0,
+    };
+    const d = new Date(r.uploadedAt);
+    existing.total++;
+    if (d >= today)     existing.today++;
+    if (d >= yesterday && d < today) existing.yesterday++;
+    if (d >= weekAgo)   existing.week++;
+    if (d >= monthAgo)  existing.month++;
+    mentorMap.set(r.submittedById, existing);
+  }
+  const mentors = Array.from(mentorMap.values()).sort((a, b) => b.total - a.total);
+
+  res.json({ payments: filtered, stats, mentors });
 });
 
 // ── POST /api/admin/mastery/payments ──────────────────────────────────────────
