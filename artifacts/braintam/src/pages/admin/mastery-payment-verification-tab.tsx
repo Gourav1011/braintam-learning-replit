@@ -729,6 +729,7 @@ export function MasteryPaymentVerificationTab() {
             <tr className="border-b border-gray-100">
               <th className="text-left px-4 py-3 font-semibold text-gray-500">Student</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-500">Grade</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-500">Uploaded By</th>
               <th className="text-right px-4 py-3 font-semibold text-gray-500 cursor-pointer select-none"
                 onClick={() => toggleSort("amount")}>
                 <span className="flex items-center justify-end gap-1">
@@ -736,7 +737,8 @@ export function MasteryPaymentVerificationTab() {
                 </span>
               </th>
               <th className="text-left px-4 py-3 font-semibold text-gray-500">Method</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-500">UTR / Razorpay ID</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-500">UTR Number</th>
+              <th className="text-left px-4 py-3 font-semibold text-gray-500">Razorpay ID</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-500 cursor-pointer select-none"
                 onClick={() => toggleSort("uploadedAt")}>
                 <span className="flex items-center gap-1">
@@ -749,9 +751,9 @@ export function MasteryPaymentVerificationTab() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="text-center py-12 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></td></tr>
+              <tr><td colSpan={10} className="text-center py-12 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></td></tr>
             ) : sorted.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-12 text-gray-400">No payments found</td></tr>
+              <tr><td colSpan={10} className="text-center py-12 text-gray-400">No payments found</td></tr>
             ) : sorted.map(p => {
               const cfg = statusConfig(p.status);
               return (
@@ -770,14 +772,32 @@ export function MasteryPaymentVerificationTab() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.studentGrade ? `Grade ${p.studentGrade}` : "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-gray-700 font-medium">{p.submittedByName || <span className="text-gray-300">—</span>}</span>
+                  </td>
                   <td className="px-4 py-3 text-right font-black" style={{ color: NAVY }}>{fmt(p.amount)}</td>
                   <td className="px-4 py-3 capitalize text-gray-600">{p.paymentMethod}</td>
-                  <td className="px-4 py-3 font-mono text-gray-600">
-                    {p.utrNumber || p.razorpayPaymentId
-                      ? (p.utrNumber || p.razorpayPaymentId)!.length > 18
-                        ? (p.utrNumber || p.razorpayPaymentId)!.slice(0, 18) + "…"
-                        : (p.utrNumber || p.razorpayPaymentId)
-                      : <span className="text-gray-300">—</span>}
+                  <td className="px-4 py-3">
+                    {p.utrNumber ? (
+                      <span className="flex items-center gap-1 group">
+                        <span className="font-mono text-gray-700">{p.utrNumber.length > 16 ? p.utrNumber.slice(0, 16) + "…" : p.utrNumber}</span>
+                        <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(p.utrNumber!); }}
+                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity">
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ) : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.razorpayPaymentId ? (
+                      <span className="flex items-center gap-1 group">
+                        <span className="font-mono text-gray-700">{p.razorpayPaymentId.length > 16 ? p.razorpayPaymentId.slice(0, 16) + "…" : p.razorpayPaymentId}</span>
+                        <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(p.razorpayPaymentId!); }}
+                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity">
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ) : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-500">{fmtDate(p.uploadedAt)}</td>
                   <td className="px-4 py-3">
