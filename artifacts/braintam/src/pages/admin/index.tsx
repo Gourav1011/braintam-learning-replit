@@ -63,6 +63,7 @@ import { Student360Page } from "./student360-page";
 import { CourseAnalyticsTab } from "./course-analytics-tab";
 import { TeacherAnalyticsTab } from "./teacher-analytics-tab";
 import { HealthTab } from "./health-tab";
+import { PaymentsTab } from "./payments-tab";
 import { GamificationTab } from "./gamification-tab";
 import { BtlCrmTab } from "./btl-crm-tab";
 import { EmployeeAttendanceTab } from "./employee-attendance-tab";
@@ -1285,7 +1286,6 @@ function AdminPageInner() {
           { label: "Demo Batches", icon: Layers, tab: "ignite", igniteView: "demo-batches" },
           { label: "Attendance Analytics", icon: CheckSquare, tab: "ignite", igniteView: "attendance" },
           { label: "Conversion Center", icon: TrendingUp, tab: "ignite", igniteView: "conversion" },
-          { label: "Payments", icon: CreditCard, tab: "ignite", igniteView: "payments" },
           { label: "Sales Mentors", icon: Award, tab: "ignite", igniteView: "sales-mentors" },
           { label: "Student Outreach", icon: UserCheck2, tab: "btl-crm" },
           { label: "Reports", icon: BarChart3, tab: "ignite", igniteView: "ignite-reports" },
@@ -1298,7 +1298,6 @@ function AdminPageInner() {
         items: [
           { label: "Dashboard", icon: Activity, tab: "dashboard" },
           { label: "Students", icon: Users, tab: "mastery-students" },
-          { label: "Payments", icon: CreditCard, tab: "mastery-payments" },
           { label: "Deployment", icon: Package, tab: "mastery-deployment" },
           { label: "Retention", icon: RotateCcw, tab: "mastery-retention" },
           { label: "Courses", icon: BookOpen, tab: "courses" },
@@ -1328,6 +1327,7 @@ function AdminPageInner() {
         {
           sectionLabel: "Administration",
           items: [
+            { label: "Payments", icon: CreditCard, tab: "payments" },
             { label: "Course Assignments", icon: GradCap, tab: "assignments" },
             { label: "Gamification", icon: Zap, tab: "gamification" },
             { label: "Blocked Words", icon: Shield, tab: "blocked-words" },
@@ -3023,21 +3023,8 @@ function AdminPageInner() {
         {/* ── Audit Logs ─────────────────────────────────────────────────── */}
         {tab === "audit" && <AuditLogsTab />}
 
-        {/* ── Payments (Placeholder) ────────────────────────────────────── */}
-        {tab === "payments" && (
-          <ModulePage
-            icon={CreditCard}
-            title="Payment Gateway"
-            description="Centralized payment dashboard with Razorpay webhooks, refund management, and revenue reporting."
-            emoji="💳"
-            statusLabel="Coming Soon"
-            statusColor="orange"
-            roadmap={[
-              { phase: "Phase 1", items: ["Razorpay order & webhook integration", "Transaction history with search + filter", "Refund management workflow"] },
-              { phase: "Phase 2", items: ["Revenue by course / teacher", "Subscription plan tracking", "Transaction history export (CSV/PDF)"] },
-            ]}
-          />
-        )}
+        {/* ── Payments ─────────────────────────────────────────────────── */}
+        {tab === "payments" && <PaymentsTab />}
 
         {/* ── Ignite (Sales & Admissions) CRM ──────────────────────────── */}
         {tab === "ignite" && (
