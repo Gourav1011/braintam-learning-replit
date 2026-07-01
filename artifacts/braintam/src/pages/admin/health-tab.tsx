@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle, RefreshCw, UserX, Clock, FileX } from "lucide-react";
+import { AlertTriangle, RefreshCw, UserX, Clock, FileX, Server, Monitor, GitCommit, Zap } from "lucide-react";
 import { API_BASE } from "@/lib/api-base";
 
 const NAVY = "#0B2B6B";
@@ -25,6 +25,13 @@ interface HealthData {
   inactiveStudents: HealthStudent[];
   noTestStudents: HealthStudent[];
   counts: { neverLoggedIn: number; inactiveStudents: number; noTestStudents: number };
+}
+interface VersionInfo {
+  version: string;
+  commit: string;
+  buildTime: string;
+  nodeVersion?: string;
+  uptimeSeconds?: number;
 }
 
 function StudentList({ students, emptyMsg }: { students: HealthStudent[]; emptyMsg: string }) {
@@ -53,9 +60,42 @@ function StudentList({ students, emptyMsg }: { students: HealthStudent[]; emptyM
   );
 }
 
+function Row({ icon, label, value, mono }: { icon: React.ReactNode; label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="shrink-0">{icon}</span>
+      <span className="text-[10px] text-gray-400 w-12 shrink-0">{label}</span>
+      <span className={`text-[11px] font-semibold truncate ${mono ? "font-mono" : ""}`} style={{ color: NAVY }}>{value}</span>
+    </div>
+  );
+}
+
+function formatUptime(secs: number) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function HealthTab() {
   const [data, setData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [frontendVer, setFrontendVer] = useState<VersionInfo | null>(null);
+  const [backendVer, setBackendVer] = useState<VersionInfo | null>(null);
+  const [verLoading, setVerLoading] = useState(true);
+
+  async function loadVersion() {
+    setVerLoading(true);
+    try {
+      const [feRes, beRes] = await Promise.allSettled([
+        fetch(`${API_BASE}/version.json`),
+        apiFetch("/version"),
+      ]);
+      if (feRes.status === "fulfilled" && feRes.value.ok) setFrontendVer(await feRes.value.json() as VersionInfo);
+      if (beRes.status === "fulfilled" && beRes.value.ok) setBackendVer(await beRes.value.json() as VersionInfo);
+    } finally {
+      setVerLoading(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -67,10 +107,12 @@ export function HealthTab() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); void loadVersion(); }, []);
 
   const counts = data?.counts ?? { neverLoggedIn: 0, inactiveStudents: 0, noTestStudents: 0 };
   const totalAtRisk = counts.neverLoggedIn + counts.inactiveStudents + counts.noTestStudents;
+
+  const versionMatch = frontendVer && backendVer && frontendVer.commit === backendVer.commit;
 
   return (
     <div className="space-y-5">
@@ -80,10 +122,63 @@ export function HealthTab() {
           <h2 className="text-base font-black" style={{ color: NAVY }}>Learning Health Dashboard</h2>
           <p className="text-xs text-gray-400 mt-0.5">Identify students who need attention</p>
         </div>
-        <button onClick={load} disabled={loading}
+        <button onClick={() => { void load(); void loadVersion(); }} disabled={loading || verLoading}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:border-gray-300 transition-colors">
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${(loading || verLoading) ? "animate-spin" : ""}`} /> Refresh
         </button>
+      </div>
+
+      {/* ── System Info ─────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100" style={{ background: "#F8FAFF" }}>
+          <Server className="w-4 h-4" style={{ color: NAVY }} />
+          <span className="text-sm font-bold" style={{ color: NAVY }}>System Info</span>
+          {!verLoading && frontendVer && backendVer && (
+            <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${versionMatch ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+              {versionMatch ? "✓ In sync" : "⚠ Version mismatch"}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-gray-100">
+          {/* Frontend */}
+          <div className="px-5 py-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Monitor className="w-3.5 h-3.5 text-blue-500" />
+              <span className="text-xs font-bold text-blue-700">Frontend</span>
+            </div>
+            {verLoading ? (
+              <div className="space-y-2 animate-pulse">
+                {[1,2,3].map(i => <div key={i} className="h-4 bg-gray-100 rounded w-3/4" />)}
+              </div>
+            ) : frontendVer ? (
+              <div className="space-y-1.5">
+                <Row icon={<Zap className="w-3 h-3 text-orange-400" />} label="Version" value={frontendVer.version} mono />
+                <Row icon={<GitCommit className="w-3 h-3 text-gray-400" />} label="Commit" value={frontendVer.commit} mono />
+                <Row icon={<Clock className="w-3 h-3 text-gray-400" />} label="Built" value={new Date(frontendVer.buildTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} />
+              </div>
+            ) : <p className="text-[11px] text-gray-400">Not available — run a production build first.</p>}
+          </div>
+          {/* Backend */}
+          <div className="px-5 py-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Server className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="text-xs font-bold text-indigo-700">Backend API</span>
+            </div>
+            {verLoading ? (
+              <div className="space-y-2 animate-pulse">
+                {[1,2,3,4].map(i => <div key={i} className="h-4 bg-gray-100 rounded w-3/4" />)}
+              </div>
+            ) : backendVer ? (
+              <div className="space-y-1.5">
+                <Row icon={<Zap className="w-3 h-3 text-orange-400" />} label="Version" value={backendVer.version} mono />
+                <Row icon={<GitCommit className="w-3 h-3 text-gray-400" />} label="Commit" value={backendVer.commit} mono />
+                <Row icon={<Clock className="w-3 h-3 text-gray-400" />} label="Built" value={new Date(backendVer.buildTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} />
+                {backendVer.nodeVersion && <Row icon={<Server className="w-3 h-3 text-gray-400" />} label="Node" value={backendVer.nodeVersion} mono />}
+                {backendVer.uptimeSeconds !== undefined && <Row icon={<RefreshCw className="w-3 h-3 text-gray-400" />} label="Uptime" value={formatUptime(backendVer.uptimeSeconds)} />}
+              </div>
+            ) : <p className="text-[11px] text-gray-400">API server not reachable.</p>}
+          </div>
+        </div>
       </div>
 
       {/* Alert banner */}

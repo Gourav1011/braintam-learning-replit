@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import fs from "fs";
+import { execSync } from "child_process";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT ?? "3000";
@@ -20,17 +21,23 @@ export default defineConfig({
     react(),
     tailwindcss({ optimize: false }),
     runtimeErrorOverlay(),
-    // Generate version.json on every production build so clients can detect deploys
+    // Generate version.json on every production build so VPS/admin can detect stale deploys
     {
       name: "generate-version-json",
       apply: "build" as const,
       closeBundle() {
+        let commit = "unknown";
+        try { commit = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim(); } catch {}
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const version = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
         const outDir = path.resolve(import.meta.dirname, "dist/public");
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(
           path.join(outDir, "version.json"),
-          JSON.stringify({ buildTime: Date.now() })
+          JSON.stringify({ version, commit, buildTime: now.toISOString() }, null, 2)
         );
+        console.log(`[version] ${version} @ ${commit}`);
       },
     },
     ...(process.env.NODE_ENV !== "production" &&
