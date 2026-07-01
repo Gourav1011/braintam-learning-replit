@@ -22,6 +22,10 @@ jobs:
             cd /root/braintam-learning-replit
             git fetch origin
             git reset --hard origin/main
-            pm2 restart braintam-api
+            pm2 restart braintam-api --update-env
             pm2 save
+
+            echo "Waiting for API to start..."
+            sleep 10
+
             curl -f http://localhost:5000/api/health
