@@ -339,7 +339,7 @@ function TopperCard({ s, featured }: { s: typeof toppers[number]; featured?: boo
 function HeroVisual() {
   const topBadge = (
     <div className="flex justify-center flex-shrink-0">
-      <div className="bt-float inline-flex items-center gap-2 px-4 py-2 rounded-full"
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
         style={{ background: NAVY, boxShadow: "0 8px 24px rgba(11,43,107,0.25)" }}>
         <span>🏆</span>
         <span className="text-xs font-bold text-white whitespace-nowrap">430+ live classes per grade, every year</span>
@@ -349,7 +349,7 @@ function HeroVisual() {
 
   const bottomBadge = (
     <div className="flex justify-center flex-shrink-0">
-      <div className="bt-float-down inline-flex items-center gap-2 px-4 py-2 rounded-xl"
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
         style={{ background: "#fff", border: `1px solid rgba(11,43,107,0.1)`,
                  boxShadow: "0 8px 28px rgba(11,43,107,0.12)" }}>
         <div className="flex -space-x-2">
