@@ -836,35 +836,48 @@ export default function LandingPage() {
             </p>
           </motion.div>
           {/* Bubble cloud layout */}
-          <div className="relative w-full" style={{ height: 360 }}>
-            {[
-              { emoji: "🎓", title: "Grades 1–10", size: 130, top: "2%",  left: "2%",  accent: NAVY,      delay: 0   },
-              { emoji: "📖", title: "6 Subjects",  size: 105, top: "4%",  left: "22%", accent: "#7C3AED", delay: 0.1 },
-              { emoji: "📝", title: "Homework",    size: 88,  top: "52%", left: "8%",  accent: ORANGE,    delay: 0.2 },
-              { emoji: "🎥", title: "Live Classes", size: 118, top: "28%", left: "36%", accent: "#0EA5E9", delay: 0.15 },
-              { emoji: "📊", title: "Progress",    size: 92,  top: "4%",  left: "54%", accent: "#10B981", delay: 0.25 },
-              { emoji: "🏆", title: "Olympiad",    size: 112, top: "42%", left: "60%", accent: "#F59E0B", delay: 0.05 },
-              { emoji: "🧠", title: "Adaptive AI", size: 80,  top: "10%", left: "77%", accent: "#EC4899", delay: 0.3  },
-              { emoji: "👨‍👩‍👧", title: "Parents",   size: 72,  top: "55%", left: "84%", accent: "#6366F1", delay: 0.2  },
-            ].map((b) => (
-              <motion.div key={b.title}
-                initial={{ opacity: 0, scale: 0.5 }}
+          <div className="relative w-full overflow-hidden" style={{ height: 440 }}>
+            {([
+              { emoji: "🎓", title: "Grades 1–10",   size: 128, top: "2%",  left: "1%",  accent: NAVY,      delay: 0,    drift: { y: [-8,8,-8], x: [4,-4,4],   dur: 5.2 }, push: { x: -18, y: -12 } },
+              { emoji: "📖", title: "6 Subjects",    size: 104, top: "3%",  left: "20%", accent: "#7C3AED", delay: 0.1,  drift: { y: [6,-10,6], x: [-6,6,-6],   dur: 6.1 }, push: { x: 16,  y: -18 } },
+              { emoji: "📝", title: "Homework",      size: 86,  top: "53%", left: "7%",  accent: ORANGE,    delay: 0.2,  drift: { y: [-10,6,-10],x:[5,-5,5],    dur: 4.8 }, push: { x: -14, y: 16  } },
+              { emoji: "🎥", title: "Live Classes",  size: 116, top: "26%", left: "34%", accent: "#0EA5E9", delay: 0.15, drift: { y: [8,-8,8],   x: [-4,4,-4],  dur: 5.7 }, push: { x: 0,   y: -20 } },
+              { emoji: "📊", title: "Progress",      size: 90,  top: "3%",  left: "53%", accent: "#10B981", delay: 0.25, drift: { y: [-6,10,-6], x: [6,-6,6],   dur: 6.4 }, push: { x: 18,  y: -14 } },
+              { emoji: "🏆", title: "Olympiad",      size: 110, top: "40%", left: "59%", accent: "#F59E0B", delay: 0.05, drift: { y: [10,-6,10], x: [-5,5,-5],  dur: 5.0 }, push: { x: 20,  y: 14  } },
+              { emoji: "🧠", title: "Adaptive AI",   size: 78,  top: "9%",  left: "76%", accent: "#EC4899", delay: 0.3,  drift: { y: [-8,8,-8],  x: [4,-4,4],   dur: 4.5 }, push: { x: 16,  y: -16 } },
+              { emoji: "👨‍👩‍👧", title: "Parents",    size: 70,  top: "54%", left: "83%", accent: "#6366F1", delay: 0.2,  drift: { y: [6,-10,6],  x: [-6,6,-6],  dur: 6.8 }, push: { x: 18,  y: 16  } },
+              { emoji: "🔬", title: "Science",       size: 82,  top: "70%", left: "28%", accent: "#14B8A6", delay: 0.18, drift: { y: [-9,7,-9],  x: [5,-5,5],   dur: 5.5 }, push: { x: -12, y: 18  } },
+              { emoji: "🧮", title: "Maths",         size: 75,  top: "72%", left: "46%", accent: "#8B5CF6", delay: 0.22, drift: { y: [7,-9,7],   x: [-4,4,-4],  dur: 6.0 }, push: { x: 0,   y: 20  } },
+              { emoji: "📚", title: "NCERT Aligned", size: 68,  top: "68%", left: "64%", accent: "#F97316", delay: 0.28, drift: { y: [-7,9,-7],  x: [6,-6,6],   dur: 5.3 }, push: { x: 14,  y: 16  } },
+              { emoji: "⭐", title: "Leaderboard",   size: 63,  top: "40%", left: "14%", accent: "#FBBF24", delay: 0.12, drift: { y: [9,-7,9],   x: [-5,5,-5],  dur: 7.0 }, push: { x: -16, y: 0   } },
+              { emoji: "💬", title: "Doubt Solver",  size: 72,  top: "22%", left: "86%", accent: "#06B6D4", delay: 0.35, drift: { y: [-8,8,-8],  x: [4,-4,4],   dur: 5.9 }, push: { x: 18,  y: -10 } },
+              { emoji: "📱", title: "Mobile App",    size: 60,  top: "78%", left: "82%", accent: "#84CC16", delay: 0.4,  drift: { y: [6,-8,6],   x: [-5,5,-5],  dur: 6.6 }, push: { x: 16,  y: 18  } },
+            ] as const).map((b) => (
+              <motion.div
+                key={b.title}
+                initial={{ opacity: 0, scale: 0.4 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: b.delay, type: "spring", stiffness: 200 }}
-                className="absolute flex flex-col items-center justify-center text-center rounded-full select-none"
-                style={{
-                  width: b.size, height: b.size,
-                  top: b.top, left: b.left,
-                  background: `radial-gradient(circle at 35% 35%, ${b.accent}18, ${b.accent}0a)`,
-                  border: `2px solid ${b.accent}30`,
-                  boxShadow: `0 4px 20px ${b.accent}18`,
-                }}>
-                <span style={{ fontSize: b.size * 0.25 }}>{b.emoji}</span>
-                <span className="font-bold leading-tight px-2 mt-0.5"
-                  style={{ fontSize: b.size * 0.105, color: b.accent }}>
-                  {b.title}
-                </span>
+                transition={{ duration: 0.55, delay: b.delay, type: "spring", stiffness: 180 }}
+                className="absolute"
+                style={{ top: b.top, left: b.left, width: b.size, height: b.size }}>
+                {/* inner div: continuous drift + hover push */}
+                <motion.div
+                  animate={{ y: b.drift.y, x: b.drift.x }}
+                  transition={{ duration: b.drift.dur, repeat: Infinity, ease: "easeInOut" }}
+                  whileHover={{ x: b.push.x, y: b.push.y, scale: 1.08, transition: { type: "spring", stiffness: 300, damping: 18 } }}
+                  className="w-full h-full flex flex-col items-center justify-center text-center rounded-full select-none cursor-default"
+                  style={{
+                    background: `radial-gradient(circle at 35% 35%, ${b.accent}20, ${b.accent}08)`,
+                    border: `2px solid ${b.accent}35`,
+                    boxShadow: `0 4px 22px ${b.accent}20`,
+                  }}>
+                  <span style={{ fontSize: b.size * 0.25 }}>{b.emoji}</span>
+                  <span className="font-bold leading-tight px-2 mt-0.5"
+                    style={{ fontSize: b.size * 0.108, color: b.accent }}>
+                    {b.title}
+                  </span>
+                </motion.div>
               </motion.div>
             ))}
           </div>
