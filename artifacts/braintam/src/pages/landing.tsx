@@ -692,6 +692,81 @@ export default function LandingPage() {
       <section className="relative flex items-center pt-16 pb-0 md:pt-20 md:pb-0 px-6 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-10 blur-[100px] pointer-events-none"
           style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
+
+        {/* ── Astronaut background decoration ── */}
+        <div className="absolute bottom-0 left-0 pointer-events-none select-none z-0 hidden lg:block"
+          style={{ transform: "translateX(-18%) translateY(22%)", opacity: 0.82 }}>
+          <svg width="260" height="300" viewBox="0 0 260 300" fill="none" xmlns="http://www.w3.org/2000/svg"
+            className="bt-float-a">
+            {/* Moon */}
+            <ellipse cx="130" cy="276" rx="110" ry="28" fill="url(#moonGrad)" />
+            <ellipse cx="130" cy="270" rx="108" ry="14" fill="#E8EEFF" opacity="0.6" />
+            {/* Moon craters */}
+            <circle cx="80" cy="272" r="6" fill="#D4DCFF" opacity="0.7" />
+            <circle cx="160" cy="275" r="4" fill="#D4DCFF" opacity="0.6" />
+            <circle cx="110" cy="278" r="3" fill="#C8D3FF" opacity="0.5" />
+            {/* Shadow under astronaut on moon */}
+            <ellipse cx="130" cy="264" rx="38" ry="8" fill="#C5D0F0" opacity="0.45" />
+            {/* ── Boots ── */}
+            <rect x="103" y="242" width="22" height="14" rx="7" fill="#CBD5F0" />
+            <rect x="135" y="242" width="22" height="14" rx="7" fill="#CBD5F0" />
+            {/* ── Legs ── */}
+            <rect x="107" y="216" width="16" height="30" rx="8" fill="white" stroke="#D8E0F8" strokeWidth="1.5" />
+            <rect x="137" y="216" width="16" height="30" rx="8" fill="white" stroke="#D8E0F8" strokeWidth="1.5" />
+            {/* ── Body suit ── */}
+            <rect x="88" y="148" width="84" height="78" rx="22" fill="white" stroke="#D8E0F8" strokeWidth="2" />
+            {/* Suit backpack */}
+            <rect x="154" y="158" width="18" height="36" rx="8" fill="#E8EEFF" stroke="#D0D8F5" strokeWidth="1.5" />
+            {/* Chest panel */}
+            <rect x="100" y="164" width="60" height="34" rx="8" fill="#F0F4FF" stroke="#D0D8F5" strokeWidth="1.5" />
+            <circle cx="110" cy="179" r="4" fill="#FF6B1A" />
+            <circle cx="125" cy="179" r="4" fill="#0B2B6B" />
+            <circle cx="140" cy="179" r="4" fill="#10B981" />
+            {/* ── Left arm holding book ── */}
+            <rect x="54" y="158" width="36" height="16" rx="8" fill="white" stroke="#D8E0F8" strokeWidth="1.5" />
+            {/* Book */}
+            <rect x="34" y="152" width="42" height="34" rx="5" fill="#FF6B1A" />
+            <rect x="55" y="152" width="2.5" height="34" fill="#c94e00" />
+            <line x1="40" y1="163" x2="53" y2="163" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="40" y1="170" x2="53" y2="170" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="40" y1="177" x2="53" y2="177" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+            {/* ── Right arm ── */}
+            <rect x="170" y="158" width="36" height="16" rx="8" fill="white" stroke="#D8E0F8" strokeWidth="1.5" />
+            {/* ── Helmet ── */}
+            <circle cx="130" cy="120" r="44" fill="white" stroke="#D8E0F8" strokeWidth="2.5" />
+            {/* Visor */}
+            <ellipse cx="130" cy="120" rx="28" ry="26" fill="#B8CFFF" opacity="0.75" />
+            {/* Visor shine */}
+            <ellipse cx="120" cy="110" rx="8" ry="6" fill="white" opacity="0.45" />
+            {/* Eyes */}
+            <circle cx="120" cy="118" r="5" fill="#0B2B6B" />
+            <circle cx="140" cy="118" r="5" fill="#0B2B6B" />
+            <circle cx="121.5" cy="116.5" r="2" fill="white" />
+            <circle cx="141.5" cy="116.5" r="2" fill="white" />
+            {/* Smile */}
+            <path d="M120 130 Q130 138 140 130" stroke="#0B2B6B" strokeWidth="2" fill="none" strokeLinecap="round" />
+            {/* Helmet band */}
+            <rect x="86" y="136" width="88" height="8" rx="4" fill="#E0E8FF" />
+            {/* Antenna */}
+            <line x1="130" y1="76" x2="130" y2="60" stroke="#D0D8F5" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="130" cy="56" r="5.5" fill="#FF6B1A" />
+            <circle cx="130" cy="56" r="3" fill="#FFB08A" />
+            {/* ── Floating stars ── */}
+            <circle cx="28" cy="80" r="2.5" fill="#FFD700" opacity="0.7" className="bt-pulse-op" />
+            <circle cx="220" cy="60" r="2" fill="#FFD700" opacity="0.6" className="bt-pulse-op" />
+            <circle cx="240" cy="140" r="1.8" fill="#B8CFFF" opacity="0.8" />
+            <circle cx="18" cy="160" r="2" fill="#FFD700" opacity="0.5" className="bt-pulse-op" />
+            {/* Small diamond sparkles */}
+            <path d="M200 90 L203 96 L200 102 L197 96 Z" fill="#FF6B1A" opacity="0.5" />
+            <path d="M45 50 L47 55 L45 60 L43 55 Z" fill="#0B2B6B" opacity="0.35" />
+            <defs>
+              <linearGradient id="moonGrad" x1="20" y1="260" x2="240" y2="300" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#E8EEFF" />
+                <stop offset="100%" stopColor="#C8D4FF" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
         <div className="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-4 md:gap-6 lg:gap-8 items-center">
           {/* ── Left ── */}
           <div className="space-y-4 md:space-y-5 relative z-10">
