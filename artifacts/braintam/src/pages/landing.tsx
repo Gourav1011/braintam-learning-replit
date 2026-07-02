@@ -376,13 +376,13 @@ function HeroVisual() {
 
       {/* ── Desktop (md+): 3-column cards ── */}
       <div className="hidden md:flex items-stretch gap-2 flex-1 min-h-0">
-        <div className="flex-1 min-w-0 bt-float-a">
+        <div className="flex-1 min-w-0">
           <TopperCard s={toppers[2]} />
         </div>
-        <div className="flex-1 min-w-0 bt-float-b" style={{ marginTop: -10, marginBottom: -10 }}>
+        <div className="flex-1 min-w-0" style={{ marginTop: -10, marginBottom: -10 }}>
           <TopperCard s={toppers[0]} featured />
         </div>
-        <div className="flex-1 min-w-0 bt-float-c">
+        <div className="flex-1 min-w-0">
           <TopperCard s={toppers[1]} />
         </div>
       </div>
@@ -731,10 +731,9 @@ export default function LandingPage() {
             {/* ── 5-Day Trial CTA ── */}
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}>
               <a href="/enroll"
-                className="relative inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all hover:scale-[1.02] group"
+                className="bt-offer-pulse relative flex items-center gap-3 px-5 py-3.5 rounded-2xl group w-fit"
                 style={{ background: `linear-gradient(135deg, #fff8f3, #fff2e6)`,
-                         border: `2px solid ${ORANGE}`,
-                         boxShadow: `0 4px 20px rgba(255,107,26,0.25), 0 0 0 4px rgba(255,107,26,0.08)` }}>
+                         border: `2px solid ${ORANGE}` }}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>
                   <GraduationCap className="w-5 h-5 text-white" />
