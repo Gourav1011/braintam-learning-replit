@@ -135,6 +135,15 @@ export default function EnrollFullPage() {
   const [confirmedPhone, setConfirmedPhone] = useState("");
   const razorpayReady = useRazorpay();
 
+  // Fetch DB-configured price for selected grade (admin-set pricing overrides hardcoded table)
+  const [dbPrice, setDbPrice] = useState<{ originalPrice: number | null } | null>(null);
+  useEffect(() => {
+    fetch(`${API_BASE}/api/courses/mastery-price?grade=${grade}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { originalPrice: number | null } | null) => setDbPrice(d))
+      .catch(() => {});
+  }, [grade]);
+
   // Sync grade when programKey changes
   useEffect(() => {
     const vg = GRADE_RANGES[programKey] ?? [4,5,6];
@@ -147,8 +156,10 @@ export default function EnrollFullPage() {
     if (newProg) { setProgramKey(newProg); setGrade(g); }
   };
 
-  // Grade-specific price (overrides program default)
-  const gradePrice = GRADE_PRICES[grade] ?? { price: program.price, amountPaise: program.amountPaise };
+  // Grade-specific price: DB price takes priority over hardcoded table
+  const gradePrice = dbPrice?.originalPrice
+    ? { price: `₹${dbPrice.originalPrice.toLocaleString("en-IN")}`, amountPaise: dbPrice.originalPrice * 100 }
+    : GRADE_PRICES[grade] ?? { price: program.price, amountPaise: program.amountPaise };
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();

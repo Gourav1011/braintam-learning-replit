@@ -10,8 +10,9 @@ import {
   paymentLinksTable,
   studentTimelineTable,
   masteryStudentsTable,
+  coursesTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
 import { assignIgniteBatchAndCourse } from "../lib/assignIgniteBatch.js";
 
@@ -790,7 +791,20 @@ router.post("/payments/create-full-order", async (req, res) => {
     res.status(400).json({ error: "Invalid program. Must be foundation, mastery, or elite." });
     return;
   }
-  const amountPaise = FULL_GRADE_PRICES[grade];
+  // Prefer DB-configured price; fall back to hardcoded table.
+  const [dbCourse] = await db.select({ originalPrice: coursesTable.originalPrice })
+    .from(coursesTable)
+    .where(and(
+      eq(coursesTable.grade, grade),
+      eq(coursesTable.courseType, "mastery"),
+      eq(coursesTable.isArchived, false),
+    ))
+    .orderBy(desc(coursesTable.id))
+    .limit(1);
+
+  const amountPaise = dbCourse?.originalPrice
+    ? dbCourse.originalPrice * 100  // DB stores rupees, Razorpay needs paise
+    : FULL_GRADE_PRICES[grade];
   if (!amountPaise) {
     res.status(400).json({ error: "No pricing available for this grade." });
     return;

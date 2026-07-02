@@ -2697,7 +2697,7 @@ function AdminPageInner() {
                       onValueChange={v => {
                         const val = v === "__none__" ? "" : v;
                         const course = val ? courses.find(c => String(c.id) === val) : null;
-                        setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade }));
+                        setLcForm(p => ({ ...p, courseId: val, courseSubjectId: "", chapterId: "", topicId: "", grade: course ? String(course.grade) : p.grade, title: !p.title && course ? course.title : p.title }));
                         setLcCourseSubjects([]);
                         setLcChapters([]);
                         setLcTopics([]);

@@ -248,9 +248,9 @@ router.get("/admin/cc/mentors/:id/students", adminOnly, async (req, res) => {
 router.patch("/admin/cc/mentors/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { name, phone, department, isActive } = req.body as { name?: string; phone?: string; department?: string; isActive?: boolean };
+  const { name, phone, department, isActive, email } = req.body as { name?: string; phone?: string; department?: string; isActive?: boolean; email?: string };
   try {
-    const [before] = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive, role: usersTable.role })
+    const [before] = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive, role: usersTable.role })
       .from(usersTable).where(and(eq(usersTable.id, id), inArray(usersTable.role, [...MENTOR_ROLES]))).limit(1);
     if (!before) { res.status(404).json({ error: "Mentor not found" }); return; }
 
@@ -259,6 +259,11 @@ router.patch("/admin/cc/mentors/:id", adminOnly, async (req, res) => {
     if (phone !== undefined)                updates.phone      = phone || null;
     if (department !== undefined)           updates.department = department || null;
     if (isActive !== undefined)             updates.isActive   = isActive;
+    if (email !== undefined && email.trim() && email.trim() !== before.email) {
+      const conflict = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email.trim())).limit(1);
+      if (conflict.length > 0) { res.status(400).json({ error: "Email already in use by another account" }); return; }
+      updates.email = email.trim().toLowerCase();
+    }
 
     const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive });
 

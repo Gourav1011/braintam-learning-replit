@@ -3,7 +3,7 @@ import {
   Search, Filter, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   Loader2, XCircle, RefreshCw, MoreVertical, Eye, Pencil, UserCheck,
   UserX, Shield, X, Check, AlertTriangle, Users, ArrowLeft,
-  TrendingUp, BookOpen, Zap, GraduationCap, UserCheck2,
+  TrendingUp, BookOpen, Zap, GraduationCap, UserCheck2, Plus,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
 
@@ -151,6 +151,94 @@ function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClos
   );
 }
 
+// ── Add Mentor Modal (CC) ──────────────────────────────────────────────────────
+function AddMentorModal({ onClose, onCreated, flash }: {
+  onClose: () => void;
+  onCreated: () => void;
+  flash: (m: string, ok?: boolean) => void;
+}) {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", mentorType: "academic" });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+      setErr("Name, email and password are required.");
+      return;
+    }
+    setSaving(true);
+    const r = await apiFetch("/admin/mentors", {
+      method: "POST",
+      body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || null, password: form.password, mentorType: form.mentorType }),
+    });
+    setSaving(false);
+    if (r.ok) { flash(`${form.mentorType === "sales" ? "Sales" : "Academic"} mentor created!`, true); onCreated(); onClose(); }
+    else { const j = await r.json().catch(() => ({})); setErr((j as { error?: string }).error ?? "Failed to create mentor."); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-base font-black" style={{ color: NAVY }}>Add Mentor</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Create a new Sales (Ignite) or Academic (Mastery) mentor</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="space-y-3">
+          {/* Mentor type selector */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Mentor Type *</label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: "sales", label: "⚡ Sales (Ignite)", desc: "Handles demo/enrollment calls" },
+                { value: "academic", label: "🎓 Academic (Mastery)", desc: "Handles enrolled students" },
+              ] as const).map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setForm(p => ({ ...p, mentorType: opt.value }))}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${form.mentorType === opt.value ? "border-orange-400 bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <p className="text-xs font-black" style={{ color: form.mentorType === opt.value ? "#FF6B1A" : "#374151" }}>{opt.label}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+          {[
+            { label: "Full Name *", key: "name",     type: "text",     placeholder: "e.g. Priya Sharma" },
+            { label: "Email *",     key: "email",    type: "email",    placeholder: "priya@braintam.com" },
+            { label: "Phone",       key: "phone",    type: "tel",      placeholder: "+91 98765 43210" },
+            { label: "Password *",  key: "password", type: "password", placeholder: "Set a login password" },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">{f.label}</label>
+              <input type={f.type} placeholder={f.placeholder}
+                value={form[f.key as keyof typeof form]}
+                onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
+            </div>
+          ))}
+          {err && <p className="text-xs text-red-600 font-semibold">{err}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 py-2 rounded-xl text-white text-sm font-black disabled:opacity-60 transition-all"
+              style={{ background: "#FF6B1A" }}>
+              {saving ? "Creating…" : "Create Mentor"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 function EditModal({ mentor, onClose, onSaved, flash }: {
   mentor: MentorRow; onClose: () => void;
@@ -158,6 +246,7 @@ function EditModal({ mentor, onClose, onSaved, flash }: {
   flash: (m: string, ok?: boolean) => void;
 }) {
   const [name, setName]           = useState(mentor.name);
+  const [email, setEmail]         = useState(mentor.email ?? "");
   const [phone, setPhone]         = useState(mentor.phone ?? "");
   const [department, setDept]     = useState(mentor.department ?? "");
   const [saving, setSaving]       = useState(false);
@@ -168,7 +257,7 @@ function EditModal({ mentor, onClose, onSaved, flash }: {
     try {
       const r = await apiFetch(`/admin/cc/mentors/${mentor.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ name: name.trim(), phone: phone || null, department: department || null }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim() || undefined, phone: phone || null, department: department || null }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Failed");
@@ -189,17 +278,14 @@ function EditModal({ mentor, onClose, onSaved, flash }: {
         </div>
         <div className="p-4 space-y-3">
           {[{ label: "Full Name *", val: name, set: setName, placeholder: "Full name", type: "text" },
-            { label: "Phone",      val: phone, set: setPhone, placeholder: "Phone number", type: "tel" }].map(f => (
+            { label: "Email",       val: email, set: setEmail, placeholder: "Email address", type: "email" },
+            { label: "Phone",       val: phone, set: setPhone, placeholder: "Phone number", type: "tel" }].map(f => (
             <div key={f.label}>
               <label className="text-xs font-semibold text-gray-500 block mb-1">{f.label}</label>
               <input value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.placeholder} type={f.type}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
             </div>
           ))}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1">Email (read-only)</label>
-            <input value={mentor.email ?? "—"} readOnly className="w-full border border-gray-100 rounded-xl px-3 py-2 text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
-          </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 block mb-1">Department</label>
             <select value={department} onChange={e => setDept(e.target.value)}
@@ -567,6 +653,7 @@ export function MentorManagementView({ flash }: { flash: (msg: string, ok?: bool
   const [typeModal, setTypeModal]     = useState<MentorRow | null>(null);
   const [toggleTarget, setToggleTarget] = useState<MentorRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAddMentor, setShowAddMentor] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -624,9 +711,16 @@ export function MentorManagementView({ flash }: { flash: (msg: string, ok?: bool
           <h2 className="text-xl font-black" style={{ color: NAVY }}>Mentor Management</h2>
           <p className="text-xs text-gray-400 mt-0.5">Operational control centre for all Sales and Academic Mentors</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors">
-          <RefreshCw className="w-3 h-3" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowAddMentor(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-colors"
+            style={{ background: "#FF6B1A" }}>
+            <Plus className="w-3.5 h-3.5" /> Add Mentor
+          </button>
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors">
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* KPI cards */}
@@ -797,6 +891,7 @@ export function MentorManagementView({ flash }: { flash: (msg: string, ok?: bool
       )}
 
       {/* Modals */}
+      {showAddMentor && <AddMentorModal onClose={() => setShowAddMentor(false)} onCreated={load} flash={flash} />}
       {profileId    && <ProfileModal mentorId={profileId} onClose={() => setProfileId(null)} />}
       {editMentor   && <EditModal mentor={editMentor} onClose={() => setEditMentor(null)} onSaved={u => updateRow(editMentor.id, u)} flash={flash} />}
       {typeModal    && <ChangeTypeModal mentor={typeModal} onClose={() => setTypeModal(null)} onSaved={t => { updateRow(typeModal.id, { normType: t, role: t }); }} flash={flash} />}

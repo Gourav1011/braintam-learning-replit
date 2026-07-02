@@ -189,7 +189,7 @@ function AddMentorModal({ onClose, onCreated, flash }: {
   onCreated: () => void;
   flash: (msg: string, ok?: boolean) => void;
 }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", mentorType: "academic" });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   async function submit(e: React.FormEvent) {
@@ -202,10 +202,10 @@ function AddMentorModal({ onClose, onCreated, flash }: {
     setSaving(true);
     const r = await apiFetch("/admin/mentors", {
       method: "POST",
-      body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || null, password: form.password, mentorType: "academic" }),
+      body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || null, password: form.password, mentorType: form.mentorType }),
     });
     setSaving(false);
-    if (r.ok) { flash("Academic mentor created!"); onCreated(); onClose(); }
+    if (r.ok) { flash(`${form.mentorType === "sales" ? "Sales (Ignite)" : "Academic (Mastery)"} mentor created!`); onCreated(); onClose(); }
     else { const j = await r.json().catch(() => ({})); setErr((j as { error?: string }).error ?? "Failed to create mentor."); }
   }
   return (
@@ -214,12 +214,29 @@ function AddMentorModal({ onClose, onCreated, flash }: {
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-base font-black" style={{ color: NAVY }}>Add Academic Mentor</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Mentor type is set to <strong>Academic</strong> (Mastery programme)</p>
+            <h2 className="text-base font-black" style={{ color: NAVY }}>Add Mentor</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Create a Sales (Ignite) or Academic (Mastery) mentor</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={submit} className="space-y-3">
+          {/* Mentor type selector */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Mentor Type *</label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: "sales",    label: "⚡ Sales",    sub: "Ignite programme — handles demo calls & enrollment" },
+                { value: "academic", label: "🎓 Academic", sub: "Mastery programme — handles enrolled students" },
+              ] as const).map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setForm(p => ({ ...p, mentorType: opt.value }))}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${form.mentorType === opt.value ? "border-orange-400 bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <p className="text-xs font-black" style={{ color: form.mentorType === opt.value ? ORANGE : "#374151" }}>{opt.label}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{opt.sub}</p>
+                </button>
+              ))}
+            </div>
+          </div>
           {[
             { label: "Full Name *", key: "name",     type: "text",     placeholder: "e.g. Priya Sharma" },
             { label: "Email *",     key: "email",    type: "email",    placeholder: "priya@braintam.com" },
@@ -734,7 +751,7 @@ export function MentorsTab({ flash }: { flash: (msg: string, ok?: boolean) => vo
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-black hover:opacity-90 shadow-sm"
             style={{ background: ORANGE }}>
-            <Plus className="w-3.5 h-3.5" /> Add Academic Mentor
+            <Plus className="w-3.5 h-3.5" /> Add Mentor
           </button>
         </div>
       </div>
@@ -969,7 +986,7 @@ export function MentorsTab({ flash }: { flash: (msg: string, ok?: boolean) => vo
             <UserCheck2 className="w-10 h-10 mx-auto mb-3 text-gray-200" />
             <p className="text-sm font-semibold text-gray-400">No mentors found</p>
             <button onClick={() => setShowAdd(true)} className="mt-3 px-4 py-2 rounded-xl text-white text-xs font-bold" style={{ background: ORANGE }}>
-              Add Academic Mentor
+              Add Mentor
             </button>
           </div>
         ) : (

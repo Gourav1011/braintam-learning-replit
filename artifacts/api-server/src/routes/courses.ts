@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { coursesTable, lessonsTable, enrollmentsTable, masteryStudentsTable } from "@workspace/db";
 import { ListCoursesQueryParams, GetCourseParams } from "@workspace/api-zod";
-import { eq, and, ilike, inArray } from "drizzle-orm";
+import { eq, and, ilike, inArray, desc } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
@@ -55,6 +55,39 @@ router.get("/courses", attachUser, async (req, res) => {
     rating: c.rating ?? null,
     thumbnailUrl: c.thumbnailUrl ?? null,
   })));
+});
+
+// ── GET /courses/mastery-price (public) ───────────────────────────────────────
+// Returns active mastery course pricing for a given grade (no auth required).
+router.get("/courses/mastery-price", async (req, res) => {
+  const grade = Number(req.query.grade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Invalid grade" });
+    return;
+  }
+  const [course] = await db.select({
+    id: coursesTable.id,
+    title: coursesTable.title,
+    originalPrice: coursesTable.originalPrice,
+    registrationFee: coursesTable.registrationFee,
+    grade: coursesTable.grade,
+  })
+    .from(coursesTable)
+    .where(and(
+      eq(coursesTable.grade, grade),
+      eq(coursesTable.courseType, "mastery"),
+      eq(coursesTable.isArchived, false),
+    ))
+    .orderBy(desc(coursesTable.id))
+    .limit(1);
+
+  res.json(course ? {
+    courseId: course.id,
+    title: course.title,
+    originalPrice: course.originalPrice ?? null,
+    registrationFee: course.registrationFee ?? null,
+    grade: course.grade,
+  } : { originalPrice: null, registrationFee: null });
 });
 
 router.get("/courses/:id", attachUser, async (req, res) => {

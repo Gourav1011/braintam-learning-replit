@@ -109190,9 +109190,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-02-1443" : "dev",
-    commit: true ? "1bbdbc2" : "unknown",
-    buildTime: true ? "2026-07-02T14:43:16.904Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-02-1901" : "dev",
+    commit: true ? "a888d14" : "unknown",
+    buildTime: true ? "2026-07-02T19:01:17.370Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -109672,6 +109672,31 @@ router4.get("/courses", attachUser, async (req, res) => {
     rating: c.rating ?? null,
     thumbnailUrl: c.thumbnailUrl ?? null
   })));
+});
+router4.get("/courses/mastery-price", async (req, res) => {
+  const grade = Number(req.query.grade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Invalid grade" });
+    return;
+  }
+  const [course] = await db.select({
+    id: coursesTable.id,
+    title: coursesTable.title,
+    originalPrice: coursesTable.originalPrice,
+    registrationFee: coursesTable.registrationFee,
+    grade: coursesTable.grade
+  }).from(coursesTable).where(and(
+    eq(coursesTable.grade, grade),
+    eq(coursesTable.courseType, "mastery"),
+    eq(coursesTable.isArchived, false)
+  )).orderBy(desc(coursesTable.id)).limit(1);
+  res.json(course ? {
+    courseId: course.id,
+    title: course.title,
+    originalPrice: course.originalPrice ?? null,
+    registrationFee: course.registrationFee ?? null,
+    grade: course.grade
+  } : { originalPrice: null, registrationFee: null });
 });
 router4.get("/courses/:id", attachUser, async (req, res) => {
   const parsed = GetCourseParams.safeParse({ id: Number(req.params.id) });
@@ -121334,7 +121359,12 @@ router28.post("/payments/create-full-order", async (req, res) => {
     res.status(400).json({ error: "Invalid program. Must be foundation, mastery, or elite." });
     return;
   }
-  const amountPaise = FULL_GRADE_PRICES[grade];
+  const [dbCourse] = await db.select({ originalPrice: coursesTable.originalPrice }).from(coursesTable).where(and(
+    eq(coursesTable.grade, grade),
+    eq(coursesTable.courseType, "mastery"),
+    eq(coursesTable.isArchived, false)
+  )).orderBy(desc(coursesTable.id)).limit(1);
+  const amountPaise = dbCourse?.originalPrice ? dbCourse.originalPrice * 100 : FULL_GRADE_PRICES[grade];
   if (!amountPaise) {
     res.status(400).json({ error: "No pricing available for this grade." });
     return;
@@ -121876,9 +121906,9 @@ router30.patch("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const { name, phone, department, isActive } = req.body;
+  const { name, phone, department, isActive, email: email3 } = req.body;
   try {
-    const [before] = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive, role: usersTable.role }).from(usersTable).where(and(eq(usersTable.id, id), inArray(usersTable.role, [...MENTOR_ROLES]))).limit(1);
+    const [before] = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive, role: usersTable.role }).from(usersTable).where(and(eq(usersTable.id, id), inArray(usersTable.role, [...MENTOR_ROLES]))).limit(1);
     if (!before) {
       res.status(404).json({ error: "Mentor not found" });
       return;
@@ -121888,6 +121918,14 @@ router30.patch("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
     if (phone !== void 0) updates.phone = phone || null;
     if (department !== void 0) updates.department = department || null;
     if (isActive !== void 0) updates.isActive = isActive;
+    if (email3 !== void 0 && email3.trim() && email3.trim() !== before.email) {
+      const conflict = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email3.trim())).limit(1);
+      if (conflict.length > 0) {
+        res.status(400).json({ error: "Email already in use by another account" });
+        return;
+      }
+      updates.email = email3.trim().toLowerCase();
+    }
     const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive });
     const actor = req.authUser;
     await logMentorAction({
