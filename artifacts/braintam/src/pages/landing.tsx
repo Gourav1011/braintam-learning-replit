@@ -689,9 +689,12 @@ export default function LandingPage() {
         </div>
       </motion.nav>
       {/* ── HERO ── */}
-      <section className="relative flex items-center pt-16 pb-0 md:pt-20 md:pb-0 px-6 overflow-hidden">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-10 blur-[100px] pointer-events-none"
-          style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
+      <section className="relative flex items-start md:items-center pt-16 pb-8 md:pt-20 md:pb-10 px-6">
+        {/* blur bg — clipped independently so content is never hidden */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-10 blur-[100px]"
+            style={{ background: `radial-gradient(ellipse, ${ORANGE}55, ${NAVY}33, transparent)` }} />
+        </div>
 
         <div className="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-4 md:gap-6 lg:gap-8 items-center">
           {/* ── Left ── */}
