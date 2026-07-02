@@ -109190,9 +109190,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-02-1427" : "dev",
-    commit: true ? "fcd667f" : "unknown",
-    buildTime: true ? "2026-07-02T14:27:02.477Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-02-1435" : "dev",
+    commit: true ? "b989a9c" : "unknown",
+    buildTime: true ? "2026-07-02T14:35:00.887Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -115762,8 +115762,11 @@ router19.get("/mentor/live-classes", mentorAuth, async (req, res) => {
 router19.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const mode = String(req.query.mode ?? "upcoming");
-  const studentIds = await getMentorStudentIds(mentorId);
-  const gradeSet = [];
+  const [studentIds, gradeTeamRows] = await Promise.all([
+    getMentorStudentIds(mentorId),
+    db.select({ grade: gradeMentorAssignmentsTable.grade }).from(gradeMentorAssignmentsTable).where(and(eq(gradeMentorAssignmentsTable.mentorId, mentorId), eq(gradeMentorAssignmentsTable.isActive, true)))
+  ]);
+  const gradeSet = [...gradeTeamRows.map((r) => r.grade)];
   if (studentIds.length > 0) {
     const grades = await db.select({ grade: usersTable.grade }).from(usersTable).where(inArray(usersTable.id, studentIds));
     grades.forEach((g) => {
@@ -116941,13 +116944,18 @@ router20.get("/mentor/today-tasks", mentorAuth2, async (req, res) => {
 router20.get("/mentor/observer/live-classes", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const mode = String(req.query.mode ?? "upcoming");
-  const studentIds = await getMentorStudentIds2(mentorId);
-  if (studentIds.length === 0) {
-    res.json([]);
-    return;
+  const [gradeTeamRows, studentIds] = await Promise.all([
+    db.select({ grade: gradeMentorAssignmentsTable.grade }).from(gradeMentorAssignmentsTable).where(and(eq(gradeMentorAssignmentsTable.mentorId, mentorId), eq(gradeMentorAssignmentsTable.isActive, true))),
+    getMentorStudentIds2(mentorId)
+  ]);
+  const gradeSetRaw = [...gradeTeamRows.map((r) => r.grade)];
+  if (studentIds.length > 0) {
+    const grades = await db.select({ grade: usersTable.grade }).from(usersTable).where(inArray(usersTable.id, studentIds));
+    grades.forEach((g) => {
+      if (g.grade !== null && !gradeSetRaw.includes(g.grade)) gradeSetRaw.push(g.grade);
+    });
   }
-  const grades = await db.select({ grade: usersTable.grade }).from(usersTable).where(inArray(usersTable.id, studentIds));
-  const gradeSet = [...new Set(grades.map((g) => g.grade).filter((g) => g !== null))];
+  const gradeSet = [...new Set(gradeSetRaw)];
   if (gradeSet.length === 0) {
     res.json([]);
     return;

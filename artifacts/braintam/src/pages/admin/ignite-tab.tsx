@@ -3333,10 +3333,11 @@ function GradeTeamsView({ flash }: { flash: (m: string, ok?: boolean) => void })
   const [grades, setGrades] = useState<GradeTeamCard[]>([]);
   const [allMentors, setAllMentors] = useState<AllMentor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [managingGrade, setManagingGrade] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (silent) setRefreshing(true); else setLoading(true);
     try {
       const r = await apiFetch("/admin/ignite/grade-teams");
       if (!r.ok) throw new Error("Failed to load grade teams");
@@ -3347,6 +3348,7 @@ function GradeTeamsView({ flash }: { flash: (m: string, ok?: boolean) => void })
       flash("Failed to load grade teams", false);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [flash]);
 
@@ -3367,9 +3369,9 @@ function GradeTeamsView({ flash }: { flash: (m: string, ok?: boolean) => void })
           <h1 className="text-xl font-black" style={{ color: NAVY }}>Grade Teams</h1>
           <p className="text-xs text-gray-500 mt-0.5">Assign multiple mentors to each grade — leads are distributed across the team</p>
         </div>
-        <button onClick={load} disabled={loading}
+        <button onClick={() => load(true)} disabled={loading || refreshing}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-          <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${loading ? "animate-spin" : ""}`} /> Refresh
+          <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${(loading || refreshing) ? "animate-spin" : ""}`} /> Refresh
         </button>
       </div>
 
@@ -3494,7 +3496,7 @@ function GradeTeamsView({ flash }: { flash: (m: string, ok?: boolean) => void })
           grade={managingGrade}
           currentMentorIds={managingCard.mentors.map(m => m.id)}
           allMentors={allMentors}
-          onSave={() => { setManagingGrade(null); load(); }}
+          onSave={() => { setManagingGrade(null); load(true); }}
           onClose={() => setManagingGrade(null)}
           flash={flash}
         />

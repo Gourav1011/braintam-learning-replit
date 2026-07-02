@@ -12,6 +12,7 @@ import {
   mentorEodReportsTable,
   demoSessionsTable,
   demoBatchesTable,
+  gradeMentorAssignmentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, ne } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -222,11 +223,21 @@ router.get("/mentor/today-tasks", mentorAuth, async (req, res) => {
 router.get("/mentor/observer/live-classes", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const mode = String(req.query.mode ?? "upcoming");
-  const studentIds = await getMentorStudentIds(mentorId);
-  if (studentIds.length === 0) { res.json([]); return; }
 
-  const grades = await db.select({ grade: usersTable.grade }).from(usersTable).where(inArray(usersTable.id, studentIds));
-  const gradeSet = [...new Set(grades.map(g => g.grade).filter((g): g is number => g !== null))];
+  // Build gradeSet from grade-team assignments + assigned students
+  const [gradeTeamRows, studentIds] = await Promise.all([
+    db.select({ grade: gradeMentorAssignmentsTable.grade })
+      .from(gradeMentorAssignmentsTable)
+      .where(and(eq(gradeMentorAssignmentsTable.mentorId, mentorId), eq(gradeMentorAssignmentsTable.isActive, true))),
+    getMentorStudentIds(mentorId),
+  ]);
+
+  const gradeSetRaw: number[] = [...gradeTeamRows.map(r => r.grade)];
+  if (studentIds.length > 0) {
+    const grades = await db.select({ grade: usersTable.grade }).from(usersTable).where(inArray(usersTable.id, studentIds));
+    grades.forEach(g => { if (g.grade !== null && !gradeSetRaw.includes(g.grade)) gradeSetRaw.push(g.grade); });
+  }
+  const gradeSet = [...new Set(gradeSetRaw)];
   if (gradeSet.length === 0) { res.json([]); return; }
 
   const now = new Date();

@@ -18,6 +18,7 @@ import {
   demoBatchEnrollmentsTable,
   demoBatchesTable,
   demoSessionsTable,
+  gradeMentorAssignmentsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNull, isNotNull } from "drizzle-orm";
 import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
@@ -459,9 +460,15 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const mode = String(req.query.mode ?? "upcoming"); // today | upcoming | completed
 
-  // 1. Find batches directly assigned to this mentor OR matching grades of assigned students
-  const studentIds = await getMentorStudentIds(mentorId);
-  const gradeSet: number[] = [];
+  // 1. Build gradeSet from assigned students AND grade-team assignments
+  const [studentIds, gradeTeamRows] = await Promise.all([
+    getMentorStudentIds(mentorId),
+    db.select({ grade: gradeMentorAssignmentsTable.grade })
+      .from(gradeMentorAssignmentsTable)
+      .where(and(eq(gradeMentorAssignmentsTable.mentorId, mentorId), eq(gradeMentorAssignmentsTable.isActive, true))),
+  ]);
+
+  const gradeSet: number[] = [...gradeTeamRows.map(r => r.grade)];
   if (studentIds.length > 0) {
     const grades = await db.select({ grade: usersTable.grade }).from(usersTable)
       .where(inArray(usersTable.id, studentIds));
