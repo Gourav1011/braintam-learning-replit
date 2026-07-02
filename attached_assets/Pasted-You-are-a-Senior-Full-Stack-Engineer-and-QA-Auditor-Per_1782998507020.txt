@@ -1,0 +1,253 @@
+You are a Senior Full-Stack Engineer and QA Auditor. Perform a COMPLETE end-to-end audit of the Braintam website, enrollment flow, pricing engine, and Razorpay integration. Do not make assumptions. Investigate everything before changing code.
+
+PRIMARY ISSUE
+When a user opens Courses and tries to enroll in a Long-Term Course, the system is incorrectly redirecting/enrolling them into the Demo/Ignite Course. This must be identified and fixed.
+
+==================================================
+PHASE 1: FULL SYSTEM AUDIT
+==================================================
+
+1. Analyze the entire codebase:
+- Routes
+- Frontend pages
+- Course cards
+- Enrollment flow
+- API endpoints
+- Database schema
+- Razorpay integration
+- Admin pricing configuration
+- Payment verification flow
+- Success/failure pages
+- Student enrollment logic
+
+Create a complete flow diagram:
+
+Homepage
+→ Courses Page
+→ Course Details
+→ Enroll Button
+→ Razorpay Order Creation
+→ Payment Verification
+→ Enrollment Creation
+→ Student Dashboard
+
+Identify exactly where the wrong course ID is being passed.
+
+==================================================
+PHASE 2: COURSE ENROLLMENT AUDIT
+==================================================
+
+Inspect:
+
+Courses Table
+Course Instances
+Demo/Ignite Courses
+Long-Term Courses
+Course IDs
+Slug Mapping
+Routing Parameters
+Enrollment APIs
+Frontend State Management
+
+Questions to answer:
+
+1. Is the Enroll button sending the wrong courseId?
+2. Is a demo course hardcoded somewhere?
+3. Is the backend defaulting to Ignite Course?
+4. Is there a fallback course assignment?
+5. Is course lookup using grade instead of actual course ID?
+6. Is there a useEffect resetting selected course?
+7. Is enrollment API replacing the selected course?
+8. Is pricing page using wrong IDs?
+
+Output exact root cause.
+
+==================================================
+PHASE 3: RAZORPAY AUDIT
+==================================================
+
+Audit entire Razorpay implementation.
+
+Check:
+
+Frontend:
+- Order creation requests
+- Razorpay popup configuration
+- Amount calculations
+- Metadata
+- Receipt IDs
+- Success handlers
+- Failure handlers
+
+Backend:
+- Create Order API
+- Verify Payment API
+- Signature verification
+- Webhooks
+- Database updates
+- Enrollment creation
+- Payment records
+
+Verify:
+
+Demo Course Payment
+Long-Term Course Payment
+Partial Payment
+Payment Links
+Retry Payments
+Failed Payments
+
+Check:
+
+✔ Does Demo Course charge correct amount?
+✔ Does Long-Term Course charge correct amount?
+✔ Does payment create correct enrollment?
+✔ Does payment update database?
+✔ Does payment appear in admin?
+✔ Does student get correct course access?
+✔ Does payment receipt contain correct course information?
+
+==================================================
+PHASE 4: ADMIN PRICING AUDIT
+==================================================
+
+There is an Admin Pricing section that changes prices.
+
+Audit:
+
+Pricing Tables
+Pricing APIs
+Admin UI
+Caching
+Frontend Price Fetching
+Course Cards
+Payment Order Creation
+
+Requirement:
+
+Whenever admin changes pricing:
+
+Example:
+
+Grade 1:
+Demo = ₹39
+Mastery = ₹24,999
+
+Grade 4:
+Demo = ₹49
+Mastery = ₹26,999
+
+Grade 6:
+Demo = ₹99
+Mastery = ₹30,999
+
+The ENTIRE website must automatically update:
+
+Homepage
+Pricing cards
+Course page
+Course detail page
+Checkout
+Razorpay amount
+Payment links
+Invoices
+Receipts
+
+No hardcoded prices should exist anywhere.
+
+==================================================
+PHASE 5: HARDCODED VALUES AUDIT
+==================================================
+
+Search the entire codebase for:
+
+39
+49
+99
+24999
+26999
+29999
+34999
+37999
+
+Find every hardcoded price and replace with dynamic pricing from admin configuration.
+
+==================================================
+PHASE 6: END-TO-END TESTING
+==================================================
+
+Create and run smoke tests:
+
+TEST 1:
+Homepage
+→ Ignite Course
+→ Razorpay
+→ Payment
+→ Verify
+→ Demo Enrollment
+
+TEST 2:
+Homepage
+→ Long-Term Course
+→ Razorpay
+→ Payment
+→ Verify
+→ Long-Term Enrollment
+
+TEST 3:
+Courses Page
+→ Select Grade
+→ Select Long-Term Course
+→ Pay
+→ Verify correct course access
+
+TEST 4:
+Admin changes pricing
+→ Refresh website
+→ Prices update everywhere
+→ Razorpay charges updated amount
+
+TEST 5:
+Failed payment
+→ Retry payment
+→ No duplicate enrollment
+
+TEST 6:
+Partial payment
+→ Correct balance tracking
+
+==================================================
+DELIVERABLES REQUIRED
+==================================================
+
+1. System architecture diagram
+2. Enrollment flow diagram
+3. Razorpay flow diagram
+4. Database relationship diagram
+5. Root cause of long-term course opening demo course
+6. List of all hardcoded prices
+7. List of all affected files
+8. Exact code changes required
+9. Any security issues
+10. Any race conditions
+11. Any broken APIs
+12. Any incorrect course mappings
+13. Confirmation that:
+
+✔ Demo Course enrollment works
+✔ Long-Term Course enrollment works
+✔ Admin pricing controls all website pricing
+✔ Razorpay always charges correct amount
+✔ Student always gets correct course access
+
+IMPORTANT:
+Do NOT immediately change code.
+First investigate and produce a complete audit report with evidence:
+- file names
+- functions
+- line numbers
+- API endpoints
+- database tables
+- root causes
+
+Then implement fixes one by one and rerun all tests until everything passes.
