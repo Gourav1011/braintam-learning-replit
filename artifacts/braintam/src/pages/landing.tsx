@@ -835,22 +835,36 @@ export default function LandingPage() {
               A complete academic ecosystem built around structured growth — not just content delivery.
             </p>
           </motion.div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {/* Bubble cloud layout */}
+          <div className="relative w-full" style={{ height: 360 }}>
             {[
-              { emoji: "🎓", title: "Grades 1–10 Covered", desc: "Full curriculum from foundational to board-level across all grades." },
-              { emoji: "📖", title: "6 Core Academic Subjects", desc: "Maths, Science, English, Social Studies, Hindi & more — all NCERT-aligned." },
-              { emoji: "📝", title: "Weekly Homework & Assessments", desc: "Structured practice sets after every concept, with graded results." },
-              { emoji: "🎥", title: "Live Classes + Recordings", desc: "Attend live or watch anytime — every session is recorded and searchable." },
-              { emoji: "📊", title: "Progress Tracking & Reports", desc: "Chapter-wise mastery heatmaps shared with parents every week." },
-              { emoji: "🏆", title: "Olympiad & Foundation Prep", desc: "Dedicated tracks for NSO, IMO, NTSE, and other competitive exams." },
-            ].map((item, i) => (
-              <motion.div key={item.title} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}
-                className="rounded-2xl p-4 md:p-5 flex flex-col gap-2 transition-all duration-300"
-                style={{ background: SURFACE, border: `1px solid ${BORDER2}` }}
-                whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(11,43,107,0.1)", borderColor: "rgba(255,107,26,0.25)" }}>
-                <div className="text-2xl">{item.emoji}</div>
-                <div className="font-bold text-sm leading-snug" style={{ color: TEXT }}>{item.title}</div>
-                <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{item.desc}</p>
+              { emoji: "🎓", title: "Grades 1–10", size: 130, top: "2%",  left: "2%",  accent: NAVY,      delay: 0   },
+              { emoji: "📖", title: "6 Subjects",  size: 105, top: "4%",  left: "22%", accent: "#7C3AED", delay: 0.1 },
+              { emoji: "📝", title: "Homework",    size: 88,  top: "52%", left: "8%",  accent: ORANGE,    delay: 0.2 },
+              { emoji: "🎥", title: "Live Classes", size: 118, top: "28%", left: "36%", accent: "#0EA5E9", delay: 0.15 },
+              { emoji: "📊", title: "Progress",    size: 92,  top: "4%",  left: "54%", accent: "#10B981", delay: 0.25 },
+              { emoji: "🏆", title: "Olympiad",    size: 112, top: "42%", left: "60%", accent: "#F59E0B", delay: 0.05 },
+              { emoji: "🧠", title: "Adaptive AI", size: 80,  top: "10%", left: "77%", accent: "#EC4899", delay: 0.3  },
+              { emoji: "👨‍👩‍👧", title: "Parents",   size: 72,  top: "55%", left: "84%", accent: "#6366F1", delay: 0.2  },
+            ].map((b) => (
+              <motion.div key={b.title}
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: b.delay, type: "spring", stiffness: 200 }}
+                className="absolute flex flex-col items-center justify-center text-center rounded-full select-none"
+                style={{
+                  width: b.size, height: b.size,
+                  top: b.top, left: b.left,
+                  background: `radial-gradient(circle at 35% 35%, ${b.accent}18, ${b.accent}0a)`,
+                  border: `2px solid ${b.accent}30`,
+                  boxShadow: `0 4px 20px ${b.accent}18`,
+                }}>
+                <span style={{ fontSize: b.size * 0.25 }}>{b.emoji}</span>
+                <span className="font-bold leading-tight px-2 mt-0.5"
+                  style={{ fontSize: b.size * 0.105, color: b.accent }}>
+                  {b.title}
+                </span>
               </motion.div>
             ))}
           </div>
