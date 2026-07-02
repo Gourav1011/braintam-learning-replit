@@ -59,7 +59,7 @@ export default function DownloadAppPage() {
           <Link href="/" className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
             <ArrowLeft className="w-5 h-5" style={{ color: NAVY }} />
           </Link>
-          <img src={braintamLogo} alt="Braintam" className="h-8 w-auto" />
+          <img src={braintamLogo} alt="Braintam" className="h-12 w-auto" />
           <span className="font-bold text-lg hidden sm:block" style={{ color: NAVY }}>Braintam</span>
           <span className="ml-auto text-sm font-semibold hidden sm:block" style={{ color: NAVY }}>Download the App</span>
         </div>

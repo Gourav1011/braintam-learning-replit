@@ -73,7 +73,7 @@ export default function KnowledgeHubPage() {
     <div className="min-h-screen bg-[#F8FAFF]">
       <nav className="border-b bg-white sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 h-14 flex items-center gap-3">
-          <img src={braintamLogo} alt="Braintam" className="w-8 h-8 object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-12 h-12 object-contain" />
           <span className="font-bold text-lg" style={{ color: NAVY }}>Braintam</span>
           <Button variant="ghost" size="sm" asChild className="ml-auto gap-1.5">
             <Link href="/"><ArrowLeft className="w-4 h-4" />Back to Home</Link>

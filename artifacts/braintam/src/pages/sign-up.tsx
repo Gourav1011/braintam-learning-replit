@@ -92,7 +92,7 @@ export default function SignUpPage() {
         <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full opacity-10 blur-3xl" style={{ background: "#3b5fc0" }} />
 
         <div className="relative z-10">
-          <img src={braintamLogo} alt="Braintam" className="w-44 h-auto object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-56 h-auto object-contain" />
         </div>
 
         <div className="space-y-6 relative z-10">

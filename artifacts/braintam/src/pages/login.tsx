@@ -70,7 +70,7 @@ export default function LoginPage() {
         />
         <div className="relative z-10">
           <Link href="/">
-            <img src={braintamLogo} alt="Braintam" className="h-10 w-auto object-contain cursor-pointer" />
+            <img src={braintamLogo} alt="Braintam" className="h-14 w-auto object-contain cursor-pointer" />
           </Link>
         </div>
         <div className="relative z-10 flex flex-col gap-8">
@@ -108,7 +108,7 @@ export default function LoginPage() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-8">
           <Link href="/">
-            <img src={braintamLogo} alt="Braintam" className="h-10 w-auto object-contain mx-auto" />
+            <img src={braintamLogo} alt="Braintam" className="h-14 w-auto object-contain mx-auto" />
           </Link>
         </div>
 

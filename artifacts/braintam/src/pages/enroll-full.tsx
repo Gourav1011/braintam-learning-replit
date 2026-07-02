@@ -203,7 +203,7 @@ export default function EnrollFullPage() {
             style={{ color: NAVY }}>
             <ArrowLeft className="w-4 h-4" /> Back
           </a>
-          <img src={braintamLogoImg} alt="Braintam" className="h-10 w-auto" />
+          <img src={braintamLogoImg} alt="Braintam" className="h-14 w-auto" />
           <div className="w-16" />
         </div>
       </header>

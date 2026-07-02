@@ -143,7 +143,7 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
 
         {/* Logo */}
         <div className="relative z-10">
-          <img src={braintamLogo} alt="Braintam" className="w-44 h-auto object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-56 h-auto object-contain" />
         </div>
 
         {/* Headline */}
@@ -205,7 +205,7 @@ function AuthPageShell({ form }: { form: React.ReactNode }) {
         </a>
         {/* Mobile logo */}
         <div className="flex items-center gap-2 mb-8 lg:hidden">
-          <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
           <span className="font-black text-xl" style={{ color: NAVY }}>Braintam</span>
         </div>
         {form}

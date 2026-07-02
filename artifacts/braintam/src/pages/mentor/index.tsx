@@ -1093,7 +1093,7 @@ export default function BTLCRMPage() {
 
       {/* ── Global Header ── */}
       <div className="h-14 shrink-0 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-30">
-        <img src={braintamLogo} alt="Braintam" className="h-7 w-auto shrink-0" />
+        <img src={braintamLogo} alt="Braintam" className="h-11 w-auto shrink-0" />
         <div className="flex items-center gap-1.5 pl-1">
           <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: ORANGE }} />
           <div>

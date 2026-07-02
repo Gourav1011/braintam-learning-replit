@@ -436,7 +436,7 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               className="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-100"
               style={{ color: MUTED }}><X className="w-4 h-4" /></button>
             <div className="flex items-center justify-center mb-6">
-              <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
+              <img src={braintamLogo} alt="Braintam" className="w-20 h-20 object-contain" />
             </div>
             <h2 className="text-2xl font-bold mb-1 text-center" style={{ color: TEXT }}>Start learning today</h2>
             <p className="text-sm mb-7 text-center" style={{ color: MUTED }}>Hybrid CBSE · ICSE · IB syllabus. Grades 1–10.</p>
@@ -662,7 +662,7 @@ export default function LandingPage() {
                  boxShadow: scrolled ? "0 2px 20px rgba(11,43,107,0.08)" : "none" }}>
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center">
-            <img src={braintamLogo} alt="Braintam" className="h-11 w-auto object-contain" />
+            <img src={braintamLogo} alt="Braintam" className="h-14 w-auto object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: MUTED }}>
             {([["Courses","/courses"],["Live Classes","/live-classes"],["Leaderboard","/leaderboard"]] as [string,string][]).map(([l, href]) => (
@@ -1433,7 +1433,7 @@ export default function LandingPage() {
             {/* Left: brand block */}
             <div className="flex-shrink-0 md:w-56 space-y-2">
               {/* Logo */}
-              <img src={braintamLogo} alt="Braintam" className="h-10 w-auto object-contain" />
+              <img src={braintamLogo} alt="Braintam" className="h-14 w-auto object-contain" />
               <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
                 <span style={{ color: "rgba(255,107,26,0.8)" }}>Brain + Talent Advancement Mission</span><br />
                 Advancing young minds through innovative learning, mentorship & skill-building for Grades 1–10.

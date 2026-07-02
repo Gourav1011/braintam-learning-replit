@@ -95,7 +95,7 @@ export default function MentorLoginPage() {
         <div className="relative z-10">
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer w-fit">
-              <img src={braintamLogo} alt="Braintam" className="w-44 h-auto object-contain" />
+              <img src={braintamLogo} alt="Braintam" className="w-56 h-auto object-contain" />
             </div>
           </Link>
         </div>
@@ -179,7 +179,7 @@ export default function MentorLoginPage() {
 
         {/* Mobile logo */}
         <div className="flex items-center gap-2 pt-16 px-8 pb-4 lg:hidden">
-          <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
           <span className="font-black text-xl" style={{ color: NAVY }}>Braintam</span>
         </div>
 

@@ -96,7 +96,7 @@ function PublicNav() {
     <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{ background: scrolled ? "rgba(255,255,255,0.97)" : "rgba(11,43,107,0.95)", backdropFilter: "blur(20px)", boxShadow: scrolled ? "0 2px 20px rgba(0,0,0,0.08)" : "none" }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/"><img src={braintamLogo} alt="Braintam" className="h-10 object-contain cursor-pointer" /></Link>
+        <Link href="/"><img src={braintamLogo} alt="Braintam" className="h-14 object-contain cursor-pointer" /></Link>
         <div className="hidden md:flex items-center gap-7 text-sm font-medium">
           {([["Courses", "/courses"], ["Live Classes", "/live-classes"], ["Leaderboard", "/leaderboard"]] as [string, string][]).map(([l, href]) => (
             <Link key={l} href={href}>
@@ -512,7 +512,7 @@ function PublicCoursesView() {
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ background: `linear-gradient(135deg, ${NAVY}, #1a3a7a)` }}>
-              <img src={braintamLogo} alt="" className="w-7 h-7 object-contain" />
+              <img src={braintamLogo} alt="" className="w-9 h-9 object-contain" />
             </div>
             <div>
               <h2 className="text-xl font-black leading-tight" style={{ color: NAVY }}>

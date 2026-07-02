@@ -129,7 +129,7 @@ export default function OnboardingPage() {
       {/* Right — profile form */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 bg-gray-50 min-h-screen lg:min-h-0">
         <div className="flex items-center gap-2 mb-8 lg:hidden">
-          <img src={braintamLogo} alt="Braintam" className="w-10 h-10 object-contain" />
+          <img src={braintamLogo} alt="Braintam" className="w-14 h-14 object-contain" />
           <span className="font-black text-xl" style={{ color: NAVY }}>Braintam</span>
         </div>
 
