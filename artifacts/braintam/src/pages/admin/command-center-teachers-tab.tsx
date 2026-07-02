@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search, Filter, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   Loader2, XCircle, RefreshCw, MoreVertical, Eye, Pencil, UserCheck,
-  UserX, Shield, X, Check, AlertTriangle, Users, GraduationCap,
-  BookOpen, Monitor, CalendarDays, Zap, TrendingUp,
+  UserX, Shield, X, Check, AlertTriangle, GraduationCap,
+  BookOpen, Monitor, CalendarDays, Zap, TrendingUp, UserPlus, EyeOff,
 } from "lucide-react";
 import { API_BASE as BASE } from "@/lib/api-base";
 
@@ -201,6 +201,108 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
           <button onClick={save} disabled={saving || !name.trim()}
             className="flex-1 px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60" style={{ background: NAVY }}>
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Save</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Teacher Modal ─────────────────────────────────────────────────────────
+function AddTeacherModal({ onClose, onCreated, flash }: {
+  onClose: () => void;
+  onCreated: (t: TeacherRow) => void;
+  flash: (m: string, ok?: boolean) => void;
+}) {
+  const [name, setName]         = useState("");
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw]     = useState(false);
+  const [phone, setPhone]       = useState("");
+  const [dept, setDept]         = useState("");
+  const [saving, setSaving]     = useState(false);
+
+  async function create() {
+    if (!name.trim() || !email.trim() || !password.trim()) return;
+    setSaving(true);
+    try {
+      const r = await apiFetch("/admin/cc/teachers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password: password.trim(),
+          phone: phone || undefined,
+          department: dept || undefined,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Failed to create teacher");
+      flash(`Teacher "${name.trim()}" created successfully`, true);
+      onCreated(d.teacher);
+      onClose();
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
+    finally { setSaving(false); }
+  }
+
+  const valid = name.trim().length > 0 && email.trim().length > 0 && password.trim().length > 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${NAVY}15` }}>
+              <UserPlus className="w-3.5 h-3.5" style={{ color: NAVY }} />
+            </div>
+            <h3 className="font-black text-sm" style={{ color: NAVY }}>Add Teacher</h3>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Full Name <span className="text-red-400">*</span></label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Priya Sharma"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Email <span className="text-red-400">*</span></label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="teacher@braintam.com"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Password <span className="text-red-400">*</span></label>
+            <div className="relative">
+              <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimum 6 characters"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 pr-9 text-sm focus:outline-none focus:border-blue-400" />
+              <button type="button" onClick={() => setShowPw(s => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Phone <span className="text-gray-300 font-normal">(optional)</span></label>
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Department <span className="text-gray-300 font-normal">(optional)</span></label>
+            <select value={dept} onChange={e => setDept(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+              <option value="">— None —</option>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={create} disabled={saving || !valid}
+            className="flex-1 px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+            style={{ background: NAVY }}>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><UserPlus className="w-3.5 h-3.5" /> Create</>}
           </button>
         </div>
       </div>
@@ -477,6 +579,7 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
   const [editTeacher, setEditTeacher] = useState<TeacherRow | null>(null);
   const [toggleTarget, setToggleTarget] = useState<TeacherRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -534,9 +637,16 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
           <h2 className="text-xl font-black" style={{ color: NAVY }}>Teacher Management</h2>
           <p className="text-xs text-gray-400 mt-0.5">Operational directory for all Braintam teachers</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200">
-          <RefreshCw className="w-3 h-3" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200">
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+          <button onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm"
+            style={{ background: NAVY }}>
+            <UserPlus className="w-3.5 h-3.5" /> Add Teacher
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -702,6 +812,13 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
       )}
 
       {/* Modals */}
+      {showAddModal && (
+        <AddTeacherModal
+          onClose={() => setShowAddModal(false)}
+          onCreated={t => { load(); }}
+          flash={flash}
+        />
+      )}
       {profileId    && <ProfileModal teacherId={profileId} onClose={() => setProfileId(null)} />}
       {editTeacher  && <EditModal teacher={editTeacher} onClose={() => setEditTeacher(null)} onSaved={u => updateRow(editTeacher.id, u)} flash={flash} />}
       {toggleTarget && (

@@ -109190,9 +109190,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-02-1208" : "dev",
-    commit: true ? "2001171" : "unknown",
-    buildTime: true ? "2026-07-02T12:08:46.038Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-02-1427" : "dev",
+    commit: true ? "fcd667f" : "unknown",
+    buildTime: true ? "2026-07-02T14:27:02.477Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -122124,6 +122124,67 @@ router31.get("/admin/cc/teachers/:id/classes", adminOnly10, async (req, res) => 
   } catch (err) {
     req.log.error({ err }, "teacher classes error");
     res.status(500).json({ error: "Failed to load teacher classes" });
+  }
+});
+router31.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
+  const { name, email: email3, password, phone, department } = req.body;
+  if (!name?.trim()) {
+    res.status(400).json({ error: "Name is required" });
+    return;
+  }
+  if (!email3?.trim()) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+  if (!password?.trim()) {
+    res.status(400).json({ error: "Password is required" });
+    return;
+  }
+  try {
+    const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email3.trim().toLowerCase())).limit(1);
+    if (existing.length > 0) {
+      res.status(400).json({ error: "A user with this email already exists" });
+      return;
+    }
+    const { createHash } = await import("crypto");
+    const passwordHash = createHash("sha256").update(password.trim() + "braintam_salt").digest("hex");
+    const [teacher] = await db.insert(usersTable).values({
+      name: name.trim(),
+      email: email3.trim().toLowerCase(),
+      passwordHash,
+      phone: phone?.trim() || null,
+      department: department?.trim() || null,
+      role: "teacher",
+      accountType: "teacher",
+      isActive: true,
+      grade: 0
+    }).returning({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      role: usersTable.role,
+      department: usersTable.department,
+      isActive: usersTable.isActive,
+      avatarUrl: usersTable.avatarUrl,
+      createdAt: usersTable.createdAt,
+      lastLoginDate: usersTable.lastLoginDate
+    });
+    const actor = req.authUser;
+    await logTeacherAction({
+      actorId: actor.id,
+      actorName: actor.name,
+      actorRole: actor.role,
+      action: "teacher_created",
+      actionLabel: "Created Teacher",
+      targetId: teacher.id,
+      targetName: teacher.name,
+      afterValue: { name: teacher.name, email: teacher.email }
+    });
+    res.status(201).json({ success: true, teacher: { ...teacher, coursesCount: 0, classesCount: 0 } });
+  } catch (err) {
+    req.log.error({ err }, "teacher create error");
+    res.status(500).json({ error: "Failed to create teacher" });
   }
 });
 router31.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {

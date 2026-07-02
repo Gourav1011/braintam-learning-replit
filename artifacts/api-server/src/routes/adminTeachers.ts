@@ -208,6 +208,55 @@ router.get("/admin/cc/teachers/:id/classes", adminOnly, async (req, res) => {
   }
 });
 
+// ── Create Teacher ────────────────────────────────────────────────────────────
+router.post("/admin/cc/teachers", adminOnly, async (req, res) => {
+  const { name, email, password, phone, department } =
+    req.body as { name?: string; email?: string; password?: string; phone?: string; department?: string };
+
+  if (!name?.trim())     { res.status(400).json({ error: "Name is required" });     return; }
+  if (!email?.trim())    { res.status(400).json({ error: "Email is required" });    return; }
+  if (!password?.trim()) { res.status(400).json({ error: "Password is required" }); return; }
+
+  try {
+    const existing = await db.select({ id: usersTable.id })
+      .from(usersTable).where(eq(usersTable.email, email.trim().toLowerCase())).limit(1);
+    if (existing.length > 0) { res.status(400).json({ error: "A user with this email already exists" }); return; }
+
+    const { createHash } = await import("crypto");
+    const passwordHash = createHash("sha256").update(password.trim() + "braintam_salt").digest("hex");
+
+    const [teacher] = await db.insert(usersTable).values({
+      name:         name.trim(),
+      email:        email.trim().toLowerCase(),
+      passwordHash,
+      phone:        phone?.trim() || null,
+      department:   department?.trim() || null,
+      role:         "teacher",
+      accountType:  "teacher",
+      isActive:     true,
+      grade:        0,
+    }).returning({
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      phone: usersTable.phone, role: usersTable.role, department: usersTable.department,
+      isActive: usersTable.isActive, avatarUrl: usersTable.avatarUrl,
+      createdAt: usersTable.createdAt, lastLoginDate: usersTable.lastLoginDate,
+    });
+
+    const actor = req.authUser!;
+    await logTeacherAction({
+      actorId: actor.id, actorName: actor.name, actorRole: actor.role,
+      action: "teacher_created", actionLabel: "Created Teacher",
+      targetId: teacher.id, targetName: teacher.name,
+      afterValue: { name: teacher.name, email: teacher.email },
+    });
+
+    res.status(201).json({ success: true, teacher: { ...teacher, coursesCount: 0, classesCount: 0 } });
+  } catch (err) {
+    req.log.error({ err }, "teacher create error");
+    res.status(500).json({ error: "Failed to create teacher" });
+  }
+});
+
 // ── Update Teacher ────────────────────────────────────────────────────────────
 router.patch("/admin/cc/teachers/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
