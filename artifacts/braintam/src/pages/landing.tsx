@@ -752,23 +752,27 @@ export default function LandingPage() {
                   <span key={i} className="fire-orbit-pill" style={{ animationDelay: `${delay}s` }}>🔥</span>
                 ))}
                 <a href="/enroll"
-                  className="relative inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all hover:scale-[1.02] group"
+                  className="bt-offer-pulse relative inline-flex items-center gap-3 px-5 py-3.5 rounded-2xl overflow-hidden group"
                   style={{ background: `linear-gradient(135deg, #fff8f3, #fff2e6)`,
-                           border: `2px solid ${ORANGE}`,
-                           boxShadow: `0 4px 20px rgba(255,107,26,0.25), 0 0 0 4px rgba(255,107,26,0.08)` }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                           border: `2px solid ${ORANGE}` }}>
+                  {/* shimmer light ray */}
+                  <span className="bt-shimmer-ray pointer-events-none absolute inset-y-0 w-16 rounded-full"
+                    style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent)", left: 0 }} />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 z-10"
                     style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>
                     <GraduationCap className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <div className="text-[11px] font-black uppercase tracking-wider" style={{ color: ORANGE }}>🔥 Limited Offer</div>
+                  <div className="z-10">
+                    <div className="text-[11px] font-black uppercase tracking-wider" style={{ color: ORANGE }}>
+                      <span className="bt-fire-flicker">🔥</span> Limited Offer
+                    </div>
                     <div className="font-black text-sm leading-snug mt-0.5" style={{ color: TEXT }}>
                       5-Day Ignite Course —&nbsp;
                       <span className="line-through text-gray-400 font-semibold">₹599</span>
                       &nbsp;<span style={{ color: ORANGE }}>₹39 only</span>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0" style={{ color: ORANGE }} />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform flex-shrink-0 z-10" style={{ color: ORANGE }} />
                 </a>
               </div>
             </motion.div>
