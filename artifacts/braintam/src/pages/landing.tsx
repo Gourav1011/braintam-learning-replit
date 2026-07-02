@@ -763,23 +763,19 @@ export default function LandingPage() {
       </section>
 
       {/* ── HERO STATS ROW ── */}
-      <div className="max-w-6xl mx-auto w-full px-6 pt-5 pb-4 md:pt-6 md:pb-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="max-w-6xl mx-auto w-full px-6 py-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           {[
-            { emoji: "📚", value: "430+", label: "Sessions per Grade / Year", accent: ORANGE },
-            { emoji: "🚀", value: "4,200+", label: "Total Sessions Across Grades", accent: "#7C3AED" },
-            { emoji: "📅", value: "52 Weeks", label: "Structured Year-Round Learning", accent: "#0EA5E9" },
-            { emoji: "🎯", value: "CBSE·ICSE·IB", label: "Hybrid Curriculum", accent: "#10B981" },
+            { value: "430+", label: "Sessions per Grade / Year", accent: ORANGE },
+            { value: "4,200+", label: "Total Sessions Across Grades", accent: "#7C3AED" },
+            { value: "52 Weeks", label: "Year-Round Learning", accent: "#0EA5E9" },
+            { value: "CBSE · ICSE · IB", label: "Hybrid Curriculum", accent: "#10B981" },
           ].map((s, i) => (
-            <motion.div key={s.label} variants={fadeUp} initial="hidden" animate="show" custom={5 + i * 0.2}
-              className="rounded-2xl p-4 flex items-center gap-3"
-              style={{ background: SURFACE, border: `1px solid rgba(11,43,107,0.1)`, boxShadow: "0 2px 12px rgba(11,43,107,0.06)" }}>
-              <div className="text-2xl leading-none flex-shrink-0">{s.emoji}</div>
-              <div>
-                <div className="text-base font-black leading-tight" style={{ color: s.accent }}>{s.value}</div>
-                <div className="leading-snug mt-0.5" style={{ color: MUTED, fontSize: 11 }}>{s.label}</div>
-              </div>
-            </motion.div>
+            <div key={s.label} className="flex items-center gap-1.5 text-sm">
+              <span className="font-black" style={{ color: s.accent }}>{s.value}</span>
+              <span style={{ color: MUTED }}>{s.label}</span>
+              {i < 3 && <span className="hidden sm:inline ml-4" style={{ color: "rgba(11,43,107,0.15)" }}>|</span>}
+            </div>
           ))}
         </div>
       </div>
