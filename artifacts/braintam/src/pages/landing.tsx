@@ -836,55 +836,61 @@ export default function LandingPage() {
             </p>
           </motion.div>
           {/* Bubble cloud */}
-          <div className="relative w-full" style={{ height: 380 }}>
+          <div className="relative w-full" style={{ height: 460 }}>
             {([
-              { emoji:"🎓", title:"Grades 1–10",   hint:"Full K-10 curriculum",      size:124, top:"2%",  left:"1%",  accent:NAVY,      delay:0,    dy:8,  dx:4,  ddy:5.2, ddx:7.1, push:{x:-16,y:-12} },
-              { emoji:"📖", title:"6 Subjects",    hint:"NCERT-aligned content",     size:100, top:"3%",  left:"20%", accent:"#7C3AED", delay:0.1,  dy:10, dx:-5, ddy:6.1, ddx:8.3, push:{x:14, y:-16} },
-              { emoji:"📊", title:"Progress",      hint:"Chapter-wise reports",      size:88,  top:"2%",  left:"47%", accent:"#10B981", delay:0.25, dy:7,  dx:6,  ddy:6.4, ddx:9.0, push:{x:16, y:-12} },
-              { emoji:"🧠", title:"Adaptive AI",   hint:"Smart question picking",    size:76,  top:"4%",  left:"68%", accent:"#EC4899", delay:0.3,  dy:9,  dx:-4, ddy:4.5, ddx:6.8, push:{x:14, y:-14} },
-              { emoji:"💬", title:"Doubt Solver",  hint:"Expert-verified answers",   size:70,  top:"5%",  left:"83%", accent:"#06B6D4", delay:0.35, dy:8,  dx:4,  ddy:5.9, ddx:7.6, push:{x:16, y:-10} },
-              { emoji:"⭐", title:"Leaderboard",   hint:"Gamified rankings",         size:62,  top:"41%", left:"12%", accent:"#FBBF24", delay:0.12, dy:7,  dx:-5, ddy:7.0, ddx:9.5, push:{x:-14,y:0  } },
-              { emoji:"🎥", title:"Live Classes",  hint:"Real-time with top teachers",size:114,top:"32%", left:"29%", accent:"#0EA5E9", delay:0.15, dy:9,  dx:-4, ddy:5.7, ddx:8.0, push:{x:0,  y:-18} },
-              { emoji:"🏆", title:"Olympiad",      hint:"NSO · IMO · NTSE prep",     size:108, top:"37%", left:"56%", accent:"#F59E0B", delay:0.05, dy:8,  dx:5,  ddy:5.0, ddx:7.3, push:{x:18, y:12 } },
-              { emoji:"👨‍👩‍👧", title:"Parents",  hint:"Weekly progress updates",   size:68,  top:"42%", left:"80%", accent:"#6366F1", delay:0.2,  dy:10, dx:-5, ddy:6.8, ddx:9.2, push:{x:16, y:14 } },
-              { emoji:"📝", title:"Homework",      hint:"Auto-graded daily sets",    size:84,  top:"69%", left:"5%",  accent:ORANGE,    delay:0.2,  dy:8,  dx:5,  ddy:4.8, ddx:7.0, push:{x:-12,y:14 } },
-              { emoji:"🔬", title:"Science",       hint:"Animated explainers",       size:80,  top:"72%", left:"24%", accent:"#14B8A6", delay:0.18, dy:7,  dx:-4, ddy:5.5, ddx:8.1, push:{x:-10,y:16 } },
-              { emoji:"🧮", title:"Maths",         hint:"Step-by-step solutions",    size:74,  top:"70%", left:"43%", accent:"#8B5CF6", delay:0.22, dy:9,  dx:5,  ddy:6.0, ddx:8.7, push:{x:0,  y:18 } },
-              { emoji:"📚", title:"NCERT Aligned", hint:"Board-ready content",       size:66,  top:"73%", left:"62%", accent:"#F97316", delay:0.28, dy:8,  dx:-5, ddy:5.3, ddx:7.5, push:{x:12, y:14 } },
-              { emoji:"📱", title:"Mobile App",    hint:"Learn on the go",           size:58,  top:"74%", left:"80%", accent:"#84CC16", delay:0.4,  dy:7,  dx:4,  ddy:6.6, ddx:9.3, push:{x:14, y:16 } },
+              { emoji:"🎓", title:"Grades 1–10",   size:124, top:"2%",  left:"1%",  accent:NAVY,      delay:0,    dy:8,  dx:4,  ddy:5.2, ddx:7.1, push:{x:-16,y:-12} },
+              { emoji:"📖", title:"6 Subjects",    size:100, top:"3%",  left:"20%", accent:"#7C3AED", delay:0.1,  dy:10, dx:-5, ddy:6.1, ddx:8.3, push:{x:14, y:-16} },
+              { emoji:"📊", title:"Progress",      size:88,  top:"2%",  left:"47%", accent:"#10B981", delay:0.25, dy:7,  dx:6,  ddy:6.4, ddx:9.0, push:{x:16, y:-12} },
+              { emoji:"🧠", title:"Adaptive AI",   size:76,  top:"4%",  left:"68%", accent:"#EC4899", delay:0.3,  dy:9,  dx:-4, ddy:4.5, ddx:6.8, push:{x:14, y:-14} },
+              { emoji:"💬", title:"Doubt Solver",  size:70,  top:"5%",  left:"83%", accent:"#06B6D4", delay:0.35, dy:8,  dx:4,  ddy:5.9, ddx:7.6, push:{x:16, y:-10} },
+              { emoji:"⭐", title:"Leaderboard",   size:62,  top:"38%", left:"12%", accent:"#FBBF24", delay:0.12, dy:7,  dx:-5, ddy:7.0, ddx:9.5, push:{x:-14,y:0  } },
+              { emoji:"🎥", title:"Live Classes",  size:114, top:"30%", left:"29%", accent:"#0EA5E9", delay:0.15, dy:9,  dx:-4, ddy:5.7, ddx:8.0, push:{x:0,  y:-18} },
+              { emoji:"🏆", title:"Olympiad",      size:108, top:"33%", left:"56%", accent:"#F59E0B", delay:0.05, dy:8,  dx:5,  ddy:5.0, ddx:7.3, push:{x:18, y:12 } },
+              { emoji:"👨‍👩‍👧", title:"Parents", size:68,  top:"39%", left:"80%", accent:"#6366F1", delay:0.2,  dy:10, dx:-5, ddy:6.8, ddx:9.2, push:{x:16, y:14 } },
+              { emoji:"📝", title:"Homework",      size:84,  top:"65%", left:"5%",  accent:ORANGE,    delay:0.2,  dy:8,  dx:5,  ddy:4.8, ddx:7.0, push:{x:-12,y:14 } },
+              { emoji:"🔬", title:"Science",       size:80,  top:"67%", left:"24%", accent:"#14B8A6", delay:0.18, dy:7,  dx:-4, ddy:5.5, ddx:8.1, push:{x:-10,y:16 } },
+              { emoji:"🧮", title:"Maths",         size:74,  top:"65%", left:"43%", accent:"#8B5CF6", delay:0.22, dy:9,  dx:5,  ddy:6.0, ddx:8.7, push:{x:0,  y:18 } },
+              { emoji:"📚", title:"NCERT Aligned", size:66,  top:"68%", left:"62%", accent:"#F97316", delay:0.28, dy:8,  dx:-5, ddy:5.3, ddx:7.5, push:{x:12, y:14 } },
+              { emoji:"📱", title:"Mobile App",    size:58,  top:"70%", left:"80%", accent:"#84CC16", delay:0.4,  dy:7,  dx:4,  ddy:6.6, ddx:9.3, push:{x:14, y:16 } },
             ] as const).map((b) => (
               <motion.div key={b.title}
                 initial={{ opacity: 0, scale: 0.4 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: b.delay, type: "spring", stiffness: 190 }}
-                className="absolute"
-                style={{ top: b.top, left: b.left, width: b.size, height: b.size }}>
+                className="absolute flex flex-col items-center"
+                style={{ top: b.top, left: b.left, width: b.size }}>
                 {/* y-drift wrapper */}
-                <motion.div className="w-full h-full"
+                <motion.div className="w-full flex flex-col items-center"
                   animate={{ y: b.dy }}
                   transition={{ duration: b.ddy, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}>
                   {/* x-drift + hover wrapper */}
                   <motion.div
                     animate={{ x: b.dx }}
                     transition={{ duration: b.ddx, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
-                    whileHover={{ x: b.push.x, y: b.push.y, scale: 1.1, transition: { type: "spring", stiffness: 320, damping: 20 } }}
-                    className="group w-full h-full flex flex-col items-center justify-center text-center rounded-full select-none cursor-default relative overflow-hidden"
-                    style={{
-                      background: `radial-gradient(circle at 35% 35%, ${b.accent}1e, ${b.accent}08)`,
-                      border: `2px solid ${b.accent}38`,
-                      boxShadow: `0 4px 18px ${b.accent}1c`,
-                    }}>
-                    <span style={{ fontSize: b.size * 0.26 }}>{b.emoji}</span>
-                    <span className="font-bold leading-tight px-1.5 mt-0.5"
-                      style={{ fontSize: b.size * 0.11, color: b.accent }}>
+                    whileHover={{ x: b.push.x, y: b.push.y, scale: 1.12, transition: { type: "spring", stiffness: 320, damping: 20 } }}
+                    className="group flex flex-col items-center select-none cursor-default">
+                    {/* Circle — emoji only, larger */}
+                    <div className="rounded-full flex items-center justify-center"
+                      style={{
+                        width: b.size,
+                        height: b.size,
+                        background: `radial-gradient(circle at 35% 35%, ${b.accent}28, ${b.accent}0c)`,
+                        border: `2.5px solid ${b.accent}55`,
+                        boxShadow: `0 4px 20px ${b.accent}38, 0 0 0 5px ${b.accent}14`,
+                        transition: "box-shadow 0.2s ease",
+                      }}>
+                      <span style={{ fontSize: b.size * 0.4 }}>{b.emoji}</span>
+                    </div>
+                    {/* Label — outside the circle, below */}
+                    <div className="mt-2 text-center font-bold leading-tight whitespace-nowrap"
+                      style={{
+                        fontSize: Math.max(b.size * 0.135, 10),
+                        color: b.accent,
+                        textShadow: `0 0 10px ${b.accent}70, 0 0 20px ${b.accent}40`,
+                      }}>
                       {b.title}
-                    </span>
-                    {/* tooltip on hover */}
-                    <span className="absolute bottom-[14%] left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-2 leading-tight"
-                      style={{ fontSize: Math.max(b.size * 0.085, 8), color: b.accent, fontWeight: 500 }}>
-                      {b.hint}
-                    </span>
+                    </div>
                   </motion.div>
                 </motion.div>
               </motion.div>
