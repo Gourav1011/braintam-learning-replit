@@ -54,8 +54,7 @@ interface ClassRow {
   grade: number | null;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const DEPARTMENTS = ["Administration","Operations","Ignite","Mastery","Teaching","Support"] as const;
+// Teachers are department-neutral — assignable to any course or live class.
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
@@ -145,7 +144,6 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
 }) {
   const [name, setName]       = useState(teacher.name);
   const [phone, setPhone]     = useState(teacher.phone ?? "");
-  const [dept, setDept]       = useState(teacher.department ?? "");
   const [saving, setSaving]   = useState(false);
 
   async function save() {
@@ -154,7 +152,7 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
     try {
       const r = await apiFetch(`/admin/cc/teachers/${teacher.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ name: name.trim(), phone: phone || null, department: dept || null }),
+        body: JSON.stringify({ name: name.trim(), phone: phone || null }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Failed");
@@ -187,14 +185,6 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
           </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1">Department</label>
-            <select value={dept} onChange={e => setDept(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
-              <option value="">— None —</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
         </div>
         <div className="p-4 border-t border-gray-100 flex gap-2">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
@@ -219,7 +209,6 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw]     = useState(false);
   const [phone, setPhone]       = useState("");
-  const [dept, setDept]         = useState("");
   const [saving, setSaving]     = useState(false);
 
   async function create() {
@@ -233,7 +222,6 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
           email: email.trim(),
           password: password.trim(),
           phone: phone || undefined,
-          department: dept || undefined,
         }),
       });
       const d = await r.json();
@@ -286,14 +274,6 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
             <label className="text-xs font-semibold text-gray-500 block mb-1">Phone <span className="text-gray-300 font-normal">(optional)</span></label>
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1">Department <span className="text-gray-300 font-normal">(optional)</span></label>
-            <select value={dept} onChange={e => setDept(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
-              <option value="">— None —</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
           </div>
         </div>
 
@@ -379,7 +359,6 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex flex-wrap gap-3 text-xs text-gray-500 flex-shrink-0">
           <span>{profile.email ?? "—"}</span>
           <span>·</span><span>{profile.phone ?? "—"}</span>
-          <span>·</span><span>{profile.department ?? "No Dept"}</span>
           <span>·</span><span>Joined {fmtDate(profile.createdAt)}</span>
         </div>
 
@@ -568,7 +547,6 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [search, setSearch]         = useState("");
-  const [deptFilter, setDeptFilter] = useState("all");
   const [statusFilter, setStatus]   = useState("all");
   const [sort, setSort]             = useState("name");
   const [order, setOrder]           = useState<"asc"|"desc">("asc");
@@ -586,15 +564,15 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const p = new URLSearchParams({ search: debouncedSearch, department: deptFilter, status: statusFilter, sort, order, page: String(page), limit: "15" });
+      const p = new URLSearchParams({ search: debouncedSearch, status: statusFilter, sort, order, page: String(page), limit: "15" });
       const r = await apiFetch(`/admin/cc/teachers?${p}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setData(await r.json());
     } catch (e) { setError(e instanceof Error ? e.message : "Failed"); }
     finally { setLoading(false); }
-  }, [debouncedSearch, deptFilter, statusFilter, sort, order, page]);
+  }, [debouncedSearch, statusFilter, sort, order, page]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, deptFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
   useEffect(() => { load(); }, [load]);
 
   function updateRow(id: number, changes: Partial<TeacherRow>) {
@@ -680,25 +658,20 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors"
             style={showFilters ? { background: `${NAVY}10`, borderColor: NAVY, color: NAVY } : { borderColor: "#E5E7EB", color: "#6B7280" }}>
             <Filter className="w-3.5 h-3.5" /> Filters
-            {(deptFilter !== "all" || statusFilter !== "all") && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+            {statusFilter !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
           </button>
         </div>
         {showFilters && (
           <div className="flex flex-wrap gap-2 pt-1">
-            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none">
-              <option value="all">All Departments</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
             <select value={statusFilter} onChange={e => setStatus(e.target.value)}
               className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none">
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            {(deptFilter !== "all" || statusFilter !== "all") && (
-              <button onClick={() => { setDeptFilter("all"); setStatus("all"); }}
-                className="text-xs font-semibold text-orange-500 hover:underline px-2">Clear all</button>
+            {statusFilter !== "all" && (
+              <button onClick={() => setStatus("all")}
+                className="text-xs font-semibold text-orange-500 hover:underline px-2">Clear</button>
             )}
           </div>
         )}
@@ -721,7 +694,7 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
             <GraduationCap className="w-10 h-10 text-gray-200" />
             <p className="text-sm font-semibold">No teachers found</p>
-            <p className="text-xs text-gray-300">{search || deptFilter !== "all" ? "Try adjusting your filters" : "No teacher accounts yet"}</p>
+            <p className="text-xs text-gray-300">{search || statusFilter !== "all" ? "Try adjusting your filters" : "No teacher accounts yet"}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -730,7 +703,6 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
                 <tr className="border-b border-gray-100">
                   {[
                     { label: "Teacher",      col: "name",         sortable: true  },
-                    { label: "Department",   col: "dept",         sortable: false },
                     { label: "Courses",      col: "coursesCount", sortable: true  },
                     { label: "Classes",      col: "classesCount", sortable: true  },
                     { label: "Status",       col: "status",       sortable: false },
@@ -758,7 +730,6 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{t.department ?? <span className="text-gray-300">—</span>}</td>
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-700">{t.coursesCount}</span>
                       <span className="text-gray-400 ml-1">courses</span>
