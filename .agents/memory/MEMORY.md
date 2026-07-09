@@ -4,3 +4,4 @@
 - [Mentor role variants require middleware update](mentor-role-variants.md) — adding sales_mentor/academic_mentor roles requires updating requireRole() in ALL route files that gate on "mentor".
 - [Annotation canvas must always render](annotation-canvas.md) — canvas must be outside the embedUrl conditional; placing it inside means pen/highlight/clear have no DOM target when no presentation is loaded.
 - [Live classroom sidebar architecture](live-classroom-sidebars.md) — TeacherSidebar (LIVE only, no tabs, purple for suggested), MentorSidebar (group stats + call absent); mentor:suggestStudent → teacher:studentSuggested in teacherRoom only; staffChat via teacherRoom.
+- [Unmemoized callback prop causes infinite refresh](unmemoized-callback-prop-rerender.md) — a plain-function prop (e.g. `flash`) recreated each render breaks child `useCallback([load],[flash])` → useEffect refetch loops.

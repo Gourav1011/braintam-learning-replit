@@ -927,7 +927,7 @@ function AdminPageInner() {
     setExpandedUserData(prev => ({ ...prev, [userId]: Array.isArray(data) ? data : [] }));
   }
 
-  function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3500); }
+  const flash = useCallback((text: string, ok = true) => { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3500); }, []);
 
   async function doCheckIn() {
     setCheckingIn(true);
