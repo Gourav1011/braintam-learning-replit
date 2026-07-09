@@ -1,0 +1,455 @@
+Redesign and fix Administration → Teachers based on the existing Braintam Learning system.
+
+IMPORTANT:
+
+First inspect the existing:
+
+* Teacher page
+* Teacher database tables
+* Teacher APIs
+* Existing grade-assignment logic
+* Ignite and Mastery courses
+* Subject structure
+* Live-class scheduler
+* Teacher Dashboard
+
+Reuse the existing system. Do not create duplicate teacher tables, duplicate assignment systems, or unnecessary new modules.
+
+The current Teacher module contains incomplete functionality and leftover grade-specific logic.
+
+CORE BUSINESS RULE:
+
+Teachers are not grade-specific like Mentors.
+
+Mentors are assigned according to grade and student groups.
+
+Teachers are assigned according to:
+
+Course → Subject → Teacher
+
+A teacher may teach:
+
+* Multiple grades
+* Multiple subjects
+* Multiple courses
+* Ignite courses
+* Mastery courses
+* Individual live classes
+
+Do not permanently restrict a teacher to one grade.
+
+━━━━━━━━━━━━━━━━━━━━
+
+1. TEACHER LIST
+
+Keep one compact Teachers page.
+
+Add tabs:
+
+* Active Teachers
+* Inactive Teachers
+
+Do not create permanent Available or Engaged Teacher tabs because availability changes according to the class date and time.
+
+Teacher list columns:
+
+* Teacher
+* Employee ID
+* Mobile
+* Subjects
+* Active Course Assignments
+* Upcoming Classes
+* Status
+* Actions
+
+Actions:
+
+* View
+* Edit
+* Assign Course
+* Disable/Activate
+
+Add search by:
+
+* Teacher name
+* Employee ID
+* Mobile
+
+Add simple filters:
+
+* Subject
+* Status
+
+Do not add unnecessary filters.
+
+━━━━━━━━━━━━━━━━━━━━
+
+2. ADD OR EDIT TEACHER
+
+Keep the form simple.
+
+Personal Information:
+
+* Teacher Name
+* Profile Photo
+* Mobile Number
+* Email
+* Employee ID
+* Joining Date
+
+Teaching Information:
+
+* Subjects the teacher can teach
+* Grades the teacher can teach
+* Boards, if already supported
+* Qualification
+* Experience
+
+Grades only represent the teacher’s teaching capability.
+
+Grades must not permanently restrict course or live-class assignments.
+
+Do not add unnecessary employment-management features unless they already exist in the current system.
+
+━━━━━━━━━━━━━━━━━━━━
+
+3. ACTIVE AND INACTIVE TEACHERS
+
+Every teacher must have:
+
+* Active
+* Inactive
+
+Add Enable/Disable functionality.
+
+When a teacher is disabled:
+
+* Do not delete the teacher.
+* Preserve previous course assignments.
+* Preserve completed live classes.
+* Preserve attendance and historical records.
+* Prevent teacher login.
+* Remove the teacher from new teacher-assignment dropdowns.
+
+Before disabling, check whether the teacher has:
+
+* Active course assignments
+* Upcoming live classes
+
+If active assignments exist, show a warning:
+
+“This teacher has active course assignments or upcoming live classes. Reassign them before disabling the teacher.”
+
+Do not build a complex reassignment wizard at this stage.
+
+Allow the Admin to cancel and manually reassign the course or classes.
+
+After all active assignments are removed or reassigned, allow the teacher to be disabled.
+
+Inactive teachers must remain visible under the Inactive Teachers tab.
+
+Allow Admin to reactivate an inactive teacher.
+
+━━━━━━━━━━━━━━━━━━━━
+
+4. ASSIGN COURSE AND SUBJECT
+
+Add:
+
+Teacher → Assign Course
+
+Assignment flow:
+
+Select Program:
+
+* Ignite
+* Mastery
+
+↓
+
+Select Course
+
+↓
+
+Select Subject
+
+↓
+
+Assign Teacher
+
+The selected teacher becomes the default teacher for that subject inside that specific course.
+
+Example:
+
+Program:
+Mastery
+
+Course:
+Grade 6 Mastery 2026–27
+
+Subject:
+Mathematics
+
+Teacher:
+Priya Sharma
+
+Result:
+
+Priya Sharma becomes the Mathematics teacher for this specific Grade 6 Mastery course.
+
+The same teacher may also be assigned to:
+
+* Another subject
+* Another grade
+* Another Ignite course
+* Another Mastery course
+
+Do not use the teacher profile grade as a permanent assignment restriction.
+
+Prevent duplicate assignments of the same teacher, course, and subject.
+
+━━━━━━━━━━━━━━━━━━━━
+
+5. LIVE-CLASS INTEGRATION
+
+Connect teacher assignments with the existing Live-Class Scheduler.
+
+When Admin selects:
+
+Program
+→ Course
+→ Subject
+
+Automatically preselect the assigned Subject Teacher.
+
+Admin must still be able to select another active teacher for an individual live class.
+
+Changing the teacher for one live class must not change the course’s default Subject Teacher.
+
+Only active teachers should appear in the teacher selector.
+
+Before saving a live class, check whether the selected teacher already has another live class during the same time.
+
+If a conflict exists, show:
+
+“Teacher already has another live class scheduled during this time.”
+
+Show the conflicting class and time.
+
+Do not allow overlapping classes.
+
+Do not add a separate advanced Teacher Finder, workload recommendation engine, or timeline scheduler.
+
+━━━━━━━━━━━━━━━━━━━━
+
+6. TEACHER PROFILE
+
+Clicking a teacher should open a simple profile with these tabs:
+
+Overview
+
+Show:
+
+* Personal information
+* Status
+* Subjects
+* Teaching grades
+* Boards
+* Qualification
+* Experience
+* Joining date
+
+Course Assignments
+
+Show:
+
+* Program
+* Course
+* Grade
+* Subject
+* Assignment status
+
+Allow:
+
+* Add assignment
+* Change teacher assignment
+* Remove assignment
+
+Live Classes
+
+Show:
+
+* Upcoming classes
+* Completed classes
+
+Display:
+
+* Date
+* Time
+* Course
+* Subject
+* Class status
+
+Do not add separate workload, performance, ratings, free-hours, detailed attendance analytics, or schedule-calendar tabs at this stage.
+
+━━━━━━━━━━━━━━━━━━━━
+
+7. CHANGING A SUBJECT TEACHER
+
+Admin must be able to change the Subject Teacher for a course.
+
+When changed:
+
+* New live classes should automatically use the new Subject Teacher.
+* Completed classes must retain the original teacher.
+* Historical records must not be modified.
+
+For already scheduled future classes, ask:
+
+Apply the new teacher to:
+
+* New classes only
+* All future scheduled classes
+
+Do not modify completed or cancelled classes.
+
+━━━━━━━━━━━━━━━━━━━━
+
+8. SIMPLE TEACHER AVAILABILITY
+
+Do not create a separate Schedule & Availability module.
+
+Use existing live-class schedules to determine whether a teacher is busy.
+
+During live-class creation:
+
+* Active and free teachers can be selected.
+* Teachers with overlapping classes should show as Busy.
+* Busy teachers must not be selectable.
+
+At this stage, do not build:
+
+* Working-hour management
+* Break management
+* Free-hour calculations
+* Timeline views
+* Calendar views
+* Workload analytics
+* Recommended-teacher ranking
+* Leave-management system
+
+These may be added later only if operationally required.
+
+━━━━━━━━━━━━━━━━━━━━
+
+9. IMPORTANT CONNECTIONS
+
+Teacher assignments must work correctly with:
+
+* Ignite courses
+* Mastery courses
+* Subjects
+* Live-Class Scheduler
+* Teacher Dashboard
+* Student timetable
+* Attendance
+* Class recordings
+
+The Teacher Dashboard should display only:
+
+* Courses assigned to that teacher
+* Subjects assigned to that teacher
+* Upcoming live classes
+* Completed live classes
+
+Do not expose unrelated courses or students.
+
+━━━━━━━━━━━━━━━━━━━━
+
+10. DATABASE RULES
+
+Inspect and reuse existing teacher tables and APIs.
+
+Do not create another Teacher system.
+
+Maintain:
+
+* Teacher status
+* Teacher teaching capabilities
+* Course and subject assignments
+* Default Subject Teacher
+* Individual live-class teacher
+* Assignment history
+
+Preserve all historical records.
+
+Add only the database fields or tables that are actually missing.
+
+━━━━━━━━━━━━━━━━━━━━
+
+BEFORE IMPLEMENTATION
+
+First report:
+
+1. What already exists
+2. What is working
+3. What grade-specific teacher logic exists
+4. What is incomplete
+5. What duplicate or leftover functionality exists
+6. Which database and API changes are actually required
+
+Do not modify working functionality blindly.
+
+━━━━━━━━━━━━━━━━━━━━
+
+TEST BEFORE SAYING DONE
+
+Test:
+
+✓ Add teacher
+
+✓ Edit teacher
+
+✓ Disable teacher
+
+✓ Reactivate teacher
+
+✓ Inactive teacher cannot log in
+
+✓ Inactive teacher does not appear in new assignment dropdowns
+
+✓ Existing teacher history remains preserved
+
+✓ One teacher can teach multiple grades
+
+✓ One teacher can teach multiple subjects
+
+✓ One teacher can be assigned to multiple courses
+
+✓ Assign teacher to an Ignite course and subject
+
+✓ Assign teacher to a Mastery course and subject
+
+✓ Subject Teacher automatically appears during live-class creation
+
+✓ Admin can change the teacher for one live class
+
+✓ Individual class change does not modify the default Subject Teacher
+
+✓ Teacher scheduling conflicts are blocked
+
+✓ Teacher Dashboard shows assigned courses and classes correctly
+
+✓ Completed classes retain their original teacher
+
+✓ Search and filters work
+
+✓ Mobile and desktop layouts work
+
+✓ No console errors
+
+✓ No API errors
+
+✓ Existing functionality remains working
+
+Only say DONE after implementation and testing are completed successfully.
