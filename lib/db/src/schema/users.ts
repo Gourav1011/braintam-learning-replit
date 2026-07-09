@@ -67,6 +67,15 @@ export const usersTable = pgTable("users", {
   organizationId: integer("organization_id"),
   phoneVerified: boolean("phone_verified").notNull().default(false),
   department: text("department"),
+  // Teacher-specific fields (role="teacher"). Not grade-specific — a teacher can
+  // teach multiple grades/subjects/courses; these are display/filter metadata only.
+  // Actual assignment is via teacher_courses (course + optional course_subject).
+  employeeId: text("employee_id").unique(),
+  qualification: text("qualification"),
+  experienceYears: integer("experience_years"),
+  teachingSubjectsJson: text("teaching_subjects_json"), // JSON string[] of subject names
+  teachingGradesJson: text("teaching_grades_json"),     // JSON number[] of grades
+  joiningDate: timestamp("joining_date"),
   // Lead Deployment Engine
   deploymentStatus: text("deployment_status"),   // Undeployed | Assigned | Reassigned | Converted
   deploymentBatchId: integer("deployment_batch_id"),

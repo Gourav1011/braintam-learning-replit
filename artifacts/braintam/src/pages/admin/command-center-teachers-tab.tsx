@@ -34,6 +34,35 @@ interface TeacherRow {
   lastLoginDate: string | null;
   coursesCount: number;
   classesCount: number;
+  employeeId?: string | null;
+  qualification?: string | null;
+  experienceYears?: number | null;
+  teachingSubjects?: string[];
+  teachingGrades?: number[];
+  joiningDate?: string | null;
+}
+
+interface CourseOption {
+  id: number;
+  title: string;
+  grade: number;
+  courseType: string;
+}
+
+interface CourseSubjectOption {
+  id: number;
+  name: string;
+}
+
+interface AssignmentRow {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  courseType: string;
+  grade: number;
+  courseSubjectId: number | null;
+  subjectName: string | null;
+  assignedAt: string;
 }
 
 interface TeacherListResponse {
@@ -144,6 +173,12 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
 }) {
   const [name, setName]       = useState(teacher.name);
   const [phone, setPhone]     = useState(teacher.phone ?? "");
+  const [employeeId, setEmployeeId]           = useState(teacher.employeeId ?? "");
+  const [qualification, setQualification]     = useState(teacher.qualification ?? "");
+  const [experienceYears, setExperienceYears] = useState(teacher.experienceYears != null ? String(teacher.experienceYears) : "");
+  const [subjects, setSubjects] = useState((teacher.teachingSubjects ?? []).join(", "));
+  const [grades, setGrades]     = useState((teacher.teachingGrades ?? []).join(", "));
+  const [joiningDate, setJoiningDate] = useState(teacher.joiningDate ? teacher.joiningDate.slice(0, 10) : "");
   const [saving, setSaving]   = useState(false);
 
   async function save() {
@@ -152,7 +187,15 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
     try {
       const r = await apiFetch(`/admin/cc/teachers/${teacher.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ name: name.trim(), phone: phone || null }),
+        body: JSON.stringify({
+          name: name.trim(), phone: phone || null,
+          employeeId: employeeId.trim() || null,
+          qualification: qualification.trim() || null,
+          experienceYears: experienceYears.trim() ? Number(experienceYears) : null,
+          teachingSubjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
+          teachingGrades: grades.split(",").map(g => Number(g.trim())).filter(g => !isNaN(g)),
+          joiningDate: joiningDate || null,
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Failed");
@@ -165,12 +208,12 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
           <h3 className="font-black text-sm" style={{ color: NAVY }}>Edit Teacher</h3>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
         </div>
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 overflow-y-auto">
           <div>
             <label className="text-xs font-semibold text-gray-500 block mb-1">Full Name *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name"
@@ -185,8 +228,40 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Employee ID</label>
+              <input value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="EMP001"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (yrs)</label>
+              <input type="number" min={0} value={experienceYears} onChange={e => setExperienceYears(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Qualification</label>
+            <input value={qualification} onChange={e => setQualification(e.target.value)} placeholder="e.g. M.Sc Mathematics"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Teaching Subjects <span className="text-gray-300 font-normal">(comma separated)</span></label>
+            <input value={subjects} onChange={e => setSubjects(e.target.value)} placeholder="Maths, Science"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Teaching Grades <span className="text-gray-300 font-normal">(comma separated)</span></label>
+            <input value={grades} onChange={e => setGrades(e.target.value)} placeholder="6, 7, 8"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Joining Date</label>
+            <input type="date" value={joiningDate} onChange={e => setJoiningDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
         </div>
-        <div className="p-4 border-t border-gray-100 flex gap-2">
+        <div className="p-4 border-t border-gray-100 flex gap-2 flex-shrink-0">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={save} disabled={saving || !name.trim()}
             className="flex-1 px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60" style={{ background: NAVY }}>
@@ -209,6 +284,12 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw]     = useState(false);
   const [phone, setPhone]       = useState("");
+  const [employeeId, setEmployeeId]           = useState("");
+  const [qualification, setQualification]     = useState("");
+  const [experienceYears, setExperienceYears] = useState("");
+  const [subjects, setSubjects] = useState("");
+  const [grades, setGrades]     = useState("");
+  const [joiningDate, setJoiningDate] = useState("");
   const [saving, setSaving]     = useState(false);
 
   async function create() {
@@ -222,6 +303,12 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
           email: email.trim(),
           password: password.trim(),
           phone: phone || undefined,
+          employeeId: employeeId.trim() || undefined,
+          qualification: qualification.trim() || undefined,
+          experienceYears: experienceYears.trim() ? Number(experienceYears) : undefined,
+          teachingSubjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
+          teachingGrades: grades.split(",").map(g => Number(g.trim())).filter(g => !isNaN(g)),
+          joiningDate: joiningDate || undefined,
         }),
       });
       const d = await r.json();
@@ -237,8 +324,8 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${NAVY}15` }}>
               <UserPlus className="w-3.5 h-3.5" style={{ color: NAVY }} />
@@ -248,7 +335,7 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 overflow-y-auto">
           <div>
             <label className="text-xs font-semibold text-gray-500 block mb-1">Full Name <span className="text-red-400">*</span></label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Priya Sharma"
@@ -275,6 +362,38 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Employee ID</label>
+              <input value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="EMP001"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (yrs)</label>
+              <input type="number" min={0} value={experienceYears} onChange={e => setExperienceYears(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Qualification</label>
+            <input value={qualification} onChange={e => setQualification(e.target.value)} placeholder="e.g. M.Sc Mathematics"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Teaching Subjects <span className="text-gray-300 font-normal">(comma separated)</span></label>
+            <input value={subjects} onChange={e => setSubjects(e.target.value)} placeholder="Maths, Science"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Teaching Grades <span className="text-gray-300 font-normal">(comma separated)</span></label>
+            <input value={grades} onChange={e => setGrades(e.target.value)} placeholder="6, 7, 8"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Joining Date</label>
+            <input type="date" value={joiningDate} onChange={e => setJoiningDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          </div>
         </div>
 
         <div className="p-4 border-t border-gray-100 flex gap-2">
@@ -294,21 +413,28 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
 interface ProfileData {
   profile: TeacherRow;
   performance: { classesAssigned: number; coursesAssigned: number; subjects: string[]; attendancePct: number; homeworkCompletionPct: number };
+  assignments: AssignmentRow[];
+  upcomingClasses: { id: number; title: string; scheduledAt: string; duration: number; status: string; grade: number }[];
   permissions: { module: string; view: boolean; create: boolean; edit: boolean; del: boolean }[];
   activity: { id: number; action: string; actionLabel: string; module: string; targetName: string; createdAt: string }[];
 }
 
-function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () => void }) {
+function ProfileModal({ teacherId, onClose, flash }: { teacherId: number; onClose: () => void; flash: (m: string, ok?: boolean) => void }) {
   const [data, setData]         = useState<ProfileData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [classes, setClasses]   = useState<ClassRow[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
-  const [activeTab, setTab]     = useState<"performance"|"classes"|"permissions"|"activity">("performance");
+  const [activeTab, setTab]     = useState<"overview"|"assignments"|"classes"|"permissions"|"activity">("overview");
+  const [showAssign, setShowAssign] = useState(false);
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
+    setLoading(true);
     apiFetch(`/admin/cc/teachers/${teacherId}`)
       .then(r => r.json()).then(setData).catch(() => {}).finally(() => setLoading(false));
   }, [teacherId]);
+
+  useEffect(() => { reload(); }, [reload]);
 
   useEffect(() => {
     if (activeTab !== "classes" || classes.length > 0) return;
@@ -317,7 +443,19 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
       .then(r => r.json()).then(d => setClasses(d.items ?? [])).catch(() => {}).finally(() => setClassesLoading(false));
   }, [activeTab, teacherId]);
 
-  if (loading) return (
+  async function removeAssignment(assignmentId: number) {
+    setRemovingId(assignmentId);
+    try {
+      const r = await apiFetch(`/admin/cc/teachers/${teacherId}/assignments/${assignmentId}`, { method: "DELETE" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Failed to remove assignment");
+      flash("Assignment removed", true);
+      reload();
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
+    finally { setRemovingId(null); }
+  }
+
+  if (loading && !data) return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-2xl p-8 shadow-2xl flex items-center gap-3">
         <Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} />
@@ -327,12 +465,13 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
   );
   if (!data) return null;
 
-  const { profile, performance, permissions, activity } = data;
+  const { profile, performance, assignments, upcomingClasses, permissions, activity } = data;
   const tabs = [
-    { key: "performance" as const, label: "Performance",  icon: TrendingUp  },
-    { key: "classes"     as const, label: "Classes",      icon: Monitor     },
-    { key: "permissions" as const, label: "Permissions",  icon: Shield      },
-    { key: "activity"    as const, label: "Activity",     icon: Zap         },
+    { key: "overview"    as const, label: "Overview",           icon: TrendingUp  },
+    { key: "assignments" as const, label: "Course Assignments", icon: BookOpen    },
+    { key: "classes"     as const, label: "Live Classes",       icon: Monitor     },
+    { key: "permissions" as const, label: "Permissions",        icon: Shield      },
+    { key: "activity"    as const, label: "Activity",           icon: Zap         },
   ];
 
   return (
@@ -359,7 +498,8 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex flex-wrap gap-3 text-xs text-gray-500 flex-shrink-0">
           <span>{profile.email ?? "—"}</span>
           <span>·</span><span>{profile.phone ?? "—"}</span>
-          <span>·</span><span>Joined {fmtDate(profile.createdAt)}</span>
+          <span>·</span><span>{profile.employeeId ?? "No Employee ID"}</span>
+          <span>·</span><span>Joined {fmtDate(profile.joiningDate ?? profile.createdAt)}</span>
         </div>
 
         {/* Tabs */}
@@ -378,14 +518,13 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          {activeTab === "performance" && (
+          {activeTab === "overview" && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Classes Assigned",  value: performance.classesAssigned,  color: NAVY    },
                   { label: "Courses Assigned",  value: performance.coursesAssigned,  color: "#7C3AED" },
-                  { label: "Attendance %",      value: `${performance.attendancePct}%`,  color: GREEN  },
-                  { label: "Homework Completion",value: `${performance.homeworkCompletionPct}%`, color: ORANGE },
+                  { label: "Experience",        value: profile.experienceYears != null ? `${profile.experienceYears} yrs` : "—", color: GREEN  },
                   { label: "Last Active",       value: timeAgo(profile.lastLoginDate), color: "#374151" },
                 ].map(s => (
                   <div key={s.label} className="bg-gray-50 rounded-xl p-3">
@@ -394,12 +533,42 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
                   </div>
                 ))}
               </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-[10px] text-gray-400 mb-1">Qualification</p>
+                  <p className="font-semibold text-gray-700">{profile.qualification ?? "—"}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-[10px] text-gray-400 mb-1">Employee ID</p>
+                  <p className="font-semibold text-gray-700">{profile.employeeId ?? "—"}</p>
+                </div>
+              </div>
+              {(profile.teachingSubjects?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" />Teaching Subjects</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.teachingSubjects!.map(s => (
+                      <span key={s} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(profile.teachingGrades?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" />Teaching Grades</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.teachingGrades!.map(g => (
+                      <span key={g} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-orange-50 text-orange-700">Grade {g}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {performance.subjects.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" />Subjects</p>
+                  <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" />Assigned Course Subjects</p>
                   <div className="flex flex-wrap gap-1.5">
                     {performance.subjects.map(s => (
-                      <span key={s} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">{s}</span>
+                      <span key={s} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">{s}</span>
                     ))}
                   </div>
                 </div>
@@ -407,34 +576,94 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
             </div>
           )}
 
-          {activeTab === "classes" && (
-            <div>
-              {classesLoading ? (
-                <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
-                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} />
-                  <span className="text-sm">Loading classes…</span>
-                </div>
-              ) : classes.length === 0 ? (
+          {activeTab === "assignments" && (
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <button onClick={() => setShowAssign(true)} disabled={!profile.isActive}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                  style={{ background: NAVY }} title={!profile.isActive ? "Activate teacher to assign courses" : ""}>
+                  <UserPlus className="w-3.5 h-3.5" /> Assign Course
+                </button>
+              </div>
+              {assignments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400">
-                  <Monitor className="w-8 h-8 text-gray-200" />
-                  <p className="text-sm font-semibold">No classes assigned</p>
+                  <BookOpen className="w-8 h-8 text-gray-200" />
+                  <p className="text-sm font-semibold">No course assignments yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {classes.map(c => (
-                    <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50">
+                  {assignments.map(a => (
+                    <div key={a.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50">
                       <div>
-                        <p className="text-xs font-semibold text-gray-800">{c.title}</p>
-                        <p className="text-[10px] text-gray-400">Subject #{c.subjectId ?? "—"} · Grade {c.grade ?? "—"}</p>
+                        <p className="text-xs font-semibold text-gray-800">
+                          {a.courseTitle}
+                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full capitalize" style={{ background: a.courseType === "ignite" ? "#FFF3E0" : "#E0F2FE", color: a.courseType === "ignite" ? "#B45309" : "#0C4A6E" }}>
+                            {a.courseType}
+                          </span>
+                        </p>
+                        <p className="text-[10px] text-gray-400">Grade {a.grade} · {a.subjectName ?? "Whole course"}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <ClassStatusBadge status={c.status} />
-                        <span className="text-[10px] text-gray-400 whitespace-nowrap">{fmtDateTime(c.scheduledAt)}</span>
-                      </div>
+                      <button onClick={() => removeAssignment(a.id)} disabled={removingId === a.id}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 disabled:opacity-40">
+                        {removingId === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === "classes" && (
+            <div className="space-y-4">
+              {upcomingClasses.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 mb-2">Upcoming</p>
+                  <div className="space-y-2">
+                    {upcomingClasses.map(c => (
+                      <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-800">{c.title}</p>
+                          <p className="text-[10px] text-gray-400">Grade {c.grade ?? "—"}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ClassStatusBadge status={c.status} />
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap">{fmtDateTime(c.scheduledAt)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-bold text-gray-500 mb-2">All Classes</p>
+                {classesLoading ? (
+                  <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
+                    <Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} />
+                    <span className="text-sm">Loading classes…</span>
+                  </div>
+                ) : classes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400">
+                    <Monitor className="w-8 h-8 text-gray-200" />
+                    <p className="text-sm font-semibold">No classes assigned</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {classes.map(c => (
+                      <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-800">{c.title}</p>
+                          <p className="text-[10px] text-gray-400">Subject #{c.subjectId ?? "—"} · Grade {c.grade ?? "—"}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ClassStatusBadge status={c.status} />
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap">{fmtDateTime(c.scheduledAt)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -491,6 +720,137 @@ function ProfileModal({ teacherId, onClose }: { teacherId: number; onClose: () =
               ))}
             </div>
           )}
+        </div>
+      </div>
+      {showAssign && (
+        <AssignCourseModal
+          teacherId={teacherId}
+          onClose={() => setShowAssign(false)}
+          onAssigned={() => { setShowAssign(false); reload(); }}
+          flash={flash}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Assign Course Modal (Program → Course → Subject → Teacher) ───────────────
+function AssignCourseModal({ teacherId, onClose, onAssigned, flash }: {
+  teacherId: number; onClose: () => void; onAssigned: () => void;
+  flash: (m: string, ok?: boolean) => void;
+}) {
+  const [program, setProgram]   = useState<"ignite"|"mastery">("mastery");
+  const [courses, setCourses]   = useState<CourseOption[]>([]);
+  const [courseId, setCourseId] = useState<number | "">("");
+  const [subjects, setSubjects] = useState<CourseSubjectOption[]>([]);
+  const [subjectId, setSubjectId] = useState<number | "">("");
+  const [wholeCourse, setWholeCourse] = useState(false);
+  const [loadingCourses, setLoadingCourses]   = useState(true);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(() => {
+    setLoadingCourses(true);
+    apiFetch("/admin/courses")
+      .then(r => r.json())
+      .then((d: CourseOption[]) => setCourses(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingCourses(false));
+  }, []);
+
+  const programCourses = courses.filter(c => c.courseType === program);
+
+  useEffect(() => {
+    setCourseId(""); setSubjectId(""); setSubjects([]);
+  }, [program]);
+
+  useEffect(() => {
+    if (!courseId) { setSubjects([]); setSubjectId(""); return; }
+    setLoadingSubjects(true);
+    apiFetch(`/admin/course-subjects?courseId=${courseId}`)
+      .then(r => r.json())
+      .then((d: CourseSubjectOption[]) => setSubjects(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingSubjects(false));
+  }, [courseId]);
+
+  async function assign() {
+    if (!courseId) return;
+    setSaving(true);
+    try {
+      const r = await apiFetch(`/admin/cc/teachers/${teacherId}/assignments`, {
+        method: "POST",
+        body: JSON.stringify({ courseId, courseSubjectId: wholeCourse ? null : (subjectId || null) }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Failed to assign");
+      flash("Course assigned", true);
+      onAssigned();
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
+    finally { setSaving(false); }
+  }
+
+  const valid = !!courseId && (wholeCourse || subjects.length === 0 || !!subjectId);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <h3 className="font-black text-sm" style={{ color: NAVY }}>Assign Course</h3>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Program *</label>
+            <div className="flex gap-2">
+              {(["ignite","mastery"] as const).map(p => (
+                <button key={p} onClick={() => setProgram(p)}
+                  className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold capitalize border ${program === p ? "text-white" : "text-gray-600 border-gray-200"}`}
+                  style={program === p ? { background: NAVY, borderColor: NAVY } : {}}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Course *</label>
+            <select value={courseId} onChange={e => setCourseId(e.target.value ? Number(e.target.value) : "")}
+              disabled={loadingCourses}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+              <option value="">{loadingCourses ? "Loading…" : "Select a course"}</option>
+              {programCourses.map(c => (
+                <option key={c.id} value={c.id}>{c.title} (Grade {c.grade})</option>
+              ))}
+            </select>
+            {!loadingCourses && programCourses.length === 0 && (
+              <p className="text-[10px] text-gray-400 mt-1">No {program} courses found.</p>
+            )}
+          </div>
+          {courseId && (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Subject</label>
+              <select value={wholeCourse ? "__whole__" : subjectId} disabled={loadingSubjects}
+                onChange={e => {
+                  if (e.target.value === "__whole__") { setWholeCourse(true); setSubjectId(""); }
+                  else { setWholeCourse(false); setSubjectId(e.target.value ? Number(e.target.value) : ""); }
+                }}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+                <option value="">{loadingSubjects ? "Loading…" : "Select a subject"}</option>
+                <option value="__whole__">Whole course (all subjects)</option>
+                {subjects.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={assign} disabled={saving || !valid}
+            className="flex-1 px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+            style={{ background: NAVY }}>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Assign</>}
+          </button>
         </div>
       </div>
     </div>
@@ -558,6 +918,7 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
   const [toggleTarget, setToggleTarget] = useState<TeacherRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [toggleConfirmInfo, setToggleConfirmInfo] = useState<{ activeCourseAssignments: number; upcomingClasses: number } | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -579,19 +940,25 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
     setData(d => d ? { ...d, items: d.items.map(t => t.id === id ? { ...t, ...changes } : t) } : d);
   }
 
-  async function doToggle() {
+  async function doToggle(force?: boolean) {
     if (!toggleTarget) return;
     setActionLoading(true);
     try {
       const r = await apiFetch(`/admin/cc/teachers/${toggleTarget.id}`, {
-        method: "PATCH", body: JSON.stringify({ isActive: !toggleTarget.isActive }),
+        method: "PATCH", body: JSON.stringify({ isActive: !toggleTarget.isActive, force }),
       });
       const d = await r.json();
+      if (r.status === 409 && d.requiresConfirmation) {
+        setToggleConfirmInfo({ activeCourseAssignments: d.activeCourseAssignments ?? 0, upcomingClasses: d.upcomingClasses ?? 0 });
+        return;
+      }
       if (!r.ok) throw new Error(d.error ?? "Failed");
       updateRow(toggleTarget.id, { isActive: !toggleTarget.isActive });
       flash(`${toggleTarget.name} ${toggleTarget.isActive ? "deactivated" : "activated"}`, true);
+      setToggleTarget(null);
+      setToggleConfirmInfo(null);
     } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
-    finally { setActionLoading(false); setToggleTarget(null); }
+    finally { setActionLoading(false); }
   }
 
   function toggleSort(col: string) {
@@ -675,6 +1042,15 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
             )}
           </div>
         )}
+        <div className="flex gap-1.5 pt-1">
+          {[{ key: "all", label: "All" }, { key: "active", label: "Active" }, { key: "inactive", label: "Inactive" }].map(t => (
+            <button key={t.key} onClick={() => setStatus(t.key)}
+              className="px-3 py-1 rounded-lg text-[11px] font-bold transition-colors"
+              style={statusFilter === t.key ? { background: NAVY, color: "white" } : { background: "#F3F4F6", color: "#6B7280" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -703,6 +1079,7 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
                 <tr className="border-b border-gray-100">
                   {[
                     { label: "Teacher",      col: "name",         sortable: true  },
+                    { label: "Employee ID",  col: "employeeId",   sortable: false },
                     { label: "Courses",      col: "coursesCount", sortable: true  },
                     { label: "Classes",      col: "classesCount", sortable: true  },
                     { label: "Status",       col: "status",       sortable: false },
@@ -730,6 +1107,7 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-gray-600 font-medium">{t.employeeId ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-700">{t.coursesCount}</span>
                       <span className="text-gray-400 ml-1">courses</span>
@@ -790,16 +1168,27 @@ export function TeacherManagementView({ flash }: { flash: (msg: string, ok?: boo
           flash={flash}
         />
       )}
-      {profileId    && <ProfileModal teacherId={profileId} onClose={() => setProfileId(null)} />}
+      {profileId    && <ProfileModal teacherId={profileId} onClose={() => setProfileId(null)} flash={flash} />}
       {editTeacher  && <EditModal teacher={editTeacher} onClose={() => setEditTeacher(null)} onSaved={u => updateRow(editTeacher.id, u)} flash={flash} />}
-      {toggleTarget && (
+      {toggleTarget && !toggleConfirmInfo && (
         <ConfirmDialog
           title={toggleTarget.isActive ? "Deactivate Teacher" : "Activate Teacher"}
           message={toggleTarget.isActive ? `${toggleTarget.name} will no longer be able to log in.` : `${toggleTarget.name} will regain access.`}
           confirmLabel={toggleTarget.isActive ? "Deactivate" : "Activate"}
           danger={toggleTarget.isActive}
-          onConfirm={doToggle}
+          onConfirm={() => doToggle()}
           onClose={() => setToggleTarget(null)}
+          loading={actionLoading}
+        />
+      )}
+      {toggleTarget && toggleConfirmInfo && (
+        <ConfirmDialog
+          title="Confirm Deactivation"
+          message={`${toggleTarget.name} has ${toggleConfirmInfo.activeCourseAssignments} active course assignment(s) and ${toggleConfirmInfo.upcomingClasses} upcoming class(es). Deactivating will keep these records but the teacher will lose access. Continue?`}
+          confirmLabel="Deactivate Anyway"
+          danger
+          onConfirm={() => doToggle(true)}
+          onClose={() => { setToggleTarget(null); setToggleConfirmInfo(null); }}
           loading={actionLoading}
         />
       )}

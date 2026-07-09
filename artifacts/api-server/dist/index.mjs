@@ -32300,7 +32300,7 @@ var require_textParsers = __commonJS({
       }
       return value;
     };
-    var parseJsonArray = function(value) {
+    var parseJsonArray2 = function(value) {
       if (!value) {
         return null;
       }
@@ -32380,8 +32380,8 @@ var require_textParsers = __commonJS({
       register(17, parseByteA);
       register(114, JSON.parse.bind(JSON));
       register(3802, JSON.parse.bind(JSON));
-      register(199, parseJsonArray);
-      register(3807, parseJsonArray);
+      register(199, parseJsonArray2);
+      register(3807, parseJsonArray2);
       register(3907, parseStringArray);
       register(2951, parseStringArray);
       register(791, parseStringArray);
@@ -107673,6 +107673,17 @@ var usersTable = pgTable("users", {
   organizationId: integer("organization_id"),
   phoneVerified: boolean("phone_verified").notNull().default(false),
   department: text("department"),
+  // Teacher-specific fields (role="teacher"). Not grade-specific — a teacher can
+  // teach multiple grades/subjects/courses; these are display/filter metadata only.
+  // Actual assignment is via teacher_courses (course + optional course_subject).
+  employeeId: text("employee_id").unique(),
+  qualification: text("qualification"),
+  experienceYears: integer("experience_years"),
+  teachingSubjectsJson: text("teaching_subjects_json"),
+  // JSON string[] of subject names
+  teachingGradesJson: text("teaching_grades_json"),
+  // JSON number[] of grades
+  joiningDate: timestamp("joining_date"),
   // Lead Deployment Engine
   deploymentStatus: text("deployment_status"),
   // Undeployed | Assigned | Reassigned | Converted
@@ -107933,8 +107944,11 @@ var teacherCoursesTable = pgTable("teacher_courses", {
   id: serial("id").primaryKey(),
   teacherId: integer("teacher_id").notNull(),
   courseId: integer("course_id").notNull(),
+  // Nullable: null = teacher assigned to the whole course (legacy rows / whole-course assignment).
+  // Set = teacher is the Subject Teacher for this specific course_subject only.
+  courseSubjectId: integer("course_subject_id"),
   assignedAt: timestamp("assigned_at").defaultNow().notNull()
-}, (t) => [unique().on(t.teacherId, t.courseId)]);
+}, (t) => [unique().on(t.teacherId, t.courseId, t.courseSubjectId)]);
 var insertTeacherCourseSchema = createInsertSchema(teacherCoursesTable).omit({ id: true, assignedAt: true });
 
 // ../../lib/db/src/schema/enrollments.ts
@@ -109197,9 +109211,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-09-2040" : "dev",
-    commit: true ? "d24f795" : "unknown",
-    buildTime: true ? "2026-07-09T20:40:51.558Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-09-2102" : "dev",
+    commit: true ? "c55aa21" : "unknown",
+    buildTime: true ? "2026-07-09T21:02:50.065Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -109477,6 +109491,10 @@ router2.post("/auth/login", async (req, res) => {
   const user = users[0];
   if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
     res.status(401).json({ error: "Invalid credentials" });
+    return;
+  }
+  if (user.isActive === false) {
+    res.status(403).json({ error: "This account has been disabled. Contact the administrator." });
     return;
   }
   const role = user.role ?? "student";
@@ -117027,12 +117045,14 @@ router13.get("/admin/teacher-courses", adminOnly, async (req, res) => {
     teacherName: usersTable.name,
     courseId: teacherCoursesTable.courseId,
     courseTitle: coursesTable.title,
+    courseSubjectId: teacherCoursesTable.courseSubjectId,
+    subjectName: courseSubjectsTable.name,
     assignedAt: teacherCoursesTable.assignedAt
-  }).from(teacherCoursesTable).innerJoin(usersTable, eq(teacherCoursesTable.teacherId, usersTable.id)).innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id)).orderBy(desc(teacherCoursesTable.assignedAt));
-  res.json(rows);
+  }).from(teacherCoursesTable).innerJoin(usersTable, eq(teacherCoursesTable.teacherId, usersTable.id)).innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id)).leftJoin(courseSubjectsTable, eq(teacherCoursesTable.courseSubjectId, courseSubjectsTable.id)).orderBy(desc(teacherCoursesTable.assignedAt));
+  res.json(rows.map((r) => ({ ...r, courseTitle: r.subjectName ? `${r.courseTitle} \u2014 ${r.subjectName}` : r.courseTitle })));
 });
 router13.post("/admin/teacher-courses", adminOnly, async (req, res) => {
-  const { teacherId, courseId } = req.body;
+  const { teacherId, courseId, courseSubjectId } = req.body;
   if (!teacherId || !courseId) {
     res.status(400).json({ error: "teacherId and courseId are required" });
     return;
@@ -117042,7 +117062,11 @@ router13.post("/admin/teacher-courses", adminOnly, async (req, res) => {
     res.status(400).json({ error: "Teacher not found" });
     return;
   }
-  const [row] = await db.insert(teacherCoursesTable).values({ teacherId, courseId }).onConflictDoNothing().returning();
+  if (teacher[0].isActive === false) {
+    res.status(400).json({ error: "Cannot assign courses to an inactive teacher" });
+    return;
+  }
+  const [row] = await db.insert(teacherCoursesTable).values({ teacherId, courseId, courseSubjectId: courseSubjectId ?? null }).onConflictDoNothing().returning();
   if (row) {
     const [course] = await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
     await logAudit(
@@ -117592,6 +117616,26 @@ router13.get("/admin/live-classes", adminOnly, async (req, res) => {
     studentsJoined: r.studentsJoined ?? 0
   })));
 });
+async function findTeacherScheduleConflict(teacherId, scheduledAt, duration3, excludeClassId) {
+  const start = scheduledAt;
+  const end = new Date(scheduledAt.getTime() + duration3 * 6e4);
+  const conditions = [
+    eq(liveClassesTable.teacherId, teacherId),
+    inArray(liveClassesTable.status, ["upcoming", "live"])
+  ];
+  if (excludeClassId) conditions.push(ne(liveClassesTable.id, excludeClassId));
+  const candidates = await db.select({
+    id: liveClassesTable.id,
+    title: liveClassesTable.title,
+    scheduledAt: liveClassesTable.scheduledAt,
+    duration: liveClassesTable.duration
+  }).from(liveClassesTable).where(and(...conditions));
+  return candidates.find((c) => {
+    const cStart = new Date(c.scheduledAt).getTime();
+    const cEnd = cStart + (c.duration ?? 60) * 6e4;
+    return cStart < end.getTime() && start.getTime() < cEnd;
+  }) ?? null;
+}
 router13.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
@@ -117599,6 +117643,18 @@ router13.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
     return;
   }
   const { status, joinUrl, title, teacher, teacherId, grade, scheduledAt, duration: duration3, courseId, subjectId, isPublished } = req.body;
+  if (teacherId !== void 0 && teacherId !== null && scheduledAt !== void 0) {
+    const [existing] = await db.select({ scheduledAt: liveClassesTable.scheduledAt, duration: liveClassesTable.duration }).from(liveClassesTable).where(eq(liveClassesTable.id, id)).limit(1);
+    const effDuration = duration3 !== void 0 ? Number(duration3) : existing?.duration ?? 60;
+    const conflict = await findTeacherScheduleConflict(Number(teacherId), new Date(scheduledAt), effDuration, id);
+    if (conflict) {
+      res.status(409).json({
+        error: `Teacher is already scheduled for "${conflict.title}" at that time`,
+        conflict
+      });
+      return;
+    }
+  }
   const updates = {};
   if (status !== void 0) updates.status = status;
   if (joinUrl !== void 0) updates.joinUrl = joinUrl;
@@ -117646,6 +117702,21 @@ router13.post("/admin/live-classes", adminOnly, async (req, res) => {
   if (!resolvedGrade) {
     res.status(400).json({ error: "grade is required (or select a course)" });
     return;
+  }
+  if (teacherId) {
+    const [teacherRow] = await db.select({ isActive: usersTable.isActive }).from(usersTable).where(eq(usersTable.id, Number(teacherId))).limit(1);
+    if (!teacherRow || !teacherRow.isActive) {
+      res.status(400).json({ error: "Selected teacher is inactive or not found" });
+      return;
+    }
+    const conflict = await findTeacherScheduleConflict(Number(teacherId), new Date(scheduledAt), duration3 ?? 60);
+    if (conflict) {
+      res.status(409).json({
+        error: `Teacher is already scheduled for "${conflict.title}" at that time`,
+        conflict
+      });
+      return;
+    }
   }
   const [lc] = await db.insert(liveClassesTable).values({
     title,
@@ -127974,6 +128045,15 @@ var adminMentors_default = router31;
 var import_express32 = __toESM(require_express2(), 1);
 var router32 = (0, import_express32.Router)();
 var adminOnly10 = requireRole("admin", "super_admin");
+function parseJsonArray(raw) {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
 async function logTeacherAction(opts) {
   try {
     await db.insert(auditLogsTable).values({
@@ -128029,7 +128109,13 @@ router32.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
         isActive: usersTable.isActive,
         avatarUrl: usersTable.avatarUrl,
         createdAt: usersTable.createdAt,
-        lastLoginDate: usersTable.lastLoginDate
+        lastLoginDate: usersTable.lastLoginDate,
+        employeeId: usersTable.employeeId,
+        qualification: usersTable.qualification,
+        experienceYears: usersTable.experienceYears,
+        teachingSubjectsJson: usersTable.teachingSubjectsJson,
+        teachingGradesJson: usersTable.teachingGradesJson,
+        joiningDate: usersTable.joiningDate
       }).from(usersTable).where(where).orderBy(orderFn(sortCol)).limit(pageSize).offset(offset),
       db.select({ total: count() }).from(usersTable).where(where),
       // Unfiltered — for KPIs
@@ -128044,7 +128130,9 @@ router32.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
     const items = teachers.map((t) => ({
       ...t,
       coursesCount: courseMap.get(t.id) ?? 0,
-      classesCount: classMap.get(t.id) ?? 0
+      classesCount: classMap.get(t.id) ?? 0,
+      teachingSubjects: parseJsonArray(t.teachingSubjectsJson),
+      teachingGrades: parseJsonArray(t.teachingGradesJson)
     }));
     if (sort === "coursesCount") items.sort((a, b) => order === "desc" ? b.coursesCount - a.coursesCount : a.coursesCount - b.coursesCount);
     if (sort === "classesCount") items.sort((a, b) => order === "desc" ? b.classesCount - a.classesCount : a.classesCount - b.classesCount);
@@ -128084,13 +128172,37 @@ router32.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
       avatarUrl: usersTable.avatarUrl,
       createdAt: usersTable.createdAt,
       lastLoginDate: usersTable.lastLoginDate,
-      updatedAt: usersTable.updatedAt
+      updatedAt: usersTable.updatedAt,
+      employeeId: usersTable.employeeId,
+      qualification: usersTable.qualification,
+      experienceYears: usersTable.experienceYears,
+      teachingSubjectsJson: usersTable.teachingSubjectsJson,
+      teachingGradesJson: usersTable.teachingGradesJson,
+      joiningDate: usersTable.joiningDate
     }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "teacher"))).limit(1);
     if (!teacher) {
       res.status(404).json({ error: "Teacher not found" });
       return;
     }
     const subjectRows = await db.selectDistinct({ subjectName: courseSubjectsTable.name }).from(teacherCoursesTable).innerJoin(coursesTable, eq(coursesTable.id, teacherCoursesTable.courseId)).innerJoin(courseSubjectsTable, eq(courseSubjectsTable.courseId, coursesTable.id)).where(eq(teacherCoursesTable.teacherId, id));
+    const assignments = await db.select({
+      id: teacherCoursesTable.id,
+      courseId: teacherCoursesTable.courseId,
+      courseTitle: coursesTable.title,
+      courseType: coursesTable.courseType,
+      grade: coursesTable.grade,
+      courseSubjectId: teacherCoursesTable.courseSubjectId,
+      subjectName: courseSubjectsTable.name,
+      assignedAt: teacherCoursesTable.assignedAt
+    }).from(teacherCoursesTable).innerJoin(coursesTable, eq(coursesTable.id, teacherCoursesTable.courseId)).leftJoin(courseSubjectsTable, eq(courseSubjectsTable.id, teacherCoursesTable.courseSubjectId)).where(eq(teacherCoursesTable.teacherId, id)).orderBy(desc(teacherCoursesTable.assignedAt));
+    const upcomingClasses = await db.select({
+      id: liveClassesTable.id,
+      title: liveClassesTable.title,
+      scheduledAt: liveClassesTable.scheduledAt,
+      duration: liveClassesTable.duration,
+      status: liveClassesTable.status,
+      grade: liveClassesTable.grade
+    }).from(liveClassesTable).where(and(eq(liveClassesTable.teacherId, id), eq(liveClassesTable.status, "upcoming"))).orderBy(asc(liveClassesTable.scheduledAt));
     const [{ classCnt }] = await db.select({ classCnt: count() }).from(liveClassesTable).where(eq(liveClassesTable.teacherId, id));
     const activity = await db.select({
       id: auditLogsTable.id,
@@ -128111,7 +128223,11 @@ router32.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
       { module: "Staff Mgmt", view: false, create: false, edit: false, del: false }
     ];
     res.json({
-      profile: teacher,
+      profile: {
+        ...teacher,
+        teachingSubjects: parseJsonArray(teacher.teachingSubjectsJson),
+        teachingGrades: parseJsonArray(teacher.teachingGradesJson)
+      },
       performance: {
         classesAssigned: classCnt ?? 0,
         coursesAssigned: subjectRows.length,
@@ -128121,6 +128237,8 @@ router32.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
         homeworkCompletionPct: 0
         // future hook
       },
+      assignments,
+      upcomingClasses,
       permissions,
       activity
     });
@@ -128159,7 +128277,19 @@ router32.get("/admin/cc/teachers/:id/classes", adminOnly10, async (req, res) => 
   }
 });
 router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
-  const { name, email: email3, password, phone, department } = req.body;
+  const {
+    name,
+    email: email3,
+    password,
+    phone,
+    department,
+    employeeId,
+    qualification,
+    experienceYears,
+    teachingSubjects,
+    teachingGrades,
+    joiningDate
+  } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "Name is required" });
     return;
@@ -128178,6 +128308,13 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
       res.status(400).json({ error: "A user with this email already exists" });
       return;
     }
+    if (employeeId?.trim()) {
+      const dupe = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.employeeId, employeeId.trim())).limit(1);
+      if (dupe.length > 0) {
+        res.status(400).json({ error: "A teacher with this Employee ID already exists" });
+        return;
+      }
+    }
     const { createHash } = await import("crypto");
     const passwordHash = createHash("sha256").update(password.trim() + "braintam_salt").digest("hex");
     const [teacher] = await db.insert(usersTable).values({
@@ -128189,7 +128326,13 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
       role: "teacher",
       accountType: "teacher",
       isActive: true,
-      grade: 0
+      grade: 0,
+      employeeId: employeeId?.trim() || null,
+      qualification: qualification?.trim() || null,
+      experienceYears: experienceYears != null ? Number(experienceYears) : null,
+      teachingSubjectsJson: Array.isArray(teachingSubjects) ? JSON.stringify(teachingSubjects) : null,
+      teachingGradesJson: Array.isArray(teachingGrades) ? JSON.stringify(teachingGrades) : null,
+      joiningDate: joiningDate ? new Date(joiningDate) : null
     }).returning({
       id: usersTable.id,
       name: usersTable.name,
@@ -128200,7 +128343,11 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
       isActive: usersTable.isActive,
       avatarUrl: usersTable.avatarUrl,
       createdAt: usersTable.createdAt,
-      lastLoginDate: usersTable.lastLoginDate
+      lastLoginDate: usersTable.lastLoginDate,
+      employeeId: usersTable.employeeId,
+      qualification: usersTable.qualification,
+      experienceYears: usersTable.experienceYears,
+      joiningDate: usersTable.joiningDate
     });
     const actor = req.authUser;
     await logTeacherAction({
@@ -128225,19 +128372,71 @@ router32.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const { name, phone, department, isActive } = req.body;
+  const {
+    name,
+    phone,
+    department,
+    isActive,
+    force,
+    employeeId,
+    qualification,
+    experienceYears,
+    teachingSubjects,
+    teachingGrades,
+    joiningDate
+  } = req.body;
   try {
     const [before] = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "teacher"))).limit(1);
     if (!before) {
       res.status(404).json({ error: "Teacher not found" });
       return;
     }
+    if (isActive === false && before.isActive !== false && !force) {
+      const [[{ courseCnt }], [{ upcomingCnt }]] = await Promise.all([
+        db.select({ courseCnt: count() }).from(teacherCoursesTable).where(eq(teacherCoursesTable.teacherId, id)),
+        db.select({ upcomingCnt: count() }).from(liveClassesTable).where(and(eq(liveClassesTable.teacherId, id), eq(liveClassesTable.status, "upcoming")))
+      ]);
+      if (courseCnt > 0 || upcomingCnt > 0) {
+        res.status(409).json({
+          error: "This teacher has active course assignments or upcoming live classes.",
+          requiresConfirmation: true,
+          activeCourseAssignments: courseCnt,
+          upcomingClasses: upcomingCnt
+        });
+        return;
+      }
+    }
+    if (employeeId?.trim()) {
+      const dupe = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.employeeId, employeeId.trim())).limit(1);
+      if (dupe.length > 0 && dupe[0].id !== id) {
+        res.status(400).json({ error: "A teacher with this Employee ID already exists" });
+        return;
+      }
+    }
     const updates = { updatedAt: /* @__PURE__ */ new Date() };
     if (name !== void 0 && name.trim()) updates.name = name.trim();
     if (phone !== void 0) updates.phone = phone || null;
     if (department !== void 0) updates.department = department || null;
     if (isActive !== void 0) updates.isActive = isActive;
-    const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive });
+    if (employeeId !== void 0) updates.employeeId = employeeId?.trim() || null;
+    if (qualification !== void 0) updates.qualification = qualification?.trim() || null;
+    if (experienceYears !== void 0) updates.experienceYears = experienceYears != null ? Number(experienceYears) : null;
+    if (teachingSubjects !== void 0) updates.teachingSubjectsJson = Array.isArray(teachingSubjects) ? JSON.stringify(teachingSubjects) : null;
+    if (teachingGrades !== void 0) updates.teachingGradesJson = Array.isArray(teachingGrades) ? JSON.stringify(teachingGrades) : null;
+    if (joiningDate !== void 0) updates.joiningDate = joiningDate ? new Date(joiningDate) : null;
+    const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({
+      id: usersTable.id,
+      name: usersTable.name,
+      phone: usersTable.phone,
+      department: usersTable.department,
+      isActive: usersTable.isActive,
+      employeeId: usersTable.employeeId,
+      qualification: usersTable.qualification,
+      experienceYears: usersTable.experienceYears,
+      teachingSubjectsJson: usersTable.teachingSubjectsJson,
+      teachingGradesJson: usersTable.teachingGradesJson,
+      joiningDate: usersTable.joiningDate
+    });
     const actor = req.authUser;
     await logTeacherAction({
       actorId: actor.id,
@@ -128250,11 +128449,113 @@ router32.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
       beforeValue: before,
       afterValue: updated
     });
-    res.json({ success: true, teacher: updated });
+    res.json({
+      success: true,
+      teacher: {
+        ...updated,
+        teachingSubjects: parseJsonArray(updated.teachingSubjectsJson),
+        teachingGrades: parseJsonArray(updated.teachingGradesJson)
+      }
+    });
   } catch (err) {
     req.log.error({ err }, "teacher update error");
     res.status(500).json({ error: "Failed to update teacher" });
   }
+});
+router32.post("/admin/cc/teachers/:id/assignments", adminOnly10, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const { courseId, courseSubjectId } = req.body;
+  if (!courseId) {
+    res.status(400).json({ error: "courseId is required" });
+    return;
+  }
+  try {
+    const [teacher] = await db.select({ id: usersTable.id, name: usersTable.name, isActive: usersTable.isActive }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "teacher"))).limit(1);
+    if (!teacher) {
+      res.status(404).json({ error: "Teacher not found" });
+      return;
+    }
+    if (!teacher.isActive) {
+      res.status(400).json({ error: "Cannot assign courses to an inactive teacher" });
+      return;
+    }
+    const [course] = await db.select({ id: coursesTable.id, title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, Number(courseId))).limit(1);
+    if (!course) {
+      res.status(404).json({ error: "Course not found" });
+      return;
+    }
+    if (courseSubjectId) {
+      const [subj] = await db.select({ id: courseSubjectsTable.id }).from(courseSubjectsTable).where(and(eq(courseSubjectsTable.id, Number(courseSubjectId)), eq(courseSubjectsTable.courseId, Number(courseId)))).limit(1);
+      if (!subj) {
+        res.status(400).json({ error: "Subject does not belong to this course" });
+        return;
+      }
+    }
+    const [row] = await db.insert(teacherCoursesTable).values({
+      teacherId: id,
+      courseId: Number(courseId),
+      courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null
+    }).onConflictDoNothing().returning();
+    if (!row) {
+      res.status(409).json({ error: "This teacher is already assigned to this course/subject" });
+      return;
+    }
+    const actor = req.authUser;
+    await logTeacherAction({
+      actorId: actor.id,
+      actorName: actor.name,
+      actorRole: actor.role,
+      action: "teacher_course_assigned",
+      actionLabel: "Assigned Course/Subject to Teacher",
+      targetId: id,
+      targetName: teacher.name,
+      afterValue: { courseId: course.id, courseTitle: course.title, courseSubjectId: courseSubjectId ?? null }
+    });
+    res.status(201).json({ success: true, assignment: row });
+  } catch (err) {
+    req.log.error({ err }, "teacher assignment create error");
+    res.status(500).json({ error: "Failed to assign course" });
+  }
+});
+router32.delete("/admin/cc/teachers/:id/assignments/:assignmentId", adminOnly10, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  const assignmentId = parseInt(String(req.params.assignmentId), 10);
+  if (isNaN(id) || isNaN(assignmentId)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  try {
+    const [row] = await db.select().from(teacherCoursesTable).where(and(eq(teacherCoursesTable.id, assignmentId), eq(teacherCoursesTable.teacherId, id))).limit(1);
+    if (!row) {
+      res.status(404).json({ error: "Assignment not found" });
+      return;
+    }
+    await db.delete(teacherCoursesTable).where(eq(teacherCoursesTable.id, assignmentId));
+    const [teacher] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+    const actor = req.authUser;
+    await logTeacherAction({
+      actorId: actor.id,
+      actorName: actor.name,
+      actorRole: actor.role,
+      action: "teacher_course_unassigned",
+      actionLabel: "Removed Course/Subject Assignment",
+      targetId: id,
+      targetName: teacher?.name ?? String(id),
+      beforeValue: row
+    });
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "teacher assignment delete error");
+    res.status(500).json({ error: "Failed to remove assignment" });
+  }
+});
+router32.get("/admin/cc/teachers-active", adminOnly10, async (_req, res) => {
+  const rows = await db.select({ id: usersTable.id, name: usersTable.name, employeeId: usersTable.employeeId }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))).orderBy(asc(usersTable.name));
+  res.json(rows);
 });
 var adminTeachers_default = router32;
 

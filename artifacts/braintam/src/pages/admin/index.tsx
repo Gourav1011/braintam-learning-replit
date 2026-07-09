@@ -144,7 +144,7 @@ interface User {
 const IGNITE_ACCOUNT_TYPES = ["lead", "demo_student", "paid_student"];
 const isMasteryStudent = (u: User) =>
   u.role === "student" && !IGNITE_ACCOUNT_TYPES.includes(u.accountType ?? "");
-interface Course { id: number; title: string; subjectName: string; subjectId?: number; grade: number; teacher: string | null; academicYearId?: number | null; }
+interface Course { id: number; title: string; subjectName: string; subjectId?: number; grade: number; teacher: string | null; academicYearId?: number | null; courseType?: string; }
 interface AcademicYear { id: number; name: string; isActive: boolean; }
 interface TeacherAssignment { id: number; teacherId: number; teacherName: string; courseId: number; courseTitle: string; assignedAt: string; }
 interface Enrollment { id: number; studentId: number; studentName: string; courseId: number; courseTitle: string; enrolledAt: string; }
@@ -809,7 +809,8 @@ function AdminPageInner() {
 
   const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", role: "student" as Role, grade: "6", school: "" });
   const [showNewPw, setShowNewPw] = useState(false);
-  const [assignForm, setAssignForm] = useState({ teacherId: "", courseId: "" });
+  const [assignForm, setAssignForm] = useState({ teacherId: "", courseId: "", courseSubjectId: "" });
+  const [assignCourseSubjects, setAssignCourseSubjects] = useState<{ id: number; name: string }[]>([]);
   const [enrollForm, setEnrollForm] = useState({ studentId: "", courseId: "" });
   const [annForm, setAnnForm] = useState({ title: "", body: "", grade: "", targetRole: "all" });
   const [bannerForm, setBannerForm] = useState({ title: "", imageUrl: "", link: "", displayOrder: "0" });
@@ -827,6 +828,7 @@ function AdminPageInner() {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const teachers = useMemo(() => users.filter(u => u.role === "teacher"), [users]);
+  const activeTeachers = useMemo(() => teachers.filter(t => t.isActive), [teachers]);
   const students = useMemo(() => users.filter(isMasteryStudent), [users]);
 
   useEffect(() => { if (!isLoading && (role === "admin" || role === "super_admin")) loadAll(); }, [isLoading, role]);
@@ -1106,14 +1108,29 @@ function AdminPageInner() {
     );
   }
 
+  async function loadSubjectsForAssign(courseId: string) {
+    if (!courseId) { setAssignCourseSubjects([]); return; }
+    const r = await apiFetch(`/admin/course-subjects?courseId=${courseId}`);
+    setAssignCourseSubjects(r.ok ? await r.json() : []);
+  }
+
   async function assignTeacher() {
     setBusy(true);
     const r = await apiFetch("/admin/teacher-courses", {
       method: "POST",
-      body: JSON.stringify({ teacherId: Number(assignForm.teacherId), courseId: Number(assignForm.courseId) }),
+      body: JSON.stringify({
+        teacherId: Number(assignForm.teacherId),
+        courseId: Number(assignForm.courseId),
+        courseSubjectId: assignForm.courseSubjectId ? Number(assignForm.courseSubjectId) : null,
+      }),
     });
-    if (r.ok) { flash("Teacher assigned!"); setShowAssignTeacher(false); setAssignForm({ teacherId: "", courseId: "" }); loadAll(); }
-    else { const d = await r.json(); flash(d.error ?? "Error", false); }
+    if (r.ok) {
+      flash("Teacher assigned!");
+      setShowAssignTeacher(false);
+      setAssignForm({ teacherId: "", courseId: "", courseSubjectId: "" });
+      setAssignCourseSubjects([]);
+      loadAll();
+    } else { const d = await r.json(); flash(d.error ?? "Error", false); }
     setBusy(false);
   }
 
@@ -2491,19 +2508,38 @@ function AdminPageInner() {
                 <h3 className="font-bold text-sm" style={{ color: NAVY }}>Assign Teacher to Course</h3>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <SearchableSelect
-                    options={teachers.map(t => ({ value: String(t.id), label: t.name }))}
+                    options={activeTeachers.map(t => ({ value: String(t.id), label: t.name }))}
                     value={assignForm.teacherId}
                     onValueChange={v => setAssignForm(p => ({ ...p, teacherId: v }))}
-                    placeholder="Select Teacher"
+                    placeholder="Select Teacher (active only)"
                     searchPlaceholder="Search teachers…"
                   />
                   <SearchableSelect
-                    options={courses.map(c => ({ value: String(c.id), label: `${c.title} (Gr ${c.grade})` }))}
+                    options={courses.map(c => ({ value: String(c.id), label: `${c.title} (Gr ${c.grade}) · ${c.courseType ?? ""}` }))}
                     value={assignForm.courseId}
-                    onValueChange={v => setAssignForm(p => ({ ...p, courseId: v }))}
+                    onValueChange={v => {
+                      setAssignForm(p => ({ ...p, courseId: v, courseSubjectId: "" }));
+                      loadSubjectsForAssign(v);
+                    }}
                     placeholder="Select Course"
                     searchPlaceholder="Search courses…"
                   />
+                  {assignCourseSubjects.length > 0 ? (
+                    <SearchableSelect
+                      options={[
+                        { value: "__whole__", label: "Whole course (all subjects)" },
+                        ...assignCourseSubjects.map(s => ({ value: String(s.id), label: s.name })),
+                      ]}
+                      value={assignForm.courseSubjectId || "__whole__"}
+                      onValueChange={v => setAssignForm(p => ({ ...p, courseSubjectId: v === "__whole__" ? "" : v }))}
+                      placeholder="Select Subject (optional)"
+                      searchPlaceholder="Search subjects…"
+                    />
+                  ) : assignForm.courseId ? (
+                    <div className="flex items-center text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                      ⚠ No subjects in this course — will assign the whole course.
+                    </div>
+                  ) : <div />}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={assignTeacher} disabled={busy || !assignForm.teacherId || !assignForm.courseId} className="text-white" style={{ background: ORANGE }}>Assign</Button>
@@ -2789,14 +2825,14 @@ function AdminPageInner() {
                   <SearchableSelect
                     options={[
                       { value: "none", label: "No specific teacher" },
-                      ...teachers.map(t => ({ value: String(t.id), label: t.name })),
+                      ...activeTeachers.map(t => ({ value: String(t.id), label: t.name })),
                     ]}
                     value={lcForm.teacherId || "none"}
                     onValueChange={v => {
-                      const name = v !== "none" ? (teachers.find(t => String(t.id) === v)?.name ?? "") : "";
+                      const name = v !== "none" ? (activeTeachers.find(t => String(t.id) === v)?.name ?? "") : "";
                       setLcForm(p => ({ ...p, teacherId: v, teacher: name }));
                     }}
-                    placeholder="Assign teacher (optional)"
+                    placeholder="Assign teacher (active only)"
                     searchPlaceholder="Search teachers…"
                   />
                   <Input

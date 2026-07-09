@@ -11,7 +11,7 @@ import {
   mentorStudentAssignmentsTable, studentTimelineTable, mentorFollowUpsTable, mentorAttendanceTable,
   attendanceTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, gte, lt, isNull, inArray, ilike, or } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lt, isNull, inArray, ilike, or, ne } from "drizzle-orm";
 
 function computeCrmHealth(s: { lastLoginDate: Date | null; hwPct: number; testTotal: number }): { healthScore: number; riskLevel: "excellent" | "good" | "attention" | "at-risk"; daysSinceLogin: number } {
   const daysSinceLogin = s.lastLoginDate ? Math.floor((Date.now() - new Date(s.lastLoginDate).getTime()) / 86400000) : 999;
@@ -339,17 +339,20 @@ router.get("/admin/teacher-courses", adminOnly, async (req, res) => {
     teacherName: usersTable.name,
     courseId: teacherCoursesTable.courseId,
     courseTitle: coursesTable.title,
+    courseSubjectId: teacherCoursesTable.courseSubjectId,
+    subjectName: courseSubjectsTable.name,
     assignedAt: teacherCoursesTable.assignedAt,
   })
     .from(teacherCoursesTable)
     .innerJoin(usersTable, eq(teacherCoursesTable.teacherId, usersTable.id))
     .innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id))
+    .leftJoin(courseSubjectsTable, eq(teacherCoursesTable.courseSubjectId, courseSubjectsTable.id))
     .orderBy(desc(teacherCoursesTable.assignedAt));
-  res.json(rows);
+  res.json(rows.map(r => ({ ...r, courseTitle: r.subjectName ? `${r.courseTitle} — ${r.subjectName}` : r.courseTitle })));
 });
 
 router.post("/admin/teacher-courses", adminOnly, async (req, res) => {
-  const { teacherId, courseId } = req.body;
+  const { teacherId, courseId, courseSubjectId } = req.body;
   if (!teacherId || !courseId) {
     res.status(400).json({ error: "teacherId and courseId are required" });
     return;
@@ -360,7 +363,12 @@ router.post("/admin/teacher-courses", adminOnly, async (req, res) => {
     res.status(400).json({ error: "Teacher not found" });
     return;
   }
-  const [row] = await db.insert(teacherCoursesTable).values({ teacherId, courseId })
+  if (teacher[0].isActive === false) {
+    res.status(400).json({ error: "Cannot assign courses to an inactive teacher" });
+    return;
+  }
+  const [row] = await db.insert(teacherCoursesTable)
+    .values({ teacherId, courseId, courseSubjectId: courseSubjectId ?? null })
     .onConflictDoNothing().returning();
 
   if (row) {
@@ -971,10 +979,50 @@ router.get("/admin/live-classes", adminOnly, async (req, res) => {
   })));
 });
 
+// Returns any of this teacher's other upcoming/live classes that overlap the
+// given [scheduledAt, scheduledAt+duration) window, excluding excludeClassId.
+async function findTeacherScheduleConflict(
+  teacherId: number, scheduledAt: Date, duration: number, excludeClassId?: number,
+) {
+  const start = scheduledAt;
+  const end = new Date(scheduledAt.getTime() + duration * 60000);
+  const conditions = [
+    eq(liveClassesTable.teacherId, teacherId),
+    inArray(liveClassesTable.status, ["upcoming", "live"]),
+  ];
+  if (excludeClassId) conditions.push(ne(liveClassesTable.id, excludeClassId));
+
+  const candidates = await db.select({
+    id: liveClassesTable.id, title: liveClassesTable.title,
+    scheduledAt: liveClassesTable.scheduledAt, duration: liveClassesTable.duration,
+  }).from(liveClassesTable).where(and(...conditions));
+
+  return candidates.find(c => {
+    const cStart = new Date(c.scheduledAt).getTime();
+    const cEnd = cStart + (c.duration ?? 60) * 60000;
+    return cStart < end.getTime() && start.getTime() < cEnd;
+  }) ?? null;
+}
+
 router.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
   const { status, joinUrl, title, teacher, teacherId, grade, scheduledAt, duration, courseId, subjectId, isPublished } = req.body;
+
+  if (teacherId !== undefined && teacherId !== null && scheduledAt !== undefined) {
+    const [existing] = await db.select({ scheduledAt: liveClassesTable.scheduledAt, duration: liveClassesTable.duration })
+      .from(liveClassesTable).where(eq(liveClassesTable.id, id)).limit(1);
+    const effDuration = duration !== undefined ? Number(duration) : (existing?.duration ?? 60);
+    const conflict = await findTeacherScheduleConflict(Number(teacherId), new Date(scheduledAt), effDuration, id);
+    if (conflict) {
+      res.status(409).json({
+        error: `Teacher is already scheduled for "${conflict.title}" at that time`,
+        conflict,
+      });
+      return;
+    }
+  }
+
   const updates: Partial<typeof liveClassesTable.$inferInsert> = {};
   if (status !== undefined) updates.status = status;
   if (joinUrl !== undefined) updates.joinUrl = joinUrl;
@@ -1017,6 +1065,23 @@ router.post("/admin/live-classes", adminOnly, async (req, res) => {
   if (!resolvedGrade) {
     res.status(400).json({ error: "grade is required (or select a course)" });
     return;
+  }
+
+  if (teacherId) {
+    const [teacherRow] = await db.select({ isActive: usersTable.isActive })
+      .from(usersTable).where(eq(usersTable.id, Number(teacherId))).limit(1);
+    if (!teacherRow || !teacherRow.isActive) {
+      res.status(400).json({ error: "Selected teacher is inactive or not found" });
+      return;
+    }
+    const conflict = await findTeacherScheduleConflict(Number(teacherId), new Date(scheduledAt), duration ?? 60);
+    if (conflict) {
+      res.status(409).json({
+        error: `Teacher is already scheduled for "${conflict.title}" at that time`,
+        conflict,
+      });
+      return;
+    }
   }
 
   const [lc] = await db.insert(liveClassesTable).values({
