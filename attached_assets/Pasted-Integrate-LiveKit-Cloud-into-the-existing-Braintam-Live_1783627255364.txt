@@ -1,0 +1,390 @@
+Integrate LiveKit Cloud into the existing Braintam Live Class Player.
+
+IMPORTANT:
+Do not redesign, remove, or replace the existing Braintam Live Class Player UI.
+
+Use the existing Replit Secrets:
+
+LIVEKIT_URL
+LIVEKIT_API_KEY
+LIVEKIT_API_SECRET
+
+SECURITY:
+- LIVEKIT_API_SECRET must remain backend-only.
+- Never expose the API secret in frontend code, browser responses, logs, or GitHub.
+- Generate LiveKit participant tokens only through a secure authenticated backend endpoint.
+- Validate every user's role, grade, assigned mentor, group, enrollment, and live-class access on the backend.
+- Never trust role, group ID, mentor ID, or publish permissions sent by the frontend.
+
+FIRST INSPECT:
+- Existing Live Class Player
+- Teacher Panel
+- Student Player
+- Mentor Panel
+- Live-class database schema
+- Grade assignments
+- Mentor assignments
+- Mentor student groups
+- Existing chat
+- Polls
+- Raise hand
+- Attendance
+- Backstage
+- Stage functionality
+- Recordings
+
+LiveKit must only handle:
+- Live teacher video
+- Live teacher audio
+- Screen sharing
+- Student stage camera/audio
+- Real-time participant connection
+
+Keep these as Braintam-owned backend features:
+- Group chat
+- Polls
+- Poll leaderboard
+- Raise hand
+- Attendance
+- Live / Backstage / Absent lists
+- Mentor controls
+- Poll history
+- Student learning analytics
+
+TEACHER PERMISSIONS:
+
+Teacher can:
+- Join the assigned LiveKit room
+- Publish camera
+- Publish microphone
+- Share screen
+- Start class
+- End class
+- Create and launch polls
+- See all grade groups
+- See all raised hands
+- Invite one selected student to stage
+- Remove a student from stage before the timer ends
+
+STUDENT PERMISSIONS:
+
+Student can:
+- Join the live class directly inside the existing Braintam player
+- Watch and hear the teacher
+- View the teacher's screen share
+- Access only the group assigned to that student
+- View and send messages only in their assigned group chat
+- Participate in polls
+- Raise hand
+
+Student cannot:
+- Publish camera by default
+- Publish microphone by default
+- Access another group's chat
+- Read another group's messages
+- Change group ID from browser requests
+- Join another grade's class
+
+MENTOR GRADE AND GROUP LOGIC:
+
+Mentors are assigned grade-wise.
+
+Each mentor may have one or more assigned groups within that grade.
+
+A mentor must only be able to:
+
+- Join live classes for the assigned grade
+- See only groups assigned to that mentor
+- See only students belonging to those assigned groups
+- Read and moderate only assigned group chats
+- See raised hands only from assigned students
+- See attendance only for assigned students
+- See poll participation and poll performance only for assigned students
+- Open learning profiles only for assigned students
+
+Mentors must not be able to:
+
+- View another mentor's group chat
+- View another mentor's students
+- Access another grade unless explicitly assigned
+- Change a group ID in the browser/API request to access unauthorized information
+
+All mentor, student, grade, and group permissions must be validated on the backend.
+
+GROUP CHAT:
+
+- Every student belongs to one mentor group.
+- Every chat message must store:
+  - liveClassId
+  - gradeId
+  - groupId
+  - mentorId where applicable
+  - senderUserId
+  - senderRole
+  - message
+  - createdAt
+  - moderation status
+
+Students:
+- Can read and send messages only in their assigned group.
+
+Mentors:
+- Can read and moderate only their assigned groups.
+
+Teachers:
+- Can view all groups for the live class.
+- Can select one group or view all group activity.
+
+Super Admin and authorized staff:
+- Can audit all chats.
+
+Do not depend only on frontend filtering.
+All group-chat authorization must be enforced by backend APIs and real-time subscriptions.
+
+60-SECOND STUDENT STAGE:
+
+When the teacher invites a student to stage:
+
+1. Verify the student belongs to the live class.
+2. Grant temporary LiveKit camera and microphone publishing permission.
+3. Start a visible 60-second countdown.
+4. Show the remaining stage time to:
+   - Teacher
+   - Staged student
+5. Student camera/audio appears in the existing stage area.
+6. Teacher can remove the student before 60 seconds.
+7. At exactly 60 seconds, automatically:
+   - Revoke LiveKit publishing permission
+   - Stop/unpublish student camera
+   - Stop/unpublish student microphone
+   - Remove the student from the stage
+   - Return the student to normal viewer mode
+8. Automatic removal must happen even if:
+   - Teacher does nothing
+   - Student refreshes the browser
+   - Student reconnects
+   - Student changes device
+9. The backend must be the source of truth for stage expiry.
+10. Do not rely only on a frontend timer.
+
+Store:
+- studentId
+- liveClassId
+- invitedByTeacherId
+- stageStartedAt
+- stageExpiresAt
+- stageEndedAt
+- endReason:
+  - teacher_removed
+  - timer_expired
+  - student_left
+  - class_ended
+
+POLL SYSTEM:
+
+Teacher can:
+- Create a question
+- Add answer options
+- Select the correct answer
+- Set poll duration
+- Launch the poll
+- Close the poll manually if required
+
+Students:
+- Can submit only one final answer per poll unless the existing product explicitly supports changing answers.
+- Cannot submit after the poll closes.
+- Cannot submit for another student.
+- Cannot manipulate response time from the frontend.
+
+Record response time using server timestamps.
+
+For every poll answer, store:
+
+- pollId
+- liveClassId
+- studentId
+- gradeId
+- groupId
+- mentorId
+- selectedOptionId
+- correctOptionId
+- isCorrect
+- pollStartedAt
+- answerReceivedAt
+- responseTimeMilliseconds
+- responseTimeSeconds
+- submittedAt
+
+Response time displayed as:
+
+0.8 s
+1.4 s
+2.7 s
+
+Do not trust a response time calculated by the student's browser.
+
+GROUP-WISE POLL LEADERBOARD:
+
+After every poll closes:
+
+- Generate a separate leaderboard for every mentor group.
+- Rank only students from that group.
+- Show the Top 20 students for each group.
+- Rank using:
+
+1. Correct answers first
+2. Fastest valid server-recorded response time
+3. If response times are equal, earliest server submission timestamp
+
+Display:
+
+Rank | Student Name | Correct | Response Time
+
+Example:
+
+1 | Aarav Sharma | ✓ | 0.8 s
+2 | Riya Patel | ✓ | 1.2 s
+3 | Kabir Singh | ✓ | 1.7 s
+
+Leaderboard behavior:
+
+- Show automatically after each poll.
+- Display for exactly 5 seconds.
+- Then automatically return to the normal live-class player.
+- Students see only their own group's leaderboard.
+- Mentors see only leaderboards for their assigned groups.
+- Teacher can view leaderboards for all groups.
+- Authorized staff can audit all group leaderboards.
+- Do not expose the correct answer before the poll closes.
+- Do not include incorrect answers above correct answers merely because they were faster.
+
+POLL HISTORY AND STUDENT PROFILE:
+
+Store every poll and every student's answer permanently.
+
+In the student profile, add a Live Poll Performance section visible to:
+
+- Assigned mentor
+- Authorized academic staff
+- Super Admin
+
+The student profile should show:
+
+Summary:
+- Total polls attempted
+- Correct answers
+- Incorrect answers
+- Unanswered polls
+- Accuracy percentage
+- Average response time
+- Fastest correct response
+- Group leaderboard Top 20 appearances
+- Number of group rank #1 finishes
+
+Poll history table:
+
+Date
+Live Class
+Subject
+Teacher
+Question
+Selected Answer
+Correct Answer
+Correct / Incorrect
+Response Time
+Group Rank
+Group Size
+
+Filters:
+
+- Date range
+- Subject
+- Course
+- Teacher
+- Correct / Incorrect
+- Live class
+
+Mentors must only access poll analytics for students assigned to their groups.
+
+Authorized staff and Super Admin can access broader data according to RBAC permissions.
+
+ATTENDANCE:
+
+Record:
+
+- First joined time
+- Last leave time
+- Reconnection events
+- Total connected duration
+- Attendance status
+
+Temporary internet disconnections must not create incorrect duplicate attendance records.
+
+REQUIRED CLASS FLOW:
+
+1. Admin schedules a live class.
+2. Assign a unique permanent LiveKit room name to the class.
+3. Teacher clicks Start Class.
+4. Students click Join Class.
+5. Students join inside the existing Braintam player.
+6. Teacher video or screen share appears in the main presentation area.
+7. Students remain view-only unless invited to the 60-second stage.
+8. Mentors enter grade-wise and access only assigned groups.
+9. Group chats remain isolated.
+10. Teacher launches polls.
+11. Poll answers and server-side response times are recorded.
+12. Each group receives its own Top 20 leaderboard for 5 seconds.
+13. Poll performance is saved permanently in student profiles.
+14. Ending the class updates class status and attendance correctly.
+
+DO NOT DEPLOY TO PRODUCTION YET.
+
+First test with:
+
+- 1 teacher
+- 2 mentors in the same grade
+- Mentor A assigned Group A
+- Mentor B assigned Group B
+- At least 2 students in Group A
+- At least 2 students in Group B
+
+Verify:
+
+- Teacher camera works.
+- Teacher microphone works.
+- Screen sharing works.
+- Students can watch and hear.
+- Students cannot publish camera/microphone by default.
+- Mentor A cannot see Group B students or chat.
+- Mentor B cannot see Group A students or chat.
+- Group A students cannot access Group B chat.
+- Changing group IDs manually does not bypass backend authorization.
+- Teacher can see all relevant groups.
+- Stage invitation enables camera/microphone only for the selected student.
+- Visible stage timer starts at 60 seconds.
+- Student is automatically removed at expiry.
+- Camera and microphone permissions are revoked after expiry.
+- Refreshing or reconnecting cannot bypass the stage expiry.
+- Teacher can remove a student before expiry.
+- Poll accepts valid student answers.
+- Duplicate answers are rejected.
+- Late answers are rejected.
+- Response time is calculated by the backend.
+- Correct answers are ranked before incorrect answers.
+- Each group receives a separate Top 20 leaderboard.
+- Students see only their group's leaderboard.
+- Leaderboard displays for 5 seconds.
+- Poll answers remain stored after class ends.
+- Student profile shows complete poll history and analytics.
+- Assigned mentor can view the student's poll history.
+- Unauthorized mentors cannot access the student's poll history.
+- Attendance works through reconnects.
+- No LiveKit API secret is exposed.
+- No existing live-class feature is broken.
+
+If any existing feature is only a UI mock and is not connected to the backend, clearly report it.
+
+Before saying DONE:
+Run database, API, authorization, UI, LiveKit, reconnect, timer, leaderboard, analytics, and security tests.
+
+Only say DONE after all tests pass.
