@@ -20,6 +20,7 @@ export const liveClassesTable = pgTable("live_classes", {
   thumbnailUrl: text("thumbnail_url"),
   studentsJoined: integer("students_joined").default(0),
   joinUrl: text("join_url"),
+  liveKitRoomName: text("livekit_room_name").unique(),
   isPublished: boolean("is_published").notNull().default(true),
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at"),

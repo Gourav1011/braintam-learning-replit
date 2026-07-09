@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Pencil,
   Camera, Phone, MapPin, FileText, ClipboardList, Lock, X, Check,
-  UserCheck, ChevronDown, ChevronUp, Zap, ChevronRight,
+  UserCheck, ChevronDown, ChevronUp, Zap, ChevronRight, BarChart3,
 } from "lucide-react";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { PointsHub } from "@/components/points-hub";
@@ -140,6 +140,30 @@ export default function ProfilePage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => setMyMentor(data))
       .catch(() => setMyMentor(null));
+  }, [student]);
+
+  type PollHistoryEntry = {
+    id: number;
+    sessionId: number;
+    pollQuestion: string;
+    optionText: string;
+    isCorrect: boolean;
+    responseTimeMs: number | null;
+    answeredAt: string;
+  };
+  const [pollHistory, setPollHistory] = useState<{
+    history: PollHistoryEntry[];
+    totalAnswered: number;
+    totalCorrect: number;
+    accuracyPct: number;
+  } | "loading" | null>("loading");
+
+  useEffect(() => {
+    if (!student) return;
+    fetch(`${BASE}/api/student/poll-history`, { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setPollHistory(data))
+      .catch(() => setPollHistory(null));
   }, [student]);
 
   const p = profile as any;
@@ -842,6 +866,68 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Live Poll Performance */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+              <Card className="overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3"
+                  style={{ background: `linear-gradient(135deg,${NAVY},#1A3F8A)` }}>
+                  <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <BarChart3 className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-white">Live Poll Performance</p>
+                    <p className="text-[11px] text-blue-200">Your answers from live class polls</p>
+                  </div>
+                </div>
+
+                <CardContent className="px-4 py-3">
+                  {pollHistory === "loading" ? (
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+                    </div>
+                  ) : !pollHistory || pollHistory.totalAnswered === 0 ? (
+                    <p className="text-sm text-gray-400 py-1">No poll answers yet — join a live class to participate!</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="text-center rounded-xl py-2" style={{ background: "#F3F4F6" }}>
+                          <p className="text-lg font-black" style={{ color: NAVY }}>{pollHistory.totalAnswered}</p>
+                          <p className="text-[10px] text-gray-500 font-semibold">Answered</p>
+                        </div>
+                        <div className="text-center rounded-xl py-2" style={{ background: "#ECFDF5" }}>
+                          <p className="text-lg font-black" style={{ color: "#059669" }}>{pollHistory.totalCorrect}</p>
+                          <p className="text-[10px] text-gray-500 font-semibold">Correct</p>
+                        </div>
+                        <div className="text-center rounded-xl py-2" style={{ background: "#FFF7ED" }}>
+                          <p className="text-lg font-black" style={{ color: ORANGE }}>{pollHistory.accuracyPct}%</p>
+                          <p className="text-[10px] text-gray-500 font-semibold">Accuracy</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                        {pollHistory.history.slice(0, 20).map(h => (
+                          <div key={h.id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                            <span className="mt-0.5 flex-shrink-0">
+                              {h.isCorrect
+                                ? <Check className="w-3.5 h-3.5 text-green-500" />
+                                : <X className="w-3.5 h-3.5 text-red-400" />}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-700 truncate">{h.pollQuestion}</p>
+                              <p className="text-[11px] text-gray-400 truncate">Answered: {h.optionText}</p>
+                            </div>
+                            <span className="text-[10px] text-gray-400 flex-shrink-0">
+                              {new Date(h.answeredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

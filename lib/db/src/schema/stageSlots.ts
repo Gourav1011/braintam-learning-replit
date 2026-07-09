@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, boolean, timestamp, pgEnum, uniqueIndex
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const stageSlotStatusEnum = pgEnum("stage_slot_status", ["invited", "active", "muted"]);
+export const stageSlotStatusEnum = pgEnum("stage_slot_status", ["invited", "active", "muted", "ended"]);
 
 export const stageSlotsTable = pgTable(
   "session_stage_slots",
@@ -16,6 +16,11 @@ export const stageSlotsTable = pgTable(
     status: stageSlotStatusEnum("status").default("invited").notNull(),
     isMuted: boolean("is_muted").default(true).notNull(),
     joinedAt: timestamp("joined_at").defaultNow().notNull(),
+    invitedByTeacherId: integer("invited_by_teacher_id"),
+    stageStartedAt: timestamp("stage_started_at").defaultNow(),
+    stageExpiresAt: timestamp("stage_expires_at"),
+    stageEndedAt: timestamp("stage_ended_at"),
+    endReason: text("end_reason"), // teacher_removed | timer_expired | student_left | class_ended
   },
   (t) => [
     uniqueIndex("idx_stage_session_slot").on(t.sessionId, t.slotNumber),

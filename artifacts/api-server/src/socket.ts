@@ -10,8 +10,33 @@ import {
   blockedWordsTable,
   chatViolationsTable,
   chatModerationTable,
+  liveClassesTable,
 } from "@workspace/db";
 import { eq, and, sql, gt, desc } from "drizzle-orm";
+import { updateParticipantPublishPermission, isLiveKitConfigured } from "./lib/livekit.js";
+
+const STAGE_DURATION_MS = 60_000;
+// timers keyed by `${sessionId}:${studentId}`
+const stageTimers = new Map<string, NodeJS.Timeout>();
+const roomNameCache = new Map<string, string | null>();
+
+async function getLiveKitRoomName(sessionId: string): Promise<string | null> {
+  if (roomNameCache.has(sessionId)) return roomNameCache.get(sessionId)!;
+  try {
+    const numericId = Number(sessionId);
+    if (!Number.isFinite(numericId)) return null;
+    const [row] = await db
+      .select({ liveKitRoomName: liveClassesTable.liveKitRoomName })
+      .from(liveClassesTable)
+      .where(eq(liveClassesTable.id, numericId))
+      .limit(1);
+    const roomName = row?.liveKitRoomName ?? null;
+    if (roomName) roomNameCache.set(sessionId, roomName); // only cache once known (may be set later by the token endpoint)
+    return roomName;
+  } catch {
+    return null;
+  }
+}
 
 // ── Room naming ────────────────────────────────────────────────
 const globalRoom  = (sid: string) => `session-${sid}`;
@@ -75,6 +100,7 @@ interface StageSlotEntry {
   slotNumber: number;
   isMuted: boolean;
   mentorGroupId: string | null;
+  stageExpiresAt: number; // epoch ms — backend-authoritative 60s stage timer
 }
 
 // ── In-memory caches ───────────────────────────────────────────
@@ -222,8 +248,47 @@ async function loadStageSlots(sessionId: string): Promise<StageSlotEntry[]> {
       slotNumber: r.slotNumber,
       isMuted: r.isMuted,
       mentorGroupId: r.mentorGroupId ?? null,
+      stageExpiresAt: r.stageExpiresAt ? r.stageExpiresAt.getTime() : Date.now() + STAGE_DURATION_MS,
     }));
   } catch { return []; }
+}
+
+/** Ends a student's stage turn: revokes LiveKit publish permission, persists to DB, clears timer, notifies room. */
+async function endStageSlot(
+  io: Server,
+  sessionId: string,
+  studentId: string,
+  reason: "teacher_removed" | "timer_expired" | "student_left" | "class_ended",
+): Promise<void> {
+  const room = sessionRooms.get(sessionId);
+  room?.stageSlots.delete(studentId);
+
+  const timerKey = `${sessionId}:${studentId}`;
+  const timer = stageTimers.get(timerKey);
+  if (timer) { clearTimeout(timer); stageTimers.delete(timerKey); }
+
+  if (isLiveKitConfigured()) {
+    const roomName = await getLiveKitRoomName(sessionId);
+    if (roomName) await updateParticipantPublishPermission(roomName, studentId, false);
+  }
+
+  db.update(stageSlotsTable)
+    .set({ status: "ended", stageEndedAt: new Date(), endReason: reason })
+    .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, studentId)))
+    .catch(() => {});
+
+  io.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId, reason });
+}
+
+/** Schedules the backend-authoritative 60s auto-expiry for a student's stage turn. */
+function scheduleStageExpiry(io: Server, sessionId: string, studentId: string): void {
+  const timerKey = `${sessionId}:${studentId}`;
+  const existing = stageTimers.get(timerKey);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    endStageSlot(io, sessionId, studentId, "timer_expired").catch(() => {});
+  }, STAGE_DURATION_MS);
+  stageTimers.set(timerKey, timer);
 }
 
 // ── Sprint 2: Seed liveStateCache from DB on startup ──────────
@@ -370,14 +435,20 @@ function persistPollAnswer(sessionId: string, poll: Poll, answer: PollAnswer) {
     .catch(() => {});
 }
 
-// ── Sprint 1: Leaderboard ranks by is_correct DESC, response_time ASC ──
-function computeTop3(room: SessionRoom): Array<{
+const LEADERBOARD_TOP_N = 20;
+
+type LeaderboardEntry = {
   name: string; rank: number; userId: string;
   optionId: string; responseTimeMs: number; isCorrect: boolean;
-}> {
+  mentorGroupId: string | null;
+};
+
+// ── Leaderboard ranks by is_correct DESC, response_time ASC, group-scoped Top 20 ──
+function computeTopLeaderboard(room: SessionRoom, mentorGroupId: string | null): LeaderboardEntry[] {
   if (!room.activePoll || room.pollAnswers.size === 0) return [];
 
-  const answers = Array.from(room.pollAnswers.values());
+  const answers = Array.from(room.pollAnswers.values())
+    .filter(a => mentorGroupId == null || a.mentorGroupId === mentorGroupId);
   const sorted = answers.sort((a, b) => {
     // Correct answers first
     if (b.isCorrect !== a.isCorrect) return (b.isCorrect ? 1 : 0) - (a.isCorrect ? 1 : 0);
@@ -385,32 +456,32 @@ function computeTop3(room: SessionRoom): Array<{
     return a.responseTimeMs - b.responseTimeMs;
   });
 
-  return sorted.slice(0, 3).map((a, i) => ({
+  return sorted.slice(0, LEADERBOARD_TOP_N).map((a, i) => ({
     name: a.name,
     rank: i + 1,
     userId: a.userId,
     optionId: a.optionId,
     responseTimeMs: a.responseTimeMs,
     isCorrect: a.isCorrect,
+    mentorGroupId: a.mentorGroupId,
   }));
 }
 
 function persistLeaderboard(
   sessionId: string,
   pollId: string,
-  top3: ReturnType<typeof computeTop3>,
-  mentorGroupId: string | null,
+  entries: LeaderboardEntry[],
 ) {
   const sid = Number(sessionId);
-  if (Number.isNaN(sid) || top3.length === 0) return;
+  if (Number.isNaN(sid) || entries.length === 0) return;
   db.insert(leaderboardAnalyticsTable)
-    .values(top3.map(e => ({
+    .values(entries.map(e => ({
       sessionId: sid,
       pollId,
       rank: e.rank,
       studentId: e.userId,
       studentName: e.name,
-      mentorGroupId: mentorGroupId ? Number(mentorGroupId) : undefined,
+      mentorGroupId: e.mentorGroupId ? Number(e.mentorGroupId) : undefined,
       optionId: e.optionId,
       isCorrect: e.isCorrect,
       responseTimeMs: e.responseTimeMs,
@@ -749,12 +820,14 @@ export function setupSocketIO(httpServer: HttpServer) {
         return;
       }
 
+      const expiresAt = Date.now() + STAGE_DURATION_MS;
       const entry: StageSlotEntry = {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
         isMuted: true,
         mentorGroupId: payload.studentGroupId || null,
+        stageExpiresAt: expiresAt,
       };
       room.stageSlots.set(payload.studentId, entry);
 
@@ -766,7 +839,18 @@ export function setupSocketIO(httpServer: HttpServer) {
         mentorGroupId: payload.studentGroupId || null,
         slotNumber: openSlot,
         isMuted: true,
+        status: "active",
+        invitedByTeacherId: Number(userId) || null,
+        stageStartedAt: new Date(),
+        stageExpiresAt: new Date(expiresAt),
       }).onConflictDoNothing().catch(() => {});
+
+      scheduleStageExpiry(io, sessionId, payload.studentId);
+      if (isLiveKitConfigured()) {
+        getLiveKitRoomName(sessionId).then(async roomName => {
+          if (roomName) await updateParticipantPublishPermission(roomName, payload.studentId, true);
+        }).catch(() => {});
+      }
 
       // Clear hand from raise-hand queue
       room.raisedHands.delete(payload.studentId);
@@ -781,6 +865,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         slotNumber: openSlot,
         isMuted: true,
         mentorGroupId: payload.studentGroupId || null,
+        stageExpiresAt: expiresAt,
       });
     });
 
@@ -813,16 +898,28 @@ export function setupSocketIO(httpServer: HttpServer) {
       for (let i = 1; i <= 5; i++) { if (!occupied.has(i)) { openSlot = i; break; } }
       if (!openSlot) return;
 
+      const acceptExpiresAt = Date.now() + STAGE_DURATION_MS;
       const entry: StageSlotEntry = {
         studentId: userId, studentName: name,
         slotNumber: openSlot, isMuted: true, mentorGroupId: groupId || null,
+        stageExpiresAt: acceptExpiresAt,
       };
       room.stageSlots.set(userId, entry);
 
       db.insert(stageSlotsTable).values({
         sessionId, studentId: userId, studentName: name,
         mentorGroupId: groupId || null, slotNumber: openSlot, isMuted: true,
+        status: "active",
+        stageStartedAt: new Date(),
+        stageExpiresAt: new Date(acceptExpiresAt),
       }).onConflictDoNothing().catch(() => {});
+
+      scheduleStageExpiry(io, sessionId, userId);
+      if (isLiveKitConfigured()) {
+        getLiveKitRoomName(sessionId).then(async roomName => {
+          if (roomName) await updateParticipantPublishPermission(roomName, userId, true);
+        }).catch(() => {});
+      }
 
       room.raisedHands.delete(userId);
       io.to(globalRoom(sessionId)).emit("classroom:handRaised", {
@@ -831,6 +928,7 @@ export function setupSocketIO(httpServer: HttpServer) {
       io.to(globalRoom(sessionId)).emit("stage:studentInvited", {
         studentId: userId, studentName: name,
         slotNumber: openSlot, isMuted: true, mentorGroupId: groupId || null,
+        stageExpiresAt: acceptExpiresAt,
       });
     });
 
@@ -850,24 +948,33 @@ export function setupSocketIO(httpServer: HttpServer) {
       });
     });
 
+    // Only the teacher/staff can force-remove; students leaving triggers this on disconnect (see below).
     socket.on("stage:removeStudent", (payload: { studentId: string }) => {
       if (!isStaff) return;
-      room.stageSlots.delete(payload.studentId);
-
-      db.delete(stageSlotsTable)
-        .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, payload.studentId)))
-        .catch(() => {});
-
-      io.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId: payload.studentId });
+      endStageSlot(io, sessionId, payload.studentId, "teacher_removed").catch(() => {});
     });
 
-    // ── Leaderboard (Sprint 1 — ranked by correctness then speed) ──
+    // ── Leaderboard — group-scoped Top 20, ranked by correctness then speed, shown 5s ──
     socket.on("showLeaderboard", () => {
       if (!isStaff || !room.activePoll) return;
-      const top3   = computeTop3(room);
       const pollId = room.activePoll.id;
-      persistLeaderboard(sessionId, pollId, top3, groupId);
-      io.to(globalRoom(sessionId)).emit("showLeaderboard", { top3 });
+
+      // Aggregate for the teacher/mentor view (all groups)
+      const overall = computeTopLeaderboard(room, null);
+      persistLeaderboard(sessionId, pollId, overall);
+      io.to(teacherRoom(sessionId)).emit("showLeaderboard", { top3: overall.slice(0, 3), leaderboard: overall });
+
+      // Per-group Top 20 broadcast to each mentor group's own room
+      const groupIds = new Set(
+        Array.from(room.pollAnswers.values()).map(a => a.mentorGroupId).filter((g): g is string => !!g),
+      );
+      for (const gid of groupIds) {
+        const groupTop20 = computeTopLeaderboard(room, gid);
+        io.to(groupRoom(sessionId, gid)).emit("showLeaderboard", {
+          top3: groupTop20.slice(0, 3), leaderboard: groupTop20,
+        });
+      }
+
       room.activePoll = null;
       setTimeout(() => io.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
     });
@@ -897,10 +1004,10 @@ export function setupSocketIO(httpServer: HttpServer) {
         }
       }
 
-      // Clear all stage slots for this session from DB
-      db.delete(stageSlotsTable)
-        .where(eq(stageSlotsTable.sessionId, sessionId))
-        .catch(() => {});
+      // End all active stage slots (revokes LiveKit publish + persists endReason)
+      for (const studentId of Array.from(room.stageSlots.keys())) {
+        endStageSlot(io, sessionId, studentId, "class_ended").catch(() => {});
+      }
 
       // Remove room from in-memory Map → frees memory
       sessionRooms.delete(sessionId);
@@ -952,13 +1059,9 @@ export function setupSocketIO(httpServer: HttpServer) {
         const entry = liveStateCache.get(`${sessionId}-${userId}`);
         if (entry) entry.currentStatus = "ABSENT";
 
-        // Sprint 3: auto-remove from stage if present
+        // Sprint 3: auto-remove from stage if present (also revokes LiveKit publish permission)
         if (room.stageSlots.has(userId)) {
-          room.stageSlots.delete(userId);
-          db.delete(stageSlotsTable)
-            .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, userId)))
-            .catch(() => {});
-          io.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId: userId });
+          endStageSlot(io, sessionId, userId, "student_left").catch(() => {});
         }
       }
       room.raisedHands.delete(userId);

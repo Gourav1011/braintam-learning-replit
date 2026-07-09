@@ -577,7 +577,7 @@ var require_supports_color = __commonJS({
         return 1;
       }
       if ("CI" in env) {
-        if (["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((sign) => sign in env) || env.CI_NAME === "codeship") {
+        if (["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((sign3) => sign3 in env) || env.CI_NAME === "codeship") {
           return 1;
         }
         return min;
@@ -624,14 +624,14 @@ var require_supports_color = __commonJS({
 var require_node = __commonJS({
   "../../node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/node.js"(exports, module) {
     var tty = __require("tty");
-    var util2 = __require("util");
+    var util4 = __require("util");
     exports.init = init;
     exports.log = log;
     exports.formatArgs = formatArgs;
     exports.save = save;
     exports.load = load;
     exports.useColors = useColors;
-    exports.destroy = util2.deprecate(
+    exports.destroy = util4.deprecate(
       () => {
       },
       "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`."
@@ -762,7 +762,7 @@ var require_node = __commonJS({
       return (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
     function log(...args) {
-      return process.stderr.write(util2.formatWithOptions(exports.inspectOpts, ...args) + "\n");
+      return process.stderr.write(util4.formatWithOptions(exports.inspectOpts, ...args) + "\n");
     }
     function save(namespaces) {
       if (namespaces) {
@@ -785,11 +785,11 @@ var require_node = __commonJS({
     var { formatters } = module.exports;
     formatters.o = function(v) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
+      return util4.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
     };
     formatters.O = function(v) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts);
+      return util4.inspect(v, this.inspectOpts);
     };
   }
 });
@@ -822,7 +822,7 @@ var require_depd = __commonJS({
       }
       return false;
     }
-    function convertDataDescriptorToAccessor(obj, prop, message) {
+    function convertDataDescriptorToAccessor(obj, prop, message2) {
       var descriptor = Object.getOwnPropertyDescriptor(obj, prop);
       var value = descriptor.value;
       descriptor.get = function getter() {
@@ -862,8 +862,8 @@ var require_depd = __commonJS({
       var stack = getStack();
       var site = callSiteLocation(stack[1]);
       var file2 = site[0];
-      function deprecate(message) {
-        log.call(deprecate, message);
+      function deprecate(message2) {
+        log.call(deprecate, message2);
       }
       deprecate._file = file2;
       deprecate._ignored = isignored(namespace);
@@ -892,7 +892,7 @@ var require_depd = __commonJS({
       var str = process.env.TRACE_DEPRECATION || "";
       return containsNamespace(str, namespace);
     }
-    function log(message, site) {
+    function log(message2, site) {
       var haslisteners = eehaslisteners(process, "deprecation");
       if (!haslisteners && this._ignored) {
         return;
@@ -931,7 +931,7 @@ var require_depd = __commonJS({
         return;
       }
       this._warned[key] = true;
-      var msg = message;
+      var msg = message2;
       if (!msg) {
         msg = callSite === depSite || !callSite.name ? defaultMessage(depSite) : defaultMessage(callSite);
       }
@@ -1017,7 +1017,7 @@ var require_depd = __commonJS({
     function prepareObjectStackTrace(obj, stack) {
       return stack;
     }
-    function wrapfunction(fn, message) {
+    function wrapfunction(fn, message2) {
       if (typeof fn !== "function") {
         throw new TypeError("argument fn must be a function");
       }
@@ -1032,10 +1032,10 @@ var require_depd = __commonJS({
         "message",
         "site",
         '"use strict"\nreturn function (' + args + ") {log.call(deprecate, message, site)\nreturn fn.apply(this, arguments)\n}"
-      )(fn, log, this, message, site);
+      )(fn, log, this, message2, site);
       return deprecatedfn;
     }
-    function wrapproperty(obj, prop, message) {
+    function wrapproperty(obj, prop, message2) {
       if (!obj || typeof obj !== "object" && typeof obj !== "function") {
         throw new TypeError("argument obj must be object");
       }
@@ -1051,25 +1051,25 @@ var require_depd = __commonJS({
       var site = callSiteLocation(stack[1]);
       site.name = prop;
       if ("value" in descriptor) {
-        descriptor = convertDataDescriptorToAccessor(obj, prop, message);
+        descriptor = convertDataDescriptorToAccessor(obj, prop, message2);
       }
       var get = descriptor.get;
       var set2 = descriptor.set;
       if (typeof get === "function") {
         descriptor.get = function getter() {
-          log.call(deprecate, message, site);
+          log.call(deprecate, message2, site);
           return get.apply(this, arguments);
         };
       }
       if (typeof set2 === "function") {
         descriptor.set = function setter() {
-          log.call(deprecate, message, site);
+          log.call(deprecate, message2, site);
           return set2.apply(this, arguments);
         };
       }
       Object.defineProperty(obj, prop, descriptor);
     }
-    function DeprecationError(namespace, message, stack) {
+    function DeprecationError(namespace, message2, stack) {
       var error40 = new Error();
       var stackString;
       Object.defineProperty(error40, "constructor", {
@@ -1078,7 +1078,7 @@ var require_depd = __commonJS({
       Object.defineProperty(error40, "message", {
         configurable: true,
         enumerable: false,
-        value: message,
+        value: message2,
         writable: true
       });
       Object.defineProperty(error40, "name", {
@@ -1233,9 +1233,9 @@ var require_statuses = __commonJS({
     function createMessageToStatusCodeMap(codes2) {
       var map2 = {};
       Object.keys(codes2).forEach(function forEachCode(code) {
-        var message = codes2[code];
+        var message2 = codes2[code];
         var status2 = Number(code);
-        map2[message.toLowerCase()] = status2;
+        map2[message2.toLowerCase()] = status2;
       });
       return map2;
     }
@@ -1244,10 +1244,10 @@ var require_statuses = __commonJS({
         return Number(code);
       });
     }
-    function getStatusCode2(message) {
-      var msg = message.toLowerCase();
+    function getStatusCode2(message2) {
+      var msg = message2.toLowerCase();
       if (!Object.prototype.hasOwnProperty.call(status.code, msg)) {
-        throw new Error('invalid status message: "' + message + '"');
+        throw new Error('invalid status message: "' + message2 + '"');
       }
       return status.code[msg];
     }
@@ -1309,13 +1309,13 @@ var require_inherits_browser = __commonJS({
 var require_inherits = __commonJS({
   "../../node_modules/.pnpm/inherits@2.0.4/node_modules/inherits/inherits.js"(exports, module) {
     try {
-      util2 = __require("util");
-      if (typeof util2.inherits !== "function") throw "";
-      module.exports = util2.inherits;
+      util4 = __require("util");
+      if (typeof util4.inherits !== "function") throw "";
+      module.exports = util4.inherits;
     } catch (e) {
       module.exports = require_inherits_browser();
     }
-    var util2;
+    var util4;
   }
 });
 
@@ -1400,8 +1400,8 @@ var require_http_errors = __commonJS({
     }
     function createClientErrorConstructor(HttpError, name, code) {
       var className = toClassName(name);
-      function ClientError(message) {
-        var msg = message != null ? message : statuses.message[code];
+      function ClientError(message2) {
+        var msg = message2 != null ? message2 : statuses.message[code];
         var err = new Error(msg);
         Error.captureStackTrace(err, ClientError);
         setPrototypeOf(err, ClientError.prototype);
@@ -1439,11 +1439,11 @@ var require_http_errors = __commonJS({
     }
     function createServerErrorConstructor(HttpError, name, code) {
       var className = toClassName(name);
-      function ServerError(message) {
-        var msg = message != null ? message : statuses.message[code];
+      function ServerError2(message2) {
+        var msg = message2 != null ? message2 : statuses.message[code];
         var err = new Error(msg);
-        Error.captureStackTrace(err, ServerError);
-        setPrototypeOf(err, ServerError.prototype);
+        Error.captureStackTrace(err, ServerError2);
+        setPrototypeOf(err, ServerError2.prototype);
         Object.defineProperty(err, "message", {
           enumerable: true,
           configurable: true,
@@ -1458,12 +1458,12 @@ var require_http_errors = __commonJS({
         });
         return err;
       }
-      inherits(ServerError, HttpError);
-      nameFunc(ServerError, className);
-      ServerError.prototype.status = code;
-      ServerError.prototype.statusCode = code;
-      ServerError.prototype.expose = false;
-      return ServerError;
+      inherits(ServerError2, HttpError);
+      nameFunc(ServerError2, className);
+      ServerError2.prototype.status = code;
+      ServerError2.prototype.statusCode = code;
+      ServerError2.prototype.expose = false;
+      return ServerError2;
     }
     function nameFunc(func, name) {
       var desc3 = Object.getOwnPropertyDescriptor(func, "name");
@@ -1590,7 +1590,7 @@ var require_safer = __commonJS({
   "../../node_modules/.pnpm/safer-buffer@2.1.2/node_modules/safer-buffer/safer.js"(exports, module) {
     "use strict";
     var buffer = __require("buffer");
-    var Buffer2 = buffer.Buffer;
+    var Buffer3 = buffer.Buffer;
     var safer = {};
     var key;
     for (key in buffer) {
@@ -1599,12 +1599,12 @@ var require_safer = __commonJS({
       safer[key] = buffer[key];
     }
     var Safer = safer.Buffer = {};
-    for (key in Buffer2) {
-      if (!Buffer2.hasOwnProperty(key)) continue;
+    for (key in Buffer3) {
+      if (!Buffer3.hasOwnProperty(key)) continue;
       if (key === "allocUnsafe" || key === "allocUnsafeSlow") continue;
-      Safer[key] = Buffer2[key];
+      Safer[key] = Buffer3[key];
     }
-    safer.Buffer.prototype = Buffer2.prototype;
+    safer.Buffer.prototype = Buffer3.prototype;
     if (!Safer.from || Safer.from === Uint8Array.from) {
       Safer.from = function(value, encodingOrOffset, length) {
         if (typeof value === "number") {
@@ -1613,7 +1613,7 @@ var require_safer = __commonJS({
         if (value && typeof value.length === "undefined") {
           throw new TypeError("The first argument must be one of type string, Buffer, ArrayBuffer, Array, or Array-like Object. Received type " + typeof value);
         }
-        return Buffer2(value, encodingOrOffset, length);
+        return Buffer3(value, encodingOrOffset, length);
       };
     }
     if (!Safer.alloc) {
@@ -1624,7 +1624,7 @@ var require_safer = __commonJS({
         if (size < 0 || size >= 2 * (1 << 30)) {
           throw new RangeError('The value "' + size + '" is invalid for option "size"');
         }
-        var buf = Buffer2(size);
+        var buf = Buffer3(size);
         if (!fill || fill.length === 0) {
           buf.fill(0);
         } else if (typeof encoding === "string") {
@@ -1659,8 +1659,8 @@ var require_bom_handling = __commonJS({
     "use strict";
     var BOMChar = "\uFEFF";
     exports.PrependBOM = PrependBOMWrapper;
-    function PrependBOMWrapper(encoder, options) {
-      this.encoder = encoder;
+    function PrependBOMWrapper(encoder2, options) {
+      this.encoder = encoder2;
       this.addBOM = true;
     }
     PrependBOMWrapper.prototype.write = function(str) {
@@ -1674,8 +1674,8 @@ var require_bom_handling = __commonJS({
       return this.encoder.end();
     };
     exports.StripBOM = StripBOMWrapper;
-    function StripBOMWrapper(decoder, options) {
-      this.decoder = decoder;
+    function StripBOMWrapper(decoder2, options) {
+      this.decoder = decoder2;
       this.pass = false;
       this.options = options || {};
     }
@@ -1719,7 +1719,7 @@ var require_merge_exports = __commonJS({
 var require_internal = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/encodings/internal.js"(exports, module) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     module.exports = {
       // Encodings
       utf8: { type: "_internal", bomAware: true },
@@ -1743,7 +1743,7 @@ var require_internal = __commonJS({
       } else if (this.enc === "cesu8") {
         this.enc = "utf8";
         this.encoder = InternalEncoderCesu8;
-        if (Buffer2.from("eda0bdedb2a9", "hex").toString() !== "\u{1F4A9}") {
+        if (Buffer3.from("eda0bdedb2a9", "hex").toString() !== "\u{1F4A9}") {
           this.decoder = InternalDecoderCesu8;
           this.defaultCharUnicode = iconv.defaultCharUnicode;
         }
@@ -1756,8 +1756,8 @@ var require_internal = __commonJS({
       this.decoder = new StringDecoder(codec.enc);
     }
     InternalDecoder.prototype.write = function(buf) {
-      if (!Buffer2.isBuffer(buf)) {
-        buf = Buffer2.from(buf);
+      if (!Buffer3.isBuffer(buf)) {
+        buf = Buffer3.from(buf);
       }
       return this.decoder.write(buf);
     };
@@ -1768,7 +1768,7 @@ var require_internal = __commonJS({
       this.enc = codec.enc;
     }
     InternalEncoder.prototype.write = function(str) {
-      return Buffer2.from(str, this.enc);
+      return Buffer3.from(str, this.enc);
     };
     InternalEncoder.prototype.end = function() {
     };
@@ -1780,15 +1780,15 @@ var require_internal = __commonJS({
       var completeQuads = str.length - str.length % 4;
       this.prevStr = str.slice(completeQuads);
       str = str.slice(0, completeQuads);
-      return Buffer2.from(str, "base64");
+      return Buffer3.from(str, "base64");
     };
     InternalEncoderBase64.prototype.end = function() {
-      return Buffer2.from(this.prevStr, "base64");
+      return Buffer3.from(this.prevStr, "base64");
     };
     function InternalEncoderCesu8(options, codec) {
     }
     InternalEncoderCesu8.prototype.write = function(str) {
-      var buf = Buffer2.alloc(str.length * 3);
+      var buf = Buffer3.alloc(str.length * 3);
       var bufIdx = 0;
       for (var i = 0; i < str.length; i++) {
         var charCode = str.charCodeAt(i);
@@ -1884,13 +1884,13 @@ var require_internal = __commonJS({
           str = str.slice(0, str.length - 1);
         }
       }
-      return Buffer2.from(str, this.enc);
+      return Buffer3.from(str, this.enc);
     };
     InternalEncoderUtf8.prototype.end = function() {
       if (this.highSurrogate) {
         var str = this.highSurrogate;
         this.highSurrogate = "";
-        return Buffer2.from(str, this.enc);
+        return Buffer3.from(str, this.enc);
       }
     };
   }
@@ -1900,7 +1900,7 @@ var require_internal = __commonJS({
 var require_utf32 = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/encodings/utf32.js"(exports) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     exports._utf32 = Utf32Codec;
     function Utf32Codec(codecOptions, iconv) {
       this.iconv = iconv;
@@ -1918,8 +1918,8 @@ var require_utf32 = __commonJS({
       this.highSurrogate = 0;
     }
     Utf32Encoder.prototype.write = function(str) {
-      var src = Buffer2.from(str, "ucs2");
-      var dst = Buffer2.alloc(src.length * 2);
+      var src = Buffer3.from(str, "ucs2");
+      var dst = Buffer3.alloc(src.length * 2);
       var write32 = this.isLE ? dst.writeUInt32LE : dst.writeUInt32BE;
       var offset = 0;
       for (var i = 0; i < src.length; i += 2) {
@@ -1955,7 +1955,7 @@ var require_utf32 = __commonJS({
       if (!this.highSurrogate) {
         return;
       }
-      var buf = Buffer2.alloc(4);
+      var buf = Buffer3.alloc(4);
       if (this.isLE) {
         buf.writeUInt32LE(this.highSurrogate, 0);
       } else {
@@ -1975,7 +1975,7 @@ var require_utf32 = __commonJS({
       }
       var i = 0;
       var codepoint = 0;
-      var dst = Buffer2.alloc(src.length + 4);
+      var dst = Buffer3.alloc(src.length + 4);
       var offset = 0;
       var isLE = this.isLE;
       var overflow = this.overflow;
@@ -2131,7 +2131,7 @@ var require_utf32 = __commonJS({
 var require_utf16 = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/encodings/utf16.js"(exports) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     exports.utf16be = Utf16BECodec;
     function Utf16BECodec() {
     }
@@ -2141,7 +2141,7 @@ var require_utf16 = __commonJS({
     function Utf16BEEncoder() {
     }
     Utf16BEEncoder.prototype.write = function(str) {
-      var buf = Buffer2.from(str, "ucs2");
+      var buf = Buffer3.from(str, "ucs2");
       for (var i = 0; i < buf.length; i += 2) {
         var tmp = buf[i];
         buf[i] = buf[i + 1];
@@ -2158,7 +2158,7 @@ var require_utf16 = __commonJS({
       if (buf.length == 0) {
         return "";
       }
-      var buf2 = Buffer2.alloc(buf.length + 1);
+      var buf2 = Buffer3.alloc(buf.length + 1);
       var i = 0;
       var j = 0;
       if (this.overflowByte !== -1) {
@@ -2274,7 +2274,7 @@ var require_utf16 = __commonJS({
 var require_utf7 = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/encodings/utf7.js"(exports) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     exports.utf7 = Utf7Codec;
     exports.unicode11utf7 = "utf7";
     function Utf7Codec(codecOptions, iconv) {
@@ -2288,7 +2288,7 @@ var require_utf7 = __commonJS({
       this.iconv = codec.iconv;
     }
     Utf7Encoder.prototype.write = function(str) {
-      return Buffer2.from(str.replace(nonDirectChars, function(chunk) {
+      return Buffer3.from(str.replace(nonDirectChars, function(chunk) {
         return "+" + (chunk === "+" ? "" : this.iconv.encode(chunk, "utf16-be").toString("base64").replace(/=+$/, "")) + "-";
       }.bind(this)));
     };
@@ -2326,7 +2326,7 @@ var require_utf7 = __commonJS({
               res += "+";
             } else {
               var b64str = base64Accum + this.iconv.decode(buf.slice(lastI, i2), "ascii");
-              res += this.iconv.decode(Buffer2.from(b64str, "base64"), "utf16-be");
+              res += this.iconv.decode(Buffer3.from(b64str, "base64"), "utf16-be");
             }
             if (buf[i2] != minusChar) {
               i2--;
@@ -2344,7 +2344,7 @@ var require_utf7 = __commonJS({
         var canBeDecoded = b64str.length - b64str.length % 8;
         base64Accum = b64str.slice(canBeDecoded);
         b64str = b64str.slice(0, canBeDecoded);
-        res += this.iconv.decode(Buffer2.from(b64str, "base64"), "utf16-be");
+        res += this.iconv.decode(Buffer3.from(b64str, "base64"), "utf16-be");
       }
       this.inBase64 = inBase64;
       this.base64Accum = base64Accum;
@@ -2353,7 +2353,7 @@ var require_utf7 = __commonJS({
     Utf7Decoder.prototype.end = function() {
       var res = "";
       if (this.inBase64 && this.base64Accum.length > 0) {
-        res = this.iconv.decode(Buffer2.from(this.base64Accum, "base64"), "utf16-be");
+        res = this.iconv.decode(Buffer3.from(this.base64Accum, "base64"), "utf16-be");
       }
       this.inBase64 = false;
       this.base64Accum = "";
@@ -2369,14 +2369,14 @@ var require_utf7 = __commonJS({
     function Utf7IMAPEncoder(options, codec) {
       this.iconv = codec.iconv;
       this.inBase64 = false;
-      this.base64Accum = Buffer2.alloc(6);
+      this.base64Accum = Buffer3.alloc(6);
       this.base64AccumIdx = 0;
     }
     Utf7IMAPEncoder.prototype.write = function(str) {
       var inBase64 = this.inBase64;
       var base64Accum = this.base64Accum;
       var base64AccumIdx = this.base64AccumIdx;
-      var buf = Buffer2.alloc(str.length * 5 + 10);
+      var buf = Buffer3.alloc(str.length * 5 + 10);
       var bufIdx = 0;
       for (var i2 = 0; i2 < str.length; i2++) {
         var uChar = str.charCodeAt(i2);
@@ -2415,7 +2415,7 @@ var require_utf7 = __commonJS({
       return buf.slice(0, bufIdx);
     };
     Utf7IMAPEncoder.prototype.end = function() {
-      var buf = Buffer2.alloc(10);
+      var buf = Buffer3.alloc(10);
       var bufIdx = 0;
       if (this.inBase64) {
         if (this.base64AccumIdx > 0) {
@@ -2452,7 +2452,7 @@ var require_utf7 = __commonJS({
               res += "&";
             } else {
               var b64str = base64Accum + this.iconv.decode(buf.slice(lastI, i2), "ascii").replace(/,/g, "/");
-              res += this.iconv.decode(Buffer2.from(b64str, "base64"), "utf16-be");
+              res += this.iconv.decode(Buffer3.from(b64str, "base64"), "utf16-be");
             }
             if (buf[i2] != minusChar) {
               i2--;
@@ -2470,7 +2470,7 @@ var require_utf7 = __commonJS({
         var canBeDecoded = b64str.length - b64str.length % 8;
         base64Accum = b64str.slice(canBeDecoded);
         b64str = b64str.slice(0, canBeDecoded);
-        res += this.iconv.decode(Buffer2.from(b64str, "base64"), "utf16-be");
+        res += this.iconv.decode(Buffer3.from(b64str, "base64"), "utf16-be");
       }
       this.inBase64 = inBase64;
       this.base64Accum = base64Accum;
@@ -2479,7 +2479,7 @@ var require_utf7 = __commonJS({
     Utf7IMAPDecoder.prototype.end = function() {
       var res = "";
       if (this.inBase64 && this.base64Accum.length > 0) {
-        res = this.iconv.decode(Buffer2.from(this.base64Accum, "base64"), "utf16-be");
+        res = this.iconv.decode(Buffer3.from(this.base64Accum, "base64"), "utf16-be");
       }
       this.inBase64 = false;
       this.base64Accum = "";
@@ -2492,7 +2492,7 @@ var require_utf7 = __commonJS({
 var require_sbcs_codec = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/encodings/sbcs-codec.js"(exports) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     exports._sbcs = SBCSCodec;
     function SBCSCodec(codecOptions, iconv) {
       if (!codecOptions) {
@@ -2508,8 +2508,8 @@ var require_sbcs_codec = __commonJS({
         }
         codecOptions.chars = asciiString + codecOptions.chars;
       }
-      this.decodeBuf = Buffer2.from(codecOptions.chars, "ucs2");
-      var encodeBuf = Buffer2.alloc(65536, iconv.defaultCharSingleByte.charCodeAt(0));
+      this.decodeBuf = Buffer3.from(codecOptions.chars, "ucs2");
+      var encodeBuf = Buffer3.alloc(65536, iconv.defaultCharSingleByte.charCodeAt(0));
       for (var i = 0; i < codecOptions.chars.length; i++) {
         encodeBuf[codecOptions.chars.charCodeAt(i)] = i;
       }
@@ -2521,7 +2521,7 @@ var require_sbcs_codec = __commonJS({
       this.encodeBuf = codec.encodeBuf;
     }
     SBCSEncoder.prototype.write = function(str) {
-      var buf = Buffer2.alloc(str.length);
+      var buf = Buffer3.alloc(str.length);
       for (var i = 0; i < str.length; i++) {
         buf[i] = this.encodeBuf[str.charCodeAt(i)];
       }
@@ -2534,7 +2534,7 @@ var require_sbcs_codec = __commonJS({
     }
     SBCSDecoder.prototype.write = function(buf) {
       var decodeBuf = this.decodeBuf;
-      var newBuf = Buffer2.alloc(buf.length * 2);
+      var newBuf = Buffer3.alloc(buf.length * 2);
       var idx1 = 0;
       var idx2 = 0;
       for (var i = 0; i < buf.length; i++) {
@@ -3162,7 +3162,7 @@ var require_sbcs_data_generated = __commonJS({
 var require_dbcs_codec = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/encodings/dbcs-codec.js"(exports) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     exports._dbcs = DBCSCodec;
     var UNASSIGNED = -1;
     var GB18030_CODE = -2;
@@ -3398,7 +3398,7 @@ var require_dbcs_codec = __commonJS({
       this.gb18030 = codec.gb18030;
     }
     DBCSEncoder.prototype.write = function(str) {
-      var newBuf = Buffer2.alloc(str.length * (this.gb18030 ? 4 : 3));
+      var newBuf = Buffer3.alloc(str.length * (this.gb18030 ? 4 : 3));
       var leadSurrogate = this.leadSurrogate;
       var seqObj = this.seqObj;
       var nextChar = -1;
@@ -3502,7 +3502,7 @@ var require_dbcs_codec = __commonJS({
       if (this.leadSurrogate === -1 && this.seqObj === void 0) {
         return;
       }
-      var newBuf = Buffer2.alloc(10);
+      var newBuf = Buffer3.alloc(10);
       var j = 0;
       if (this.seqObj) {
         var dbcsCode = this.seqObj[DEF_CHAR];
@@ -3533,7 +3533,7 @@ var require_dbcs_codec = __commonJS({
       this.gb18030 = codec.gb18030;
     }
     DBCSDecoder.prototype.write = function(buf) {
-      var newBuf = Buffer2.alloc(buf.length * 2);
+      var newBuf = Buffer3.alloc(buf.length * 2);
       var nodeIdx = this.nodeIdx;
       var prevBytes = this.prevBytes;
       var prevOffset = this.prevBytes.length;
@@ -5142,7 +5142,7 @@ var require_encodings = __commonJS({
 var require_streams = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/lib/streams.js"(exports, module) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     module.exports = function(streamModule) {
       var Transform = streamModule.Transform;
       function IconvLiteEncoderStream(conv, options) {
@@ -5182,7 +5182,7 @@ var require_streams = __commonJS({
           chunks.push(chunk);
         });
         this.on("end", function() {
-          cb(null, Buffer2.concat(chunks));
+          cb(null, Buffer3.concat(chunks));
         });
         return this;
       };
@@ -5196,7 +5196,7 @@ var require_streams = __commonJS({
         constructor: { value: IconvLiteDecoderStream }
       });
       IconvLiteDecoderStream.prototype._transform = function(chunk, encoding, done) {
-        if (!Buffer2.isBuffer(chunk) && !(chunk instanceof Uint8Array)) {
+        if (!Buffer3.isBuffer(chunk) && !(chunk instanceof Uint8Array)) {
           return done(new Error("Iconv decoding stream needs buffers as its input."));
         }
         try {
@@ -5239,18 +5239,18 @@ var require_streams = __commonJS({
 var require_lib = __commonJS({
   "../../node_modules/.pnpm/iconv-lite@0.7.2/node_modules/iconv-lite/lib/index.js"(exports, module) {
     "use strict";
-    var Buffer2 = require_safer().Buffer;
+    var Buffer3 = require_safer().Buffer;
     var bomHandling = require_bom_handling();
     var mergeModules = require_merge_exports();
     module.exports.encodings = null;
     module.exports.defaultCharUnicode = "\uFFFD";
     module.exports.defaultCharSingleByte = "?";
-    module.exports.encode = function encode(str, encoding, options) {
+    module.exports.encode = function encode2(str, encoding, options) {
       str = "" + (str || "");
-      var encoder = module.exports.getEncoder(encoding, options);
-      var res = encoder.write(str);
-      var trail = encoder.end();
-      return trail && trail.length > 0 ? Buffer2.concat([res, trail]) : res;
+      var encoder2 = module.exports.getEncoder(encoding, options);
+      var res = encoder2.write(str);
+      var trail = encoder2.end();
+      return trail && trail.length > 0 ? Buffer3.concat([res, trail]) : res;
     };
     module.exports.decode = function decode(buf, encoding, options) {
       if (typeof buf === "string") {
@@ -5258,11 +5258,11 @@ var require_lib = __commonJS({
           console.error("Iconv-lite warning: decode()-ing strings is deprecated. Refer to https://github.com/ashtuchkin/iconv-lite/wiki/Use-Buffers-when-decoding");
           module.exports.skipDecodeWarning = true;
         }
-        buf = Buffer2.from("" + (buf || ""), "binary");
+        buf = Buffer3.from("" + (buf || ""), "binary");
       }
-      var decoder = module.exports.getDecoder(encoding, options);
-      var res = decoder.write(buf);
-      var trail = decoder.end();
+      var decoder2 = module.exports.getDecoder(encoding, options);
+      var res = decoder2.write(buf);
+      var trail = decoder2.end();
       return trail ? res + trail : res;
     };
     module.exports.encodingExists = function encodingExists(enc) {
@@ -5320,19 +5320,19 @@ var require_lib = __commonJS({
     };
     module.exports.getEncoder = function getEncoder(encoding, options) {
       var codec = module.exports.getCodec(encoding);
-      var encoder = new codec.encoder(options, codec);
+      var encoder2 = new codec.encoder(options, codec);
       if (codec.bomAware && options && options.addBOM) {
-        encoder = new bomHandling.PrependBOM(encoder, options);
+        encoder2 = new bomHandling.PrependBOM(encoder2, options);
       }
-      return encoder;
+      return encoder2;
     };
     module.exports.getDecoder = function getDecoder(encoding, options) {
       var codec = module.exports.getCodec(encoding);
-      var decoder = new codec.decoder(options, codec);
+      var decoder2 = new codec.decoder(options, codec);
       if (codec.bomAware && !(options && options.stripBOM === false)) {
-        decoder = new bomHandling.StripBOM(decoder, options);
+        decoder2 = new bomHandling.StripBOM(decoder2, options);
       }
-      return decoder;
+      return decoder2;
     };
     module.exports.enableStreamingAPI = function enableStreamingAPI(streamModule2) {
       if (module.exports.supportsStreams) {
@@ -5493,13 +5493,13 @@ var require_raw_body = __commonJS({
         }));
       }
       var received = 0;
-      var decoder;
+      var decoder2;
       try {
-        decoder = getDecoder(encoding);
+        decoder2 = getDecoder(encoding);
       } catch (err) {
         return done(err);
       }
-      var buffer = decoder ? "" : [];
+      var buffer = decoder2 ? "" : [];
       stream.on("aborted", onAborted);
       stream.on("close", cleanup);
       stream.on("data", onData);
@@ -5544,8 +5544,8 @@ var require_raw_body = __commonJS({
             received,
             type: "entity.too.large"
           }));
-        } else if (decoder) {
-          buffer += decoder.write(chunk);
+        } else if (decoder2) {
+          buffer += decoder2.write(chunk);
         } else {
           buffer.push(chunk);
         }
@@ -5561,7 +5561,7 @@ var require_raw_body = __commonJS({
             type: "request.size.invalid"
           }));
         } else {
-          var string4 = decoder ? buffer + (decoder.end() || "") : Buffer.concat(buffer);
+          var string4 = decoder2 ? buffer + (decoder2.end() || "") : Buffer.concat(buffer);
           done(null, string4);
         }
       }
@@ -15351,7 +15351,7 @@ var require_mime_types = __commonJS({
       }
       return exports.types[extension2] || false;
     }
-    function populateMaps(extensions, types3) {
+    function populateMaps(extensions, types6) {
       Object.keys(db2).forEach(function forEachMimeType(type) {
         var mime = db2[type];
         var exts = mime.extensions;
@@ -15361,14 +15361,14 @@ var require_mime_types = __commonJS({
         extensions[type] = exts;
         for (var i = 0; i < exts.length; i++) {
           var extension2 = exts[i];
-          types3[extension2] = _preferredType(extension2, types3[extension2], type);
+          types6[extension2] = _preferredType(extension2, types6[extension2], type);
           const legacyType = _preferredTypeLegacy(
             extension2,
-            types3[extension2],
+            types6[extension2],
             type
           );
-          if (legacyType !== types3[extension2]) {
-            exports._extensionConflicts.push([extension2, legacyType, types3[extension2]]);
+          if (legacyType !== types6[extension2]) {
+            exports._extensionConflicts.push([extension2, legacyType, types6[extension2]]);
           }
         }
       });
@@ -15477,23 +15477,23 @@ var require_type_is = __commonJS({
         value = value.headers["content-type"];
       }
       var i;
-      var types3 = types_;
+      var types6 = types_;
       var val = normalizeType(value);
       if (!val) {
         return false;
       }
-      if (types3 && !Array.isArray(types3)) {
-        types3 = new Array(arguments.length - 1);
-        for (i = 0; i < types3.length; i++) {
-          types3[i] = arguments[i + 1];
+      if (types6 && !Array.isArray(types6)) {
+        types6 = new Array(arguments.length - 1);
+        for (i = 0; i < types6.length; i++) {
+          types6[i] = arguments[i + 1];
         }
       }
-      if (!types3 || !types3.length) {
+      if (!types6 || !types6.length) {
         return val;
       }
       var type;
-      for (i = 0; i < types3.length; i++) {
-        if (mimeMatch(normalize(type = types3[i]), val)) {
+      for (i = 0; i < types6.length; i++) {
+        if (mimeMatch(normalize(type = types6[i]), val)) {
           return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
         }
       }
@@ -15504,9 +15504,9 @@ var require_type_is = __commonJS({
     }
     function typeofrequest(req, types_) {
       if (!hasbody(req)) return null;
-      var types3 = arguments.length > 2 ? Array.prototype.slice.call(arguments, 1) : types_;
+      var types6 = arguments.length > 2 ? Array.prototype.slice.call(arguments, 1) : types_;
       var value = req.headers["content-type"];
-      return typeis(value, types3);
+      return typeis(value, types6);
     }
     function normalize(type) {
       if (typeof type !== "string") {
@@ -16238,14 +16238,14 @@ var require_object_inspect = __commonJS({
         var protoTag = obj instanceof Object ? "" : "null prototype";
         var stringTag = !isPlainObject3 && toStringTag && Object(obj) === obj && toStringTag in obj ? $slice.call(toStr(obj), 8, -1) : protoTag ? "Object" : "";
         var constructorTag = isPlainObject3 || typeof obj.constructor !== "function" ? "" : obj.constructor.name ? obj.constructor.name + " " : "";
-        var tag = constructorTag + (stringTag || protoTag ? "[" + $join.call($concat.call([], stringTag || [], protoTag || []), ": ") + "] " : "");
+        var tag2 = constructorTag + (stringTag || protoTag ? "[" + $join.call($concat.call([], stringTag || [], protoTag || []), ": ") + "] " : "");
         if (ys.length === 0) {
-          return tag + "{}";
+          return tag2 + "{}";
         }
         if (indent) {
-          return tag + "{" + indentedJoin(ys, indent) + "}";
+          return tag2 + "{" + indentedJoin(ys, indent) + "}";
         }
-        return tag + "{ " + $join.call(ys, ", ") + " }";
+        return tag2 + "{ " + $join.call(ys, ", ") + " }";
       }
       return String(obj);
     };
@@ -16743,7 +16743,7 @@ var require_sign = __commonJS({
   "../../node_modules/.pnpm/math-intrinsics@1.1.0/node_modules/math-intrinsics/sign.js"(exports, module) {
     "use strict";
     var $isNaN = require_isNaN();
-    module.exports = function sign(number4) {
+    module.exports = function sign3(number4) {
       if ($isNaN(number4) || number4 === 0) {
         return number4;
       }
@@ -17107,7 +17107,7 @@ var require_get_intrinsic = __commonJS({
     var min = require_min();
     var pow = require_pow();
     var round = require_round();
-    var sign = require_sign();
+    var sign3 = require_sign();
     var $Function = Function;
     var getEvalledConstructor = function(expressionSyntax) {
       try {
@@ -17221,7 +17221,7 @@ var require_get_intrinsic = __commonJS({
       "%Math.min%": min,
       "%Math.pow%": pow,
       "%Math.round%": round,
-      "%Math.sign%": sign,
+      "%Math.sign%": sign3,
       "%Reflect.getPrototypeOf%": $ReflectGPO
     };
     if (getProto) {
@@ -17787,7 +17787,7 @@ var require_utils2 = __commonJS({
       }
     };
     var limit = 1024;
-    var encode = function encode2(str, defaultEncoder, charset, kind, format) {
+    var encode2 = function encode3(str, defaultEncoder, charset, kind, format) {
       if (str.length === 0) {
         return str;
       }
@@ -17889,7 +17889,7 @@ var require_utils2 = __commonJS({
       combine: combine2,
       compact,
       decode,
-      encode,
+      encode: encode2,
       isBuffer,
       isOverflow,
       isRegExp,
@@ -17955,7 +17955,7 @@ var require_stringify = __commonJS({
       return typeof v === "string" || typeof v === "number" || typeof v === "boolean" || typeof v === "symbol" || typeof v === "bigint";
     };
     var sentinel = {};
-    var stringify2 = function stringify3(object2, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
+    var stringify2 = function stringify3(object2, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder2, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
       var obj = object2;
       var tmpSc = sideChannel;
       var step = 0;
@@ -17988,14 +17988,14 @@ var require_stringify = __commonJS({
       }
       if (obj === null) {
         if (strictNullHandling) {
-          return formatter(encoder && !encodeValuesOnly ? encoder(prefix, defaults2.encoder, charset, "key", format) : prefix);
+          return formatter(encoder2 && !encodeValuesOnly ? encoder2(prefix, defaults2.encoder, charset, "key", format) : prefix);
         }
         obj = "";
       }
       if (isNonNullishPrimitive(obj) || utils.isBuffer(obj)) {
-        if (encoder) {
-          var keyValue = encodeValuesOnly ? prefix : encoder(prefix, defaults2.encoder, charset, "key", format);
-          return [formatter(keyValue) + "=" + formatter(encoder(obj, defaults2.encoder, charset, "value", format))];
+        if (encoder2) {
+          var keyValue = encodeValuesOnly ? prefix : encoder2(prefix, defaults2.encoder, charset, "key", format);
+          return [formatter(keyValue) + "=" + formatter(encoder2(obj, defaults2.encoder, charset, "value", format))];
         }
         return [formatter(prefix) + "=" + formatter(String(obj))];
       }
@@ -18005,9 +18005,9 @@ var require_stringify = __commonJS({
       }
       var objKeys;
       if (generateArrayPrefix === "comma" && isArray(obj)) {
-        if (encodeValuesOnly && encoder) {
+        if (encodeValuesOnly && encoder2) {
           obj = utils.maybeMap(obj, function(v) {
-            return v == null ? v : encoder(v);
+            return v == null ? v : encoder2(v);
           });
         }
         objKeys = [{ value: obj.length > 0 ? obj.join(",") || null : void 0 }];
@@ -18042,7 +18042,7 @@ var require_stringify = __commonJS({
           strictNullHandling,
           skipNulls,
           encodeDotInKeys,
-          generateArrayPrefix === "comma" && encodeValuesOnly && isArray(obj) ? null : encoder,
+          generateArrayPrefix === "comma" && encodeValuesOnly && isArray(obj) ? null : encoder2,
           filter,
           sort,
           allowDots,
@@ -18820,8 +18820,8 @@ var require_finalhandler = __commonJS({
     var parseUrl = require_parseurl();
     var statuses = require_statuses();
     var isFinished = onFinished.isFinished;
-    function createHtmlDocument(message) {
-      var body = escapeHtml(message).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
+    function createHtmlDocument(message2) {
+      var body = escapeHtml(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n<pre>' + body + "</pre>\n</body>\n</html>\n";
     }
     module.exports = finalhandler;
@@ -18902,9 +18902,9 @@ var require_finalhandler = __commonJS({
       }
       return status;
     }
-    function send(req, res, status, headers, message) {
+    function send(req, res, status, headers, message2) {
       function write() {
-        var body = createHtmlDocument(message);
+        var body = createHtmlDocument(message2);
         res.statusCode = status;
         if (req.httpVersionMajor < 2) {
           res.statusMessage = statuses.message[status];
@@ -19035,14 +19035,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash = crypto8.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash = crypto11.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash + '"';
     }
@@ -19055,8 +19055,8 @@ var require_etag = __commonJS({
       if (!isStats && typeof entity !== "string" && !Buffer.isBuffer(entity)) {
         throw new TypeError("argument entity must be string, Buffer, or fs.Stats");
       }
-      var tag = isStats ? stattag(entity) : entitytag(entity);
-      return weak ? "W/" + tag : tag;
+      var tag2 = isStats ? stattag(entity) : entitytag(entity);
+      return weak ? "W/" + tag2 : tag2;
     }
     function isstats(obj) {
       if (typeof Stats === "function" && obj instanceof Stats) {
@@ -19911,15 +19911,15 @@ var require_utils3 = __commonJS({
     var proxyaddr = require_proxy_addr();
     var qs = require_lib2();
     var querystring = __require("node:querystring");
-    var { Buffer: Buffer2 } = __require("node:buffer");
+    var { Buffer: Buffer3 } = __require("node:buffer");
     exports.methods = METHODS.map((method) => method.toLowerCase());
     exports.etag = createETagGenerator({ weak: false });
     exports.wetag = createETagGenerator({ weak: true });
     exports.normalizeType = function(type) {
       return ~type.indexOf("/") ? acceptParams(type) : { value: mime.lookup(type) || "application/octet-stream", params: {} };
     };
-    exports.normalizeTypes = function(types3) {
-      return types3.map(exports.normalizeType);
+    exports.normalizeTypes = function(types6) {
+      return types6.map(exports.normalizeType);
     };
     function acceptParams(str) {
       var length = str.length;
@@ -20015,7 +20015,7 @@ var require_utils3 = __commonJS({
     };
     function createETagGenerator(options) {
       return function generateETag(body, encoding) {
-        var buf = !Buffer2.isBuffer(body) ? Buffer2.from(body, encoding) : body;
+        var buf = !Buffer3.isBuffer(body) ? Buffer3.from(body, encoding) : body;
         return etag(buf, options);
       };
     }
@@ -20142,8 +20142,8 @@ var require_dist2 = __commonJS({
     };
     exports.TokenData = TokenData;
     var PathError = class extends TypeError {
-      constructor(message, originalPath) {
-        let text2 = message;
+      constructor(message2, originalPath) {
+        let text2 = message2;
         if (originalPath)
           text2 += `: ${originalPath}`;
         text2 += `; visit https://git.new/pathToRegexpError for info`;
@@ -20233,9 +20233,9 @@ var require_dist2 = __commonJS({
       return new TokenData(consumeUntil(""), str);
     }
     function compile(path5, options = {}) {
-      const { encode = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
+      const { encode: encode2 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
       const data = typeof path5 === "object" ? path5 : parse4(path5, options);
-      const fn = tokensToFunction(data.tokens, delimiter, encode);
+      const fn = tokensToFunction(data.tokens, delimiter, encode2);
       return function path6(params = {}) {
         const missing = [];
         const path7 = fn(params, missing);
@@ -20245,21 +20245,21 @@ var require_dist2 = __commonJS({
         return path7;
       };
     }
-    function tokensToFunction(tokens, delimiter, encode) {
-      const encoders = tokens.map((token) => tokenToFunction(token, delimiter, encode));
+    function tokensToFunction(tokens, delimiter, encode2) {
+      const encoders = tokens.map((token) => tokenToFunction(token, delimiter, encode2));
       return (data, missing) => {
         let result = "";
-        for (const encoder of encoders) {
-          result += encoder(data, missing);
+        for (const encoder2 of encoders) {
+          result += encoder2(data, missing);
         }
         return result;
       };
     }
-    function tokenToFunction(token, delimiter, encode) {
+    function tokenToFunction(token, delimiter, encode2) {
       if (token.type === "text")
         return () => token.value;
       if (token.type === "group") {
-        const fn = tokensToFunction(token.tokens, delimiter, encode);
+        const fn = tokensToFunction(token.tokens, delimiter, encode2);
         return (data, missing) => {
           const len = missing.length;
           const value = fn(data, missing);
@@ -20269,8 +20269,8 @@ var require_dist2 = __commonJS({
           return "";
         };
       }
-      const encodeValue = encode || NOOP_VALUE;
-      if (token.type === "wildcard" && encode !== false) {
+      const encodeValue = encode2 || NOOP_VALUE;
+      if (token.type === "wildcard" && encode2 !== false) {
         return (data, missing) => {
           const value = data[token.name];
           if (value == null) {
@@ -20324,8 +20324,8 @@ var require_dist2 = __commonJS({
           if (m[i] === void 0)
             continue;
           const key = keys[i - 1];
-          const decoder = decoders[i - 1];
-          params[key.name] = decoder(m[i]);
+          const decoder2 = decoders[i - 1];
+          params[key.name] = decoder2(m[i]);
         }
         return { path: path6, params };
       };
@@ -20417,10 +20417,10 @@ var require_dist2 = __commonJS({
             throw new PathError(`Missing text before "${token.name}" ${token.type}`, originalPath);
           }
           if (token.type === "param") {
-            result += hasSegmentCapture & 2 ? `(${negate(delimiter, backtrack)}+)` : hasInSegment(index2, "wildcard") ? `(${negate(delimiter, peekText(index2))}+)` : hasSegmentCapture & 1 ? `(${negate(delimiter, backtrack)}+|${escape2(backtrack)})` : `(${negate(delimiter, "")}+)`;
+            result += hasSegmentCapture & 2 ? `(${negate2(delimiter, backtrack)}+)` : hasInSegment(index2, "wildcard") ? `(${negate2(delimiter, peekText(index2))}+)` : hasSegmentCapture & 1 ? `(${negate2(delimiter, backtrack)}+|${escape2(backtrack)})` : `(${negate2(delimiter, "")}+)`;
             hasSegmentCapture |= prevCaptureType = 1;
           } else {
-            result += hasSegmentCapture & 2 ? `(${negate(backtrack, "")}+)` : wildcardBacktrack ? `(${negate(wildcardBacktrack, "")}+|${negate(delimiter, "")}+)` : `([^]+)`;
+            result += hasSegmentCapture & 2 ? `(${negate2(backtrack, "")}+)` : wildcardBacktrack ? `(${negate2(wildcardBacktrack, "")}+|${negate2(delimiter, "")}+)` : `([^]+)`;
             wildcardBacktrack = "";
             hasSegmentCapture |= prevCaptureType = 2;
           }
@@ -20432,9 +20432,9 @@ var require_dist2 = __commonJS({
       }
       return result;
     }
-    function negate(a, b) {
+    function negate2(a, b) {
       if (b.length > a.length)
-        return negate(b, a);
+        return negate2(b, a);
       if (a === b)
         b = "";
       if (b.length > 1)
@@ -20765,27 +20765,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router48;
+    module.exports = Router49;
     module.exports.Route = Route;
-    function Router48(options) {
-      if (!(this instanceof Router48)) {
-        return new Router48(options);
+    function Router49(options) {
+      if (!(this instanceof Router49)) {
+        return new Router49(options);
       }
       const opts = options || {};
-      function router48(req, res, next) {
-        router48.handle(req, res, next);
+      function router49(req, res, next) {
+        router49.handle(req, res, next);
       }
-      Object.setPrototypeOf(router48, this);
-      router48.caseSensitive = opts.caseSensitive;
-      router48.mergeParams = opts.mergeParams;
-      router48.params = {};
-      router48.strict = opts.strict;
-      router48.stack = [];
-      return router48;
+      Object.setPrototypeOf(router49, this);
+      router49.caseSensitive = opts.caseSensitive;
+      router49.mergeParams = opts.mergeParams;
+      router49.params = {};
+      router49.strict = opts.strict;
+      router49.stack = [];
+      return router49;
     }
-    Router48.prototype = function() {
+    Router49.prototype = function() {
     };
-    Router48.prototype.param = function param(name, fn) {
+    Router49.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20805,7 +20805,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router48.prototype.handle = function handle(req, res, callback) {
+    Router49.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20932,7 +20932,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router48.prototype.use = function use(handler) {
+    Router49.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20965,7 +20965,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router48.prototype.route = function route(path5) {
+    Router49.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20980,7 +20980,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router48.prototype[method] = function(path5) {
+      Router49.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21163,13 +21163,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router48 = require_router();
+    var Router49 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router48 = null;
+      var router49 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21178,13 +21178,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router48 === null) {
-            router48 = new Router48({
+          if (router49 === null) {
+            router49 = new Router49({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router48;
+          return router49;
         }
       });
     };
@@ -21255,15 +21255,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router48 = this.router;
+      var router49 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router48.use(path5, fn2);
+          return router49.use(path5, fn2);
         }
         debug7(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router48.use(path5, function mounted_app(req, res, next) {
+        router49.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -21938,23 +21938,23 @@ var require_accepts = __commonJS({
       this.negotiator = new Negotiator(req);
     }
     Accepts.prototype.type = Accepts.prototype.types = function(types_) {
-      var types3 = types_;
-      if (types3 && !Array.isArray(types3)) {
-        types3 = new Array(arguments.length);
-        for (var i = 0; i < types3.length; i++) {
-          types3[i] = arguments[i];
+      var types6 = types_;
+      if (types6 && !Array.isArray(types6)) {
+        types6 = new Array(arguments.length);
+        for (var i = 0; i < types6.length; i++) {
+          types6[i] = arguments[i];
         }
       }
-      if (!types3 || types3.length === 0) {
+      if (!types6 || types6.length === 0) {
         return this.negotiator.mediaTypes();
       }
       if (!this.headers.accept) {
-        return types3[0];
+        return types6[0];
       }
-      var mimes = types3.map(extToMime);
+      var mimes = types6.map(extToMime);
       var accepts = this.negotiator.mediaTypes(mimes.filter(validMime));
       var first = accepts[0];
-      return first ? types3[mimes.indexOf(first)] : false;
+      return first ? types6[mimes.indexOf(first)] : false;
     };
     Accepts.prototype.encoding = Accepts.prototype.encodings = function(encodings_) {
       var encodings = encodings_;
@@ -22215,9 +22215,9 @@ var require_request = __commonJS({
       var querystring = parse4(this).query;
       return queryparse(querystring);
     });
-    req.is = function is2(types3) {
-      var arr = types3;
-      if (!Array.isArray(types3)) {
+    req.is = function is2(types6) {
+      var arr = types6;
+      if (!Array.isArray(types6)) {
         arr = new Array(arguments.length);
         for (var i = 0; i < arr.length; i++) {
           arr[i] = arguments[i];
@@ -22327,7 +22327,7 @@ var require_content_disposition = __commonJS({
       var params = createparams(filename, opts.fallback);
       return format(new ContentDisposition(type, params));
     }
-    function createparams(filename, fallback) {
+    function createparams(filename, fallback2) {
       if (filename === void 0) {
         return;
       }
@@ -22335,18 +22335,18 @@ var require_content_disposition = __commonJS({
       if (typeof filename !== "string") {
         throw new TypeError("filename must be a string");
       }
-      if (fallback === void 0) {
-        fallback = true;
+      if (fallback2 === void 0) {
+        fallback2 = true;
       }
-      if (typeof fallback !== "string" && typeof fallback !== "boolean") {
+      if (typeof fallback2 !== "string" && typeof fallback2 !== "boolean") {
         throw new TypeError("fallback must be a string or boolean");
       }
-      if (typeof fallback === "string" && NON_LATIN1_REGEXP.test(fallback)) {
+      if (typeof fallback2 === "string" && NON_LATIN1_REGEXP.test(fallback2)) {
         throw new TypeError("fallback must be ISO-8859-1 string");
       }
       var name = basename(filename);
       var isQuotedString = TEXT_REGEXP.test(name);
-      var fallbackName = typeof fallback !== "string" ? fallback && getlatin1(name) : basename(fallback);
+      var fallbackName = typeof fallback2 !== "string" ? fallback2 && getlatin1(name) : basename(fallback2);
       var hasFallback = typeof fallbackName === "string" && fallbackName !== name;
       if (hasFallback || !isQuotedString || hasHexEscape(name)) {
         params["filename*"] = name;
@@ -22517,17 +22517,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto8.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto8.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto11.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -22716,7 +22716,7 @@ var require_send = __commonJS({
     var path5 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
-    var util2 = __require("util");
+    var util4 = __require("util");
     var extname = path5.extname;
     var join = path5.join;
     var normalize = path5.normalize;
@@ -22751,7 +22751,7 @@ var require_send = __commonJS({
       this._maxage = !isNaN(this._maxage) ? Math.min(Math.max(0, this._maxage), MAX_MAXAGE) : 0;
       this._root = opts.root ? resolve(opts.root) : null;
     }
-    util2.inherits(SendStream, Stream);
+    util4.inherits(SendStream, Stream);
     SendStream.prototype.error = function error40(status, err) {
       if (hasListeners(this, "error")) {
         return this.emit("error", createHttpError(status, err));
@@ -23269,7 +23269,7 @@ var require_response = __commonJS({
     var path5 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
-    var sign = require_cookie_signature().sign;
+    var sign3 = require_cookie_signature().sign;
     var normalizeType = require_utils3().normalizeType;
     var normalizeTypes = require_utils3().normalizeTypes;
     var setCharset = require_utils3().setCharset;
@@ -23278,7 +23278,7 @@ var require_response = __commonJS({
     var extname = path5.extname;
     var resolve = path5.resolve;
     var vary = require_vary();
-    var { Buffer: Buffer2 } = __require("node:buffer");
+    var { Buffer: Buffer3 } = __require("node:buffer");
     var res = Object.create(http3.ServerResponse.prototype);
     module.exports = res;
     res.status = function status(code) {
@@ -23342,12 +23342,12 @@ var require_response = __commonJS({
       var generateETag = !this.get("ETag") && typeof etagFn === "function";
       var len;
       if (chunk !== void 0) {
-        if (Buffer2.isBuffer(chunk)) {
+        if (Buffer3.isBuffer(chunk)) {
           len = chunk.length;
         } else if (!generateETag && chunk.length < 1e3) {
-          len = Buffer2.byteLength(chunk, encoding);
+          len = Buffer3.byteLength(chunk, encoding);
         } else {
-          chunk = Buffer2.from(chunk, encoding);
+          chunk = Buffer3.from(chunk, encoding);
           encoding = void 0;
           len = chunk.length;
         }
@@ -23560,7 +23560,7 @@ var require_response = __commonJS({
       }
       var val = typeof value === "object" ? "j:" + JSON.stringify(value) : String(value);
       if (signed) {
-        val = "s:" + sign(val, secret);
+        val = "s:" + sign3(val, secret);
       }
       if (opts.maxAge != null) {
         var maxAge = opts.maxAge - 0;
@@ -23609,7 +23609,7 @@ var require_response = __commonJS({
         }
       });
       this.status(status);
-      this.set("Content-Length", Buffer2.byteLength(body));
+      this.set("Content-Length", Buffer3.byteLength(body));
       if (this.req.method === "HEAD") {
         this.end();
       } else {
@@ -23836,7 +23836,7 @@ var require_express = __commonJS({
     var EventEmitter2 = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router48 = require_router();
+    var Router49 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23858,8 +23858,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router48.Route;
-    exports.Router = Router48;
+    exports.Route = Router49.Route;
+    exports.Router = Router49;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -24188,17 +24188,17 @@ var require_err_helpers = __commonJS({
     var stackWithCauses = (err) => _stackWithCauses(err, /* @__PURE__ */ new Set());
     var _messageWithCauses = (err, seen, skip) => {
       if (!isErrorLike(err)) return "";
-      const message = skip ? "" : err.message || "";
+      const message2 = skip ? "" : err.message || "";
       if (seen.has(err)) {
-        return message + ": ...";
+        return message2 + ": ...";
       }
       const cause = getErrorCause(err);
       if (cause) {
         seen.add(err);
         const skipIfVErrorStyleCause = typeof err.cause === "function";
-        return message + (skipIfVErrorStyleCause ? "" : ": ") + _messageWithCauses(cause, seen, skipIfVErrorStyleCause);
+        return message2 + (skipIfVErrorStyleCause ? "" : ": ") + _messageWithCauses(cause, seen, skipIfVErrorStyleCause);
       } else {
-        return message;
+        return message2;
       }
     };
     var messageWithCauses = (err) => _messageWithCauses(err, /* @__PURE__ */ new Set());
@@ -25159,13 +25159,13 @@ var require_time = __commonJS({
       const nanosWithinSecond = currentTimeNs % NS_PER_SEC;
       const msSinceEpoch = Number(secondsSinceEpoch * 1000n + nanosWithinSecond / 1000000n);
       const date6 = new Date(msSinceEpoch);
-      const year = date6.getUTCFullYear();
+      const year2 = date6.getUTCFullYear();
       const month = (date6.getUTCMonth() + 1).toString().padStart(2, "0");
-      const day = date6.getUTCDate().toString().padStart(2, "0");
+      const day2 = date6.getUTCDate().toString().padStart(2, "0");
       const hours = date6.getUTCHours().toString().padStart(2, "0");
       const minutes = date6.getUTCMinutes().toString().padStart(2, "0");
       const seconds = date6.getUTCSeconds().toString().padStart(2, "0");
-      return `,"time":"${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${nanosWithinSecond.toString().padStart(9, "0")}Z"`;
+      return `,"time":"${year2}-${month}-${day2}T${hours}:${minutes}:${seconds}.${nanosWithinSecond.toString().padStart(9, "0")}Z"`;
     };
     module.exports = { nullTime, epochTime, unixTime, isoTime, isoTimeNano };
   }
@@ -25295,7 +25295,7 @@ var require_atomic_sleep = __commonJS({
   "../../node_modules/.pnpm/atomic-sleep@1.0.0/node_modules/atomic-sleep/index.js"(exports, module) {
     "use strict";
     if (typeof SharedArrayBuffer !== "undefined" && typeof Atomics !== "undefined") {
-      let sleep2 = function(ms) {
+      let sleep3 = function(ms) {
         const valid = ms > 0 && ms < Infinity;
         if (valid === false) {
           if (typeof ms !== "number" && typeof ms !== "bigint") {
@@ -25306,9 +25306,9 @@ var require_atomic_sleep = __commonJS({
         Atomics.wait(nil, 0, 0, Number(ms));
       };
       const nil = new Int32Array(new SharedArrayBuffer(4));
-      module.exports = sleep2;
+      module.exports = sleep3;
     } else {
-      let sleep2 = function(ms) {
+      let sleep3 = function(ms) {
         const valid = ms > 0 && ms < Infinity;
         if (valid === false) {
           if (typeof ms !== "number" && typeof ms !== "bigint") {
@@ -25320,7 +25320,7 @@ var require_atomic_sleep = __commonJS({
         while (target > Date.now()) {
         }
       };
-      module.exports = sleep2;
+      module.exports = sleep3;
     }
   }
 });
@@ -25333,8 +25333,8 @@ var require_sonic_boom = __commonJS({
     var EventEmitter2 = __require("events");
     var inherits = __require("util").inherits;
     var path5 = __require("path");
-    var sleep2 = require_atomic_sleep();
-    var assert2 = __require("assert");
+    var sleep3 = require_atomic_sleep();
+    var assert3 = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
     var kEmptyBuffer = Buffer.allocUnsafe(0);
     var MAX_WRITE = 16 * 1024;
@@ -25479,7 +25479,7 @@ var require_sonic_boom = __commonJS({
           if ((err.code === "EAGAIN" || err.code === "EBUSY") && this.retryEAGAIN(err, this._writingBuf.length, this._len - this._writingBuf.length)) {
             if (this.sync) {
               try {
-                sleep2(BUSY_WRITE_TIMEOUT);
+                sleep3(BUSY_WRITE_TIMEOUT);
                 this.release(void 0, 0);
               } catch (err2) {
                 this.release(err2);
@@ -25792,7 +25792,7 @@ var require_sonic_boom = __commonJS({
           if (shouldRetry && !this.retryEAGAIN(err, buf.length, this._len - buf.length)) {
             throw err;
           }
-          sleep2(BUSY_WRITE_TIMEOUT);
+          sleep3(BUSY_WRITE_TIMEOUT);
         }
       }
       try {
@@ -25829,7 +25829,7 @@ var require_sonic_boom = __commonJS({
           if (shouldRetry && !this.retryEAGAIN(err, buf.length, this._len - buf.length)) {
             throw err;
           }
-          sleep2(BUSY_WRITE_TIMEOUT);
+          sleep3(BUSY_WRITE_TIMEOUT);
         }
       }
     }
@@ -25883,7 +25883,7 @@ var require_sonic_boom = __commonJS({
       sonic.destroyed = true;
       sonic._bufs = [];
       sonic._lens = [];
-      assert2(typeof sonic.fd === "number", `sonic.fd must be a number, got ${typeof sonic.fd}`);
+      assert3(typeof sonic.fd === "number", `sonic.fd must be a number, got ${typeof sonic.fd}`);
       try {
         fs5.fsync(sonic.fd, closeWrapped);
       } catch {
@@ -26155,7 +26155,7 @@ var require_thread_stream = __commonJS({
       READ_INDEX
     } = require_indexes();
     var buffer = __require("buffer");
-    var assert2 = __require("assert");
+    var assert3 = __require("assert");
     var kImpl = /* @__PURE__ */ Symbol("kImpl");
     var MAX_STRING = buffer.constants.MAX_STRING_LENGTH;
     var FakeWeakRef = class {
@@ -26206,7 +26206,7 @@ var require_thread_stream = __commonJS({
       return worker;
     }
     function drain(stream) {
-      assert2(!stream[kImpl].sync);
+      assert3(!stream[kImpl].sync);
       if (stream[kImpl].needDrain) {
         stream[kImpl].needDrain = false;
         stream.emit("drain");
@@ -26324,8 +26324,8 @@ var require_thread_stream = __commonJS({
         this[kImpl].closed = false;
         this[kImpl].buf = "";
         this.worker = createWorker(this, opts);
-        this.on("message", (message, transferList) => {
-          this.worker.postMessage(message, transferList);
+        this.on("message", (message2, transferList) => {
+          this.worker.postMessage(message2, transferList);
         });
       }
       write(data) {
@@ -26570,7 +26570,7 @@ var require_transport = __commonJS({
     var { createRequire } = __require("module");
     var getCallers = require_caller();
     var { join, isAbsolute, sep } = __require("node:path");
-    var sleep2 = require_atomic_sleep();
+    var sleep3 = require_atomic_sleep();
     var onExit = require_on_exit_leak_free();
     var ThreadStream = require_thread_stream();
     function setupOnExit(stream) {
@@ -26604,7 +26604,7 @@ var require_transport = __commonJS({
           return;
         }
         stream.flushSync();
-        sleep2(100);
+        sleep3(100);
         stream.end();
       }
       return stream;
@@ -27620,9 +27620,9 @@ var require_safe_stable_stringify = __commonJS({
         }
         if (value) {
           return (value2) => {
-            let message = `Object can not safely be stringified. Received type ${typeof value2}`;
-            if (typeof value2 !== "function") message += ` (${value2.toString()})`;
-            throw new Error(message);
+            let message2 = `Object can not safely be stringified. Received type ${typeof value2}`;
+            if (typeof value2 !== "function") message2 += ` (${value2.toString()})`;
+            throw new Error(message2);
           };
         }
       }
@@ -29209,9 +29209,9 @@ var require_to_regex_range = __commonJS({
 var require_fill_range = __commonJS({
   "../../node_modules/.pnpm/fill-range@7.1.1/node_modules/fill-range/index.js"(exports, module) {
     "use strict";
-    var util2 = __require("util");
+    var util4 = __require("util");
     var toRegexRange = require_to_regex_range();
-    var isObject3 = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
+    var isObject4 = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
     var transform2 = (toNumber) => {
       return (value) => toNumber === true ? Number(value) : String(value);
     };
@@ -29294,7 +29294,7 @@ var require_fill_range = __commonJS({
       return toRegexRange(start, end, options);
     };
     var rangeError = (...args) => {
-      return new RangeError("Invalid range arguments: " + util2.inspect(...args));
+      return new RangeError("Invalid range arguments: " + util4.inspect(...args));
     };
     var invalidRange = (start, end, options) => {
       if (options.strictRanges === true) throw rangeError([start, end]);
@@ -29380,14 +29380,14 @@ var require_fill_range = __commonJS({
       if (typeof step === "function") {
         return fill(start, end, 1, { transform: step });
       }
-      if (isObject3(step)) {
+      if (isObject4(step)) {
         return fill(start, end, 0, step);
       }
       let opts = { ...options };
       if (opts.capture === true) opts.wrap = true;
       step = step || opts.step || 1;
       if (!isNumber(step)) {
-        if (step != null && !isObject3(step)) return invalidStep(step, opts);
+        if (step != null && !isObject4(step)) return invalidStep(step, opts);
         return fill(start, end, 1, step);
       }
       if (isNumber(start) && isNumber(end)) {
@@ -30543,7 +30543,7 @@ var require_scan = __commonJS({
 var require_parse3 = __commonJS({
   "../../node_modules/.pnpm/picomatch@2.3.2/node_modules/picomatch/lib/parse.js"(exports, module) {
     "use strict";
-    var constants2 = require_constants3();
+    var constants3 = require_constants3();
     var utils = require_utils5();
     var {
       MAX_LENGTH,
@@ -30551,7 +30551,7 @@ var require_parse3 = __commonJS({
       REGEX_NON_SPECIAL_CHARS,
       REGEX_SPECIAL_CHARS_BACKREF,
       REPLACEMENTS
-    } = constants2;
+    } = constants3;
     var expandRange = (args, options) => {
       if (typeof options.expandRange === "function") {
         return options.expandRange(...args, options);
@@ -30757,7 +30757,7 @@ var require_parse3 = __commonJS({
       if (options.maxExtglobRecursion === false) {
         return { risky: false };
       }
-      const max = typeof options.maxExtglobRecursion === "number" ? options.maxExtglobRecursion : constants2.DEFAULT_MAX_EXTGLOB_RECURSION;
+      const max = typeof options.maxExtglobRecursion === "number" ? options.maxExtglobRecursion : constants3.DEFAULT_MAX_EXTGLOB_RECURSION;
       const branches = splitTopLevel(body).map((branch) => branch.trim());
       if (branches.length > 1) {
         if (branches.some((branch) => branch === "") || branches.some((branch) => /^[*?]+$/.test(branch)) || hasRepeatedCharPrefixOverlap(branches)) {
@@ -30790,8 +30790,8 @@ var require_parse3 = __commonJS({
       const tokens = [bos];
       const capture = opts.capture ? "" : "?:";
       const win32 = utils.isWindows(options);
-      const PLATFORM_CHARS = constants2.globChars(win32);
-      const EXTGLOB_CHARS = constants2.extglobChars(PLATFORM_CHARS);
+      const PLATFORM_CHARS = constants3.globChars(win32);
+      const EXTGLOB_CHARS = constants3.extglobChars(PLATFORM_CHARS);
       const {
         DOT_LITERAL,
         PLUS_LITERAL,
@@ -30854,7 +30854,7 @@ var require_parse3 = __commonJS({
         state.output += token.output != null ? token.output : token.value;
         consume(token.value);
       };
-      const negate = () => {
+      const negate2 = () => {
         let count3 = 1;
         while (peek() === "!" && (peek(2) !== "(" || peek(3) === "?")) {
           advance();
@@ -31276,7 +31276,7 @@ var require_parse3 = __commonJS({
             }
           }
           if (opts.nonegate !== true && state.index === 0) {
-            negate();
+            negate2();
             continue;
           }
         }
@@ -31490,7 +31490,7 @@ var require_parse3 = __commonJS({
         NO_DOTS_SLASH,
         STAR,
         START_ANCHOR
-      } = constants2.globChars(win32);
+      } = constants3.globChars(win32);
       const nodot = opts.dot ? NO_DOTS : NO_DOT;
       const slashDot = opts.dot ? NO_DOTS_SLASH : NO_DOT;
       const capture = opts.capture ? "" : "?:";
@@ -31549,8 +31549,8 @@ var require_picomatch = __commonJS({
     var scan = require_scan();
     var parse4 = require_parse3();
     var utils = require_utils5();
-    var constants2 = require_constants3();
-    var isObject3 = (val) => val && typeof val === "object" && !Array.isArray(val);
+    var constants3 = require_constants3();
+    var isObject4 = (val) => val && typeof val === "object" && !Array.isArray(val);
     var picomatch = (glob, options, returnState = false) => {
       if (Array.isArray(glob)) {
         const fns = glob.map((input) => picomatch(input, options, returnState));
@@ -31563,7 +31563,7 @@ var require_picomatch = __commonJS({
         };
         return arrayMatcher;
       }
-      const isState = isObject3(glob) && glob.tokens && glob.input;
+      const isState = isObject4(glob) && glob.tokens && glob.input;
       if (glob === "" || typeof glob !== "string" && !isState) {
         throw new TypeError("Expected pattern to be a non-empty string");
       }
@@ -31677,7 +31677,7 @@ var require_picomatch = __commonJS({
         return /$^/;
       }
     };
-    picomatch.constants = constants2;
+    picomatch.constants = constants3;
     module.exports = picomatch;
   }
 });
@@ -31694,7 +31694,7 @@ var require_picomatch2 = __commonJS({
 var require_micromatch = __commonJS({
   "../../node_modules/.pnpm/micromatch@4.0.8/node_modules/micromatch/index.js"(exports, module) {
     "use strict";
-    var util2 = __require("util");
+    var util4 = __require("util");
     var braces = require_braces();
     var picomatch = require_picomatch2();
     var utils = require_utils5();
@@ -31766,7 +31766,7 @@ var require_micromatch = __commonJS({
     };
     micromatch2.contains = (str, pattern, options) => {
       if (typeof str !== "string") {
-        throw new TypeError(`Expected a string: "${util2.inspect(str)}"`);
+        throw new TypeError(`Expected a string: "${util4.inspect(str)}"`);
       }
       if (Array.isArray(pattern)) {
         return pattern.some((p) => micromatch2.contains(str, p, options));
@@ -31812,7 +31812,7 @@ var require_micromatch = __commonJS({
     };
     micromatch2.all = (str, patterns, options) => {
       if (typeof str !== "string") {
-        throw new TypeError(`Expected a string: "${util2.inspect(str)}"`);
+        throw new TypeError(`Expected a string: "${util4.inspect(str)}"`);
       }
       return [].concat(patterns).every((p) => picomatch(p, options)(str));
     };
@@ -31978,31 +31978,31 @@ var require_postgres_date = __commonJS({
         return getDate(isoDate) || null;
       }
       var isBC = !!matches2[8];
-      var year = parseInt(matches2[1], 10);
+      var year2 = parseInt(matches2[1], 10);
       if (isBC) {
-        year = bcYearToNegativeYear(year);
+        year2 = bcYearToNegativeYear(year2);
       }
       var month = parseInt(matches2[2], 10) - 1;
-      var day = matches2[3];
-      var hour = parseInt(matches2[4], 10);
-      var minute = parseInt(matches2[5], 10);
+      var day2 = matches2[3];
+      var hour2 = parseInt(matches2[4], 10);
+      var minute2 = parseInt(matches2[5], 10);
       var second = parseInt(matches2[6], 10);
       var ms = matches2[7];
       ms = ms ? 1e3 * parseFloat(ms) : 0;
       var date6;
       var offset = timeZoneOffset(isoDate);
       if (offset != null) {
-        date6 = new Date(Date.UTC(year, month, day, hour, minute, second, ms));
-        if (is0To99(year)) {
-          date6.setUTCFullYear(year);
+        date6 = new Date(Date.UTC(year2, month, day2, hour2, minute2, second, ms));
+        if (is0To99(year2)) {
+          date6.setUTCFullYear(year2);
         }
         if (offset !== 0) {
           date6.setTime(date6.getTime() - offset);
         }
       } else {
-        date6 = new Date(year, month, day, hour, minute, second, ms);
-        if (is0To99(year)) {
-          date6.setFullYear(year);
+        date6 = new Date(year2, month, day2, hour2, minute2, second, ms);
+        if (is0To99(year2)) {
+          date6.setFullYear(year2);
         }
       }
       return date6;
@@ -32012,16 +32012,16 @@ var require_postgres_date = __commonJS({
       if (!matches2) {
         return;
       }
-      var year = parseInt(matches2[1], 10);
+      var year2 = parseInt(matches2[1], 10);
       var isBC = !!matches2[4];
       if (isBC) {
-        year = bcYearToNegativeYear(year);
+        year2 = bcYearToNegativeYear(year2);
       }
       var month = parseInt(matches2[2], 10) - 1;
-      var day = matches2[3];
-      var date6 = new Date(year, month, day);
-      if (is0To99(year)) {
-        date6.setFullYear(year);
+      var day2 = matches2[3];
+      var date6 = new Date(year2, month, day2);
+      if (is0To99(year2)) {
+        date6.setFullYear(year2);
       }
       return date6;
     }
@@ -32035,12 +32035,12 @@ var require_postgres_date = __commonJS({
       if (type === "Z") {
         return 0;
       }
-      var sign = type === "-" ? -1 : 1;
+      var sign3 = type === "-" ? -1 : 1;
       var offset = parseInt(zone[2], 10) * 3600 + parseInt(zone[3] || 0, 10) * 60 + parseInt(zone[4] || 0, 10);
-      return offset * sign * 1e3;
+      return offset * sign3 * 1e3;
     }
-    function bcYearToNegativeYear(year) {
-      return -(year - 1);
+    function bcYearToNegativeYear(year2) {
+      return -(year2 - 1);
     }
     function is0To99(num) {
       return num >= 0 && num < 100;
@@ -32402,11 +32402,11 @@ var require_pg_int8 = __commonJS({
     function readInt8(buffer) {
       var high = buffer.readInt32BE(0);
       var low = buffer.readUInt32BE(4);
-      var sign = "";
+      var sign3 = "";
       if (high < 0) {
         high = ~high + (low === 0);
         low = ~low + 1 >>> 0;
-        sign = "-";
+        sign3 = "-";
       }
       var result = "";
       var carry;
@@ -32422,7 +32422,7 @@ var require_pg_int8 = __commonJS({
         low = t / BASE >>> 0;
         digits = "" + (t - BASE * low);
         if (low === 0 && high === 0) {
-          return sign + digits + result;
+          return sign3 + digits + result;
         }
         pad = "";
         l = 6 - digits.length;
@@ -32438,7 +32438,7 @@ var require_pg_int8 = __commonJS({
         low = t / BASE >>> 0;
         digits = "" + (t - BASE * low);
         if (low === 0 && high === 0) {
-          return sign + digits + result;
+          return sign3 + digits + result;
         }
         pad = "";
         l = 6 - digits.length;
@@ -32454,7 +32454,7 @@ var require_pg_int8 = __commonJS({
         low = t / BASE >>> 0;
         digits = "" + (t - BASE * low);
         if (low === 0 && high === 0) {
-          return sign + digits + result;
+          return sign3 + digits + result;
         }
         pad = "";
         l = 6 - digits.length;
@@ -32467,7 +32467,7 @@ var require_pg_int8 = __commonJS({
         carry = high % BASE;
         t = 4294967296 * carry + low;
         digits = "" + t % BASE;
-        return sign + digits + result;
+        return sign3 + digits + result;
       }
     }
     module.exports = readInt8;
@@ -32516,7 +32516,7 @@ var require_binaryParsers = __commonJS({
     };
     var parseFloatFromBits = function(data, precisionBits, exponentBits) {
       var bias = Math.pow(2, exponentBits - 1) - 1;
-      var sign = parseBits(data, 1);
+      var sign3 = parseBits(data, 1);
       var exponent = parseBits(data, exponentBits, 1);
       if (exponent === 0) {
         return 0;
@@ -32537,11 +32537,11 @@ var require_binaryParsers = __commonJS({
       var mantissa = parseBits(data, precisionBits, exponentBits + 1, false, parsePrecisionBits);
       if (exponent == Math.pow(2, exponentBits + 1) - 1) {
         if (mantissa === 0) {
-          return sign === 0 ? Infinity : -Infinity;
+          return sign3 === 0 ? Infinity : -Infinity;
         }
         return NaN;
       }
-      return (sign === 0 ? 1 : -1) * Math.pow(2, exponent - bias) * mantissa;
+      return (sign3 === 0 ? 1 : -1) * Math.pow(2, exponent - bias) * mantissa;
     };
     var parseInt16 = function(value) {
       if (parseBits(value, 1) == 1) {
@@ -32562,8 +32562,8 @@ var require_binaryParsers = __commonJS({
       return parseFloatFromBits(value, 52, 11);
     };
     var parseNumeric = function(value) {
-      var sign = parseBits(value, 16, 32);
-      if (sign == 49152) {
+      var sign3 = parseBits(value, 16, 32);
+      if (sign3 == 49152) {
         return NaN;
       }
       var weight = Math.pow(1e4, parseBits(value, 16, 16));
@@ -32575,12 +32575,12 @@ var require_binaryParsers = __commonJS({
         weight /= 1e4;
       }
       var scale = Math.pow(10, parseBits(value, 16, 48));
-      return (sign === 0 ? 1 : -1) * Math.round(result * scale) / scale;
+      return (sign3 === 0 ? 1 : -1) * Math.round(result * scale) / scale;
     };
     var parseDate = function(isUTC, value) {
-      var sign = parseBits(value, 1);
+      var sign3 = parseBits(value, 1);
       var rawValue = parseBits(value, 63, 1);
-      var result = new Date((sign === 0 ? 1 : -1) * rawValue / 1e3 + 9466848e5);
+      var result = new Date((sign3 === 0 ? 1 : -1) * rawValue / 1e3 + 9466848e5);
       if (!isUTC) {
         result.setTime(result.getTime() + result.getTimezoneOffset() * 6e4);
       }
@@ -32921,10 +32921,10 @@ var require_utils6 = __commonJS({
     }
     function dateToString(date6) {
       let offset = -date6.getTimezoneOffset();
-      let year = date6.getFullYear();
-      const isBCYear = year < 1;
-      if (isBCYear) year = Math.abs(year) + 1;
-      let ret = String(year).padStart(4, "0") + "-" + String(date6.getMonth() + 1).padStart(2, "0") + "-" + String(date6.getDate()).padStart(2, "0") + "T" + String(date6.getHours()).padStart(2, "0") + ":" + String(date6.getMinutes()).padStart(2, "0") + ":" + String(date6.getSeconds()).padStart(2, "0") + "." + String(date6.getMilliseconds()).padStart(3, "0");
+      let year2 = date6.getFullYear();
+      const isBCYear = year2 < 1;
+      if (isBCYear) year2 = Math.abs(year2) + 1;
+      let ret = String(year2).padStart(4, "0") + "-" + String(date6.getMonth() + 1).padStart(2, "0") + "-" + String(date6.getDate()).padStart(2, "0") + "T" + String(date6.getHours()).padStart(2, "0") + ":" + String(date6.getMinutes()).padStart(2, "0") + ":" + String(date6.getSeconds()).padStart(2, "0") + "." + String(date6.getMilliseconds()).padStart(3, "0");
       if (offset < 0) {
         ret += "-";
         offset *= -1;
@@ -32936,10 +32936,10 @@ var require_utils6 = __commonJS({
       return ret;
     }
     function dateToStringUTC(date6) {
-      let year = date6.getUTCFullYear();
-      const isBCYear = year < 1;
-      if (isBCYear) year = Math.abs(year) + 1;
-      let ret = String(year).padStart(4, "0") + "-" + String(date6.getUTCMonth() + 1).padStart(2, "0") + "-" + String(date6.getUTCDate()).padStart(2, "0") + "T" + String(date6.getUTCHours()).padStart(2, "0") + ":" + String(date6.getUTCMinutes()).padStart(2, "0") + ":" + String(date6.getUTCSeconds()).padStart(2, "0") + "." + String(date6.getUTCMilliseconds()).padStart(3, "0");
+      let year2 = date6.getUTCFullYear();
+      const isBCYear = year2 < 1;
+      if (isBCYear) year2 = Math.abs(year2) + 1;
+      let ret = String(year2).padStart(4, "0") + "-" + String(date6.getUTCMonth() + 1).padStart(2, "0") + "-" + String(date6.getUTCDate()).padStart(2, "0") + "T" + String(date6.getUTCHours()).padStart(2, "0") + ":" + String(date6.getUTCMinutes()).padStart(2, "0") + ":" + String(date6.getUTCSeconds()).padStart(2, "0") + "." + String(date6.getUTCMilliseconds()).padStart(3, "0");
       ret += "+00:00";
       if (isBCYear) ret += " BC";
       return ret;
@@ -33166,7 +33166,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.21.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto8 = require_utils7();
+    var crypto11 = require_utils7();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function saslprep(password) {
       const nonAsciiSpace = /[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g;
@@ -33184,7 +33184,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto8.randomBytes(18).toString("base64");
+      const clientNonce = crypto11.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -33226,20 +33226,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto8.hashByName(hashName, peerCert);
+        const certHash = await crypto11.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto8.deriveKey(saslprep(password), saltBytes, sv.iteration);
-      const clientKey = await crypto8.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto8.sha256(clientKey);
-      const clientSignature = await crypto8.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto11.deriveKey(saslprep(password), saltBytes, sv.iteration);
+      const clientKey = await crypto11.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto11.sha256(clientKey);
+      const clientSignature = await crypto11.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto8.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto8.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto11.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto11.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -33351,9 +33351,9 @@ var require_sasl = __commonJS({
 var require_type_overrides = __commonJS({
   "../../node_modules/.pnpm/pg@8.21.0/node_modules/pg/lib/type-overrides.js"(exports, module) {
     "use strict";
-    var types3 = require_pg_types();
+    var types6 = require_pg_types();
     function TypeOverrides2(userTypes) {
-      this._types = userTypes || types3;
+      this._types = userTypes || types6;
       this.text = {};
       this.binary = {};
     }
@@ -33712,17 +33712,17 @@ var require_connection_parameters = __commonJS({
 var require_result = __commonJS({
   "../../node_modules/.pnpm/pg@8.21.0/node_modules/pg/lib/result.js"(exports, module) {
     "use strict";
-    var types3 = require_pg_types();
+    var types6 = require_pg_types();
     var matchRegexp = /^([A-Za-z]+)(?: (\d+))?(?: (\d+))?/;
     var Result2 = class {
-      constructor(rowMode, types4) {
+      constructor(rowMode, types7) {
         this.command = null;
         this.rowCount = null;
         this.oid = null;
         this.rows = [];
         this.fields = [];
         this._parsers = void 0;
-        this._types = types4;
+        this._types = types7;
         this.RowCtor = null;
         this.rowAsArray = rowMode === "array";
         if (this.rowAsArray) {
@@ -33789,7 +33789,7 @@ var require_result = __commonJS({
           if (this._types) {
             this._parsers[i] = this._types.getTypeParser(desc3.dataTypeID, desc3.format || "text");
           } else {
-            this._parsers[i] = types3.getTypeParser(desc3.dataTypeID, desc3.format || "text");
+            this._parsers[i] = types6.getTypeParser(desc3.dataTypeID, desc3.format || "text");
           }
         }
         this._prebuiltEmptyResultObject = { ...row };
@@ -34035,8 +34035,8 @@ var require_messages = __commonJS({
       length: 4
     };
     var DatabaseError2 = class extends Error {
-      constructor(message, length, name) {
-        super(message);
+      constructor(message2, length, name) {
+        super(message2);
         this.length = length;
         this.name = name;
       }
@@ -34151,9 +34151,9 @@ var require_messages = __commonJS({
     };
     exports.DataRowMessage = DataRowMessage;
     var NoticeMessage = class {
-      constructor(length, message) {
+      constructor(length, message2) {
         this.length = length;
-        this.message = message;
+        this.message = message2;
         this.name = "notice";
       }
     };
@@ -34299,11 +34299,11 @@ var require_serializer = __commonJS({
         console.error("You supplied %s (%s)", name, name.length);
         console.error("This can cause conflicts and silent errors executing queries");
       }
-      const types3 = query2.types || emptyArray;
-      const len = types3.length;
+      const types6 = query2.types || emptyArray;
+      const len = types6.length;
       const buffer = writer.addCString(name).addCString(query2.text).addInt16(len);
       for (let i = 0; i < len; i++) {
-        buffer.addInt32(types3[i]);
+        buffer.addInt32(types6[i]);
       }
       return writer.flush(
         80
@@ -34415,8 +34415,8 @@ var require_serializer = __commonJS({
         /* code.copyFromChunk */
       );
     };
-    var copyFail = (message) => {
-      return cstringMessage(102, message);
+    var copyFail = (message2) => {
+      return cstringMessage(102, message2);
     };
     var codeOnlyBuffer = (code) => Buffer.from([code, 0, 0, 0, 4]);
     var flushBuffer = codeOnlyBuffer(
@@ -34551,8 +34551,8 @@ var require_parser = __commonJS({
           const length = this.buffer.readUInt32BE(offset + CODE_LENGTH);
           const fullMessageLength = CODE_LENGTH + length;
           if (fullMessageLength + offset <= bufferFullLength) {
-            const message = this.handlePacket(offset + HEADER_LENGTH, code, length, this.buffer);
-            callback(message);
+            const message2 = this.handlePacket(offset + HEADER_LENGTH, code, length, this.buffer);
+            callback(message2);
             offset += fullMessageLength;
           } else {
             break;
@@ -34597,80 +34597,80 @@ var require_parser = __commonJS({
       handlePacket(offset, code, length, bytes) {
         const { reader } = this;
         reader.setBuffer(offset, bytes);
-        let message;
+        let message2;
         switch (code) {
           case 50:
-            message = messages_1.bindComplete;
+            message2 = messages_1.bindComplete;
             break;
           case 49:
-            message = messages_1.parseComplete;
+            message2 = messages_1.parseComplete;
             break;
           case 51:
-            message = messages_1.closeComplete;
+            message2 = messages_1.closeComplete;
             break;
           case 110:
-            message = messages_1.noData;
+            message2 = messages_1.noData;
             break;
           case 115:
-            message = messages_1.portalSuspended;
+            message2 = messages_1.portalSuspended;
             break;
           case 99:
-            message = messages_1.copyDone;
+            message2 = messages_1.copyDone;
             break;
           case 87:
-            message = messages_1.replicationStart;
+            message2 = messages_1.replicationStart;
             break;
           case 73:
-            message = messages_1.emptyQuery;
+            message2 = messages_1.emptyQuery;
             break;
           case 68:
-            message = parseDataRowMessage(reader);
+            message2 = parseDataRowMessage(reader);
             break;
           case 67:
-            message = parseCommandCompleteMessage(reader);
+            message2 = parseCommandCompleteMessage(reader);
             break;
           case 90:
-            message = parseReadyForQueryMessage(reader);
+            message2 = parseReadyForQueryMessage(reader);
             break;
           case 65:
-            message = parseNotificationMessage(reader);
+            message2 = parseNotificationMessage(reader);
             break;
           case 82:
-            message = parseAuthenticationResponse(reader, length);
+            message2 = parseAuthenticationResponse(reader, length);
             break;
           case 83:
-            message = parseParameterStatusMessage(reader);
+            message2 = parseParameterStatusMessage(reader);
             break;
           case 75:
-            message = parseBackendKeyData(reader);
+            message2 = parseBackendKeyData(reader);
             break;
           case 69:
-            message = parseErrorMessage(reader, "error");
+            message2 = parseErrorMessage(reader, "error");
             break;
           case 78:
-            message = parseErrorMessage(reader, "notice");
+            message2 = parseErrorMessage(reader, "notice");
             break;
           case 84:
-            message = parseRowDescriptionMessage(reader);
+            message2 = parseRowDescriptionMessage(reader);
             break;
           case 116:
-            message = parseParameterDescriptionMessage(reader);
+            message2 = parseParameterDescriptionMessage(reader);
             break;
           case 71:
-            message = parseCopyInMessage(reader);
+            message2 = parseCopyInMessage(reader);
             break;
           case 72:
-            message = parseCopyOutMessage(reader);
+            message2 = parseCopyOutMessage(reader);
             break;
           case 100:
-            message = parseCopyData(reader, length);
+            message2 = parseCopyData(reader, length);
             break;
           default:
             return new messages_1.DatabaseError("received invalid response: " + code.toString(16), length, "error");
         }
         reader.setBuffer(0, emptyBuffer);
-        message.length = length;
-        return message;
+        message2.length = length;
+        return message2;
       }
     };
     exports.Parser = Parser;
@@ -34691,11 +34691,11 @@ var require_parser = __commonJS({
     var parseCopyMessage = (reader, messageName) => {
       const isBinary = reader.byte() !== 0;
       const columnCount = reader.int16();
-      const message = new messages_1.CopyResponse(LATEINIT_LENGTH, messageName, isBinary, columnCount);
+      const message2 = new messages_1.CopyResponse(LATEINIT_LENGTH, messageName, isBinary, columnCount);
       for (let i = 0; i < columnCount; i++) {
-        message.columnTypes[i] = reader.int16();
+        message2.columnTypes[i] = reader.int16();
       }
-      return message;
+      return message2;
     };
     var parseNotificationMessage = (reader) => {
       const processId = reader.int32();
@@ -34705,11 +34705,11 @@ var require_parser = __commonJS({
     };
     var parseRowDescriptionMessage = (reader) => {
       const fieldCount = reader.int16();
-      const message = new messages_1.RowDescriptionMessage(LATEINIT_LENGTH, fieldCount);
+      const message2 = new messages_1.RowDescriptionMessage(LATEINIT_LENGTH, fieldCount);
       for (let i = 0; i < fieldCount; i++) {
-        message.fields[i] = parseField(reader);
+        message2.fields[i] = parseField(reader);
       }
-      return message;
+      return message2;
     };
     var parseField = (reader) => {
       const name = reader.cstring();
@@ -34723,11 +34723,11 @@ var require_parser = __commonJS({
     };
     var parseParameterDescriptionMessage = (reader) => {
       const parameterCount = reader.int16();
-      const message = new messages_1.ParameterDescriptionMessage(LATEINIT_LENGTH, parameterCount);
+      const message2 = new messages_1.ParameterDescriptionMessage(LATEINIT_LENGTH, parameterCount);
       for (let i = 0; i < parameterCount; i++) {
-        message.dataTypeIDs[i] = reader.int32();
+        message2.dataTypeIDs[i] = reader.int32();
       }
-      return message;
+      return message2;
     };
     var parseDataRowMessage = (reader) => {
       const fieldCount = reader.int16();
@@ -34750,7 +34750,7 @@ var require_parser = __commonJS({
     };
     var parseAuthenticationResponse = (reader, length) => {
       const code = reader.int32();
-      const message = {
+      const message2 = {
         name: "authenticationOk",
         length
       };
@@ -34758,42 +34758,42 @@ var require_parser = __commonJS({
         case 0:
           break;
         case 3:
-          if (message.length === 8) {
-            message.name = "authenticationCleartextPassword";
+          if (message2.length === 8) {
+            message2.name = "authenticationCleartextPassword";
           }
           break;
         case 5:
-          if (message.length === 12) {
-            message.name = "authenticationMD5Password";
+          if (message2.length === 12) {
+            message2.name = "authenticationMD5Password";
             const salt = reader.bytes(4);
             return new messages_1.AuthenticationMD5Password(LATEINIT_LENGTH, salt);
           }
           break;
         case 10:
           {
-            message.name = "authenticationSASL";
-            message.mechanisms = [];
+            message2.name = "authenticationSASL";
+            message2.mechanisms = [];
             let mechanism;
             do {
               mechanism = reader.cstring();
               if (mechanism) {
-                message.mechanisms.push(mechanism);
+                message2.mechanisms.push(mechanism);
               }
             } while (mechanism);
           }
           break;
         case 11:
-          message.name = "authenticationSASLContinue";
-          message.data = reader.string(length - 8);
+          message2.name = "authenticationSASLContinue";
+          message2.data = reader.string(length - 8);
           break;
         case 12:
-          message.name = "authenticationSASLFinal";
-          message.data = reader.string(length - 8);
+          message2.name = "authenticationSASLFinal";
+          message2.data = reader.string(length - 8);
           break;
         default:
           throw new Error("Unknown authenticationOk message type " + code);
       }
-      return message;
+      return message2;
     };
     var parseErrorMessage = (reader, name) => {
       const fields = {};
@@ -34803,24 +34803,24 @@ var require_parser = __commonJS({
         fieldType = reader.string(1);
       }
       const messageValue = fields.M;
-      const message = name === "notice" ? new messages_1.NoticeMessage(LATEINIT_LENGTH, messageValue) : new messages_1.DatabaseError(messageValue, LATEINIT_LENGTH, name);
-      message.severity = fields.S;
-      message.code = fields.C;
-      message.detail = fields.D;
-      message.hint = fields.H;
-      message.position = fields.P;
-      message.internalPosition = fields.p;
-      message.internalQuery = fields.q;
-      message.where = fields.W;
-      message.schema = fields.s;
-      message.table = fields.t;
-      message.column = fields.c;
-      message.dataType = fields.d;
-      message.constraint = fields.n;
-      message.file = fields.F;
-      message.line = fields.L;
-      message.routine = fields.R;
-      return message;
+      const message2 = name === "notice" ? new messages_1.NoticeMessage(LATEINIT_LENGTH, messageValue) : new messages_1.DatabaseError(messageValue, LATEINIT_LENGTH, name);
+      message2.severity = fields.S;
+      message2.code = fields.C;
+      message2.detail = fields.D;
+      message2.hint = fields.H;
+      message2.position = fields.P;
+      message2.internalPosition = fields.p;
+      message2.internalQuery = fields.q;
+      message2.where = fields.W;
+      message2.schema = fields.s;
+      message2.table = fields.t;
+      message2.column = fields.c;
+      message2.dataType = fields.d;
+      message2.constraint = fields.n;
+      message2.file = fields.F;
+      message2.line = fields.L;
+      message2.routine = fields.R;
+      return message2;
     };
   }
 });
@@ -35215,7 +35215,7 @@ var require_helper = __commonJS({
     var path5 = __require("path");
     var Stream = __require("stream").Stream;
     var split2 = require_split2();
-    var util2 = __require("util");
+    var util4 = __require("util");
     var defaultPort = 5432;
     var isWin = process.platform === "win32";
     var warnStream = process.stderr;
@@ -35233,7 +35233,7 @@ var require_helper = __commonJS({
       var isWritable = warnStream instanceof Stream && true === warnStream.writable;
       if (isWritable) {
         var args = Array.prototype.slice.call(arguments).concat("\n");
-        warnStream.write(util2.format.apply(util2, args));
+        warnStream.write(util4.format.apply(util4, args));
       }
     }
     Object.defineProperty(module.exports, "isWin", {
@@ -35412,7 +35412,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto8 = require_utils7();
+    var crypto11 = require_utils7();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -35659,7 +35659,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto8.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto11.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -36064,7 +36064,7 @@ var require_pg_pool = __commonJS({
     function throwOnDoubleRelease() {
       throw new Error("Release called on client which has already been released to the pool.");
     }
-    function promisify(Promise2, callback) {
+    function promisify2(Promise2, callback) {
       if (callback) {
         return { callback, result: void 0 };
       }
@@ -36202,7 +36202,7 @@ var require_pg_pool = __commonJS({
           const err = new Error("Cannot use a pool after calling end on the pool");
           return cb ? cb(err) : this.Promise.reject(err);
         }
-        const response = promisify(this.Promise, cb);
+        const response = promisify2(this.Promise, cb);
         const result = response.result;
         if (this._isFull() || this._idle.length) {
           if (this._idle.length) {
@@ -36387,7 +36387,7 @@ var require_pg_pool = __commonJS({
       }
       query(text2, values, cb) {
         if (typeof text2 === "function") {
-          const response2 = promisify(this.Promise, text2);
+          const response2 = promisify2(this.Promise, text2);
           setImmediate(function() {
             return response2.callback(new Error("Passing a function as the first parameter to pool.query is not supported"));
           });
@@ -36397,7 +36397,7 @@ var require_pg_pool = __commonJS({
           cb = values;
           values = void 0;
         }
-        const response = promisify(this.Promise, cb);
+        const response = promisify2(this.Promise, cb);
         cb = response.callback;
         this.connect((err, client) => {
           if (err) {
@@ -36442,7 +36442,7 @@ var require_pg_pool = __commonJS({
           return cb ? cb(err) : this.Promise.reject(err);
         }
         this.ending = true;
-        const promised = promisify(this.Promise, cb);
+        const promised = promisify2(this.Promise, cb);
         this._endCallback = promised.callback;
         this._pulseQueue();
         return promised.result;
@@ -36469,7 +36469,7 @@ var require_query2 = __commonJS({
   "../../node_modules/.pnpm/pg@8.21.0/node_modules/pg/lib/native/query.js"(exports, module) {
     "use strict";
     var EventEmitter2 = __require("events").EventEmitter;
-    var util2 = __require("util");
+    var util4 = __require("util");
     var utils = require_utils6();
     var NativeQuery = module.exports = function(config2, values, callback) {
       EventEmitter2.call(this);
@@ -36489,7 +36489,7 @@ var require_query2 = __commonJS({
         }.bind(this)
       );
     };
-    util2.inherits(NativeQuery, EventEmitter2);
+    util4.inherits(NativeQuery, EventEmitter2);
     var errorFieldMap = {
       sqlState: "code",
       statementPosition: "position",
@@ -36617,7 +36617,7 @@ var require_client2 = __commonJS({
     }
     var TypeOverrides2 = require_type_overrides();
     var EventEmitter2 = __require("events").EventEmitter;
-    var util2 = __require("util");
+    var util4 = __require("util");
     var ConnectionParameters = require_connection_parameters();
     var NativeQuery = require_query2();
     var queryQueueLengthDeprecationNotice = nodeUtils.deprecate(
@@ -36653,7 +36653,7 @@ var require_client2 = __commonJS({
       this.namedQueries = {};
     };
     Client3.Query = NativeQuery;
-    util2.inherits(Client3, EventEmitter2);
+    util4.inherits(Client3, EventEmitter2);
     Client3.prototype._errorAllQueries = function(err) {
       const enqueueError = (query) => {
         process.nextTick(() => {
@@ -36942,7 +36942,7 @@ var require_lib5 = __commonJS({
 var require_delayed_stream = __commonJS({
   "../../node_modules/.pnpm/delayed-stream@1.0.0/node_modules/delayed-stream/lib/delayed_stream.js"(exports, module) {
     var Stream = __require("stream").Stream;
-    var util2 = __require("util");
+    var util4 = __require("util");
     module.exports = DelayedStream;
     function DelayedStream() {
       this.source = null;
@@ -36953,7 +36953,7 @@ var require_delayed_stream = __commonJS({
       this._released = false;
       this._bufferedEvents = [];
     }
-    util2.inherits(DelayedStream, Stream);
+    util4.inherits(DelayedStream, Stream);
     DelayedStream.create = function(source, options) {
       var delayedStream = new this();
       options = options || {};
@@ -37023,8 +37023,8 @@ var require_delayed_stream = __commonJS({
         return;
       }
       this._maxDataSizeExceeded = true;
-      var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
-      this.emit("error", new Error(message));
+      var message2 = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+      this.emit("error", new Error(message2));
     };
   }
 });
@@ -37032,7 +37032,7 @@ var require_delayed_stream = __commonJS({
 // ../../node_modules/.pnpm/combined-stream@1.0.8/node_modules/combined-stream/lib/combined_stream.js
 var require_combined_stream = __commonJS({
   "../../node_modules/.pnpm/combined-stream@1.0.8/node_modules/combined-stream/lib/combined_stream.js"(exports, module) {
-    var util2 = __require("util");
+    var util4 = __require("util");
     var Stream = __require("stream").Stream;
     var DelayedStream = require_delayed_stream();
     module.exports = CombinedStream;
@@ -37048,7 +37048,7 @@ var require_combined_stream = __commonJS({
       this._insideLoop = false;
       this._pendingNext = false;
     }
-    util2.inherits(CombinedStream, Stream);
+    util4.inherits(CombinedStream, Stream);
     CombinedStream.create = function(options) {
       var combinedStream = new this();
       options = options || {};
@@ -37175,8 +37175,8 @@ var require_combined_stream = __commonJS({
       if (this.dataSize <= this.maxDataSize) {
         return;
       }
-      var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
-      this._emitError(new Error(message));
+      var message2 = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+      this._emitError(new Error(message2));
     };
     CombinedStream.prototype._updateDataSize = function() {
       this.dataSize = 0;
@@ -45795,7 +45795,7 @@ var require_mime_types2 = __commonJS({
       }
       return exports.types[extension2] || false;
     }
-    function populateMaps(extensions, types3) {
+    function populateMaps(extensions, types6) {
       var preference = ["nginx", "apache", void 0, "iana"];
       Object.keys(db2).forEach(function forEachMimeType(type) {
         var mime = db2[type];
@@ -45806,14 +45806,14 @@ var require_mime_types2 = __commonJS({
         extensions[type] = exts;
         for (var i = 0; i < exts.length; i++) {
           var extension2 = exts[i];
-          if (types3[extension2]) {
-            var from = preference.indexOf(db2[types3[extension2]].source);
+          if (types6[extension2]) {
+            var from = preference.indexOf(db2[types6[extension2]].source);
             var to = preference.indexOf(mime.source);
-            if (types3[extension2] !== "application/octet-stream" && (from > to || from === to && types3[extension2].substr(0, 12) === "application/")) {
+            if (types6[extension2] !== "application/octet-stream" && (from > to || from === to && types6[extension2].substr(0, 12) === "application/")) {
               continue;
             }
           }
-          types3[extension2] = type;
+          types6[extension2] = type;
         }
       });
     }
@@ -46101,14 +46101,14 @@ var require_form_data = __commonJS({
   "../../node_modules/.pnpm/form-data@4.0.6/node_modules/form-data/lib/form_data.js"(exports, module) {
     "use strict";
     var CombinedStream = require_combined_stream();
-    var util2 = __require("util");
+    var util4 = __require("util");
     var path5 = __require("path");
     var http3 = __require("http");
     var https2 = __require("https");
     var parseUrl = __require("url").parse;
     var fs5 = __require("fs");
     var Stream = __require("stream").Stream;
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     var mime = require_mime_types2();
     var asynckit = require_asynckit();
     var setToStringTag = require_es_set_tostringtag();
@@ -46130,7 +46130,7 @@ var require_form_data = __commonJS({
         this[option] = options[option];
       }
     }
-    util2.inherits(FormData2, CombinedStream);
+    util4.inherits(FormData2, CombinedStream);
     FormData2.LINE_BREAK = "\r\n";
     FormData2.DEFAULT_CONTENT_TYPE = "application/octet-stream";
     FormData2.prototype.append = function(field, value, options) {
@@ -46317,7 +46317,7 @@ var require_form_data = __commonJS({
       return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
     };
     FormData2.prototype._generateBoundary = function() {
-      this._boundary = "--------------------------" + crypto8.randomBytes(12).toString("hex");
+      this._boundary = "--------------------------" + crypto11.randomBytes(12).toString("hex");
     };
     FormData2.prototype.getLengthSync = function() {
       var knownLength = this._overheadLength + this._valueLength;
@@ -46423,7 +46423,7 @@ var require_promisify = __commonJS({
   "../../node_modules/.pnpm/agent-base@6.0.2/node_modules/agent-base/dist/src/promisify.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function promisify(fn) {
+    function promisify2(fn) {
       return function(req, opts) {
         return new Promise((resolve, reject) => {
           fn.call(this, req, opts, (err, rtn) => {
@@ -46436,7 +46436,7 @@ var require_promisify = __commonJS({
         });
       };
     }
-    exports.default = promisify;
+    exports.default = promisify2;
   }
 });
 
@@ -46896,7 +46896,7 @@ var require_follow_redirects = __commonJS({
     var http3 = __require("http");
     var https2 = __require("https");
     var Writable = __require("stream").Writable;
-    var assert2 = __require("assert");
+    var assert3 = __require("assert");
     var debug7 = require_debug();
     (function detectUnsupportedEnvironment() {
       var looksLikeNode = typeof process !== "undefined";
@@ -46908,7 +46908,7 @@ var require_follow_redirects = __commonJS({
     })();
     var useNativeURL = false;
     try {
-      assert2(new URL4(""));
+      assert3(new URL4(""));
     } catch (error40) {
       useNativeURL = error40.code === "ERR_INVALID_URL";
     }
@@ -47276,7 +47276,7 @@ var require_follow_redirects = __commonJS({
           if (!isString(options.host) && !isString(options.hostname)) {
             options.hostname = "::1";
           }
-          assert2.equal(options.protocol, protocol, "protocol mismatch");
+          assert3.equal(options.protocol, protocol, "protocol mismatch");
           debug7("options", options);
           return new RedirectableRequest(options, callback);
         }
@@ -47342,14 +47342,14 @@ var require_follow_redirects = __commonJS({
       }
       return lastValue === null || typeof lastValue === "undefined" ? void 0 : String(lastValue).trim();
     }
-    function createErrorType(code, message, baseClass) {
+    function createErrorType(code, message2, baseClass) {
       function CustomError(properties) {
         if (isFunction(Error.captureStackTrace)) {
           Error.captureStackTrace(this, this.constructor);
         }
         Object.assign(this, properties || {});
         this.code = code;
-        this.message = this.cause ? message + ": " + this.cause.message : message;
+        this.message = this.cause ? message2 + ": " + this.cause.message : message2;
       }
       CustomError.prototype = new (baseClass || Error)();
       Object.defineProperties(CustomError.prototype, {
@@ -47372,7 +47372,7 @@ var require_follow_redirects = __commonJS({
       request2.destroy(error40);
     }
     function isSubdomain(subdomain, domain2) {
-      assert2(isString(subdomain) && isString(domain2));
+      assert3(isString(subdomain) && isString(domain2));
       var dot = subdomain.length - domain2.length - 1;
       return dot > 0 && subdomain[dot] === "." && subdomain.endsWith(domain2);
     }
@@ -47404,13 +47404,13 @@ var require_axios = __commonJS({
   "../../node_modules/.pnpm/axios@1.18.1/node_modules/axios/dist/node/axios.cjs"(exports, module) {
     "use strict";
     var FormData$1 = require_form_data();
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     var url2 = __require("url");
     var HttpsProxyAgent = require_dist5();
     var http3 = __require("http");
     var https2 = __require("https");
     var http22 = __require("http2");
-    var util2 = __require("util");
+    var util4 = __require("util");
     var path5 = __require("path");
     var followRedirects = require_follow_redirects();
     var zlib = __require("zlib");
@@ -47479,10 +47479,10 @@ var require_axios = __commonJS({
     var isString = typeOfTest("string");
     var isFunction$1 = typeOfTest("function");
     var isNumber = typeOfTest("number");
-    var isObject3 = (thing) => thing !== null && typeof thing === "object";
+    var isObject4 = (thing) => thing !== null && typeof thing === "object";
     var isBoolean = (thing) => thing === true || thing === false;
     var isPlainObject3 = (val) => {
-      if (!isObject3(val)) {
+      if (!isObject4(val)) {
         return false;
       }
       const prototype2 = getPrototypeOf(val);
@@ -47492,7 +47492,7 @@ var require_axios = __commonJS({
       !hasOwnInPrototypeChain(val, toStringTag) && !hasOwnInPrototypeChain(val, iterator);
     };
     var isEmptyObject = (val) => {
-      if (!isObject3(val) || isBuffer(val)) {
+      if (!isObject4(val) || isBuffer(val)) {
         return false;
       }
       try {
@@ -47509,7 +47509,7 @@ var require_axios = __commonJS({
     var isReactNative = (formData) => formData && typeof formData.getParts !== "undefined";
     var isBlob = kindOfTest("Blob");
     var isFileList = kindOfTest("FileList");
-    var isStream = (val) => isObject3(val) && isFunction$1(val.pipe);
+    var isStream = (val) => isObject4(val) && isFunction$1(val.pipe);
     function getGlobal() {
       if (typeof globalThis !== "undefined") return globalThis;
       if (typeof self !== "undefined") return self;
@@ -47797,7 +47797,7 @@ var require_axios = __commonJS({
     var toJSONObject = (obj) => {
       const visited = /* @__PURE__ */ new WeakSet();
       const visit = (source) => {
-        if (isObject3(source)) {
+        if (isObject4(source)) {
           if (visited.has(source)) {
             return;
           }
@@ -47820,7 +47820,7 @@ var require_axios = __commonJS({
       return visit(obj);
     };
     var isAsyncFn = kindOfTest("AsyncFunction");
-    var isThenable = (thing) => thing && (isObject3(thing) || isFunction$1(thing)) && isFunction$1(thing.then) && isFunction$1(thing.catch);
+    var isThenable = (thing) => thing && (isObject4(thing) || isFunction$1(thing)) && isFunction$1(thing.then) && isFunction$1(thing.catch);
     var _setImmediate = ((setImmediateSupported, postMessageSupported) => {
       if (setImmediateSupported) {
         return setImmediate;
@@ -47852,7 +47852,7 @@ var require_axios = __commonJS({
       isString,
       isNumber,
       isBoolean,
-      isObject: isObject3,
+      isObject: isObject4,
       isPlainObject: isPlainObject3,
       isEmptyObject,
       isReadableStream,
@@ -48286,13 +48286,13 @@ var require_axios = __commonJS({
        *
        * @returns {Error} The created error.
        */
-      constructor(message, code, config2, request2, response) {
-        super(message);
+      constructor(message2, code, config2, request2, response) {
+        super(message2);
         Object.defineProperty(this, "message", {
           // Null-proto descriptor so a polluted Object.prototype.get cannot turn
           // this data descriptor into an accessor descriptor on the way in.
           __proto__: null,
-          value: message,
+          value: message2,
           enumerable: true,
           writable: true,
           configurable: true
@@ -48506,13 +48506,13 @@ var require_axios = __commonJS({
     prototype.append = function append(name, value) {
       this._pairs.push([name, value]);
     };
-    prototype.toString = function toString2(encoder) {
-      const _encode = encoder ? (value) => encoder.call(this, value, encode$1) : encode$1;
+    prototype.toString = function toString2(encoder2) {
+      const _encode = encoder2 ? (value) => encoder2.call(this, value, encode$1) : encode$1;
       return this._pairs.map(function each(pair) {
         return _encode(pair[0]) + "=" + _encode(pair[1]);
       }, "").join("&");
     };
-    function encode(val) {
+    function encode2(val) {
       return encodeURIComponent(val).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+");
     }
     function buildURL(url3, params, options) {
@@ -48523,7 +48523,7 @@ var require_axios = __commonJS({
       const _options = utils$1.isFunction(options) ? {
         serialize: options
       } : options;
-      const _encode = utils$1.getSafeProp(_options, "encode") || encode;
+      const _encode = utils$1.getSafeProp(_options, "encode") || encode2;
       const serializeFn = utils$1.getSafeProp(_options, "serialize");
       let serializedParams;
       if (serializeFn) {
@@ -48624,7 +48624,7 @@ var require_axios = __commonJS({
         length
       } = alphabet;
       const randomValues = new Uint32Array(size);
-      crypto8.randomFillSync(randomValues);
+      crypto11.randomFillSync(randomValues);
       for (let i = 0; i < size; i++) {
         str += alphabet[randomValues[i] % length];
       }
@@ -48736,7 +48736,7 @@ var require_axios = __commonJS({
       return null;
     }
     var own = (obj, key) => obj != null && utils$1.hasOwnProp(obj, key) ? obj[key] : void 0;
-    function stringifySafely(rawValue, parser, encoder) {
+    function stringifySafely(rawValue, parser, encoder2) {
       if (utils$1.isString(rawValue)) {
         try {
           (parser || JSON.parse)(rawValue);
@@ -48747,7 +48747,7 @@ var require_axios = __commonJS({
           }
         }
       }
-      return (encoder || JSON.stringify)(rawValue);
+      return (encoder2 || JSON.stringify)(rawValue);
     }
     var defaults2 = {
       transitional: transitionalDefaults,
@@ -48867,8 +48867,8 @@ var require_axios = __commonJS({
        *
        * @returns {CanceledError} The created error.
        */
-      constructor(message, config2, request2) {
-        super(message == null ? "canceled" : message, AxiosError.ERR_CANCELED, config2, request2);
+      constructor(message2, config2, request2) {
+        super(message2 == null ? "canceled" : message2, AxiosError.ERR_CANCELED, config2, request2);
         this.name = "CanceledError";
         this.__CANCEL__ = true;
       }
@@ -49148,7 +49148,7 @@ var require_axios = __commonJS({
       }
     };
     var BOUNDARY_ALPHABET = platform.ALPHABET.ALPHA_DIGIT + "-_";
-    var textEncoder = typeof TextEncoder === "function" ? new TextEncoder() : new util2.TextEncoder();
+    var textEncoder = typeof TextEncoder === "function" ? new TextEncoder() : new util4.TextEncoder();
     var CRLF = "\r\n";
     var CRLF_BYTES = textEncoder.encode(CRLF);
     var CRLF_BYTES_COUNT = 2;
@@ -49193,9 +49193,9 @@ var require_axios = __commonJS({
     };
     var formDataToStream = (form, headersHandler, options) => {
       const {
-        tag = "form-data-boundary",
+        tag: tag2 = "form-data-boundary",
         size = 25,
-        boundary = tag + "-" + platform.generateString(size, BOUNDARY_ALPHABET)
+        boundary = tag2 + "-" + platform.generateString(size, BOUNDARY_ALPHABET)
       } = options || {};
       if (!utils$1.isFormData(form)) {
         throw new TypeError("FormData instance required");
@@ -49259,7 +49259,7 @@ var require_axios = __commonJS({
           let len = authoritySessions.length;
           for (let i = 0; i < len; i++) {
             const [sessionHandle, sessionOptions] = authoritySessions[i];
-            if (!sessionHandle.destroyed && !sessionHandle.closed && util2.isDeepStrictEqual(sessionOptions, options)) {
+            if (!sessionHandle.destroyed && !sessionHandle.closed && util4.isDeepStrictEqual(sessionOptions, options)) {
               return sessionHandle;
             }
           }
@@ -50128,7 +50128,7 @@ var require_axios = __commonJS({
           setFormDataHeaders$1(headers, data.getHeaders(), own2("formDataHeaderPolicy"));
           if (!headers.hasContentLength()) {
             try {
-              const knownLength = await util2.promisify(data.getLength).call(data);
+              const knownLength = await util4.promisify(data.getLength).call(data);
               Number.isFinite(knownLength) && knownLength >= 0 && headers.setContentLength(knownLength);
             } catch (e) {
             }
@@ -51051,7 +51051,7 @@ var require_axios = __commonJS({
         return false;
       }
       const isReadableStreamSupported = isFetchSupported && isFunction(ReadableStream2);
-      const encodeText = isFetchSupported && (typeof TextEncoder2 === "function" ? /* @__PURE__ */ ((encoder) => (str) => encoder.encode(str))(new TextEncoder2()) : async (str) => new Uint8Array(await new Request2(str).arrayBuffer()));
+      const encodeText = isFetchSupported && (typeof TextEncoder2 === "function" ? /* @__PURE__ */ ((encoder2) => (str) => encoder2.encode(str))(new TextEncoder2()) : async (str) => new Uint8Array(await new Request2(str).arrayBuffer()));
       const supportsRequestStream = isRequestSupported && isReadableStreamSupported && test(() => {
         let duplexAccessed = false;
         const request2 = new Request2(platform.origin, {
@@ -51470,9 +51470,9 @@ var require_axios = __commonJS({
       };
     });
     var deprecatedWarnings = {};
-    validators$1.transitional = function transitional(validator2, version3, message) {
+    validators$1.transitional = function transitional(validator2, version3, message2) {
       function formatMessage(opt, desc3) {
-        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc3 + (message ? ". " + message : "");
+        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc3 + (message2 ? ". " + message2 : "");
       }
       return (value, opt, opts) => {
         if (validator2 === false) {
@@ -51735,11 +51735,11 @@ var require_axios = __commonJS({
           };
           return promise2;
         };
-        executor(function cancel(message, config2, request2) {
+        executor(function cancel(message2, config2, request2) {
           if (token.reason) {
             return;
           }
-          token.reason = new CanceledError(message, config2, request2);
+          token.reason = new CanceledError(message2, config2, request2);
           resolvePromise(token.reason);
         });
       }
@@ -51950,7 +51950,7 @@ var require_razorpay_utils = __commonJS({
     } : function(obj) {
       return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
     };
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     function getDateInSecs(date6) {
       return +new Date(date6) / 1e3;
     }
@@ -51987,12 +51987,12 @@ var require_razorpay_utils = __commonJS({
       return new Error("\n" + summary + "\n" + ("Expected(" + (typeof expectedVal === "undefined" ? "undefined" : _typeof(expectedVal)) + ")\n" + prettify(expectedVal) + "\n\n") + ("Got(" + (typeof gotVal === "undefined" ? "undefined" : _typeof(gotVal)) + ")\n" + prettify(gotVal)));
     }
     function validateWebhookSignature(body, signature, secret) {
-      var crypto9 = __require("crypto");
+      var crypto12 = __require("crypto");
       if (!isDefined(body) || !isDefined(signature) || !isDefined(secret)) {
         throw Error("Invalid Parameters: Please give request body,signature sent in X-Razorpay-Signature header and webhook secret from dashboard as parameters");
       }
       body = body.toString();
-      var expectedSignature = crypto9.createHmac("sha256", secret).update(body).digest("hex");
+      var expectedSignature = crypto12.createHmac("sha256", secret).update(body).digest("hex");
       return expectedSignature === signature;
     }
     function validatePaymentVerification() {
@@ -52030,7 +52030,7 @@ var require_razorpay_utils = __commonJS({
         var keyBytes = Buffer.from(secret.slice(0, 16), "utf8");
         var iv = Buffer.alloc(12);
         keyBytes.copy(iv, 0, 0, 12);
-        var cipher = crypto8.createCipheriv("aes-128-gcm", keyBytes, iv);
+        var cipher = crypto11.createCipheriv("aes-128-gcm", keyBytes, iv);
         var encryptedData = cipher.update(dataToEncrypt, "utf8");
         encryptedData = Buffer.concat([encryptedData, cipher.final()]);
         var authTag = cipher.getAuthTag();
@@ -53815,11 +53815,11 @@ var require_settlements = __commonJS({
         reports: function reports() {
           var params = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
           var callback = arguments[1];
-          var day = params.day, count3 = params.count, skip = params.skip, url2 = BASE_URL + "/recon/combined";
+          var day2 = params.day, count3 = params.count, skip = params.skip, url2 = BASE_URL + "/recon/combined";
           return api.get({
             url: url2,
             data: _extends({}, params, {
-              day,
+              day: day2,
               count: count3,
               skip
             })
@@ -54476,23 +54476,23 @@ var require_type_is2 = __commonJS({
     module.exports.match = mimeMatch;
     function typeis(value, types_) {
       var i;
-      var types3 = types_;
+      var types6 = types_;
       var val = tryNormalizeType(value);
       if (!val) {
         return false;
       }
-      if (types3 && !Array.isArray(types3)) {
-        types3 = new Array(arguments.length - 1);
-        for (i = 0; i < types3.length; i++) {
-          types3[i] = arguments[i + 1];
+      if (types6 && !Array.isArray(types6)) {
+        types6 = new Array(arguments.length - 1);
+        for (i = 0; i < types6.length; i++) {
+          types6[i] = arguments[i + 1];
         }
       }
-      if (!types3 || !types3.length) {
+      if (!types6 || !types6.length) {
         return val;
       }
       var type;
-      for (i = 0; i < types3.length; i++) {
-        if (mimeMatch(normalize(type = types3[i]), val)) {
+      for (i = 0; i < types6.length; i++) {
+        if (mimeMatch(normalize(type = types6[i]), val)) {
           return type[0] === "+" || type.indexOf("*") !== -1 ? val : type;
         }
       }
@@ -54502,18 +54502,18 @@ var require_type_is2 = __commonJS({
       return req.headers["transfer-encoding"] !== void 0 || !isNaN(req.headers["content-length"]);
     }
     function typeofrequest(req, types_) {
-      var types3 = types_;
+      var types6 = types_;
       if (!hasbody(req)) {
         return null;
       }
       if (arguments.length > 2) {
-        types3 = new Array(arguments.length - 1);
-        for (var i = 0; i < types3.length; i++) {
-          types3[i] = arguments[i + 1];
+        types6 = new Array(arguments.length - 1);
+        for (var i = 0; i < types6.length; i++) {
+          types6[i] = arguments[i + 1];
         }
       }
       var value = req.headers["content-type"];
-      return typeis(value, types3);
+      return typeis(value, types6);
     }
     function normalize(type) {
       if (typeof type !== "string") {
@@ -54767,7 +54767,7 @@ var require_utils8 = __commonJS({
           if (i === str.length)
             return;
           valueStart = i;
-          let encode = 0;
+          let encode2 = 0;
           for (; i < str.length; ++i) {
             const code = str.charCodeAt(i);
             if (EXTENDED_VALUE[code] !== 1) {
@@ -54781,9 +54781,9 @@ var require_utils8 = __commonJS({
                   i += 2;
                   valueStart = i + 1;
                   if (byteVal >= 128)
-                    encode = 2;
-                  else if (encode === 0)
-                    encode = 1;
+                    encode2 = 2;
+                  else if (encode2 === 0)
+                    encode2 = 1;
                   continue;
                 }
                 return;
@@ -54792,7 +54792,7 @@ var require_utils8 = __commonJS({
             }
           }
           value += str.slice(valueStart, i);
-          value = convertToUTF8(value, charset, encode);
+          value = convertToUTF8(value, charset, encode2);
           if (value === void 0)
             return;
         } else {
@@ -54930,8 +54930,8 @@ var require_utils8 = __commonJS({
         if (typeof data === "string")
           data = Buffer.from(data, "latin1");
         try {
-          const decoder = new TextDecoder(exports);
-          return decoder.decode(data);
+          const decoder2 = new TextDecoder(exports);
+          return decoder2.decode(data);
         } catch {
         }
       }
@@ -58454,7 +58454,7 @@ var require_counter = __commonJS({
 // ../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/lib/multer-error.js
 var require_multer_error = __commonJS({
   "../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/lib/multer-error.js"(exports, module) {
-    var util2 = __require("util");
+    var util4 = __require("util");
     var errorMessages = {
       LIMIT_PART_COUNT: "Too many parts",
       LIMIT_FILE_SIZE: "File too large",
@@ -58473,7 +58473,7 @@ var require_multer_error = __commonJS({
       this.code = code;
       if (field) this.field = field;
     }
-    util2.inherits(MulterError, Error);
+    util4.inherits(MulterError, Error);
     module.exports = MulterError;
   }
 });
@@ -58813,9 +58813,9 @@ var require_disk = __commonJS({
     var fs5 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto8.randomBytes(16, function(err, raw) {
+      crypto11.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -58945,12 +58945,12 @@ var require_buffer_list = __commonJS({
       return (hint === "string" ? String : Number)(input);
     }
     var _require = __require("buffer");
-    var Buffer2 = _require.Buffer;
+    var Buffer3 = _require.Buffer;
     var _require2 = __require("util");
     var inspect = _require2.inspect;
     var custom2 = inspect && inspect.custom || "inspect";
     function copyBuffer(src, target, offset) {
-      Buffer2.prototype.copy.call(src, target, offset);
+      Buffer3.prototype.copy.call(src, target, offset);
     }
     module.exports = /* @__PURE__ */ (function() {
       function BufferList() {
@@ -59009,9 +59009,9 @@ var require_buffer_list = __commonJS({
         }
       }, {
         key: "concat",
-        value: function concat(n) {
-          if (this.length === 0) return Buffer2.alloc(0);
-          var ret = Buffer2.allocUnsafe(n >>> 0);
+        value: function concat2(n) {
+          if (this.length === 0) return Buffer3.alloc(0);
+          var ret = Buffer3.allocUnsafe(n >>> 0);
           var p = this.head;
           var i = 0;
           while (p) {
@@ -59075,7 +59075,7 @@ var require_buffer_list = __commonJS({
       }, {
         key: "_getBuffer",
         value: function _getBuffer(n) {
-          var ret = Buffer2.allocUnsafe(n);
+          var ret = Buffer3.allocUnsafe(n);
           var p = this.head;
           var c = 1;
           p.data.copy(ret);
@@ -59212,15 +59212,15 @@ var require_errors = __commonJS({
   "../../node_modules/.pnpm/readable-stream@3.6.2/node_modules/readable-stream/errors.js"(exports, module) {
     "use strict";
     var codes = {};
-    function createErrorType(code, message, Base) {
+    function createErrorType(code, message2, Base) {
       if (!Base) {
         Base = Error;
       }
       function getMessage(arg1, arg2, arg3) {
-        if (typeof message === "string") {
-          return message;
+        if (typeof message2 === "string") {
+          return message2;
         } else {
-          return message(arg1, arg2, arg3);
+          return message2(arg1, arg2, arg3);
         }
       }
       class NodeError extends Base {
@@ -59358,14 +59358,14 @@ var require_stream_writable = __commonJS({
       deprecate: require_node2()
     };
     var Stream = require_stream2();
-    var Buffer2 = __require("buffer").Buffer;
+    var Buffer3 = __require("buffer").Buffer;
     var OurUint8Array = (typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : {}).Uint8Array || function() {
     };
     function _uint8ArrayToBuffer(chunk) {
-      return Buffer2.from(chunk);
+      return Buffer3.from(chunk);
     }
     function _isUint8Array(obj) {
-      return Buffer2.isBuffer(obj) || obj instanceof OurUint8Array;
+      return Buffer3.isBuffer(obj) || obj instanceof OurUint8Array;
     }
     var destroyImpl = require_destroy();
     var _require = require_state2();
@@ -59493,7 +59493,7 @@ var require_stream_writable = __commonJS({
       var state = this._writableState;
       var ret = false;
       var isBuf = !state.objectMode && _isUint8Array(chunk);
-      if (isBuf && !Buffer2.isBuffer(chunk)) {
+      if (isBuf && !Buffer3.isBuffer(chunk)) {
         chunk = _uint8ArrayToBuffer(chunk);
       }
       if (typeof encoding === "function") {
@@ -59537,7 +59537,7 @@ var require_stream_writable = __commonJS({
     });
     function decodeChunk(state, chunk, encoding) {
       if (!state.objectMode && state.decodeStrings !== false && typeof chunk === "string") {
-        chunk = Buffer2.from(chunk, encoding);
+        chunk = Buffer3.from(chunk, encoding);
       }
       return chunk;
     }
@@ -59907,34 +59907,34 @@ var require_stream_duplex = __commonJS({
 var require_safe_buffer = __commonJS({
   "../../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js"(exports, module) {
     var buffer = __require("buffer");
-    var Buffer2 = buffer.Buffer;
+    var Buffer3 = buffer.Buffer;
     function copyProps(src, dst) {
       for (var key in src) {
         dst[key] = src[key];
       }
     }
-    if (Buffer2.from && Buffer2.alloc && Buffer2.allocUnsafe && Buffer2.allocUnsafeSlow) {
+    if (Buffer3.from && Buffer3.alloc && Buffer3.allocUnsafe && Buffer3.allocUnsafeSlow) {
       module.exports = buffer;
     } else {
       copyProps(buffer, exports);
       exports.Buffer = SafeBuffer;
     }
     function SafeBuffer(arg, encodingOrOffset, length) {
-      return Buffer2(arg, encodingOrOffset, length);
+      return Buffer3(arg, encodingOrOffset, length);
     }
-    SafeBuffer.prototype = Object.create(Buffer2.prototype);
-    copyProps(Buffer2, SafeBuffer);
+    SafeBuffer.prototype = Object.create(Buffer3.prototype);
+    copyProps(Buffer3, SafeBuffer);
     SafeBuffer.from = function(arg, encodingOrOffset, length) {
       if (typeof arg === "number") {
         throw new TypeError("Argument must not be a number");
       }
-      return Buffer2(arg, encodingOrOffset, length);
+      return Buffer3(arg, encodingOrOffset, length);
     };
     SafeBuffer.alloc = function(size, fill, encoding) {
       if (typeof size !== "number") {
         throw new TypeError("Argument must be a number");
       }
-      var buf = Buffer2(size);
+      var buf = Buffer3(size);
       if (fill !== void 0) {
         if (typeof encoding === "string") {
           buf.fill(fill, encoding);
@@ -59950,7 +59950,7 @@ var require_safe_buffer = __commonJS({
       if (typeof size !== "number") {
         throw new TypeError("Argument must be a number");
       }
-      return Buffer2(size);
+      return Buffer3(size);
     };
     SafeBuffer.allocUnsafeSlow = function(size) {
       if (typeof size !== "number") {
@@ -59965,8 +59965,8 @@ var require_safe_buffer = __commonJS({
 var require_string_decoder = __commonJS({
   "../../node_modules/.pnpm/string_decoder@1.3.0/node_modules/string_decoder/lib/string_decoder.js"(exports) {
     "use strict";
-    var Buffer2 = require_safe_buffer().Buffer;
-    var isEncoding = Buffer2.isEncoding || function(encoding) {
+    var Buffer3 = require_safe_buffer().Buffer;
+    var isEncoding = Buffer3.isEncoding || function(encoding) {
       encoding = "" + encoding;
       switch (encoding && encoding.toLowerCase()) {
         case "hex":
@@ -60014,7 +60014,7 @@ var require_string_decoder = __commonJS({
     }
     function normalizeEncoding(enc) {
       var nenc = _normalizeEncoding(enc);
-      if (typeof nenc !== "string" && (Buffer2.isEncoding === isEncoding || !isEncoding(enc))) throw new Error("Unknown encoding: " + enc);
+      if (typeof nenc !== "string" && (Buffer3.isEncoding === isEncoding || !isEncoding(enc))) throw new Error("Unknown encoding: " + enc);
       return nenc || enc;
     }
     exports.StringDecoder = StringDecoder;
@@ -60043,7 +60043,7 @@ var require_string_decoder = __commonJS({
       }
       this.lastNeed = 0;
       this.lastTotal = 0;
-      this.lastChar = Buffer2.allocUnsafe(nb);
+      this.lastChar = Buffer3.allocUnsafe(nb);
     }
     StringDecoder.prototype.write = function(buf) {
       if (buf.length === 0) return "";
@@ -60604,14 +60604,14 @@ var require_stream_readable = __commonJS({
       return emitter.listeners(type).length;
     };
     var Stream = require_stream2();
-    var Buffer2 = __require("buffer").Buffer;
+    var Buffer3 = __require("buffer").Buffer;
     var OurUint8Array = (typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : {}).Uint8Array || function() {
     };
     function _uint8ArrayToBuffer(chunk) {
-      return Buffer2.from(chunk);
+      return Buffer3.from(chunk);
     }
     function _isUint8Array(obj) {
-      return Buffer2.isBuffer(obj) || obj instanceof OurUint8Array;
+      return Buffer3.isBuffer(obj) || obj instanceof OurUint8Array;
     }
     var debugUtil = __require("util");
     var debug7;
@@ -60719,7 +60719,7 @@ var require_stream_readable = __commonJS({
         if (typeof chunk === "string") {
           encoding = encoding || state.defaultEncoding;
           if (encoding !== state.encoding) {
-            chunk = Buffer2.from(chunk, encoding);
+            chunk = Buffer3.from(chunk, encoding);
             encoding = "";
           }
           skipChunkCheck = true;
@@ -60744,7 +60744,7 @@ var require_stream_readable = __commonJS({
         if (er) {
           errorOrDestroy(stream, er);
         } else if (state.objectMode || chunk && chunk.length > 0) {
-          if (typeof chunk !== "string" && !state.objectMode && Object.getPrototypeOf(chunk) !== Buffer2.prototype) {
+          if (typeof chunk !== "string" && !state.objectMode && Object.getPrototypeOf(chunk) !== Buffer3.prototype) {
             chunk = _uint8ArrayToBuffer(chunk);
           }
           if (addToFront) {
@@ -60795,13 +60795,13 @@ var require_stream_readable = __commonJS({
     };
     Readable3.prototype.setEncoding = function(enc) {
       if (!StringDecoder) StringDecoder = require_string_decoder().StringDecoder;
-      var decoder = new StringDecoder(enc);
-      this._readableState.decoder = decoder;
+      var decoder2 = new StringDecoder(enc);
+      this._readableState.decoder = decoder2;
       this._readableState.encoding = this._readableState.decoder.encoding;
       var p = this._readableState.buffer.head;
       var content = "";
       while (p !== null) {
-        content += decoder.write(p.data);
+        content += decoder2.write(p.data);
         p = p.next;
       }
       this._readableState.buffer.clear();
@@ -62264,11 +62264,11 @@ var require_concat_stream = __commonJS({
 // ../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/storage/memory.js
 var require_memory = __commonJS({
   "../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/storage/memory.js"(exports, module) {
-    var concat = require_concat_stream();
+    var concat2 = require_concat_stream();
     function MemoryStorage(opts) {
     }
     MemoryStorage.prototype._handleFile = function _handleFile(req, file2, cb) {
-      file2.stream.pipe(concat({ encoding: "buffer" }, function(data) {
+      file2.stream.pipe(concat2({ encoding: "buffer" }, function(data) {
         cb(null, {
           buffer: data,
           size: data.length
@@ -62890,23 +62890,23 @@ var require_accepts2 = __commonJS({
       this.negotiator = new Negotiator(req);
     }
     Accepts.prototype.type = Accepts.prototype.types = function(types_) {
-      var types3 = types_;
-      if (types3 && !Array.isArray(types3)) {
-        types3 = new Array(arguments.length);
-        for (var i = 0; i < types3.length; i++) {
-          types3[i] = arguments[i];
+      var types6 = types_;
+      if (types6 && !Array.isArray(types6)) {
+        types6 = new Array(arguments.length);
+        for (var i = 0; i < types6.length; i++) {
+          types6[i] = arguments[i];
         }
       }
-      if (!types3 || types3.length === 0) {
+      if (!types6 || types6.length === 0) {
         return this.negotiator.mediaTypes();
       }
       if (!this.headers.accept) {
-        return types3[0];
+        return types6[0];
       }
-      var mimes = types3.map(extToMime);
+      var mimes = types6.map(extToMime);
       var accepts = this.negotiator.mediaTypes(mimes.filter(validMime));
       var first = accepts[0];
-      return first ? types3[mimes.indexOf(first)] : false;
+      return first ? types6[mimes.indexOf(first)] : false;
     };
     Accepts.prototype.encoding = Accepts.prototype.encodings = function(encodings_) {
       var encodings = encodings_;
@@ -62959,7 +62959,7 @@ var require_accepts2 = __commonJS({
 // ../../node_modules/.pnpm/base64id@2.0.0/node_modules/base64id/lib/base64id.js
 var require_base64id = __commonJS({
   "../../node_modules/.pnpm/base64id@2.0.0/node_modules/base64id/lib/base64id.js"(exports, module) {
-    var crypto8 = __require("crypto");
+    var crypto11 = __require("crypto");
     var Base64Id = function() {
     };
     Base64Id.prototype.getRandomBytes = function(bytes) {
@@ -62967,12 +62967,12 @@ var require_base64id = __commonJS({
       var self2 = this;
       bytes = bytes || 12;
       if (bytes > BUFFER_SIZE) {
-        return crypto8.randomBytes(bytes);
+        return crypto11.randomBytes(bytes);
       }
       var bytesInBuffer = parseInt(BUFFER_SIZE / bytes);
       var threshold = parseInt(bytesInBuffer * 0.85);
       if (!threshold) {
-        return crypto8.randomBytes(bytes);
+        return crypto11.randomBytes(bytes);
       }
       if (this.bytesBufferIndex == null) {
         this.bytesBufferIndex = -1;
@@ -62984,14 +62984,14 @@ var require_base64id = __commonJS({
       if (this.bytesBufferIndex == -1 || this.bytesBufferIndex > threshold) {
         if (!this.isGeneratingBytes) {
           this.isGeneratingBytes = true;
-          crypto8.randomBytes(BUFFER_SIZE, function(err, bytes2) {
+          crypto11.randomBytes(BUFFER_SIZE, function(err, bytes2) {
             self2.bytesBuffer = bytes2;
             self2.bytesBufferIndex = 0;
             self2.isGeneratingBytes = false;
           });
         }
         if (this.bytesBufferIndex == -1) {
-          return crypto8.randomBytes(bytes);
+          return crypto11.randomBytes(bytes);
         }
       }
       var result = this.bytesBuffer.slice(bytes * this.bytesBufferIndex, bytes * (this.bytesBufferIndex + 1));
@@ -63005,7 +63005,7 @@ var require_base64id = __commonJS({
       }
       this.sequenceNumber = this.sequenceNumber + 1 | 0;
       rand.writeInt32BE(this.sequenceNumber, 11);
-      if (crypto8.randomBytes) {
+      if (crypto11.randomBytes) {
         this.getRandomBytes(12).copy(rand);
       } else {
         [0, 4, 8].forEach(function(i) {
@@ -63537,9 +63537,9 @@ var require_parser_v3 = __commonJS({
     }
     function encodeBase64Packet(packet, callback) {
       var data = Buffer.isBuffer(packet.data) ? packet.data : arrayBufferToBuffer(packet.data);
-      var message = "b" + exports.packets[packet.type];
-      message += data.toString("base64");
-      return callback(message);
+      var message2 = "b" + exports.packets[packet.type];
+      message2 += data.toString("base64");
+      return callback(message2);
     }
     function decodePacket(data, binaryType, utf8decode) {
       if (data === void 0) {
@@ -63609,16 +63609,16 @@ var require_parser_v3 = __commonJS({
         return callback("0:");
       }
       function encodeOne(packet, doneCallback) {
-        encodePacket(packet, supportsBinary, false, function(message) {
-          doneCallback(null, setLengthHeader(message));
+        encodePacket(packet, supportsBinary, false, function(message2) {
+          doneCallback(null, setLengthHeader(message2));
         });
       }
       map2(packets, encodeOne, function(err2, results) {
         return callback(results.join(""));
       });
     }
-    function setLengthHeader(message) {
-      return message.length + ":" + message;
+    function setLengthHeader(message2) {
+      return message2.length + ":" + message2;
     }
     function map2(ary, each, done) {
       const results = new Array(ary.length);
@@ -64265,9 +64265,9 @@ var require_websocket = __commonJS({
         };
         this.socket = req.websocket;
         this.socket.on("message", (data, isBinary) => {
-          const message = isBinary ? data : data.toString();
-          debug7('received "%s"', message);
-          super.onData(message);
+          const message2 = isBinary ? data : data.toString();
+          debug7('received "%s"', message2);
+          super.onData(message2);
         });
         this.socket.once("close", this.onClose.bind(this));
         this.socket.on("error", this.onError.bind(this));
@@ -64872,7 +64872,7 @@ var require_buffer_util = __commonJS({
     "use strict";
     var { EMPTY_BUFFER } = require_constants4();
     var FastBuffer = Buffer[Symbol.species];
-    function concat(list, totalLength) {
+    function concat2(list, totalLength) {
       if (list.length === 0) return EMPTY_BUFFER;
       if (list.length === 1) return list[0];
       const target = Buffer.allocUnsafe(totalLength);
@@ -64918,7 +64918,7 @@ var require_buffer_util = __commonJS({
       return buf;
     }
     module.exports = {
-      concat,
+      concat: concat2,
       mask: _mask,
       toArrayBuffer,
       toBuffer,
@@ -65587,7 +65587,7 @@ var require_receiver = __commonJS({
       kStatusCode,
       kWebSocket
     } = require_constants4();
-    var { concat, toArrayBuffer, unmask } = require_buffer_util();
+    var { concat: concat2, toArrayBuffer, unmask } = require_buffer_util();
     var { isValidStatusCode, isValidUTF8 } = require_validation();
     var FastBuffer = Buffer[Symbol.species];
     var GET_INFO = 0;
@@ -66073,9 +66073,9 @@ var require_receiver = __commonJS({
         if (this._opcode === 2) {
           let data;
           if (this._binaryType === "nodebuffer") {
-            data = concat(fragments, messageLength);
+            data = concat2(fragments, messageLength);
           } else if (this._binaryType === "arraybuffer") {
-            data = toArrayBuffer(concat(fragments, messageLength));
+            data = toArrayBuffer(concat2(fragments, messageLength));
           } else if (this._binaryType === "blob") {
             data = new Blob(fragments);
           } else {
@@ -66093,7 +66093,7 @@ var require_receiver = __commonJS({
             });
           }
         } else {
-          const buf = concat(fragments, messageLength);
+          const buf = concat2(fragments, messageLength);
           if (!this._skipUTF8Validation && !isValidUTF8(buf)) {
             const error40 = this.createError(
               Error,
@@ -66191,11 +66191,11 @@ var require_receiver = __commonJS({
        * @return {(Error|RangeError)} The error
        * @private
        */
-      createError(ErrorCtor, message, prefix, statusCode, errorCode) {
+      createError(ErrorCtor, message2, prefix, statusCode, errorCode) {
         this._loop = false;
         this._errored = true;
         const err = new ErrorCtor(
-          prefix ? `Invalid WebSocket frame: ${message}` : message
+          prefix ? `Invalid WebSocket frame: ${message2}` : message2
         );
         Error.captureStackTrace(err, this.createError);
         err.code = errorCode;
@@ -66861,10 +66861,10 @@ var require_event_target = __commonJS({
             callListener(handler, this, event);
           };
         } else if (type === "close") {
-          wrapper = function onClose(code, message) {
+          wrapper = function onClose(code, message2) {
             const event = new CloseEvent("close", {
               code,
-              reason: message.toString(),
+              reason: message2.toString(),
               wasClean: this._closeFrameReceived && this._closeFrameSent
             });
             event[kTarget] = this;
@@ -67759,8 +67759,8 @@ var require_websocket2 = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
-        if (res.headers["sec-websocket-accept"] !== digest) {
+        const digest2 = createHash("sha1").update(key + GUID).digest("base64");
+        if (res.headers["sec-websocket-accept"] !== digest2) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
         }
@@ -67783,29 +67783,29 @@ var require_websocket2 = __commonJS({
         const secWebSocketExtensions = res.headers["sec-websocket-extensions"];
         if (secWebSocketExtensions !== void 0) {
           if (!perMessageDeflate) {
-            const message = "Server sent a Sec-WebSocket-Extensions header but no extension was requested";
-            abortHandshake(websocket, socket, message);
+            const message2 = "Server sent a Sec-WebSocket-Extensions header but no extension was requested";
+            abortHandshake(websocket, socket, message2);
             return;
           }
           let extensions;
           try {
             extensions = parse4(secWebSocketExtensions);
           } catch (err) {
-            const message = "Invalid Sec-WebSocket-Extensions header";
-            abortHandshake(websocket, socket, message);
+            const message2 = "Invalid Sec-WebSocket-Extensions header";
+            abortHandshake(websocket, socket, message2);
             return;
           }
           const extensionNames = Object.keys(extensions);
           if (extensionNames.length !== 1 || extensionNames[0] !== PerMessageDeflate.extensionName) {
-            const message = "Server indicated an extension that was not requested";
-            abortHandshake(websocket, socket, message);
+            const message2 = "Server indicated an extension that was not requested";
+            abortHandshake(websocket, socket, message2);
             return;
           }
           try {
             perMessageDeflate.accept(extensions[PerMessageDeflate.extensionName]);
           } catch (err) {
-            const message = "Invalid Sec-WebSocket-Extensions header";
-            abortHandshake(websocket, socket, message);
+            const message2 = "Invalid Sec-WebSocket-Extensions header";
+            abortHandshake(websocket, socket, message2);
             return;
           }
           websocket._extensions[PerMessageDeflate.extensionName] = perMessageDeflate;
@@ -67842,9 +67842,9 @@ var require_websocket2 = __commonJS({
       }
       return tls.connect(options);
     }
-    function abortHandshake(websocket, stream, message) {
+    function abortHandshake(websocket, stream, message2) {
       websocket._readyState = WebSocket.CLOSING;
-      const err = new Error(message);
+      const err = new Error(message2);
       Error.captureStackTrace(err, abortHandshake);
       if (stream.setHeader) {
         stream[kAborted] = true;
@@ -68008,7 +68008,7 @@ var require_stream3 = __commonJS({
         objectMode: false,
         writableObjectMode: false
       });
-      ws.on("message", function message(msg, isBinary) {
+      ws.on("message", function message2(msg, isBinary) {
         const data = !isBinary && duplex._readableState.objectMode ? msg.toString() : msg;
         if (!duplex.push(data)) ws.pause();
       });
@@ -68331,23 +68331,23 @@ var require_websocket_server = __commonJS({
         const upgrade = req.headers.upgrade;
         const version3 = +req.headers["sec-websocket-version"];
         if (req.method !== "GET") {
-          const message = "Invalid HTTP method";
-          abortHandshakeOrEmitwsClientError(this, req, socket, 405, message);
+          const message2 = "Invalid HTTP method";
+          abortHandshakeOrEmitwsClientError(this, req, socket, 405, message2);
           return;
         }
         if (upgrade === void 0 || upgrade.toLowerCase() !== "websocket") {
-          const message = "Invalid Upgrade header";
-          abortHandshakeOrEmitwsClientError(this, req, socket, 400, message);
+          const message2 = "Invalid Upgrade header";
+          abortHandshakeOrEmitwsClientError(this, req, socket, 400, message2);
           return;
         }
         if (key === void 0 || !keyRegex.test(key)) {
-          const message = "Missing or invalid Sec-WebSocket-Key header";
-          abortHandshakeOrEmitwsClientError(this, req, socket, 400, message);
+          const message2 = "Missing or invalid Sec-WebSocket-Key header";
+          abortHandshakeOrEmitwsClientError(this, req, socket, 400, message2);
           return;
         }
         if (version3 !== 13 && version3 !== 8) {
-          const message = "Missing or invalid Sec-WebSocket-Version header";
-          abortHandshakeOrEmitwsClientError(this, req, socket, 400, message, {
+          const message2 = "Missing or invalid Sec-WebSocket-Version header";
+          abortHandshakeOrEmitwsClientError(this, req, socket, 400, message2, {
             "Sec-WebSocket-Version": "13, 8"
           });
           return;
@@ -68362,8 +68362,8 @@ var require_websocket_server = __commonJS({
           try {
             protocols = subprotocol.parse(secWebSocketProtocol);
           } catch (err) {
-            const message = "Invalid Sec-WebSocket-Protocol header";
-            abortHandshakeOrEmitwsClientError(this, req, socket, 400, message);
+            const message2 = "Invalid Sec-WebSocket-Protocol header";
+            abortHandshakeOrEmitwsClientError(this, req, socket, 400, message2);
             return;
           }
         }
@@ -68382,8 +68382,8 @@ var require_websocket_server = __commonJS({
               extensions[PerMessageDeflate.extensionName] = perMessageDeflate;
             }
           } catch (err) {
-            const message = "Invalid or unacceptable Sec-WebSocket-Extensions header";
-            abortHandshakeOrEmitwsClientError(this, req, socket, 400, message);
+            const message2 = "Invalid or unacceptable Sec-WebSocket-Extensions header";
+            abortHandshakeOrEmitwsClientError(this, req, socket, 400, message2);
             return;
           }
         }
@@ -68394,9 +68394,9 @@ var require_websocket_server = __commonJS({
             req
           };
           if (this.options.verifyClient.length === 2) {
-            this.options.verifyClient(info, (verified, code, message, headers) => {
+            this.options.verifyClient(info, (verified, code, message2, headers) => {
               if (!verified) {
-                return abortHandshake(socket, code || 401, message, headers);
+                return abortHandshake(socket, code || 401, message2, headers);
               }
               this.completeUpgrade(
                 extensions,
@@ -68435,12 +68435,12 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
+        const digest2 = createHash("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
           "Connection: Upgrade",
-          `Sec-WebSocket-Accept: ${digest}`
+          `Sec-WebSocket-Accept: ${digest2}`
         ];
         const ws = new this.options.WebSocket(null, void 0, this.options);
         if (protocols.size) {
@@ -68496,27 +68496,27 @@ var require_websocket_server = __commonJS({
     function socketOnError() {
       this.destroy();
     }
-    function abortHandshake(socket, code, message, headers) {
-      message = message || http3.STATUS_CODES[code];
+    function abortHandshake(socket, code, message2, headers) {
+      message2 = message2 || http3.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
-        "Content-Length": Buffer.byteLength(message),
+        "Content-Length": Buffer.byteLength(message2),
         ...headers
       };
       socket.once("finish", socket.destroy);
       socket.end(
         `HTTP/1.1 ${code} ${http3.STATUS_CODES[code]}\r
-` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
+` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message2
       );
     }
-    function abortHandshakeOrEmitwsClientError(server, req, socket, code, message, headers) {
+    function abortHandshakeOrEmitwsClientError(server, req, socket, code, message2, headers) {
       if (server.listenerCount("wsClientError")) {
-        const err = new Error(message);
+        const err = new Error(message2);
         Error.captureStackTrace(err, abortHandshakeOrEmitwsClientError);
         server.emit("wsClientError", err, socket, req);
       } else {
-        abortHandshake(socket, code, message, headers);
+        abortHandshake(socket, code, message2, headers);
       }
     }
   }
@@ -68696,10 +68696,10 @@ var require_server = __commonJS({
           }
           if (!this.opts.allowRequest)
             return fn();
-          return this.opts.allowRequest(req, (message, success2) => {
+          return this.opts.allowRequest(req, (message2, success2) => {
             if (!success2) {
               return fn(Server2.errors.FORBIDDEN, {
-                message
+                message: message2
               });
             }
             fn();
@@ -69188,11 +69188,11 @@ var require_server = __commonJS({
     exports.Server = Server2;
     function abortRequest(res, errorCode, errorContext) {
       const statusCode = errorCode === Server2.errors.FORBIDDEN ? 403 : 400;
-      const message = errorContext && errorContext.message ? errorContext.message : Server2.errorMessages[errorCode];
+      const message2 = errorContext && errorContext.message ? errorContext.message : Server2.errorMessages[errorCode];
       res.writeHead(statusCode, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         code: errorCode,
-        message
+        message: message2
       }));
     }
     function abortUpgrade(socket, errorCode, errorContext = {}) {
@@ -69200,9 +69200,9 @@ var require_server = __commonJS({
         debug7("ignoring error from closed connection");
       });
       if (socket.writable) {
-        const message = errorContext.message || Server2.errorMessages[errorCode];
-        const length = Buffer.byteLength(message);
-        socket.write("HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-type: text/html\r\nContent-Length: " + length + "\r\n\r\n" + message);
+        const message2 = errorContext.message || Server2.errorMessages[errorCode];
+        const length = Buffer.byteLength(message2);
+        socket.write("HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-type: text/html\r\nContent-Length: " + length + "\r\n\r\n" + message2);
       }
       socket.destroy();
     }
@@ -70010,11 +70010,11 @@ var require_userver = __commonJS({
             transport.writable = true;
             transport.emit("ready");
           },
-          message: (ws, message, isBinary) => {
-            ws.getUserData().transport.onData(isBinary ? message : Buffer.from(message).toString());
+          message: (ws, message2, isBinary) => {
+            ws.getUserData().transport.onData(isBinary ? message2 : Buffer.from(message2).toString());
           },
-          close: (ws, code, message) => {
-            ws.getUserData().transport.onClose(code, message);
+          close: (ws, code, message2) => {
+            ws.getUserData().transport.onClose(code, message2);
           }
         });
       }
@@ -70122,12 +70122,12 @@ var require_userver = __commonJS({
       }
       abortRequest(res, errorCode, errorContext) {
         const statusCode = errorCode === server_1.Server.errors.FORBIDDEN ? "403 Forbidden" : "400 Bad Request";
-        const message = errorContext && errorContext.message ? errorContext.message : server_1.Server.errorMessages[errorCode];
+        const message2 = errorContext && errorContext.message ? errorContext.message : server_1.Server.errorMessages[errorCode];
         res.writeStatus(statusCode);
         res.writeHeader("Content-Type", "application/json");
         res.end(JSON.stringify({
           code: errorCode,
-          message
+          message: message2
         }));
       }
     };
@@ -70689,11 +70689,11 @@ var require_cjs3 = __commonJS({
       static isPayloadValid(type, payload) {
         switch (type) {
           case PacketType.CONNECT:
-            return isObject3(payload);
+            return isObject4(payload);
           case PacketType.DISCONNECT:
             return payload === void 0;
           case PacketType.CONNECT_ERROR:
-            return typeof payload === "string" || isObject3(payload);
+            return typeof payload === "string" || isObject4(payload);
           case PacketType.EVENT:
           case PacketType.BINARY_EVENT:
             return Array.isArray(payload) && (typeof payload[0] === "number" || typeof payload[0] === "string" && RESERVED_EVENTS.indexOf(payload[0]) === -1);
@@ -70753,13 +70753,13 @@ var require_cjs3 = __commonJS({
     function isAckIdValid(id) {
       return id === void 0 || isInteger(id);
     }
-    function isObject3(value) {
+    function isObject4(value) {
       return Object.prototype.toString.call(value) === "[object Object]";
     }
     function isDataValid(type, payload) {
       switch (type) {
         case PacketType.CONNECT:
-          return payload === void 0 || isObject3(payload);
+          return payload === void 0 || isObject4(payload);
         case PacketType.DISCONNECT:
           return payload === void 0;
         case PacketType.EVENT:
@@ -70767,7 +70767,7 @@ var require_cjs3 = __commonJS({
         case PacketType.ACK:
           return Array.isArray(payload);
         case PacketType.CONNECT_ERROR:
-          return typeof payload === "string" || isObject3(payload);
+          return typeof payload === "string" || isObject4(payload);
         default:
           return false;
       }
@@ -72984,7 +72984,7 @@ var require_yeast = __commonJS({
   "../../node_modules/.pnpm/socket.io-adapter@2.5.8/node_modules/socket.io-adapter/dist/contrib/yeast.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.encode = encode;
+    exports.encode = encode2;
     exports.decode = decode;
     exports.yeast = yeast;
     var alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_".split("");
@@ -72993,7 +72993,7 @@ var require_yeast = __commonJS({
     var seed = 0;
     var i = 0;
     var prev;
-    function encode(num) {
+    function encode2(num) {
       let encoded = "";
       do {
         encoded = alphabet[num % length] + encoded;
@@ -73009,10 +73009,10 @@ var require_yeast = __commonJS({
       return decoded;
     }
     function yeast() {
-      const now = encode(+/* @__PURE__ */ new Date());
+      const now = encode2(+/* @__PURE__ */ new Date());
       if (now !== prev)
         return seed = 0, prev = now;
-      return now + "." + encode(seed++);
+      return now + "." + encode2(seed++);
     }
     for (; i < length; i++)
       map2[alphabet[i]] = i;
@@ -73475,61 +73475,61 @@ var require_cluster_adapter = __commonJS({
        * @param offset
        * @protected
        */
-      onMessage(message, offset) {
-        if (message.uid === this.uid) {
+      onMessage(message2, offset) {
+        if (message2.uid === this.uid) {
           return debug7("[%s] ignore message from self", this.uid);
         }
-        if (message.nsp !== this.nsp.name) {
-          return debug7("[%s] ignore message from another namespace (%s)", this.uid, message.nsp);
+        if (message2.nsp !== this.nsp.name) {
+          return debug7("[%s] ignore message from another namespace (%s)", this.uid, message2.nsp);
         }
-        debug7("[%s] new event of type %d from %s", this.uid, message.type, message.uid);
-        switch (message.type) {
+        debug7("[%s] new event of type %d from %s", this.uid, message2.type, message2.uid);
+        switch (message2.type) {
           case MessageType.BROADCAST: {
-            const withAck = message.data.requestId !== void 0;
+            const withAck = message2.data.requestId !== void 0;
             if (withAck) {
-              super.broadcastWithAck(message.data.packet, decodeOptions(message.data.opts), (clientCount) => {
+              super.broadcastWithAck(message2.data.packet, decodeOptions(message2.data.opts), (clientCount) => {
                 debug7("[%s] waiting for %d client acknowledgements", this.uid, clientCount);
-                this.publishResponse(message.uid, {
+                this.publishResponse(message2.uid, {
                   type: MessageType.BROADCAST_CLIENT_COUNT,
                   data: {
-                    requestId: message.data.requestId,
+                    requestId: message2.data.requestId,
                     clientCount
                   }
                 });
               }, (arg) => {
                 debug7("[%s] received acknowledgement with value %j", this.uid, arg);
-                this.publishResponse(message.uid, {
+                this.publishResponse(message2.uid, {
                   type: MessageType.BROADCAST_ACK,
                   data: {
-                    requestId: message.data.requestId,
+                    requestId: message2.data.requestId,
                     packet: arg
                   }
                 });
               });
             } else {
-              const packet = message.data.packet;
-              const opts = decodeOptions(message.data.opts);
+              const packet = message2.data.packet;
+              const opts = decodeOptions(message2.data.opts);
               this.addOffsetIfNecessary(packet, opts, offset);
               super.broadcast(packet, opts);
             }
             break;
           }
           case MessageType.SOCKETS_JOIN:
-            super.addSockets(decodeOptions(message.data.opts), message.data.rooms);
+            super.addSockets(decodeOptions(message2.data.opts), message2.data.rooms);
             break;
           case MessageType.SOCKETS_LEAVE:
-            super.delSockets(decodeOptions(message.data.opts), message.data.rooms);
+            super.delSockets(decodeOptions(message2.data.opts), message2.data.rooms);
             break;
           case MessageType.DISCONNECT_SOCKETS:
-            super.disconnectSockets(decodeOptions(message.data.opts), message.data.close);
+            super.disconnectSockets(decodeOptions(message2.data.opts), message2.data.close);
             break;
           case MessageType.FETCH_SOCKETS: {
-            debug7("[%s] calling fetchSockets with opts %j", this.uid, message.data.opts);
-            super.fetchSockets(decodeOptions(message.data.opts)).then((localSockets) => {
-              this.publishResponse(message.uid, {
+            debug7("[%s] calling fetchSockets with opts %j", this.uid, message2.data.opts);
+            super.fetchSockets(decodeOptions(message2.data.opts)).then((localSockets) => {
+              this.publishResponse(message2.uid, {
                 type: MessageType.FETCH_SOCKETS_RESPONSE,
                 data: {
-                  requestId: message.data.requestId,
+                  requestId: message2.data.requestId,
                   sockets: localSockets.map((socket) => {
                     const _a = socket.handshake, { sessionStore } = _a, handshake2 = __rest(_a, ["sessionStore"]);
                     return {
@@ -73545,8 +73545,8 @@ var require_cluster_adapter = __commonJS({
             break;
           }
           case MessageType.SERVER_SIDE_EMIT: {
-            const packet = message.data.packet;
-            const withAck = message.data.requestId !== void 0;
+            const packet = message2.data.packet;
+            const withAck = message2.data.requestId !== void 0;
             if (!withAck) {
               this.nsp._onServerSideEmit(packet);
               return;
@@ -73558,10 +73558,10 @@ var require_cluster_adapter = __commonJS({
               }
               called = true;
               debug7("[%s] calling acknowledgement with %j", this.uid, arg);
-              this.publishResponse(message.uid, {
+              this.publishResponse(message2.uid, {
                 type: MessageType.SERVER_SIDE_EMIT_RESPONSE,
                 data: {
-                  requestId: message.data.requestId,
+                  requestId: message2.data.requestId,
                   packet: arg
                 }
               });
@@ -73577,10 +73577,10 @@ var require_cluster_adapter = __commonJS({
           case MessageType.FETCH_SOCKETS_RESPONSE:
           // @ts-ignore
           case MessageType.SERVER_SIDE_EMIT_RESPONSE:
-            this.onResponse(message);
+            this.onResponse(message2);
             break;
           default:
-            debug7("[%s] unknown message type: %s", this.uid, message.type);
+            debug7("[%s] unknown message type: %s", this.uid, message2.type);
         }
       }
       /**
@@ -73830,16 +73830,16 @@ var require_cluster_adapter = __commonJS({
           }
         });
       }
-      publish(message) {
-        debug7("[%s] sending message %s", this.uid, message.type);
-        this.publishAndReturnOffset(message).catch((err) => {
+      publish(message2) {
+        debug7("[%s] sending message %s", this.uid, message2.type);
+        this.publishAndReturnOffset(message2).catch((err) => {
           debug7("[%s] error while publishing message: %s", this.uid, err);
         });
       }
-      publishAndReturnOffset(message) {
-        message.uid = this.uid;
-        message.nsp = this.nsp.name;
-        return this.doPublish(message);
+      publishAndReturnOffset(message2) {
+        message2.uid = this.uid;
+        message2.nsp = this.nsp.name;
+        return this.doPublish(message2);
       }
       publishResponse(requesterUid, response) {
         response.uid = this.uid;
@@ -73896,14 +73896,14 @@ var require_cluster_adapter = __commonJS({
           clearInterval(this.cleanupTimer);
         }
       }
-      onMessage(message, offset) {
-        if (message.uid === this.uid) {
+      onMessage(message2, offset) {
+        if (message2.uid === this.uid) {
           return debug7("[%s] ignore message from self", this.uid);
         }
-        if (message.uid && message.uid !== EMITTER_UID) {
-          this.nodesMap.set(message.uid, Date.now());
+        if (message2.uid && message2.uid !== EMITTER_UID) {
+          this.nodesMap.set(message2.uid, Date.now());
         }
-        switch (message.type) {
+        switch (message2.type) {
           case MessageType.INITIAL_HEARTBEAT:
             this.publish({
               type: MessageType.HEARTBEAT
@@ -73912,18 +73912,18 @@ var require_cluster_adapter = __commonJS({
           case MessageType.HEARTBEAT:
             break;
           case MessageType.ADAPTER_CLOSE:
-            this.removeNode(message.uid);
+            this.removeNode(message2.uid);
             break;
           default:
-            super.onMessage(message, offset);
+            super.onMessage(message2, offset);
         }
       }
       serverCount() {
         return Promise.resolve(1 + this.nodesMap.size);
       }
-      publish(message) {
+      publish(message2) {
         this.scheduleHeartbeat();
-        return super.publish(message);
+        return super.publish(message2);
       }
       async serverSideEmit(packet) {
         const withAck = typeof packet[packet.length - 1] === "function";
@@ -75138,7 +75138,7 @@ var require_dist7 = __commonJS({
 import { createServer } from "http";
 
 // src/app.ts
-var import_express48 = __toESM(require_express2(), 1);
+var import_express49 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 
@@ -75405,8 +75405,8 @@ function isDevelopmentFromSecretKey(apiKey) {
 }
 async function getCookieSuffix(publishableKey, subtle = globalThis.crypto.subtle) {
   const data = new TextEncoder().encode(publishableKey);
-  const digest = await subtle.digest("sha-1", data);
-  return isomorphicBtoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/gi, "-").replace(/\//gi, "_").substring(0, 8);
+  const digest2 = await subtle.digest("sha-1", data);
+  return isomorphicBtoa(String.fromCharCode(...new Uint8Array(digest2))).replace(/\+/gi, "-").replace(/\//gi, "_").substring(0, 8);
 }
 var getSuffixedCookieName = (cookieName, cookieSuffix) => {
   return `${cookieName}_${cookieSuffix}`;
@@ -75530,10 +75530,10 @@ var ClerkRuntimeError = class ClerkRuntimeError2 extends ClerkError {
   * @deprecated Use `clerkError` property instead. This property is maintained for backward compatibility.
   */
   clerkRuntimeError = true;
-  constructor(message, options) {
+  constructor(message2, options) {
     super({
       ...options,
-      message
+      message: message2
     });
     Object.setPrototypeOf(this, ClerkRuntimeError2.prototype);
   }
@@ -75578,11 +75578,11 @@ var ClerkAPIResponseError = class ClerkAPIResponseError2 extends ClerkError {
   clerkTraceId;
   retryAfter;
   errors;
-  constructor(message, options) {
+  constructor(message2, options) {
     const { data: errorsJson, status, clerkTraceId, retryAfter } = options;
     super({
       ...options,
-      message,
+      message: message2,
       code: "api_response_error"
     });
     Object.setPrototypeOf(this, ClerkAPIResponseError2.prototype);
@@ -75592,13 +75592,13 @@ var ClerkAPIResponseError = class ClerkAPIResponseError2 extends ClerkError {
     this.errors = (errorsJson || []).map((e) => new ClerkAPIError(e));
   }
   toString() {
-    let message = `[${this.name}]
+    let message2 = `[${this.name}]
 Message:${this.message}
 Status:${this.status}
 Serialized errors: ${this.errors.map((e) => JSON.stringify(e))}`;
-    if (this.clerkTraceId) message += `
+    if (this.clerkTraceId) message2 += `
 Clerk Trace ID: ${this.clerkTraceId}`;
-    return message;
+    return message2;
   }
   static formatMessage(name, msg, _2, __) {
     return msg;
@@ -75652,8 +75652,8 @@ function buildErrorThrower({ packageName, customMessages }) {
     throwMissingClerkProviderError(params) {
       throw new Error(buildMessage(messages.MissingClerkProvider, params));
     },
-    throw(message) {
-      throw new Error(buildMessage(message));
+    throw(message2) {
+      throw new Error(buildMessage(message2));
     }
   };
 }
@@ -75693,13 +75693,13 @@ var TokenVerificationErrorAction = {
 var TokenVerificationError = class _TokenVerificationError extends Error {
   constructor({
     action,
-    message,
+    message: message2,
     reason
   }) {
-    super(message);
+    super(message2);
     Object.setPrototypeOf(this, _TokenVerificationError.prototype);
     this.reason = reason;
-    this.message = message;
+    this.message = message2;
     this.action = action;
   }
   getFullMessage() {
@@ -75714,12 +75714,12 @@ var MachineTokenVerificationErrorCode = {
 };
 var _MachineTokenVerificationError = class _MachineTokenVerificationError2 extends ClerkError {
   constructor({
-    message,
+    message: message2,
     code,
     status,
     action
   }) {
-    super({ message, code });
+    super({ message: message2, code });
     Object.setPrototypeOf(this, _MachineTokenVerificationError2.prototype);
     this.status = status;
     this.action = action;
@@ -76008,8 +76008,8 @@ function importKey(key, algorithm, keyUsage) {
 var DEFAULT_CLOCK_SKEW_IN_MS = 5 * 1e3;
 async function hasValidSignature(jwt2, key) {
   const { header, signature, raw } = jwt2;
-  const encoder = new TextEncoder();
-  const data = encoder.encode([raw.header, raw.payload].join("."));
+  const encoder2 = new TextEncoder();
+  const data = encoder2.encode([raw.header, raw.payload].join("."));
   const algorithm = getCryptoAlgorithm(header.alg);
   try {
     const cryptoKey = await importKey(key, algorithm, "verify");
@@ -76039,9 +76039,9 @@ function decodeJwt(token) {
     };
   }
   const [rawHeader, rawPayload, rawSignature] = tokenParts;
-  const decoder = new TextDecoder();
-  const header = JSON.parse(decoder.decode(base64url.parse(rawHeader, { loose: true })));
-  const payload = JSON.parse(decoder.decode(base64url.parse(rawPayload, { loose: true })));
+  const decoder2 = new TextDecoder();
+  const header = JSON.parse(decoder2.decode(base64url.parse(rawHeader, { loose: true })));
+  const payload = JSON.parse(decoder2.decode(base64url.parse(rawPayload, { loose: true })));
   const signature = base64url.parse(rawSignature, { loose: true });
   const data = {
     header,
@@ -79598,14 +79598,14 @@ var IdentificationLink = class _IdentificationLink {
   }
 };
 var Verification = class _Verification {
-  constructor(status, strategy, externalVerificationRedirectURL = null, attempts = null, expireAt = null, nonce = null, message = null) {
+  constructor(status, strategy, externalVerificationRedirectURL = null, attempts = null, expireAt = null, nonce = null, message2 = null) {
     this.status = status;
     this.strategy = strategy;
     this.externalVerificationRedirectURL = externalVerificationRedirectURL;
     this.attempts = attempts;
     this.expireAt = expireAt;
     this.nonce = nonce;
-    this.message = message;
+    this.message = message2;
   }
   static fromJSON(data) {
     return new _Verification(
@@ -80635,11 +80635,11 @@ var SignUpAttempt = class _SignUpAttempt {
   }
 };
 var SMSMessage = class _SMSMessage {
-  constructor(id, fromPhoneNumber, toPhoneNumber, message, status, phoneNumberId, data) {
+  constructor(id, fromPhoneNumber, toPhoneNumber, message2, status, phoneNumberId, data) {
     this.id = id;
     this.fromPhoneNumber = fromPhoneNumber;
     this.toPhoneNumber = toPhoneNumber;
-    this.message = message;
+    this.message = message2;
     this.status = status;
     this.phoneNumberId = phoneNumberId;
     this.data = data;
@@ -81382,17 +81382,17 @@ function signedIn(params) {
   };
 }
 function signedOut(params) {
-  const { authenticateContext, headers = new Headers(), reason, message = "", tokenType } = params;
+  const { authenticateContext, headers = new Headers(), reason, message: message2 = "", tokenType } = params;
   const toAuth = (() => {
     if (tokenType === TokenType.SessionToken) {
-      return signedOutAuthObject({ ...authenticateContext, status: AuthStatus.SignedOut, reason, message });
+      return signedOutAuthObject({ ...authenticateContext, status: AuthStatus.SignedOut, reason, message: message2 });
     }
-    return unauthenticatedMachineObject(tokenType, { reason, message, headers });
+    return unauthenticatedMachineObject(tokenType, { reason, message: message2, headers });
   });
   return withDebugHeaders({
     status: AuthStatus.SignedOut,
     reason,
-    message,
+    message: message2,
     proxyUrl: authenticateContext.proxyUrl || "",
     publishableKey: authenticateContext.publishableKey || "",
     isSatellite: authenticateContext.isSatellite || false,
@@ -81409,11 +81409,11 @@ function signedOut(params) {
     token: null
   });
 }
-function handshake(authenticateContext, reason, message = "", headers) {
+function handshake(authenticateContext, reason, message2 = "", headers) {
   return withDebugHeaders({
     status: AuthStatus.Handshake,
     reason,
-    message,
+    message: message2,
     publishableKey: authenticateContext.publishableKey || "",
     isSatellite: authenticateContext.isSatellite || false,
     domain: authenticateContext.domain || "",
@@ -81588,26 +81588,26 @@ async function verifyToken(token, options) {
 function handleClerkAPIError(tokenType, err, notFoundMessage) {
   if (isClerkAPIResponseError(err)) {
     let code;
-    let message;
+    let message2;
     switch (err.status) {
       case 401:
         code = MachineTokenVerificationErrorCode.InvalidSecretKey;
-        message = err.errors[0]?.message || "Invalid secret key";
+        message2 = err.errors[0]?.message || "Invalid secret key";
         break;
       case 404:
         code = MachineTokenVerificationErrorCode.TokenInvalid;
-        message = notFoundMessage;
+        message2 = notFoundMessage;
         break;
       default:
         code = MachineTokenVerificationErrorCode.UnexpectedError;
-        message = "Unexpected error";
+        message2 = "Unexpected error";
     }
     return {
       data: void 0,
       tokenType,
       errors: [
         new MachineTokenVerificationError({
-          message,
+          message: message2,
           code,
           status: err.status
         })
@@ -82230,13 +82230,13 @@ var authenticateRequest = (async (request2, options) => {
     }
     return { data: { jwtPayload, sessionToken, headers }, error: null };
   }
-  function handleMaybeHandshakeStatus(authenticateContext2, reason, message, headers) {
+  function handleMaybeHandshakeStatus(authenticateContext2, reason, message2, headers) {
     if (!handshakeService.isRequestEligibleForHandshake()) {
       return signedOut({
         tokenType: TokenType.SessionToken,
         authenticateContext: authenticateContext2,
         reason,
-        message
+        message: message2
       });
     }
     const handshakeHeaders = headers ?? handshakeService.buildRedirectToHandshake(reason);
@@ -82251,10 +82251,10 @@ var authenticateRequest = (async (request2, options) => {
         tokenType: TokenType.SessionToken,
         authenticateContext: authenticateContext2,
         reason,
-        message
+        message: message2
       });
     }
-    return handshake(authenticateContext2, reason, message, handshakeHeaders);
+    return handshake(authenticateContext2, reason, message2, handshakeHeaders);
   }
   function handleMaybeOrganizationSyncHandshake(authenticateContext2, auth) {
     const organizationSyncTarget = organizationMatcher.findTarget(authenticateContext2.clerkUrl);
@@ -82622,8 +82622,8 @@ var authenticateRequest = (async (request2, options) => {
   return authenticateRequestWithTokenInCookie();
 });
 var debugRequestState = (params) => {
-  const { isSignedIn, isAuthenticated, proxyUrl, reason, message, publishableKey, isSatellite, domain: domain2 } = params;
-  return { isSignedIn, isAuthenticated, proxyUrl, reason, message, publishableKey, isSatellite, domain: domain2 };
+  const { isSignedIn, isAuthenticated, proxyUrl, reason, message: message2, publishableKey, isSatellite, domain: domain2 } = params;
+  return { isSignedIn, isAuthenticated, proxyUrl, reason, message: message2, publishableKey, isSatellite, domain: domain2 };
 };
 var convertTokenVerificationErrorReasonToAuthErrorReason = ({
   tokenError,
@@ -83067,8 +83067,8 @@ function stripTrailingSlashes(str) {
   }
   return str;
 }
-function createErrorResponse(code, message, status) {
-  const error40 = { code, message };
+function createErrorResponse(code, message2, status) {
+  const error40 = { code, message: message2 };
   return new Response(JSON.stringify({ errors: [error40] }), {
     status,
     headers: {
@@ -83204,8 +83204,8 @@ async function clerkFrontendApiProxy(request2, options) {
     }
     return proxyResponse;
   } catch (error40) {
-    const message = error40 instanceof Error ? error40.message : "Unknown error";
-    return createErrorResponse("proxy_request_failed", `Failed to proxy request to Clerk FAPI: ${message}`, 502);
+    const message2 = error40 instanceof Error ? error40.message : "Unknown error";
+    return createErrorResponse("proxy_request_failed", `Failed to proxy request to Clerk FAPI: ${message2}`, 502);
   }
 }
 
@@ -84329,11 +84329,11 @@ function parsePathRewriteRules(rewriteConfig) {
 var debug4 = Debug.extend("router");
 async function getTarget(req, config2) {
   let newTarget;
-  const router48 = config2.router;
-  if (isPlainObject(router48)) {
-    newTarget = getTargetFromProxyTable(req, router48);
-  } else if (typeof router48 === "function") {
-    newTarget = await router48(req);
+  const router49 = config2.router;
+  if (isPlainObject(router49)) {
+    newTarget = getTargetFromProxyTable(req, router49);
+  } else if (typeof router49 === "function") {
+    newTarget = await router49(req);
   }
   return newTarget;
 }
@@ -84584,44 +84584,44 @@ function clerkProxyMiddleware() {
 }
 
 // src/routes/index.ts
-var import_express47 = __toESM(require_express2(), 1);
+var import_express48 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/util.js
 var util;
-(function(util2) {
-  util2.assertEqual = (_2) => {
+(function(util4) {
+  util4.assertEqual = (_2) => {
   };
   function assertIs2(_arg) {
   }
-  util2.assertIs = assertIs2;
+  util4.assertIs = assertIs2;
   function assertNever2(_x) {
     throw new Error();
   }
-  util2.assertNever = assertNever2;
-  util2.arrayToEnum = (items) => {
+  util4.assertNever = assertNever2;
+  util4.arrayToEnum = (items) => {
     const obj = {};
     for (const item of items) {
       obj[item] = item;
     }
     return obj;
   };
-  util2.getValidEnumValues = (obj) => {
-    const validKeys = util2.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
+  util4.getValidEnumValues = (obj) => {
+    const validKeys = util4.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
     const filtered = {};
     for (const k of validKeys) {
       filtered[k] = obj[k];
     }
-    return util2.objectValues(filtered);
+    return util4.objectValues(filtered);
   };
-  util2.objectValues = (obj) => {
-    return util2.objectKeys(obj).map(function(e) {
+  util4.objectValues = (obj) => {
+    return util4.objectKeys(obj).map(function(e) {
       return obj[e];
     });
   };
-  util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object2) => {
+  util4.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object2) => {
     const keys = [];
     for (const key in object2) {
       if (Object.prototype.hasOwnProperty.call(object2, key)) {
@@ -84630,19 +84630,19 @@ var util;
     }
     return keys;
   };
-  util2.find = (arr, checker) => {
+  util4.find = (arr, checker) => {
     for (const item of arr) {
       if (checker(item))
         return item;
     }
     return void 0;
   };
-  util2.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
+  util4.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
   function joinValues2(array2, separator = " | ") {
     return array2.map((val) => typeof val === "string" ? `'${val}'` : val).join(separator);
   }
-  util2.joinValues = joinValues2;
-  util2.jsonStringifyReplacer = (_2, value) => {
+  util4.joinValues = joinValues2;
+  util4.jsonStringifyReplacer = (_2, value) => {
     if (typeof value === "bigint") {
       return value.toString();
     }
@@ -84839,104 +84839,104 @@ ZodError.create = (issues) => {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/locales/en.js
 var errorMap = (issue2, _ctx) => {
-  let message;
+  let message2;
   switch (issue2.code) {
     case ZodIssueCode.invalid_type:
       if (issue2.received === ZodParsedType.undefined) {
-        message = "Required";
+        message2 = "Required";
       } else {
-        message = `Expected ${issue2.expected}, received ${issue2.received}`;
+        message2 = `Expected ${issue2.expected}, received ${issue2.received}`;
       }
       break;
     case ZodIssueCode.invalid_literal:
-      message = `Invalid literal value, expected ${JSON.stringify(issue2.expected, util.jsonStringifyReplacer)}`;
+      message2 = `Invalid literal value, expected ${JSON.stringify(issue2.expected, util.jsonStringifyReplacer)}`;
       break;
     case ZodIssueCode.unrecognized_keys:
-      message = `Unrecognized key(s) in object: ${util.joinValues(issue2.keys, ", ")}`;
+      message2 = `Unrecognized key(s) in object: ${util.joinValues(issue2.keys, ", ")}`;
       break;
     case ZodIssueCode.invalid_union:
-      message = `Invalid input`;
+      message2 = `Invalid input`;
       break;
     case ZodIssueCode.invalid_union_discriminator:
-      message = `Invalid discriminator value. Expected ${util.joinValues(issue2.options)}`;
+      message2 = `Invalid discriminator value. Expected ${util.joinValues(issue2.options)}`;
       break;
     case ZodIssueCode.invalid_enum_value:
-      message = `Invalid enum value. Expected ${util.joinValues(issue2.options)}, received '${issue2.received}'`;
+      message2 = `Invalid enum value. Expected ${util.joinValues(issue2.options)}, received '${issue2.received}'`;
       break;
     case ZodIssueCode.invalid_arguments:
-      message = `Invalid function arguments`;
+      message2 = `Invalid function arguments`;
       break;
     case ZodIssueCode.invalid_return_type:
-      message = `Invalid function return type`;
+      message2 = `Invalid function return type`;
       break;
     case ZodIssueCode.invalid_date:
-      message = `Invalid date`;
+      message2 = `Invalid date`;
       break;
     case ZodIssueCode.invalid_string:
       if (typeof issue2.validation === "object") {
         if ("includes" in issue2.validation) {
-          message = `Invalid input: must include "${issue2.validation.includes}"`;
+          message2 = `Invalid input: must include "${issue2.validation.includes}"`;
           if (typeof issue2.validation.position === "number") {
-            message = `${message} at one or more positions greater than or equal to ${issue2.validation.position}`;
+            message2 = `${message2} at one or more positions greater than or equal to ${issue2.validation.position}`;
           }
         } else if ("startsWith" in issue2.validation) {
-          message = `Invalid input: must start with "${issue2.validation.startsWith}"`;
+          message2 = `Invalid input: must start with "${issue2.validation.startsWith}"`;
         } else if ("endsWith" in issue2.validation) {
-          message = `Invalid input: must end with "${issue2.validation.endsWith}"`;
+          message2 = `Invalid input: must end with "${issue2.validation.endsWith}"`;
         } else {
           util.assertNever(issue2.validation);
         }
       } else if (issue2.validation !== "regex") {
-        message = `Invalid ${issue2.validation}`;
+        message2 = `Invalid ${issue2.validation}`;
       } else {
-        message = "Invalid";
+        message2 = "Invalid";
       }
       break;
     case ZodIssueCode.too_small:
       if (issue2.type === "array")
-        message = `Array must contain ${issue2.exact ? "exactly" : issue2.inclusive ? `at least` : `more than`} ${issue2.minimum} element(s)`;
+        message2 = `Array must contain ${issue2.exact ? "exactly" : issue2.inclusive ? `at least` : `more than`} ${issue2.minimum} element(s)`;
       else if (issue2.type === "string")
-        message = `String must contain ${issue2.exact ? "exactly" : issue2.inclusive ? `at least` : `over`} ${issue2.minimum} character(s)`;
+        message2 = `String must contain ${issue2.exact ? "exactly" : issue2.inclusive ? `at least` : `over`} ${issue2.minimum} character(s)`;
       else if (issue2.type === "number")
-        message = `Number must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${issue2.minimum}`;
+        message2 = `Number must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${issue2.minimum}`;
       else if (issue2.type === "bigint")
-        message = `Number must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${issue2.minimum}`;
+        message2 = `Number must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${issue2.minimum}`;
       else if (issue2.type === "date")
-        message = `Date must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue2.minimum))}`;
+        message2 = `Date must be ${issue2.exact ? `exactly equal to ` : issue2.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue2.minimum))}`;
       else
-        message = "Invalid input";
+        message2 = "Invalid input";
       break;
     case ZodIssueCode.too_big:
       if (issue2.type === "array")
-        message = `Array must contain ${issue2.exact ? `exactly` : issue2.inclusive ? `at most` : `less than`} ${issue2.maximum} element(s)`;
+        message2 = `Array must contain ${issue2.exact ? `exactly` : issue2.inclusive ? `at most` : `less than`} ${issue2.maximum} element(s)`;
       else if (issue2.type === "string")
-        message = `String must contain ${issue2.exact ? `exactly` : issue2.inclusive ? `at most` : `under`} ${issue2.maximum} character(s)`;
+        message2 = `String must contain ${issue2.exact ? `exactly` : issue2.inclusive ? `at most` : `under`} ${issue2.maximum} character(s)`;
       else if (issue2.type === "number")
-        message = `Number must be ${issue2.exact ? `exactly` : issue2.inclusive ? `less than or equal to` : `less than`} ${issue2.maximum}`;
+        message2 = `Number must be ${issue2.exact ? `exactly` : issue2.inclusive ? `less than or equal to` : `less than`} ${issue2.maximum}`;
       else if (issue2.type === "bigint")
-        message = `BigInt must be ${issue2.exact ? `exactly` : issue2.inclusive ? `less than or equal to` : `less than`} ${issue2.maximum}`;
+        message2 = `BigInt must be ${issue2.exact ? `exactly` : issue2.inclusive ? `less than or equal to` : `less than`} ${issue2.maximum}`;
       else if (issue2.type === "date")
-        message = `Date must be ${issue2.exact ? `exactly` : issue2.inclusive ? `smaller than or equal to` : `smaller than`} ${new Date(Number(issue2.maximum))}`;
+        message2 = `Date must be ${issue2.exact ? `exactly` : issue2.inclusive ? `smaller than or equal to` : `smaller than`} ${new Date(Number(issue2.maximum))}`;
       else
-        message = "Invalid input";
+        message2 = "Invalid input";
       break;
     case ZodIssueCode.custom:
-      message = `Invalid input`;
+      message2 = `Invalid input`;
       break;
     case ZodIssueCode.invalid_intersection_types:
-      message = `Intersection results could not be merged`;
+      message2 = `Intersection results could not be merged`;
       break;
     case ZodIssueCode.not_multiple_of:
-      message = `Number must be a multiple of ${issue2.multipleOf}`;
+      message2 = `Number must be a multiple of ${issue2.multipleOf}`;
       break;
     case ZodIssueCode.not_finite:
-      message = "Number must be finite";
+      message2 = "Number must be finite";
       break;
     default:
-      message = _ctx.defaultError;
+      message2 = _ctx.defaultError;
       util.assertNever(issue2);
   }
-  return { message };
+  return { message: message2 };
 };
 var en_default = errorMap;
 
@@ -85058,8 +85058,8 @@ var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
-  errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
-  errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
+  errorUtil2.errToObj = (message2) => typeof message2 === "string" ? { message: message2 } : message2 || {};
+  errorUtil2.toString = (message2) => typeof message2 === "string" ? message2 : message2?.message;
 })(errorUtil || (errorUtil = {}));
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
@@ -85111,16 +85111,16 @@ function processCreateParams(params) {
   if (errorMap2)
     return { errorMap: errorMap2, description };
   const customMap = (iss, ctx) => {
-    const { message } = params;
+    const { message: message2 } = params;
     if (iss.code === "invalid_enum_value") {
-      return { message: message ?? ctx.defaultError };
+      return { message: message2 ?? ctx.defaultError };
     }
     if (typeof ctx.data === "undefined") {
-      return { message: message ?? required_error ?? ctx.defaultError };
+      return { message: message2 ?? required_error ?? ctx.defaultError };
     }
     if (iss.code !== "invalid_type")
       return { message: ctx.defaultError };
-    return { message: message ?? invalid_type_error ?? ctx.defaultError };
+    return { message: message2 ?? invalid_type_error ?? ctx.defaultError };
   };
   return { errorMap: customMap, description };
 }
@@ -85246,14 +85246,14 @@ var ZodType = class {
     const result = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
     return handleResult(ctx, result);
   }
-  refine(check2, message) {
+  refine(check2, message2) {
     const getIssueProperties = (val) => {
-      if (typeof message === "string" || typeof message === "undefined") {
-        return { message };
-      } else if (typeof message === "function") {
-        return message(val);
+      if (typeof message2 === "string" || typeof message2 === "undefined") {
+        return { message: message2 };
+      } else if (typeof message2 === "function") {
+        return message2(val);
       } else {
-        return message;
+        return message2;
       }
     };
     return this._refinement((val, ctx) => {
@@ -85789,11 +85789,11 @@ var ZodString = class _ZodString2 extends ZodType {
     }
     return { status: status.value, value: input.data };
   }
-  _regex(regex, validation, message) {
+  _regex(regex, validation, message2) {
     return this.refinement((data) => regex.test(data), {
       validation,
       code: ZodIssueCode.invalid_string,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
   _addCheck(check2) {
@@ -85802,37 +85802,37 @@ var ZodString = class _ZodString2 extends ZodType {
       checks: [...this._def.checks, check2]
     });
   }
-  email(message) {
-    return this._addCheck({ kind: "email", ...errorUtil.errToObj(message) });
+  email(message2) {
+    return this._addCheck({ kind: "email", ...errorUtil.errToObj(message2) });
   }
-  url(message) {
-    return this._addCheck({ kind: "url", ...errorUtil.errToObj(message) });
+  url(message2) {
+    return this._addCheck({ kind: "url", ...errorUtil.errToObj(message2) });
   }
-  emoji(message) {
-    return this._addCheck({ kind: "emoji", ...errorUtil.errToObj(message) });
+  emoji(message2) {
+    return this._addCheck({ kind: "emoji", ...errorUtil.errToObj(message2) });
   }
-  uuid(message) {
-    return this._addCheck({ kind: "uuid", ...errorUtil.errToObj(message) });
+  uuid(message2) {
+    return this._addCheck({ kind: "uuid", ...errorUtil.errToObj(message2) });
   }
-  nanoid(message) {
-    return this._addCheck({ kind: "nanoid", ...errorUtil.errToObj(message) });
+  nanoid(message2) {
+    return this._addCheck({ kind: "nanoid", ...errorUtil.errToObj(message2) });
   }
-  cuid(message) {
-    return this._addCheck({ kind: "cuid", ...errorUtil.errToObj(message) });
+  cuid(message2) {
+    return this._addCheck({ kind: "cuid", ...errorUtil.errToObj(message2) });
   }
-  cuid2(message) {
-    return this._addCheck({ kind: "cuid2", ...errorUtil.errToObj(message) });
+  cuid2(message2) {
+    return this._addCheck({ kind: "cuid2", ...errorUtil.errToObj(message2) });
   }
-  ulid(message) {
-    return this._addCheck({ kind: "ulid", ...errorUtil.errToObj(message) });
+  ulid(message2) {
+    return this._addCheck({ kind: "ulid", ...errorUtil.errToObj(message2) });
   }
-  base64(message) {
-    return this._addCheck({ kind: "base64", ...errorUtil.errToObj(message) });
+  base64(message2) {
+    return this._addCheck({ kind: "base64", ...errorUtil.errToObj(message2) });
   }
-  base64url(message) {
+  base64url(message2) {
     return this._addCheck({
       kind: "base64url",
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
   jwt(options) {
@@ -85862,8 +85862,8 @@ var ZodString = class _ZodString2 extends ZodType {
       ...errorUtil.errToObj(options?.message)
     });
   }
-  date(message) {
-    return this._addCheck({ kind: "date", message });
+  date(message2) {
+    return this._addCheck({ kind: "date", message: message2 });
   }
   time(options) {
     if (typeof options === "string") {
@@ -85879,14 +85879,14 @@ var ZodString = class _ZodString2 extends ZodType {
       ...errorUtil.errToObj(options?.message)
     });
   }
-  duration(message) {
-    return this._addCheck({ kind: "duration", ...errorUtil.errToObj(message) });
+  duration(message2) {
+    return this._addCheck({ kind: "duration", ...errorUtil.errToObj(message2) });
   }
-  regex(regex, message) {
+  regex(regex, message2) {
     return this._addCheck({
       kind: "regex",
       regex,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
   includes(value, options) {
@@ -85897,46 +85897,46 @@ var ZodString = class _ZodString2 extends ZodType {
       ...errorUtil.errToObj(options?.message)
     });
   }
-  startsWith(value, message) {
+  startsWith(value, message2) {
     return this._addCheck({
       kind: "startsWith",
       value,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
-  endsWith(value, message) {
+  endsWith(value, message2) {
     return this._addCheck({
       kind: "endsWith",
       value,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
-  min(minLength, message) {
+  min(minLength, message2) {
     return this._addCheck({
       kind: "min",
       value: minLength,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
-  max(maxLength, message) {
+  max(maxLength, message2) {
     return this._addCheck({
       kind: "max",
       value: maxLength,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
-  length(len, message) {
+  length(len, message2) {
     return this._addCheck({
       kind: "length",
       value: len,
-      ...errorUtil.errToObj(message)
+      ...errorUtil.errToObj(message2)
     });
   }
   /**
    * Equivalent to `.min(1)`
    */
-  nonempty(message) {
-    return this.min(1, errorUtil.errToObj(message));
+  nonempty(message2) {
+    return this.min(1, errorUtil.errToObj(message2));
   }
   trim() {
     return new _ZodString2({
@@ -86129,19 +86129,19 @@ var ZodNumber = class _ZodNumber extends ZodType {
     }
     return { status: status.value, value: input.data };
   }
-  gte(value, message) {
-    return this.setLimit("min", value, true, errorUtil.toString(message));
+  gte(value, message2) {
+    return this.setLimit("min", value, true, errorUtil.toString(message2));
   }
-  gt(value, message) {
-    return this.setLimit("min", value, false, errorUtil.toString(message));
+  gt(value, message2) {
+    return this.setLimit("min", value, false, errorUtil.toString(message2));
   }
-  lte(value, message) {
-    return this.setLimit("max", value, true, errorUtil.toString(message));
+  lte(value, message2) {
+    return this.setLimit("max", value, true, errorUtil.toString(message2));
   }
-  lt(value, message) {
-    return this.setLimit("max", value, false, errorUtil.toString(message));
+  lt(value, message2) {
+    return this.setLimit("max", value, false, errorUtil.toString(message2));
   }
-  setLimit(kind, value, inclusive, message) {
+  setLimit(kind, value, inclusive, message2) {
     return new _ZodNumber({
       ...this._def,
       checks: [
@@ -86150,7 +86150,7 @@ var ZodNumber = class _ZodNumber extends ZodType {
           kind,
           value,
           inclusive,
-          message: errorUtil.toString(message)
+          message: errorUtil.toString(message2)
         }
       ]
     });
@@ -86161,68 +86161,68 @@ var ZodNumber = class _ZodNumber extends ZodType {
       checks: [...this._def.checks, check2]
     });
   }
-  int(message) {
+  int(message2) {
     return this._addCheck({
       kind: "int",
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  positive(message) {
+  positive(message2) {
     return this._addCheck({
       kind: "min",
       value: 0,
       inclusive: false,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  negative(message) {
+  negative(message2) {
     return this._addCheck({
       kind: "max",
       value: 0,
       inclusive: false,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  nonpositive(message) {
+  nonpositive(message2) {
     return this._addCheck({
       kind: "max",
       value: 0,
       inclusive: true,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  nonnegative(message) {
+  nonnegative(message2) {
     return this._addCheck({
       kind: "min",
       value: 0,
       inclusive: true,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  multipleOf(value, message) {
+  multipleOf(value, message2) {
     return this._addCheck({
       kind: "multipleOf",
       value,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  finite(message) {
+  finite(message2) {
     return this._addCheck({
       kind: "finite",
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  safe(message) {
+  safe(message2) {
     return this._addCheck({
       kind: "min",
       inclusive: true,
       value: Number.MIN_SAFE_INTEGER,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     })._addCheck({
       kind: "max",
       inclusive: true,
       value: Number.MAX_SAFE_INTEGER,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
   get minValue() {
@@ -86345,19 +86345,19 @@ var ZodBigInt = class _ZodBigInt extends ZodType {
     });
     return INVALID;
   }
-  gte(value, message) {
-    return this.setLimit("min", value, true, errorUtil.toString(message));
+  gte(value, message2) {
+    return this.setLimit("min", value, true, errorUtil.toString(message2));
   }
-  gt(value, message) {
-    return this.setLimit("min", value, false, errorUtil.toString(message));
+  gt(value, message2) {
+    return this.setLimit("min", value, false, errorUtil.toString(message2));
   }
-  lte(value, message) {
-    return this.setLimit("max", value, true, errorUtil.toString(message));
+  lte(value, message2) {
+    return this.setLimit("max", value, true, errorUtil.toString(message2));
   }
-  lt(value, message) {
-    return this.setLimit("max", value, false, errorUtil.toString(message));
+  lt(value, message2) {
+    return this.setLimit("max", value, false, errorUtil.toString(message2));
   }
-  setLimit(kind, value, inclusive, message) {
+  setLimit(kind, value, inclusive, message2) {
     return new _ZodBigInt({
       ...this._def,
       checks: [
@@ -86366,7 +86366,7 @@ var ZodBigInt = class _ZodBigInt extends ZodType {
           kind,
           value,
           inclusive,
-          message: errorUtil.toString(message)
+          message: errorUtil.toString(message2)
         }
       ]
     });
@@ -86377,43 +86377,43 @@ var ZodBigInt = class _ZodBigInt extends ZodType {
       checks: [...this._def.checks, check2]
     });
   }
-  positive(message) {
+  positive(message2) {
     return this._addCheck({
       kind: "min",
       value: BigInt(0),
       inclusive: false,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  negative(message) {
+  negative(message2) {
     return this._addCheck({
       kind: "max",
       value: BigInt(0),
       inclusive: false,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  nonpositive(message) {
+  nonpositive(message2) {
     return this._addCheck({
       kind: "max",
       value: BigInt(0),
       inclusive: true,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  nonnegative(message) {
+  nonnegative(message2) {
     return this._addCheck({
       kind: "min",
       value: BigInt(0),
       inclusive: true,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  multipleOf(value, message) {
+  multipleOf(value, message2) {
     return this._addCheck({
       kind: "multipleOf",
       value,
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
   get minValue() {
@@ -86536,18 +86536,18 @@ var ZodDate = class _ZodDate extends ZodType {
       checks: [...this._def.checks, check2]
     });
   }
-  min(minDate, message) {
+  min(minDate, message2) {
     return this._addCheck({
       kind: "min",
       value: minDate.getTime(),
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
-  max(maxDate, message) {
+  max(maxDate, message2) {
     return this._addCheck({
       kind: "max",
       value: maxDate.getTime(),
-      message: errorUtil.toString(message)
+      message: errorUtil.toString(message2)
     });
   }
   get minDate() {
@@ -86779,26 +86779,26 @@ var ZodArray = class _ZodArray extends ZodType {
   get element() {
     return this._def.type;
   }
-  min(minLength, message) {
+  min(minLength, message2) {
     return new _ZodArray({
       ...this._def,
-      minLength: { value: minLength, message: errorUtil.toString(message) }
+      minLength: { value: minLength, message: errorUtil.toString(message2) }
     });
   }
-  max(maxLength, message) {
+  max(maxLength, message2) {
     return new _ZodArray({
       ...this._def,
-      maxLength: { value: maxLength, message: errorUtil.toString(message) }
+      maxLength: { value: maxLength, message: errorUtil.toString(message2) }
     });
   }
-  length(len, message) {
+  length(len, message2) {
     return new _ZodArray({
       ...this._def,
-      exactLength: { value: len, message: errorUtil.toString(message) }
+      exactLength: { value: len, message: errorUtil.toString(message2) }
     });
   }
-  nonempty(message) {
-    return this.min(1, message);
+  nonempty(message2) {
+    return this.min(1, message2);
   }
 };
 ZodArray.create = (schema, params) => {
@@ -86941,17 +86941,17 @@ var ZodObject = class _ZodObject extends ZodType {
   get shape() {
     return this._def.shape();
   }
-  strict(message) {
+  strict(message2) {
     errorUtil.errToObj;
     return new _ZodObject({
       ...this._def,
       unknownKeys: "strict",
-      ...message !== void 0 ? {
+      ...message2 !== void 0 ? {
         errorMap: (issue2, ctx) => {
           const defaultError = this._def.errorMap?.(issue2, ctx).message ?? ctx.defaultError;
           if (issue2.code === "unrecognized_keys")
             return {
-              message: errorUtil.errToObj(message).message ?? defaultError
+              message: errorUtil.errToObj(message2).message ?? defaultError
             };
           return {
             message: defaultError
@@ -87259,9 +87259,9 @@ var ZodUnion = class extends ZodType {
     return this._def.options;
   }
 };
-ZodUnion.create = (types3, params) => {
+ZodUnion.create = (types6, params) => {
   return new ZodUnion({
-    options: types3,
+    options: types6,
     typeName: ZodFirstPartyTypeKind.ZodUnion,
     ...processCreateParams(params)
   });
@@ -87707,23 +87707,23 @@ var ZodSet = class _ZodSet extends ZodType {
       return finalizeSet(elements);
     }
   }
-  min(minSize, message) {
+  min(minSize, message2) {
     return new _ZodSet({
       ...this._def,
-      minSize: { value: minSize, message: errorUtil.toString(message) }
+      minSize: { value: minSize, message: errorUtil.toString(message2) }
     });
   }
-  max(maxSize, message) {
+  max(maxSize, message2) {
     return new _ZodSet({
       ...this._def,
-      maxSize: { value: maxSize, message: errorUtil.toString(message) }
+      maxSize: { value: maxSize, message: errorUtil.toString(message2) }
     });
   }
-  size(size, message) {
-    return this.min(size, message).max(size, message);
+  size(size, message2) {
+    return this.min(size, message2).max(size, message2);
   }
-  nonempty(message) {
-    return this.min(1, message);
+  nonempty(message2) {
+    return this.min(1, message2);
   }
 };
 ZodSet.create = (valueType, params) => {
@@ -89000,8 +89000,8 @@ function is(value, type) {
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.21.0/node_modules/drizzle-orm/logger.js
 var ConsoleLogWriter = class {
   static [entityKind] = "ConsoleLogWriter";
-  write(message) {
-    console.log(message);
+  write(message2) {
+    console.log(message2);
   }
 };
 var DefaultLogger = class {
@@ -90010,8 +90010,8 @@ var SQL = class _SQL {
     }
     return new _SQL.Aliased(this, alias);
   }
-  mapWith(decoder) {
-    this.decoder = typeof decoder === "function" ? { mapFromDriverValue: decoder } : decoder;
+  mapWith(decoder2) {
+    this.decoder = typeof decoder2 === "function" ? { mapFromDriverValue: decoder2 } : decoder2;
     return this;
   }
   inlineParams() {
@@ -90056,9 +90056,9 @@ var Param = class {
    * @param value - Parameter value
    * @param encoder - Encoder to convert the value to a driver parameter
    */
-  constructor(value, encoder = noopEncoder) {
+  constructor(value, encoder2 = noopEncoder) {
     this.value = value;
-    this.encoder = encoder;
+    this.encoder = encoder2;
   }
   static [entityKind] = "Param";
   brand;
@@ -90108,8 +90108,8 @@ function sql(strings, ...params) {
     return new Placeholder(name2);
   }
   sql22.placeholder = placeholder2;
-  function param2(value, encoder) {
-    return new Param(value, encoder);
+  function param2(value, encoder2) {
+    return new Param(value, encoder2);
   }
   sql22.param = param2;
 })(sql || (sql = {}));
@@ -90362,15 +90362,15 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
     (result2, { path: path5, field }, columnIndex) => {
-      let decoder;
+      let decoder2;
       if (is(field, Column)) {
-        decoder = field;
+        decoder2 = field;
       } else if (is(field, SQL)) {
-        decoder = field.decoder;
+        decoder2 = field.decoder;
       } else if (is(field, Subquery)) {
-        decoder = field._.sql.decoder;
+        decoder2 = field._.sql.decoder;
       } else {
-        decoder = field.sql.decoder;
+        decoder2 = field.sql.decoder;
       }
       let node = result2;
       for (const [pathChunkIndex, pathChunk] of path5.entries()) {
@@ -90381,7 +90381,7 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
           node = node[pathChunk];
         } else {
           const rawValue = row[columnIndex];
-          const value = node[pathChunk] = rawValue === null ? null : decoder.mapFromDriverValue(rawValue);
+          const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
           if (joinsNotNullableMap && is(field, Column) && path5.length === 2) {
             const objectName = path5[0];
             if (!(objectName in nullifyMap)) {
@@ -91639,8 +91639,8 @@ var PgTimestampString = class extends PgColumn {
     const shortened = value.toISOString().slice(0, -1).replace("T", " ");
     if (this.withTimezone) {
       const offset = value.getTimezoneOffset();
-      const sign = offset <= 0 ? "+" : "-";
-      return `${shortened}${sign}${Math.floor(Math.abs(offset) / 60).toString().padStart(2, "0")}`;
+      const sign3 = offset <= 0 ? "+" : "-";
+      return `${shortened}${sign3}${Math.floor(Math.abs(offset) / 60).toString().padStart(2, "0")}`;
     }
     return shortened;
   }
@@ -92120,8 +92120,8 @@ var CasingCache = class {
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.21.0/node_modules/drizzle-orm/errors.js
 var DrizzleError = class extends Error {
   static [entityKind] = "DrizzleError";
-  constructor({ message, cause }) {
-    super(message);
+  constructor({ message: message2, cause }) {
+    super(message2);
     this.name = "DrizzleError";
     this.cause = cause;
   }
@@ -92514,15 +92514,15 @@ function mapRelationalRow(tablesConfig, tableConfig, row, buildQueryResultSelect
     } else {
       const value = mapColumnValue(row[selectionItemIndex]);
       const field = selectionItem.field;
-      let decoder;
+      let decoder2;
       if (is(field, Column)) {
-        decoder = field;
+        decoder2 = field;
       } else if (is(field, SQL)) {
-        decoder = field.decoder;
+        decoder2 = field.decoder;
       } else {
-        decoder = field.sql.decoder;
+        decoder2 = field.sql.decoder;
       }
-      result[selectionItem.tsKey] = value === null ? null : decoder.mapFromDriverValue(value);
+      result[selectionItem.tsKey] = value === null ? null : decoder2.mapFromDriverValue(value);
     }
   }
   return result;
@@ -92919,18 +92919,18 @@ var PgDialect = class {
     const withNoDataSql = withNoData ? sql` with no data` : void 0;
     return sql`refresh materialized view${concurrentlySql} ${view}${withNoDataSql}`;
   }
-  prepareTyping(encoder) {
-    if (is(encoder, PgJsonb) || is(encoder, PgJson)) {
+  prepareTyping(encoder2) {
+    if (is(encoder2, PgJsonb) || is(encoder2, PgJson)) {
       return "json";
-    } else if (is(encoder, PgNumeric)) {
+    } else if (is(encoder2, PgNumeric)) {
       return "decimal";
-    } else if (is(encoder, PgTime)) {
+    } else if (is(encoder2, PgTime)) {
       return "time";
-    } else if (is(encoder, PgTimestamp) || is(encoder, PgTimestampString)) {
+    } else if (is(encoder2, PgTimestamp) || is(encoder2, PgTimestampString)) {
       return "timestamp";
-    } else if (is(encoder, PgDate) || is(encoder, PgDateString)) {
+    } else if (is(encoder2, PgDate) || is(encoder2, PgDateString)) {
       return "date";
-    } else if (is(encoder, PgUUID)) {
+    } else if (is(encoder2, PgUUID)) {
       return "uuid";
     } else {
       return "none";
@@ -95621,8 +95621,8 @@ var NoopCache = class extends Cache {
 };
 async function hashQuery(sql9, params) {
   const dataToHash = `${sql9}-${JSON.stringify(params)}`;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(dataToHash);
+  const encoder2 = new TextEncoder();
+  const data = encoder2.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = [...new Uint8Array(hashBuffer)];
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -97203,14 +97203,14 @@ function prefixIssues(path5, issues) {
     return iss;
   });
 }
-function unwrapMessage(message) {
-  return typeof message === "string" ? message : message?.message;
+function unwrapMessage(message2) {
+  return typeof message2 === "string" ? message2 : message2?.message;
 }
 function finalizeIssue(iss, ctx, config2) {
   const full = { ...iss, path: iss.path ?? [] };
   if (!iss.message) {
-    const message = unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ?? unwrapMessage(ctx?.error?.(iss)) ?? unwrapMessage(config2.customError?.(iss)) ?? unwrapMessage(config2.localeError?.(iss)) ?? "Invalid input";
-    full.message = message;
+    const message2 = unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ?? unwrapMessage(ctx?.error?.(iss)) ?? unwrapMessage(config2.customError?.(iss)) ?? unwrapMessage(config2.localeError?.(iss)) ?? "Invalid input";
+    full.message = message2;
   }
   delete full.inst;
   delete full.continue;
@@ -98881,7 +98881,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     return (payload, ctx) => fn(shape, payload, ctx);
   };
   let fastpass;
-  const isObject3 = isObject2;
+  const isObject4 = isObject2;
   const jit = !globalConfig.jitless;
   const allowsEval2 = allowsEval;
   const fastEnabled = jit && allowsEval2.value;
@@ -98890,7 +98890,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input = payload.value;
-    if (!isObject3(input)) {
+    if (!isObject4(input)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -105161,10 +105161,10 @@ function _property(property, schema, params) {
     ...normalizeParams(params)
   });
 }
-function _mime(types3, params) {
+function _mime(types6, params) {
   return new $ZodCheckMimeType({
     check: "mime_type",
-    mime: types3,
+    mime: types6,
     ...normalizeParams(params)
   });
 }
@@ -107047,7 +107047,7 @@ var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   ZodType2.init(inst, def);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
-  inst.mime = (types3, params) => inst.check(_mime(Array.isArray(types3) ? types3 : [types3], params));
+  inst.mime = (types6, params) => inst.check(_mime(Array.isArray(types6) ? types6 : [types6], params));
 });
 function file(params) {
   return _file(ZodFile, params);
@@ -107776,6 +107776,7 @@ var liveClassesTable = pgTable("live_classes", {
   thumbnailUrl: text("thumbnail_url"),
   studentsJoined: integer("students_joined").default(0),
   joinUrl: text("join_url"),
+  liveKitRoomName: text("livekit_room_name").unique(),
   isPublished: boolean("is_published").notNull().default(true),
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at"),
@@ -109106,7 +109107,7 @@ var chatMessagesTable = pgTable("chat_messages", {
 var insertChatMessageSchema = createInsertSchema(chatMessagesTable).omit({ id: true, createdAt: true });
 
 // ../../lib/db/src/schema/stageSlots.ts
-var stageSlotStatusEnum = pgEnum("stage_slot_status", ["invited", "active", "muted"]);
+var stageSlotStatusEnum = pgEnum("stage_slot_status", ["invited", "active", "muted", "ended"]);
 var stageSlotsTable = pgTable(
   "session_stage_slots",
   {
@@ -109118,7 +109119,13 @@ var stageSlotsTable = pgTable(
     slotNumber: integer("slot_number").notNull(),
     status: stageSlotStatusEnum("status").default("invited").notNull(),
     isMuted: boolean("is_muted").default(true).notNull(),
-    joinedAt: timestamp("joined_at").defaultNow().notNull()
+    joinedAt: timestamp("joined_at").defaultNow().notNull(),
+    invitedByTeacherId: integer("invited_by_teacher_id"),
+    stageStartedAt: timestamp("stage_started_at").defaultNow(),
+    stageExpiresAt: timestamp("stage_expires_at"),
+    stageEndedAt: timestamp("stage_ended_at"),
+    endReason: text("end_reason")
+    // teacher_removed | timer_expired | student_left | class_ended
   },
   (t) => [
     uniqueIndex("idx_stage_session_slot").on(t.sessionId, t.slotNumber),
@@ -109190,9 +109197,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-09-1906" : "dev",
-    commit: true ? "45af108" : "unknown",
-    buildTime: true ? "2026-07-09T19:06:23.612Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-09-2034" : "dev",
+    commit: true ? "24da3ba" : "unknown",
+    buildTime: true ? "2026-07-09T20:34:40.629Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -109844,10 +109851,5987 @@ router5.post("/live-classes/:id/join", async (req, res) => {
 });
 var liveClasses_default = router5;
 
-// src/routes/recordings.ts
+// src/routes/livekit.ts
 var import_express6 = __toESM(require_express2(), 1);
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/assert.js
+function assert2(condition, msg) {
+  if (!condition) {
+    throw new Error(msg);
+  }
+}
+var FLOAT32_MAX = 34028234663852886e22;
+var FLOAT32_MIN = -34028234663852886e22;
+var UINT32_MAX = 4294967295;
+var INT32_MAX = 2147483647;
+var INT32_MIN = -2147483648;
+function assertInt32(arg) {
+  if (typeof arg !== "number")
+    throw new Error("invalid int 32: " + typeof arg);
+  if (!Number.isInteger(arg) || arg > INT32_MAX || arg < INT32_MIN)
+    throw new Error("invalid int 32: " + arg);
+}
+function assertUInt32(arg) {
+  if (typeof arg !== "number")
+    throw new Error("invalid uint 32: " + typeof arg);
+  if (!Number.isInteger(arg) || arg > UINT32_MAX || arg < 0)
+    throw new Error("invalid uint 32: " + arg);
+}
+function assertFloat32(arg) {
+  if (typeof arg !== "number")
+    throw new Error("invalid float 32: " + typeof arg);
+  if (!Number.isFinite(arg))
+    return;
+  if (arg > FLOAT32_MAX || arg < FLOAT32_MIN)
+    throw new Error("invalid float 32: " + arg);
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/enum.js
+var enumTypeSymbol = /* @__PURE__ */ Symbol("@bufbuild/protobuf/enum-type");
+function getEnumType(enumObject) {
+  const t = enumObject[enumTypeSymbol];
+  assert2(t, "missing enum type on enum object");
+  return t;
+}
+function setEnumType(enumObject, typeName, values, opt) {
+  enumObject[enumTypeSymbol] = makeEnumType(typeName, values.map((v) => ({
+    no: v.no,
+    name: v.name,
+    localName: enumObject[v.no]
+  })), opt);
+}
+function makeEnumType(typeName, values, _opt) {
+  const names = /* @__PURE__ */ Object.create(null);
+  const numbers = /* @__PURE__ */ Object.create(null);
+  const normalValues = [];
+  for (const value of values) {
+    const n = normalizeEnumValue(value);
+    normalValues.push(n);
+    names[value.name] = n;
+    numbers[value.no] = n;
+  }
+  return {
+    typeName,
+    values: normalValues,
+    // We do not surface options at this time
+    // options: opt?.options ?? Object.create(null),
+    findName(name) {
+      return names[name];
+    },
+    findNumber(no) {
+      return numbers[no];
+    }
+  };
+}
+function makeEnum(typeName, values, opt) {
+  const enumObject = {};
+  for (const value of values) {
+    const n = normalizeEnumValue(value);
+    enumObject[n.localName] = n.no;
+    enumObject[n.no] = n.localName;
+  }
+  setEnumType(enumObject, typeName, values, opt);
+  return enumObject;
+}
+function normalizeEnumValue(value) {
+  if ("localName" in value) {
+    return value;
+  }
+  return Object.assign(Object.assign({}, value), { localName: value.name });
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/message.js
+var Message = class {
+  /**
+   * Compare with a message of the same type.
+   * Note that this function disregards extensions and unknown fields.
+   */
+  equals(other) {
+    return this.getType().runtime.util.equals(this.getType(), this, other);
+  }
+  /**
+   * Create a deep copy.
+   */
+  clone() {
+    return this.getType().runtime.util.clone(this);
+  }
+  /**
+   * Parse from binary data, merging fields.
+   *
+   * Repeated fields are appended. Map entries are added, overwriting
+   * existing keys.
+   *
+   * If a message field is already present, it will be merged with the
+   * new data.
+   */
+  fromBinary(bytes, options) {
+    const type = this.getType(), format = type.runtime.bin, opt = format.makeReadOptions(options);
+    format.readMessage(this, opt.readerFactory(bytes), bytes.byteLength, opt);
+    return this;
+  }
+  /**
+   * Parse a message from a JSON value.
+   */
+  fromJson(jsonValue, options) {
+    const type = this.getType(), format = type.runtime.json, opt = format.makeReadOptions(options);
+    format.readMessage(type, jsonValue, opt, this);
+    return this;
+  }
+  /**
+   * Parse a message from a JSON string.
+   */
+  fromJsonString(jsonString, options) {
+    let json3;
+    try {
+      json3 = JSON.parse(jsonString);
+    } catch (e) {
+      throw new Error(`cannot decode ${this.getType().typeName} from JSON: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    return this.fromJson(json3, options);
+  }
+  /**
+   * Serialize the message to binary data.
+   */
+  toBinary(options) {
+    const type = this.getType(), bin = type.runtime.bin, opt = bin.makeWriteOptions(options), writer = opt.writerFactory();
+    bin.writeMessage(this, writer, opt);
+    return writer.finish();
+  }
+  /**
+   * Serialize the message to a JSON value, a JavaScript value that can be
+   * passed to JSON.stringify().
+   */
+  toJson(options) {
+    const type = this.getType(), json3 = type.runtime.json, opt = json3.makeWriteOptions(options);
+    return json3.writeMessage(this, opt);
+  }
+  /**
+   * Serialize the message to a JSON string.
+   */
+  toJsonString(options) {
+    var _a;
+    const value = this.toJson(options);
+    return JSON.stringify(value, null, (_a = options === null || options === void 0 ? void 0 : options.prettySpaces) !== null && _a !== void 0 ? _a : 0);
+  }
+  /**
+   * Override for serialization behavior. This will be invoked when calling
+   * JSON.stringify on this message (i.e. JSON.stringify(msg)).
+   *
+   * Note that this will not serialize google.protobuf.Any with a packed
+   * message because the protobuf JSON format specifies that it needs to be
+   * unpacked, and this is only possible with a type registry to look up the
+   * message type.  As a result, attempting to serialize a message with this
+   * type will throw an Error.
+   *
+   * This method is protected because you should not need to invoke it
+   * directly -- instead use JSON.stringify or toJsonString for
+   * stringified JSON.  Alternatively, if actual JSON is desired, you should
+   * use toJson.
+   */
+  toJSON() {
+    return this.toJson({
+      emitDefaultValues: true
+    });
+  }
+  /**
+   * Retrieve the MessageType of this message - a singleton that represents
+   * the protobuf message declaration and provides metadata for reflection-
+   * based operations.
+   */
+  getType() {
+    return Object.getPrototypeOf(this).constructor;
+  }
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/message-type.js
+function makeMessageType(runtime2, typeName, fields, opt) {
+  var _a;
+  const localName = (_a = opt === null || opt === void 0 ? void 0 : opt.localName) !== null && _a !== void 0 ? _a : typeName.substring(typeName.lastIndexOf(".") + 1);
+  const type = {
+    [localName]: function(data) {
+      runtime2.util.initFields(this);
+      runtime2.util.initPartial(data, this);
+    }
+  }[localName];
+  Object.setPrototypeOf(type.prototype, new Message());
+  Object.assign(type, {
+    runtime: runtime2,
+    typeName,
+    fields: runtime2.util.newFieldList(fields),
+    fromBinary(bytes, options) {
+      return new type().fromBinary(bytes, options);
+    },
+    fromJson(jsonValue, options) {
+      return new type().fromJson(jsonValue, options);
+    },
+    fromJsonString(jsonString, options) {
+      return new type().fromJsonString(jsonString, options);
+    },
+    equals(a, b) {
+      return runtime2.util.equals(type, a, b);
+    }
+  });
+  return type;
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/google/varint.js
+function varint64read() {
+  let lowBits = 0;
+  let highBits = 0;
+  for (let shift = 0; shift < 28; shift += 7) {
+    let b = this.buf[this.pos++];
+    lowBits |= (b & 127) << shift;
+    if ((b & 128) == 0) {
+      this.assertBounds();
+      return [lowBits, highBits];
+    }
+  }
+  let middleByte = this.buf[this.pos++];
+  lowBits |= (middleByte & 15) << 28;
+  highBits = (middleByte & 112) >> 4;
+  if ((middleByte & 128) == 0) {
+    this.assertBounds();
+    return [lowBits, highBits];
+  }
+  for (let shift = 3; shift <= 31; shift += 7) {
+    let b = this.buf[this.pos++];
+    highBits |= (b & 127) << shift;
+    if ((b & 128) == 0) {
+      this.assertBounds();
+      return [lowBits, highBits];
+    }
+  }
+  throw new Error("invalid varint");
+}
+function varint64write(lo, hi, bytes) {
+  for (let i = 0; i < 28; i = i + 7) {
+    const shift = lo >>> i;
+    const hasNext = !(shift >>> 7 == 0 && hi == 0);
+    const byte = (hasNext ? shift | 128 : shift) & 255;
+    bytes.push(byte);
+    if (!hasNext) {
+      return;
+    }
+  }
+  const splitBits = lo >>> 28 & 15 | (hi & 7) << 4;
+  const hasMoreBits = !(hi >> 3 == 0);
+  bytes.push((hasMoreBits ? splitBits | 128 : splitBits) & 255);
+  if (!hasMoreBits) {
+    return;
+  }
+  for (let i = 3; i < 31; i = i + 7) {
+    const shift = hi >>> i;
+    const hasNext = !(shift >>> 7 == 0);
+    const byte = (hasNext ? shift | 128 : shift) & 255;
+    bytes.push(byte);
+    if (!hasNext) {
+      return;
+    }
+  }
+  bytes.push(hi >>> 31 & 1);
+}
+var TWO_PWR_32_DBL = 4294967296;
+function int64FromString(dec) {
+  const minus = dec[0] === "-";
+  if (minus) {
+    dec = dec.slice(1);
+  }
+  const base = 1e6;
+  let lowBits = 0;
+  let highBits = 0;
+  function add1e6digit(begin, end) {
+    const digit1e6 = Number(dec.slice(begin, end));
+    highBits *= base;
+    lowBits = lowBits * base + digit1e6;
+    if (lowBits >= TWO_PWR_32_DBL) {
+      highBits = highBits + (lowBits / TWO_PWR_32_DBL | 0);
+      lowBits = lowBits % TWO_PWR_32_DBL;
+    }
+  }
+  add1e6digit(-24, -18);
+  add1e6digit(-18, -12);
+  add1e6digit(-12, -6);
+  add1e6digit(-6);
+  return minus ? negate(lowBits, highBits) : newBits(lowBits, highBits);
+}
+function int64ToString(lo, hi) {
+  let bits = newBits(lo, hi);
+  const negative = bits.hi & 2147483648;
+  if (negative) {
+    bits = negate(bits.lo, bits.hi);
+  }
+  const result = uInt64ToString(bits.lo, bits.hi);
+  return negative ? "-" + result : result;
+}
+function uInt64ToString(lo, hi) {
+  ({ lo, hi } = toUnsigned(lo, hi));
+  if (hi <= 2097151) {
+    return String(TWO_PWR_32_DBL * hi + lo);
+  }
+  const low = lo & 16777215;
+  const mid = (lo >>> 24 | hi << 8) & 16777215;
+  const high = hi >> 16 & 65535;
+  let digitA = low + mid * 6777216 + high * 6710656;
+  let digitB = mid + high * 8147497;
+  let digitC = high * 2;
+  const base = 1e7;
+  if (digitA >= base) {
+    digitB += Math.floor(digitA / base);
+    digitA %= base;
+  }
+  if (digitB >= base) {
+    digitC += Math.floor(digitB / base);
+    digitB %= base;
+  }
+  return digitC.toString() + decimalFrom1e7WithLeadingZeros(digitB) + decimalFrom1e7WithLeadingZeros(digitA);
+}
+function toUnsigned(lo, hi) {
+  return { lo: lo >>> 0, hi: hi >>> 0 };
+}
+function newBits(lo, hi) {
+  return { lo: lo | 0, hi: hi | 0 };
+}
+function negate(lowBits, highBits) {
+  highBits = ~highBits;
+  if (lowBits) {
+    lowBits = ~lowBits + 1;
+  } else {
+    highBits += 1;
+  }
+  return newBits(lowBits, highBits);
+}
+var decimalFrom1e7WithLeadingZeros = (digit1e7) => {
+  const partial2 = String(digit1e7);
+  return "0000000".slice(partial2.length) + partial2;
+};
+function varint32write(value, bytes) {
+  if (value >= 0) {
+    while (value > 127) {
+      bytes.push(value & 127 | 128);
+      value = value >>> 7;
+    }
+    bytes.push(value);
+  } else {
+    for (let i = 0; i < 9; i++) {
+      bytes.push(value & 127 | 128);
+      value = value >> 7;
+    }
+    bytes.push(1);
+  }
+}
+function varint32read() {
+  let b = this.buf[this.pos++];
+  let result = b & 127;
+  if ((b & 128) == 0) {
+    this.assertBounds();
+    return result;
+  }
+  b = this.buf[this.pos++];
+  result |= (b & 127) << 7;
+  if ((b & 128) == 0) {
+    this.assertBounds();
+    return result;
+  }
+  b = this.buf[this.pos++];
+  result |= (b & 127) << 14;
+  if ((b & 128) == 0) {
+    this.assertBounds();
+    return result;
+  }
+  b = this.buf[this.pos++];
+  result |= (b & 127) << 21;
+  if ((b & 128) == 0) {
+    this.assertBounds();
+    return result;
+  }
+  b = this.buf[this.pos++];
+  result |= (b & 15) << 28;
+  for (let readBytes = 5; (b & 128) !== 0 && readBytes < 10; readBytes++)
+    b = this.buf[this.pos++];
+  if ((b & 128) != 0)
+    throw new Error("invalid varint");
+  this.assertBounds();
+  return result >>> 0;
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/proto-int64.js
+function makeInt64Support() {
+  const dv = new DataView(new ArrayBuffer(8));
+  const ok = typeof BigInt === "function" && typeof dv.getBigInt64 === "function" && typeof dv.getBigUint64 === "function" && typeof dv.setBigInt64 === "function" && typeof dv.setBigUint64 === "function" && (typeof process != "object" || typeof process.env != "object" || process.env.BUF_BIGINT_DISABLE !== "1");
+  if (ok) {
+    const MIN = BigInt("-9223372036854775808"), MAX = BigInt("9223372036854775807"), UMIN = BigInt("0"), UMAX = BigInt("18446744073709551615");
+    return {
+      zero: BigInt(0),
+      supported: true,
+      parse(value) {
+        const bi = typeof value == "bigint" ? value : BigInt(value);
+        if (bi > MAX || bi < MIN) {
+          throw new Error(`int64 invalid: ${value}`);
+        }
+        return bi;
+      },
+      uParse(value) {
+        const bi = typeof value == "bigint" ? value : BigInt(value);
+        if (bi > UMAX || bi < UMIN) {
+          throw new Error(`uint64 invalid: ${value}`);
+        }
+        return bi;
+      },
+      enc(value) {
+        dv.setBigInt64(0, this.parse(value), true);
+        return {
+          lo: dv.getInt32(0, true),
+          hi: dv.getInt32(4, true)
+        };
+      },
+      uEnc(value) {
+        dv.setBigInt64(0, this.uParse(value), true);
+        return {
+          lo: dv.getInt32(0, true),
+          hi: dv.getInt32(4, true)
+        };
+      },
+      dec(lo, hi) {
+        dv.setInt32(0, lo, true);
+        dv.setInt32(4, hi, true);
+        return dv.getBigInt64(0, true);
+      },
+      uDec(lo, hi) {
+        dv.setInt32(0, lo, true);
+        dv.setInt32(4, hi, true);
+        return dv.getBigUint64(0, true);
+      }
+    };
+  }
+  const assertInt64String = (value) => assert2(/^-?[0-9]+$/.test(value), `int64 invalid: ${value}`);
+  const assertUInt64String = (value) => assert2(/^[0-9]+$/.test(value), `uint64 invalid: ${value}`);
+  return {
+    zero: "0",
+    supported: false,
+    parse(value) {
+      if (typeof value != "string") {
+        value = value.toString();
+      }
+      assertInt64String(value);
+      return value;
+    },
+    uParse(value) {
+      if (typeof value != "string") {
+        value = value.toString();
+      }
+      assertUInt64String(value);
+      return value;
+    },
+    enc(value) {
+      if (typeof value != "string") {
+        value = value.toString();
+      }
+      assertInt64String(value);
+      return int64FromString(value);
+    },
+    uEnc(value) {
+      if (typeof value != "string") {
+        value = value.toString();
+      }
+      assertUInt64String(value);
+      return int64FromString(value);
+    },
+    dec(lo, hi) {
+      return int64ToString(lo, hi);
+    },
+    uDec(lo, hi) {
+      return uInt64ToString(lo, hi);
+    }
+  };
+}
+var protoInt64 = makeInt64Support();
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/scalar.js
+var ScalarType;
+(function(ScalarType2) {
+  ScalarType2[ScalarType2["DOUBLE"] = 1] = "DOUBLE";
+  ScalarType2[ScalarType2["FLOAT"] = 2] = "FLOAT";
+  ScalarType2[ScalarType2["INT64"] = 3] = "INT64";
+  ScalarType2[ScalarType2["UINT64"] = 4] = "UINT64";
+  ScalarType2[ScalarType2["INT32"] = 5] = "INT32";
+  ScalarType2[ScalarType2["FIXED64"] = 6] = "FIXED64";
+  ScalarType2[ScalarType2["FIXED32"] = 7] = "FIXED32";
+  ScalarType2[ScalarType2["BOOL"] = 8] = "BOOL";
+  ScalarType2[ScalarType2["STRING"] = 9] = "STRING";
+  ScalarType2[ScalarType2["BYTES"] = 12] = "BYTES";
+  ScalarType2[ScalarType2["UINT32"] = 13] = "UINT32";
+  ScalarType2[ScalarType2["SFIXED32"] = 15] = "SFIXED32";
+  ScalarType2[ScalarType2["SFIXED64"] = 16] = "SFIXED64";
+  ScalarType2[ScalarType2["SINT32"] = 17] = "SINT32";
+  ScalarType2[ScalarType2["SINT64"] = 18] = "SINT64";
+})(ScalarType || (ScalarType = {}));
+var LongType;
+(function(LongType2) {
+  LongType2[LongType2["BIGINT"] = 0] = "BIGINT";
+  LongType2[LongType2["STRING"] = 1] = "STRING";
+})(LongType || (LongType = {}));
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/scalars.js
+function scalarEquals(type, a, b) {
+  if (a === b) {
+    return true;
+  }
+  if (type == ScalarType.BYTES) {
+    if (!(a instanceof Uint8Array) || !(b instanceof Uint8Array)) {
+      return false;
+    }
+    if (a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  switch (type) {
+    case ScalarType.UINT64:
+    case ScalarType.FIXED64:
+    case ScalarType.INT64:
+    case ScalarType.SFIXED64:
+    case ScalarType.SINT64:
+      return a == b;
+  }
+  return false;
+}
+function scalarZeroValue(type, longType) {
+  switch (type) {
+    case ScalarType.BOOL:
+      return false;
+    case ScalarType.UINT64:
+    case ScalarType.FIXED64:
+    case ScalarType.INT64:
+    case ScalarType.SFIXED64:
+    case ScalarType.SINT64:
+      return longType == 0 ? protoInt64.zero : "0";
+    case ScalarType.DOUBLE:
+    case ScalarType.FLOAT:
+      return 0;
+    case ScalarType.BYTES:
+      return new Uint8Array(0);
+    case ScalarType.STRING:
+      return "";
+    default:
+      return 0;
+  }
+}
+function isScalarZeroValue(type, value) {
+  switch (type) {
+    case ScalarType.BOOL:
+      return value === false;
+    case ScalarType.STRING:
+      return value === "";
+    case ScalarType.BYTES:
+      return value instanceof Uint8Array && !value.byteLength;
+    default:
+      return value == 0;
+  }
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/binary-encoding.js
+var WireType;
+(function(WireType2) {
+  WireType2[WireType2["Varint"] = 0] = "Varint";
+  WireType2[WireType2["Bit64"] = 1] = "Bit64";
+  WireType2[WireType2["LengthDelimited"] = 2] = "LengthDelimited";
+  WireType2[WireType2["StartGroup"] = 3] = "StartGroup";
+  WireType2[WireType2["EndGroup"] = 4] = "EndGroup";
+  WireType2[WireType2["Bit32"] = 5] = "Bit32";
+})(WireType || (WireType = {}));
+var BinaryWriter = class {
+  constructor(textEncoder) {
+    this.stack = [];
+    this.textEncoder = textEncoder !== null && textEncoder !== void 0 ? textEncoder : new TextEncoder();
+    this.chunks = [];
+    this.buf = [];
+  }
+  /**
+   * Return all bytes written and reset this writer.
+   */
+  finish() {
+    this.chunks.push(new Uint8Array(this.buf));
+    let len = 0;
+    for (let i = 0; i < this.chunks.length; i++)
+      len += this.chunks[i].length;
+    let bytes = new Uint8Array(len);
+    let offset = 0;
+    for (let i = 0; i < this.chunks.length; i++) {
+      bytes.set(this.chunks[i], offset);
+      offset += this.chunks[i].length;
+    }
+    this.chunks = [];
+    return bytes;
+  }
+  /**
+   * Start a new fork for length-delimited data like a message
+   * or a packed repeated field.
+   *
+   * Must be joined later with `join()`.
+   */
+  fork() {
+    this.stack.push({ chunks: this.chunks, buf: this.buf });
+    this.chunks = [];
+    this.buf = [];
+    return this;
+  }
+  /**
+   * Join the last fork. Write its length and bytes, then
+   * return to the previous state.
+   */
+  join() {
+    let chunk = this.finish();
+    let prev = this.stack.pop();
+    if (!prev)
+      throw new Error("invalid state, fork stack empty");
+    this.chunks = prev.chunks;
+    this.buf = prev.buf;
+    this.uint32(chunk.byteLength);
+    return this.raw(chunk);
+  }
+  /**
+   * Writes a tag (field number and wire type).
+   *
+   * Equivalent to `uint32( (fieldNo << 3 | type) >>> 0 )`.
+   *
+   * Generated code should compute the tag ahead of time and call `uint32()`.
+   */
+  tag(fieldNo, type) {
+    return this.uint32((fieldNo << 3 | type) >>> 0);
+  }
+  /**
+   * Write a chunk of raw bytes.
+   */
+  raw(chunk) {
+    if (this.buf.length) {
+      this.chunks.push(new Uint8Array(this.buf));
+      this.buf = [];
+    }
+    this.chunks.push(chunk);
+    return this;
+  }
+  /**
+   * Write a `uint32` value, an unsigned 32 bit varint.
+   */
+  uint32(value) {
+    assertUInt32(value);
+    while (value > 127) {
+      this.buf.push(value & 127 | 128);
+      value = value >>> 7;
+    }
+    this.buf.push(value);
+    return this;
+  }
+  /**
+   * Write a `int32` value, a signed 32 bit varint.
+   */
+  int32(value) {
+    assertInt32(value);
+    varint32write(value, this.buf);
+    return this;
+  }
+  /**
+   * Write a `bool` value, a variant.
+   */
+  bool(value) {
+    this.buf.push(value ? 1 : 0);
+    return this;
+  }
+  /**
+   * Write a `bytes` value, length-delimited arbitrary data.
+   */
+  bytes(value) {
+    this.uint32(value.byteLength);
+    return this.raw(value);
+  }
+  /**
+   * Write a `string` value, length-delimited data converted to UTF-8 text.
+   */
+  string(value) {
+    let chunk = this.textEncoder.encode(value);
+    this.uint32(chunk.byteLength);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `float` value, 32-bit floating point number.
+   */
+  float(value) {
+    assertFloat32(value);
+    let chunk = new Uint8Array(4);
+    new DataView(chunk.buffer).setFloat32(0, value, true);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `double` value, a 64-bit floating point number.
+   */
+  double(value) {
+    let chunk = new Uint8Array(8);
+    new DataView(chunk.buffer).setFloat64(0, value, true);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `fixed32` value, an unsigned, fixed-length 32-bit integer.
+   */
+  fixed32(value) {
+    assertUInt32(value);
+    let chunk = new Uint8Array(4);
+    new DataView(chunk.buffer).setUint32(0, value, true);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `sfixed32` value, a signed, fixed-length 32-bit integer.
+   */
+  sfixed32(value) {
+    assertInt32(value);
+    let chunk = new Uint8Array(4);
+    new DataView(chunk.buffer).setInt32(0, value, true);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `sint32` value, a signed, zigzag-encoded 32-bit varint.
+   */
+  sint32(value) {
+    assertInt32(value);
+    value = (value << 1 ^ value >> 31) >>> 0;
+    varint32write(value, this.buf);
+    return this;
+  }
+  /**
+   * Write a `fixed64` value, a signed, fixed-length 64-bit integer.
+   */
+  sfixed64(value) {
+    let chunk = new Uint8Array(8), view = new DataView(chunk.buffer), tc = protoInt64.enc(value);
+    view.setInt32(0, tc.lo, true);
+    view.setInt32(4, tc.hi, true);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `fixed64` value, an unsigned, fixed-length 64 bit integer.
+   */
+  fixed64(value) {
+    let chunk = new Uint8Array(8), view = new DataView(chunk.buffer), tc = protoInt64.uEnc(value);
+    view.setInt32(0, tc.lo, true);
+    view.setInt32(4, tc.hi, true);
+    return this.raw(chunk);
+  }
+  /**
+   * Write a `int64` value, a signed 64-bit varint.
+   */
+  int64(value) {
+    let tc = protoInt64.enc(value);
+    varint64write(tc.lo, tc.hi, this.buf);
+    return this;
+  }
+  /**
+   * Write a `sint64` value, a signed, zig-zag-encoded 64-bit varint.
+   */
+  sint64(value) {
+    let tc = protoInt64.enc(value), sign3 = tc.hi >> 31, lo = tc.lo << 1 ^ sign3, hi = (tc.hi << 1 | tc.lo >>> 31) ^ sign3;
+    varint64write(lo, hi, this.buf);
+    return this;
+  }
+  /**
+   * Write a `uint64` value, an unsigned 64-bit varint.
+   */
+  uint64(value) {
+    let tc = protoInt64.uEnc(value);
+    varint64write(tc.lo, tc.hi, this.buf);
+    return this;
+  }
+};
+var BinaryReader = class {
+  constructor(buf, textDecoder2) {
+    this.varint64 = varint64read;
+    this.uint32 = varint32read;
+    this.buf = buf;
+    this.len = buf.length;
+    this.pos = 0;
+    this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    this.textDecoder = textDecoder2 !== null && textDecoder2 !== void 0 ? textDecoder2 : new TextDecoder();
+  }
+  /**
+   * Reads a tag - field number and wire type.
+   */
+  tag() {
+    let tag2 = this.uint32(), fieldNo = tag2 >>> 3, wireType = tag2 & 7;
+    if (fieldNo <= 0 || wireType < 0 || wireType > 5)
+      throw new Error("illegal tag: field no " + fieldNo + " wire type " + wireType);
+    return [fieldNo, wireType];
+  }
+  /**
+   * Skip one element and return the skipped data.
+   *
+   * When skipping StartGroup, provide the tags field number to check for
+   * matching field number in the EndGroup tag.
+   */
+  skip(wireType, fieldNo) {
+    let start = this.pos;
+    switch (wireType) {
+      case WireType.Varint:
+        while (this.buf[this.pos++] & 128) {
+        }
+        break;
+      // eslint-disable-next-line
+      // @ts-ignore TS7029: Fallthrough case in switch
+      case WireType.Bit64:
+        this.pos += 4;
+      // eslint-disable-next-line
+      // @ts-ignore TS7029: Fallthrough case in switch
+      case WireType.Bit32:
+        this.pos += 4;
+        break;
+      case WireType.LengthDelimited:
+        let len = this.uint32();
+        this.pos += len;
+        break;
+      case WireType.StartGroup:
+        for (; ; ) {
+          const [fn, wt] = this.tag();
+          if (wt === WireType.EndGroup) {
+            if (fieldNo !== void 0 && fn !== fieldNo) {
+              throw new Error("invalid end group tag");
+            }
+            break;
+          }
+          this.skip(wt, fn);
+        }
+        break;
+      default:
+        throw new Error("cant skip wire type " + wireType);
+    }
+    this.assertBounds();
+    return this.buf.subarray(start, this.pos);
+  }
+  /**
+   * Throws error if position in byte array is out of range.
+   */
+  assertBounds() {
+    if (this.pos > this.len)
+      throw new RangeError("premature EOF");
+  }
+  /**
+   * Read a `int32` field, a signed 32 bit varint.
+   */
+  int32() {
+    return this.uint32() | 0;
+  }
+  /**
+   * Read a `sint32` field, a signed, zigzag-encoded 32-bit varint.
+   */
+  sint32() {
+    let zze = this.uint32();
+    return zze >>> 1 ^ -(zze & 1);
+  }
+  /**
+   * Read a `int64` field, a signed 64-bit varint.
+   */
+  int64() {
+    return protoInt64.dec(...this.varint64());
+  }
+  /**
+   * Read a `uint64` field, an unsigned 64-bit varint.
+   */
+  uint64() {
+    return protoInt64.uDec(...this.varint64());
+  }
+  /**
+   * Read a `sint64` field, a signed, zig-zag-encoded 64-bit varint.
+   */
+  sint64() {
+    let [lo, hi] = this.varint64();
+    let s2 = -(lo & 1);
+    lo = (lo >>> 1 | (hi & 1) << 31) ^ s2;
+    hi = hi >>> 1 ^ s2;
+    return protoInt64.dec(lo, hi);
+  }
+  /**
+   * Read a `bool` field, a variant.
+   */
+  bool() {
+    let [lo, hi] = this.varint64();
+    return lo !== 0 || hi !== 0;
+  }
+  /**
+   * Read a `fixed32` field, an unsigned, fixed-length 32-bit integer.
+   */
+  fixed32() {
+    return this.view.getUint32((this.pos += 4) - 4, true);
+  }
+  /**
+   * Read a `sfixed32` field, a signed, fixed-length 32-bit integer.
+   */
+  sfixed32() {
+    return this.view.getInt32((this.pos += 4) - 4, true);
+  }
+  /**
+   * Read a `fixed64` field, an unsigned, fixed-length 64 bit integer.
+   */
+  fixed64() {
+    return protoInt64.uDec(this.sfixed32(), this.sfixed32());
+  }
+  /**
+   * Read a `fixed64` field, a signed, fixed-length 64-bit integer.
+   */
+  sfixed64() {
+    return protoInt64.dec(this.sfixed32(), this.sfixed32());
+  }
+  /**
+   * Read a `float` field, 32-bit floating point number.
+   */
+  float() {
+    return this.view.getFloat32((this.pos += 4) - 4, true);
+  }
+  /**
+   * Read a `double` field, a 64-bit floating point number.
+   */
+  double() {
+    return this.view.getFloat64((this.pos += 8) - 8, true);
+  }
+  /**
+   * Read a `bytes` field, length-delimited arbitrary data.
+   */
+  bytes() {
+    let len = this.uint32(), start = this.pos;
+    this.pos += len;
+    this.assertBounds();
+    return this.buf.subarray(start, start + len);
+  }
+  /**
+   * Read a `string` field, length-delimited data converted to UTF-8 text.
+   */
+  string() {
+    return this.textDecoder.decode(this.bytes());
+  }
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/extensions.js
+function makeExtension(runtime2, typeName, extendee, field) {
+  let fi;
+  return {
+    typeName,
+    extendee,
+    get field() {
+      if (!fi) {
+        const i = typeof field == "function" ? field() : field;
+        i.name = typeName.split(".").pop();
+        i.jsonName = `[${typeName}]`;
+        fi = runtime2.util.newFieldList([i]).list()[0];
+      }
+      return fi;
+    },
+    runtime: runtime2
+  };
+}
+function createExtensionContainer(extension) {
+  const localName = extension.field.localName;
+  const container = /* @__PURE__ */ Object.create(null);
+  container[localName] = initExtensionField(extension);
+  return [container, () => container[localName]];
+}
+function initExtensionField(ext) {
+  const field = ext.field;
+  if (field.repeated) {
+    return [];
+  }
+  if (field.default !== void 0) {
+    return field.default;
+  }
+  switch (field.kind) {
+    case "enum":
+      return field.T.values[0].no;
+    case "scalar":
+      return scalarZeroValue(field.T, field.L);
+    case "message":
+      const T = field.T, value = new T();
+      return T.fieldWrapper ? T.fieldWrapper.unwrapField(value) : value;
+    case "map":
+      throw "map fields are not allowed to be extensions";
+  }
+}
+function filterUnknownFields(unknownFields, field) {
+  if (!field.repeated && (field.kind == "enum" || field.kind == "scalar")) {
+    for (let i = unknownFields.length - 1; i >= 0; --i) {
+      if (unknownFields[i].no == field.no) {
+        return [unknownFields[i]];
+      }
+    }
+    return [];
+  }
+  return unknownFields.filter((uf) => uf.no === field.no);
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/proto-base64.js
+var encTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".split("");
+var decTable = [];
+for (let i = 0; i < encTable.length; i++)
+  decTable[encTable[i].charCodeAt(0)] = i;
+decTable["-".charCodeAt(0)] = encTable.indexOf("+");
+decTable["_".charCodeAt(0)] = encTable.indexOf("/");
+var protoBase64 = {
+  /**
+   * Decodes a base64 string to a byte array.
+   *
+   * - ignores white-space, including line breaks and tabs
+   * - allows inner padding (can decode concatenated base64 strings)
+   * - does not require padding
+   * - understands base64url encoding:
+   *   "-" instead of "+",
+   *   "_" instead of "/",
+   *   no padding
+   */
+  dec(base64Str) {
+    let es = base64Str.length * 3 / 4;
+    if (base64Str[base64Str.length - 2] == "=")
+      es -= 2;
+    else if (base64Str[base64Str.length - 1] == "=")
+      es -= 1;
+    let bytes = new Uint8Array(es), bytePos = 0, groupPos = 0, b, p = 0;
+    for (let i = 0; i < base64Str.length; i++) {
+      b = decTable[base64Str.charCodeAt(i)];
+      if (b === void 0) {
+        switch (base64Str[i]) {
+          // @ts-ignore TS7029: Fallthrough case in switch
+          case "=":
+            groupPos = 0;
+          // reset state when padding found
+          // @ts-ignore TS7029: Fallthrough case in switch
+          case "\n":
+          case "\r":
+          case "	":
+          case " ":
+            continue;
+          // skip white-space, and padding
+          default:
+            throw Error("invalid base64 string.");
+        }
+      }
+      switch (groupPos) {
+        case 0:
+          p = b;
+          groupPos = 1;
+          break;
+        case 1:
+          bytes[bytePos++] = p << 2 | (b & 48) >> 4;
+          p = b;
+          groupPos = 2;
+          break;
+        case 2:
+          bytes[bytePos++] = (p & 15) << 4 | (b & 60) >> 2;
+          p = b;
+          groupPos = 3;
+          break;
+        case 3:
+          bytes[bytePos++] = (p & 3) << 6 | b;
+          groupPos = 0;
+          break;
+      }
+    }
+    if (groupPos == 1)
+      throw Error("invalid base64 string.");
+    return bytes.subarray(0, bytePos);
+  },
+  /**
+   * Encode a byte array to a base64 string.
+   */
+  enc(bytes) {
+    let base643 = "", groupPos = 0, b, p = 0;
+    for (let i = 0; i < bytes.length; i++) {
+      b = bytes[i];
+      switch (groupPos) {
+        case 0:
+          base643 += encTable[b >> 2];
+          p = (b & 3) << 4;
+          groupPos = 1;
+          break;
+        case 1:
+          base643 += encTable[p | b >> 4];
+          p = (b & 15) << 2;
+          groupPos = 2;
+          break;
+        case 2:
+          base643 += encTable[p | b >> 6];
+          base643 += encTable[b & 63];
+          groupPos = 0;
+          break;
+      }
+    }
+    if (groupPos) {
+      base643 += encTable[p];
+      base643 += "=";
+      if (groupPos == 1)
+        base643 += "=";
+    }
+    return base643;
+  }
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/extension-accessor.js
+function getExtension(message2, extension, options) {
+  assertExtendee(extension, message2);
+  const opt = extension.runtime.bin.makeReadOptions(options);
+  const ufs = filterUnknownFields(message2.getType().runtime.bin.listUnknownFields(message2), extension.field);
+  const [container, get] = createExtensionContainer(extension);
+  for (const uf of ufs) {
+    extension.runtime.bin.readField(container, opt.readerFactory(uf.data), extension.field, uf.wireType, opt);
+  }
+  return get();
+}
+function setExtension(message2, extension, value, options) {
+  assertExtendee(extension, message2);
+  const readOpt = extension.runtime.bin.makeReadOptions(options);
+  const writeOpt = extension.runtime.bin.makeWriteOptions(options);
+  if (hasExtension(message2, extension)) {
+    const ufs = message2.getType().runtime.bin.listUnknownFields(message2).filter((uf) => uf.no != extension.field.no);
+    message2.getType().runtime.bin.discardUnknownFields(message2);
+    for (const uf of ufs) {
+      message2.getType().runtime.bin.onUnknownField(message2, uf.no, uf.wireType, uf.data);
+    }
+  }
+  const writer = writeOpt.writerFactory();
+  let f = extension.field;
+  if (!f.opt && !f.repeated && (f.kind == "enum" || f.kind == "scalar")) {
+    f = Object.assign(Object.assign({}, extension.field), { opt: true });
+  }
+  extension.runtime.bin.writeField(f, value, writer, writeOpt);
+  const reader = readOpt.readerFactory(writer.finish());
+  while (reader.pos < reader.len) {
+    const [no, wireType] = reader.tag();
+    const data = reader.skip(wireType, no);
+    message2.getType().runtime.bin.onUnknownField(message2, no, wireType, data);
+  }
+}
+function hasExtension(message2, extension) {
+  const messageType = message2.getType();
+  return extension.extendee.typeName === messageType.typeName && !!messageType.runtime.bin.listUnknownFields(message2).find((uf) => uf.no == extension.field.no);
+}
+function assertExtendee(extension, message2) {
+  assert2(extension.extendee.typeName == message2.getType().typeName, `extension ${extension.typeName} can only be applied to message ${extension.extendee.typeName}`);
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/reflect.js
+function isFieldSet(field, target) {
+  const localName = field.localName;
+  if (field.repeated) {
+    return target[localName].length > 0;
+  }
+  if (field.oneof) {
+    return target[field.oneof.localName].case === localName;
+  }
+  switch (field.kind) {
+    case "enum":
+    case "scalar":
+      if (field.opt || field.req) {
+        return target[localName] !== void 0;
+      }
+      if (field.kind == "enum") {
+        return target[localName] !== field.T.values[0].no;
+      }
+      return !isScalarZeroValue(field.T, target[localName]);
+    case "message":
+      return target[localName] !== void 0;
+    case "map":
+      return Object.keys(target[localName]).length > 0;
+  }
+}
+function clearField(field, target) {
+  const localName = field.localName;
+  const implicitPresence = !field.opt && !field.req;
+  if (field.repeated) {
+    target[localName] = [];
+  } else if (field.oneof) {
+    target[field.oneof.localName] = { case: void 0 };
+  } else {
+    switch (field.kind) {
+      case "map":
+        target[localName] = {};
+        break;
+      case "enum":
+        target[localName] = implicitPresence ? field.T.values[0].no : void 0;
+        break;
+      case "scalar":
+        target[localName] = implicitPresence ? scalarZeroValue(field.T, field.L) : void 0;
+        break;
+      case "message":
+        target[localName] = void 0;
+        break;
+    }
+  }
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/is-message.js
+function isMessage(arg, type) {
+  if (arg === null || typeof arg != "object") {
+    return false;
+  }
+  if (!Object.getOwnPropertyNames(Message.prototype).every((m) => m in arg && typeof arg[m] == "function")) {
+    return false;
+  }
+  const actualType = arg.getType();
+  if (actualType === null || typeof actualType != "function" || !("typeName" in actualType) || typeof actualType.typeName != "string") {
+    return false;
+  }
+  return type === void 0 ? true : actualType.typeName == type.typeName;
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/field-wrapper.js
+function wrapField(type, value) {
+  if (isMessage(value) || !type.fieldWrapper) {
+    return value;
+  }
+  return type.fieldWrapper.wrapField(value);
+}
+var wktWrapperToScalarType = {
+  "google.protobuf.DoubleValue": ScalarType.DOUBLE,
+  "google.protobuf.FloatValue": ScalarType.FLOAT,
+  "google.protobuf.Int64Value": ScalarType.INT64,
+  "google.protobuf.UInt64Value": ScalarType.UINT64,
+  "google.protobuf.Int32Value": ScalarType.INT32,
+  "google.protobuf.UInt32Value": ScalarType.UINT32,
+  "google.protobuf.BoolValue": ScalarType.BOOL,
+  "google.protobuf.StringValue": ScalarType.STRING,
+  "google.protobuf.BytesValue": ScalarType.BYTES
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/json-format.js
+var jsonReadDefaults = {
+  ignoreUnknownFields: false
+};
+var jsonWriteDefaults = {
+  emitDefaultValues: false,
+  enumAsInteger: false,
+  useProtoFieldName: false,
+  prettySpaces: 0
+};
+function makeReadOptions(options) {
+  return options ? Object.assign(Object.assign({}, jsonReadDefaults), options) : jsonReadDefaults;
+}
+function makeWriteOptions(options) {
+  return options ? Object.assign(Object.assign({}, jsonWriteDefaults), options) : jsonWriteDefaults;
+}
+var tokenNull = /* @__PURE__ */ Symbol();
+var tokenIgnoredUnknownEnum = /* @__PURE__ */ Symbol();
+function makeJsonFormat() {
+  return {
+    makeReadOptions,
+    makeWriteOptions,
+    readMessage(type, json3, options, message2) {
+      if (json3 == null || Array.isArray(json3) || typeof json3 != "object") {
+        throw new Error(`cannot decode message ${type.typeName} from JSON: ${debugJsonValue(json3)}`);
+      }
+      message2 = message2 !== null && message2 !== void 0 ? message2 : new type();
+      const oneofSeen = /* @__PURE__ */ new Map();
+      const registry2 = options.typeRegistry;
+      for (const [jsonKey, jsonValue] of Object.entries(json3)) {
+        const field = type.fields.findJsonName(jsonKey);
+        if (field) {
+          if (field.oneof) {
+            if (jsonValue === null && field.kind == "scalar") {
+              continue;
+            }
+            const seen = oneofSeen.get(field.oneof);
+            if (seen !== void 0) {
+              throw new Error(`cannot decode message ${type.typeName} from JSON: multiple keys for oneof "${field.oneof.name}" present: "${seen}", "${jsonKey}"`);
+            }
+            oneofSeen.set(field.oneof, jsonKey);
+          }
+          readField(message2, jsonValue, field, options, type);
+        } else {
+          let found = false;
+          if ((registry2 === null || registry2 === void 0 ? void 0 : registry2.findExtension) && jsonKey.startsWith("[") && jsonKey.endsWith("]")) {
+            const ext = registry2.findExtension(jsonKey.substring(1, jsonKey.length - 1));
+            if (ext && ext.extendee.typeName == type.typeName) {
+              found = true;
+              const [container, get] = createExtensionContainer(ext);
+              readField(container, jsonValue, ext.field, options, ext);
+              setExtension(message2, ext, get(), options);
+            }
+          }
+          if (!found && !options.ignoreUnknownFields) {
+            throw new Error(`cannot decode message ${type.typeName} from JSON: key "${jsonKey}" is unknown`);
+          }
+        }
+      }
+      return message2;
+    },
+    writeMessage(message2, options) {
+      const type = message2.getType();
+      const json3 = {};
+      let field;
+      try {
+        for (field of type.fields.byNumber()) {
+          if (!isFieldSet(field, message2)) {
+            if (field.req) {
+              throw `required field not set`;
+            }
+            if (!options.emitDefaultValues) {
+              continue;
+            }
+            if (!canEmitFieldDefaultValue(field)) {
+              continue;
+            }
+          }
+          const value = field.oneof ? message2[field.oneof.localName].value : message2[field.localName];
+          const jsonValue = writeField(field, value, options);
+          if (jsonValue !== void 0) {
+            json3[options.useProtoFieldName ? field.name : field.jsonName] = jsonValue;
+          }
+        }
+        const registry2 = options.typeRegistry;
+        if (registry2 === null || registry2 === void 0 ? void 0 : registry2.findExtensionFor) {
+          for (const uf of type.runtime.bin.listUnknownFields(message2)) {
+            const ext = registry2.findExtensionFor(type.typeName, uf.no);
+            if (ext && hasExtension(message2, ext)) {
+              const value = getExtension(message2, ext, options);
+              const jsonValue = writeField(ext.field, value, options);
+              if (jsonValue !== void 0) {
+                json3[ext.field.jsonName] = jsonValue;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        const m = field ? `cannot encode field ${type.typeName}.${field.name} to JSON` : `cannot encode message ${type.typeName} to JSON`;
+        const r = e instanceof Error ? e.message : String(e);
+        throw new Error(m + (r.length > 0 ? `: ${r}` : ""));
+      }
+      return json3;
+    },
+    readScalar(type, json3, longType) {
+      return readScalar(type, json3, longType !== null && longType !== void 0 ? longType : LongType.BIGINT, true);
+    },
+    writeScalar(type, value, emitDefaultValues) {
+      if (value === void 0) {
+        return void 0;
+      }
+      if (emitDefaultValues || isScalarZeroValue(type, value)) {
+        return writeScalar(type, value);
+      }
+      return void 0;
+    },
+    debug: debugJsonValue
+  };
+}
+function debugJsonValue(json3) {
+  if (json3 === null) {
+    return "null";
+  }
+  switch (typeof json3) {
+    case "object":
+      return Array.isArray(json3) ? "array" : "object";
+    case "string":
+      return json3.length > 100 ? "string" : `"${json3.split('"').join('\\"')}"`;
+    default:
+      return String(json3);
+  }
+}
+function readField(target, jsonValue, field, options, parentType) {
+  let localName = field.localName;
+  if (field.repeated) {
+    assert2(field.kind != "map");
+    if (jsonValue === null) {
+      return;
+    }
+    if (!Array.isArray(jsonValue)) {
+      throw new Error(`cannot decode field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonValue)}`);
+    }
+    const targetArray = target[localName];
+    for (const jsonItem of jsonValue) {
+      if (jsonItem === null) {
+        throw new Error(`cannot decode field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonItem)}`);
+      }
+      switch (field.kind) {
+        case "message":
+          targetArray.push(field.T.fromJson(jsonItem, options));
+          break;
+        case "enum":
+          const enumValue = readEnum(field.T, jsonItem, options.ignoreUnknownFields, true);
+          if (enumValue !== tokenIgnoredUnknownEnum) {
+            targetArray.push(enumValue);
+          }
+          break;
+        case "scalar":
+          try {
+            targetArray.push(readScalar(field.T, jsonItem, field.L, true));
+          } catch (e) {
+            let m = `cannot decode field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonItem)}`;
+            if (e instanceof Error && e.message.length > 0) {
+              m += `: ${e.message}`;
+            }
+            throw new Error(m);
+          }
+          break;
+      }
+    }
+  } else if (field.kind == "map") {
+    if (jsonValue === null) {
+      return;
+    }
+    if (typeof jsonValue != "object" || Array.isArray(jsonValue)) {
+      throw new Error(`cannot decode field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonValue)}`);
+    }
+    const targetMap = target[localName];
+    for (const [jsonMapKey, jsonMapValue] of Object.entries(jsonValue)) {
+      if (jsonMapValue === null) {
+        throw new Error(`cannot decode field ${parentType.typeName}.${field.name} from JSON: map value null`);
+      }
+      let key;
+      try {
+        key = readMapKey(field.K, jsonMapKey);
+      } catch (e) {
+        let m = `cannot decode map key for field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonValue)}`;
+        if (e instanceof Error && e.message.length > 0) {
+          m += `: ${e.message}`;
+        }
+        throw new Error(m);
+      }
+      switch (field.V.kind) {
+        case "message":
+          targetMap[key] = field.V.T.fromJson(jsonMapValue, options);
+          break;
+        case "enum":
+          const enumValue = readEnum(field.V.T, jsonMapValue, options.ignoreUnknownFields, true);
+          if (enumValue !== tokenIgnoredUnknownEnum) {
+            targetMap[key] = enumValue;
+          }
+          break;
+        case "scalar":
+          try {
+            targetMap[key] = readScalar(field.V.T, jsonMapValue, LongType.BIGINT, true);
+          } catch (e) {
+            let m = `cannot decode map value for field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonValue)}`;
+            if (e instanceof Error && e.message.length > 0) {
+              m += `: ${e.message}`;
+            }
+            throw new Error(m);
+          }
+          break;
+      }
+    }
+  } else {
+    if (field.oneof) {
+      target = target[field.oneof.localName] = { case: localName };
+      localName = "value";
+    }
+    switch (field.kind) {
+      case "message":
+        const messageType = field.T;
+        if (jsonValue === null && messageType.typeName != "google.protobuf.Value") {
+          return;
+        }
+        let currentValue = target[localName];
+        if (isMessage(currentValue)) {
+          currentValue.fromJson(jsonValue, options);
+        } else {
+          target[localName] = currentValue = messageType.fromJson(jsonValue, options);
+          if (messageType.fieldWrapper && !field.oneof) {
+            target[localName] = messageType.fieldWrapper.unwrapField(currentValue);
+          }
+        }
+        break;
+      case "enum":
+        const enumValue = readEnum(field.T, jsonValue, options.ignoreUnknownFields, false);
+        switch (enumValue) {
+          case tokenNull:
+            clearField(field, target);
+            break;
+          case tokenIgnoredUnknownEnum:
+            break;
+          default:
+            target[localName] = enumValue;
+            break;
+        }
+        break;
+      case "scalar":
+        try {
+          const scalarValue = readScalar(field.T, jsonValue, field.L, false);
+          switch (scalarValue) {
+            case tokenNull:
+              clearField(field, target);
+              break;
+            default:
+              target[localName] = scalarValue;
+              break;
+          }
+        } catch (e) {
+          let m = `cannot decode field ${parentType.typeName}.${field.name} from JSON: ${debugJsonValue(jsonValue)}`;
+          if (e instanceof Error && e.message.length > 0) {
+            m += `: ${e.message}`;
+          }
+          throw new Error(m);
+        }
+        break;
+    }
+  }
+}
+function readMapKey(type, json3) {
+  if (type === ScalarType.BOOL) {
+    switch (json3) {
+      case "true":
+        json3 = true;
+        break;
+      case "false":
+        json3 = false;
+        break;
+    }
+  }
+  return readScalar(type, json3, LongType.BIGINT, true).toString();
+}
+function readScalar(type, json3, longType, nullAsZeroValue) {
+  if (json3 === null) {
+    if (nullAsZeroValue) {
+      return scalarZeroValue(type, longType);
+    }
+    return tokenNull;
+  }
+  switch (type) {
+    // float, double: JSON value will be a number or one of the special string values "NaN", "Infinity", and "-Infinity".
+    // Either numbers or strings are accepted. Exponent notation is also accepted.
+    case ScalarType.DOUBLE:
+    case ScalarType.FLOAT:
+      if (json3 === "NaN")
+        return Number.NaN;
+      if (json3 === "Infinity")
+        return Number.POSITIVE_INFINITY;
+      if (json3 === "-Infinity")
+        return Number.NEGATIVE_INFINITY;
+      if (json3 === "") {
+        break;
+      }
+      if (typeof json3 == "string" && json3.trim().length !== json3.length) {
+        break;
+      }
+      if (typeof json3 != "string" && typeof json3 != "number") {
+        break;
+      }
+      const float = Number(json3);
+      if (Number.isNaN(float)) {
+        break;
+      }
+      if (!Number.isFinite(float)) {
+        break;
+      }
+      if (type == ScalarType.FLOAT)
+        assertFloat32(float);
+      return float;
+    // int32, fixed32, uint32: JSON value will be a decimal number. Either numbers or strings are accepted.
+    case ScalarType.INT32:
+    case ScalarType.FIXED32:
+    case ScalarType.SFIXED32:
+    case ScalarType.SINT32:
+    case ScalarType.UINT32:
+      let int322;
+      if (typeof json3 == "number")
+        int322 = json3;
+      else if (typeof json3 == "string" && json3.length > 0) {
+        if (json3.trim().length === json3.length)
+          int322 = Number(json3);
+      }
+      if (int322 === void 0)
+        break;
+      if (type == ScalarType.UINT32 || type == ScalarType.FIXED32)
+        assertUInt32(int322);
+      else
+        assertInt32(int322);
+      return int322;
+    // int64, fixed64, uint64: JSON value will be a decimal string. Either numbers or strings are accepted.
+    case ScalarType.INT64:
+    case ScalarType.SFIXED64:
+    case ScalarType.SINT64:
+      if (typeof json3 != "number" && typeof json3 != "string")
+        break;
+      const long = protoInt64.parse(json3);
+      return longType ? long.toString() : long;
+    case ScalarType.FIXED64:
+    case ScalarType.UINT64:
+      if (typeof json3 != "number" && typeof json3 != "string")
+        break;
+      const uLong = protoInt64.uParse(json3);
+      return longType ? uLong.toString() : uLong;
+    // bool:
+    case ScalarType.BOOL:
+      if (typeof json3 !== "boolean")
+        break;
+      return json3;
+    // string:
+    case ScalarType.STRING:
+      if (typeof json3 !== "string") {
+        break;
+      }
+      try {
+        encodeURIComponent(json3);
+      } catch (e) {
+        throw new Error("invalid UTF8");
+      }
+      return json3;
+    // bytes: JSON value will be the data encoded as a string using standard base64 encoding with paddings.
+    // Either standard or URL-safe base64 encoding with/without paddings are accepted.
+    case ScalarType.BYTES:
+      if (json3 === "")
+        return new Uint8Array(0);
+      if (typeof json3 !== "string")
+        break;
+      return protoBase64.dec(json3);
+  }
+  throw new Error();
+}
+function readEnum(type, json3, ignoreUnknownFields, nullAsZeroValue) {
+  if (json3 === null) {
+    if (type.typeName == "google.protobuf.NullValue") {
+      return 0;
+    }
+    return nullAsZeroValue ? type.values[0].no : tokenNull;
+  }
+  switch (typeof json3) {
+    case "number":
+      if (Number.isInteger(json3)) {
+        return json3;
+      }
+      break;
+    case "string":
+      const value = type.findName(json3);
+      if (value !== void 0) {
+        return value.no;
+      }
+      if (ignoreUnknownFields) {
+        return tokenIgnoredUnknownEnum;
+      }
+      break;
+  }
+  throw new Error(`cannot decode enum ${type.typeName} from JSON: ${debugJsonValue(json3)}`);
+}
+function canEmitFieldDefaultValue(field) {
+  if (field.repeated || field.kind == "map") {
+    return true;
+  }
+  if (field.oneof) {
+    return false;
+  }
+  if (field.kind == "message") {
+    return false;
+  }
+  if (field.opt || field.req) {
+    return false;
+  }
+  return true;
+}
+function writeField(field, value, options) {
+  if (field.kind == "map") {
+    assert2(typeof value == "object" && value != null);
+    const jsonObj = {};
+    const entries = Object.entries(value);
+    switch (field.V.kind) {
+      case "scalar":
+        for (const [entryKey, entryValue] of entries) {
+          jsonObj[entryKey.toString()] = writeScalar(field.V.T, entryValue);
+        }
+        break;
+      case "message":
+        for (const [entryKey, entryValue] of entries) {
+          jsonObj[entryKey.toString()] = entryValue.toJson(options);
+        }
+        break;
+      case "enum":
+        const enumType2 = field.V.T;
+        for (const [entryKey, entryValue] of entries) {
+          jsonObj[entryKey.toString()] = writeEnum(enumType2, entryValue, options.enumAsInteger);
+        }
+        break;
+    }
+    return options.emitDefaultValues || entries.length > 0 ? jsonObj : void 0;
+  }
+  if (field.repeated) {
+    assert2(Array.isArray(value));
+    const jsonArr = [];
+    switch (field.kind) {
+      case "scalar":
+        for (let i = 0; i < value.length; i++) {
+          jsonArr.push(writeScalar(field.T, value[i]));
+        }
+        break;
+      case "enum":
+        for (let i = 0; i < value.length; i++) {
+          jsonArr.push(writeEnum(field.T, value[i], options.enumAsInteger));
+        }
+        break;
+      case "message":
+        for (let i = 0; i < value.length; i++) {
+          jsonArr.push(value[i].toJson(options));
+        }
+        break;
+    }
+    return options.emitDefaultValues || jsonArr.length > 0 ? jsonArr : void 0;
+  }
+  switch (field.kind) {
+    case "scalar":
+      return writeScalar(field.T, value);
+    case "enum":
+      return writeEnum(field.T, value, options.enumAsInteger);
+    case "message":
+      return wrapField(field.T, value).toJson(options);
+  }
+}
+function writeEnum(type, value, enumAsInteger) {
+  var _a;
+  assert2(typeof value == "number");
+  if (type.typeName == "google.protobuf.NullValue") {
+    return null;
+  }
+  if (enumAsInteger) {
+    return value;
+  }
+  const val = type.findNumber(value);
+  return (_a = val === null || val === void 0 ? void 0 : val.name) !== null && _a !== void 0 ? _a : value;
+}
+function writeScalar(type, value) {
+  switch (type) {
+    // int32, fixed32, uint32: JSON value will be a decimal number. Either numbers or strings are accepted.
+    case ScalarType.INT32:
+    case ScalarType.SFIXED32:
+    case ScalarType.SINT32:
+    case ScalarType.FIXED32:
+    case ScalarType.UINT32:
+      assert2(typeof value == "number");
+      return value;
+    // float, double: JSON value will be a number or one of the special string values "NaN", "Infinity", and "-Infinity".
+    // Either numbers or strings are accepted. Exponent notation is also accepted.
+    case ScalarType.FLOAT:
+    // assertFloat32(value);
+    case ScalarType.DOUBLE:
+      assert2(typeof value == "number");
+      if (Number.isNaN(value))
+        return "NaN";
+      if (value === Number.POSITIVE_INFINITY)
+        return "Infinity";
+      if (value === Number.NEGATIVE_INFINITY)
+        return "-Infinity";
+      return value;
+    // string:
+    case ScalarType.STRING:
+      assert2(typeof value == "string");
+      return value;
+    // bool:
+    case ScalarType.BOOL:
+      assert2(typeof value == "boolean");
+      return value;
+    // JSON value will be a decimal string. Either numbers or strings are accepted.
+    case ScalarType.UINT64:
+    case ScalarType.FIXED64:
+    case ScalarType.INT64:
+    case ScalarType.SFIXED64:
+    case ScalarType.SINT64:
+      assert2(typeof value == "bigint" || typeof value == "string" || typeof value == "number");
+      return value.toString();
+    // bytes: JSON value will be the data encoded as a string using standard base64 encoding with paddings.
+    // Either standard or URL-safe base64 encoding with/without paddings are accepted.
+    case ScalarType.BYTES:
+      assert2(value instanceof Uint8Array);
+      return protoBase64.enc(value);
+  }
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/binary-format.js
+var unknownFieldsSymbol = /* @__PURE__ */ Symbol("@bufbuild/protobuf/unknown-fields");
+var readDefaults = {
+  readUnknownFields: true,
+  readerFactory: (bytes) => new BinaryReader(bytes)
+};
+var writeDefaults = {
+  writeUnknownFields: true,
+  writerFactory: () => new BinaryWriter()
+};
+function makeReadOptions2(options) {
+  return options ? Object.assign(Object.assign({}, readDefaults), options) : readDefaults;
+}
+function makeWriteOptions2(options) {
+  return options ? Object.assign(Object.assign({}, writeDefaults), options) : writeDefaults;
+}
+function makeBinaryFormat() {
+  return {
+    makeReadOptions: makeReadOptions2,
+    makeWriteOptions: makeWriteOptions2,
+    listUnknownFields(message2) {
+      var _a;
+      return (_a = message2[unknownFieldsSymbol]) !== null && _a !== void 0 ? _a : [];
+    },
+    discardUnknownFields(message2) {
+      delete message2[unknownFieldsSymbol];
+    },
+    writeUnknownFields(message2, writer) {
+      const m = message2;
+      const c = m[unknownFieldsSymbol];
+      if (c) {
+        for (const f of c) {
+          writer.tag(f.no, f.wireType).raw(f.data);
+        }
+      }
+    },
+    onUnknownField(message2, no, wireType, data) {
+      const m = message2;
+      if (!Array.isArray(m[unknownFieldsSymbol])) {
+        m[unknownFieldsSymbol] = [];
+      }
+      m[unknownFieldsSymbol].push({ no, wireType, data });
+    },
+    readMessage(message2, reader, lengthOrEndTagFieldNo, options, delimitedMessageEncoding) {
+      const type = message2.getType();
+      const end = delimitedMessageEncoding ? reader.len : reader.pos + lengthOrEndTagFieldNo;
+      let fieldNo, wireType;
+      while (reader.pos < end) {
+        [fieldNo, wireType] = reader.tag();
+        if (delimitedMessageEncoding === true && wireType == WireType.EndGroup) {
+          break;
+        }
+        const field = type.fields.find(fieldNo);
+        if (!field) {
+          const data = reader.skip(wireType, fieldNo);
+          if (options.readUnknownFields) {
+            this.onUnknownField(message2, fieldNo, wireType, data);
+          }
+          continue;
+        }
+        readField2(message2, reader, field, wireType, options);
+      }
+      if (delimitedMessageEncoding && // eslint-disable-line @typescript-eslint/strict-boolean-expressions
+      (wireType != WireType.EndGroup || fieldNo !== lengthOrEndTagFieldNo)) {
+        throw new Error(`invalid end group tag`);
+      }
+    },
+    readField: readField2,
+    writeMessage(message2, writer, options) {
+      const type = message2.getType();
+      for (const field of type.fields.byNumber()) {
+        if (!isFieldSet(field, message2)) {
+          if (field.req) {
+            throw new Error(`cannot encode field ${type.typeName}.${field.name} to binary: required field not set`);
+          }
+          continue;
+        }
+        const value = field.oneof ? message2[field.oneof.localName].value : message2[field.localName];
+        writeField2(field, value, writer, options);
+      }
+      if (options.writeUnknownFields) {
+        this.writeUnknownFields(message2, writer);
+      }
+      return writer;
+    },
+    writeField(field, value, writer, options) {
+      if (value === void 0) {
+        return void 0;
+      }
+      writeField2(field, value, writer, options);
+    }
+  };
+}
+function readField2(target, reader, field, wireType, options) {
+  let { repeated, localName } = field;
+  if (field.oneof) {
+    target = target[field.oneof.localName];
+    if (target.case != localName) {
+      delete target.value;
+    }
+    target.case = localName;
+    localName = "value";
+  }
+  switch (field.kind) {
+    case "scalar":
+    case "enum":
+      const scalarType = field.kind == "enum" ? ScalarType.INT32 : field.T;
+      let read = readScalar2;
+      if (field.kind == "scalar" && field.L > 0) {
+        read = readScalarLTString;
+      }
+      if (repeated) {
+        let arr = target[localName];
+        const isPacked = wireType == WireType.LengthDelimited && scalarType != ScalarType.STRING && scalarType != ScalarType.BYTES;
+        if (isPacked) {
+          let e = reader.uint32() + reader.pos;
+          while (reader.pos < e) {
+            arr.push(read(reader, scalarType));
+          }
+        } else {
+          arr.push(read(reader, scalarType));
+        }
+      } else {
+        target[localName] = read(reader, scalarType);
+      }
+      break;
+    case "message":
+      const messageType = field.T;
+      if (repeated) {
+        target[localName].push(readMessageField(reader, new messageType(), options, field));
+      } else {
+        if (isMessage(target[localName])) {
+          readMessageField(reader, target[localName], options, field);
+        } else {
+          target[localName] = readMessageField(reader, new messageType(), options, field);
+          if (messageType.fieldWrapper && !field.oneof && !field.repeated) {
+            target[localName] = messageType.fieldWrapper.unwrapField(target[localName]);
+          }
+        }
+      }
+      break;
+    case "map":
+      let [mapKey, mapVal] = readMapEntry(field, reader, options);
+      target[localName][mapKey] = mapVal;
+      break;
+  }
+}
+function readMessageField(reader, message2, options, field) {
+  const format = message2.getType().runtime.bin;
+  const delimited = field === null || field === void 0 ? void 0 : field.delimited;
+  format.readMessage(
+    message2,
+    reader,
+    delimited ? field.no : reader.uint32(),
+    // eslint-disable-line @typescript-eslint/strict-boolean-expressions
+    options,
+    delimited
+  );
+  return message2;
+}
+function readMapEntry(field, reader, options) {
+  const length = reader.uint32(), end = reader.pos + length;
+  let key, val;
+  while (reader.pos < end) {
+    const [fieldNo] = reader.tag();
+    switch (fieldNo) {
+      case 1:
+        key = readScalar2(reader, field.K);
+        break;
+      case 2:
+        switch (field.V.kind) {
+          case "scalar":
+            val = readScalar2(reader, field.V.T);
+            break;
+          case "enum":
+            val = reader.int32();
+            break;
+          case "message":
+            val = readMessageField(reader, new field.V.T(), options, void 0);
+            break;
+        }
+        break;
+    }
+  }
+  if (key === void 0) {
+    key = scalarZeroValue(field.K, LongType.BIGINT);
+  }
+  if (typeof key != "string" && typeof key != "number") {
+    key = key.toString();
+  }
+  if (val === void 0) {
+    switch (field.V.kind) {
+      case "scalar":
+        val = scalarZeroValue(field.V.T, LongType.BIGINT);
+        break;
+      case "enum":
+        val = field.V.T.values[0].no;
+        break;
+      case "message":
+        val = new field.V.T();
+        break;
+    }
+  }
+  return [key, val];
+}
+function readScalarLTString(reader, type) {
+  const v = readScalar2(reader, type);
+  return typeof v == "bigint" ? v.toString() : v;
+}
+function readScalar2(reader, type) {
+  switch (type) {
+    case ScalarType.STRING:
+      return reader.string();
+    case ScalarType.BOOL:
+      return reader.bool();
+    case ScalarType.DOUBLE:
+      return reader.double();
+    case ScalarType.FLOAT:
+      return reader.float();
+    case ScalarType.INT32:
+      return reader.int32();
+    case ScalarType.INT64:
+      return reader.int64();
+    case ScalarType.UINT64:
+      return reader.uint64();
+    case ScalarType.FIXED64:
+      return reader.fixed64();
+    case ScalarType.BYTES:
+      return reader.bytes();
+    case ScalarType.FIXED32:
+      return reader.fixed32();
+    case ScalarType.SFIXED32:
+      return reader.sfixed32();
+    case ScalarType.SFIXED64:
+      return reader.sfixed64();
+    case ScalarType.SINT64:
+      return reader.sint64();
+    case ScalarType.UINT32:
+      return reader.uint32();
+    case ScalarType.SINT32:
+      return reader.sint32();
+  }
+}
+function writeField2(field, value, writer, options) {
+  assert2(value !== void 0);
+  const repeated = field.repeated;
+  switch (field.kind) {
+    case "scalar":
+    case "enum":
+      let scalarType = field.kind == "enum" ? ScalarType.INT32 : field.T;
+      if (repeated) {
+        assert2(Array.isArray(value));
+        if (field.packed) {
+          writePacked(writer, scalarType, field.no, value);
+        } else {
+          for (const item of value) {
+            writeScalar2(writer, scalarType, field.no, item);
+          }
+        }
+      } else {
+        writeScalar2(writer, scalarType, field.no, value);
+      }
+      break;
+    case "message":
+      if (repeated) {
+        assert2(Array.isArray(value));
+        for (const item of value) {
+          writeMessageField(writer, options, field, item);
+        }
+      } else {
+        writeMessageField(writer, options, field, value);
+      }
+      break;
+    case "map":
+      assert2(typeof value == "object" && value != null);
+      for (const [key, val] of Object.entries(value)) {
+        writeMapEntry(writer, options, field, key, val);
+      }
+      break;
+  }
+}
+function writeMapEntry(writer, options, field, key, value) {
+  writer.tag(field.no, WireType.LengthDelimited);
+  writer.fork();
+  let keyValue = key;
+  switch (field.K) {
+    case ScalarType.INT32:
+    case ScalarType.FIXED32:
+    case ScalarType.UINT32:
+    case ScalarType.SFIXED32:
+    case ScalarType.SINT32:
+      keyValue = Number.parseInt(key);
+      break;
+    case ScalarType.BOOL:
+      assert2(key == "true" || key == "false");
+      keyValue = key == "true";
+      break;
+  }
+  writeScalar2(writer, field.K, 1, keyValue);
+  switch (field.V.kind) {
+    case "scalar":
+      writeScalar2(writer, field.V.T, 2, value);
+      break;
+    case "enum":
+      writeScalar2(writer, ScalarType.INT32, 2, value);
+      break;
+    case "message":
+      assert2(value !== void 0);
+      writer.tag(2, WireType.LengthDelimited).bytes(value.toBinary(options));
+      break;
+  }
+  writer.join();
+}
+function writeMessageField(writer, options, field, value) {
+  const message2 = wrapField(field.T, value);
+  if (field.delimited)
+    writer.tag(field.no, WireType.StartGroup).raw(message2.toBinary(options)).tag(field.no, WireType.EndGroup);
+  else
+    writer.tag(field.no, WireType.LengthDelimited).bytes(message2.toBinary(options));
+}
+function writeScalar2(writer, type, fieldNo, value) {
+  assert2(value !== void 0);
+  let [wireType, method] = scalarTypeInfo(type);
+  writer.tag(fieldNo, wireType)[method](value);
+}
+function writePacked(writer, type, fieldNo, value) {
+  if (!value.length) {
+    return;
+  }
+  writer.tag(fieldNo, WireType.LengthDelimited).fork();
+  let [, method] = scalarTypeInfo(type);
+  for (let i = 0; i < value.length; i++) {
+    writer[method](value[i]);
+  }
+  writer.join();
+}
+function scalarTypeInfo(type) {
+  let wireType = WireType.Varint;
+  switch (type) {
+    case ScalarType.BYTES:
+    case ScalarType.STRING:
+      wireType = WireType.LengthDelimited;
+      break;
+    case ScalarType.DOUBLE:
+    case ScalarType.FIXED64:
+    case ScalarType.SFIXED64:
+      wireType = WireType.Bit64;
+      break;
+    case ScalarType.FIXED32:
+    case ScalarType.SFIXED32:
+    case ScalarType.FLOAT:
+      wireType = WireType.Bit32;
+      break;
+  }
+  const method = ScalarType[type].toLowerCase();
+  return [wireType, method];
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/util-common.js
+function makeUtilCommon() {
+  return {
+    setEnumType,
+    initPartial(source, target) {
+      if (source === void 0) {
+        return;
+      }
+      const type = target.getType();
+      for (const member of type.fields.byMember()) {
+        const localName = member.localName, t = target, s2 = source;
+        if (s2[localName] == null) {
+          continue;
+        }
+        switch (member.kind) {
+          case "oneof":
+            const sk = s2[localName].case;
+            if (sk === void 0) {
+              continue;
+            }
+            const sourceField = member.findField(sk);
+            let val = s2[localName].value;
+            if (sourceField && sourceField.kind == "message" && !isMessage(val, sourceField.T)) {
+              val = new sourceField.T(val);
+            } else if (sourceField && sourceField.kind === "scalar" && sourceField.T === ScalarType.BYTES) {
+              val = toU8Arr(val);
+            }
+            t[localName] = { case: sk, value: val };
+            break;
+          case "scalar":
+          case "enum":
+            let copy = s2[localName];
+            if (member.T === ScalarType.BYTES) {
+              copy = member.repeated ? copy.map(toU8Arr) : toU8Arr(copy);
+            }
+            t[localName] = copy;
+            break;
+          case "map":
+            switch (member.V.kind) {
+              case "scalar":
+              case "enum":
+                if (member.V.T === ScalarType.BYTES) {
+                  for (const [k, v] of Object.entries(s2[localName])) {
+                    t[localName][k] = toU8Arr(v);
+                  }
+                } else {
+                  Object.assign(t[localName], s2[localName]);
+                }
+                break;
+              case "message":
+                const messageType = member.V.T;
+                for (const k of Object.keys(s2[localName])) {
+                  let val2 = s2[localName][k];
+                  if (!messageType.fieldWrapper) {
+                    val2 = new messageType(val2);
+                  }
+                  t[localName][k] = val2;
+                }
+                break;
+            }
+            break;
+          case "message":
+            const mt = member.T;
+            if (member.repeated) {
+              t[localName] = s2[localName].map((val2) => isMessage(val2, mt) ? val2 : new mt(val2));
+            } else {
+              const val2 = s2[localName];
+              if (mt.fieldWrapper) {
+                if (
+                  // We can't use BytesValue.typeName as that will create a circular import
+                  mt.typeName === "google.protobuf.BytesValue"
+                ) {
+                  t[localName] = toU8Arr(val2);
+                } else {
+                  t[localName] = val2;
+                }
+              } else {
+                t[localName] = isMessage(val2, mt) ? val2 : new mt(val2);
+              }
+            }
+            break;
+        }
+      }
+    },
+    // TODO use isFieldSet() here to support future field presence
+    equals(type, a, b) {
+      if (a === b) {
+        return true;
+      }
+      if (!a || !b) {
+        return false;
+      }
+      return type.fields.byMember().every((m) => {
+        const va = a[m.localName];
+        const vb = b[m.localName];
+        if (m.repeated) {
+          if (va.length !== vb.length) {
+            return false;
+          }
+          switch (m.kind) {
+            case "message":
+              return va.every((a2, i) => m.T.equals(a2, vb[i]));
+            case "scalar":
+              return va.every((a2, i) => scalarEquals(m.T, a2, vb[i]));
+            case "enum":
+              return va.every((a2, i) => scalarEquals(ScalarType.INT32, a2, vb[i]));
+          }
+          throw new Error(`repeated cannot contain ${m.kind}`);
+        }
+        switch (m.kind) {
+          case "message":
+            let a2 = va;
+            let b2 = vb;
+            if (m.T.fieldWrapper) {
+              if (a2 !== void 0 && !isMessage(a2)) {
+                a2 = m.T.fieldWrapper.wrapField(a2);
+              }
+              if (b2 !== void 0 && !isMessage(b2)) {
+                b2 = m.T.fieldWrapper.wrapField(b2);
+              }
+            }
+            return m.T.equals(a2, b2);
+          case "enum":
+            return scalarEquals(ScalarType.INT32, va, vb);
+          case "scalar":
+            return scalarEquals(m.T, va, vb);
+          case "oneof":
+            if (va.case !== vb.case) {
+              return false;
+            }
+            const s2 = m.findField(va.case);
+            if (s2 === void 0) {
+              return true;
+            }
+            switch (s2.kind) {
+              case "message":
+                return s2.T.equals(va.value, vb.value);
+              case "enum":
+                return scalarEquals(ScalarType.INT32, va.value, vb.value);
+              case "scalar":
+                return scalarEquals(s2.T, va.value, vb.value);
+            }
+            throw new Error(`oneof cannot contain ${s2.kind}`);
+          case "map":
+            const keys = Object.keys(va).concat(Object.keys(vb));
+            switch (m.V.kind) {
+              case "message":
+                const messageType = m.V.T;
+                return keys.every((k) => messageType.equals(va[k], vb[k]));
+              case "enum":
+                return keys.every((k) => scalarEquals(ScalarType.INT32, va[k], vb[k]));
+              case "scalar":
+                const scalarType = m.V.T;
+                return keys.every((k) => scalarEquals(scalarType, va[k], vb[k]));
+            }
+            break;
+        }
+      });
+    },
+    // TODO use isFieldSet() here to support future field presence
+    clone(message2) {
+      const type = message2.getType(), target = new type(), any2 = target;
+      for (const member of type.fields.byMember()) {
+        const source = message2[member.localName];
+        let copy;
+        if (member.repeated) {
+          copy = source.map(cloneSingularField);
+        } else if (member.kind == "map") {
+          copy = any2[member.localName];
+          for (const [key, v] of Object.entries(source)) {
+            copy[key] = cloneSingularField(v);
+          }
+        } else if (member.kind == "oneof") {
+          const f = member.findField(source.case);
+          copy = f ? { case: source.case, value: cloneSingularField(source.value) } : { case: void 0 };
+        } else {
+          copy = cloneSingularField(source);
+        }
+        any2[member.localName] = copy;
+      }
+      for (const uf of type.runtime.bin.listUnknownFields(message2)) {
+        type.runtime.bin.onUnknownField(any2, uf.no, uf.wireType, uf.data);
+      }
+      return target;
+    }
+  };
+}
+function cloneSingularField(value) {
+  if (value === void 0) {
+    return value;
+  }
+  if (isMessage(value)) {
+    return value.clone();
+  }
+  if (value instanceof Uint8Array) {
+    const c = new Uint8Array(value.byteLength);
+    c.set(value);
+    return c;
+  }
+  return value;
+}
+function toU8Arr(input) {
+  return input instanceof Uint8Array ? input : new Uint8Array(input);
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/proto-runtime.js
+function makeProtoRuntime(syntax, newFieldList, initFields) {
+  return {
+    syntax,
+    json: makeJsonFormat(),
+    bin: makeBinaryFormat(),
+    util: Object.assign(Object.assign({}, makeUtilCommon()), {
+      newFieldList,
+      initFields
+    }),
+    makeMessageType(typeName, fields, opt) {
+      return makeMessageType(this, typeName, fields, opt);
+    },
+    makeEnum,
+    makeEnumType,
+    getEnumType,
+    makeExtension(typeName, extendee, field) {
+      return makeExtension(this, typeName, extendee, field);
+    }
+  };
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/field-list.js
+var InternalFieldList = class {
+  constructor(fields, normalizer) {
+    this._fields = fields;
+    this._normalizer = normalizer;
+  }
+  findJsonName(jsonName) {
+    if (!this.jsonNames) {
+      const t = {};
+      for (const f of this.list()) {
+        t[f.jsonName] = t[f.name] = f;
+      }
+      this.jsonNames = t;
+    }
+    return this.jsonNames[jsonName];
+  }
+  find(fieldNo) {
+    if (!this.numbers) {
+      const t = {};
+      for (const f of this.list()) {
+        t[f.no] = f;
+      }
+      this.numbers = t;
+    }
+    return this.numbers[fieldNo];
+  }
+  list() {
+    if (!this.all) {
+      this.all = this._normalizer(this._fields);
+    }
+    return this.all;
+  }
+  byNumber() {
+    if (!this.numbersAsc) {
+      this.numbersAsc = this.list().concat().sort((a, b) => a.no - b.no);
+    }
+    return this.numbersAsc;
+  }
+  byMember() {
+    if (!this.members) {
+      this.members = [];
+      const a = this.members;
+      let o;
+      for (const f of this.list()) {
+        if (f.oneof) {
+          if (f.oneof !== o) {
+            o = f.oneof;
+            a.push(o);
+          }
+        } else {
+          a.push(f);
+        }
+      }
+    }
+    return this.members;
+  }
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/names.js
+function localFieldName(protoName, inOneof) {
+  const name = protoCamelCase(protoName);
+  if (inOneof) {
+    return name;
+  }
+  return safeObjectProperty(safeMessageProperty(name));
+}
+function localOneofName(protoName) {
+  return localFieldName(protoName, false);
+}
+var fieldJsonName = protoCamelCase;
+function protoCamelCase(snakeCase2) {
+  let capNext = false;
+  const b = [];
+  for (let i = 0; i < snakeCase2.length; i++) {
+    let c = snakeCase2.charAt(i);
+    switch (c) {
+      case "_":
+        capNext = true;
+        break;
+      case "0":
+      case "1":
+      case "2":
+      case "3":
+      case "4":
+      case "5":
+      case "6":
+      case "7":
+      case "8":
+      case "9":
+        b.push(c);
+        capNext = false;
+        break;
+      default:
+        if (capNext) {
+          capNext = false;
+          c = c.toUpperCase();
+        }
+        b.push(c);
+        break;
+    }
+  }
+  return b.join("");
+}
+var reservedObjectProperties = /* @__PURE__ */ new Set([
+  // names reserved by JavaScript
+  "constructor",
+  "toString",
+  "toJSON",
+  "valueOf"
+]);
+var reservedMessageProperties = /* @__PURE__ */ new Set([
+  // names reserved by the runtime
+  "getType",
+  "clone",
+  "equals",
+  "fromBinary",
+  "fromJson",
+  "fromJsonString",
+  "toBinary",
+  "toJson",
+  "toJsonString",
+  // names reserved by the runtime for the future
+  "toObject"
+]);
+var fallback = (name) => `${name}$`;
+var safeMessageProperty = (name) => {
+  if (reservedMessageProperties.has(name)) {
+    return fallback(name);
+  }
+  return name;
+};
+var safeObjectProperty = (name) => {
+  if (reservedObjectProperties.has(name)) {
+    return fallback(name);
+  }
+  return name;
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/field.js
+var InternalOneofInfo = class {
+  constructor(name) {
+    this.kind = "oneof";
+    this.repeated = false;
+    this.packed = false;
+    this.opt = false;
+    this.req = false;
+    this.default = void 0;
+    this.fields = [];
+    this.name = name;
+    this.localName = localOneofName(name);
+  }
+  addField(field) {
+    assert2(field.oneof === this, `field ${field.name} not one of ${this.name}`);
+    this.fields.push(field);
+  }
+  findField(localName) {
+    if (!this._lookup) {
+      this._lookup = /* @__PURE__ */ Object.create(null);
+      for (let i = 0; i < this.fields.length; i++) {
+        this._lookup[this.fields[i].localName] = this.fields[i];
+      }
+    }
+    return this._lookup[localName];
+  }
+};
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/private/field-normalize.js
+function normalizeFieldInfos(fieldInfos, packedByDefault) {
+  var _a, _b, _c, _d, _e, _f;
+  const r = [];
+  let o;
+  for (const field of typeof fieldInfos == "function" ? fieldInfos() : fieldInfos) {
+    const f = field;
+    f.localName = localFieldName(field.name, field.oneof !== void 0);
+    f.jsonName = (_a = field.jsonName) !== null && _a !== void 0 ? _a : fieldJsonName(field.name);
+    f.repeated = (_b = field.repeated) !== null && _b !== void 0 ? _b : false;
+    if (field.kind == "scalar") {
+      f.L = (_c = field.L) !== null && _c !== void 0 ? _c : LongType.BIGINT;
+    }
+    f.delimited = (_d = field.delimited) !== null && _d !== void 0 ? _d : false;
+    f.req = (_e = field.req) !== null && _e !== void 0 ? _e : false;
+    f.opt = (_f = field.opt) !== null && _f !== void 0 ? _f : false;
+    if (field.packed === void 0) {
+      if (packedByDefault) {
+        f.packed = field.kind == "enum" || field.kind == "scalar" && field.T != ScalarType.BYTES && field.T != ScalarType.STRING;
+      } else {
+        f.packed = false;
+      }
+    }
+    if (field.oneof !== void 0) {
+      const ooname = typeof field.oneof == "string" ? field.oneof : field.oneof.name;
+      if (!o || o.name != ooname) {
+        o = new InternalOneofInfo(ooname);
+      }
+      f.oneof = o;
+      o.addField(f);
+    }
+    r.push(f);
+  }
+  return r;
+}
+
+// ../../node_modules/.pnpm/@bufbuild+protobuf@1.10.1/node_modules/@bufbuild/protobuf/dist/esm/proto3.js
+var proto3 = makeProtoRuntime(
+  "proto3",
+  (fields) => {
+    return new InternalFieldList(fields, (source) => normalizeFieldInfos(source, true));
+  },
+  // TODO merge with proto2 and initExtensionField, also see initPartial, equals, clone
+  (target) => {
+    for (const member of target.getType().fields.byMember()) {
+      if (member.opt) {
+        continue;
+      }
+      const name = member.localName, t = target;
+      if (member.repeated) {
+        t[name] = [];
+        continue;
+      }
+      switch (member.kind) {
+        case "oneof":
+          t[name] = { case: void 0 };
+          break;
+        case "enum":
+          t[name] = 0;
+          break;
+        case "map":
+          t[name] = {};
+          break;
+        case "scalar":
+          t[name] = scalarZeroValue(member.T, member.L);
+          break;
+        case "message":
+          break;
+      }
+    }
+  }
+);
+
+// ../../node_modules/.pnpm/@livekit+protocol@1.49.0/node_modules/@livekit/protocol/dist/index.mjs
+var AudioCodec = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.AudioCodec",
+  [
+    { no: 0, name: "DEFAULT_AC" },
+    { no: 1, name: "OPUS" },
+    { no: 2, name: "AAC" },
+    { no: 3, name: "AC_MP3" }
+  ]
+);
+var VideoCodec = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.VideoCodec",
+  [
+    { no: 0, name: "DEFAULT_VC" },
+    { no: 1, name: "H264_BASELINE" },
+    { no: 2, name: "H264_MAIN" },
+    { no: 3, name: "H264_HIGH" },
+    { no: 4, name: "VP8" }
+  ]
+);
+var ImageCodec = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.ImageCodec",
+  [
+    { no: 0, name: "IC_DEFAULT" },
+    { no: 1, name: "IC_JPEG" }
+  ]
+);
+var BackupCodecPolicy = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.BackupCodecPolicy",
+  [
+    { no: 0, name: "PREFER_REGRESSION" },
+    { no: 1, name: "SIMULCAST" },
+    { no: 2, name: "REGRESSION" }
+  ]
+);
+var TrackType = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.TrackType",
+  [
+    { no: 0, name: "AUDIO" },
+    { no: 1, name: "VIDEO" },
+    { no: 2, name: "DATA" }
+  ]
+);
+var TrackSource = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.TrackSource",
+  [
+    { no: 0, name: "UNKNOWN" },
+    { no: 1, name: "CAMERA" },
+    { no: 2, name: "MICROPHONE" },
+    { no: 3, name: "SCREEN_SHARE" },
+    { no: 4, name: "SCREEN_SHARE_AUDIO" }
+  ]
+);
+var VideoQuality = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.VideoQuality",
+  [
+    { no: 0, name: "LOW" },
+    { no: 1, name: "MEDIUM" },
+    { no: 2, name: "HIGH" },
+    { no: 3, name: "OFF" }
+  ]
+);
+var DisconnectReason = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.DisconnectReason",
+  [
+    { no: 0, name: "UNKNOWN_REASON" },
+    { no: 1, name: "CLIENT_INITIATED" },
+    { no: 2, name: "DUPLICATE_IDENTITY" },
+    { no: 3, name: "SERVER_SHUTDOWN" },
+    { no: 4, name: "PARTICIPANT_REMOVED" },
+    { no: 5, name: "ROOM_DELETED" },
+    { no: 6, name: "STATE_MISMATCH" },
+    { no: 7, name: "JOIN_FAILURE" },
+    { no: 8, name: "MIGRATION" },
+    { no: 9, name: "SIGNAL_CLOSE" },
+    { no: 10, name: "ROOM_CLOSED" },
+    { no: 11, name: "USER_UNAVAILABLE" },
+    { no: 12, name: "USER_REJECTED" },
+    { no: 13, name: "SIP_TRUNK_FAILURE" },
+    { no: 14, name: "CONNECTION_TIMEOUT" },
+    { no: 15, name: "MEDIA_FAILURE" },
+    { no: 16, name: "AGENT_ERROR" }
+  ]
+);
+var AudioTrackFeature = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.AudioTrackFeature",
+  [
+    { no: 0, name: "TF_STEREO" },
+    { no: 1, name: "TF_NO_DTX" },
+    { no: 2, name: "TF_AUTO_GAIN_CONTROL" },
+    { no: 3, name: "TF_ECHO_CANCELLATION" },
+    { no: 4, name: "TF_NOISE_SUPPRESSION" },
+    { no: 5, name: "TF_ENHANCED_NOISE_CANCELLATION" },
+    { no: 6, name: "TF_PRECONNECT_BUFFER" }
+  ]
+);
+var PacketTrailerFeature = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.PacketTrailerFeature",
+  [
+    { no: 0, name: "PTF_USER_TIMESTAMP" },
+    { no: 1, name: "PTF_FRAME_ID" },
+    { no: 2, name: "PTF_USER_DATA" }
+  ]
+);
+var Room = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.Room",
+  () => [
+    {
+      no: 1,
+      name: "sid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "empty_timeout",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 14,
+      name: "departure_timeout",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 4,
+      name: "max_participants",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 5,
+      name: "creation_time",
+      kind: "scalar",
+      T: 3
+      /* ScalarType.INT64 */
+    },
+    {
+      no: 15,
+      name: "creation_time_ms",
+      kind: "scalar",
+      T: 3
+      /* ScalarType.INT64 */
+    },
+    {
+      no: 6,
+      name: "turn_password",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 7, name: "enabled_codecs", kind: "message", T: Codec, repeated: true },
+    {
+      no: 8,
+      name: "metadata",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 9,
+      name: "num_participants",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 11,
+      name: "num_publishers",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 10,
+      name: "active_recording",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 13, name: "version", kind: "message", T: TimedVersion }
+  ]
+);
+var Codec = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.Codec",
+  () => [
+    {
+      no: 1,
+      name: "mime",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "fmtp_line",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var ParticipantPermission = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ParticipantPermission",
+  () => [
+    {
+      no: 1,
+      name: "can_subscribe",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 2,
+      name: "can_publish",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 3,
+      name: "can_publish_data",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 9, name: "can_publish_sources", kind: "enum", T: proto3.getEnumType(TrackSource), repeated: true },
+    {
+      no: 7,
+      name: "hidden",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 8,
+      name: "recorder",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 10,
+      name: "can_update_metadata",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 11,
+      name: "agent",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 12,
+      name: "can_subscribe_metrics",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 13,
+      name: "can_manage_agent_session",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    }
+  ]
+);
+var ParticipantInfo = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ParticipantInfo",
+  () => [
+    {
+      no: 1,
+      name: "sid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 3, name: "state", kind: "enum", T: proto3.getEnumType(ParticipantInfo_State) },
+    { no: 4, name: "tracks", kind: "message", T: TrackInfo, repeated: true },
+    {
+      no: 5,
+      name: "metadata",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 6,
+      name: "joined_at",
+      kind: "scalar",
+      T: 3
+      /* ScalarType.INT64 */
+    },
+    {
+      no: 17,
+      name: "joined_at_ms",
+      kind: "scalar",
+      T: 3
+      /* ScalarType.INT64 */
+    },
+    {
+      no: 9,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 10,
+      name: "version",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    { no: 11, name: "permission", kind: "message", T: ParticipantPermission },
+    {
+      no: 12,
+      name: "region",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 13,
+      name: "is_publisher",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 14, name: "kind", kind: "enum", T: proto3.getEnumType(ParticipantInfo_Kind) },
+    { no: 15, name: "attributes", kind: "map", K: 9, V: {
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    } },
+    { no: 16, name: "disconnect_reason", kind: "enum", T: proto3.getEnumType(DisconnectReason) },
+    { no: 18, name: "kind_details", kind: "enum", T: proto3.getEnumType(ParticipantInfo_KindDetail), repeated: true },
+    { no: 19, name: "data_tracks", kind: "message", T: DataTrackInfo, repeated: true },
+    {
+      no: 20,
+      name: "client_protocol",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    { no: 21, name: "capabilities", kind: "enum", T: proto3.getEnumType(ClientInfo_Capability), repeated: true }
+  ]
+);
+var ParticipantInfo_State = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.ParticipantInfo.State",
+  [
+    { no: 0, name: "JOINING" },
+    { no: 1, name: "JOINED" },
+    { no: 2, name: "ACTIVE" },
+    { no: 3, name: "DISCONNECTED" }
+  ]
+);
+var ParticipantInfo_Kind = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.ParticipantInfo.Kind",
+  [
+    { no: 0, name: "STANDARD" },
+    { no: 1, name: "INGRESS" },
+    { no: 2, name: "EGRESS" },
+    { no: 3, name: "SIP" },
+    { no: 4, name: "AGENT" },
+    { no: 7, name: "CONNECTOR" },
+    { no: 8, name: "BRIDGE" }
+  ]
+);
+var ParticipantInfo_KindDetail = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.ParticipantInfo.KindDetail",
+  [
+    { no: 0, name: "CLOUD_AGENT" },
+    { no: 1, name: "FORWARDED" },
+    { no: 2, name: "CONNECTOR_WHATSAPP" },
+    { no: 3, name: "CONNECTOR_TWILIO" },
+    { no: 4, name: "BRIDGE_RTSP" }
+  ]
+);
+var Encryption_Type = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.Encryption.Type",
+  [
+    { no: 0, name: "NONE" },
+    { no: 1, name: "GCM" },
+    { no: 2, name: "CUSTOM" }
+  ]
+);
+var SimulcastCodecInfo = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.SimulcastCodecInfo",
+  () => [
+    {
+      no: 1,
+      name: "mime_type",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "mid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "cid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 4, name: "layers", kind: "message", T: VideoLayer, repeated: true },
+    { no: 5, name: "video_layer_mode", kind: "enum", T: proto3.getEnumType(VideoLayer_Mode) },
+    {
+      no: 6,
+      name: "sdp_cid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var TrackInfo = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.TrackInfo",
+  () => [
+    {
+      no: 1,
+      name: "sid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 2, name: "type", kind: "enum", T: proto3.getEnumType(TrackType) },
+    {
+      no: 3,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 4,
+      name: "muted",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 5,
+      name: "width",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 6,
+      name: "height",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 7,
+      name: "simulcast",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 8,
+      name: "disable_dtx",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 9, name: "source", kind: "enum", T: proto3.getEnumType(TrackSource) },
+    { no: 10, name: "layers", kind: "message", T: VideoLayer, repeated: true },
+    {
+      no: 11,
+      name: "mime_type",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 12,
+      name: "mid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 13, name: "codecs", kind: "message", T: SimulcastCodecInfo, repeated: true },
+    {
+      no: 14,
+      name: "stereo",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 15,
+      name: "disable_red",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 16, name: "encryption", kind: "enum", T: proto3.getEnumType(Encryption_Type) },
+    {
+      no: 17,
+      name: "stream",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 18, name: "version", kind: "message", T: TimedVersion },
+    { no: 19, name: "audio_features", kind: "enum", T: proto3.getEnumType(AudioTrackFeature), repeated: true },
+    { no: 20, name: "backup_codec_policy", kind: "enum", T: proto3.getEnumType(BackupCodecPolicy) },
+    { no: 21, name: "packet_trailer_features", kind: "enum", T: proto3.getEnumType(PacketTrailerFeature), repeated: true }
+  ]
+);
+var DataTrackInfo = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.DataTrackInfo",
+  () => [
+    {
+      no: 1,
+      name: "pub_handle",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 2,
+      name: "sid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 4, name: "encryption", kind: "enum", T: proto3.getEnumType(Encryption_Type) },
+    { no: 5, name: "frame_encoding", kind: "message", T: DataTrackFrameEncoding, opt: true },
+    { no: 6, name: "schema", kind: "message", T: DataTrackSchemaId, opt: true }
+  ]
+);
+var DataTrackFrameEncoding = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.DataTrackFrameEncoding",
+  () => [
+    { no: 1, name: "well_known", kind: "enum", T: proto3.getEnumType(DataTrackFrameEncoding_WellKnownFrameEncoding), oneof: "value" },
+    { no: 2, name: "custom", kind: "scalar", T: 9, oneof: "value" }
+  ]
+);
+var DataTrackFrameEncoding_WellKnownFrameEncoding = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.DataTrackFrameEncoding.WellKnownFrameEncoding",
+  [
+    { no: 0, name: "WELL_KNOWN_FRAME_ENCODING_UNSPECIFIED", localName: "UNSPECIFIED" },
+    { no: 1, name: "WELL_KNOWN_FRAME_ENCODING_ROS1", localName: "ROS1" },
+    { no: 2, name: "WELL_KNOWN_FRAME_ENCODING_CDR", localName: "CDR" },
+    { no: 3, name: "WELL_KNOWN_FRAME_ENCODING_PROTOBUF", localName: "PROTOBUF" },
+    { no: 4, name: "WELL_KNOWN_FRAME_ENCODING_FLATBUFFER", localName: "FLATBUFFER" },
+    { no: 5, name: "WELL_KNOWN_FRAME_ENCODING_CBOR", localName: "CBOR" },
+    { no: 6, name: "WELL_KNOWN_FRAME_ENCODING_MSGPACK", localName: "MSGPACK" },
+    { no: 7, name: "WELL_KNOWN_FRAME_ENCODING_JSON", localName: "JSON" }
+  ]
+);
+var DataTrackSchemaEncoding = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.DataTrackSchemaEncoding",
+  () => [
+    { no: 1, name: "well_known", kind: "enum", T: proto3.getEnumType(DataTrackSchemaEncoding_WellKnownSchemaEncoding), oneof: "value" },
+    { no: 2, name: "custom", kind: "scalar", T: 9, oneof: "value" }
+  ]
+);
+var DataTrackSchemaEncoding_WellKnownSchemaEncoding = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.DataTrackSchemaEncoding.WellKnownSchemaEncoding",
+  [
+    { no: 0, name: "WELL_KNOWN_SCHEMA_ENCODING_UNSPECIFIED", localName: "UNSPECIFIED" },
+    { no: 1, name: "WELL_KNOWN_SCHEMA_ENCODING_PROTOBUF", localName: "PROTOBUF" },
+    { no: 2, name: "WELL_KNOWN_SCHEMA_ENCODING_FLATBUFFER", localName: "FLATBUFFER" },
+    { no: 3, name: "WELL_KNOWN_SCHEMA_ENCODING_ROS1_MSG", localName: "ROS1_MSG" },
+    { no: 4, name: "WELL_KNOWN_SCHEMA_ENCODING_ROS2_MSG", localName: "ROS2_MSG" },
+    { no: 5, name: "WELL_KNOWN_SCHEMA_ENCODING_ROS2_IDL", localName: "ROS2_IDL" },
+    { no: 6, name: "WELL_KNOWN_SCHEMA_ENCODING_OMG_IDL", localName: "OMG_IDL" },
+    { no: 7, name: "WELL_KNOWN_SCHEMA_ENCODING_JSON_SCHEMA", localName: "JSON_SCHEMA" }
+  ]
+);
+var DataTrackSchemaId = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.DataTrackSchemaId",
+  () => [
+    {
+      no: 1,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 2, name: "encoding", kind: "message", T: DataTrackSchemaEncoding }
+  ]
+);
+var VideoLayer = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.VideoLayer",
+  () => [
+    { no: 1, name: "quality", kind: "enum", T: proto3.getEnumType(VideoQuality) },
+    {
+      no: 2,
+      name: "width",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 3,
+      name: "height",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 4,
+      name: "bitrate",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 5,
+      name: "ssrc",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 6,
+      name: "spatial_layer",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 7,
+      name: "rid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 8,
+      name: "repair_ssrc",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    }
+  ]
+);
+var VideoLayer_Mode = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.VideoLayer.Mode",
+  [
+    { no: 0, name: "MODE_UNUSED" },
+    { no: 1, name: "ONE_SPATIAL_LAYER_PER_STREAM" },
+    { no: 2, name: "MULTIPLE_SPATIAL_LAYERS_PER_STREAM" },
+    { no: 3, name: "ONE_SPATIAL_LAYER_PER_STREAM_INCOMPLETE_RTCP_SR" }
+  ]
+);
+var DataPacket_Kind = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.DataPacket.Kind",
+  [
+    { no: 0, name: "RELIABLE" },
+    { no: 1, name: "LOSSY" }
+  ]
+);
+var ParticipantTracks = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ParticipantTracks",
+  () => [
+    {
+      no: 1,
+      name: "participant_sid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 2, name: "track_sids", kind: "scalar", T: 9, repeated: true }
+  ]
+);
+var ClientInfo_Capability = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.ClientInfo.Capability",
+  [
+    { no: 0, name: "CAP_UNUSED" },
+    { no: 1, name: "CAP_PACKET_TRAILER" },
+    { no: 2, name: "CAP_COMPRESSION_DEFLATE_RAW" }
+  ]
+);
+var TimedVersion = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.TimedVersion",
+  () => [
+    {
+      no: 1,
+      name: "unix_micro",
+      kind: "scalar",
+      T: 3
+      /* ScalarType.INT64 */
+    },
+    {
+      no: 2,
+      name: "ticks",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    }
+  ]
+);
+var FilterParams = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.FilterParams",
+  () => [
+    { no: 1, name: "include_events", kind: "scalar", T: 9, repeated: true },
+    { no: 2, name: "exclude_events", kind: "scalar", T: 9, repeated: true }
+  ]
+);
+var WebhookConfig = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.WebhookConfig",
+  () => [
+    {
+      no: 1,
+      name: "url",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "signing_key",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 3, name: "filter_params", kind: "message", T: FilterParams }
+  ]
+);
+var JobRestartPolicy = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.JobRestartPolicy",
+  [
+    { no: 0, name: "JRP_ON_FAILURE" },
+    { no: 1, name: "JRP_NEVER" }
+  ]
+);
+var RoomAgentDispatch = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.RoomAgentDispatch",
+  () => [
+    {
+      no: 1,
+      name: "agent_name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "metadata",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 3, name: "restart_policy", kind: "enum", T: proto3.getEnumType(JobRestartPolicy) },
+    {
+      no: 4,
+      name: "deployment",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 5, name: "attributes", kind: "map", K: 9, V: {
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    } }
+  ]
+);
+var EncodingOptionsPreset = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.EncodingOptionsPreset",
+  [
+    { no: 0, name: "H264_720P_30" },
+    { no: 1, name: "H264_720P_60" },
+    { no: 2, name: "H264_1080P_30" },
+    { no: 3, name: "H264_1080P_60" },
+    { no: 4, name: "PORTRAIT_H264_720P_30" },
+    { no: 5, name: "PORTRAIT_H264_720P_60" },
+    { no: 6, name: "PORTRAIT_H264_1080P_30" },
+    { no: 7, name: "PORTRAIT_H264_1080P_60" }
+  ]
+);
+var EncodedFileType = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.EncodedFileType",
+  [
+    { no: 0, name: "DEFAULT_FILETYPE" },
+    { no: 1, name: "MP4" },
+    { no: 2, name: "OGG" },
+    { no: 3, name: "MP3" }
+  ]
+);
+var StreamProtocol = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.StreamProtocol",
+  [
+    { no: 0, name: "DEFAULT_PROTOCOL" },
+    { no: 1, name: "RTMP" },
+    { no: 2, name: "SRT" },
+    { no: 3, name: "WEBSOCKET" }
+  ]
+);
+var SegmentedFileProtocol = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.SegmentedFileProtocol",
+  [
+    { no: 0, name: "DEFAULT_SEGMENTED_FILE_PROTOCOL" },
+    { no: 1, name: "HLS_PROTOCOL" }
+  ]
+);
+var SegmentedFileSuffix = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.SegmentedFileSuffix",
+  [
+    { no: 0, name: "INDEX" },
+    { no: 1, name: "TIMESTAMP" }
+  ]
+);
+var ImageFileSuffix = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.ImageFileSuffix",
+  [
+    { no: 0, name: "IMAGE_SUFFIX_INDEX" },
+    { no: 1, name: "IMAGE_SUFFIX_TIMESTAMP" },
+    { no: 2, name: "IMAGE_SUFFIX_NONE_OVERWRITE" }
+  ]
+);
+var AudioMixing = /* @__PURE__ */ proto3.makeEnum(
+  "livekit.AudioMixing",
+  [
+    { no: 0, name: "DEFAULT_MIXING" },
+    { no: 1, name: "DUAL_CHANNEL_AGENT" },
+    { no: 2, name: "DUAL_CHANNEL_ALTERNATE" }
+  ]
+);
+var EncodingOptions = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.EncodingOptions",
+  () => [
+    {
+      no: 1,
+      name: "width",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 2,
+      name: "height",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 3,
+      name: "depth",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 4,
+      name: "framerate",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    { no: 5, name: "audio_codec", kind: "enum", T: proto3.getEnumType(AudioCodec) },
+    {
+      no: 6,
+      name: "audio_bitrate",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 7,
+      name: "audio_frequency",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    { no: 8, name: "video_codec", kind: "enum", T: proto3.getEnumType(VideoCodec) },
+    {
+      no: 9,
+      name: "video_bitrate",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 10,
+      name: "key_frame_interval",
+      kind: "scalar",
+      T: 1
+      /* ScalarType.DOUBLE */
+    },
+    {
+      no: 11,
+      name: "audio_quality",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 12,
+      name: "video_quality",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    }
+  ]
+);
+var StreamOutput = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.StreamOutput",
+  () => [
+    { no: 1, name: "protocol", kind: "enum", T: proto3.getEnumType(StreamProtocol) },
+    { no: 2, name: "urls", kind: "scalar", T: 9, repeated: true }
+  ]
+);
+var SegmentedFileOutput = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.SegmentedFileOutput",
+  () => [
+    { no: 1, name: "protocol", kind: "enum", T: proto3.getEnumType(SegmentedFileProtocol) },
+    {
+      no: 2,
+      name: "filename_prefix",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "playlist_name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 11,
+      name: "live_playlist_name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 4,
+      name: "segment_duration",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    { no: 10, name: "filename_suffix", kind: "enum", T: proto3.getEnumType(SegmentedFileSuffix) },
+    {
+      no: 8,
+      name: "disable_manifest",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 5, name: "s3", kind: "message", T: S3Upload, oneof: "output" },
+    { no: 6, name: "gcp", kind: "message", T: GCPUpload, oneof: "output" },
+    { no: 7, name: "azure", kind: "message", T: AzureBlobUpload, oneof: "output" },
+    { no: 9, name: "aliOSS", kind: "message", T: AliOSSUpload, oneof: "output" }
+  ]
+);
+var ImageOutput = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ImageOutput",
+  () => [
+    {
+      no: 1,
+      name: "capture_interval",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 2,
+      name: "width",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 3,
+      name: "height",
+      kind: "scalar",
+      T: 5
+      /* ScalarType.INT32 */
+    },
+    {
+      no: 4,
+      name: "filename_prefix",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 5, name: "filename_suffix", kind: "enum", T: proto3.getEnumType(ImageFileSuffix) },
+    { no: 6, name: "image_codec", kind: "enum", T: proto3.getEnumType(ImageCodec) },
+    {
+      no: 7,
+      name: "disable_manifest",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 8, name: "s3", kind: "message", T: S3Upload, oneof: "output" },
+    { no: 9, name: "gcp", kind: "message", T: GCPUpload, oneof: "output" },
+    { no: 10, name: "azure", kind: "message", T: AzureBlobUpload, oneof: "output" },
+    { no: 11, name: "aliOSS", kind: "message", T: AliOSSUpload, oneof: "output" }
+  ]
+);
+var S3Upload = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.S3Upload",
+  () => [
+    {
+      no: 1,
+      name: "access_key",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "secret",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 11,
+      name: "session_token",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 12,
+      name: "assume_role_arn",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 13,
+      name: "assume_role_external_id",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "region",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 4,
+      name: "endpoint",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 5,
+      name: "bucket",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 6,
+      name: "force_path_style",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 7, name: "metadata", kind: "map", K: 9, V: {
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    } },
+    {
+      no: 8,
+      name: "tagging",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 9,
+      name: "content_disposition",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 10, name: "proxy", kind: "message", T: ProxyConfig }
+  ]
+);
+var GCPUpload = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.GCPUpload",
+  () => [
+    {
+      no: 1,
+      name: "credentials",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "bucket",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 3, name: "proxy", kind: "message", T: ProxyConfig }
+  ]
+);
+var AzureBlobUpload = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.AzureBlobUpload",
+  () => [
+    {
+      no: 1,
+      name: "account_name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "account_key",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "container_name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var AliOSSUpload = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.AliOSSUpload",
+  () => [
+    {
+      no: 1,
+      name: "access_key",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "secret",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "region",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 4,
+      name: "endpoint",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 5,
+      name: "bucket",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var ProxyConfig = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ProxyConfig",
+  () => [
+    {
+      no: 1,
+      name: "url",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "username",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "password",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var AutoParticipantEgress = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.AutoParticipantEgress",
+  () => [
+    { no: 1, name: "preset", kind: "enum", T: proto3.getEnumType(EncodingOptionsPreset), oneof: "options" },
+    { no: 2, name: "advanced", kind: "message", T: EncodingOptions, oneof: "options" },
+    { no: 3, name: "file_outputs", kind: "message", T: EncodedFileOutput, repeated: true },
+    { no: 4, name: "segment_outputs", kind: "message", T: SegmentedFileOutput, repeated: true }
+  ]
+);
+var AutoTrackEgress = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.AutoTrackEgress",
+  () => [
+    {
+      no: 1,
+      name: "filepath",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 5,
+      name: "disable_manifest",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 2, name: "s3", kind: "message", T: S3Upload, oneof: "output" },
+    { no: 3, name: "gcp", kind: "message", T: GCPUpload, oneof: "output" },
+    { no: 4, name: "azure", kind: "message", T: AzureBlobUpload, oneof: "output" },
+    { no: 6, name: "aliOSS", kind: "message", T: AliOSSUpload, oneof: "output" }
+  ]
+);
+var RoomCompositeEgressRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.RoomCompositeEgressRequest",
+  () => [
+    {
+      no: 1,
+      name: "room_name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "layout",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "audio_only",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 15, name: "audio_mixing", kind: "enum", T: proto3.getEnumType(AudioMixing) },
+    {
+      no: 4,
+      name: "video_only",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 5,
+      name: "custom_base_url",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 6, name: "file", kind: "message", T: EncodedFileOutput, oneof: "output" },
+    { no: 7, name: "stream", kind: "message", T: StreamOutput, oneof: "output" },
+    { no: 10, name: "segments", kind: "message", T: SegmentedFileOutput, oneof: "output" },
+    { no: 8, name: "preset", kind: "enum", T: proto3.getEnumType(EncodingOptionsPreset), oneof: "options" },
+    { no: 9, name: "advanced", kind: "message", T: EncodingOptions, oneof: "options" },
+    { no: 11, name: "file_outputs", kind: "message", T: EncodedFileOutput, repeated: true },
+    { no: 12, name: "stream_outputs", kind: "message", T: StreamOutput, repeated: true },
+    { no: 13, name: "segment_outputs", kind: "message", T: SegmentedFileOutput, repeated: true },
+    { no: 14, name: "image_outputs", kind: "message", T: ImageOutput, repeated: true },
+    { no: 16, name: "webhooks", kind: "message", T: WebhookConfig, repeated: true }
+  ]
+);
+var EncodedFileOutput = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.EncodedFileOutput",
+  () => [
+    { no: 1, name: "file_type", kind: "enum", T: proto3.getEnumType(EncodedFileType) },
+    {
+      no: 2,
+      name: "filepath",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 6,
+      name: "disable_manifest",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 3, name: "s3", kind: "message", T: S3Upload, oneof: "output" },
+    { no: 4, name: "gcp", kind: "message", T: GCPUpload, oneof: "output" },
+    { no: 5, name: "azure", kind: "message", T: AzureBlobUpload, oneof: "output" },
+    { no: 7, name: "aliOSS", kind: "message", T: AliOSSUpload, oneof: "output" }
+  ]
+);
+var CreateRoomRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.CreateRoomRequest",
+  () => [
+    {
+      no: 1,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 12,
+      name: "room_preset",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "empty_timeout",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 10,
+      name: "departure_timeout",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 3,
+      name: "max_participants",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 4,
+      name: "node_id",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 5,
+      name: "metadata",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 15, name: "tags", kind: "map", K: 9, V: {
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    } },
+    { no: 6, name: "egress", kind: "message", T: RoomEgress },
+    {
+      no: 7,
+      name: "min_playout_delay",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 8,
+      name: "max_playout_delay",
+      kind: "scalar",
+      T: 13
+      /* ScalarType.UINT32 */
+    },
+    {
+      no: 9,
+      name: "sync_streams",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    {
+      no: 13,
+      name: "replay_enabled",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 14, name: "agents", kind: "message", T: RoomAgentDispatch, repeated: true }
+  ]
+);
+var RoomEgress = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.RoomEgress",
+  () => [
+    { no: 1, name: "room", kind: "message", T: RoomCompositeEgressRequest },
+    { no: 3, name: "participant", kind: "message", T: AutoParticipantEgress },
+    { no: 2, name: "tracks", kind: "message", T: AutoTrackEgress }
+  ]
+);
+var ListRoomsRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ListRoomsRequest",
+  () => [
+    { no: 1, name: "names", kind: "scalar", T: 9, repeated: true }
+  ]
+);
+var ListRoomsResponse = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ListRoomsResponse",
+  () => [
+    { no: 1, name: "rooms", kind: "message", T: Room, repeated: true }
+  ]
+);
+var DeleteRoomRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.DeleteRoomRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var ListParticipantsRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ListParticipantsRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var ListParticipantsResponse = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ListParticipantsResponse",
+  () => [
+    { no: 1, name: "participants", kind: "message", T: ParticipantInfo, repeated: true }
+  ]
+);
+var RoomParticipantIdentity = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.RoomParticipantIdentity",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "revoke_token_ts",
+      kind: "scalar",
+      T: 3
+      /* ScalarType.INT64 */
+    }
+  ]
+);
+var MuteRoomTrackRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.MuteRoomTrackRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "track_sid",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 4,
+      name: "muted",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    }
+  ]
+);
+var MuteRoomTrackResponse = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.MuteRoomTrackResponse",
+  () => [
+    { no: 1, name: "track", kind: "message", T: TrackInfo }
+  ]
+);
+var UpdateParticipantRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.UpdateParticipantRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "metadata",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 4, name: "permission", kind: "message", T: ParticipantPermission },
+    {
+      no: 5,
+      name: "name",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 6, name: "attributes", kind: "map", K: 9, V: {
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    } }
+  ]
+);
+var UpdateSubscriptionsRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.UpdateSubscriptionsRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    { no: 3, name: "track_sids", kind: "scalar", T: 9, repeated: true },
+    {
+      no: 4,
+      name: "subscribe",
+      kind: "scalar",
+      T: 8
+      /* ScalarType.BOOL */
+    },
+    { no: 5, name: "participant_tracks", kind: "message", T: ParticipantTracks, repeated: true }
+  ]
+);
+var SendDataRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.SendDataRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "data",
+      kind: "scalar",
+      T: 12
+      /* ScalarType.BYTES */
+    },
+    { no: 3, name: "kind", kind: "enum", T: proto3.getEnumType(DataPacket_Kind) },
+    { no: 4, name: "destination_sids", kind: "scalar", T: 9, repeated: true },
+    { no: 6, name: "destination_identities", kind: "scalar", T: 9, repeated: true },
+    { no: 5, name: "topic", kind: "scalar", T: 9, opt: true },
+    {
+      no: 7,
+      name: "nonce",
+      kind: "scalar",
+      T: 12
+      /* ScalarType.BYTES */
+    }
+  ]
+);
+var UpdateRoomMetadataRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.UpdateRoomMetadataRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "metadata",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var ForwardParticipantRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.ForwardParticipantRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "destination_room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+var MoveParticipantRequest = /* @__PURE__ */ proto3.makeMessageType(
+  "livekit.MoveParticipantRequest",
+  () => [
+    {
+      no: 1,
+      name: "room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 2,
+      name: "identity",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    },
+    {
+      no: 3,
+      name: "destination_room",
+      kind: "scalar",
+      T: 9
+      /* ScalarType.STRING */
+    }
+  ]
+);
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/base64url.js
+import { Buffer as Buffer2 } from "node:buffer";
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/buffer_utils.js
+var encoder = new TextEncoder();
+var decoder = new TextDecoder();
+var MAX_INT32 = 2 ** 32;
+function concat(...buffers) {
+  const size = buffers.reduce((acc, { length }) => acc + length, 0);
+  const buf = new Uint8Array(size);
+  let i = 0;
+  for (const buffer of buffers) {
+    buf.set(buffer, i);
+    i += buffer.length;
+  }
+  return buf;
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/base64url.js
+var encode = (input) => Buffer2.from(input).toString("base64url");
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/util/errors.js
+var JOSEError = class extends Error {
+  static code = "ERR_JOSE_GENERIC";
+  code = "ERR_JOSE_GENERIC";
+  constructor(message2, options) {
+    super(message2, options);
+    this.name = this.constructor.name;
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+};
+var JOSENotSupported = class extends JOSEError {
+  static code = "ERR_JOSE_NOT_SUPPORTED";
+  code = "ERR_JOSE_NOT_SUPPORTED";
+};
+var JWSInvalid = class extends JOSEError {
+  static code = "ERR_JWS_INVALID";
+  code = "ERR_JWS_INVALID";
+};
+var JWTInvalid = class extends JOSEError {
+  static code = "ERR_JWT_INVALID";
+  code = "ERR_JWT_INVALID";
+};
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/is_key_object.js
+import * as util2 from "node:util";
+var is_key_object_default = (obj) => util2.types.isKeyObject(obj);
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/webcrypto.js
+import * as crypto3 from "node:crypto";
+import * as util3 from "node:util";
+var webcrypto3 = crypto3.webcrypto;
+var webcrypto_default = webcrypto3;
+var isCryptoKey = (key) => util3.types.isCryptoKey(key);
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/crypto_key.js
+function unusable(name, prop = "algorithm.name") {
+  return new TypeError(`CryptoKey does not support this operation, its ${prop} must be ${name}`);
+}
+function isAlgorithm(algorithm, name) {
+  return algorithm.name === name;
+}
+function getHashLength(hash) {
+  return parseInt(hash.name.slice(4), 10);
+}
+function getNamedCurve(alg) {
+  switch (alg) {
+    case "ES256":
+      return "P-256";
+    case "ES384":
+      return "P-384";
+    case "ES512":
+      return "P-521";
+    default:
+      throw new Error("unreachable");
+  }
+}
+function checkUsage(key, usages) {
+  if (usages.length && !usages.some((expected) => key.usages.includes(expected))) {
+    let msg = "CryptoKey does not support this operation, its usages must include ";
+    if (usages.length > 2) {
+      const last = usages.pop();
+      msg += `one of ${usages.join(", ")}, or ${last}.`;
+    } else if (usages.length === 2) {
+      msg += `one of ${usages[0]} or ${usages[1]}.`;
+    } else {
+      msg += `${usages[0]}.`;
+    }
+    throw new TypeError(msg);
+  }
+}
+function checkSigCryptoKey(key, alg, ...usages) {
+  switch (alg) {
+    case "HS256":
+    case "HS384":
+    case "HS512": {
+      if (!isAlgorithm(key.algorithm, "HMAC"))
+        throw unusable("HMAC");
+      const expected = parseInt(alg.slice(2), 10);
+      const actual = getHashLength(key.algorithm.hash);
+      if (actual !== expected)
+        throw unusable(`SHA-${expected}`, "algorithm.hash");
+      break;
+    }
+    case "RS256":
+    case "RS384":
+    case "RS512": {
+      if (!isAlgorithm(key.algorithm, "RSASSA-PKCS1-v1_5"))
+        throw unusable("RSASSA-PKCS1-v1_5");
+      const expected = parseInt(alg.slice(2), 10);
+      const actual = getHashLength(key.algorithm.hash);
+      if (actual !== expected)
+        throw unusable(`SHA-${expected}`, "algorithm.hash");
+      break;
+    }
+    case "PS256":
+    case "PS384":
+    case "PS512": {
+      if (!isAlgorithm(key.algorithm, "RSA-PSS"))
+        throw unusable("RSA-PSS");
+      const expected = parseInt(alg.slice(2), 10);
+      const actual = getHashLength(key.algorithm.hash);
+      if (actual !== expected)
+        throw unusable(`SHA-${expected}`, "algorithm.hash");
+      break;
+    }
+    case "EdDSA": {
+      if (key.algorithm.name !== "Ed25519" && key.algorithm.name !== "Ed448") {
+        throw unusable("Ed25519 or Ed448");
+      }
+      break;
+    }
+    case "Ed25519": {
+      if (!isAlgorithm(key.algorithm, "Ed25519"))
+        throw unusable("Ed25519");
+      break;
+    }
+    case "ES256":
+    case "ES384":
+    case "ES512": {
+      if (!isAlgorithm(key.algorithm, "ECDSA"))
+        throw unusable("ECDSA");
+      const expected = getNamedCurve(alg);
+      const actual = key.algorithm.namedCurve;
+      if (actual !== expected)
+        throw unusable(expected, "algorithm.namedCurve");
+      break;
+    }
+    default:
+      throw new TypeError("CryptoKey does not support this operation");
+  }
+  checkUsage(key, usages);
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/invalid_key_input.js
+function message(msg, actual, ...types6) {
+  types6 = types6.filter(Boolean);
+  if (types6.length > 2) {
+    const last = types6.pop();
+    msg += `one of type ${types6.join(", ")}, or ${last}.`;
+  } else if (types6.length === 2) {
+    msg += `one of type ${types6[0]} or ${types6[1]}.`;
+  } else {
+    msg += `of type ${types6[0]}.`;
+  }
+  if (actual == null) {
+    msg += ` Received ${actual}`;
+  } else if (typeof actual === "function" && actual.name) {
+    msg += ` Received function ${actual.name}`;
+  } else if (typeof actual === "object" && actual != null) {
+    if (actual.constructor?.name) {
+      msg += ` Received an instance of ${actual.constructor.name}`;
+    }
+  }
+  return msg;
+}
+var invalid_key_input_default = (actual, ...types6) => {
+  return message("Key must be ", actual, ...types6);
+};
+function withAlg(alg, actual, ...types6) {
+  return message(`Key for the ${alg} algorithm must be `, actual, ...types6);
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/is_key_like.js
+var is_key_like_default = (key) => is_key_object_default(key) || isCryptoKey(key);
+var types5 = ["KeyObject"];
+if (globalThis.CryptoKey || webcrypto_default?.CryptoKey) {
+  types5.push("CryptoKey");
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/is_disjoint.js
+var isDisjoint = (...headers) => {
+  const sources = headers.filter(Boolean);
+  if (sources.length === 0 || sources.length === 1) {
+    return true;
+  }
+  let acc;
+  for (const header of sources) {
+    const parameters = Object.keys(header);
+    if (!acc || acc.size === 0) {
+      acc = new Set(parameters);
+      continue;
+    }
+    for (const parameter of parameters) {
+      if (acc.has(parameter)) {
+        return false;
+      }
+      acc.add(parameter);
+    }
+  }
+  return true;
+};
+var is_disjoint_default = isDisjoint;
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/is_object.js
+function isObjectLike(value) {
+  return typeof value === "object" && value !== null;
+}
+function isObject3(input) {
+  if (!isObjectLike(input) || Object.prototype.toString.call(input) !== "[object Object]") {
+    return false;
+  }
+  if (Object.getPrototypeOf(input) === null) {
+    return true;
+  }
+  let proto = input;
+  while (Object.getPrototypeOf(proto) !== null) {
+    proto = Object.getPrototypeOf(proto);
+  }
+  return Object.getPrototypeOf(input) === proto;
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/get_named_curve.js
+import { KeyObject } from "node:crypto";
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/is_jwk.js
+function isJWK(key) {
+  return isObject3(key) && typeof key.kty === "string";
+}
+function isPrivateJWK(key) {
+  return key.kty !== "oct" && typeof key.d === "string";
+}
+function isPublicJWK(key) {
+  return key.kty !== "oct" && typeof key.d === "undefined";
+}
+function isSecretJWK(key) {
+  return isJWK(key) && key.kty === "oct" && typeof key.k === "string";
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/get_named_curve.js
+var namedCurveToJOSE = (namedCurve) => {
+  switch (namedCurve) {
+    case "prime256v1":
+      return "P-256";
+    case "secp384r1":
+      return "P-384";
+    case "secp521r1":
+      return "P-521";
+    case "secp256k1":
+      return "secp256k1";
+    default:
+      throw new JOSENotSupported("Unsupported key curve for this operation");
+  }
+};
+var getNamedCurve2 = (kee, raw) => {
+  let key;
+  if (isCryptoKey(kee)) {
+    key = KeyObject.from(kee);
+  } else if (is_key_object_default(kee)) {
+    key = kee;
+  } else if (isJWK(kee)) {
+    return kee.crv;
+  } else {
+    throw new TypeError(invalid_key_input_default(kee, ...types5));
+  }
+  if (key.type === "secret") {
+    throw new TypeError('only "private" or "public" type keys can be used for this operation');
+  }
+  switch (key.asymmetricKeyType) {
+    case "ed25519":
+    case "ed448":
+      return `Ed${key.asymmetricKeyType.slice(2)}`;
+    case "x25519":
+    case "x448":
+      return `X${key.asymmetricKeyType.slice(1)}`;
+    case "ec": {
+      const namedCurve = key.asymmetricKeyDetails.namedCurve;
+      if (raw) {
+        return namedCurve;
+      }
+      return namedCurveToJOSE(namedCurve);
+    }
+    default:
+      throw new TypeError("Invalid asymmetric key type for this operation");
+  }
+};
+var get_named_curve_default = getNamedCurve2;
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/check_key_length.js
+import { KeyObject as KeyObject2 } from "node:crypto";
+var check_key_length_default = (key, alg) => {
+  let modulusLength;
+  try {
+    if (key instanceof KeyObject2) {
+      modulusLength = key.asymmetricKeyDetails?.modulusLength;
+    } else {
+      modulusLength = Buffer.from(key.n, "base64url").byteLength << 3;
+    }
+  } catch {
+  }
+  if (typeof modulusLength !== "number" || modulusLength < 2048) {
+    throw new TypeError(`${alg} requires key modulusLength to be 2048 bits or larger`);
+  }
+};
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/check_key_type.js
+var tag = (key) => key?.[Symbol.toStringTag];
+var jwkMatchesOp = (alg, key, usage) => {
+  if (key.use !== void 0 && key.use !== "sig") {
+    throw new TypeError("Invalid key for this operation, when present its use must be sig");
+  }
+  if (key.key_ops !== void 0 && key.key_ops.includes?.(usage) !== true) {
+    throw new TypeError(`Invalid key for this operation, when present its key_ops must include ${usage}`);
+  }
+  if (key.alg !== void 0 && key.alg !== alg) {
+    throw new TypeError(`Invalid key for this operation, when present its alg must be ${alg}`);
+  }
+  return true;
+};
+var symmetricTypeCheck = (alg, key, usage, allowJwk) => {
+  if (key instanceof Uint8Array)
+    return;
+  if (allowJwk && isJWK(key)) {
+    if (isSecretJWK(key) && jwkMatchesOp(alg, key, usage))
+      return;
+    throw new TypeError(`JSON Web Key for symmetric algorithms must have JWK "kty" (Key Type) equal to "oct" and the JWK "k" (Key Value) present`);
+  }
+  if (!is_key_like_default(key)) {
+    throw new TypeError(withAlg(alg, key, ...types5, "Uint8Array", allowJwk ? "JSON Web Key" : null));
+  }
+  if (key.type !== "secret") {
+    throw new TypeError(`${tag(key)} instances for symmetric algorithms must be of type "secret"`);
+  }
+};
+var asymmetricTypeCheck = (alg, key, usage, allowJwk) => {
+  if (allowJwk && isJWK(key)) {
+    switch (usage) {
+      case "sign":
+        if (isPrivateJWK(key) && jwkMatchesOp(alg, key, usage))
+          return;
+        throw new TypeError(`JSON Web Key for this operation be a private JWK`);
+      case "verify":
+        if (isPublicJWK(key) && jwkMatchesOp(alg, key, usage))
+          return;
+        throw new TypeError(`JSON Web Key for this operation be a public JWK`);
+    }
+  }
+  if (!is_key_like_default(key)) {
+    throw new TypeError(withAlg(alg, key, ...types5, allowJwk ? "JSON Web Key" : null));
+  }
+  if (key.type === "secret") {
+    throw new TypeError(`${tag(key)} instances for asymmetric algorithms must not be of type "secret"`);
+  }
+  if (usage === "sign" && key.type === "public") {
+    throw new TypeError(`${tag(key)} instances for asymmetric algorithm signing must be of type "private"`);
+  }
+  if (usage === "decrypt" && key.type === "public") {
+    throw new TypeError(`${tag(key)} instances for asymmetric algorithm decryption must be of type "private"`);
+  }
+  if (key.algorithm && usage === "verify" && key.type === "private") {
+    throw new TypeError(`${tag(key)} instances for asymmetric algorithm verifying must be of type "public"`);
+  }
+  if (key.algorithm && usage === "encrypt" && key.type === "private") {
+    throw new TypeError(`${tag(key)} instances for asymmetric algorithm encryption must be of type "public"`);
+  }
+};
+function checkKeyType(allowJwk, alg, key, usage) {
+  const symmetric = alg.startsWith("HS") || alg === "dir" || alg.startsWith("PBES2") || /^A\d{3}(?:GCM)?KW$/.test(alg);
+  if (symmetric) {
+    symmetricTypeCheck(alg, key, usage, allowJwk);
+  } else {
+    asymmetricTypeCheck(alg, key, usage, allowJwk);
+  }
+}
+var check_key_type_default = checkKeyType.bind(void 0, false);
+var checkKeyTypeWithJwk = checkKeyType.bind(void 0, true);
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/validate_crit.js
+function validateCrit(Err, recognizedDefault, recognizedOption, protectedHeader, joseHeader) {
+  if (joseHeader.crit !== void 0 && protectedHeader?.crit === void 0) {
+    throw new Err('"crit" (Critical) Header Parameter MUST be integrity protected');
+  }
+  if (!protectedHeader || protectedHeader.crit === void 0) {
+    return /* @__PURE__ */ new Set();
+  }
+  if (!Array.isArray(protectedHeader.crit) || protectedHeader.crit.length === 0 || protectedHeader.crit.some((input) => typeof input !== "string" || input.length === 0)) {
+    throw new Err('"crit" (Critical) Header Parameter MUST be an array of non-empty strings when present');
+  }
+  let recognized;
+  if (recognizedOption !== void 0) {
+    recognized = new Map([...Object.entries(recognizedOption), ...recognizedDefault.entries()]);
+  } else {
+    recognized = recognizedDefault;
+  }
+  for (const parameter of protectedHeader.crit) {
+    if (!recognized.has(parameter)) {
+      throw new JOSENotSupported(`Extension Header Parameter "${parameter}" is not recognized`);
+    }
+    if (joseHeader[parameter] === void 0) {
+      throw new Err(`Extension Header Parameter "${parameter}" is missing`);
+    }
+    if (recognized.get(parameter) && protectedHeader[parameter] === void 0) {
+      throw new Err(`Extension Header Parameter "${parameter}" MUST be integrity protected`);
+    }
+  }
+  return new Set(protectedHeader.crit);
+}
+var validate_crit_default = validateCrit;
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/dsa_digest.js
+function dsaDigest(alg) {
+  switch (alg) {
+    case "PS256":
+    case "RS256":
+    case "ES256":
+    case "ES256K":
+      return "sha256";
+    case "PS384":
+    case "RS384":
+    case "ES384":
+      return "sha384";
+    case "PS512":
+    case "RS512":
+    case "ES512":
+      return "sha512";
+    case "Ed25519":
+    case "EdDSA":
+      return void 0;
+    default:
+      throw new JOSENotSupported(`alg ${alg} is not supported either by JOSE or your javascript runtime`);
+  }
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/node_key.js
+import { constants as constants2, KeyObject as KeyObject3 } from "node:crypto";
+var ecCurveAlgMap = /* @__PURE__ */ new Map([
+  ["ES256", "P-256"],
+  ["ES256K", "secp256k1"],
+  ["ES384", "P-384"],
+  ["ES512", "P-521"]
+]);
+function keyForCrypto(alg, key) {
+  let asymmetricKeyType;
+  let asymmetricKeyDetails;
+  let isJWK2;
+  if (key instanceof KeyObject3) {
+    asymmetricKeyType = key.asymmetricKeyType;
+    asymmetricKeyDetails = key.asymmetricKeyDetails;
+  } else {
+    isJWK2 = true;
+    switch (key.kty) {
+      case "RSA":
+        asymmetricKeyType = "rsa";
+        break;
+      case "EC":
+        asymmetricKeyType = "ec";
+        break;
+      case "OKP": {
+        if (key.crv === "Ed25519") {
+          asymmetricKeyType = "ed25519";
+          break;
+        }
+        if (key.crv === "Ed448") {
+          asymmetricKeyType = "ed448";
+          break;
+        }
+        throw new TypeError("Invalid key for this operation, its crv must be Ed25519 or Ed448");
+      }
+      default:
+        throw new TypeError("Invalid key for this operation, its kty must be RSA, OKP, or EC");
+    }
+  }
+  let options;
+  switch (alg) {
+    case "Ed25519":
+      if (asymmetricKeyType !== "ed25519") {
+        throw new TypeError(`Invalid key for this operation, its asymmetricKeyType must be ed25519`);
+      }
+      break;
+    case "EdDSA":
+      if (!["ed25519", "ed448"].includes(asymmetricKeyType)) {
+        throw new TypeError("Invalid key for this operation, its asymmetricKeyType must be ed25519 or ed448");
+      }
+      break;
+    case "RS256":
+    case "RS384":
+    case "RS512":
+      if (asymmetricKeyType !== "rsa") {
+        throw new TypeError("Invalid key for this operation, its asymmetricKeyType must be rsa");
+      }
+      check_key_length_default(key, alg);
+      break;
+    case "PS256":
+    case "PS384":
+    case "PS512":
+      if (asymmetricKeyType === "rsa-pss") {
+        const { hashAlgorithm, mgf1HashAlgorithm, saltLength } = asymmetricKeyDetails;
+        const length = parseInt(alg.slice(-3), 10);
+        if (hashAlgorithm !== void 0 && (hashAlgorithm !== `sha${length}` || mgf1HashAlgorithm !== hashAlgorithm)) {
+          throw new TypeError(`Invalid key for this operation, its RSA-PSS parameters do not meet the requirements of "alg" ${alg}`);
+        }
+        if (saltLength !== void 0 && saltLength > length >> 3) {
+          throw new TypeError(`Invalid key for this operation, its RSA-PSS parameter saltLength does not meet the requirements of "alg" ${alg}`);
+        }
+      } else if (asymmetricKeyType !== "rsa") {
+        throw new TypeError("Invalid key for this operation, its asymmetricKeyType must be rsa or rsa-pss");
+      }
+      check_key_length_default(key, alg);
+      options = {
+        padding: constants2.RSA_PKCS1_PSS_PADDING,
+        saltLength: constants2.RSA_PSS_SALTLEN_DIGEST
+      };
+      break;
+    case "ES256":
+    case "ES256K":
+    case "ES384":
+    case "ES512": {
+      if (asymmetricKeyType !== "ec") {
+        throw new TypeError("Invalid key for this operation, its asymmetricKeyType must be ec");
+      }
+      const actual = get_named_curve_default(key);
+      const expected = ecCurveAlgMap.get(alg);
+      if (actual !== expected) {
+        throw new TypeError(`Invalid key curve for the algorithm, its curve must be ${expected}, got ${actual}`);
+      }
+      options = { dsaEncoding: "ieee-p1363" };
+      break;
+    }
+    default:
+      throw new JOSENotSupported(`alg ${alg} is not supported either by JOSE or your javascript runtime`);
+  }
+  if (isJWK2) {
+    return { format: "jwk", key, ...options };
+  }
+  return options ? { ...options, key } : key;
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/sign.js
+import * as crypto4 from "node:crypto";
+import { promisify } from "node:util";
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/hmac_digest.js
+function hmacDigest(alg) {
+  switch (alg) {
+    case "HS256":
+      return "sha256";
+    case "HS384":
+      return "sha384";
+    case "HS512":
+      return "sha512";
+    default:
+      throw new JOSENotSupported(`alg ${alg} is not supported either by JOSE or your javascript runtime`);
+  }
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/get_sign_verify_key.js
+import { KeyObject as KeyObject4, createSecretKey } from "node:crypto";
+function getSignVerifyKey(alg, key, usage) {
+  if (key instanceof Uint8Array) {
+    if (!alg.startsWith("HS")) {
+      throw new TypeError(invalid_key_input_default(key, ...types5));
+    }
+    return createSecretKey(key);
+  }
+  if (key instanceof KeyObject4) {
+    return key;
+  }
+  if (isCryptoKey(key)) {
+    checkSigCryptoKey(key, alg, usage);
+    return KeyObject4.from(key);
+  }
+  if (isJWK(key)) {
+    if (alg.startsWith("HS")) {
+      return createSecretKey(Buffer.from(key.k, "base64url"));
+    }
+    return key;
+  }
+  throw new TypeError(invalid_key_input_default(key, ...types5, "Uint8Array", "JSON Web Key"));
+}
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/runtime/sign.js
+var oneShotSign = promisify(crypto4.sign);
+var sign2 = async (alg, key, data) => {
+  const k = getSignVerifyKey(alg, key, "sign");
+  if (alg.startsWith("HS")) {
+    const hmac = crypto4.createHmac(hmacDigest(alg), k);
+    hmac.update(data);
+    return hmac.digest();
+  }
+  return oneShotSign(dsaDigest(alg), data, keyForCrypto(alg, k));
+};
+var sign_default = sign2;
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/epoch.js
+var epoch_default = (date6) => Math.floor(date6.getTime() / 1e3);
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/lib/secs.js
+var minute = 60;
+var hour = minute * 60;
+var day = hour * 24;
+var week = day * 7;
+var year = day * 365.25;
+var REGEX = /^(\+|\-)? ?(\d+|\d+\.\d+) ?(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)(?: (ago|from now))?$/i;
+var secs_default = (str) => {
+  const matched = REGEX.exec(str);
+  if (!matched || matched[4] && matched[1]) {
+    throw new TypeError("Invalid time period format");
+  }
+  const value = parseFloat(matched[2]);
+  const unit = matched[3].toLowerCase();
+  let numericDate;
+  switch (unit) {
+    case "sec":
+    case "secs":
+    case "second":
+    case "seconds":
+    case "s":
+      numericDate = Math.round(value);
+      break;
+    case "minute":
+    case "minutes":
+    case "min":
+    case "mins":
+    case "m":
+      numericDate = Math.round(value * minute);
+      break;
+    case "hour":
+    case "hours":
+    case "hr":
+    case "hrs":
+    case "h":
+      numericDate = Math.round(value * hour);
+      break;
+    case "day":
+    case "days":
+    case "d":
+      numericDate = Math.round(value * day);
+      break;
+    case "week":
+    case "weeks":
+    case "w":
+      numericDate = Math.round(value * week);
+      break;
+    default:
+      numericDate = Math.round(value * year);
+      break;
+  }
+  if (matched[1] === "-" || matched[4] === "ago") {
+    return -numericDate;
+  }
+  return numericDate;
+};
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/jws/flattened/sign.js
+var FlattenedSign = class {
+  _payload;
+  _protectedHeader;
+  _unprotectedHeader;
+  constructor(payload) {
+    if (!(payload instanceof Uint8Array)) {
+      throw new TypeError("payload must be an instance of Uint8Array");
+    }
+    this._payload = payload;
+  }
+  setProtectedHeader(protectedHeader) {
+    if (this._protectedHeader) {
+      throw new TypeError("setProtectedHeader can only be called once");
+    }
+    this._protectedHeader = protectedHeader;
+    return this;
+  }
+  setUnprotectedHeader(unprotectedHeader) {
+    if (this._unprotectedHeader) {
+      throw new TypeError("setUnprotectedHeader can only be called once");
+    }
+    this._unprotectedHeader = unprotectedHeader;
+    return this;
+  }
+  async sign(key, options) {
+    if (!this._protectedHeader && !this._unprotectedHeader) {
+      throw new JWSInvalid("either setProtectedHeader or setUnprotectedHeader must be called before #sign()");
+    }
+    if (!is_disjoint_default(this._protectedHeader, this._unprotectedHeader)) {
+      throw new JWSInvalid("JWS Protected and JWS Unprotected Header Parameter names must be disjoint");
+    }
+    const joseHeader = {
+      ...this._protectedHeader,
+      ...this._unprotectedHeader
+    };
+    const extensions = validate_crit_default(JWSInvalid, /* @__PURE__ */ new Map([["b64", true]]), options?.crit, this._protectedHeader, joseHeader);
+    let b64 = true;
+    if (extensions.has("b64")) {
+      b64 = this._protectedHeader.b64;
+      if (typeof b64 !== "boolean") {
+        throw new JWSInvalid('The "b64" (base64url-encode payload) Header Parameter must be a boolean');
+      }
+    }
+    const { alg } = joseHeader;
+    if (typeof alg !== "string" || !alg) {
+      throw new JWSInvalid('JWS "alg" (Algorithm) Header Parameter missing or invalid');
+    }
+    checkKeyTypeWithJwk(alg, key, "sign");
+    let payload = this._payload;
+    if (b64) {
+      payload = encoder.encode(encode(payload));
+    }
+    let protectedHeader;
+    if (this._protectedHeader) {
+      protectedHeader = encoder.encode(encode(JSON.stringify(this._protectedHeader)));
+    } else {
+      protectedHeader = encoder.encode("");
+    }
+    const data = concat(protectedHeader, encoder.encode("."), payload);
+    const signature = await sign_default(alg, key, data);
+    const jws = {
+      signature: encode(signature),
+      payload: ""
+    };
+    if (b64) {
+      jws.payload = decoder.decode(payload);
+    }
+    if (this._unprotectedHeader) {
+      jws.header = this._unprotectedHeader;
+    }
+    if (this._protectedHeader) {
+      jws.protected = decoder.decode(protectedHeader);
+    }
+    return jws;
+  }
+};
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/jws/compact/sign.js
+var CompactSign = class {
+  _flattened;
+  constructor(payload) {
+    this._flattened = new FlattenedSign(payload);
+  }
+  setProtectedHeader(protectedHeader) {
+    this._flattened.setProtectedHeader(protectedHeader);
+    return this;
+  }
+  async sign(key, options) {
+    const jws = await this._flattened.sign(key, options);
+    if (jws.payload === void 0) {
+      throw new TypeError("use the flattened module for creating JWS with b64: false");
+    }
+    return `${jws.protected}.${jws.payload}.${jws.signature}`;
+  }
+};
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/jwt/produce.js
+function validateInput(label, input) {
+  if (!Number.isFinite(input)) {
+    throw new TypeError(`Invalid ${label} input`);
+  }
+  return input;
+}
+var ProduceJWT = class {
+  _payload;
+  constructor(payload = {}) {
+    if (!isObject3(payload)) {
+      throw new TypeError("JWT Claims Set MUST be an object");
+    }
+    this._payload = payload;
+  }
+  setIssuer(issuer) {
+    this._payload = { ...this._payload, iss: issuer };
+    return this;
+  }
+  setSubject(subject) {
+    this._payload = { ...this._payload, sub: subject };
+    return this;
+  }
+  setAudience(audience) {
+    this._payload = { ...this._payload, aud: audience };
+    return this;
+  }
+  setJti(jwtId) {
+    this._payload = { ...this._payload, jti: jwtId };
+    return this;
+  }
+  setNotBefore(input) {
+    if (typeof input === "number") {
+      this._payload = { ...this._payload, nbf: validateInput("setNotBefore", input) };
+    } else if (input instanceof Date) {
+      this._payload = { ...this._payload, nbf: validateInput("setNotBefore", epoch_default(input)) };
+    } else {
+      this._payload = { ...this._payload, nbf: epoch_default(/* @__PURE__ */ new Date()) + secs_default(input) };
+    }
+    return this;
+  }
+  setExpirationTime(input) {
+    if (typeof input === "number") {
+      this._payload = { ...this._payload, exp: validateInput("setExpirationTime", input) };
+    } else if (input instanceof Date) {
+      this._payload = { ...this._payload, exp: validateInput("setExpirationTime", epoch_default(input)) };
+    } else {
+      this._payload = { ...this._payload, exp: epoch_default(/* @__PURE__ */ new Date()) + secs_default(input) };
+    }
+    return this;
+  }
+  setIssuedAt(input) {
+    if (typeof input === "undefined") {
+      this._payload = { ...this._payload, iat: epoch_default(/* @__PURE__ */ new Date()) };
+    } else if (input instanceof Date) {
+      this._payload = { ...this._payload, iat: validateInput("setIssuedAt", epoch_default(input)) };
+    } else if (typeof input === "string") {
+      this._payload = {
+        ...this._payload,
+        iat: validateInput("setIssuedAt", epoch_default(/* @__PURE__ */ new Date()) + secs_default(input))
+      };
+    } else {
+      this._payload = { ...this._payload, iat: validateInput("setIssuedAt", input) };
+    }
+    return this;
+  }
+};
+
+// ../../node_modules/.pnpm/jose@5.10.0/node_modules/jose/dist/node/esm/jwt/sign.js
+var SignJWT = class extends ProduceJWT {
+  _protectedHeader;
+  setProtectedHeader(protectedHeader) {
+    this._protectedHeader = protectedHeader;
+    return this;
+  }
+  async sign(key, options) {
+    const sig = new CompactSign(encoder.encode(JSON.stringify(this._payload)));
+    sig.setProtectedHeader(this._protectedHeader);
+    if (Array.isArray(this._protectedHeader?.crit) && this._protectedHeader.crit.includes("b64") && this._protectedHeader.b64 === false) {
+      throw new JWTInvalid("JWTs MUST NOT use unencoded payload");
+    }
+    return sig.sign(key, options);
+  }
+};
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/grants.js
+function trackSourceToString(source) {
+  switch (source) {
+    case TrackSource.CAMERA:
+      return "camera";
+    case TrackSource.MICROPHONE:
+      return "microphone";
+    case TrackSource.SCREEN_SHARE:
+      return "screen_share";
+    case TrackSource.SCREEN_SHARE_AUDIO:
+      return "screen_share_audio";
+    default:
+      throw new TypeError(`Cannot convert TrackSource ${source} to string`);
+  }
+}
+function claimsToJwtPayload(grant) {
+  var _a;
+  const claim = { ...grant };
+  if (Array.isArray((_a = claim.video) == null ? void 0 : _a.canPublishSources)) {
+    claim.video.canPublishSources = claim.video.canPublishSources.map(trackSourceToString);
+  }
+  return claim;
+}
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/AccessToken.js
+var defaultTTL = `6h`;
+var AccessToken = class {
+  /**
+   * Creates a new AccessToken
+   * @param apiKey - API Key, can be set in env LIVEKIT_API_KEY
+   * @param apiSecret - Secret, can be set in env LIVEKIT_API_SECRET
+   */
+  constructor(apiKey, apiSecret, options) {
+    if (!apiKey) {
+      apiKey = process.env.LIVEKIT_API_KEY;
+    }
+    if (!apiSecret) {
+      apiSecret = process.env.LIVEKIT_API_SECRET;
+    }
+    if (!apiKey || !apiSecret) {
+      throw Error("api-key and api-secret must be set");
+    } else if (typeof document !== "undefined") {
+      console.error(
+        "You should not include your API secret in your web client bundle.\n\nYour web client should request a token from your backend server which should then use the API secret to generate a token. See https://docs.livekit.io/client/connect/"
+      );
+    }
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+    this.grants = {};
+    this.identity = options == null ? void 0 : options.identity;
+    this.ttl = (options == null ? void 0 : options.ttl) || defaultTTL;
+    if (typeof this.ttl === "number") {
+      this.ttl = `${this.ttl}s`;
+    }
+    if (options == null ? void 0 : options.metadata) {
+      this.metadata = options.metadata;
+    }
+    if (options == null ? void 0 : options.attributes) {
+      this.attributes = options.attributes;
+    }
+    if (options == null ? void 0 : options.name) {
+      this.name = options.name;
+    }
+  }
+  /**
+   * Adds a video grant to this token.
+   * @param grant -
+   */
+  addGrant(grant) {
+    this.grants.video = { ...this.grants.video ?? {}, ...grant };
+  }
+  /**
+   * Adds an inference grant to this token.
+   * @param grant -
+   */
+  addInferenceGrant(grant) {
+    this.grants.inference = { ...this.grants.inference ?? {}, ...grant };
+  }
+  /**
+   * Adds a SIP grant to this token.
+   * @param grant -
+   */
+  addSIPGrant(grant) {
+    this.grants.sip = { ...this.grants.sip ?? {}, ...grant };
+  }
+  /**
+   * Adds an observability grant to this token.
+   * @param grant -
+   */
+  addObservabilityGrant(grant) {
+    this.grants.observability = { ...this.grants.observability ?? {}, ...grant };
+  }
+  get name() {
+    return this.grants.name;
+  }
+  set name(name) {
+    this.grants.name = name;
+  }
+  get metadata() {
+    return this.grants.metadata;
+  }
+  /**
+   * Set metadata to be passed to the Participant, used only when joining the room
+   */
+  set metadata(md) {
+    this.grants.metadata = md;
+  }
+  get attributes() {
+    return this.grants.attributes;
+  }
+  set attributes(attrs) {
+    this.grants.attributes = attrs;
+  }
+  get kind() {
+    return this.grants.kind;
+  }
+  set kind(kind) {
+    this.grants.kind = kind;
+  }
+  get sha256() {
+    return this.grants.sha256;
+  }
+  set sha256(sha) {
+    this.grants.sha256 = sha;
+  }
+  get roomPreset() {
+    return this.grants.roomPreset;
+  }
+  set roomPreset(preset) {
+    this.grants.roomPreset = preset;
+  }
+  get roomConfig() {
+    return this.grants.roomConfig;
+  }
+  set roomConfig(config2) {
+    this.grants.roomConfig = config2;
+  }
+  /**
+   * @returns JWT encoded token
+   */
+  async toJwt() {
+    var _a;
+    const secret = new TextEncoder().encode(this.apiSecret);
+    const jwt2 = new SignJWT(claimsToJwtPayload(this.grants)).setProtectedHeader({ alg: "HS256" }).setIssuer(this.apiKey).setExpirationTime(this.ttl).setNotBefore(/* @__PURE__ */ new Date());
+    if (this.identity) {
+      jwt2.setSubject(this.identity);
+    } else if ((_a = this.grants.video) == null ? void 0 : _a.roomJoin) {
+      throw Error("identity is required for join but not set");
+    }
+    return jwt2.sign(secret);
+  }
+};
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/ServiceBase.js
+var ServiceBase = class {
+  constructor(apiKeyOrOptions, secret, ttl) {
+    const options = typeof apiKeyOrOptions === "object" ? apiKeyOrOptions : { apiKey: apiKeyOrOptions, secret, ttl };
+    this.apiKey = options.apiKey;
+    this.secret = options.secret;
+    this.ttl = options.ttl || "10m";
+    this.token = options.token;
+  }
+  async authHeader(grant, sip) {
+    if (this.token) {
+      return { Authorization: `Bearer ${this.token}` };
+    }
+    const at = new AccessToken(this.apiKey, this.secret, { ttl: this.ttl });
+    if (grant) {
+      at.addGrant(grant);
+    }
+    if (sip) {
+      at.addSIPGrant(sip);
+    }
+    return {
+      Authorization: `Bearer ${await at.toJwt()}`
+    };
+  }
+};
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/failover.js
+var FAILOVER_MAX_ATTEMPTS = 3;
+var FAILOVER_BACKOFF_BASE_MS = 200;
+var MIN_FAILOVER_TIMEOUT_SECONDS = 5;
+function failoverAttempts(enabled, hostname2, force = false, timeoutSeconds = 0) {
+  if (!enabled || !(force || isCloud(hostname2))) {
+    return 1;
+  }
+  if (timeoutSeconds > 0 && timeoutSeconds < MIN_FAILOVER_TIMEOUT_SECONDS) {
+    return 1;
+  }
+  return FAILOVER_MAX_ATTEMPTS;
+}
+function isCloud(hostname2) {
+  return hostname2.endsWith(".livekit.cloud");
+}
+function toHttp(url2) {
+  return url2.startsWith("ws") ? `http${url2.slice(2)}` : url2;
+}
+function hostKey(url2) {
+  return url2.host.toLowerCase();
+}
+function pickNext(regionOrigins2, attempted) {
+  for (const origin of regionOrigins2) {
+    try {
+      if (!attempted.has(hostKey(new URL(origin)))) {
+        return origin;
+      }
+    } catch {
+    }
+  }
+  return void 0;
+}
+function sleep2(ms) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+var regionCache = /* @__PURE__ */ new Map();
+var inflight = /* @__PURE__ */ new Map();
+async function regionOrigins(origin, headers) {
+  const key = hostKey(origin);
+  const cached2 = regionCache.get(key);
+  if (cached2 && Date.now() - cached2.fetchedAt < cached2.ttl) {
+    return cached2.origins;
+  }
+  const existing = inflight.get(key);
+  if (existing) {
+    return existing;
+  }
+  const request2 = (async () => {
+    try {
+      const { origins, ttl } = await fetchRegions(origin, headers);
+      if (ttl > 0) {
+        regionCache.set(key, { origins, fetchedAt: Date.now(), ttl });
+      }
+      return origins;
+    } catch {
+      return (cached2 == null ? void 0 : cached2.origins) ?? [];
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+  inflight.set(key, request2);
+  return request2;
+}
+async function fetchRegions(origin, headers) {
+  const fetchHeaders = {};
+  for (const [k, v] of Object.entries(headers ?? {})) {
+    if (k.toLowerCase() === "content-type" || k.toLowerCase() === "content-length") continue;
+    fetchHeaders[k] = v;
+  }
+  const response = await fetch(new URL("/settings/regions", origin.origin), {
+    method: "GET",
+    headers: fetchHeaders,
+    // Short timeout so a slow/unreachable discovery endpoint doesn't stall the
+    // failover path.
+    signal: AbortSignal.timeout(2e3)
+  });
+  if (!response.ok) {
+    throw new Error(`region discovery failed: ${response.status}`);
+  }
+  const ttl = parseMaxAge(response.headers.get("cache-control"));
+  const body = await response.json();
+  const origins = (body.regions ?? []).filter((r) => !!r.url).map((r) => new URL(toHttp(r.url)).origin);
+  return { origins, ttl };
+}
+function parseMaxAge(cacheControl) {
+  if (!cacheControl) return 0;
+  for (const directive of cacheControl.split(",")) {
+    const trimmed = directive.trim().toLowerCase();
+    if (trimmed.startsWith("max-age=")) {
+      const secs = parseInt(trimmed.slice("max-age=".length), 10);
+      return Number.isFinite(secs) && secs > 0 ? secs * 1e3 : 0;
+    }
+  }
+  return 0;
+}
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/version.js
+var SDK_VERSION = "2.17.0";
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/TwirpRPC.js
+var USER_AGENT2 = `livekit-server-sdk-node/${SDK_VERSION}`;
+var defaultPrefix = "/twirp";
+var defaultTimeoutSeconds = 10;
+var livekitPackage = "livekit";
+var ServerError = class extends Error {
+  constructor(name, message2, status, code, metadata) {
+    super(message2);
+    this.name = name;
+    this.status = status;
+    this.code = code;
+    this.metadata = metadata;
+  }
+};
+var TwirpError = ServerError;
+var TwirpRpc = class {
+  constructor(host, pkg, options) {
+    if (host.startsWith("ws")) {
+      host = host.replace("ws", "http");
+    }
+    this.host = host;
+    this.pkg = pkg;
+    this.requestTimeout = (options == null ? void 0 : options.requestTimeout) ?? defaultTimeoutSeconds;
+    this.prefix = (options == null ? void 0 : options.prefix) || defaultPrefix;
+    this.failover = (options == null ? void 0 : options.failover) ?? true;
+    this.failoverForce = (options == null ? void 0 : options.failoverForce) ?? false;
+    this.failoverBackoffMs = (options == null ? void 0 : options.failoverBackoffMs) ?? FAILOVER_BACKOFF_BASE_MS;
+  }
+  /**
+   * Issues a Twirp request, failing over to alternative regions on retryable
+   * errors. On any transport error or HTTP 5xx it discovers regions via
+   * /settings/regions and replays the request — body and headers intact —
+   * against the next untried region, with exponential backoff. A 4xx is
+   * returned immediately.
+   */
+  async request(service, method, data, headers, timeout = this.requestTimeout) {
+    const path5 = `${this.prefix}/${this.pkg}.${service}/${method}`;
+    const body = JSON.stringify(data);
+    const requestHeaders = {
+      "Content-Type": "application/json;charset=UTF-8",
+      "User-Agent": USER_AGENT2,
+      ...headers
+    };
+    const origin = new URL(this.host);
+    const maxAttempts = failoverAttempts(
+      this.failover,
+      origin.hostname,
+      this.failoverForce,
+      timeout
+    );
+    const attempted = /* @__PURE__ */ new Set([hostKey(origin)]);
+    let regions;
+    let current = this.host;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const isLast = attempt + 1 >= maxAttempts;
+      const init = { method: "POST", headers: requestHeaders, body };
+      if (timeout) {
+        init.signal = AbortSignal.timeout(timeout * 1e3);
+      }
+      let response;
+      let transportError;
+      try {
+        response = await fetch(new URL(path5, current), init);
+      } catch (e) {
+        transportError = e;
+      }
+      if (response == null ? void 0 : response.ok) {
+        return await response.json();
+      }
+      const retryable = transportError !== void 0 || !!response && response.status >= 500;
+      let next;
+      if (retryable && !isLast) {
+        if (!regions) {
+          regions = await regionOrigins(origin, headers);
+        }
+        next = pickNext(regions, attempted);
+      }
+      if (!retryable || next === void 0) {
+        if (response) {
+          throw await toTwirpError(response);
+        }
+        throw transportError;
+      }
+      const reason = response ? `status ${response.status}` : transportError;
+      console.warn(
+        `livekit API request to ${new URL(current).host} failed (${reason}), retrying with fallback url ${next}`
+      );
+      await sleep2(this.failoverBackoffMs * 2 ** attempt);
+      attempted.add(hostKey(new URL(next)));
+      current = next;
+    }
+    throw new Error("failover loop exited without returning");
+  }
+};
+async function toTwirpError(response) {
+  const isJson = response.headers.get("content-type") === "application/json";
+  let errorMessage = "Unknown internal error";
+  let errorCode = void 0;
+  let metadata = void 0;
+  try {
+    if (isJson) {
+      const parsedError = await response.json();
+      if ("msg" in parsedError) {
+        errorMessage = parsedError.msg;
+      }
+      if ("code" in parsedError) {
+        errorCode = parsedError.code;
+      }
+      if ("meta" in parsedError) {
+        metadata = parsedError.meta;
+      }
+    } else {
+      errorMessage = await response.text();
+    }
+  } catch (e) {
+    console.debug(`Error when trying to parse error message, using defaults`, e);
+  }
+  return new TwirpError(response.statusText, errorMessage, response.status, errorCode, metadata);
+}
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/crypto/uuid.js
+async function getRandomBytes(size = 16) {
+  if (globalThis.crypto) {
+    return crypto.getRandomValues(new Uint8Array(size));
+  } else {
+    const nodeCrypto = await import("node:crypto");
+    return nodeCrypto.getRandomValues(new Uint8Array(size));
+  }
+}
+
+// ../../node_modules/.pnpm/livekit-server-sdk@2.17.0/node_modules/livekit-server-sdk/dist/RoomServiceClient.js
+var svc = "RoomService";
+var RoomServiceClient = class extends ServiceBase {
+  /**
+   *
+   * @param host - hostname including protocol. i.e. 'https://<project>.livekit.cloud'
+   * @param apiKey - API Key, can be set in env var LIVEKIT_API_KEY
+   * @param secret - API Secret, can be set in env var LIVEKIT_API_SECRET
+   * @param options - client options
+   */
+  constructor(host, apiKey, secret, options) {
+    super({ apiKey, secret, token: options == null ? void 0 : options.token });
+    this.rpc = new TwirpRpc(host, livekitPackage, {
+      requestTimeout: options == null ? void 0 : options.requestTimeout,
+      failover: options == null ? void 0 : options.failover
+    });
+  }
+  /**
+   * Creates a new room. Explicit room creation is not required, since rooms will
+   * be automatically created when the first participant joins. This method can be
+   * used to customize room settings.
+   * @param options -
+   */
+  async createRoom(options) {
+    const data = await this.rpc.request(
+      svc,
+      "CreateRoom",
+      new CreateRoomRequest(options).toJson(),
+      await this.authHeader({ roomCreate: true })
+    );
+    return Room.fromJson(data, { ignoreUnknownFields: true });
+  }
+  /**
+   * List active rooms
+   * @param names - when undefined or empty, list all rooms.
+   *                otherwise returns rooms with matching names
+   * @returns
+   */
+  async listRooms(names) {
+    const data = await this.rpc.request(
+      svc,
+      "ListRooms",
+      new ListRoomsRequest({ names: names ?? [] }).toJson(),
+      await this.authHeader({ roomList: true })
+    );
+    const res = ListRoomsResponse.fromJson(data, { ignoreUnknownFields: true });
+    return res.rooms ?? [];
+  }
+  async deleteRoom(room) {
+    await this.rpc.request(
+      svc,
+      "DeleteRoom",
+      new DeleteRoomRequest({ room }).toJson(),
+      await this.authHeader({ roomCreate: true })
+    );
+  }
+  /**
+   * Update metadata of a room
+   * @param room - name of the room
+   * @param metadata - the new metadata for the room
+   */
+  async updateRoomMetadata(room, metadata) {
+    const data = await this.rpc.request(
+      svc,
+      "UpdateRoomMetadata",
+      new UpdateRoomMetadataRequest({ room, metadata }).toJson(),
+      await this.authHeader({ roomAdmin: true, room })
+    );
+    return Room.fromJson(data, { ignoreUnknownFields: true });
+  }
+  /**
+   * List participants in a room
+   * @param room - name of the room
+   */
+  async listParticipants(room) {
+    const data = await this.rpc.request(
+      svc,
+      "ListParticipants",
+      new ListParticipantsRequest({ room }).toJson(),
+      await this.authHeader({ roomAdmin: true, room })
+    );
+    const res = ListParticipantsResponse.fromJson(data, { ignoreUnknownFields: true });
+    return res.participants ?? [];
+  }
+  /**
+   * Get information on a specific participant, including the tracks that participant
+   * has published
+   * @param room - name of the room
+   * @param identity - identity of the participant to return
+   */
+  async getParticipant(room, identity) {
+    const data = await this.rpc.request(
+      svc,
+      "GetParticipant",
+      new RoomParticipantIdentity({ room, identity }).toJson(),
+      await this.authHeader({ roomAdmin: true, room })
+    );
+    return ParticipantInfo.fromJson(data, { ignoreUnknownFields: true });
+  }
+  /**
+   * Removes a participant in the room. This will disconnect the participant
+   * and will emit a Disconnected event for that participant.
+   * Even after being removed, the participant can still re-join the room.
+   * @param room -
+   * @param identity -
+   * @param options - removal options
+   */
+  async removeParticipant(room, identity, options) {
+    await this.rpc.request(
+      svc,
+      "RemoveParticipant",
+      new RoomParticipantIdentity({
+        room,
+        identity,
+        revokeTokenTs: options == null ? void 0 : options.revokeTokenTs
+      }).toJson(),
+      await this.authHeader({ roomAdmin: true, room })
+    );
+  }
+  /**
+   * Forwards a participant's track to another room. This will create a
+   * participant to join the destination room that has same information
+   * with the source participant except the kind to be `Forwarded`. All
+   * changes to the source participant will be reflected to the forwarded
+   * participant. When the source participant disconnects or the
+   * `RemoveParticipant` method is called in the destination room, the
+   * forwarding will be stopped.
+   * @param room -
+   * @param identity -
+   * @param destinationRoom - the room to forward the participant to
+   */
+  async forwardParticipant(room, identity, destinationRoom) {
+    await this.rpc.request(
+      svc,
+      "ForwardParticipant",
+      new ForwardParticipantRequest({ room, identity, destinationRoom }).toJson(),
+      await this.authHeader({ roomAdmin: true, room, destinationRoom })
+    );
+  }
+  /**
+   * Move a connected participant to a different room. Requires `roomAdmin` and `destinationRoom`.
+   * The participant will be removed from the current room and added to the destination room.
+   * From the other observers' perspective, the participant would've disconnected from the previous room and joined the new one.
+   * @param room -
+   * @param identity -
+   * @param destinationRoom - the room to move the participant to
+   */
+  async moveParticipant(room, identity, destinationRoom) {
+    await this.rpc.request(
+      svc,
+      "MoveParticipant",
+      new MoveParticipantRequest({ room, identity, destinationRoom }).toJson(),
+      await this.authHeader({ roomAdmin: true, room, destinationRoom })
+    );
+  }
+  /**
+   * Mutes a track that the participant has published.
+   * @param room -
+   * @param identity -
+   * @param trackSid - sid of the track to be muted
+   * @param muted - true to mute, false to unmute
+   */
+  async mutePublishedTrack(room, identity, trackSid, muted) {
+    const req = new MuteRoomTrackRequest({
+      room,
+      identity,
+      trackSid,
+      muted
+    }).toJson();
+    const data = await this.rpc.request(
+      svc,
+      "MutePublishedTrack",
+      req,
+      await this.authHeader({ roomAdmin: true, room })
+    );
+    const res = MuteRoomTrackResponse.fromJson(data, { ignoreUnknownFields: true });
+    return res.track;
+  }
+  async updateParticipant(room, identity, metadataOrOptions, maybePermission, maybeName) {
+    const hasOptions = typeof metadataOrOptions === "object";
+    const metadata = hasOptions ? metadataOrOptions == null ? void 0 : metadataOrOptions.metadata : metadataOrOptions;
+    const permission = hasOptions ? metadataOrOptions.permission : maybePermission;
+    const name = hasOptions ? metadataOrOptions.name : maybeName;
+    const attributes = hasOptions ? metadataOrOptions.attributes : {};
+    const req = new UpdateParticipantRequest({
+      room,
+      identity,
+      attributes,
+      metadata,
+      name
+    });
+    if (permission) {
+      req.permission = new ParticipantPermission(permission);
+    }
+    const data = await this.rpc.request(
+      svc,
+      "UpdateParticipant",
+      req.toJson(),
+      await this.authHeader({ roomAdmin: true, room })
+    );
+    return ParticipantInfo.fromJson(data, { ignoreUnknownFields: true });
+  }
+  /**
+   * Updates a participant's subscription to tracks
+   * @param room -
+   * @param identity -
+   * @param trackSids -
+   * @param subscribe - true to subscribe, false to unsubscribe
+   */
+  async updateSubscriptions(room, identity, trackSids, subscribe) {
+    const req = new UpdateSubscriptionsRequest({
+      room,
+      identity,
+      trackSids,
+      subscribe,
+      participantTracks: []
+    }).toJson();
+    await this.rpc.request(
+      svc,
+      "UpdateSubscriptions",
+      req,
+      await this.authHeader({ roomAdmin: true, room })
+    );
+  }
+  async sendData(room, data, kind, options = {}) {
+    const destinationSids = Array.isArray(options) ? options : options.destinationSids;
+    const topic = Array.isArray(options) ? void 0 : options.topic;
+    const req = new SendDataRequest({
+      room,
+      data,
+      kind,
+      destinationSids: destinationSids ?? [],
+      topic
+    });
+    if (!Array.isArray(options) && options.destinationIdentities) {
+      req.destinationIdentities = options.destinationIdentities;
+    }
+    req.nonce = await getRandomBytes(16);
+    await this.rpc.request(
+      svc,
+      "SendData",
+      req.toJson(),
+      await this.authHeader({ roomAdmin: true, room })
+    );
+  }
+};
+
+// src/lib/logger.ts
+var import_pino = __toESM(require_pino(), 1);
+var isProduction = process.env.NODE_ENV === "production";
+var logger = (0, import_pino.default)({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "res.headers['set-cookie']"
+  ],
+  ...isProduction ? {} : {
+    transport: {
+      target: "pino-pretty",
+      options: { colorize: true }
+    }
+  }
+});
+
+// src/lib/livekit.ts
+var LIVEKIT_URL = process.env["LIVEKIT_URL"];
+var LIVEKIT_API_KEY = process.env["LIVEKIT_API_KEY"];
+var LIVEKIT_API_SECRET = process.env["LIVEKIT_API_SECRET"];
+function assertConfigured() {
+  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+    throw new Error("LiveKit is not configured (LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET missing)");
+  }
+  return { url: LIVEKIT_URL, key: LIVEKIT_API_KEY, secret: LIVEKIT_API_SECRET };
+}
+var roomServiceClient = null;
+function getRoomServiceClient() {
+  const { url: url2, key, secret } = assertConfigured();
+  if (!roomServiceClient) {
+    const httpUrl = url2.replace(/^ws/, "http");
+    roomServiceClient = new RoomServiceClient(httpUrl, key, secret);
+  }
+  return roomServiceClient;
+}
+async function mintLiveKitToken(opts) {
+  const { key, secret } = assertConfigured();
+  const at = new AccessToken(key, secret, {
+    identity: opts.identity,
+    name: opts.name,
+    ttl: "6h",
+    metadata: JSON.stringify({ role: opts.role })
+  });
+  at.addGrant({
+    room: opts.roomName,
+    roomJoin: true,
+    canSubscribe: true,
+    canPublish: opts.canPublish,
+    canPublishData: true,
+    canPublishSources: opts.canPublishScreen ? [TrackSource.CAMERA, TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO] : [TrackSource.CAMERA, TrackSource.MICROPHONE]
+  });
+  return at.toJwt();
+}
+async function updateParticipantPublishPermission(roomName, identity, canPublish) {
+  try {
+    const client = getRoomServiceClient();
+    await client.updateParticipant(roomName, identity, void 0, {
+      canPublish,
+      canPublishData: true,
+      canSubscribe: true
+    });
+  } catch (err) {
+    logger.warn({ err, roomName, identity }, "LiveKit updateParticipant failed (participant may not be connected yet)");
+  }
+}
+function isLiveKitConfigured() {
+  return Boolean(LIVEKIT_URL && LIVEKIT_API_KEY && LIVEKIT_API_SECRET);
+}
+
+// src/routes/livekit.ts
+import crypto5 from "crypto";
 var router6 = (0, import_express6.Router)();
-router6.get("/recordings", attachUser, async (req, res) => {
+function roomNameFor(sessionId) {
+  return `session-${sessionId}-${crypto5.randomBytes(4).toString("hex")}`;
+}
+router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
+  if (!isLiveKitConfigured()) {
+    res.status(503).json({ error: "LiveKit is not configured on this server" });
+    return;
+  }
+  const sessionId = Number(req.params.sessionId);
+  if (!Number.isFinite(sessionId)) {
+    res.status(400).json({ error: "Invalid sessionId" });
+    return;
+  }
+  const user = req.authUser;
+  const [liveClass] = await db.select().from(liveClassesTable).where(eq(liveClassesTable.id, sessionId)).limit(1);
+  if (!liveClass) {
+    res.status(404).json({ error: "Live class not found" });
+    return;
+  }
+  let canPublish = false;
+  let canPublishScreen = false;
+  if (user.role === "admin" || user.role === "super_admin") {
+    canPublish = true;
+    canPublishScreen = true;
+  } else if (user.role === "teacher") {
+    if (liveClass.teacherId !== user.id) {
+      res.status(403).json({ error: "You are not the assigned teacher for this class" });
+      return;
+    }
+    canPublish = true;
+    canPublishScreen = true;
+  } else if (user.role === "mentor" || user.role === "sales_mentor" || user.role === "academic_mentor") {
+    const [group] = await db.select().from(mentorGroupsTable).where(and(eq(mentorGroupsTable.mentorId, user.id), eq(mentorGroupsTable.sessionId, sessionId))).limit(1);
+    if (!group) {
+      res.status(403).json({ error: "You are not assigned to a mentor group in this session" });
+      return;
+    }
+    canPublish = false;
+  } else {
+    const groups = await db.select({ id: mentorGroupsTable.id }).from(mentorGroupsTable).where(eq(mentorGroupsTable.sessionId, sessionId));
+    const groupIds = groups.map((g) => g.id);
+    if (groupIds.length === 0) {
+      res.status(403).json({ error: "No mentor groups configured for this session" });
+      return;
+    }
+    const [membership] = await db.select().from(groupStudentsTable).where(eq(groupStudentsTable.studentId, String(user.id))).limit(1e3).then((rows) => rows.filter((r) => groupIds.includes(r.mentorGroupId)));
+    if (!membership) {
+      res.status(403).json({ error: "You are not enrolled in this session's group" });
+      return;
+    }
+    canPublish = false;
+  }
+  let roomName = liveClass.liveKitRoomName;
+  if (!roomName) {
+    const candidate = roomNameFor(sessionId);
+    const [updated] = await db.update(liveClassesTable).set({ liveKitRoomName: sql`COALESCE(${liveClassesTable.liveKitRoomName}, ${candidate})` }).where(eq(liveClassesTable.id, sessionId)).returning({ liveKitRoomName: liveClassesTable.liveKitRoomName });
+    roomName = updated?.liveKitRoomName ?? candidate;
+  }
+  const token = await mintLiveKitToken({
+    roomName,
+    identity: String(user.id),
+    name: user.name,
+    canPublish,
+    canPublishScreen,
+    role: user.role
+  });
+  res.json({
+    token,
+    url: process.env["LIVEKIT_URL"],
+    roomName,
+    canPublish,
+    identity: String(user.id)
+  });
+});
+var livekit_default = router6;
+
+// src/routes/recordings.ts
+var import_express7 = __toESM(require_express2(), 1);
+var router7 = (0, import_express7.Router)();
+router7.get("/recordings", attachUser, async (req, res) => {
   const parsed = ListRecordingsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
@@ -109885,7 +115869,7 @@ router6.get("/recordings", attachUser, async (req, res) => {
   );
   res.json(recs.map((r) => ({ ...r, recordedAt: r.recordedAt.toISOString(), thumbnailUrl: r.thumbnailUrl ?? null, views: r.views ?? 0 })));
 });
-router6.get("/recordings/:id", async (req, res) => {
+router7.get("/recordings/:id", async (req, res) => {
   const parsed = GetRecordingParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -109910,12 +115894,12 @@ router6.get("/recordings/:id", async (req, res) => {
   }
   res.json({ ...rec, recordedAt: rec.recordedAt.toISOString(), thumbnailUrl: rec.thumbnailUrl ?? null, views: rec.views ?? 0 });
 });
-var recordings_default = router6;
+var recordings_default = router7;
 
 // src/routes/animatedVideos.ts
-var import_express7 = __toESM(require_express2(), 1);
-var router7 = (0, import_express7.Router)();
-router7.get("/animated-videos", attachUser, async (req, res) => {
+var import_express8 = __toESM(require_express2(), 1);
+var router8 = (0, import_express8.Router)();
+router8.get("/animated-videos", attachUser, async (req, res) => {
   const parsed = ListAnimatedVideosQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
@@ -109947,7 +115931,7 @@ router7.get("/animated-videos", attachUser, async (req, res) => {
   );
   res.json(vids.map((v) => ({ ...v, description: v.description ?? null, views: v.views ?? 0 })));
 });
-router7.get("/animated-videos/:id", async (req, res) => {
+router8.get("/animated-videos/:id", async (req, res) => {
   const parsed = GetAnimatedVideoParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -109971,10 +115955,10 @@ router7.get("/animated-videos/:id", async (req, res) => {
   }
   res.json({ ...vid, description: vid.description ?? null, views: vid.views ?? 0 });
 });
-var animatedVideos_default = router7;
+var animatedVideos_default = router8;
 
 // src/routes/homework.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 
 // src/points.ts
 var TEST_BASE_POINTS = 10;
@@ -110006,8 +115990,8 @@ async function recomputeAndSavePoints(studentId) {
 }
 
 // src/routes/homework.ts
-var router8 = (0, import_express8.Router)();
-router8.get("/homework", attachUser, async (req, res) => {
+var router9 = (0, import_express9.Router)();
+router9.get("/homework", attachUser, async (req, res) => {
   const parsed = ListHomeworkQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
@@ -110078,7 +116062,7 @@ router8.get("/homework", attachUser, async (req, res) => {
     };
   }));
 });
-router8.get("/homework/:id", attachUser, async (req, res) => {
+router9.get("/homework/:id", attachUser, async (req, res) => {
   const parsed = GetHomeworkParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -110106,7 +116090,7 @@ router8.get("/homework/:id", attachUser, async (req, res) => {
   }
   res.json({ ...hw, dueDate: hw.dueDate.toISOString(), description: hw.description ?? null, courseId: hw.courseId ?? null, ...submission });
 });
-router8.post("/homework/:id/submit", requireAuth, async (req, res) => {
+router9.post("/homework/:id/submit", requireAuth, async (req, res) => {
   const idParsed = SubmitHomeworkParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = SubmitHomeworkBody.safeParse(req.body);
   if (!idParsed.success || !bodyParsed.success) {
@@ -110152,12 +116136,12 @@ router8.post("/homework/:id/submit", requireAuth, async (req, res) => {
   await recomputeAndSavePoints(studentId);
   res.json({ success: true, message: "Homework submitted successfully!", autoGraded: autoStatus === "graded", marks: autoMarks, maxMarks: numQuestions });
 });
-var homework_default = router8;
+var homework_default = router9;
 
 // src/routes/assignments.ts
-var import_express9 = __toESM(require_express2(), 1);
-var router9 = (0, import_express9.Router)();
-router9.get("/assignments", attachUser, async (req, res) => {
+var import_express10 = __toESM(require_express2(), 1);
+var router10 = (0, import_express10.Router)();
+router10.get("/assignments", attachUser, async (req, res) => {
   const parsed = ListAssignmentsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
@@ -110205,7 +116189,7 @@ router9.get("/assignments", attachUser, async (req, res) => {
     feedback: submissionMap[a.id]?.feedback ?? null
   })));
 });
-router9.get("/assignments/:id", attachUser, async (req, res) => {
+router10.get("/assignments/:id", attachUser, async (req, res) => {
   const parsed = GetAssignmentParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -110234,7 +116218,7 @@ router9.get("/assignments/:id", attachUser, async (req, res) => {
   }
   res.json({ ...asgn, dueDate: asgn.dueDate.toISOString(), description: asgn.description ?? null, attachmentUrl: asgn.attachmentUrl ?? null, courseId: asgn.courseId ?? null, ...submission });
 });
-router9.post("/assignments/:id/submit", requireAuth, async (req, res) => {
+router10.post("/assignments/:id/submit", requireAuth, async (req, res) => {
   const idParsed = SubmitAssignmentParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = SubmitAssignmentBody.safeParse(req.body);
   if (!idParsed.success || !bodyParsed.success) {
@@ -110257,12 +116241,12 @@ router9.post("/assignments/:id/submit", requireAuth, async (req, res) => {
   await recomputeAndSavePoints(studentId);
   res.json({ success: true, message: "Assignment submitted successfully!" });
 });
-var assignments_default = router9;
+var assignments_default = router10;
 
 // src/routes/tests.ts
-var import_express10 = __toESM(require_express2(), 1);
-var router10 = (0, import_express10.Router)();
-router10.get("/tests", attachUser, async (req, res) => {
+var import_express11 = __toESM(require_express2(), 1);
+var router11 = (0, import_express11.Router)();
+router11.get("/tests", attachUser, async (req, res) => {
   const parsed = ListTestsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
@@ -110303,7 +116287,7 @@ router10.get("/tests", attachUser, async (req, res) => {
   );
   res.json(tests.map((t) => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), courseId: t.courseId ?? null, testType: t.testType ?? "mcq", driveLink: t.driveLink ?? null, score: null, maxScore: null })));
 });
-router10.get("/tests/:id", async (req, res) => {
+router11.get("/tests/:id", async (req, res) => {
   const parsed = GetTestParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -110330,7 +116314,7 @@ router10.get("/tests/:id", async (req, res) => {
     }))
   });
 });
-router10.post("/tests/:id/submit", requireAuth, async (req, res) => {
+router11.post("/tests/:id/submit", requireAuth, async (req, res) => {
   const idParsed = SubmitTestParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = SubmitTestBody.safeParse(req.body);
   if (!idParsed.success || !bodyParsed.success) {
@@ -110364,12 +116348,12 @@ router10.post("/tests/:id/submit", requireAuth, async (req, res) => {
     wrongAnswers: maxScore - correct
   });
 });
-var tests_default = router10;
+var tests_default = router11;
 
 // src/routes/student.ts
-var import_express11 = __toESM(require_express2(), 1);
-var router11 = (0, import_express11.Router)();
-router11.get("/student/dashboard", requireAuth, async (req, res) => {
+var import_express12 = __toESM(require_express2(), 1);
+var router12 = (0, import_express12.Router)();
+router12.get("/student/dashboard", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   checkDailyLogin(studentId).catch(() => {
   });
@@ -110427,7 +116411,7 @@ router11.get("/student/dashboard", requireAuth, async (req, res) => {
     )
   });
 });
-router11.get("/student/announcements", attachUser, async (req, res) => {
+router12.get("/student/announcements", attachUser, async (req, res) => {
   const grade = req.authUser?.grade ?? null;
   const rows = await db.select().from(announcementsTable).where(
     and(
@@ -110440,7 +116424,7 @@ router11.get("/student/announcements", attachUser, async (req, res) => {
   ).orderBy(desc(announcementsTable.createdAt)).limit(10);
   res.json(rows);
 });
-router11.get("/student/profile", requireAuth, async (req, res) => {
+router12.get("/student/profile", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   if (!student) {
@@ -110474,7 +116458,7 @@ router11.get("/student/profile", requireAuth, async (req, res) => {
     isDemoStudent
   });
 });
-router11.patch("/student/profile", requireAuth, async (req, res) => {
+router12.patch("/student/profile", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const parsed = UpdateStudentProfileBody.safeParse(req.body);
   if (!parsed.success) {
@@ -110509,7 +116493,7 @@ router11.patch("/student/profile", requireAuth, async (req, res) => {
     board: updated.board ?? null
   });
 });
-router11.get("/student/progress", requireAuth, async (req, res) => {
+router12.get("/student/progress", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const [student] = await db.select().from(usersTable).where(eq(usersTable.id, studentId));
   const subjects = await db.select().from(subjectsTable).limit(6);
@@ -110565,7 +116549,7 @@ router11.get("/student/progress", requireAuth, async (req, res) => {
     subjectWise
   });
 });
-router11.get("/student/recent-activity", requireAuth, async (req, res) => {
+router12.get("/student/recent-activity", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const recentHw = await db.select({ id: homeworkSubmissionsTable.id, title: homeworkTable.title, submittedAt: homeworkSubmissionsTable.submittedAt }).from(homeworkSubmissionsTable).innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id)).where(eq(homeworkSubmissionsTable.studentId, studentId)).orderBy(desc(homeworkSubmissionsTable.submittedAt)).limit(5);
   const recentAsgn = await db.select({ id: assignmentSubmissionsTable.id, title: assignmentsTable.title, submittedAt: assignmentSubmissionsTable.submittedAt }).from(assignmentSubmissionsTable).innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id)).where(eq(assignmentSubmissionsTable.studentId, studentId)).orderBy(desc(assignmentSubmissionsTable.submittedAt)).limit(5);
@@ -110577,12 +116561,12 @@ router11.get("/student/recent-activity", requireAuth, async (req, res) => {
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
   res.json(activity);
 });
-router11.post("/student/daily-login", requireAuth, async (req, res) => {
+router12.post("/student/daily-login", requireAuth, async (req, res) => {
   const userId = req.authUser.id;
   const result = await checkDailyLogin(userId);
   res.json(result);
 });
-router11.get("/student/leaderboard", async (req, res) => {
+router12.get("/student/leaderboard", async (req, res) => {
   const parsed = GetLeaderboardQueryParams.safeParse(req.query);
   const grade = parsed.success ? parsed.data.grade : void 0;
   const students = await db.select({
@@ -110610,7 +116594,7 @@ router11.get("/student/leaderboard", async (req, res) => {
   );
   res.json(ranked);
 });
-router11.get("/student/daily-coin-status", requireAuth, async (req, res) => {
+router12.get("/student/daily-coin-status", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const [claim] = await db.select().from(dailyCoinClaimsTable).where(and(eq(dailyCoinClaimsTable.userId, studentId), eq(dailyCoinClaimsTable.claimDate, today)));
@@ -110623,7 +116607,7 @@ router11.get("/student/daily-coin-status", requireAuth, async (req, res) => {
     nextRefreshAt: tomorrow.toISOString()
   });
 });
-router11.post("/student/claim-daily-coins", requireAuth, async (req, res) => {
+router12.post("/student/claim-daily-coins", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const [existing] = await db.select().from(dailyCoinClaimsTable).where(and(eq(dailyCoinClaimsTable.userId, studentId), eq(dailyCoinClaimsTable.claimDate, today)));
@@ -110643,7 +116627,7 @@ router11.post("/student/claim-daily-coins", requireAuth, async (req, res) => {
   const [updated] = await db.select({ points: usersTable.points }).from(usersTable).where(eq(usersTable.id, studentId));
   res.json({ success: true, coins: coinsToAward, totalPoints: updated?.points ?? 0 });
 });
-router11.get("/student/points-history", requireAuth, async (req, res) => {
+router12.get("/student/points-history", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const history = await db.select({
     id: pointsLedgerTable.id,
@@ -110663,7 +116647,27 @@ router11.get("/student/points-history", requireAuth, async (req, res) => {
     monthPoints
   });
 });
-router11.get("/student/my-courses", requireAuth, async (req, res) => {
+router12.get("/student/poll-history", requireAuth, async (req, res) => {
+  const studentId = String(req.authUser.id);
+  const rows = await db.select({
+    id: pollAnalyticsTable.id,
+    sessionId: pollAnalyticsTable.sessionId,
+    pollQuestion: pollAnalyticsTable.pollQuestion,
+    optionText: pollAnalyticsTable.optionText,
+    isCorrect: pollAnalyticsTable.isCorrect,
+    responseTimeMs: pollAnalyticsTable.responseTimeMs,
+    answeredAt: pollAnalyticsTable.answeredAt
+  }).from(pollAnalyticsTable).where(eq(pollAnalyticsTable.studentId, studentId)).orderBy(desc(pollAnalyticsTable.answeredAt)).limit(200);
+  const totalAnswered = rows.length;
+  const totalCorrect = rows.filter((r) => r.isCorrect).length;
+  res.json({
+    history: rows.map((r) => ({ ...r, answeredAt: r.answeredAt.toISOString() })),
+    totalAnswered,
+    totalCorrect,
+    accuracyPct: totalAnswered > 0 ? Math.round(totalCorrect / totalAnswered * 100) : 0
+  });
+});
+router12.get("/student/my-courses", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const enrollmentRows = await db.select({
     enrollmentId: enrollmentsTable.id,
@@ -110709,7 +116713,7 @@ router11.get("/student/my-courses", requireAuth, async (req, res) => {
   });
   res.json(result);
 });
-router11.get("/student/my-mentor", requireAuth, async (req, res) => {
+router12.get("/student/my-mentor", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const [row] = await db.select({
     id: usersTable.id,
@@ -110724,11 +116728,11 @@ router11.get("/student/my-mentor", requireAuth, async (req, res) => {
   ).limit(1);
   res.json(row ?? null);
 });
-var student_default = router11;
+var student_default = router12;
 
 // src/routes/admin.ts
-var import_express12 = __toESM(require_express2(), 1);
-import crypto3 from "crypto";
+var import_express13 = __toESM(require_express2(), 1);
+import crypto6 from "crypto";
 function computeCrmHealth(s2) {
   const daysSinceLogin = s2.lastLoginDate ? Math.floor((Date.now() - new Date(s2.lastLoginDate).getTime()) / 864e5) : 999;
   const loginScore = daysSinceLogin <= 1 ? 100 : daysSinceLogin <= 3 ? 80 : daysSinceLogin <= 7 ? 60 : 30;
@@ -110744,11 +116748,11 @@ function computeCrmFuStatus(nextFollowUpDate, callStatus) {
   if (nextFollowUpDate < today) return { fuStatus: "overdue", daysOverdue: Math.floor((new Date(today).getTime() - new Date(nextFollowUpDate).getTime()) / 864e5) };
   return { fuStatus: "upcoming", daysOverdue: 0 };
 }
-var router12 = (0, import_express12.Router)();
+var router13 = (0, import_express13.Router)();
 var adminOnly = requireRole("admin");
 var allStaffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 function hashPassword2(pw) {
-  return crypto3.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto6.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 function generateToken2(userId) {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
@@ -110756,7 +116760,7 @@ function generateToken2(userId) {
 async function logAudit(actorId, actorName, action, targetType, targetId, targetName, metadata) {
   await logAction({ actorId, actorName, action, targetType, targetId, targetName, metadata });
 }
-router12.get("/admin/analytics", adminOnly, async (req, res) => {
+router13.get("/admin/analytics", adminOnly, async (req, res) => {
   const [totalUsers] = await db.select({ count: sql`count(*)` }).from(usersTable);
   const [totalStudents] = await db.select({ count: sql`count(*)` }).from(usersTable).where(eq(usersTable.role, "student"));
   const [totalTeachers] = await db.select({ count: sql`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher"));
@@ -110802,7 +116806,7 @@ router12.get("/admin/analytics", adminOnly, async (req, res) => {
     recentEnrollments
   });
 });
-router12.get("/admin/stats", adminOnly, async (req, res) => {
+router13.get("/admin/stats", adminOnly, async (req, res) => {
   const [totalUsers] = await db.select({ count: sql`count(*)` }).from(usersTable);
   const [totalStudents] = await db.select({ count: sql`count(*)` }).from(usersTable).where(eq(usersTable.role, "student"));
   const [totalTeachers] = await db.select({ count: sql`count(*)` }).from(usersTable).where(eq(usersTable.role, "teacher"));
@@ -110818,7 +116822,7 @@ router12.get("/admin/stats", adminOnly, async (req, res) => {
     totalTeacherAssignments: Number(totalAssignments.count)
   });
 });
-router12.get("/admin/users", adminOnly, async (req, res) => {
+router13.get("/admin/users", adminOnly, async (req, res) => {
   const { role, accountType, search } = req.query;
   const conditions = [eq(usersTable.isArchived, false)];
   if (role) conditions.push(eq(usersTable.role, String(role)));
@@ -110847,7 +116851,7 @@ router12.get("/admin/users", adminOnly, async (req, res) => {
   }).from(usersTable).where(and(...conditions)).orderBy(desc(usersTable.createdAt));
   res.json(users);
 });
-router12.post("/admin/users/:id/convert-to-paid", adminOnly, async (req, res) => {
+router13.post("/admin/users/:id/convert-to-paid", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -110861,7 +116865,7 @@ router12.post("/admin/users/:id/convert-to-paid", adminOnly, async (req, res) =>
   await logAction({ actorId: req.authUser.id, actorName: req.authUser.name, action: "convert_to_paid", targetType: "user", targetId: id, targetName: updated.name });
   res.json(updated);
 });
-router12.post("/admin/users", adminOnly, async (req, res) => {
+router13.post("/admin/users", adminOnly, async (req, res) => {
   const {
     name,
     email: email3,
@@ -110932,7 +116936,7 @@ router12.post("/admin/users", adminOnly, async (req, res) => {
   );
   res.status(201).json({ ...user, token: generateToken2(user.id) });
 });
-router12.patch("/admin/users/:id", adminOnly, async (req, res) => {
+router13.patch("/admin/users/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { name, role, grade, school, isActive, password, email: email3 } = req.body;
   if (isNaN(id)) {
@@ -110965,7 +116969,7 @@ router12.patch("/admin/users/:id", adminOnly, async (req, res) => {
   );
   res.json(updated);
 });
-router12.post("/admin/users/:id/reset-password", adminOnly, async (req, res) => {
+router13.post("/admin/users/:id/reset-password", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { password } = req.body;
   if (isNaN(id)) {
@@ -110991,7 +116995,7 @@ router12.post("/admin/users/:id/reset-password", adminOnly, async (req, res) => 
   );
   res.json({ ok: true });
 });
-router12.delete("/admin/users/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/users/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -111016,7 +117020,7 @@ router12.delete("/admin/users/:id", adminOnly, async (req, res) => {
   }
   res.json({ success: true });
 });
-router12.get("/admin/teacher-courses", adminOnly, async (req, res) => {
+router13.get("/admin/teacher-courses", adminOnly, async (req, res) => {
   const rows = await db.select({
     id: teacherCoursesTable.id,
     teacherId: teacherCoursesTable.teacherId,
@@ -111027,7 +117031,7 @@ router12.get("/admin/teacher-courses", adminOnly, async (req, res) => {
   }).from(teacherCoursesTable).innerJoin(usersTable, eq(teacherCoursesTable.teacherId, usersTable.id)).innerJoin(coursesTable, eq(teacherCoursesTable.courseId, coursesTable.id)).orderBy(desc(teacherCoursesTable.assignedAt));
   res.json(rows);
 });
-router12.post("/admin/teacher-courses", adminOnly, async (req, res) => {
+router13.post("/admin/teacher-courses", adminOnly, async (req, res) => {
   const { teacherId, courseId } = req.body;
   if (!teacherId || !courseId) {
     res.status(400).json({ error: "teacherId and courseId are required" });
@@ -111053,7 +117057,7 @@ router12.post("/admin/teacher-courses", adminOnly, async (req, res) => {
   }
   res.status(201).json(row ?? { message: "Already assigned" });
 });
-router12.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -111078,7 +117082,7 @@ router12.delete("/admin/teacher-courses/:id", adminOnly, async (req, res) => {
   }
   res.json({ success: true });
 });
-router12.get("/admin/users/:id/courses", adminOnly, async (req, res) => {
+router13.get("/admin/users/:id/courses", adminOnly, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -111100,7 +117104,7 @@ router12.get("/admin/users/:id/courses", adminOnly, async (req, res) => {
     enrollmentId: enrollmentMap.get(c.id) ?? null
   })));
 });
-router12.get("/admin/enrollments", adminOnly, async (req, res) => {
+router13.get("/admin/enrollments", adminOnly, async (req, res) => {
   const { courseId } = req.query;
   const rows = await db.select({
     id: enrollmentsTable.id,
@@ -111112,7 +117116,7 @@ router12.get("/admin/enrollments", adminOnly, async (req, res) => {
   }).from(enrollmentsTable).innerJoin(usersTable, eq(enrollmentsTable.studentId, usersTable.id)).innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id)).where(courseId ? eq(enrollmentsTable.courseId, Number(courseId)) : void 0).orderBy(desc(enrollmentsTable.enrolledAt));
   res.json(rows);
 });
-router12.post("/admin/enrollments", adminOnly, async (req, res) => {
+router13.post("/admin/enrollments", adminOnly, async (req, res) => {
   const { studentId, courseId } = req.body;
   if (!studentId || !courseId) {
     res.status(400).json({ error: "studentId and courseId are required" });
@@ -111134,7 +117138,7 @@ router12.post("/admin/enrollments", adminOnly, async (req, res) => {
   }
   res.status(201).json(row ?? { message: "Already enrolled" });
 });
-router12.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -111159,7 +117163,7 @@ router12.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
   }
   res.json({ success: true });
 });
-router12.get("/admin/courses", adminOnly, async (req, res) => {
+router13.get("/admin/courses", adminOnly, async (req, res) => {
   const courses = await db.select({
     id: coursesTable.id,
     title: coursesTable.title,
@@ -111199,7 +117203,7 @@ router12.get("/admin/courses", adminOnly, async (req, res) => {
     courseCode: `CRS${String(c.id).padStart(4, "0")}`
   })));
 });
-router12.post("/admin/courses", adminOnly, async (req, res) => {
+router13.post("/admin/courses", adminOnly, async (req, res) => {
   const { title, subjectId, grade, totalLessons, thumbnailUrl, description, teacher, rating, board, academicYearId, isPublished, status, duration: duration3, originalPrice, scholarshipPrice, registrationFee, paymentPlansJson, studentCapacity, bannerUrl, brochureUrl, mentorIdsJson, instanceName, admissionStatus, courseType, startDate, endDate } = req.body;
   if (!title || grade === void 0 || grade === null || grade === "") {
     res.status(400).json({ error: "title and grade are required" });
@@ -111259,7 +117263,7 @@ router12.post("/admin/courses", adminOnly, async (req, res) => {
     res.status(500).json({ error: `Database error: ${msg}` });
   }
 });
-router12.put("/admin/courses/:id", adminOnly, async (req, res) => {
+router13.put("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111299,7 +117303,7 @@ router12.put("/admin/courses/:id", adminOnly, async (req, res) => {
   }
   res.json({ ...course, courseCode: `CRS${String(course.id).padStart(4, "0")}` });
 });
-router12.delete("/admin/courses/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/courses/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111321,7 +117325,7 @@ router12.delete("/admin/courses/:id", adminOnly, async (req, res) => {
   );
   res.json({ success: true });
 });
-router12.get("/admin/courses/:id/stats", adminOnly, async (req, res) => {
+router13.get("/admin/courses/:id/stats", adminOnly, async (req, res) => {
   const courseId = Number(req.params.id);
   if (!courseId) {
     res.status(400).json({ error: "Invalid id" });
@@ -111356,7 +117360,7 @@ router12.get("/admin/courses/:id/stats", adminOnly, async (req, res) => {
     status: course.status
   });
 });
-router12.patch("/admin/courses/:id/activate-admissions", adminOnly, async (req, res) => {
+router13.patch("/admin/courses/:id/activate-admissions", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111387,7 +117391,7 @@ router12.patch("/admin/courses/:id/activate-admissions", adminOnly, async (req, 
   );
   res.json({ success: true, id: updated.id, admissionStatus: updated.admissionStatus });
 });
-router12.post("/admin/courses/:courseId/syllabus-import", adminOnly, async (req, res) => {
+router13.post("/admin/courses/:courseId/syllabus-import", adminOnly, async (req, res) => {
   const courseId = Number(req.params.courseId);
   if (!courseId) {
     res.status(400).json({ error: "Invalid courseId" });
@@ -111514,7 +117518,7 @@ router12.post("/admin/courses/:courseId/syllabus-import", adminOnly, async (req,
   );
   res.json({ success: true, createdChapters, createdTopics, createdClasses });
 });
-router12.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
+router13.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
   const existing = await db.select({ courseType: coursesTable.courseType, grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.isArchived, false));
   const existingSet = new Set(existing.map((r) => `${r.courseType}-${r.grade}`));
   const IGNITE_THUMBNAIL = "https://placehold.co/400x240/0B2B6B/FFFFFF?text=Ignite";
@@ -111559,7 +117563,7 @@ router12.post("/admin/courses/seed-permanent", adminOnly, async (req, res) => {
   const created = await db.insert(coursesTable).values(toCreate).returning({ id: coursesTable.id, title: coursesTable.title, courseType: coursesTable.courseType, grade: coursesTable.grade });
   res.json({ created: created.length, courses: created });
 });
-router12.get("/admin/live-classes", adminOnly, async (req, res) => {
+router13.get("/admin/live-classes", adminOnly, async (req, res) => {
   const rows = await db.select({
     id: liveClassesTable.id,
     title: liveClassesTable.title,
@@ -111588,7 +117592,7 @@ router12.get("/admin/live-classes", adminOnly, async (req, res) => {
     studentsJoined: r.studentsJoined ?? 0
   })));
 });
-router12.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
+router13.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111618,7 +117622,7 @@ router12.patch("/admin/live-classes/:id", adminOnly, async (req, res) => {
   }
   res.json(lc);
 });
-router12.delete("/admin/live-classes/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/live-classes/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111628,7 +117632,7 @@ router12.delete("/admin/live-classes/:id", adminOnly, async (req, res) => {
   await logAudit(req.authUser.id, req.authUser.name, "live_class_deleted", "live_class", id, String(id));
   res.json({ success: true });
 });
-router12.post("/admin/live-classes", adminOnly, async (req, res) => {
+router13.post("/admin/live-classes", adminOnly, async (req, res) => {
   const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration: duration3, teacher, joinUrl, isPublished } = req.body;
   if (!title || !scheduledAt || !teacher) {
     res.status(400).json({ error: "title, scheduledAt, teacher are required" });
@@ -111669,7 +117673,7 @@ router12.post("/admin/live-classes", adminOnly, async (req, res) => {
   );
   res.status(201).json(lc);
 });
-router12.post("/admin/homework", adminOnly, async (req, res) => {
+router13.post("/admin/homework", adminOnly, async (req, res) => {
   const { title, subjectId, grade, courseId, topicId, teacherId, dueDate, description, maxMarks, isPublished } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
     res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
@@ -111697,7 +117701,7 @@ router12.post("/admin/homework", adminOnly, async (req, res) => {
   );
   res.status(201).json(hw);
 });
-router12.post("/admin/assignments", adminOnly, async (req, res) => {
+router13.post("/admin/assignments", adminOnly, async (req, res) => {
   const { title, subjectId, grade, courseId, topicId, teacherId, dueDate, description, maxMarks, attachmentUrl, isPublished } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
     res.status(400).json({ error: "title, subjectId, grade, dueDate are required" });
@@ -111726,7 +117730,7 @@ router12.post("/admin/assignments", adminOnly, async (req, res) => {
   );
   res.status(201).json(asgn);
 });
-router12.post("/admin/recordings", adminOnly, async (req, res) => {
+router13.post("/admin/recordings", adminOnly, async (req, res) => {
   const { title, subjectId, grade, courseId, topicId, teacherId, recordedAt, teacher, videoUrl, duration: duration3, thumbnailUrl, isPublished } = req.body;
   if (!title || !subjectId || !grade || !videoUrl || !teacher || !duration3 || !recordedAt) {
     res.status(400).json({ error: "title, subjectId, grade, videoUrl, teacher, duration, recordedAt are required" });
@@ -111756,7 +117760,7 @@ router12.post("/admin/recordings", adminOnly, async (req, res) => {
   );
   res.status(201).json(rec);
 });
-router12.post("/admin/tests", adminOnly, async (req, res) => {
+router13.post("/admin/tests", adminOnly, async (req, res) => {
   const { title, subjectId, grade, courseId, topicId, teacherId, scheduledAt, duration: duration3, totalQuestions, isPublished } = req.body;
   if (!title || !subjectId || !grade || !scheduledAt) {
     res.status(400).json({ error: "title, subjectId, grade, scheduledAt are required" });
@@ -111785,7 +117789,7 @@ router12.post("/admin/tests", adminOnly, async (req, res) => {
   );
   res.status(201).json(test);
 });
-router12.get("/admin/submissions/homework", adminOnly, async (req, res) => {
+router13.get("/admin/submissions/homework", adminOnly, async (req, res) => {
   const rows = await db.select({
     id: homeworkSubmissionsTable.id,
     homeworkId: homeworkSubmissionsTable.homeworkId,
@@ -111799,7 +117803,7 @@ router12.get("/admin/submissions/homework", adminOnly, async (req, res) => {
   }).from(homeworkSubmissionsTable).innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id)).innerJoin(usersTable, eq(homeworkSubmissionsTable.studentId, usersTable.id)).orderBy(desc(homeworkSubmissionsTable.submittedAt)).limit(100);
   res.json(rows);
 });
-router12.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
+router13.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
   const rows = await db.select({
     id: assignmentSubmissionsTable.id,
     assignmentId: assignmentSubmissionsTable.assignmentId,
@@ -111813,11 +117817,11 @@ router12.get("/admin/submissions/assignments", adminOnly, async (req, res) => {
   }).from(assignmentSubmissionsTable).innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id)).innerJoin(usersTable, eq(assignmentSubmissionsTable.studentId, usersTable.id)).orderBy(desc(assignmentSubmissionsTable.submittedAt)).limit(100);
   res.json(rows);
 });
-router12.get("/admin/academic-years", adminOnly, async (req, res) => {
+router13.get("/admin/academic-years", adminOnly, async (req, res) => {
   const rows = await db.select().from(academicYearsTable).orderBy(desc(academicYearsTable.createdAt));
   res.json(rows);
 });
-router12.post("/admin/academic-years", adminOnly, async (req, res) => {
+router13.post("/admin/academic-years", adminOnly, async (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "name is required" });
@@ -111826,7 +117830,7 @@ router12.post("/admin/academic-years", adminOnly, async (req, res) => {
   const [yr] = await db.insert(academicYearsTable).values({ name: name.trim() }).returning();
   res.status(201).json(yr);
 });
-router12.put("/admin/academic-years/:id", adminOnly, async (req, res) => {
+router13.put("/admin/academic-years/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111840,7 +117844,7 @@ router12.put("/admin/academic-years/:id", adminOnly, async (req, res) => {
   }
   res.json(yr);
 });
-router12.delete("/admin/academic-years/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/academic-years/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111849,11 +117853,11 @@ router12.delete("/admin/academic-years/:id", adminOnly, async (req, res) => {
   await db.delete(academicYearsTable).where(eq(academicYearsTable.id, id));
   res.json({ success: true });
 });
-router12.get("/admin/announcements", adminOnly, async (req, res) => {
+router13.get("/admin/announcements", adminOnly, async (req, res) => {
   const rows = await db.select().from(announcementsTable).orderBy(desc(announcementsTable.createdAt)).limit(100);
   res.json(rows);
 });
-router12.post("/admin/announcements", adminOnly, async (req, res) => {
+router13.post("/admin/announcements", adminOnly, async (req, res) => {
   const { title, body, grade, targetRole } = req.body;
   if (!title?.trim() || !body?.trim()) {
     res.status(400).json({ error: "title and body are required" });
@@ -111868,7 +117872,7 @@ router12.post("/admin/announcements", adminOnly, async (req, res) => {
   }).returning();
   res.status(201).json(ann);
 });
-router12.patch("/admin/announcements/:id", adminOnly, async (req, res) => {
+router13.patch("/admin/announcements/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111882,7 +117886,7 @@ router12.patch("/admin/announcements/:id", adminOnly, async (req, res) => {
   }
   res.json(ann);
 });
-router12.delete("/admin/announcements/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/announcements/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111891,11 +117895,11 @@ router12.delete("/admin/announcements/:id", adminOnly, async (req, res) => {
   await db.delete(announcementsTable).where(eq(announcementsTable.id, id));
   res.json({ success: true });
 });
-router12.get("/admin/banners", adminOnly, async (req, res) => {
+router13.get("/admin/banners", adminOnly, async (req, res) => {
   const rows = await db.select().from(bannersTable).orderBy(bannersTable.displayOrder);
   res.json(rows);
 });
-router12.post("/admin/banners", adminOnly, async (req, res) => {
+router13.post("/admin/banners", adminOnly, async (req, res) => {
   const { title, imageUrl, link, displayOrder } = req.body;
   if (!title?.trim() || !imageUrl?.trim()) {
     res.status(400).json({ error: "title and imageUrl are required" });
@@ -111909,7 +117913,7 @@ router12.post("/admin/banners", adminOnly, async (req, res) => {
   }).returning();
   res.status(201).json(banner);
 });
-router12.patch("/admin/banners/:id", adminOnly, async (req, res) => {
+router13.patch("/admin/banners/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111926,7 +117930,7 @@ router12.patch("/admin/banners/:id", adminOnly, async (req, res) => {
   }
   res.json(banner);
 });
-router12.delete("/admin/banners/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/banners/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111935,7 +117939,7 @@ router12.delete("/admin/banners/:id", adminOnly, async (req, res) => {
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });
-router12.get("/admin/course-subjects", adminOnly, async (req, res) => {
+router13.get("/admin/course-subjects", adminOnly, async (req, res) => {
   const courseId = Number(req.query.courseId);
   if (!courseId) {
     res.status(400).json({ error: "courseId required" });
@@ -111944,7 +117948,7 @@ router12.get("/admin/course-subjects", adminOnly, async (req, res) => {
   const rows = await db.select().from(courseSubjectsTable).where(eq(courseSubjectsTable.courseId, courseId)).orderBy(courseSubjectsTable.name);
   res.json(rows);
 });
-router12.get("/admin/chapters", adminOnly, async (req, res) => {
+router13.get("/admin/chapters", adminOnly, async (req, res) => {
   const courseSubjectId = Number(req.query.courseSubjectId);
   if (!courseSubjectId) {
     res.status(400).json({ error: "courseSubjectId required" });
@@ -111953,7 +117957,7 @@ router12.get("/admin/chapters", adminOnly, async (req, res) => {
   const rows = await db.select().from(chaptersTable).where(eq(chaptersTable.courseSubjectId, courseSubjectId)).orderBy(chaptersTable.order, chaptersTable.name);
   res.json(rows);
 });
-router12.get("/admin/topics", adminOnly, async (req, res) => {
+router13.get("/admin/topics", adminOnly, async (req, res) => {
   const chapterId = Number(req.query.chapterId);
   if (!chapterId) {
     res.status(400).json({ error: "chapterId required" });
@@ -111962,7 +117966,7 @@ router12.get("/admin/topics", adminOnly, async (req, res) => {
   const rows = await db.select().from(topicsTable).where(eq(topicsTable.chapterId, chapterId)).orderBy(topicsTable.order, topicsTable.name);
   res.json(rows);
 });
-router12.post("/admin/course-subjects", adminOnly, async (req, res) => {
+router13.post("/admin/course-subjects", adminOnly, async (req, res) => {
   const { courseId, name, description, thumbnailUrl } = req.body;
   if (!courseId || !name?.trim()) {
     res.status(400).json({ error: "courseId and name are required" });
@@ -111976,7 +117980,7 @@ router12.post("/admin/course-subjects", adminOnly, async (req, res) => {
   }).returning();
   res.status(201).json(sub);
 });
-router12.put("/admin/course-subjects/:id", adminOnly, async (req, res) => {
+router13.put("/admin/course-subjects/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -111994,7 +117998,7 @@ router12.put("/admin/course-subjects/:id", adminOnly, async (req, res) => {
   }
   res.json(sub);
 });
-router12.delete("/admin/course-subjects/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/course-subjects/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -112007,7 +118011,7 @@ router12.delete("/admin/course-subjects/:id", adminOnly, async (req, res) => {
   await db.delete(courseSubjectsTable).where(eq(courseSubjectsTable.id, id));
   res.json({ success: true });
 });
-router12.post("/admin/chapters", adminOnly, async (req, res) => {
+router13.post("/admin/chapters", adminOnly, async (req, res) => {
   const { courseSubjectId, courseId, name, description, sequenceNo, order } = req.body;
   if (!courseSubjectId || !name?.trim()) {
     res.status(400).json({ error: "courseSubjectId and name are required" });
@@ -112026,7 +118030,7 @@ router12.post("/admin/chapters", adminOnly, async (req, res) => {
   }).returning();
   res.status(201).json(ch);
 });
-router12.delete("/admin/chapters/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/chapters/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -112036,7 +118040,7 @@ router12.delete("/admin/chapters/:id", adminOnly, async (req, res) => {
   await db.delete(chaptersTable).where(eq(chaptersTable.id, id));
   res.json({ success: true });
 });
-router12.post("/admin/topics", adminOnly, async (req, res) => {
+router13.post("/admin/topics", adminOnly, async (req, res) => {
   const { chapterId, name, description, learningObjective, topicStatus, order } = req.body;
   if (!chapterId || !name?.trim()) {
     res.status(400).json({ error: "chapterId and name are required" });
@@ -112052,7 +118056,7 @@ router12.post("/admin/topics", adminOnly, async (req, res) => {
   }).returning();
   res.status(201).json(tp);
 });
-router12.delete("/admin/topics/:id", adminOnly, async (req, res) => {
+router13.delete("/admin/topics/:id", adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -112061,7 +118065,7 @@ router12.delete("/admin/topics/:id", adminOnly, async (req, res) => {
   await db.delete(topicsTable).where(eq(topicsTable.id, id));
   res.json({ success: true });
 });
-router12.get("/admin/topic-content/:id", adminOnly, async (req, res) => {
+router13.get("/admin/topic-content/:id", adminOnly, async (req, res) => {
   const topicId = Number(req.params.id);
   if (!topicId) {
     res.status(400).json({ error: "Invalid id" });
@@ -112089,10 +118093,10 @@ var gamificationSettings = {
   spaceJourneyEnabled: true,
   xpValues: { login: 10, homework: 15, test: 20, recording: 5, liveClass: 10, competition: 50, referral: 25 }
 };
-router12.get("/admin/gamification/settings", adminOnly, (_req, res) => {
+router13.get("/admin/gamification/settings", adminOnly, (_req, res) => {
   res.json(gamificationSettings);
 });
-router12.put("/admin/gamification/settings", adminOnly, (req, res) => {
+router13.put("/admin/gamification/settings", adminOnly, (req, res) => {
   const { xpEnabled, leaderboardEnabled, dailyMissionsEnabled, spaceJourneyEnabled, xpValues } = req.body;
   if (xpEnabled !== void 0) gamificationSettings.xpEnabled = Boolean(xpEnabled);
   if (leaderboardEnabled !== void 0) gamificationSettings.leaderboardEnabled = Boolean(leaderboardEnabled);
@@ -112103,7 +118107,7 @@ router12.put("/admin/gamification/settings", adminOnly, (req, res) => {
   }
   res.json(gamificationSettings);
 });
-router12.get("/admin/dashboard", adminOnly, async (_req, res) => {
+router13.get("/admin/dashboard", adminOnly, async (_req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -112171,7 +118175,7 @@ router12.get("/admin/dashboard", adminOnly, async (_req, res) => {
     mentorBreakdown: mentorRows.map((r) => ({ id: r.id, name: r.name, email: r.email, isActive: r.isActive, studentCount: Number(r.studentCount) }))
   });
 });
-router12.get("/admin/students/:id/360", allStaffAuth, async (req, res) => {
+router13.get("/admin/students/:id/360", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -112238,7 +118242,7 @@ router12.get("/admin/students/:id/360", allStaffAuth, async (req, res) => {
   const spaceLevel = pts >= 5e3 ? "Universe Champion" : pts >= 2500 ? "Galaxy Master" : pts >= 1e3 ? "Saturn Explorer" : pts >= 500 ? "Mars Explorer" : pts >= 100 ? "Moon Explorer" : "Earth Explorer";
   res.json({ profile, enrolledCourses, recentHw, recentTests, recentAssignments, xpHistory, spaceLevel });
 });
-router12.get("/admin/analytics/courses", adminOnly, async (_req, res) => {
+router13.get("/admin/analytics/courses", adminOnly, async (_req, res) => {
   const courses = await db.select({
     id: coursesTable.id,
     title: coursesTable.title,
@@ -112289,7 +118293,7 @@ router12.get("/admin/analytics/courses", adminOnly, async (_req, res) => {
     };
   }));
 });
-router12.get("/admin/analytics/teachers", adminOnly, async (_req, res) => {
+router13.get("/admin/analytics/teachers", adminOnly, async (_req, res) => {
   const teachers = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -112318,7 +118322,7 @@ router12.get("/admin/analytics/teachers", adminOnly, async (_req, res) => {
     hwGraded: hwMap[t.id] ?? 0
   })));
 });
-router12.get("/admin/health", adminOnly, async (_req, res) => {
+router13.get("/admin/health", adminOnly, async (_req, res) => {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
   const baseWhere = and(eq(usersTable.role, "student"), eq(usersTable.isActive, true));
   const [neverLoggedIn, inactiveStudents, noTestStudents] = await Promise.all([
@@ -112359,7 +118363,7 @@ router12.get("/admin/health", adminOnly, async (_req, res) => {
     }
   });
 });
-router12.patch("/admin/me/password", adminOnly, async (req, res) => {
+router13.patch("/admin/me/password", adminOnly, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     res.status(400).json({ error: "Both passwords required" });
@@ -112388,7 +118392,7 @@ router12.patch("/admin/me/password", adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 var HIGH_RISK_KW = ["role_change", "change_role", "disable", "deactivate", "permission_change", "archive", "delete_user", "settings_change", "bulk_disable"];
-router12.get("/admin/audit-logs/stats", adminOnly, async (req, res) => {
+router13.get("/admin/audit-logs/stats", adminOnly, async (req, res) => {
   const todayStart4 = /* @__PURE__ */ new Date();
   todayStart4.setHours(0, 0, 0, 0);
   const yesterdayStart = new Date(todayStart4.getTime() - 864e5);
@@ -112403,7 +118407,7 @@ router12.get("/admin/audit-logs/stats", adminOnly, async (req, res) => {
   const highRiskCount = todayLogs.filter((l) => HIGH_RISK_KW.some((k) => l.action.toLowerCase().includes(k))).length;
   res.json({ todayTotal, yesterdayTotal: Number(yesterdayTotal), usersModified, studentsUpdated, leadsConverted, highRiskCount });
 });
-router12.get("/admin/audit-logs", adminOnly, async (req, res) => {
+router13.get("/admin/audit-logs", adminOnly, async (req, res) => {
   const {
     search,
     module: mod,
@@ -112476,7 +118480,7 @@ router12.get("/admin/audit-logs", adminOnly, async (req, res) => {
   ]);
   res.json({ logs, total: Number(total), page: pageNum, limit: limitNum, pages: Math.ceil(Number(total) / limitNum) });
 });
-router12.get("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
+router13.get("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -112539,7 +118543,7 @@ router12.get("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
     followUps: followUps.map((f) => ({ ...f, ...computeCrmFuStatus(f.nextFollowUpDate, f.callStatus) }))
   });
 });
-router12.patch("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
+router13.patch("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -112561,7 +118565,7 @@ router12.patch("/admin/students/:id/crm", allStaffAuth, async (req, res) => {
   }
   res.json({ ok: true });
 });
-router12.get("/admin/students/:id/attendance", allStaffAuth, async (req, res) => {
+router13.get("/admin/students/:id/attendance", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -112583,7 +118587,7 @@ router12.get("/admin/students/:id/attendance", allStaffAuth, async (req, res) =>
   const presentPct = total > 0 ? Math.round(present / total * 100) : 0;
   res.json({ records, summary: { total, present, absent, late: late2, leave, presentPct } });
 });
-router12.get("/admin/teachers/summary-stats", adminOnly, async (_req, res) => {
+router13.get("/admin/teachers/summary-stats", adminOnly, async (_req, res) => {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 864e5);
@@ -112594,7 +118598,7 @@ router12.get("/admin/teachers/summary-stats", adminOnly, async (_req, res) => {
   ]);
   res.json({ totalTeachers: Number(tot[0]?.c ?? 0), activeTeachers: Number(act[0]?.c ?? 0), liveClassesToday: Number(todayCls[0]?.c ?? 0) });
 });
-router12.get("/admin/teachers/enriched", adminOnly, async (_req, res) => {
+router13.get("/admin/teachers/enriched", adminOnly, async (_req, res) => {
   const teachers = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "teacher")).orderBy(usersTable.name);
   if (teachers.length === 0) {
     res.json([]);
@@ -112647,7 +118651,7 @@ router12.get("/admin/teachers/enriched", adminOnly, async (_req, res) => {
     return { id: t.id, name: t.name, email: t.email, phone: t.phone, isActive: t.isActive, createdAt: t.createdAt, coursesAssigned: courses.length, coursesList: courses.map((c) => ({ id: c.courseId, title: c.title, grade: c.grade })), studentsTotal: students, classesTotal: classes.length, classesDone: done, attendancePct: attPct, hwGraded: graded, hwTotal: total, hwCompletionPct: hwPct, performanceScore: score };
   }));
 });
-router12.get("/admin/teachers/:id/detail", adminOnly, async (req, res) => {
+router13.get("/admin/teachers/:id/detail", adminOnly, async (req, res) => {
   const teacherId = parseInt(String(req.params.id), 10);
   if (isNaN(teacherId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -112678,7 +118682,7 @@ router12.get("/admin/teachers/:id/detail", adminOnly, async (req, res) => {
     notes: notes.map((n) => ({ id: n.id, note: n.metadata, addedBy: n.actorName, createdAt: n.createdAt }))
   });
 });
-router12.get("/admin/assessments/summary", allStaffAuth, async (_req, res) => {
+router13.get("/admin/assessments/summary", allStaffAuth, async (_req, res) => {
   const [hwTotal, asgnTotal, testTotal, hwPending, asgnPending] = await Promise.all([
     db.select({ c: sql`count(*)` }).from(homeworkSubmissionsTable),
     db.select({ c: sql`count(*)` }).from(assignmentSubmissionsTable),
@@ -112718,7 +118722,7 @@ router12.get("/admin/assessments/summary", allStaffAuth, async (_req, res) => {
   };
   res.json({ totalAssessments, pendingEvaluations, avgScore, submissionRate, topPerformers, typeDist });
 });
-router12.get("/admin/assessments/submissions", allStaffAuth, async (req, res) => {
+router13.get("/admin/assessments/submissions", allStaffAuth, async (req, res) => {
   const typeFilter = req.query.type || "all";
   const gradeFilter = req.query.grade ? Number(req.query.grade) : null;
   const statusFilter = req.query.status || "all";
@@ -112838,7 +118842,7 @@ router12.get("/admin/assessments/submissions", allStaffAuth, async (req, res) =>
   const rows = filtered.slice((page - 1) * limit, page * limit);
   res.json({ rows, total, page, limit, pages: Math.ceil(total / limit) });
 });
-router12.get("/admin/assessments/top-performers", allStaffAuth, async (_req, res) => {
+router13.get("/admin/assessments/top-performers", allStaffAuth, async (_req, res) => {
   const rows = await db.execute(sql`
     SELECT student_id, student_name, ROUND(AVG(score_pct))::int AS avg_pct, COUNT(*)::int AS total_subs FROM (
       SELECT hs.student_id, u.name AS student_name, (hs.marks / NULLIF(h.max_marks, 0) * 100) AS score_pct
@@ -112856,7 +118860,7 @@ router12.get("/admin/assessments/top-performers", allStaffAuth, async (_req, res
   `);
   res.json((rows.rows ?? []).map((r, i) => ({ rank: i + 1, studentId: r.student_id, studentName: r.student_name, avgScore: Number(r.avg_pct), totalSubmissions: Number(r.total_subs) })));
 });
-router12.get("/admin/students/:id/assessments", allStaffAuth, async (req, res) => {
+router13.get("/admin/students/:id/assessments", allStaffAuth, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -112926,7 +118930,7 @@ router12.get("/admin/students/:id/assessments", allStaffAuth, async (req, res) =
     summary: { totalSubmissions: hwSubs.length + asgnSubs.length + testSubs.length, avgScore, pendingCount, rank }
   });
 });
-router12.get("/admin/reports/summary", adminOnly, async (req, res) => {
+router13.get("/admin/reports/summary", adminOnly, async (req, res) => {
   const { from, to } = req.query;
   const now = /* @__PURE__ */ new Date();
   let fromDate, toDate;
@@ -113076,7 +119080,7 @@ router12.get("/admin/reports/summary", adminOnly, async (req, res) => {
     payments: { ignite: ignitePmt, mastery: masteryPmt }
   });
 });
-router12.post("/admin/teachers/:id/notes", adminOnly, async (req, res) => {
+router13.post("/admin/teachers/:id/notes", adminOnly, async (req, res) => {
   const teacherId = parseInt(String(req.params.id), 10);
   if (isNaN(teacherId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113096,11 +119100,11 @@ router12.post("/admin/teachers/:id/notes", adminOnly, async (req, res) => {
   const [row] = await db.insert(auditLogsTable).values({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, actorEmail: actor.email ?? void 0, action: "teacher_note", actionLabel: "Added note", category: "admin", module: "teachers", targetType: "teacher", targetId: teacherId, targetName: teacher.name, metadata: note.trim() }).returning();
   res.json({ id: row.id, note: row.metadata, addedBy: row.actorName, createdAt: row.createdAt });
 });
-var admin_default = router12;
+var admin_default = router13;
 
 // src/routes/teacher.ts
-var import_express13 = __toESM(require_express2(), 1);
-var router13 = (0, import_express13.Router)();
+var import_express14 = __toESM(require_express2(), 1);
+var router14 = (0, import_express14.Router)();
 var teacherOrAdmin = requireRole("teacher", "admin", "super_admin");
 async function getTeacherCourseIds(teacherId) {
   const rows = await db.select({ courseId: teacherCoursesTable.courseId }).from(teacherCoursesTable).where(eq(teacherCoursesTable.teacherId, teacherId));
@@ -113120,7 +119124,7 @@ async function logAudit2(actorId, actorName, action, targetType, targetId, targe
   } catch {
   }
 }
-router13.get("/teacher/dashboard", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/dashboard", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const courseIds = await getTeacherCourseIds(teacherId);
   const courses = courseIds.length ? await db.select({
@@ -113150,7 +119154,7 @@ router13.get("/teacher/dashboard", teacherOrAdmin, async (req, res) => {
     }))
   });
 });
-router13.get("/teacher/courses", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/courses", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const courseIds = await getTeacherCourseIds(teacherId);
   if (!courseIds.length) {
@@ -113182,13 +119186,13 @@ router13.get("/teacher/courses", teacherOrAdmin, async (req, res) => {
     enrolledStudents: countMap[c.id] ?? 0
   })));
 });
-router13.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const classes = await db.select().from(liveClassesTable).where(isAdmin ? void 0 : eq(liveClassesTable.teacherId, teacherId)).orderBy(desc(liveClassesTable.scheduledAt));
   res.json(classes.map((c) => ({ ...c, scheduledAt: c.scheduledAt.toISOString(), createdAt: c.createdAt.toISOString() })));
 });
-router13.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const { title, subjectId, grade, courseId, scheduledAt, duration: duration3, joinUrl } = req.body;
   if (!title || !subjectId || !grade || !scheduledAt) {
@@ -113217,7 +119221,7 @@ router13.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   await logAudit2(teacherId, req.authUser.name, "live_class_created", "live_class", lc.id, lc.title);
   res.status(201).json({ ...lc, scheduledAt: lc.scheduledAt.toISOString(), createdAt: lc.createdAt.toISOString() });
 });
-router13.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const hw = await db.select({
@@ -113239,7 +119243,7 @@ router13.get("/teacher/homework", teacherOrAdmin, async (req, res) => {
   }).from(homeworkTable).innerJoin(subjectsTable, eq(homeworkTable.subjectId, subjectsTable.id)).where(isAdmin ? void 0 : eq(homeworkTable.teacherId, teacherId)).orderBy(desc(homeworkTable.dueDate));
   res.json(hw.map((h) => ({ ...h, dueDate: h.dueDate.toISOString(), description: h.description ?? null, questionsJson: h.questionsJson ?? null, driveLink: h.driveLink ?? null })));
 });
-router13.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const { title, subjectId, grade, courseId, liveClassId, homeworkType, driveLink, dueDate, description, maxMarks, questionsJson } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
@@ -113279,7 +119283,7 @@ router13.post("/teacher/homework", teacherOrAdmin, async (req, res) => {
   );
   res.status(201).json({ ...hw, dueDate: hw.dueDate.toISOString(), createdAt: hw.createdAt.toISOString() });
 });
-router13.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
@@ -113300,7 +119304,7 @@ router13.patch("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   }
   res.json({ ...hw, dueDate: hw.dueDate.toISOString() });
 });
-router13.delete("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
+router14.delete("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "invalid id" });
@@ -113317,7 +119321,7 @@ router13.delete("/teacher/homework/:id", teacherOrAdmin, async (req, res) => {
   await db.delete(homeworkTable).where(condition);
   res.json({ ok: true });
 });
-router13.get("/teacher/assignments", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/assignments", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const asgn = await db.select({
@@ -113339,7 +119343,7 @@ router13.get("/teacher/assignments", teacherOrAdmin, async (req, res) => {
     attachmentUrl: a.attachmentUrl ?? null
   })));
 });
-router13.post("/teacher/assignments", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/assignments", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const { title, subjectId, grade, courseId, dueDate, description, maxMarks, attachmentUrl } = req.body;
   if (!title || !subjectId || !grade || !dueDate) {
@@ -113367,13 +119371,13 @@ router13.post("/teacher/assignments", teacherOrAdmin, async (req, res) => {
   await logAudit2(teacherId, req.authUser.name, "assignment_created", "assignment", asgn.id, asgn.title);
   res.status(201).json({ ...asgn, dueDate: asgn.dueDate.toISOString(), createdAt: asgn.createdAt.toISOString() });
 });
-router13.get("/teacher/recordings", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/recordings", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const recs = await db.select().from(recordingsTable).where(isAdmin ? void 0 : eq(recordingsTable.teacherId, teacherId)).orderBy(desc(recordingsTable.recordedAt));
   res.json(recs.map((r) => ({ ...r, recordedAt: r.recordedAt.toISOString(), createdAt: r.createdAt.toISOString() })));
 });
-router13.post("/teacher/recordings", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/recordings", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const { title, subjectId, grade, courseId, recordedAt, videoUrl, duration: duration3, thumbnailUrl } = req.body;
   if (!title || !subjectId || !grade || !videoUrl || !duration3 || !recordedAt) {
@@ -113402,7 +119406,7 @@ router13.post("/teacher/recordings", teacherOrAdmin, async (req, res) => {
   await logAudit2(teacherId, req.authUser.name, "recording_created", "recording", rec.id, rec.title);
   res.status(201).json({ ...rec, recordedAt: rec.recordedAt.toISOString(), createdAt: rec.createdAt.toISOString() });
 });
-router13.get("/teacher/students", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/students", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const courseIds = await getTeacherCourseIds(teacherId);
   if (!courseIds.length) {
@@ -113423,7 +119427,7 @@ router13.get("/teacher/students", teacherOrAdmin, async (req, res) => {
   }).from(enrollmentsTable).innerJoin(usersTable, eq(enrollmentsTable.studentId, usersTable.id)).innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id)).where(inArray(enrollmentsTable.courseId, courseIds));
   res.json(students);
 });
-router13.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const rows = await db.select({
@@ -113443,7 +119447,7 @@ router13.get("/teacher/submissions/homework", teacherOrAdmin, async (req, res) =
   }).from(homeworkSubmissionsTable).innerJoin(homeworkTable, eq(homeworkSubmissionsTable.homeworkId, homeworkTable.id)).innerJoin(usersTable, eq(homeworkSubmissionsTable.studentId, usersTable.id)).where(isAdmin ? void 0 : eq(homeworkTable.teacherId, teacherId)).orderBy(desc(homeworkSubmissionsTable.submittedAt));
   res.json(rows.map((r) => ({ ...r, homeworkType: r.homeworkType ?? "writing" })));
 });
-router13.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const rows = await db.select({
@@ -113461,7 +119465,7 @@ router13.get("/teacher/submissions/assignments", teacherOrAdmin, async (req, res
   }).from(assignmentSubmissionsTable).innerJoin(assignmentsTable, eq(assignmentSubmissionsTable.assignmentId, assignmentsTable.id)).innerJoin(usersTable, eq(assignmentSubmissionsTable.studentId, usersTable.id)).where(isAdmin ? void 0 : eq(assignmentsTable.teacherId, teacherId)).orderBy(desc(assignmentSubmissionsTable.submittedAt));
   res.json(rows);
 });
-router13.get("/teacher/submissions/tests", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/submissions/tests", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const rows = await db.select({
@@ -113485,7 +119489,7 @@ router13.get("/teacher/submissions/tests", teacherOrAdmin, async (req, res) => {
     maxScore: r.maxScore ?? null
   })));
 });
-router13.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async (req, res) => {
   const subId = parseInt(String(req.params.id), 10);
   const { marks, feedback } = req.body;
   if (isNaN(subId) || marks === void 0) {
@@ -113508,7 +119512,7 @@ router13.patch("/teacher/submissions/homework/:id/grade", teacherOrAdmin, async 
   );
   res.json(updated);
 });
-router13.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, async (req, res) => {
   const subId = parseInt(String(req.params.id), 10);
   const { marks, feedback } = req.body;
   if (isNaN(subId) || marks === void 0) {
@@ -113531,7 +119535,7 @@ router13.patch("/teacher/submissions/assignments/:id/grade", teacherOrAdmin, asy
   );
   res.json(updated);
 });
-router13.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const rows = await db.select({
@@ -113550,7 +119554,7 @@ router13.get("/teacher/tests", teacherOrAdmin, async (req, res) => {
   }).from(testsTable).leftJoin(subjectsTable, eq(testsTable.subjectId, subjectsTable.id)).where(isAdmin ? void 0 : eq(testsTable.teacherId, teacherId)).orderBy(desc(testsTable.scheduledAt));
   res.json(rows);
 });
-router13.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
   const { title, subjectId, grade, courseId, scheduledAt, duration: duration3, testType, driveLink, questions } = req.body;
   if (!title || !subjectId || !grade || !scheduledAt) {
     res.status(400).json({ error: "title, subjectId, grade, scheduledAt required" });
@@ -113584,7 +119588,7 @@ router13.post("/teacher/tests", teacherOrAdmin, async (req, res) => {
   await logAudit2(req.authUser.id, req.authUser.name, "test_created", "test", test.id, title);
   res.status(201).json(test);
 });
-router13.delete("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
+router14.delete("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
   const testId = parseInt(String(req.params.id), 10);
   if (isNaN(testId)) {
     res.status(400).json({ error: "invalid id" });
@@ -113602,7 +119606,7 @@ router13.delete("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
   await logAudit2(req.authUser.id, req.authUser.name, "test_deleted", "test", testId, test.title);
   res.json({ ok: true });
 });
-router13.get("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113620,7 +119624,7 @@ router13.get("/teacher/tests/:id", teacherOrAdmin, async (req, res) => {
   const questions = await db.select().from(questionsTable).where(eq(questionsTable.testId, id)).orderBy(questionsTable.order);
   res.json({ ...test, scheduledAt: test.scheduledAt.toISOString(), createdAt: test.createdAt.toISOString(), questions });
 });
-router13.patch("/teacher/tests/:id/status", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/tests/:id/status", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113638,7 +119642,7 @@ router13.patch("/teacher/tests/:id/status", teacherOrAdmin, async (req, res) => 
   }
   res.json({ ...updated, scheduledAt: updated.scheduledAt.toISOString(), createdAt: updated.createdAt.toISOString() });
 });
-router13.patch("/teacher/live-classes/:id/status", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/live-classes/:id/status", teacherOrAdmin, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   const { status } = req.body;
   if (isNaN(classId) || !status) {
@@ -113652,7 +119656,7 @@ router13.patch("/teacher/live-classes/:id/status", teacherOrAdmin, async (req, r
   }
   res.json(updated);
 });
-router13.get("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   if (isNaN(classId)) {
     res.status(400).json({ error: "invalid id" });
@@ -113665,7 +119669,7 @@ router13.get("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req,
   }).from(attendanceTable).leftJoin(usersTable, eq(attendanceTable.studentId, usersTable.id)).where(eq(attendanceTable.liveClassId, classId));
   res.json(records);
 });
-router13.post("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   const { records } = req.body;
   if (isNaN(classId) || !Array.isArray(records)) {
@@ -113680,13 +119684,13 @@ router13.post("/teacher/live-classes/:id/attendance", teacherOrAdmin, async (req
   }
   res.json({ ok: true });
 });
-router13.get("/teacher/notes", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/notes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin";
   const notes = await db.select().from(topicNotesTable).where(isAdmin ? void 0 : eq(topicNotesTable.teacherId, teacherId)).orderBy(desc(topicNotesTable.createdAt));
   res.json(notes);
 });
-router13.post("/teacher/notes", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/notes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const { title, resourceType, url: url2, description, topicId, chapterId, courseId, grade } = req.body;
   if (!title || !url2) {
@@ -113706,13 +119710,13 @@ router13.post("/teacher/notes", teacherOrAdmin, async (req, res) => {
   }).returning();
   res.json(note);
 });
-router13.delete("/teacher/notes/:id", teacherOrAdmin, async (req, res) => {
+router14.delete("/teacher/notes/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const teacherId = req.authUser.id;
   await db.delete(topicNotesTable).where(and(eq(topicNotesTable.id, id), eq(topicNotesTable.teacherId, teacherId)));
   res.json({ ok: true });
 });
-router13.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
   const courseId = Number(req.query.courseId);
   if (!courseId) {
     res.status(400).json({ error: "courseId required" });
@@ -113721,7 +119725,7 @@ router13.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
   const rows = await db.select().from(chaptersTable).where(eq(chaptersTable.courseId, courseId)).orderBy(chaptersTable.order, chaptersTable.name);
   res.json(rows);
 });
-router13.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
   const chapterId = Number(req.query.chapterId);
   if (!chapterId) {
     res.status(400).json({ error: "chapterId required" });
@@ -113730,7 +119734,7 @@ router13.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
   const rows = await db.select().from(topicsTable).where(eq(topicsTable.chapterId, chapterId)).orderBy(topicsTable.order, topicsTable.name);
   res.json(rows);
 });
-router13.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
   const teacher = req.authUser;
   const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
   if (isAdmin) {
@@ -113748,7 +119752,7 @@ router13.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
   ).orderBy(desc(demoBatchesTable.id));
   res.json(batches.map((b) => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
 });
-router13.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
+router14.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
   const { batchId, title, scheduledAt, duration: duration3, joinUrl } = req.body;
   if (!batchId || !title || !scheduledAt) {
     res.status(400).json({ error: "batchId, title, scheduledAt required" });
@@ -113767,7 +119771,7 @@ router13.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
   }).returning();
   res.json({ ok: true, session });
 });
-router13.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
+router14.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
   const teacher = req.authUser;
   const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
   const allBatches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
@@ -113805,7 +119809,7 @@ router13.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
     };
   }));
 });
-router13.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "invalid id" });
@@ -113823,7 +119827,7 @@ router13.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   }
   res.json({ ok: true, session: updated });
 });
-router13.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) => {
+router14.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { status } = req.body;
   if (isNaN(id) || !status) {
@@ -113837,13 +119841,13 @@ router13.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) 
   }
   res.json({ ok: true, status: updated.status });
 });
-var teacher_default = router13;
+var teacher_default = router14;
 
 // src/routes/announcements.ts
-var import_express14 = __toESM(require_express2(), 1);
-var router14 = (0, import_express14.Router)();
+var import_express15 = __toESM(require_express2(), 1);
+var router15 = (0, import_express15.Router)();
 var adminOnly2 = requireRole("admin");
-router14.get("/admin/announcements", adminOnly2, async (req, res) => {
+router15.get("/admin/announcements", adminOnly2, async (req, res) => {
   const rows = await db.select({
     id: announcementsTable.id,
     title: announcementsTable.title,
@@ -113856,7 +119860,7 @@ router14.get("/admin/announcements", adminOnly2, async (req, res) => {
   }).from(announcementsTable).orderBy(desc(announcementsTable.createdAt));
   res.json(rows);
 });
-router14.post("/admin/announcements", adminOnly2, async (req, res) => {
+router15.post("/admin/announcements", adminOnly2, async (req, res) => {
   const { title, body, grade, targetRole } = req.body;
   if (!title || !body) {
     res.status(400).json({ error: "title and body are required" });
@@ -113872,7 +119876,7 @@ router14.post("/admin/announcements", adminOnly2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router14.patch("/admin/announcements/:id", adminOnly2, async (req, res) => {
+router15.patch("/admin/announcements/:id", adminOnly2, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113892,7 +119896,7 @@ router14.patch("/admin/announcements/:id", adminOnly2, async (req, res) => {
   }
   res.json(updated);
 });
-router14.delete("/admin/announcements/:id", adminOnly2, async (req, res) => {
+router15.delete("/admin/announcements/:id", adminOnly2, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113901,11 +119905,11 @@ router14.delete("/admin/announcements/:id", adminOnly2, async (req, res) => {
   await db.delete(announcementsTable).where(eq(announcementsTable.id, id));
   res.json({ success: true });
 });
-router14.get("/admin/banners", adminOnly2, async (req, res) => {
+router15.get("/admin/banners", adminOnly2, async (req, res) => {
   const rows = await db.select().from(bannersTable).orderBy(bannersTable.displayOrder);
   res.json(rows);
 });
-router14.post("/admin/banners", adminOnly2, async (req, res) => {
+router15.post("/admin/banners", adminOnly2, async (req, res) => {
   const { title, imageUrl, link, displayOrder } = req.body;
   if (!title || !imageUrl) {
     res.status(400).json({ error: "title and imageUrl are required" });
@@ -113920,7 +119924,7 @@ router14.post("/admin/banners", adminOnly2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router14.patch("/admin/banners/:id", adminOnly2, async (req, res) => {
+router15.patch("/admin/banners/:id", adminOnly2, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113940,7 +119944,7 @@ router14.patch("/admin/banners/:id", adminOnly2, async (req, res) => {
   }
   res.json(updated);
 });
-router14.delete("/admin/banners/:id", adminOnly2, async (req, res) => {
+router15.delete("/admin/banners/:id", adminOnly2, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113949,22 +119953,22 @@ router14.delete("/admin/banners/:id", adminOnly2, async (req, res) => {
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });
-router14.get("/announcements", attachUser, async (req, res) => {
+router15.get("/announcements", attachUser, async (req, res) => {
   const user = req.authUser;
   const rows = await db.select().from(announcementsTable).where(eq(announcementsTable.isActive, true)).orderBy(desc(announcementsTable.createdAt)).limit(20);
   res.json(rows);
 });
-router14.get("/banners", async (_req, res) => {
+router15.get("/banners", async (_req, res) => {
   const rows = await db.select().from(bannersTable).where(eq(bannersTable.isActive, true)).orderBy(bannersTable.displayOrder).limit(10);
   res.json(rows);
 });
-var announcements_default = router14;
+var announcements_default = router15;
 
 // src/routes/attendance.ts
-var import_express15 = __toESM(require_express2(), 1);
-var router15 = (0, import_express15.Router)();
+var import_express16 = __toESM(require_express2(), 1);
+var router16 = (0, import_express16.Router)();
 var teacherOrAdmin2 = requireRole("teacher", "admin");
-router15.post("/teacher/live-classes/:id/attendance", teacherOrAdmin2, async (req, res) => {
+router16.post("/teacher/live-classes/:id/attendance", teacherOrAdmin2, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   if (isNaN(classId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -113989,7 +119993,7 @@ router15.post("/teacher/live-classes/:id/attendance", teacherOrAdmin2, async (re
   }
   res.json({ success: true, count: records.length });
 });
-router15.patch("/teacher/live-classes/:id/attendance/:studentId/contacted", teacherOrAdmin2, async (req, res) => {
+router16.patch("/teacher/live-classes/:id/attendance/:studentId/contacted", teacherOrAdmin2, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   const studentId = parseInt(String(req.params.studentId), 10);
   if (isNaN(classId) || isNaN(studentId)) {
@@ -114000,7 +120004,7 @@ router15.patch("/teacher/live-classes/:id/attendance/:studentId/contacted", teac
   await db.update(attendanceTable).set({ contacted: !!contacted }).where(and(eq(attendanceTable.liveClassId, classId), eq(attendanceTable.studentId, studentId)));
   res.json({ success: true });
 });
-router15.get("/teacher/live-classes/:id/attendance", teacherOrAdmin2, async (req, res) => {
+router16.get("/teacher/live-classes/:id/attendance", teacherOrAdmin2, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   if (isNaN(classId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -114016,7 +120020,7 @@ router15.get("/teacher/live-classes/:id/attendance", teacherOrAdmin2, async (req
   }).from(attendanceTable).innerJoin(usersTable, eq(attendanceTable.studentId, usersTable.id)).where(eq(attendanceTable.liveClassId, classId));
   res.json(rows);
 });
-router15.patch("/teacher/live-classes/:id/status", teacherOrAdmin2, async (req, res) => {
+router16.patch("/teacher/live-classes/:id/status", teacherOrAdmin2, async (req, res) => {
   const classId = parseInt(String(req.params.id), 10);
   if (isNaN(classId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -114034,7 +120038,7 @@ router15.patch("/teacher/live-classes/:id/status", teacherOrAdmin2, async (req, 
   }
   res.json({ ...updated, scheduledAt: updated.scheduledAt.toISOString(), createdAt: updated.createdAt.toISOString() });
 });
-router15.get("/student/attendance", requireAuth, async (req, res) => {
+router16.get("/student/attendance", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const rows = await db.select({
     liveClassId: attendanceTable.liveClassId,
@@ -114050,18 +120054,18 @@ router15.get("/student/attendance", requireAuth, async (req, res) => {
     markedAt: r.markedAt.toISOString()
   })));
 });
-var attendance_default = router15;
+var attendance_default = router16;
 
 // src/routes/curriculum.ts
-var import_express16 = __toESM(require_express2(), 1);
-var router16 = (0, import_express16.Router)();
+var import_express17 = __toESM(require_express2(), 1);
+var router17 = (0, import_express17.Router)();
 var adminOnly3 = requireRole("admin");
 var staffOnly = requireRole("admin", "teacher");
-router16.get("/admin/academic-years", adminOnly3, async (_req, res) => {
+router17.get("/admin/academic-years", adminOnly3, async (_req, res) => {
   const rows = await db.select().from(academicYearsTable).orderBy(academicYearsTable.name);
   res.json(rows);
 });
-router16.post("/admin/academic-years", adminOnly3, async (req, res) => {
+router17.post("/admin/academic-years", adminOnly3, async (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "Name is required" });
@@ -114070,7 +120074,7 @@ router16.post("/admin/academic-years", adminOnly3, async (req, res) => {
   const [row] = await db.insert(academicYearsTable).values({ name: name.trim() }).returning();
   res.json(row);
 });
-router16.put("/admin/academic-years/:id", adminOnly3, async (req, res) => {
+router17.put("/admin/academic-years/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   const { name, isActive } = req.body;
   if (!id) {
@@ -114087,7 +120091,7 @@ router16.put("/admin/academic-years/:id", adminOnly3, async (req, res) => {
   }
   res.json(row);
 });
-router16.delete("/admin/academic-years/:id", adminOnly3, async (req, res) => {
+router17.delete("/admin/academic-years/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114096,7 +120100,7 @@ router16.delete("/admin/academic-years/:id", adminOnly3, async (req, res) => {
   await db.delete(academicYearsTable).where(eq(academicYearsTable.id, id));
   res.json({ success: true });
 });
-router16.get("/admin/course-subjects", staffOnly, async (req, res) => {
+router17.get("/admin/course-subjects", staffOnly, async (req, res) => {
   const courseId = req.query.courseId ? Number(req.query.courseId) : void 0;
   if (!courseId) {
     res.status(400).json({ error: "courseId is required" });
@@ -114110,7 +120114,7 @@ router16.get("/admin/course-subjects", staffOnly, async (req, res) => {
     subjectCode: `SUB${String(r.id).padStart(4, "0")}`
   })));
 });
-router16.post("/admin/course-subjects", adminOnly3, async (req, res) => {
+router17.post("/admin/course-subjects", adminOnly3, async (req, res) => {
   const { courseId, name, description, thumbnailUrl } = req.body;
   if (!courseId || !name?.trim()) {
     res.status(400).json({ error: "courseId and name are required" });
@@ -114119,7 +120123,7 @@ router16.post("/admin/course-subjects", adminOnly3, async (req, res) => {
   const [row] = await db.insert(courseSubjectsTable).values({ courseId, name: name.trim(), description: description?.trim() ?? null, thumbnailUrl: thumbnailUrl?.trim() ?? null }).returning();
   res.json({ ...row, subjectCode: `SUB${String(row.id).padStart(4, "0")}` });
 });
-router16.put("/admin/course-subjects/:id", adminOnly3, async (req, res) => {
+router17.put("/admin/course-subjects/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114137,7 +120141,7 @@ router16.put("/admin/course-subjects/:id", adminOnly3, async (req, res) => {
   }
   res.json({ ...row, subjectCode: `SUB${String(row.id).padStart(4, "0")}` });
 });
-router16.delete("/admin/course-subjects/:id", adminOnly3, async (req, res) => {
+router17.delete("/admin/course-subjects/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114151,7 +120155,7 @@ router16.delete("/admin/course-subjects/:id", adminOnly3, async (req, res) => {
   await db.delete(courseSubjectsTable).where(eq(courseSubjectsTable.id, id));
   res.json({ success: true });
 });
-router16.get("/admin/chapters", staffOnly, async (req, res) => {
+router17.get("/admin/chapters", staffOnly, async (req, res) => {
   const courseId = req.query.courseId ? Number(req.query.courseId) : void 0;
   const courseSubjectId = req.query.courseSubjectId ? Number(req.query.courseSubjectId) : void 0;
   const subjectId = req.query.subjectId ? Number(req.query.subjectId) : void 0;
@@ -114183,7 +120187,7 @@ router16.get("/admin/chapters", staffOnly, async (req, res) => {
     chapterCode: `CHP${String(r.id).padStart(4, "0")}`
   })));
 });
-router16.post("/admin/chapters", adminOnly3, async (req, res) => {
+router17.post("/admin/chapters", adminOnly3, async (req, res) => {
   const { subjectId, grade, courseId, courseSubjectId, name, description, order, sequenceNo } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "name is required" });
@@ -114211,7 +120215,7 @@ router16.post("/admin/chapters", adminOnly3, async (req, res) => {
   }).returning();
   res.json({ ...row, chapterCode: `CHP${String(row.id).padStart(4, "0")}` });
 });
-router16.put("/admin/chapters/:id", adminOnly3, async (req, res) => {
+router17.put("/admin/chapters/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114230,7 +120234,7 @@ router16.put("/admin/chapters/:id", adminOnly3, async (req, res) => {
   }
   res.json({ ...row, chapterCode: `CHP${String(row.id).padStart(4, "0")}` });
 });
-router16.delete("/admin/chapters/:id", adminOnly3, async (req, res) => {
+router17.delete("/admin/chapters/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114240,7 +120244,7 @@ router16.delete("/admin/chapters/:id", adminOnly3, async (req, res) => {
   await db.delete(chaptersTable).where(eq(chaptersTable.id, id));
   res.json({ success: true });
 });
-router16.get("/admin/topics", staffOnly, async (req, res) => {
+router17.get("/admin/topics", staffOnly, async (req, res) => {
   const chapterId = req.query.chapterId ? Number(req.query.chapterId) : void 0;
   const rows = await db.select().from(topicsTable).where(chapterId ? eq(topicsTable.chapterId, chapterId) : void 0).orderBy(topicsTable.order, topicsTable.name);
   res.json(rows.map((r) => ({
@@ -114250,7 +120254,7 @@ router16.get("/admin/topics", staffOnly, async (req, res) => {
     topicCode: `TOP${String(r.id).padStart(4, "0")}`
   })));
 });
-router16.post("/admin/topics", adminOnly3, async (req, res) => {
+router17.post("/admin/topics", adminOnly3, async (req, res) => {
   const { chapterId, name, description, learningObjective, topicStatus, order, sequenceNo } = req.body;
   if (!chapterId || !name?.trim()) {
     res.status(400).json({ error: "chapterId and name are required" });
@@ -114267,7 +120271,7 @@ router16.post("/admin/topics", adminOnly3, async (req, res) => {
   }).returning();
   res.json({ ...row, topicCode: `TOP${String(row.id).padStart(4, "0")}` });
 });
-router16.put("/admin/topics/:id", adminOnly3, async (req, res) => {
+router17.put("/admin/topics/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114288,7 +120292,7 @@ router16.put("/admin/topics/:id", adminOnly3, async (req, res) => {
   }
   res.json({ ...row, topicCode: `TOP${String(row.id).padStart(4, "0")}` });
 });
-router16.delete("/admin/topics/:id", adminOnly3, async (req, res) => {
+router17.delete("/admin/topics/:id", adminOnly3, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114297,7 +120301,7 @@ router16.delete("/admin/topics/:id", adminOnly3, async (req, res) => {
   await db.delete(topicsTable).where(eq(topicsTable.id, id));
   res.json({ success: true });
 });
-router16.get("/admin/topic-content/:topicId", adminOnly3, async (req, res) => {
+router17.get("/admin/topic-content/:topicId", adminOnly3, async (req, res) => {
   const topicId = Number(req.params.topicId);
   if (!topicId) {
     res.status(400).json({ error: "Invalid topicId" });
@@ -114316,7 +120320,7 @@ router16.get("/admin/topic-content/:topicId", adminOnly3, async (req, res) => {
     recordings: Number(recCount?.count ?? 0)
   });
 });
-router16.get("/chapters", async (req, res) => {
+router17.get("/chapters", async (req, res) => {
   const courseId = req.query.courseId ? Number(req.query.courseId) : void 0;
   const courseSubjectId = req.query.courseSubjectId ? Number(req.query.courseSubjectId) : void 0;
   const subjectId = req.query.subjectId ? Number(req.query.subjectId) : void 0;
@@ -114345,7 +120349,7 @@ router16.get("/chapters", async (req, res) => {
     subjectName: r.subjectName ?? null
   })));
 });
-router16.get("/course-subjects", async (req, res) => {
+router17.get("/course-subjects", async (req, res) => {
   const courseId = req.query.courseId ? Number(req.query.courseId) : void 0;
   if (!courseId) {
     res.status(400).json({ error: "courseId is required" });
@@ -114359,17 +120363,17 @@ router16.get("/course-subjects", async (req, res) => {
     subjectCode: `SUB${String(r.id).padStart(4, "0")}`
   })));
 });
-router16.get("/topics", async (req, res) => {
+router17.get("/topics", async (req, res) => {
   const chapterId = req.query.chapterId ? Number(req.query.chapterId) : void 0;
   const rows = await db.select().from(topicsTable).where(chapterId ? eq(topicsTable.chapterId, chapterId) : void 0).orderBy(topicsTable.order);
   res.json(rows.map((r) => ({ ...r, description: r.description ?? null })));
 });
-var curriculum_default = router16;
+var curriculum_default = router17;
 
 // src/routes/syllabus.ts
-var import_express17 = __toESM(require_express2(), 1);
-var router17 = (0, import_express17.Router)();
-router17.get("/course-syllabus/:courseId", async (req, res) => {
+var import_express18 = __toESM(require_express2(), 1);
+var router18 = (0, import_express18.Router)();
+router18.get("/course-syllabus/:courseId", async (req, res) => {
   const courseId = Number(req.params.courseId);
   if (!courseId) {
     res.status(400).json({ error: "Invalid courseId" });
@@ -114440,22 +120444,22 @@ router17.get("/course-syllabus/:courseId", async (req, res) => {
   }));
   res.json({ course, chapters: syllabusChapters });
 });
-var syllabus_default = router17;
+var syllabus_default = router18;
 
 // src/routes/demoBatches.ts
-var import_express18 = __toESM(require_express2(), 1);
-import crypto4 from "crypto";
+var import_express19 = __toESM(require_express2(), 1);
+import crypto7 from "crypto";
 function hashPassword3(pw) {
-  return crypto4.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto7.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
-var router18 = (0, import_express18.Router)();
+var router19 = (0, import_express19.Router)();
 var adminOnly4 = requireRole("admin");
 var staffAuth = requireRole("teacher");
-router18.get("/demo-batches", async (_req, res) => {
+router19.get("/demo-batches", async (_req, res) => {
   const batches = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.isPublic, true)).orderBy(desc(demoBatchesTable.createdAt));
   res.json(batches);
 });
-router18.get("/demo-batches/:id", async (req, res) => {
+router19.get("/demo-batches/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114469,7 +120473,7 @@ router18.get("/demo-batches/:id", async (req, res) => {
   const sessions = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, id)).orderBy(demoSessionsTable.dayNumber);
   res.json({ batch, sessions });
 });
-router18.get("/admin/demo-batches", adminOnly4, async (_req, res) => {
+router19.get("/admin/demo-batches", adminOnly4, async (_req, res) => {
   const batches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.createdAt));
   const enriched = await Promise.all(batches.map(async (b) => {
     const [counts] = await db.select({
@@ -114502,7 +120506,7 @@ function sessionDateForDay(startDate, dayIndex) {
   const [y, m, d] = istStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + dayIndex, 11, 30, 0));
 }
-router18.post("/admin/demo-batches", adminOnly4, async (req, res) => {
+router19.post("/admin/demo-batches", adminOnly4, async (req, res) => {
   const { title, joinLink, startDate, endDate, grade, isPublic, batchCode, status } = req.body;
   if (!title?.trim()) {
     res.status(400).json({ error: "Title required" });
@@ -114538,7 +120542,7 @@ router18.post("/admin/demo-batches", adminOnly4, async (req, res) => {
   }
   res.json({ ...row, sessions });
 });
-router18.put("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
+router19.put("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114579,7 +120583,7 @@ router18.put("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
   }
   res.json(row);
 });
-router18.delete("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
+router19.delete("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -114590,7 +120594,7 @@ router18.delete("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
   await db.delete(demoBatchesTable).where(eq(demoBatchesTable.id, id));
   res.json({ success: true });
 });
-router18.get("/admin/demo-batches/:id/overview", adminOnly4, async (req, res) => {
+router19.get("/admin/demo-batches/:id/overview", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.id);
   if (!batchId) {
     res.status(400).json({ error: "Invalid id" });
@@ -114636,7 +120640,7 @@ router18.get("/admin/demo-batches/:id/overview", adminOnly4, async (req, res) =>
     mentorStats
   });
 });
-router18.get("/admin/demo-batches/:batchId/students", adminOnly4, async (req, res) => {
+router19.get("/admin/demo-batches/:batchId/students", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114665,12 +120669,12 @@ router18.get("/admin/demo-batches/:batchId/students", adminOnly4, async (req, re
     repeatedCustomer: usersTable.repeatedCustomer
   }).from(demoBatchEnrollmentsTable).innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id)).where(eq(demoBatchEnrollmentsTable.batchId, batchId)).orderBy(desc(demoBatchEnrollmentsTable.enrolledAt));
   const filtered = filter === "all" ? rows : filter === "converted" ? rows.filter((r) => r.enrollmentStatus === "converted") : filter === "dropped" ? rows.filter((r) => r.enrollmentStatus === "dropped") : filter.startsWith("day") ? (() => {
-    const day = parseInt(filter.replace("day", ""));
-    return rows.filter((r) => (r.lastDayAttended ?? 0) >= day);
+    const day2 = parseInt(filter.replace("day", ""));
+    return rows.filter((r) => (r.lastDayAttended ?? 0) >= day2);
   })() : rows;
   res.json(filtered);
 });
-router18.get("/admin/demo-batches/:batchId/mentor-tracking", adminOnly4, async (req, res) => {
+router19.get("/admin/demo-batches/:batchId/mentor-tracking", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114708,7 +120712,7 @@ router18.get("/admin/demo-batches/:batchId/mentor-tracking", adminOnly4, async (
   }));
   res.json(enriched);
 });
-router18.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/status", adminOnly4, async (req, res) => {
+router19.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/status", adminOnly4, async (req, res) => {
   const enrollmentId = Number(req.params.enrollmentId);
   if (!enrollmentId) {
     res.status(400).json({ error: "Invalid enrollmentId" });
@@ -114729,7 +120733,7 @@ router18.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/status", ad
   }
   res.json(row);
 });
-router18.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/attendance", adminOnly4, async (req, res) => {
+router19.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/attendance", adminOnly4, async (req, res) => {
   const enrollmentId = Number(req.params.enrollmentId);
   if (!enrollmentId) {
     res.status(400).json({ error: "Invalid enrollmentId" });
@@ -114743,7 +120747,7 @@ router18.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/attendance"
   const [row] = await db.update(demoBatchEnrollmentsTable).set({ lastDayAttended }).where(eq(demoBatchEnrollmentsTable.id, enrollmentId)).returning();
   res.json(row);
 });
-router18.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/mentor", adminOnly4, async (req, res) => {
+router19.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/mentor", adminOnly4, async (req, res) => {
   const enrollmentId = Number(req.params.enrollmentId);
   if (!enrollmentId) {
     res.status(400).json({ error: "Invalid enrollmentId" });
@@ -114753,7 +120757,7 @@ router18.put("/admin/demo-batches/:batchId/enrollments/:enrollmentId/mentor", ad
   const [row] = await db.update(demoBatchEnrollmentsTable).set({ assignedMentorId: mentorId ?? null, assignedMentorName: mentorName ?? null }).where(eq(demoBatchEnrollmentsTable.id, enrollmentId)).returning();
   res.json(row);
 });
-router18.get("/admin/demo-batches/:batchId/analytics", adminOnly4, async (req, res) => {
+router19.get("/admin/demo-batches/:batchId/analytics", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114809,7 +120813,7 @@ router18.get("/admin/demo-batches/:batchId/analytics", adminOnly4, async (req, r
   }));
   res.json({ byGrade, byMentor, byInterest, total: enrollments.length });
 });
-router18.get("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, res) => {
+router19.get("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114818,7 +120822,7 @@ router18.get("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, re
   const sessions = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId)).orderBy(demoSessionsTable.dayNumber);
   res.json(sessions);
 });
-router18.post("/admin/demo-batches/:batchId/generate-sessions", adminOnly4, async (req, res) => {
+router19.post("/admin/demo-batches/:batchId/generate-sessions", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114851,7 +120855,7 @@ router18.post("/admin/demo-batches/:batchId/generate-sessions", adminOnly4, asyn
   await db.update(demoBatchesTable).set({ totalDays: sessions.length }).where(eq(demoBatchesTable.id, batchId));
   res.json(sessions);
 });
-router18.post("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, res) => {
+router19.post("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114895,7 +120899,7 @@ router18.post("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, r
   await db.update(demoBatchesTable).set({ totalDays: cnt }).where(eq(demoBatchesTable.id, batchId));
   res.json(row);
 });
-router18.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, async (req, res) => {
+router19.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, async (req, res) => {
   const sessionId = Number(req.params.sessionId);
   if (!sessionId) {
     res.status(400).json({ error: "Invalid sessionId" });
@@ -114937,7 +120941,7 @@ router18.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, asy
   }
   res.json(row);
 });
-router18.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, async (req, res) => {
+router19.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   const sessionId = Number(req.params.sessionId);
   if (!sessionId) {
@@ -114951,7 +120955,7 @@ router18.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, 
   }
   res.json({ success: true });
 });
-router18.get("/admin/demo-batches/:batchId/enrollments", adminOnly4, async (req, res) => {
+router19.get("/admin/demo-batches/:batchId/enrollments", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -114973,7 +120977,7 @@ router18.get("/admin/demo-batches/:batchId/enrollments", adminOnly4, async (req,
   }).from(demoBatchEnrollmentsTable).innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id)).where(eq(demoBatchEnrollmentsTable.batchId, batchId)).orderBy(desc(demoBatchEnrollmentsTable.enrolledAt));
   res.json(rows);
 });
-router18.post("/admin/demo-batches/:batchId/enrollments/bulk", adminOnly4, async (req, res) => {
+router19.post("/admin/demo-batches/:batchId/enrollments/bulk", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -115036,7 +121040,7 @@ router18.post("/admin/demo-batches/:batchId/enrollments/bulk", adminOnly4, async
   }
   res.json(results);
 });
-router18.post("/admin/demo-batches/:batchId/enrollments", adminOnly4, async (req, res) => {
+router19.post("/admin/demo-batches/:batchId/enrollments", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -115060,7 +121064,7 @@ router18.post("/admin/demo-batches/:batchId/enrollments", adminOnly4, async (req
   const [row] = await db.insert(demoBatchEnrollmentsTable).values({ batchId, studentId }).returning();
   res.json(row);
 });
-router18.delete("/admin/demo-batches/:batchId/enrollments/:enrollmentId", adminOnly4, async (req, res) => {
+router19.delete("/admin/demo-batches/:batchId/enrollments/:enrollmentId", adminOnly4, async (req, res) => {
   const enrollmentId = Number(req.params.enrollmentId);
   if (!enrollmentId) {
     res.status(400).json({ error: "Invalid enrollmentId" });
@@ -115069,7 +121073,7 @@ router18.delete("/admin/demo-batches/:batchId/enrollments/:enrollmentId", adminO
   await db.delete(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.id, enrollmentId));
   res.json({ success: true });
 });
-router18.get("/student/my-demo-batches", requireAuth, async (req, res) => {
+router19.get("/student/my-demo-batches", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   const enrollments = await db.select({ batchId: demoBatchEnrollmentsTable.batchId }).from(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
   if (enrollments.length === 0) {
@@ -115086,28 +121090,10 @@ router18.get("/student/my-demo-batches", requireAuth, async (req, res) => {
   }
   res.json(result);
 });
-var demoBatches_default = router18;
+var demoBatches_default = router19;
 
 // src/routes/mentor.ts
-var import_express19 = __toESM(require_express2(), 1);
-
-// src/lib/logger.ts
-var import_pino = __toESM(require_pino(), 1);
-var isProduction = process.env.NODE_ENV === "production";
-var logger = (0, import_pino.default)({
-  level: process.env.LOG_LEVEL ?? "info",
-  redact: [
-    "req.headers.authorization",
-    "req.headers.cookie",
-    "res.headers['set-cookie']"
-  ],
-  ...isProduction ? {} : {
-    transport: {
-      target: "pino-pretty",
-      options: { colorize: true }
-    }
-  }
-});
+var import_express20 = __toESM(require_express2(), 1);
 
 // src/jobs/dailyQueueReset.ts
 function getISTHourMinute() {
@@ -115197,7 +121183,7 @@ function scheduleDailyQueueReset() {
 }
 
 // src/routes/mentor.ts
-import crypto5 from "crypto";
+import crypto8 from "crypto";
 
 // src/services/sms.ts
 var FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY;
@@ -115207,7 +121193,7 @@ function normalizePhone(phone) {
   if (digits.startsWith("0") && digits.length === 11) return digits.slice(1);
   return digits;
 }
-async function sendSms(phone, message) {
+async function sendSms(phone, message2) {
   if (!FAST2SMS_API_KEY) {
     logger.warn("FAST2SMS_API_KEY not set \u2014 skipping SMS");
     return { ok: false, error: "FAST2SMS_API_KEY not configured" };
@@ -115220,7 +121206,7 @@ async function sendSms(phone, message) {
   try {
     const body = new URLSearchParams({
       route: "q",
-      message,
+      message: message2,
       language: "english",
       flash: "0",
       numbers: number4
@@ -115356,13 +121342,13 @@ async function runOverdueFollowUpReminders() {
     }
     let anySent = false;
     if (pref.digestMode) {
-      const message = buildDigestMessage(pref.mentorName, items);
-      const result = await sendSms(pref.mentorPhone, message);
+      const message2 = buildDigestMessage(pref.mentorName, items);
+      const result = await sendSms(pref.mentorPhone, message2);
       anySent = result.ok;
     } else {
       for (const item of items) {
-        const message = buildSingleMessage(pref.mentorName, item);
-        const result = await sendSms(pref.mentorPhone, message);
+        const message2 = buildSingleMessage(pref.mentorName, item);
+        const result = await sendSms(pref.mentorPhone, message2);
         if (result.ok) anySent = true;
       }
     }
@@ -115374,9 +121360,9 @@ async function runOverdueFollowUpReminders() {
 
 // src/routes/mentor.ts
 function hashPassword4(pw) {
-  return crypto5.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto8.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
-var router19 = (0, import_express19.Router)();
+var router20 = (0, import_express20.Router)();
 var mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");
 async function getMentorStudentIds(mentorId) {
   const rows = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).where(and(
@@ -115407,7 +121393,7 @@ function computeFollowUpStatus(nextFollowUpDate, callStatus) {
   }
   return { fuStatus: "upcoming", daysOverdue: 0 };
 }
-router19.get("/mentor/dashboard", mentorAuth, async (req, res) => {
+router20.get("/mentor/dashboard", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const mentorRow = await db.select({ mentorType: usersTable.mentorType }).from(usersTable).where(eq(usersTable.id, mentorId)).limit(1);
   const mentorType = mentorRow[0]?.mentorType ?? "academic";
@@ -115478,7 +121464,7 @@ router19.get("/mentor/dashboard", mentorAuth, async (req, res) => {
     overdueTasks: overdueTaskRows.length
   });
 });
-router19.get("/mentor/students", mentorAuth, async (req, res) => {
+router20.get("/mentor/students", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? "200"), 10)));
   const assignments = await db.select({ studentId: mentorStudentAssignmentsTable.studentId, assignedAt: mentorStudentAssignmentsTable.assignedAt }).from(mentorStudentAssignmentsTable).where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(limit);
@@ -115518,7 +121504,7 @@ router19.get("/mentor/students", mentorAuth, async (req, res) => {
   });
   res.json({ students: result, total: result.length });
 });
-router19.get("/mentor/students/health-summary", mentorAuth, async (req, res) => {
+router20.get("/mentor/students/health-summary", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentIds = await getMentorStudentIds(mentorId);
   if (studentIds.length === 0) {
@@ -115550,7 +121536,7 @@ router19.get("/mentor/students/health-summary", mentorAuth, async (req, res) => 
   }
   res.json({ ...buckets, total: students.length });
 });
-router19.get("/mentor/students/:id", mentorAuth, async (req, res) => {
+router20.get("/mentor/students/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.id), 10);
   const [assignment] = await db.select().from(mentorStudentAssignmentsTable).where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
@@ -115588,7 +121574,7 @@ router19.get("/mentor/students/:id", mentorAuth, async (req, res) => {
   const timeline = await db.select().from(studentTimelineTable).where(eq(studentTimelineTable.studentId, studentId)).orderBy(desc(studentTimelineTable.createdAt)).limit(100);
   res.json({ student, hwSubs, testSubs, followUps, attendance, timeline });
 });
-router19.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
+router20.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.id), 10);
   if (req.authUser.role !== "admin") {
@@ -115638,7 +121624,7 @@ router19.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
   });
   res.json(updated);
 });
-router19.get("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
+router20.get("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.studentId), 10);
   if (req.authUser.role !== "admin") {
@@ -115651,7 +121637,7 @@ router19.get("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
   const rows = await db.select().from(studentTimelineTable).where(eq(studentTimelineTable.studentId, studentId)).orderBy(desc(studentTimelineTable.createdAt)).limit(200);
   res.json(rows);
 });
-router19.post("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
+router20.post("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.studentId), 10);
   if (req.authUser.role !== "admin") {
@@ -115679,7 +121665,7 @@ router19.post("/mentor/timeline/:studentId", mentorAuth, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router19.get("/mentor/tasks", mentorAuth, async (req, res) => {
+router20.get("/mentor/tasks", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const tasks = await db.select({
@@ -115701,7 +121687,7 @@ router19.get("/mentor/tasks", mentorAuth, async (req, res) => {
   });
   res.json(enriched);
 });
-router19.post("/mentor/tasks", mentorAuth, async (req, res) => {
+router20.post("/mentor/tasks", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const { title, taskType, studentId, dueDate, note } = req.body;
   if (!title?.trim()) {
@@ -115719,7 +121705,7 @@ router19.post("/mentor/tasks", mentorAuth, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router19.patch("/mentor/tasks/:id", mentorAuth, async (req, res) => {
+router20.patch("/mentor/tasks/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const id = parseInt(String(req.params.id), 10);
   const [existing] = await db.select({ id: mentorTasksTable.id }).from(mentorTasksTable).where(and(eq(mentorTasksTable.id, id), eq(mentorTasksTable.mentorId, mentorId))).limit(1);
@@ -115739,13 +121725,13 @@ router19.patch("/mentor/tasks/:id", mentorAuth, async (req, res) => {
   const [updated] = await db.update(mentorTasksTable).set(updates).where(eq(mentorTasksTable.id, id)).returning();
   res.json(updated);
 });
-router19.delete("/mentor/tasks/:id", mentorAuth, async (req, res) => {
+router20.delete("/mentor/tasks/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const id = parseInt(String(req.params.id), 10);
   await db.delete(mentorTasksTable).where(and(eq(mentorTasksTable.id, id), eq(mentorTasksTable.mentorId, mentorId)));
   res.json({ ok: true });
 });
-router19.get("/mentor/live-classes", mentorAuth, async (req, res) => {
+router20.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const upcoming = req.query.upcoming === "true";
   const date6 = String(req.query.date ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
@@ -115784,7 +121770,7 @@ router19.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   )).orderBy(liveClassesTable.scheduledAt).limit(upcoming ? 20 : 100);
   res.json(classes);
 });
-router19.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
+router20.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const mode = String(req.query.mode ?? "upcoming");
   const [studentIds, gradeTeamRows] = await Promise.all([
@@ -115872,7 +121858,7 @@ router19.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   }
   res.json(sessions);
 });
-router19.get("/mentor/attendance", mentorAuth, async (req, res) => {
+router20.get("/mentor/attendance", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const date6 = String(req.query.date ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
   const liveClassId = req.query.liveClassId ? parseInt(String(req.query.liveClassId), 10) : null;
@@ -115893,7 +121879,7 @@ router19.get("/mentor/attendance", mentorAuth, async (req, res) => {
   }).from(mentorAttendanceTable).leftJoin(usersTable, eq(usersTable.id, mentorAttendanceTable.studentId)).where(and(...conditions)).orderBy(usersTable.name);
   res.json(rows);
 });
-router19.post("/mentor/attendance", mentorAuth, async (req, res) => {
+router20.post("/mentor/attendance", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const { studentId, liveClassId, attendanceDate, status, callStatus, callTime, calledBy, calledByName, remark } = req.body;
   if (!studentId || !attendanceDate || !status) {
@@ -115916,7 +121902,7 @@ router19.post("/mentor/attendance", mentorAuth, async (req, res) => {
     res.status(201).json(row);
   }
 });
-router19.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
+router20.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const rows = await db.select({
     id: mentorFollowUpsTable.id,
@@ -115935,7 +121921,7 @@ router19.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const enriched = rows.map((r) => ({ ...r, ...computeFollowUpStatus(r.nextFollowUpDate, r.callStatus) }));
   res.json(enriched);
 });
-router19.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
+router20.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const { studentId, noteType, note, callStatus, callTime, calledBy, calledByName, leadStatus, nextFollowUpDate } = req.body;
   if (!studentId || !note) {
@@ -115956,7 +121942,7 @@ router19.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router19.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
+router20.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const actorName = req.authUser.name ?? "Staff";
   const actorRole = req.authUser.role ?? "mentor";
@@ -116002,7 +121988,7 @@ router19.patch("/mentor/follow-ups/:id", mentorAuth, async (req, res) => {
   const [row] = await db.update(mentorFollowUpsTable).set(updates).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).returning();
   res.json({ ...row, ...computeFollowUpStatus(row.nextFollowUpDate, row.callStatus) });
 });
-router19.get("/mentor/follow-ups/:id/edits", mentorAuth, async (req, res) => {
+router20.get("/mentor/follow-ups/:id/edits", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const id = parseInt(String(req.params.id), 10);
   const [ownership] = await db.select({ id: mentorFollowUpsTable.id }).from(mentorFollowUpsTable).where(and(eq(mentorFollowUpsTable.id, id), eq(mentorFollowUpsTable.mentorId, mentorId))).limit(1);
@@ -116013,10 +121999,10 @@ router19.get("/mentor/follow-ups/:id/edits", mentorAuth, async (req, res) => {
   const edits = await db.select().from(mentorFollowUpEditsTable).where(eq(mentorFollowUpEditsTable.followUpId, id)).orderBy(desc(mentorFollowUpEditsTable.editedAt));
   res.json(edits);
 });
-router19.delete("/mentor/follow-ups/:id", mentorAuth, async (_req, res) => {
+router20.delete("/mentor/follow-ups/:id", mentorAuth, async (_req, res) => {
   res.status(405).json({ error: "Follow-ups cannot be deleted. Edit the record instead." });
 });
-router19.get("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
+router20.get("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const [row] = await db.select().from(mentorReminderPrefsTable).where(eq(mentorReminderPrefsTable.mentorId, mentorId)).limit(1);
   if (!row) {
@@ -116025,7 +122011,7 @@ router19.get("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
   }
   res.json(row);
 });
-router19.put("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
+router20.put("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const { remindersEnabled, digestMode, digestTime } = req.body;
   if (digestTime !== void 0) {
@@ -116047,19 +122033,19 @@ router19.put("/mentor/reminder-prefs", mentorAuth, async (req, res) => {
   }).returning();
   res.json(row);
 });
-router19.post("/admin/trigger-reminder-job", requireRole("admin"), async (_req, res) => {
+router20.post("/admin/trigger-reminder-job", requireRole("admin"), async (_req, res) => {
   runOverdueFollowUpReminders().catch(() => {
   });
   res.json({ ok: true, message: "Reminder job triggered in background" });
 });
 var adminOnly5 = requireRole("admin");
-router19.get("/admin/mentors", adminOnly5, async (req, res) => {
+router20.get("/admin/mentors", adminOnly5, async (req, res) => {
   const mentors = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, isActive: usersTable.isActive, mentorType: usersTable.mentorType, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.role, "mentor")).orderBy(desc(usersTable.createdAt));
   const counts = await db.select({ mentorId: mentorStudentAssignmentsTable.mentorId, count: sql`count(*)` }).from(mentorStudentAssignmentsTable).where(eq(mentorStudentAssignmentsTable.isActive, true)).groupBy(mentorStudentAssignmentsTable.mentorId);
   const countMap = Object.fromEntries(counts.map((c) => [c.mentorId, Number(c.count)]));
   res.json(mentors.map((m) => ({ ...m, studentCount: countMap[m.id] ?? 0 })));
 });
-router19.post("/admin/mentors", adminOnly5, async (req, res) => {
+router20.post("/admin/mentors", adminOnly5, async (req, res) => {
   const { name, email: email3, phone, password, mentorType } = req.body;
   if (!name || !email3 || !password) {
     res.status(400).json({ error: "name, email, password required" });
@@ -116073,7 +122059,7 @@ router19.post("/admin/mentors", adminOnly5, async (req, res) => {
   const [mentor] = await db.insert(usersTable).values({ name, email: email3, phone: phone ?? null, role: "mentor", grade: 0, passwordHash: hashPassword4(password), points: 0, streakDays: 0, mentorType: mentorType ?? "academic" }).returning();
   res.status(201).json({ id: mentor.id, name: mentor.name, email: mentor.email, phone: mentor.phone, isActive: mentor.isActive, mentorType: mentor.mentorType, createdAt: mentor.createdAt, studentCount: 0 });
 });
-router19.patch("/admin/mentors/:id", adminOnly5, async (req, res) => {
+router20.patch("/admin/mentors/:id", adminOnly5, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { isActive, name, password, phone, mentorType } = req.body;
   const updates = {};
@@ -116101,17 +122087,17 @@ router19.patch("/admin/mentors/:id", adminOnly5, async (req, res) => {
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
   res.json({ ...updated, studentCount: 0, delinkCount });
 });
-router19.delete("/admin/mentors/:id", adminOnly5, async (req, res) => {
+router20.delete("/admin/mentors/:id", adminOnly5, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   await db.delete(mentorStudentAssignmentsTable).where(eq(mentorStudentAssignmentsTable.mentorId, id));
   await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, id));
   res.json({ ok: true });
 });
-router19.get("/admin/mentor-student-map", adminOnly5, async (req, res) => {
+router20.get("/admin/mentor-student-map", adminOnly5, async (req, res) => {
   const rows = await db.select({ studentId: mentorStudentAssignmentsTable.studentId, mentorId: usersTable.id, mentorName: usersTable.name, mentorPhone: usersTable.phone }).from(mentorStudentAssignmentsTable).innerJoin(usersTable, eq(usersTable.id, mentorStudentAssignmentsTable.mentorId)).where(eq(mentorStudentAssignmentsTable.isActive, true));
   res.json(rows);
 });
-router19.post("/admin/mentor-grade-assign", adminOnly5, async (req, res) => {
+router20.post("/admin/mentor-grade-assign", adminOnly5, async (req, res) => {
   const { mentorId, grade } = req.body;
   if (!mentorId || grade === void 0 || grade === null) {
     res.status(400).json({ error: "mentorId and grade required" });
@@ -116126,12 +122112,12 @@ router19.post("/admin/mentor-grade-assign", adminOnly5, async (req, res) => {
   await db.insert(mentorStudentAssignmentsTable).values(studentRows.map((s2) => ({ mentorId: Number(mentorId), studentId: s2.id })));
   res.json({ assigned: studentRows.length });
 });
-router19.get("/admin/mentors/:id/assignments", adminOnly5, async (req, res) => {
+router20.get("/admin/mentors/:id/assignments", adminOnly5, async (req, res) => {
   const mentorId = parseInt(String(req.params.id), 10);
   const rows = await db.select({ id: mentorStudentAssignmentsTable.id, studentId: mentorStudentAssignmentsTable.studentId, studentName: usersTable.name, studentGrade: usersTable.grade, studentEmail: usersTable.email, assignedAt: mentorStudentAssignmentsTable.assignedAt, isActive: mentorStudentAssignmentsTable.isActive }).from(mentorStudentAssignmentsTable).leftJoin(usersTable, eq(usersTable.id, mentorStudentAssignmentsTable.studentId)).where(eq(mentorStudentAssignmentsTable.mentorId, mentorId)).orderBy(desc(mentorStudentAssignmentsTable.assignedAt));
   res.json(rows);
 });
-router19.post("/admin/mentor-assignments", adminOnly5, async (req, res) => {
+router20.post("/admin/mentor-assignments", adminOnly5, async (req, res) => {
   const { mentorId, studentId } = req.body;
   if (!mentorId || !studentId) {
     res.status(400).json({ error: "mentorId and studentId required" });
@@ -116141,12 +122127,12 @@ router19.post("/admin/mentor-assignments", adminOnly5, async (req, res) => {
   const [row] = await db.insert(mentorStudentAssignmentsTable).values({ mentorId: Number(mentorId), studentId: Number(studentId) }).returning();
   res.status(201).json(row);
 });
-router19.delete("/admin/mentor-assignments/:id", adminOnly5, async (req, res) => {
+router20.delete("/admin/mentor-assignments/:id", adminOnly5, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   await db.update(mentorStudentAssignmentsTable).set({ isActive: false }).where(eq(mentorStudentAssignmentsTable.id, id));
   res.json({ ok: true });
 });
-router19.get("/admin/btl-crm/pipeline", adminOnly5, async (req, res) => {
+router20.get("/admin/btl-crm/pipeline", adminOnly5, async (req, res) => {
   const { since } = req.query;
   const sinceDate = since ? new Date(since) : null;
   const students = await db.select({ leadStage: usersTable.leadStage }).from(usersTable).innerJoin(mentorStudentAssignmentsTable, and(
@@ -116169,7 +122155,7 @@ router19.get("/admin/btl-crm/pipeline", adminOnly5, async (req, res) => {
   const active = totalAssigned - dropped - unassignedToStage;
   res.json({ stageCounts, totalAssigned, converted, dropped, unassignedToStage, active });
 });
-router19.get("/admin/btl-crm/mentor-performance", adminOnly5, async (req, res) => {
+router20.get("/admin/btl-crm/mentor-performance", adminOnly5, async (req, res) => {
   const { since } = req.query;
   const sinceDate = since ? new Date(since) : null;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -116230,7 +122216,7 @@ router19.get("/admin/btl-crm/mentor-performance", adminOnly5, async (req, res) =
   });
   res.json(result);
 });
-router19.get("/admin/btl-crm/pipeline/students", adminOnly5, async (req, res) => {
+router20.get("/admin/btl-crm/pipeline/students", adminOnly5, async (req, res) => {
   const stage = String(req.query.stage ?? "").trim();
   if (!stage) {
     res.status(400).json({ error: "stage query param required" });
@@ -116253,7 +122239,7 @@ router19.get("/admin/btl-crm/pipeline/students", adminOnly5, async (req, res) =>
   )).orderBy(usersTable.name);
   res.json(rows);
 });
-router19.get("/admin/btl-crm/overdue-reminders", adminOnly5, async (_req, res) => {
+router20.get("/admin/btl-crm/overdue-reminders", adminOnly5, async (_req, res) => {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const rows = await db.select({
     id: mentorFollowUpsTable.id,
@@ -116278,7 +122264,7 @@ router19.get("/admin/btl-crm/overdue-reminders", adminOnly5, async (_req, res) =
   }));
   res.json(enriched);
 });
-router19.get("/admin/btl-crm/unassigned", adminOnly5, async (_req, res) => {
+router20.get("/admin/btl-crm/unassigned", adminOnly5, async (_req, res) => {
   const rows = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -116299,7 +122285,7 @@ router19.get("/admin/btl-crm/unassigned", adminOnly5, async (_req, res) => {
   )).orderBy(usersTable.grade, usersTable.name);
   res.json({ count: rows.length, students: rows });
 });
-router19.get("/admin/btl-crm/student/:id", adminOnly5, async (req, res) => {
+router20.get("/admin/btl-crm/student/:id", adminOnly5, async (req, res) => {
   const studentId = parseInt(String(req.params.id), 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid student id" });
@@ -116324,7 +122310,7 @@ router19.get("/admin/btl-crm/student/:id", adminOnly5, async (req, res) => {
   const timeline = await db.select().from(studentTimelineTable).where(eq(studentTimelineTable.studentId, studentId)).orderBy(desc(studentTimelineTable.createdAt)).limit(5);
   res.json({ student, timeline });
 });
-router19.get("/mentor/my-pipeline", mentorAuth, async (req, res) => {
+router20.get("/mentor/my-pipeline", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentIds = await getMentorStudentIds(mentorId);
   if (studentIds.length === 0) {
@@ -116365,7 +122351,7 @@ router19.get("/mentor/my-pipeline", mentorAuth, async (req, res) => {
   });
   res.json(result);
 });
-router19.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
+router20.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
   const period = String(req.query.period ?? "week");
   const now = /* @__PURE__ */ new Date();
   let startDate;
@@ -116374,9 +122360,9 @@ router19.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
   } else if (period === "all") {
     startDate = new Date(2024, 0, 1);
   } else {
-    const day = now.getDay();
+    const day2 = now.getDay();
     startDate = new Date(now);
-    startDate.setDate(now.getDate() - day);
+    startDate.setDate(now.getDate() - day2);
     startDate.setHours(0, 0, 0, 0);
   }
   const mentors = await db.select({ id: usersTable.id, name: usersTable.name, mentorType: usersTable.mentorType }).from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true)));
@@ -116419,7 +122405,7 @@ router19.get("/mentor/leaderboard", mentorAuth, async (req, res) => {
   }).sort((a, b) => b.score - a.score).map((entry, idx) => ({ ...entry, rank: idx + 1 }));
   res.json(ranked);
 });
-router19.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
+router20.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
   const assignments = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).where(and(
@@ -116485,7 +122471,7 @@ router19.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
   });
   res.json(result);
 });
-router19.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
+router20.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentIds = await getMentorStudentIds(mentorId);
   if (studentIds.length === 0) {
@@ -116507,7 +122493,7 @@ router19.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
     dropped: students.filter((s2) => s2.leadStage === "Dropped").length
   });
 });
-router19.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res) => {
+router20.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.studentId), 10);
   if (req.authUser.role !== "admin") {
@@ -116581,7 +122567,7 @@ router19.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, r
   }
   res.status(201).json({ ok: true, followUp: fu });
 });
-router19.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) => {
+router20.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.studentId), 10);
   if (req.authUser.role !== "admin") {
@@ -116594,7 +122580,7 @@ router19.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) =>
   const rows = await db.select().from(mentorFollowUpsTable).where(eq(mentorFollowUpsTable.studentId, studentId)).orderBy(desc(mentorFollowUpsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router19.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
+router20.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
   const gradeFilter = req.query.grade ? Number(req.query.grade) : null;
   const [activeCycle] = await db.select().from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
   if (!activeCycle) {
@@ -116638,7 +122624,7 @@ router19.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
     leaderboard: results.map((r, i) => ({ ...r, rank: i + 1 }))
   });
 });
-router19.get("/mentor/sales/leaderboard/grade", mentorAuth, async (req, res) => {
+router20.get("/mentor/sales/leaderboard/grade", mentorAuth, async (req, res) => {
   const grade = req.query.grade ? Number(req.query.grade) : null;
   if (!grade || grade < 1 || grade > 10) {
     res.status(400).json({ error: "grade query param required (1\u201310)" });
@@ -116694,11 +122680,11 @@ router19.get("/mentor/sales/leaderboard/grade", mentorAuth, async (req, res) => 
   const myGrades = myGradeRows.map((r) => r.grade).filter((g) => g !== null).sort((a, b) => a - b);
   res.json({ grade, myGrades, leaderboard });
 });
-router19.get("/mentor/sales/cycle", mentorAuth, async (_req, res) => {
+router20.get("/mentor/sales/cycle", mentorAuth, async (_req, res) => {
   const [cycle] = await db.select().from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
   res.json(cycle ?? null);
 });
-router19.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
+router20.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
   if (!activeCycle) {
@@ -116757,11 +122743,11 @@ router19.get("/mentor/sales/non-active", mentorAuth, async (req, res) => {
   }));
   res.json(results);
 });
-router19.get("/admin/mentor/cycles", adminOnly5, async (_req, res) => {
+router20.get("/admin/mentor/cycles", adminOnly5, async (_req, res) => {
   const cycles = await db.select().from(mentorDeploymentCyclesTable).orderBy(desc(mentorDeploymentCyclesTable.createdAt));
   res.json(cycles);
 });
-router19.post("/admin/mentor/cycles/start-new-week", adminOnly5, async (req, res) => {
+router20.post("/admin/mentor/cycles/start-new-week", adminOnly5, async (req, res) => {
   const actor = req.authUser;
   const { weekLabel } = req.body;
   await db.update(mentorDeploymentCyclesTable).set({ status: "archived", archivedAt: /* @__PURE__ */ new Date() }).where(eq(mentorDeploymentCyclesTable.status, "active"));
@@ -116789,11 +122775,11 @@ router19.post("/admin/mentor/cycles/start-new-week", adminOnly5, async (req, res
   }
   res.status(201).json({ ok: true, cycle: newCycle });
 });
-router19.post("/admin/mentor/cycles/trigger-reset", adminOnly5, async (_req, res) => {
+router20.post("/admin/mentor/cycles/trigger-reset", adminOnly5, async (_req, res) => {
   await runDailyQueueReset();
   res.json({ ok: true, message: "Queue reset complete: all active sales leads set to Pending" });
 });
-router19.post("/admin/btl-crm/timeline", adminOnly5, async (req, res) => {
+router20.post("/admin/btl-crm/timeline", adminOnly5, async (req, res) => {
   const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;
   if (!studentId || !remark) {
     res.status(400).json({ error: "studentId and remark required" });
@@ -116812,11 +122798,11 @@ router19.post("/admin/btl-crm/timeline", adminOnly5, async (req, res) => {
   }).returning();
   res.status(201).json(entry);
 });
-var mentor_default = router19;
+var mentor_default = router20;
 
 // src/routes/mentorExtended.ts
-var import_express20 = __toESM(require_express2(), 1);
-var router20 = (0, import_express20.Router)();
+var import_express21 = __toESM(require_express2(), 1);
+var router21 = (0, import_express21.Router)();
 var mentorAuth2 = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");
 async function getMentorStudentIds2(mentorId) {
   const rows = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).where(and(
@@ -116825,7 +122811,7 @@ async function getMentorStudentIds2(mentorId) {
   ));
   return rows.map((r) => r.studentId);
 }
-router20.get("/mentor/today-tasks", mentorAuth2, async (req, res) => {
+router21.get("/mentor/today-tasks", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentIds = await getMentorStudentIds2(mentorId);
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -116966,7 +122952,7 @@ router20.get("/mentor/today-tasks", mentorAuth2, async (req, res) => {
   };
   res.json({ followUpsToday, contactPending, homeworkAlerts, attendanceAlerts, testAlerts, healthAlerts, todaySchedule: { liveClasses: todayLiveClasses, doubtSessions: todayDoubtSessions }, eodProgress });
 });
-router20.get("/mentor/observer/live-classes", mentorAuth2, async (req, res) => {
+router21.get("/mentor/observer/live-classes", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const mode = String(req.query.mode ?? "upcoming");
   const [gradeTeamRows, studentIds] = await Promise.all([
@@ -117015,7 +123001,7 @@ router20.get("/mentor/observer/live-classes", mentorAuth2, async (req, res) => {
   )).orderBy(mode === "past" ? desc(liveClassesTable.scheduledAt) : liveClassesTable.scheduledAt).limit(100);
   res.json(classes);
 });
-router20.get("/mentor/doubt-sessions/stats", mentorAuth2, async (req, res) => {
+router21.get("/mentor/doubt-sessions/stats", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const rows = await db.select({ status: doubtSessionsTable.status, count: sql`count(*)::int` }).from(doubtSessionsTable).where(eq(doubtSessionsTable.mentorId, mentorId)).groupBy(doubtSessionsTable.status);
   const m = {};
@@ -117030,12 +123016,12 @@ router20.get("/mentor/doubt-sessions/stats", mentorAuth2, async (req, res) => {
     completionRate: total > 0 ? Math.round((m.completed ?? 0) / total * 100) : 0
   });
 });
-router20.get("/mentor/doubt-sessions", mentorAuth2, async (req, res) => {
+router21.get("/mentor/doubt-sessions", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const rows = await db.select().from(doubtSessionsTable).where(eq(doubtSessionsTable.mentorId, mentorId)).orderBy(desc(doubtSessionsTable.scheduledDate), desc(doubtSessionsTable.scheduledTime)).limit(200);
   res.json(rows);
 });
-router20.post("/mentor/doubt-sessions", mentorAuth2, async (req, res) => {
+router21.post("/mentor/doubt-sessions", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const { title, studentIds, studentNames, scheduledDate, scheduledTime, duration: duration3, platform, meetingLink, topic, remarks } = req.body;
   if (!title?.trim() || !scheduledDate || !scheduledTime) {
@@ -117058,7 +123044,7 @@ router20.post("/mentor/doubt-sessions", mentorAuth2, async (req, res) => {
   }).returning();
   res.status(201).json(row);
 });
-router20.patch("/mentor/doubt-sessions/:id", mentorAuth2, async (req, res) => {
+router21.patch("/mentor/doubt-sessions/:id", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const id = parseInt(String(req.params.id), 10);
   const [existing] = await db.select({ id: doubtSessionsTable.id }).from(doubtSessionsTable).where(and(eq(doubtSessionsTable.id, id), eq(doubtSessionsTable.mentorId, mentorId))).limit(1);
@@ -117082,18 +123068,18 @@ router20.patch("/mentor/doubt-sessions/:id", mentorAuth2, async (req, res) => {
   const [row] = await db.update(doubtSessionsTable).set(upd).where(eq(doubtSessionsTable.id, id)).returning();
   res.json(row);
 });
-router20.delete("/mentor/doubt-sessions/:id", mentorAuth2, async (req, res) => {
+router21.delete("/mentor/doubt-sessions/:id", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const id = parseInt(String(req.params.id), 10);
   await db.delete(doubtSessionsTable).where(and(eq(doubtSessionsTable.id, id), eq(doubtSessionsTable.mentorId, mentorId)));
   res.json({ ok: true });
 });
-router20.get("/mentor/eod-reports", mentorAuth2, async (req, res) => {
+router21.get("/mentor/eod-reports", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const rows = await db.select().from(mentorEodReportsTable).where(eq(mentorEodReportsTable.mentorId, mentorId)).orderBy(desc(mentorEodReportsTable.reportDate)).limit(30);
   res.json(rows);
 });
-router20.get("/mentor/eod-reports/today-prefill", mentorAuth2, async (req, res) => {
+router21.get("/mentor/eod-reports/today-prefill", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const [existing] = await db.select().from(mentorEodReportsTable).where(and(eq(mentorEodReportsTable.mentorId, mentorId), eq(mentorEodReportsTable.reportDate, today))).limit(1);
@@ -117125,7 +123111,7 @@ router20.get("/mentor/eod-reports/today-prefill", mentorAuth2, async (req, res) 
     remarks: null
   });
 });
-router20.post("/mentor/eod-reports", mentorAuth2, async (req, res) => {
+router21.post("/mentor/eod-reports", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const { reportDate = today, studentsContacted = 0, callsCompleted = 0, followUpsCompleted = 0, followUpsPending = 0, doubtSessionsConducted = 0, classesObserved = 0, challengesFaced, studentsNeedingAttention, parentConcerns, remarks } = req.body;
@@ -117151,7 +123137,7 @@ router20.post("/mentor/eod-reports", mentorAuth2, async (req, res) => {
     res.status(201).json(row);
   }
 });
-router20.get("/mentor/live-sessions", mentorAuth2, async (req, res) => {
+router21.get("/mentor/live-sessions", mentorAuth2, async (req, res) => {
   const mentorId = req.authUser.id;
   const mode = String(req.query.mode ?? "upcoming");
   const batches = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.mentorId, mentorId));
@@ -117202,24 +123188,24 @@ router20.get("/mentor/live-sessions", mentorAuth2, async (req, res) => {
     };
   }));
 });
-var mentorExtended_default = router20;
+var mentorExtended_default = router21;
 
 // src/routes/checkins.ts
-var import_express21 = __toESM(require_express2(), 1);
-var router21 = (0, import_express21.Router)();
+var import_express22 = __toESM(require_express2(), 1);
+var router22 = (0, import_express22.Router)();
 var staffAuth2 = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 function parseUA(ua) {
   const browser = ua.includes("Edg") ? "Edge" : ua.includes("Chrome") ? "Chrome" : ua.includes("Firefox") ? "Firefox" : ua.includes("Safari") ? "Safari" : "Browser";
   const device = /mobile/i.test(ua) ? "Mobile" : /tablet|ipad/i.test(ua) ? "Tablet" : "Desktop";
   return { browser, device };
 }
-router21.get("/staff/checkin/today", staffAuth2, async (req, res) => {
+router22.get("/staff/checkin/today", staffAuth2, async (req, res) => {
   const userId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const [row] = await db.select().from(employeeCheckinsTable).where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
   res.json(row ?? null);
 });
-router21.post("/staff/checkin", staffAuth2, async (req, res) => {
+router22.post("/staff/checkin", staffAuth2, async (req, res) => {
   const userId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const [existing] = await db.select().from(employeeCheckinsTable).where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
@@ -117247,7 +123233,7 @@ router21.post("/staff/checkin", staffAuth2, async (req, res) => {
     res.status(201).json(row);
   }
 });
-router21.patch("/staff/checkin/checkout", staffAuth2, async (req, res) => {
+router22.patch("/staff/checkin/checkout", staffAuth2, async (req, res) => {
   const userId = req.authUser.id;
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const [existing] = await db.select().from(employeeCheckinsTable).where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
@@ -117267,7 +123253,7 @@ router21.patch("/staff/checkin/checkout", staffAuth2, async (req, res) => {
   }).where(eq(employeeCheckinsTable.id, existing.id)).returning();
   res.json(row);
 });
-router21.get("/admin/employee-attendance", requireRole("admin"), async (req, res) => {
+router22.get("/admin/employee-attendance", requireRole("admin"), async (req, res) => {
   const date6 = String(req.query.date ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
   const checkins = await db.select({
     id: employeeCheckinsTable.id,
@@ -117289,18 +123275,18 @@ router21.get("/admin/employee-attendance", requireRole("admin"), async (req, res
   const notCheckedIn = allStaff6.filter((s2) => s2.isActive && !checkedIn.has(s2.id));
   res.json({ checkins, notCheckedIn, date: date6 });
 });
-router21.get("/admin/employee-attendance/:userId/history", requireRole("admin"), async (req, res) => {
+router22.get("/admin/employee-attendance/:userId/history", requireRole("admin"), async (req, res) => {
   const userId = parseInt(String(req.params.userId), 10);
   const rows = await db.select().from(employeeCheckinsTable).where(eq(employeeCheckinsTable.userId, userId)).orderBy(desc(employeeCheckinsTable.checkDate)).limit(30);
   res.json(rows);
 });
-var checkins_default = router21;
+var checkins_default = router22;
 
 // src/routes/staff.ts
-var import_express22 = __toESM(require_express2(), 1);
-var router22 = (0, import_express22.Router)();
+var import_express23 = __toESM(require_express2(), 1);
+var router23 = (0, import_express23.Router)();
 var staffAuth3 = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
-router22.get("/staff/me", staffAuth3, async (req, res) => {
+router23.get("/staff/me", staffAuth3, async (req, res) => {
   const id = req.authUser.id;
   const [user] = await db.select({
     id: usersTable.id,
@@ -117317,7 +123303,7 @@ router22.get("/staff/me", staffAuth3, async (req, res) => {
   }
   res.json(user);
 });
-router22.patch("/staff/me", staffAuth3, async (req, res) => {
+router23.patch("/staff/me", staffAuth3, async (req, res) => {
   const id = req.authUser.id;
   const { name, avatarUrl, school } = req.body;
   const updates = {};
@@ -117349,13 +123335,13 @@ router22.patch("/staff/me", staffAuth3, async (req, res) => {
 function todayIST2() {
   return new Date(Date.now() + 5.5 * 60 * 60 * 1e3).toISOString().slice(0, 10);
 }
-router22.get("/staff/checkin/today", staffAuth3, async (req, res) => {
+router23.get("/staff/checkin/today", staffAuth3, async (req, res) => {
   const userId = req.authUser.id;
   const today = todayIST2();
   const [record2] = await db.select().from(employeeCheckinsTable).where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
   res.json(record2 ?? null);
 });
-router22.post("/staff/checkin", staffAuth3, async (req, res) => {
+router23.post("/staff/checkin", staffAuth3, async (req, res) => {
   const userId = req.authUser.id;
   const today = todayIST2();
   const [existing] = await db.select().from(employeeCheckinsTable).where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
@@ -117374,7 +123360,7 @@ router22.post("/staff/checkin", staffAuth3, async (req, res) => {
   }).returning();
   res.json(record2);
 });
-router22.patch("/staff/checkin/checkout", staffAuth3, async (req, res) => {
+router23.patch("/staff/checkin/checkout", staffAuth3, async (req, res) => {
   const userId = req.authUser.id;
   const today = todayIST2();
   const [existing] = await db.select().from(employeeCheckinsTable).where(and(eq(employeeCheckinsTable.userId, userId), eq(employeeCheckinsTable.checkDate, today))).limit(1);
@@ -117397,16 +123383,16 @@ router22.patch("/staff/checkin/checkout", staffAuth3, async (req, res) => {
   }).where(eq(employeeCheckinsTable.id, existing.id)).returning();
   res.json(updated);
 });
-router22.get("/staff/checkin/history", staffAuth3, async (req, res) => {
+router23.get("/staff/checkin/history", staffAuth3, async (req, res) => {
   const userId = req.authUser.id;
   const records = await db.select().from(employeeCheckinsTable).where(eq(employeeCheckinsTable.userId, userId)).orderBy(employeeCheckinsTable.checkDate);
   res.json(records.slice(-30).reverse());
 });
-var staff_default = router22;
+var staff_default = router23;
 
 // src/routes/operationsDashboard.ts
-var import_express23 = __toESM(require_express2(), 1);
-var router23 = (0, import_express23.Router)();
+var import_express24 = __toESM(require_express2(), 1);
+var router24 = (0, import_express24.Router)();
 function todayIST3() {
   return (/* @__PURE__ */ new Date()).toLocaleString("en-CA", { timeZone: "Asia/Kolkata" }).slice(0, 10);
 }
@@ -117420,7 +123406,7 @@ function todayEnd() {
   d.setUTCHours(23, 59, 59, 999);
   return d;
 }
-router23.get("/admin/operations-dashboard", requireRole("admin"), async (_req, res) => {
+router24.get("/admin/operations-dashboard", requireRole("admin"), async (_req, res) => {
   const today = todayIST3();
   const ts = todayStart();
   const te = todayEnd();
@@ -117591,26 +123577,26 @@ router23.get("/admin/operations-dashboard", requireRole("admin"), async (_req, r
     taskCompletion: mentorScoreboard.map((m) => ({ id: m.id, name: m.name, total: m.taskTotal, done: m.taskDone, pct: m.taskTotal ? Math.round(m.taskDone / m.taskTotal * 100) : 0 }))
   });
 });
-var operationsDashboard_default = router23;
+var operationsDashboard_default = router24;
 
 // src/routes/superAdmin.ts
-var import_express24 = __toESM(require_express2(), 1);
-import crypto6 from "crypto";
+var import_express25 = __toESM(require_express2(), 1);
+import crypto9 from "crypto";
 import fs2 from "fs";
 import path2 from "path";
-var router24 = (0, import_express24.Router)();
+var router25 = (0, import_express25.Router)();
 var superAdminOnly = requireRole("super_admin");
 var BACKUP_DIR = "/tmp/braintam_backups";
 function ensureBackupDir() {
   if (!fs2.existsSync(BACKUP_DIR)) fs2.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 function hashPassword5(pw) {
-  return crypto6.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto9.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 function generateToken3(userId) {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
 }
-router24.post("/superadmin/admins", superAdminOnly, async (req, res) => {
+router25.post("/superadmin/admins", superAdminOnly, async (req, res) => {
   const { name, email: email3, password, permissions } = req.body;
   if (!name || !email3 || !password) {
     res.status(400).json({ error: "name, email, password required" });
@@ -117648,7 +123634,7 @@ router24.post("/superadmin/admins", superAdminOnly, async (req, res) => {
   await logFromReq({ req, action: "admin_created", actionLabel: `Created admin account for ${name}`, category: "system", module: "Users", targetType: "user", targetId: created.id, targetName: name });
   res.json({ ok: true, id: created.id });
 });
-router24.get("/superadmin/admins", superAdminOnly, async (_req, res) => {
+router25.get("/superadmin/admins", superAdminOnly, async (_req, res) => {
   const admins = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -117661,7 +123647,7 @@ router24.get("/superadmin/admins", superAdminOnly, async (_req, res) => {
   }).from(usersTable).where(or(eq(usersTable.role, "admin"), eq(usersTable.role, "super_admin"))).orderBy(desc(usersTable.createdAt));
   res.json(admins);
 });
-router24.get("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res) => {
+router25.get("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res) => {
   const userId = parseInt(String(req.params.id), 10);
   const perms = await db.select().from(adminPermissionsTable).where(eq(adminPermissionsTable.userId, userId));
   const permMap = new Map(perms.map((p) => [p.module, p]));
@@ -117676,7 +123662,7 @@ router24.get("/superadmin/admins/:id/permissions", superAdminOnly, async (req, r
   });
   res.json(result);
 });
-router24.put("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res) => {
+router25.put("/superadmin/admins/:id/permissions", superAdminOnly, async (req, res) => {
   const userId = parseInt(String(req.params.id), 10);
   const permissions = req.body;
   if (!Array.isArray(permissions)) {
@@ -117701,7 +123687,7 @@ router24.put("/superadmin/admins/:id/permissions", superAdminOnly, async (req, r
   await logFromReq({ req, action: "permissions_updated", actionLabel: `Updated permissions for admin #${userId}`, category: "system", module: "Settings", targetType: "user", targetId: userId, targetName: `Admin #${userId}` });
   res.json({ ok: true });
 });
-router24.patch("/superadmin/admins/:id/archive", superAdminOnly, async (req, res) => {
+router25.patch("/superadmin/admins/:id/archive", superAdminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
   if (!target) {
@@ -117716,7 +123702,7 @@ router24.patch("/superadmin/admins/:id/archive", superAdminOnly, async (req, res
   await logFromReq({ req, action: "admin_archived", actionLabel: `Archived admin ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
   res.json({ ok: true });
 });
-router24.patch("/superadmin/admins/:id/toggle-active", superAdminOnly, async (req, res) => {
+router25.patch("/superadmin/admins/:id/toggle-active", superAdminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (id === req.authUser.id) {
     res.status(403).json({ error: "Cannot disable yourself" });
@@ -117736,7 +123722,7 @@ router24.patch("/superadmin/admins/:id/toggle-active", superAdminOnly, async (re
   await logFromReq({ req, action: newActive ? "admin_enabled" : "admin_disabled", actionLabel: `${newActive ? "Enabled" : "Disabled"} admin ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
   res.json({ ok: true, isActive: newActive });
 });
-router24.post("/superadmin/admins/:id/reset-password", superAdminOnly, async (req, res) => {
+router25.post("/superadmin/admins/:id/reset-password", superAdminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) {
@@ -117756,7 +123742,7 @@ router24.post("/superadmin/admins/:id/reset-password", superAdminOnly, async (re
   await logFromReq({ req, action: "password_reset", actionLabel: `Reset password for ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
   res.json({ ok: true });
 });
-router24.post("/superadmin/impersonate/:id", superAdminOnly, async (req, res) => {
+router25.post("/superadmin/impersonate/:id", superAdminOnly, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const [target] = await db.select({ id: usersTable.id, name: usersTable.name, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
   if (!target) {
@@ -117771,7 +123757,7 @@ router24.post("/superadmin/impersonate/:id", superAdminOnly, async (req, res) =>
   await logFromReq({ req, action: "impersonation_started", actionLabel: `Impersonating ${target.name} (${target.role})`, category: "system", module: "Settings", targetType: "user", targetId: target.id, targetName: target.name });
   res.json({ token, userId: target.id, userName: target.name, role: target.role });
 });
-router24.get("/superadmin/dashboard-stats", superAdminOnly, async (_req, res) => {
+router25.get("/superadmin/dashboard-stats", superAdminOnly, async (_req, res) => {
   const [
     adminRows,
     studentCount,
@@ -117834,7 +123820,7 @@ router24.get("/superadmin/dashboard-stats", superAdminOnly, async (_req, res) =>
     recentActivity
   });
 });
-router24.get("/superadmin/system-health", superAdminOnly, async (_req, res) => {
+router25.get("/superadmin/system-health", superAdminOnly, async (_req, res) => {
   const services = [];
   try {
     const start = Date.now();
@@ -117869,7 +123855,7 @@ router24.get("/superadmin/system-health", superAdminOnly, async (_req, res) => {
   const overall = anyOffline ? "offline" : allHealthy ? "healthy" : "warning";
   res.json({ services, overall, checkedAt: (/* @__PURE__ */ new Date()).toISOString() });
 });
-router24.get("/superadmin/backups", superAdminOnly, async (_req, res) => {
+router25.get("/superadmin/backups", superAdminOnly, async (_req, res) => {
   try {
     ensureBackupDir();
     const files = fs2.readdirSync(BACKUP_DIR).filter((f) => f.endsWith(".json") && f.startsWith("backup_")).sort().reverse().slice(0, 50);
@@ -117891,7 +123877,7 @@ router24.get("/superadmin/backups", superAdminOnly, async (_req, res) => {
     res.json([]);
   }
 });
-router24.post("/superadmin/backups", superAdminOnly, async (req, res) => {
+router25.post("/superadmin/backups", superAdminOnly, async (req, res) => {
   try {
     ensureBackupDir();
     const label = req.body?.label || "manual";
@@ -117944,7 +123930,7 @@ router24.post("/superadmin/backups", superAdminOnly, async (req, res) => {
     res.status(500).json({ error: "Backup creation failed" });
   }
 });
-router24.get("/superadmin/backups/:id/download", superAdminOnly, async (req, res) => {
+router25.get("/superadmin/backups/:id/download", superAdminOnly, async (req, res) => {
   try {
     ensureBackupDir();
     const filename = req.params.id + ".json";
@@ -117960,7 +123946,7 @@ router24.get("/superadmin/backups/:id/download", superAdminOnly, async (req, res
     res.status(500).json({ error: "Download failed" });
   }
 });
-router24.get("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
+router25.get("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
   const type = req.query.type || "user";
   let rows = [];
   if (type === "user") {
@@ -117980,7 +123966,7 @@ router24.get("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
   }
   res.json(rows);
 });
-router24.post("/superadmin/recycle-bin/restore", superAdminOnly, async (req, res) => {
+router25.post("/superadmin/recycle-bin/restore", superAdminOnly, async (req, res) => {
   const { type, id } = req.body;
   if (!type || !id) {
     res.status(400).json({ error: "type and id required" });
@@ -118012,7 +123998,7 @@ router24.post("/superadmin/recycle-bin/restore", superAdminOnly, async (req, res
   await logFromReq({ req, action: "record_restored", actionLabel: `Restored ${type} "${name}"`, category: "system", module: "Settings", targetType: type, targetId: id, targetName: name });
   res.json({ ok: true, name });
 });
-router24.delete("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
+router25.delete("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
   const { type, id } = req.body;
   if (!type || !id) {
     res.status(400).json({ error: "type and id required" });
@@ -118079,7 +124065,7 @@ router24.delete("/superadmin/recycle-bin", superAdminOnly, async (req, res) => {
   await logFromReq({ req, action: "permanent_delete", actionLabel: `Permanently deleted ${type} "${name}"`, category: "system", module: "Recycle Bin", targetType: type, targetId: id, targetName: name });
   res.json({ ok: true });
 });
-router24.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
+router25.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
   const {
     dateFrom,
     dateTo,
@@ -118144,12 +124130,12 @@ router24.get("/superadmin/audit-logs", superAdminOnly, async (req, res) => {
   ]);
   res.json({ logs, total: Number(total), page: pageNum, limit: limitNum, pages: Math.ceil(Number(total) / limitNum) });
 });
-router24.get("/superadmin/student-timeline/:studentId", superAdminOnly, async (req, res) => {
+router25.get("/superadmin/student-timeline/:studentId", superAdminOnly, async (req, res) => {
   const studentId = parseInt(String(req.params.studentId), 10);
   const logs = await db.select().from(auditLogsTable).where(and(eq(auditLogsTable.targetType, "student"), eq(auditLogsTable.targetId, studentId))).orderBy(desc(auditLogsTable.createdAt)).limit(500);
   res.json(logs);
 });
-router24.post("/superadmin/audit-logs/:id/revert", superAdminOnly, async (req, res) => {
+router25.post("/superadmin/audit-logs/:id/revert", superAdminOnly, async (req, res) => {
   const logId = parseInt(String(req.params.id), 10);
   const [log] = await db.select().from(auditLogsTable).where(eq(auditLogsTable.id, logId)).limit(1);
   if (!log) {
@@ -118187,12 +124173,12 @@ router24.post("/superadmin/audit-logs/:id/revert", superAdminOnly, async (req, r
   await logFromReq({ req, action: "change_reverted", actionLabel: `Reverted change on ${log.targetType} "${log.targetName}"`, category: "system", module: "Audit Logs", targetType: log.targetType, targetId: log.targetId, targetName: log.targetName, after: before, before: log.afterValue ?? void 0 });
   res.json({ ok: true });
 });
-var superAdmin_default = router24;
+var superAdmin_default = router25;
 
 // src/routes/permissions.ts
-var import_express25 = __toESM(require_express2(), 1);
-var router25 = (0, import_express25.Router)();
-router25.get("/permissions/me", requireRole("admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor"), async (req, res) => {
+var import_express26 = __toESM(require_express2(), 1);
+var router26 = (0, import_express26.Router)();
+router26.get("/permissions/me", requireRole("admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor"), async (req, res) => {
   const userId = req.authUser.id;
   const role = req.authUser.role;
   if (role === "super_admin") {
@@ -118209,11 +124195,11 @@ router25.get("/permissions/me", requireRole("admin", "super_admin", "teacher", "
   }
   res.json([]);
 });
-var permissions_default = router25;
+var permissions_default = router26;
 
 // src/routes/mentorAdmin.ts
-var import_express26 = __toESM(require_express2(), 1);
-var router26 = (0, import_express26.Router)();
+var import_express27 = __toESM(require_express2(), 1);
+var router27 = (0, import_express27.Router)();
 var adminOnly6 = requireRole("admin", "super_admin");
 function computeHealth2(mentorType, attPct, hwPct, convPct, fuPct, students, demoStudents) {
   const type = mentorType ?? "academic";
@@ -118240,7 +124226,7 @@ function workloadLabel(students, demoStudents) {
   if (pct <= 80) return "Medium";
   return "High";
 }
-router26.get("/admin/mentors/enriched", adminOnly6, async (_req, res) => {
+router27.get("/admin/mentors/enriched", adminOnly6, async (_req, res) => {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const mentors = await db.select({
     id: usersTable.id,
@@ -118403,7 +124389,7 @@ router26.get("/admin/mentors/enriched", adminOnly6, async (_req, res) => {
   });
   res.json(result);
 });
-router26.get("/admin/mentors/dashboard-stats", adminOnly6, async (_req, res) => {
+router27.get("/admin/mentors/dashboard-stats", adminOnly6, async (_req, res) => {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const mentors = await db.select({
     id: usersTable.id,
@@ -118553,7 +124539,7 @@ router26.get("/admin/mentors/dashboard-stats", adminOnly6, async (_req, res) => 
     recentActivity
   });
 });
-router26.get("/admin/mentors/alerts", adminOnly6, async (_req, res) => {
+router27.get("/admin/mentors/alerts", adminOnly6, async (_req, res) => {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3).toISOString().slice(0, 10);
   const mentors = await db.select({ id: usersTable.id, name: usersTable.name, mentorType: usersTable.mentorType, lastLoginDate: usersTable.lastLoginDate }).from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isArchived, false), eq(usersTable.isActive, true)));
   if (mentors.length === 0) {
@@ -118597,7 +124583,7 @@ router26.get("/admin/mentors/alerts", adminOnly6, async (_req, res) => {
   }
   res.json({ noLoginDays, noStudents, noLeads, overloaded, lowConversion });
 });
-router26.get("/admin/mentors/:id/profile", adminOnly6, async (req, res) => {
+router27.get("/admin/mentors/:id/profile", adminOnly6, async (req, res) => {
   const mentorId = parseInt(String(req.params.id), 10);
   if (isNaN(mentorId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -118702,7 +124688,7 @@ router26.get("/admin/mentors/:id/profile", adminOnly6, async (req, res) => {
     tasks
   });
 });
-router26.get("/admin/mentors/grade-assignments", adminOnly6, async (req, res) => {
+router27.get("/admin/mentors/grade-assignments", adminOnly6, async (req, res) => {
   try {
     const rows = await db.select({ grade: mentorGradeAssignmentsTable.grade, mentorId: mentorGradeAssignmentsTable.mentorId }).from(mentorGradeAssignmentsTable);
     const map2 = /* @__PURE__ */ new Map();
@@ -118718,10 +124704,10 @@ router26.get("/admin/mentors/grade-assignments", adminOnly6, async (req, res) =>
     res.status(500).json({ error: "Failed" });
   }
 });
-var mentorAdmin_default = router26;
+var mentorAdmin_default = router27;
 
 // src/routes/ignite.ts
-var import_express27 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 
 // src/lib/assignIgniteBatch.ts
 var PIPELINE_ACTIVE_TARGET = 1;
@@ -118908,9 +124894,9 @@ async function assignIgniteBatchAndCourse(studentId, grade, ignitePaidStudentId)
 }
 
 // src/routes/ignite.ts
-var router27 = (0, import_express27.Router)();
+var router28 = (0, import_express28.Router)();
 var adminOnly7 = requireRole("admin", "super_admin");
-router27.get("/admin/ignite/teachers", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/teachers", adminOnly7, async (_req, res) => {
   const [teachers, recentSessions] = await Promise.all([
     db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))).orderBy(usersTable.name),
     db.select({ subject: demoSessionsTable.subject, teacherName: demoSessionsTable.teacherName, createdAt: demoSessionsTable.createdAt }).from(demoSessionsTable).where(and(isNotNull(demoSessionsTable.teacherName), isNotNull(demoSessionsTable.subject))).orderBy(desc(demoSessionsTable.createdAt)).limit(200)
@@ -118923,7 +124909,7 @@ router27.get("/admin/ignite/teachers", adminOnly7, async (_req, res) => {
   }
   res.json({ teachers, suggestions });
 });
-router27.get("/admin/ignite/dashboard", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/dashboard", adminOnly7, async (_req, res) => {
   const [batches, enrollments] = await Promise.all([
     db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.createdAt)),
     db.select().from(demoBatchEnrollmentsTable)
@@ -118994,7 +124980,7 @@ router27.get("/admin/ignite/dashboard", adminOnly7, async (_req, res) => {
     topBatches
   });
 });
-router27.get("/admin/ignite/demo-students", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/demo-students", adminOnly7, async (_req, res) => {
   const rows = await db.select({
     enrollmentId: demoBatchEnrollmentsTable.id,
     studentId: demoBatchEnrollmentsTable.studentId,
@@ -119045,7 +125031,7 @@ async function logLeadAudit(req, action, targetId, targetName, meta) {
   } catch {
   }
 }
-router27.get("/admin/ignite/leads", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/leads", adminOnly7, async (_req, res) => {
   const leads = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -119104,7 +125090,7 @@ router27.get("/admin/ignite/leads", adminOnly7, async (_req, res) => {
     notesCount: notesMap[l.id] ?? 0
   })));
 });
-router27.post("/admin/ignite/leads", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/leads", adminOnly7, async (req, res) => {
   const { name, phone, altPhone, email: email3, parentName, parentPhone, grade, board, school, city, leadSource, notes } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "name is required" });
@@ -119157,7 +125143,7 @@ router27.post("/admin/ignite/leads", adminOnly7, async (req, res) => {
   await logLeadAudit(req, "lead_created", newLead.id, newLead.name, { phone: normPhone, grade, leadSource });
   res.status(201).json(newLead);
 });
-router27.put("/admin/ignite/leads/:id", adminOnly7, async (req, res) => {
+router28.put("/admin/ignite/leads/:id", adminOnly7, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -119176,7 +125162,7 @@ router27.put("/admin/ignite/leads/:id", adminOnly7, async (req, res) => {
   await logLeadAudit(req, "lead_updated", id, updated.name, patch);
   res.json({ ok: true });
 });
-router27.delete("/admin/ignite/leads/:id", adminOnly7, async (req, res) => {
+router28.delete("/admin/ignite/leads/:id", adminOnly7, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (!id) {
     res.status(400).json({ error: "Invalid id" });
@@ -119190,7 +125176,7 @@ router27.delete("/admin/ignite/leads/:id", adminOnly7, async (req, res) => {
   await logLeadAudit(req, "lead_deleted", id, deleted.name);
   res.json({ ok: true });
 });
-router27.post("/admin/ignite/leads/bulk-import", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/leads/bulk-import", adminOnly7, async (req, res) => {
   const { leads } = req.body;
   if (!Array.isArray(leads) || leads.length === 0) {
     res.status(400).json({ error: "No leads provided" });
@@ -119242,7 +125228,7 @@ router27.post("/admin/ignite/leads/bulk-import", adminOnly7, async (req, res) =>
   await logLeadAudit(req, "bulk_import_completed", 0, "bulk_import", { imported, skipped, failed });
   res.json({ imported, skipped, failed });
 });
-router27.get("/admin/ignite/leads/export", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/leads/export", adminOnly7, async (_req, res) => {
   const leads = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -119282,7 +125268,7 @@ router27.get("/admin/ignite/leads/export", adminOnly7, async (_req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="braintam_leads_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv"`);
   res.send(csv);
 });
-router27.get("/admin/ignite/attendance/:batchId", adminOnly7, async (req, res) => {
+router28.get("/admin/ignite/attendance/:batchId", adminOnly7, async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!batchId) {
     res.status(400).json({ error: "Invalid batchId" });
@@ -119317,7 +125303,7 @@ router27.get("/admin/ignite/attendance/:batchId", adminOnly7, async (req, res) =
   const overallAttPct = totalStudents > 0 && totalDays > 0 ? Math.round(grid.reduce((sum3, e) => sum3 + e.attPct, 0) / totalStudents) : 0;
   res.json({ batch, sessions, grid, kpis: { totalStudents, overallAttPct } });
 });
-router27.get("/admin/ignite/homework", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/homework", adminOnly7, async (_req, res) => {
   const sessions = await db.select({
     id: demoSessionsTable.id,
     batchId: demoSessionsTable.batchId,
@@ -119346,7 +125332,7 @@ router27.get("/admin/ignite/homework", adminOnly7, async (_req, res) => {
   const submittedPct = totalStudentsAll > 0 ? Math.round(totalSubmissions / totalStudentsAll * 100) : 0;
   res.json({ sessions: enriched, kpis: { totalHomework, totalSubmissions, submittedPct, totalStudentsAll } });
 });
-router27.get("/admin/ignite/follow-ups", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/follow-ups", adminOnly7, async (_req, res) => {
   const followUps = await db.select({
     id: mentorFollowUpsTable.id,
     mentorId: mentorFollowUpsTable.mentorId,
@@ -119364,7 +125350,7 @@ router27.get("/admin/ignite/follow-ups", adminOnly7, async (_req, res) => {
   }).from(mentorFollowUpsTable).orderBy(desc(mentorFollowUpsTable.createdAt)).limit(200);
   res.json(followUps);
 });
-router27.get("/admin/ignite/sales-mentors", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/sales-mentors", adminOnly7, async (_req, res) => {
   const mentorWhere = and(
     or(eq(usersTable.role, "sales_mentor"), and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"))),
     eq(usersTable.isArchived, false)
@@ -119425,19 +125411,19 @@ router27.get("/admin/ignite/sales-mentors", adminOnly7, async (_req, res) => {
   }).sort((a, b) => b.conversionRate - a.conversionRate);
   res.json(enriched);
 });
-router27.get("/admin/ignite/grade-assignments", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/grade-assignments", adminOnly7, async (_req, res) => {
   const rows = await db.select().from(mentorGradeAssignmentsTable);
   const map2 = Object.fromEntries(rows.map((r) => [r.grade, r]));
   res.json(Array.from({ length: 10 }, (_2, i) => map2[i + 1] ?? { grade: i + 1, mentorId: null, mentorName: null }));
 });
-router27.post("/admin/ignite/grade-assignments", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/grade-assignments", adminOnly7, async (req, res) => {
   const assignments = req.body;
   for (const a of assignments) {
     await db.insert(mentorGradeAssignmentsTable).values({ grade: a.grade, mentorId: a.mentorId, mentorName: a.mentorName }).onConflictDoUpdate({ target: mentorGradeAssignmentsTable.grade, set: { mentorId: a.mentorId, mentorName: a.mentorName, updatedAt: /* @__PURE__ */ new Date() } });
   }
   res.json({ ok: true });
 });
-router27.post("/admin/ignite/grade-assignments/auto-balance", adminOnly7, async (_req, res) => {
+router28.post("/admin/ignite/grade-assignments/auto-balance", adminOnly7, async (_req, res) => {
   const active = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(and(
     or(eq(usersTable.role, "sales_mentor"), and(eq(usersTable.role, "mentor"), eq(usersTable.mentorType, "sales"))),
     eq(usersTable.isActive, true),
@@ -119457,7 +125443,7 @@ router27.post("/admin/ignite/grade-assignments/auto-balance", adminOnly7, async 
   }
   res.json(assignments);
 });
-router27.get("/admin/ignite/analytics", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/analytics", adminOnly7, async (_req, res) => {
   const now = /* @__PURE__ */ new Date();
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -119660,7 +125646,7 @@ router27.get("/admin/ignite/analytics", adminOnly7, async (_req, res) => {
     recentLeads
   });
 });
-router27.get("/admin/ignite/paid-students", adminOnly7, async (req, res) => {
+router28.get("/admin/ignite/paid-students", adminOnly7, async (req, res) => {
   const status = req.query.status ?? "all";
   const rows = await db.select({
     id: ignitePaidStudentsTable.id,
@@ -119715,7 +125701,7 @@ router27.get("/admin/ignite/paid-students", adminOnly7, async (req, res) => {
   ).orderBy(desc(ignitePaidStudentsTable.paidAt));
   res.json(rows);
 });
-router27.get("/admin/ignite/paid-students/unassigned", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/paid-students/unassigned", adminOnly7, async (_req, res) => {
   const rows = await db.select({
     id: ignitePaidStudentsTable.id,
     studentId: ignitePaidStudentsTable.studentId,
@@ -119741,7 +125727,7 @@ router27.get("/admin/ignite/paid-students/unassigned", adminOnly7, async (_req, 
   }).from(ignitePaidStudentsTable).innerJoin(usersTable, eq(ignitePaidStudentsTable.studentId, usersTable.id)).innerJoin(paymentsTable, eq(ignitePaidStudentsTable.paymentId, paymentsTable.id)).where(eq(ignitePaidStudentsTable.assignmentStatus, "unassigned")).orderBy(desc(ignitePaidStudentsTable.paidAt));
   res.json(rows);
 });
-router27.get("/admin/ignite/paid-students/assignable-mentors", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/paid-students/assignable-mentors", adminOnly7, async (_req, res) => {
   const ASSIGNABLE_ROLES = ["mentor", "teacher", "admin", "super_admin"];
   const staff = await db.select({
     id: usersTable.id,
@@ -119773,7 +125759,7 @@ router27.get("/admin/ignite/paid-students/assignable-mentors", adminOnly7, async
   }));
   res.json(result);
 });
-router27.post("/admin/ignite/paid-students/:id/assign", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/paid-students/:id/assign", adminOnly7, async (req, res) => {
   const recordId = Number(req.params.id);
   const { mentorId } = req.body;
   if (!recordId || !mentorId) {
@@ -119807,17 +125793,17 @@ router27.post("/admin/ignite/paid-students/:id/assign", adminOnly7, async (req, 
   req.log.info({ recordId, mentorId, assignedById }, "Ignite paid student assigned");
   res.json({ ok: true, assignedMentorId: mentor.id, assignedMentorName: mentor.name, assignedAt: now });
 });
-router27.get("/admin/ignite/leads/:id/status-history", adminOnly7, async (req, res) => {
+router28.get("/admin/ignite/leads/:id/status-history", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const rows = await db.select().from(leadStatusHistoryTable).where(eq(leadStatusHistoryTable.leadId, leadId)).orderBy(desc(leadStatusHistoryTable.changedAt)).limit(100);
   res.json(rows);
 });
-router27.get("/admin/ignite/leads/:id/reassignment-history", adminOnly7, async (req, res) => {
+router28.get("/admin/ignite/leads/:id/reassignment-history", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const rows = await db.select().from(mentorReassignmentHistoryTable).where(eq(mentorReassignmentHistoryTable.leadId, leadId)).orderBy(desc(mentorReassignmentHistoryTable.reassignedAt)).limit(100);
   res.json(rows);
 });
-router27.patch("/admin/ignite/leads/:id/mark-lost", adminOnly7, async (req, res) => {
+router28.patch("/admin/ignite/leads/:id/mark-lost", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const { reason } = req.body;
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
@@ -119856,7 +125842,7 @@ router27.patch("/admin/ignite/leads/:id/mark-lost", adminOnly7, async (req, res)
   await logLeadAudit(req, "mark_lost", leadId, lead.name, { oldStatus, reason });
   res.json({ ok: true });
 });
-router27.patch("/admin/ignite/leads/:id/reopen", adminOnly7, async (req, res) => {
+router28.patch("/admin/ignite/leads/:id/reopen", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const { remarks } = req.body;
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
@@ -119894,7 +125880,7 @@ router27.patch("/admin/ignite/leads/:id/reopen", adminOnly7, async (req, res) =>
   await logLeadAudit(req, "reopen_lead", leadId, lead.name, { remarks });
   res.json({ ok: true });
 });
-router27.post("/admin/ignite/leads/:id/reassign", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/leads/:id/reassign", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const { newMentorId, reason } = req.body;
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
@@ -119960,7 +125946,7 @@ router27.post("/admin/ignite/leads/:id/reassign", adminOnly7, async (req, res) =
   });
   res.json({ ok: true, newMentorId: newMentor.id, newMentorName: newMentor.name });
 });
-router27.patch("/admin/ignite/leads/:id/disable", adminOnly7, async (req, res) => {
+router28.patch("/admin/ignite/leads/:id/disable", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const { reason } = req.body;
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
@@ -119988,7 +125974,7 @@ router27.patch("/admin/ignite/leads/:id/disable", adminOnly7, async (req, res) =
   await logLeadAudit(req, "disable_lead", leadId, lead.name, { reason });
   res.json({ ok: true });
 });
-router27.patch("/admin/ignite/leads/:id/restore", adminOnly7, async (req, res) => {
+router28.patch("/admin/ignite/leads/:id/restore", adminOnly7, async (req, res) => {
   const leadId = Number(req.params.id);
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
   const [lead] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, leadId)).limit(1);
@@ -120015,7 +126001,7 @@ router27.patch("/admin/ignite/leads/:id/restore", adminOnly7, async (req, res) =
   await logLeadAudit(req, "restore_lead", leadId, lead.name, {});
   res.json({ ok: true });
 });
-router27.get("/admin/ignite/deploy-preview", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/deploy-preview", adminOnly7, async (_req, res) => {
   const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const [assignments, pendingLeads] = await Promise.all([
     db.select({
@@ -120176,7 +126162,7 @@ Assigned By: ${actor.name ?? "Admin"}`
     message: `Deployed ${totalDeployed} leads across grade teams.${skippedNote}`
   });
 }
-router27.post("/admin/ignite/deploy", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/deploy", adminOnly7, async (req, res) => {
   const { grade, mentorIds: requestedMentorIds, autoMode } = req.body;
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
   let resolvedMentorIds = requestedMentorIds?.length ? requestedMentorIds : void 0;
@@ -120346,7 +126332,7 @@ Assigned By: ${actor.name ?? "Admin"}`
     groups: groups.map((g) => ({ mentorId: g.mentor.id, mentorName: g.mentor.name, count: g.leads.length }))
   });
 });
-router27.get("/admin/ignite/deployments", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/deployments", adminOnly7, async (_req, res) => {
   const deps = await db.select().from(leadDeploymentsTable).orderBy(desc(leadDeploymentsTable.createdAt)).limit(50);
   const depIds = deps.map((d) => d.id);
   const groups = depIds.length > 0 ? await db.select().from(leadDeploymentGroupsTable).where(inArray(leadDeploymentGroupsTable.deploymentId, depIds)) : [];
@@ -120356,7 +126342,7 @@ router27.get("/admin/ignite/deployments", adminOnly7, async (_req, res) => {
   });
   res.json(deps.map((d) => ({ ...d, groups: groupsByDep[d.id] ?? [] })));
 });
-router27.post("/admin/ignite/redistribute", adminOnly7, async (req, res) => {
+router28.post("/admin/ignite/redistribute", adminOnly7, async (req, res) => {
   const { sourceMentorId, leadIds, targetMentorIds } = req.body;
   const actor = req.user ?? { id: null, name: "Admin", role: "admin" };
   if (!targetMentorIds?.length) {
@@ -120419,7 +126405,7 @@ router27.post("/admin/ignite/redistribute", adminOnly7, async (req, res) => {
   });
   res.json({ ok: true, moved: n, mentorsUsed: mentors.length });
 });
-router27.get("/admin/ignite/deploy/stats", adminOnly7, async (req, res) => {
+router28.get("/admin/ignite/deploy/stats", adminOnly7, async (req, res) => {
   const grade = req.query.grade ? Number(req.query.grade) : null;
   const baseWhere = and(
     inArray(usersTable.accountType, ["lead", "demo_student"]),
@@ -120448,7 +126434,7 @@ router27.get("/admin/ignite/deploy/stats", adminOnly7, async (req, res) => {
     lostLeads: Number(lostRes[0]?.c ?? 0)
   });
 });
-router27.get("/admin/ignite/deploy/mentors", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/deploy/mentors", adminOnly7, async (_req, res) => {
   const mentors = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -120495,7 +126481,7 @@ router27.get("/admin/ignite/deploy/mentors", adminOnly7, async (_req, res) => {
     conversionRate: convMap[m.id] ? Math.round(convMap[m.id].converted / convMap[m.id].total * 100) : 0
   })));
 });
-router27.get("/admin/ignite/batch-pipeline/:grade", adminOnly7, async (req, res) => {
+router28.get("/admin/ignite/batch-pipeline/:grade", adminOnly7, async (req, res) => {
   const grade = parseInt(String(req.params.grade), 10);
   if (!grade || grade < 1 || grade > 10) {
     res.status(400).json({ error: "grade must be 1\u201310" });
@@ -120530,7 +126516,7 @@ router27.get("/admin/ignite/batch-pipeline/:grade", adminOnly7, async (req, res)
     undatedCount: undatedCount ?? 0
   });
 });
-router27.get("/admin/ignite/batch-health", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/batch-health", adminOnly7, async (_req, res) => {
   const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const results = await Promise.all(
     grades.map(async (grade) => {
@@ -120560,7 +126546,7 @@ router27.get("/admin/ignite/batch-health", adminOnly7, async (_req, res) => {
   );
   res.json(results);
 });
-router27.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_admin"), async (req, res) => {
+router28.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_admin"), async (req, res) => {
   const grade = parseInt(String(req.params.grade), 10);
   if (!grade || grade < 1 || grade > 10) {
     res.status(400).json({ error: "grade must be 1\u201310" });
@@ -120592,7 +126578,7 @@ router27.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "supe
     res.status(500).json({ error: "Pipeline repair failed", detail: String(err) });
   }
 });
-router27.get("/admin/ignite/ignite-mentors", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/ignite-mentors", adminOnly7, async (_req, res) => {
   const mentors = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -120624,7 +126610,7 @@ router27.get("/admin/ignite/ignite-mentors", adminOnly7, async (_req, res) => {
   }));
   res.json(result);
 });
-router27.patch("/admin/ignite/ignite-mentors/:mentorId/assign", adminOnly7, async (req, res) => {
+router28.patch("/admin/ignite/ignite-mentors/:mentorId/assign", adminOnly7, async (req, res) => {
   const mentorId = parseInt(req.params["mentorId"], 10);
   const { studentIgniteIds } = req.body;
   if (!Array.isArray(studentIgniteIds) || studentIgniteIds.length === 0) {
@@ -120639,13 +126625,13 @@ router27.patch("/admin/ignite/ignite-mentors/:mentorId/assign", adminOnly7, asyn
   await db.update(ignitePaidStudentsTable).set({ assignedMentorId: mentorId, assignedMentorName: mentor.name }).where(inArray(ignitePaidStudentsTable.id, studentIgniteIds));
   res.json({ ok: true, assigned: studentIgniteIds.length, mentorName: mentor.name });
 });
-router27.patch("/admin/ignite/ignite-mentors/:mentorId", adminOnly7, async (req, res) => {
+router28.patch("/admin/ignite/ignite-mentors/:mentorId", adminOnly7, async (req, res) => {
   const mentorId = parseInt(req.params["mentorId"], 10);
   const { isActive } = req.body;
   await db.update(usersTable).set({ isActive: isActive ?? true }).where(eq(usersTable.id, mentorId));
   res.json({ ok: true });
 });
-router27.get("/admin/ignite/ignite-mentors/unassigned-students", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/ignite-mentors/unassigned-students", adminOnly7, async (_req, res) => {
   const rows = await db.select({
     id: ignitePaidStudentsTable.id,
     studentId: ignitePaidStudentsTable.studentId,
@@ -120656,7 +126642,7 @@ router27.get("/admin/ignite/ignite-mentors/unassigned-students", adminOnly7, asy
   }).from(ignitePaidStudentsTable).leftJoin(usersTable, eq(usersTable.id, ignitePaidStudentsTable.studentId)).where(isNull(ignitePaidStudentsTable.assignedMentorId)).orderBy(usersTable.name);
   res.json(rows);
 });
-router27.get("/admin/ignite/grade-teams", adminOnly7, async (_req, res) => {
+router28.get("/admin/ignite/grade-teams", adminOnly7, async (_req, res) => {
   const [assignments, mentors, leadStats] = await Promise.all([
     db.select({
       id: gradeMentorAssignmentsTable.id,
@@ -120712,7 +126698,7 @@ router27.get("/admin/ignite/grade-teams", adminOnly7, async (_req, res) => {
   });
   res.json({ grades, allMentors: mentors });
 });
-router27.put("/admin/ignite/grade-teams/:grade/mentors", adminOnly7, async (req, res) => {
+router28.put("/admin/ignite/grade-teams/:grade/mentors", adminOnly7, async (req, res) => {
   const grade = parseInt(String(req.params.grade), 10);
   if (!grade || grade < 1 || grade > 10) {
     res.status(400).json({ error: "Invalid grade" });
@@ -120735,12 +126721,12 @@ router27.put("/admin/ignite/grade-teams/:grade/mentors", adminOnly7, async (req,
   }
   res.json({ ok: true, grade, mentorCount: mentorIds.length });
 });
-var ignite_default = router27;
+var ignite_default = router28;
 
 // src/routes/payments.ts
-var import_express28 = __toESM(require_express2(), 1);
+var import_express29 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
-import crypto7 from "crypto";
+import crypto10 from "crypto";
 
 // src/lib/masteryPaymentComplete.ts
 async function onMasteryPaymentComplete(opts) {
@@ -120813,7 +126799,7 @@ async function onMasteryPaymentComplete(opts) {
 }
 
 // src/routes/payments.ts
-var router28 = (0, import_express28.Router)();
+var router29 = (0, import_express29.Router)();
 function normalizePhone2(raw) {
   const digits = raw.replace(/\D/g, "");
   let normalized;
@@ -120835,7 +126821,7 @@ function getDemoAmountPaise(grade) {
   if (grade <= 8) return 3900;
   return 8900;
 }
-router28.post("/payments/create-order", async (req, res) => {
+router29.post("/payments/create-order", async (req, res) => {
   const { phone: rawPhone, grade: rawGrade } = req.body;
   const phone = normalizePhone2(String(rawPhone ?? ""));
   if (!phone) {
@@ -120888,7 +126874,7 @@ router28.post("/payments/create-order", async (req, res) => {
     existingAccount: existingUser ? { accountType: existingUser.accountType, name: existingUser.name } : null
   });
 });
-router28.post("/payments/webhook", async (req, res) => {
+router29.post("/payments/webhook", async (req, res) => {
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!webhookSecret) {
     await logEnrolmentError({
@@ -120910,7 +126896,7 @@ router28.post("/payments/webhook", async (req, res) => {
     res.sendStatus(200);
     return;
   }
-  const expectedSignature = crypto7.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+  const expectedSignature = crypto10.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
   if (expectedSignature !== receivedSignature) {
     await logEnrolmentError({
       errorType: "signature_mismatch",
@@ -121084,7 +127070,7 @@ router28.post("/payments/webhook", async (req, res) => {
   }).where(eq(paymentsTable.razorpayOrderId, orderId));
   res.sendStatus(200);
 });
-router28.post("/payments/create-demo-order", async (req, res) => {
+router29.post("/payments/create-demo-order", async (req, res) => {
   const {
     phone: rawPhone,
     grade: rawGrade,
@@ -121149,7 +127135,7 @@ router28.post("/payments/create-demo-order", async (req, res) => {
     keyId: process.env.RAZORPAY_KEY_ID
   });
 });
-router28.post("/payments/verify-demo-payment", async (req, res) => {
+router29.post("/payments/verify-demo-payment", async (req, res) => {
   const {
     razorpay_order_id,
     razorpay_payment_id,
@@ -121180,7 +127166,7 @@ router28.post("/payments/verify-demo-payment", async (req, res) => {
     res.status(503).json({ error: "Payment service misconfigured." });
     return;
   }
-  const expectedSig = crypto7.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+  const expectedSig = crypto10.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
   if (expectedSig !== razorpay_signature) {
     await logEnrolmentError({
       errorType: "verify_signature_mismatch",
@@ -121341,7 +127327,7 @@ var FULL_GRADE_PRICES = {
   8: 4999800
   // ₹49,998
 };
-router28.post("/payments/create-full-order", async (req, res) => {
+router29.post("/payments/create-full-order", async (req, res) => {
   const { phone: rawPhone, grade: rawGrade, program: rawProgram, name: rawName } = req.body;
   const phone = normalizePhone2(String(rawPhone ?? ""));
   if (!phone) {
@@ -121421,11 +127407,11 @@ async function logEnrolmentError(opts) {
   } catch {
   }
 }
-var payments_default = router28;
+var payments_default = router29;
 
 // src/routes/commandCenter.ts
-var import_express29 = __toESM(require_express2(), 1);
-var router29 = (0, import_express29.Router)();
+var import_express30 = __toESM(require_express2(), 1);
+var router30 = (0, import_express30.Router)();
 var adminOnly8 = requireRole("admin", "super_admin");
 var STAFF_ROLES = ["admin", "super_admin", "manager", "assistant_manager", "sales_mentor", "academic_mentor", "teacher", "mentor"];
 var VALID_ROLES = ["super_admin", "admin", "manager", "assistant_manager", "sales_mentor", "academic_mentor", "teacher", "mentor"];
@@ -121448,7 +127434,7 @@ async function logStaffAction(opts) {
   } catch (_2) {
   }
 }
-router29.get("/admin/command-center/dashboard", adminOnly8, async (req, res) => {
+router30.get("/admin/command-center/dashboard", adminOnly8, async (req, res) => {
   try {
     const now = /* @__PURE__ */ new Date();
     const todayStr = now.toISOString().split("T")[0];
@@ -121486,7 +127472,7 @@ router29.get("/admin/command-center/dashboard", adminOnly8, async (req, res) => 
     res.status(500).json({ error: "Failed to load Command Center dashboard" });
   }
 });
-router29.get("/admin/staff", adminOnly8, async (req, res) => {
+router30.get("/admin/staff", adminOnly8, async (req, res) => {
   try {
     const {
       search = "",
@@ -121534,7 +127520,7 @@ router29.get("/admin/staff", adminOnly8, async (req, res) => {
     res.status(500).json({ error: "Failed to list staff" });
   }
 });
-router29.get("/admin/staff/:id", adminOnly8, async (req, res) => {
+router30.get("/admin/staff/:id", adminOnly8, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121572,7 +127558,7 @@ router29.get("/admin/staff/:id", adminOnly8, async (req, res) => {
     res.status(500).json({ error: "Failed to load staff profile" });
   }
 });
-router29.patch("/admin/staff/:id", adminOnly8, async (req, res) => {
+router30.patch("/admin/staff/:id", adminOnly8, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121611,7 +127597,7 @@ router29.patch("/admin/staff/:id", adminOnly8, async (req, res) => {
     res.status(500).json({ error: "Failed to update staff member" });
   }
 });
-router29.post("/admin/staff/:id/change-role", adminOnly8, async (req, res) => {
+router30.post("/admin/staff/:id/change-role", adminOnly8, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121656,7 +127642,7 @@ router29.post("/admin/staff/:id/change-role", adminOnly8, async (req, res) => {
     res.status(500).json({ error: "Failed to change role" });
   }
 });
-router29.post("/admin/staff/:id/reset-password", adminOnly8, async (req, res) => {
+router30.post("/admin/staff/:id/reset-password", adminOnly8, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121687,11 +127673,11 @@ router29.post("/admin/staff/:id/reset-password", adminOnly8, async (req, res) =>
     res.status(500).json({ error: "Failed to process reset password request" });
   }
 });
-var commandCenter_default = router29;
+var commandCenter_default = router30;
 
 // src/routes/adminMentors.ts
-var import_express30 = __toESM(require_express2(), 1);
-var router30 = (0, import_express30.Router)();
+var import_express31 = __toESM(require_express2(), 1);
+var router31 = (0, import_express31.Router)();
 var adminOnly9 = requireRole("admin", "super_admin");
 var MENTOR_ROLES = ["mentor", "sales_mentor", "academic_mentor"];
 var VALID_TYPES = ["sales_mentor", "academic_mentor"];
@@ -121719,7 +127705,7 @@ async function logMentorAction(opts) {
   } catch (_2) {
   }
 }
-router30.get("/admin/cc/mentors", adminOnly9, async (req, res) => {
+router31.get("/admin/cc/mentors", adminOnly9, async (req, res) => {
   try {
     const {
       search = "",
@@ -121805,7 +127791,7 @@ router30.get("/admin/cc/mentors", adminOnly9, async (req, res) => {
     res.status(500).json({ error: "Failed to list mentors" });
   }
 });
-router30.get("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
+router31.get("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121863,7 +127849,7 @@ router30.get("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
     res.status(500).json({ error: "Failed to load mentor profile" });
   }
 });
-router30.get("/admin/cc/mentors/:id/students", adminOnly9, async (req, res) => {
+router31.get("/admin/cc/mentors/:id/students", adminOnly9, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121900,7 +127886,7 @@ router30.get("/admin/cc/mentors/:id/students", adminOnly9, async (req, res) => {
     res.status(500).json({ error: "Failed to load assigned students" });
   }
 });
-router30.patch("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
+router31.patch("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121945,7 +127931,7 @@ router30.patch("/admin/cc/mentors/:id", adminOnly9, async (req, res) => {
     res.status(500).json({ error: "Failed to update mentor" });
   }
 });
-router30.post("/admin/cc/mentors/:id/change-type", adminOnly9, async (req, res) => {
+router31.post("/admin/cc/mentors/:id/change-type", adminOnly9, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -121982,11 +127968,11 @@ router30.post("/admin/cc/mentors/:id/change-type", adminOnly9, async (req, res) 
     res.status(500).json({ error: "Failed to change mentor type" });
   }
 });
-var adminMentors_default = router30;
+var adminMentors_default = router31;
 
 // src/routes/adminTeachers.ts
-var import_express31 = __toESM(require_express2(), 1);
-var router31 = (0, import_express31.Router)();
+var import_express32 = __toESM(require_express2(), 1);
+var router32 = (0, import_express32.Router)();
 var adminOnly10 = requireRole("admin", "super_admin");
 async function logTeacherAction(opts) {
   try {
@@ -122007,7 +127993,7 @@ async function logTeacherAction(opts) {
   } catch (_2) {
   }
 }
-router31.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
+router32.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
   try {
     const {
       search = "",
@@ -122080,7 +128066,7 @@ router31.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
     res.status(500).json({ error: "Failed to list teachers" });
   }
 });
-router31.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
+router32.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122143,7 +128129,7 @@ router31.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
     res.status(500).json({ error: "Failed to load teacher profile" });
   }
 });
-router31.get("/admin/cc/teachers/:id/classes", adminOnly10, async (req, res) => {
+router32.get("/admin/cc/teachers/:id/classes", adminOnly10, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122172,7 +128158,7 @@ router31.get("/admin/cc/teachers/:id/classes", adminOnly10, async (req, res) => 
     res.status(500).json({ error: "Failed to load teacher classes" });
   }
 });
-router31.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
+router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
   const { name, email: email3, password, phone, department } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "Name is required" });
@@ -122233,7 +128219,7 @@ router31.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
     res.status(500).json({ error: "Failed to create teacher" });
   }
 });
-router31.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
+router32.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122270,11 +128256,11 @@ router31.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
     res.status(500).json({ error: "Failed to update teacher" });
   }
 });
-var adminTeachers_default = router31;
+var adminTeachers_default = router32;
 
 // src/routes/adminRoles.ts
-var import_express32 = __toESM(require_express2(), 1);
-var router32 = (0, import_express32.Router)();
+var import_express33 = __toESM(require_express2(), 1);
+var router33 = (0, import_express33.Router)();
 var adminOnly11 = requireRole("admin", "super_admin");
 async function logRoleAction(opts) {
   try {
@@ -122328,7 +128314,7 @@ async function ensureSystemRoles() {
     await db.insert(rolesTable).values(toInsert).onConflictDoNothing();
   }
 }
-router32.get("/admin/roles", adminOnly11, async (req, res) => {
+router33.get("/admin/roles", adminOnly11, async (req, res) => {
   try {
     await ensureSystemRoles();
     await ensurePermissionsSeeded();
@@ -122348,7 +128334,7 @@ router32.get("/admin/roles", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to list roles" });
   }
 });
-router32.get("/admin/roles/:id", adminOnly11, async (req, res) => {
+router33.get("/admin/roles/:id", adminOnly11, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122384,7 +128370,7 @@ router32.get("/admin/roles/:id", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to load role" });
   }
 });
-router32.get("/admin/permissions", adminOnly11, async (req, res) => {
+router33.get("/admin/permissions", adminOnly11, async (req, res) => {
   try {
     await ensurePermissionsSeeded();
     const perms = await db.select().from(rbacPermissionsTable).orderBy(asc(rbacPermissionsTable.module), asc(rbacPermissionsTable.action));
@@ -122394,7 +128380,7 @@ router32.get("/admin/permissions", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to list permissions" });
   }
 });
-router32.post("/admin/roles", adminOnly11, async (req, res) => {
+router33.post("/admin/roles", adminOnly11, async (req, res) => {
   const { name, description, cloneFromId } = req.body;
   if (!name?.trim()) {
     res.status(400).json({ error: "Role name is required" });
@@ -122429,7 +128415,7 @@ router32.post("/admin/roles", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to create role" });
   }
 });
-router32.patch("/admin/roles/:id", adminOnly11, async (req, res) => {
+router33.patch("/admin/roles/:id", adminOnly11, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122465,7 +128451,7 @@ router32.patch("/admin/roles/:id", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to update role" });
   }
 });
-router32.post("/admin/roles/:id/clone", adminOnly11, async (req, res) => {
+router33.post("/admin/roles/:id/clone", adminOnly11, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122513,7 +128499,7 @@ router32.post("/admin/roles/:id/clone", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to clone role" });
   }
 });
-router32.post("/admin/permissions/update", adminOnly11, async (req, res) => {
+router33.post("/admin/permissions/update", adminOnly11, async (req, res) => {
   const { roleId, module: mod, action, granted } = req.body;
   if (!roleId || !mod || !action) {
     res.status(400).json({ error: "roleId, module, and action are required" });
@@ -122557,13 +128543,13 @@ router32.post("/admin/permissions/update", adminOnly11, async (req, res) => {
     res.status(500).json({ error: "Failed to update permission" });
   }
 });
-var adminRoles_default = router32;
+var adminRoles_default = router33;
 
 // src/routes/adminAuditLogs.ts
-var import_express33 = __toESM(require_express2(), 1);
-var router33 = (0, import_express33.Router)();
+var import_express34 = __toESM(require_express2(), 1);
+var router34 = (0, import_express34.Router)();
 var adminOnly12 = requireRole("admin", "super_admin");
-router33.get("/admin/cc/audit-logs", adminOnly12, async (req, res) => {
+router34.get("/admin/cc/audit-logs", adminOnly12, async (req, res) => {
   const {
     search = "",
     role = "all",
@@ -122657,7 +128643,7 @@ router33.get("/admin/cc/audit-logs", adminOnly12, async (req, res) => {
     res.status(500).json({ error: "Failed to load audit logs" });
   }
 });
-router33.get("/admin/cc/audit-logs/:id", adminOnly12, async (req, res) => {
+router34.get("/admin/cc/audit-logs/:id", adminOnly12, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -122675,12 +128661,12 @@ router33.get("/admin/cc/audit-logs/:id", adminOnly12, async (req, res) => {
     res.status(500).json({ error: "Failed to load event" });
   }
 });
-var adminAuditLogs_default = router33;
+var adminAuditLogs_default = router34;
 
 // src/routes/longTermPayments.ts
-var import_express34 = __toESM(require_express2(), 1);
+var import_express35 = __toESM(require_express2(), 1);
 var import_razorpay2 = __toESM(require_razorpay(), 1);
-var router34 = (0, import_express34.Router)();
+var router35 = (0, import_express35.Router)();
 var adminOnly13 = requireRole("admin", "super_admin");
 var mentorAuth3 = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin");
 function getRazorpay2() {
@@ -122715,11 +128701,11 @@ async function seedCoursePricing() {
     }).onConflictDoNothing();
   }
 }
-router34.get("/admin/course-pricing", adminOnly13, async (_req, res) => {
+router35.get("/admin/course-pricing", adminOnly13, async (_req, res) => {
   const rows = await db.select().from(coursePricingTable).orderBy(coursePricingTable.grade);
   res.json(rows);
 });
-router34.put("/admin/course-pricing/:grade", adminOnly13, async (req, res) => {
+router35.put("/admin/course-pricing/:grade", adminOnly13, async (req, res) => {
   const grade = parseInt(String(req.params.grade), 10);
   if (!grade || grade < 1 || grade > 10) {
     res.status(400).json({ error: "Invalid grade" });
@@ -122761,7 +128747,7 @@ router34.put("/admin/course-pricing/:grade", adminOnly13, async (req, res) => {
   }
   res.json({ ok: true, grade, fullPrice: fp, scholarshipPct: sp, finalPrice });
 });
-router34.post("/mentor/long-term/create-payment-link", mentorAuth3, async (req, res) => {
+router35.post("/mentor/long-term/create-payment-link", mentorAuth3, async (req, res) => {
   const mentorId = req.user?.id;
   const { studentId, paymentType, expiryDate, expiryTime } = req.body;
   const partialAmount = req.body.partialAmount;
@@ -122859,7 +128845,7 @@ router34.post("/mentor/long-term/create-payment-link", mentorAuth3, async (req, 
     parentPhone: lead.parentPhone ?? lead.phone ?? null
   });
 });
-router34.get("/mentor/long-term/pricing/:grade", mentorAuth3, async (req, res) => {
+router35.get("/mentor/long-term/pricing/:grade", mentorAuth3, async (req, res) => {
   const grade = parseInt(String(req.params.grade), 10);
   const [pricing] = await db.select().from(coursePricingTable).where(eq(coursePricingTable.grade, grade)).limit(1);
   if (!pricing) {
@@ -122877,7 +128863,7 @@ router34.get("/mentor/long-term/pricing/:grade", mentorAuth3, async (req, res) =
     fullPriceRupees: Math.round(pricing.fullPrice / 100)
   });
 });
-router34.get("/mentor/long-term/payment-links", mentorAuth3, async (req, res) => {
+router35.get("/mentor/long-term/payment-links", mentorAuth3, async (req, res) => {
   const mentorId = req.user?.id;
   const rows = await db.select({
     id: paymentLinksTable.id,
@@ -122899,7 +128885,7 @@ router34.get("/mentor/long-term/payment-links", mentorAuth3, async (req, res) =>
     amountRupees: Math.round((r.amount ?? 0) / 100)
   })));
 });
-router34.post("/mentor/long-term/upload-payment", mentorAuth3, async (req, res) => {
+router35.post("/mentor/long-term/upload-payment", mentorAuth3, async (req, res) => {
   const { studentId, amount, referenceNumber, screenshotsJson, type, paymentDate, remarks } = req.body;
   if (!studentId || !amount || !referenceNumber) {
     res.status(400).json({ error: "studentId, amount, and referenceNumber are required" });
@@ -122942,7 +128928,7 @@ router34.post("/mentor/long-term/upload-payment", mentorAuth3, async (req, res) 
   }).returning();
   res.json({ id: row.id, status: "pending", isDuplicate, duplicatePaymentId });
 });
-router34.get("/admin/long-term/manual-payments/stats", adminOnly13, async (_req, res) => {
+router35.get("/admin/long-term/manual-payments/stats", adminOnly13, async (_req, res) => {
   const todayStart4 = /* @__PURE__ */ new Date();
   todayStart4.setHours(0, 0, 0, 0);
   const [all, pendingCount, approvedToday, rejectedToday, duplicateCount] = await Promise.all([
@@ -122962,7 +128948,7 @@ router34.get("/admin/long-term/manual-payments/stats", adminOnly13, async (_req,
     duplicateCount: Number(duplicateCount[0]?.count ?? 0)
   });
 });
-router34.get("/admin/long-term/manual-payments", adminOnly13, async (_req, res) => {
+router35.get("/admin/long-term/manual-payments", adminOnly13, async (_req, res) => {
   const rows = await db.execute(sql`
     SELECT
       mp.id,
@@ -122999,7 +128985,7 @@ router34.get("/admin/long-term/manual-payments", adminOnly13, async (_req, res) 
   `);
   res.json(rows.rows);
 });
-router34.post("/admin/long-term/manual-payments/:id/approve", adminOnly13, async (req, res) => {
+router35.post("/admin/long-term/manual-payments/:id/approve", adminOnly13, async (req, res) => {
   const id = Number(req.params["id"]);
   const actor = req.user;
   if (isNaN(id)) {
@@ -123015,8 +129001,8 @@ router34.post("/admin/long-term/manual-payments/:id/approve", adminOnly13, async
     res.status(409).json({ error: `Payment is already ${existing.status}` });
     return;
   }
-  const year = (/* @__PURE__ */ new Date()).getFullYear();
-  const prefix = `BTL-${year}-`;
+  const year2 = (/* @__PURE__ */ new Date()).getFullYear();
+  const prefix = `BTL-${year2}-`;
   const maxRow = await db.execute(sql`
     SELECT receipt_number FROM manual_payments
     WHERE receipt_number LIKE ${prefix + "%"}
@@ -123053,7 +129039,7 @@ router34.post("/admin/long-term/manual-payments/:id/approve", adminOnly13, async
   }
   res.json({ id: row.id, status: row.status, receiptNumber });
 });
-router34.post("/admin/long-term/manual-payments/:id/reject", adminOnly13, async (req, res) => {
+router35.post("/admin/long-term/manual-payments/:id/reject", adminOnly13, async (req, res) => {
   const id = Number(req.params["id"]);
   const { reason } = req.body;
   const actor = req.user;
@@ -123093,7 +129079,7 @@ router34.post("/admin/long-term/manual-payments/:id/reject", adminOnly13, async 
   }
   res.json({ id: row.id, status: row.status });
 });
-router34.get("/mentor/notifications", mentorAuth3, async (req, res) => {
+router35.get("/mentor/notifications", mentorAuth3, async (req, res) => {
   const mentorId = req.authUser.id;
   const [activeCycle] = await db.select().from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).limit(1);
   const cycleLeadCounts = await db.select({
@@ -123168,7 +129154,7 @@ router34.get("/mentor/notifications", mentorAuth3, async (req, res) => {
   const notifs = [...leadNotifs, ...paymentNotifs].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 50);
   res.json(notifs);
 });
-router34.get("/admin/payment-status", adminOnly13, async (req, res) => {
+router35.get("/admin/payment-status", adminOnly13, async (req, res) => {
   const { status: statusFilter, search, grade: gradeFilter } = req.query;
   let rows = await db.select({
     id: paymentLinksTable.id,
@@ -123207,11 +129193,11 @@ router34.get("/admin/payment-status", adminOnly13, async (req, res) => {
     mentorName: r.mentorId ? mentorMap[r.mentorId] ?? "\u2014" : "\u2014"
   })));
 });
-var longTermPayments_default = router34;
+var longTermPayments_default = router35;
 
 // src/routes/masteryStudents.ts
-var import_express35 = __toESM(require_express2(), 1);
-var router35 = (0, import_express35.Router)();
+var import_express36 = __toESM(require_express2(), 1);
+var router36 = (0, import_express36.Router)();
 var adminOnly14 = requireRole("admin", "super_admin");
 var allStaff = requireRole("admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 async function addTimeline(masteryStudentId, eventType, eventLabel, eventData, actorId, actorName) {
@@ -123224,7 +129210,7 @@ async function addTimeline(masteryStudentId, eventType, eventLabel, eventData, a
     actorName: actorName ?? null
   });
 }
-router35.post("/admin/ignite/move-to-mastery", adminOnly14, async (req, res) => {
+router36.post("/admin/ignite/move-to-mastery", adminOnly14, async (req, res) => {
   const actor = req.authUser;
   const {
     igniteLeadId,
@@ -123304,7 +129290,7 @@ router35.post("/admin/ignite/move-to-mastery", adminOnly14, async (req, res) => 
   }
   res.json({ ok: true, masteryStudent: ms });
 });
-router35.get("/admin/mastery/students", allStaff, async (req, res) => {
+router36.get("/admin/mastery/students", allStaff, async (req, res) => {
   const status = String(req.query.status ?? "");
   const grade = String(req.query.grade ?? "");
   const mentorIdQ = String(req.query.mentorId ?? "");
@@ -123353,7 +129339,7 @@ router35.get("/admin/mastery/students", allStaff, async (req, res) => {
     students: limitQ ? filtered.slice(0, limitQ) : filtered
   });
 });
-router35.get("/admin/mastery/students/:id", allStaff, async (req, res) => {
+router36.get("/admin/mastery/students/:id", allStaff, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123387,7 +129373,7 @@ router35.get("/admin/mastery/students/:id", allStaff, async (req, res) => {
   }
   res.json({ student, timeline, igniteHistory });
 });
-router35.patch("/admin/mastery/students/:id", adminOnly14, async (req, res) => {
+router36.patch("/admin/mastery/students/:id", adminOnly14, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123442,7 +129428,7 @@ router35.patch("/admin/mastery/students/:id", adminOnly14, async (req, res) => {
   }
   res.json({ ok: true, student: updated });
 });
-router35.post("/admin/mastery/students/:id/timeline", adminOnly14, async (req, res) => {
+router36.post("/admin/mastery/students/:id/timeline", adminOnly14, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123457,12 +129443,12 @@ router35.post("/admin/mastery/students/:id/timeline", adminOnly14, async (req, r
   await addTimeline(id, eventType, eventLabel, eventData ?? null, actor.id, actor.name);
   res.json({ ok: true });
 });
-var masteryStudents_default = router35;
+var masteryStudents_default = router36;
 
 // src/routes/masteryPayments.ts
-var import_express36 = __toESM(require_express2(), 1);
+var import_express37 = __toESM(require_express2(), 1);
 var import_razorpay3 = __toESM(require_razorpay(), 1);
-var router36 = (0, import_express36.Router)();
+var router37 = (0, import_express37.Router)();
 var adminOnly15 = requireRole("admin", "super_admin");
 var allStaff2 = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 function getRazorpay3() {
@@ -123476,7 +129462,7 @@ function todayStart2() {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-router36.get("/admin/mastery/payments", adminOnly15, async (req, res) => {
+router37.get("/admin/mastery/payments", adminOnly15, async (req, res) => {
   const { status, grade, search, mentorId, dateFrom, dateTo } = req.query;
   const rows = await db.select().from(masteryPaymentVerificationsTable).orderBy(desc(masteryPaymentVerificationsTable.uploadedAt));
   let filtered = rows;
@@ -123544,7 +129530,7 @@ router36.get("/admin/mastery/payments", adminOnly15, async (req, res) => {
   const mentors = Array.from(mentorMap.values()).sort((a, b) => b.total - a.total);
   res.json({ payments: filtered, stats, mentors });
 });
-router36.post("/admin/mastery/payments", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments", adminOnly15, async (req, res) => {
   const {
     masteryStudentId,
     studentId,
@@ -123577,7 +129563,7 @@ router36.post("/admin/mastery/payments", adminOnly15, async (req, res) => {
   }).returning();
   res.json(row);
 });
-router36.post("/mentor/mastery/payments", allStaff2, async (req, res) => {
+router37.post("/mentor/mastery/payments", allStaff2, async (req, res) => {
   const {
     masteryStudentId,
     studentId,
@@ -123624,7 +129610,7 @@ router36.post("/mentor/mastery/payments", allStaff2, async (req, res) => {
   }).returning();
   res.json({ id: row.id, status: row.status });
 });
-router36.get("/mentor/mastery/payments", allStaff2, async (req, res) => {
+router37.get("/mentor/mastery/payments", allStaff2, async (req, res) => {
   const user = req.authUser;
   const isAdmin = ["admin", "super_admin"].includes(user.role ?? "");
   const rows = await db.select({
@@ -123650,7 +129636,7 @@ router36.get("/mentor/mastery/payments", allStaff2, async (req, res) => {
   });
   res.json(sanitised);
 });
-router36.get("/admin/mastery/payments/:id", adminOnly15, async (req, res) => {
+router37.get("/admin/mastery/payments/:id", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123663,7 +129649,7 @@ router36.get("/admin/mastery/payments/:id", adminOnly15, async (req, res) => {
   }
   res.json(row);
 });
-router36.post("/admin/mastery/payments/:id/verify-razorpay", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments/:id/verify-razorpay", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123727,7 +129713,7 @@ router36.post("/admin/mastery/payments/:id/verify-razorpay", adminOnly15, async 
   }).where(eq(masteryPaymentVerificationsTable.id, id)).returning();
   res.json({ id: updated.id, status: updated.status, fraudCheckResult });
 });
-router36.post("/admin/mastery/payments/:id/approve", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments/:id/approve", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123758,7 +129744,7 @@ router36.post("/admin/mastery/payments/:id/approve", adminOnly15, async (req, re
   }
   res.json({ id: row.id, status: row.status });
 });
-router36.get("/mentor/mastery/achievement-tickers", allStaff2, async (req, res) => {
+router37.get("/mentor/mastery/achievement-tickers", allStaff2, async (req, res) => {
   const user = req.authUser;
   const isAdmin = ["admin", "super_admin"].includes(user.role ?? "");
   if (isAdmin) {
@@ -123773,7 +129759,7 @@ router36.get("/mentor/mastery/achievement-tickers", allStaff2, async (req, res) 
   ).orderBy(achievementTickersTable.createdAt);
   res.json(rows);
 });
-router36.post("/mentor/mastery/achievement-tickers/:id/shown", allStaff2, async (req, res) => {
+router37.post("/mentor/mastery/achievement-tickers/:id/shown", allStaff2, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123782,7 +129768,7 @@ router36.post("/mentor/mastery/achievement-tickers/:id/shown", allStaff2, async 
   await db.update(achievementTickersTable).set({ isShown: true }).where(eq(achievementTickersTable.id, id));
   res.json({ ok: true });
 });
-router36.get("/admin/mastery/payment-leaderboard", adminOnly15, async (_req, res) => {
+router37.get("/admin/mastery/payment-leaderboard", adminOnly15, async (_req, res) => {
   const mentors = await db.select({ id: usersTable.id, name: usersTable.name, mentorType: usersTable.mentorType }).from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true)));
   const tickers = await db.select({
     mentorId: achievementTickersTable.mentorId
@@ -123799,7 +129785,7 @@ router36.get("/admin/mastery/payment-leaderboard", adminOnly15, async (_req, res
   })).filter((m) => m.successfulPayments > 0).sort((a, b) => b.successfulPayments - a.successfulPayments).map((m, i) => ({ ...m, rank: i + 1 }));
   res.json(leaderboard);
 });
-router36.post("/admin/mastery/payments/:id/reject", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments/:id/reject", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123818,7 +129804,7 @@ router36.post("/admin/mastery/payments/:id/reject", adminOnly15, async (req, res
   }
   res.json({ id: row.id, status: row.status });
 });
-router36.post("/admin/mastery/payments/:id/archive", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments/:id/archive", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123836,7 +129822,7 @@ router36.post("/admin/mastery/payments/:id/archive", adminOnly15, async (req, re
   }
   res.json({ id: row.id, status: row.status });
 });
-router36.post("/admin/mastery/payments/:id/flag-duplicate", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments/:id/flag-duplicate", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123882,7 +129868,7 @@ router36.post("/admin/mastery/payments/:id/flag-duplicate", adminOnly15, async (
   }).where(eq(masteryPaymentVerificationsTable.id, id)).returning();
   res.json({ id: updated.id, status: updated.status, duplicateInfo });
 });
-router36.post("/admin/mastery/students/:id/create-payment-link", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/students/:id/create-payment-link", adminOnly15, async (req, res) => {
   const studentId = parseInt(req.params["id"], 10);
   if (isNaN(studentId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123940,7 +129926,7 @@ router36.post("/admin/mastery/students/:id/create-payment-link", adminOnly15, as
     res.status(502).json({ error: `Failed to create payment link: ${msg}` });
   }
 });
-router36.post("/admin/mastery/payments/:id/refund", adminOnly15, async (req, res) => {
+router37.post("/admin/mastery/payments/:id/refund", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123959,7 +129945,7 @@ router36.post("/admin/mastery/payments/:id/refund", adminOnly15, async (req, res
   }
   res.json({ id: row.id, status: row.status });
 });
-router36.get("/admin/mastery/payments/:id/check-duplicate", adminOnly15, async (req, res) => {
+router37.get("/admin/mastery/payments/:id/check-duplicate", adminOnly15, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -123990,7 +129976,7 @@ router36.get("/admin/mastery/payments/:id/check-duplicate", adminOnly15, async (
   const duplicates = matches2.filter((m) => m.id !== id);
   res.json({ isDuplicate: duplicates.length > 0, duplicates });
 });
-router36.get("/admin/mastery/revenue", adminOnly15, async (req, res) => {
+router37.get("/admin/mastery/revenue", adminOnly15, async (req, res) => {
   const { grade, mentorId, dateFrom, dateTo, academicYear } = req.query;
   const rows = await db.select().from(masteryStudentsTable).orderBy(desc(masteryStudentsTable.admissionDate));
   let filtered = rows;
@@ -124061,11 +130047,11 @@ router36.get("/admin/mastery/revenue", adminOnly15, async (req, res) => {
   const academicYears = [...new Set(rows.map((r) => r.academicYear).filter(Boolean))].sort().reverse();
   res.json({ summary, byGrade, byMentor, students: filtered, academicYears });
 });
-var masteryPayments_default = router36;
+var masteryPayments_default = router37;
 
 // src/routes/masteryDeployment.ts
-var import_express37 = __toESM(require_express2(), 1);
-var router37 = (0, import_express37.Router)();
+var import_express38 = __toESM(require_express2(), 1);
+var router38 = (0, import_express38.Router)();
 var adminOnly16 = requireRole("admin", "super_admin");
 var allStaff3 = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 function makeBatchCode() {
@@ -124074,7 +130060,7 @@ function makeBatchCode() {
   const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `DEPLOY-${ymd}-${rnd}`;
 }
-router37.get("/admin/mastery/deployment/stats", adminOnly16, async (_req, res) => {
+router38.get("/admin/mastery/deployment/stats", adminOnly16, async (_req, res) => {
   const allStudents = await db.select({
     id: masteryStudentsTable.id,
     masteryStatus: masteryStudentsTable.masteryStatus,
@@ -124091,7 +130077,7 @@ router37.get("/admin/mastery/deployment/stats", adminOnly16, async (_req, res) =
   };
   res.json(stats);
 });
-router37.get("/admin/mastery/deployment/unassigned", adminOnly16, async (req, res) => {
+router38.get("/admin/mastery/deployment/unassigned", adminOnly16, async (req, res) => {
   const { grade } = req.query;
   const conditions = [isNull(masteryStudentsTable.mentorId)];
   if (grade) {
@@ -124101,7 +130087,7 @@ router37.get("/admin/mastery/deployment/unassigned", adminOnly16, async (req, re
   const rows = await db.select().from(masteryStudentsTable).where(and(...conditions)).orderBy(masteryStudentsTable.studentName);
   res.json(rows);
 });
-router37.get("/admin/mastery/deployment/mentors", adminOnly16, async (_req, res) => {
+router38.get("/admin/mastery/deployment/mentors", adminOnly16, async (_req, res) => {
   const mentors = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -124116,11 +130102,11 @@ router37.get("/admin/mastery/deployment/mentors", adminOnly16, async (_req, res)
   }, {});
   res.json(mentors.map((m) => ({ ...m, currentStudents: studentCounts[m.id] ?? 0 })));
 });
-router37.get("/admin/mastery/deployment/batches", adminOnly16, async (_req, res) => {
+router38.get("/admin/mastery/deployment/batches", adminOnly16, async (_req, res) => {
   const rows = await db.select().from(masteryDeploymentBatchesTable).orderBy(desc(masteryDeploymentBatchesTable.createdAt));
   res.json(rows);
 });
-router37.post("/admin/mastery/deployment/deploy", adminOnly16, async (req, res) => {
+router38.post("/admin/mastery/deployment/deploy", adminOnly16, async (req, res) => {
   const {
     mentorAssignments,
     teacherId,
@@ -124267,14 +130253,14 @@ router37.post("/admin/mastery/deployment/deploy", adminOnly16, async (req, res) 
   });
   res.json({ batchCode, batchId: batch.id, totalAssigned: allStudentIds.length });
 });
-var masteryDeployment_default = router37;
+var masteryDeployment_default = router38;
 
 // src/routes/masteryRetention.ts
-var import_express38 = __toESM(require_express2(), 1);
-var router38 = (0, import_express38.Router)();
+var import_express39 = __toESM(require_express2(), 1);
+var router39 = (0, import_express39.Router)();
 var adminOnly17 = requireRole("admin", "super_admin");
 var allStaff4 = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
-router38.get("/admin/mastery/retention", adminOnly17, async (req, res) => {
+router39.get("/admin/mastery/retention", adminOnly17, async (req, res) => {
   const { retentionStatus, grade } = req.query;
   const rows = await db.select().from(masteryStudentsTable).where(
     inArray(masteryStudentsTable.masteryStatus, [
@@ -124307,7 +130293,7 @@ router38.get("/admin/mastery/retention", adminOnly17, async (req, res) => {
   };
   res.json({ students: filtered, stats });
 });
-router38.get("/admin/mastery/retention/leaderboard", adminOnly17, async (_req, res) => {
+router39.get("/admin/mastery/retention/leaderboard", adminOnly17, async (_req, res) => {
   const mentors = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable).where(and(eq(usersTable.role, "mentor"), eq(usersTable.isActive, true)));
   const allStudents = await db.select({
     mentorId: masteryStudentsTable.mentorId,
@@ -124335,7 +130321,7 @@ router38.get("/admin/mastery/retention/leaderboard", adminOnly17, async (_req, r
   }).filter((m) => m.retentionDue > 0).sort((a, b) => b.retentionPct - a.retentionPct).map((m, i) => ({ ...m, rank: i + 1 }));
   res.json(leaderboard);
 });
-router38.patch("/admin/mastery/retention/:id/status", adminOnly17, async (req, res) => {
+router39.patch("/admin/mastery/retention/:id/status", adminOnly17, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -124367,7 +130353,7 @@ router38.patch("/admin/mastery/retention/:id/status", adminOnly17, async (req, r
   }
   res.json(row);
 });
-router38.post("/admin/mastery/retention/:id/renew", adminOnly17, async (req, res) => {
+router39.post("/admin/mastery/retention/:id/renew", adminOnly17, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -124443,7 +130429,7 @@ router38.post("/admin/mastery/retention/:id/renew", adminOnly17, async (req, res
   }
   res.json({ student: updated, newGrade, newAcademicYear });
 });
-router38.post("/admin/mastery/retention/:id/lost", adminOnly17, async (req, res) => {
+router39.post("/admin/mastery/retention/:id/lost", adminOnly17, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -124482,7 +130468,7 @@ router38.post("/admin/mastery/retention/:id/lost", adminOnly17, async (req, res)
   });
   res.json(updated);
 });
-router38.get("/admin/mastery/retention/:id/history", allStaff4, async (req, res) => {
+router39.get("/admin/mastery/retention/:id/history", allStaff4, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -124491,12 +130477,12 @@ router38.get("/admin/mastery/retention/:id/history", allStaff4, async (req, res)
   const rows = await db.select().from(studentAcademicHistoryTable).where(eq(studentAcademicHistoryTable.masteryStudentId, id)).orderBy(desc(studentAcademicHistoryTable.createdAt));
   res.json(rows);
 });
-router38.get("/admin/mastery/academic-history", adminOnly17, async (req, res) => {
+router39.get("/admin/mastery/academic-history", adminOnly17, async (req, res) => {
   const { masteryStudentId } = req.query;
   const rows = masteryStudentId ? await db.select().from(studentAcademicHistoryTable).where(eq(studentAcademicHistoryTable.masteryStudentId, parseInt(masteryStudentId, 10))).orderBy(desc(studentAcademicHistoryTable.createdAt)) : await db.select().from(studentAcademicHistoryTable).orderBy(desc(studentAcademicHistoryTable.createdAt)).limit(200);
   res.json(rows);
 });
-router38.post("/admin/mastery/retention/trigger-dec1", adminOnly17, async (req, res) => {
+router39.post("/admin/mastery/retention/trigger-dec1", adminOnly17, async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     res.status(403).json({ error: "This endpoint is disabled in production" });
     return;
@@ -124519,20 +130505,20 @@ router38.post("/admin/mastery/retention/trigger-dec1", adminOnly17, async (req, 
   }
   res.json({ message: "Retention triggered", updated: activeStudents.length });
 });
-var masteryRetention_default = router38;
+var masteryRetention_default = router39;
 
 // src/routes/masteryNotifications.ts
-var import_express39 = __toESM(require_express2(), 1);
-var router39 = (0, import_express39.Router)();
+var import_express40 = __toESM(require_express2(), 1);
+var router40 = (0, import_express40.Router)();
 var allStaff5 = requireRole("mentor", "sales_mentor", "academic_mentor", "admin", "super_admin", "teacher");
 var adminOnly18 = requireRole("admin", "super_admin");
-router39.get("/mentor/mastery/notifications", allStaff5, async (req, res) => {
+router40.get("/mentor/mastery/notifications", allStaff5, async (req, res) => {
   const user = req.authUser;
   const isAdmin = ["admin", "super_admin"].includes(user.role ?? "");
   const rows = isAdmin ? await db.select().from(masteryNotificationsTable).orderBy(desc(masteryNotificationsTable.createdAt)).limit(100) : await db.select().from(masteryNotificationsTable).where(eq(masteryNotificationsTable.mentorId, user.id)).orderBy(desc(masteryNotificationsTable.createdAt)).limit(50);
   res.json(rows);
 });
-router39.post("/mentor/mastery/notifications/:id/read", allStaff5, async (req, res) => {
+router40.post("/mentor/mastery/notifications/:id/read", allStaff5, async (req, res) => {
   const id = parseInt(req.params["id"], 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -124541,16 +130527,16 @@ router39.post("/mentor/mastery/notifications/:id/read", allStaff5, async (req, r
   const [row] = await db.update(masteryNotificationsTable).set({ isRead: true }).where(eq(masteryNotificationsTable.id, id)).returning();
   res.json(row);
 });
-router39.post("/mentor/mastery/notifications/read-all", allStaff5, async (req, res) => {
+router40.post("/mentor/mastery/notifications/read-all", allStaff5, async (req, res) => {
   const user = req.authUser;
   await db.update(masteryNotificationsTable).set({ isRead: true }).where(eq(masteryNotificationsTable.mentorId, user.id));
   res.json({ ok: true });
 });
-router39.get("/admin/mastery/notifications", adminOnly18, async (_req, res) => {
+router40.get("/admin/mastery/notifications", adminOnly18, async (_req, res) => {
   const rows = await db.select().from(masteryNotificationsTable).orderBy(desc(masteryNotificationsTable.createdAt)).limit(200);
   res.json(rows);
 });
-router39.post("/admin/mastery/notifications", adminOnly18, async (req, res) => {
+router40.post("/admin/mastery/notifications", adminOnly18, async (req, res) => {
   const { mentorId, type, title, body, masteryStudentId, studentName, amount } = req.body;
   if (!mentorId || !title || !body) {
     res.status(400).json({ error: "mentorId, title, body required" });
@@ -124559,11 +130545,11 @@ router39.post("/admin/mastery/notifications", adminOnly18, async (req, res) => {
   const [row] = await db.insert(masteryNotificationsTable).values({ mentorId, type: type ?? "info", title, body, masteryStudentId, studentName, amount }).returning();
   res.json(row);
 });
-var masteryNotifications_default = router39;
+var masteryNotifications_default = router40;
 
 // src/routes/masteryAttendance.ts
-var import_express40 = __toESM(require_express2(), 1);
-var router40 = (0, import_express40.Router)();
+var import_express41 = __toESM(require_express2(), 1);
+var router41 = (0, import_express41.Router)();
 var adminOrMentor = requireRole("admin", "super_admin", "mentor");
 function daysAgo(n) {
   const d = /* @__PURE__ */ new Date();
@@ -124586,7 +130572,7 @@ function calcPct(present, total) {
   const t = Number(total ?? 0);
   return t > 0 ? Math.round(p / t * 100) : 0;
 }
-router40.get("/admin/mastery/attendance/overview", adminOrMentor, async (req, res) => {
+router41.get("/admin/mastery/attendance/overview", adminOrMentor, async (req, res) => {
   const days = Math.max(7, Math.min(365, Number(req.query.days ?? 30)));
   const since = daysAgo(days);
   const today = todayStart3();
@@ -124661,7 +130647,7 @@ router40.get("/admin/mastery/attendance/overview", adminOrMentor, async (req, re
     weekly
   });
 });
-router40.get("/admin/mastery/attendance/mentor-wise", adminOrMentor, async (req, res) => {
+router41.get("/admin/mastery/attendance/mentor-wise", adminOrMentor, async (req, res) => {
   const days = Math.max(1, Number(req.query.days ?? 30));
   const since = daysAgo(days);
   const rows = await db.execute(sql`
@@ -124695,7 +130681,7 @@ router40.get("/admin/mastery/attendance/mentor-wise", adminOrMentor, async (req,
   }));
   res.json(result);
 });
-router40.get("/admin/mastery/attendance/grade-wise", adminOrMentor, async (req, res) => {
+router41.get("/admin/mastery/attendance/grade-wise", adminOrMentor, async (req, res) => {
   const days = Math.max(1, Number(req.query.days ?? 30));
   const since = daysAgo(days);
   const rows = await db.execute(sql`
@@ -124720,7 +130706,7 @@ router40.get("/admin/mastery/attendance/grade-wise", adminOrMentor, async (req, 
   }));
   res.json(result);
 });
-router40.get("/admin/mastery/attendance/risk-students", adminOrMentor, async (req, res) => {
+router41.get("/admin/mastery/attendance/risk-students", adminOrMentor, async (req, res) => {
   const days = Math.max(7, Number(req.query.days ?? 30));
   const since = daysAgo(days);
   const threshold = Math.min(100, Number(req.query.threshold ?? 75));
@@ -124757,11 +130743,11 @@ router40.get("/admin/mastery/attendance/risk-students", adminOrMentor, async (re
   }));
   res.json(result);
 });
-var masteryAttendance_default = router40;
+var masteryAttendance_default = router41;
 
 // src/routes/ignitePerformanceRankings.ts
-var import_express41 = __toESM(require_express2(), 1);
-var router41 = (0, import_express41.Router)();
+var import_express42 = __toESM(require_express2(), 1);
+var router42 = (0, import_express42.Router)();
 var adminOnly19 = requireRole("admin", "super_admin");
 function getISOWeek2(date6) {
   const d = new Date(date6);
@@ -124770,11 +130756,11 @@ function getISOWeek2(date6) {
   const week1 = new Date(d.getFullYear(), 0, 4);
   return 1 + Math.round(((d.getTime() - week1.getTime()) / 864e5 - 3 + (week1.getDay() + 6) % 7) / 7);
 }
-function getWeekBounds(year, week) {
-  const jan4 = new Date(year, 0, 4);
+function getWeekBounds(year2, week2) {
+  const jan4 = new Date(year2, 0, 4);
   const dayOfWeek = (jan4.getDay() + 6) % 7;
   const weekStart = new Date(jan4);
-  weekStart.setDate(jan4.getDate() - dayOfWeek + (week - 1) * 7);
+  weekStart.setDate(jan4.getDate() - dayOfWeek + (week2 - 1) * 7);
   weekStart.setHours(0, 0, 0, 0);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
@@ -124953,7 +130939,7 @@ function rankStats(stats) {
     (a, b) => b.conversionPct - a.conversionPct || b.successfulPayments - a.successfulPayments || a.nonActiveLeads - b.nonActiveLeads
   ).map((s2, i) => ({ ...s2, rank: i + 1 }));
 }
-router41.get("/admin/ignite/performance-rankings/live", adminOnly19, async (req, res) => {
+router42.get("/admin/ignite/performance-rankings/live", adminOnly19, async (req, res) => {
   const { periodType = "weekly", periodKey, startDate, endDate } = req.query;
   let start = null;
   let end = null;
@@ -125024,7 +131010,7 @@ router41.get("/admin/ignite/performance-rankings/live", adminOnly19, async (req,
     }
   });
 });
-router41.get("/admin/ignite/performance-rankings/snapshots", adminOnly19, async (req, res) => {
+router42.get("/admin/ignite/performance-rankings/snapshots", adminOnly19, async (req, res) => {
   const { periodType, periodKey } = req.query;
   const conditions = [];
   if (periodType) conditions.push(eq(mentorPerformanceSnapshotsTable.periodType, periodType));
@@ -125032,7 +131018,7 @@ router41.get("/admin/ignite/performance-rankings/snapshots", adminOnly19, async 
   const rows = await db.select().from(mentorPerformanceSnapshotsTable).where(conditions.length ? and(...conditions) : void 0).orderBy(desc(mentorPerformanceSnapshotsTable.periodKey), asc(mentorPerformanceSnapshotsTable.rank));
   res.json(rows);
 });
-router41.get("/admin/ignite/performance-rankings/snapshot-periods", adminOnly19, async (_req, res) => {
+router42.get("/admin/ignite/performance-rankings/snapshot-periods", adminOnly19, async (_req, res) => {
   const rows = await db.selectDistinct({
     periodType: mentorPerformanceSnapshotsTable.periodType,
     periodKey: mentorPerformanceSnapshotsTable.periodKey,
@@ -125040,7 +131026,7 @@ router41.get("/admin/ignite/performance-rankings/snapshot-periods", adminOnly19,
   }).from(mentorPerformanceSnapshotsTable).orderBy(desc(mentorPerformanceSnapshotsTable.periodKey));
   res.json(rows);
 });
-router41.post("/admin/ignite/performance-rankings/snapshots", adminOnly19, async (req, res) => {
+router42.post("/admin/ignite/performance-rankings/snapshots", adminOnly19, async (req, res) => {
   const {
     periodType = "weekly",
     periodKey,
@@ -125111,7 +131097,7 @@ router41.post("/admin/ignite/performance-rankings/snapshots", adminOnly19, async
   }
   res.json({ ok: true, saved: ranked.length, periodKey: key, periodLabel: label });
 });
-router41.get("/admin/ignite/performance-rankings/mentor/:id", adminOnly19, async (req, res) => {
+router42.get("/admin/ignite/performance-rankings/mentor/:id", adminOnly19, async (req, res) => {
   const mentorId = parseInt(req.params["id"], 10);
   if (isNaN(mentorId)) {
     res.status(400).json({ error: "Invalid id" });
@@ -125130,7 +131116,7 @@ router41.get("/admin/ignite/performance-rankings/mentor/:id", adminOnly19, async
     snapshots
   });
 });
-router41.get("/admin/ignite/performance-rankings/export.csv", adminOnly19, async (req, res) => {
+router42.get("/admin/ignite/performance-rankings/export.csv", adminOnly19, async (req, res) => {
   const { periodType = "weekly", periodKey, source = "live" } = req.query;
   let rows;
   if (source === "snapshot") {
@@ -125187,12 +131173,12 @@ router41.get("/admin/ignite/performance-rankings/export.csv", adminOnly19, async
   res.setHeader("Content-Disposition", `attachment; filename="ignite-rankings-${periodType}-${Date.now()}.csv"`);
   res.send(csvRows.join("\n"));
 });
-var ignitePerformanceRankings_default = router41;
+var ignitePerformanceRankings_default = router42;
 
 // src/routes/live.ts
-var import_express42 = __toESM(require_express2(), 1);
-var router42 = (0, import_express42.Router)();
-router42.get("/live/:sessionId", async (req, res) => {
+var import_express43 = __toESM(require_express2(), 1);
+var router43 = (0, import_express43.Router)();
+router43.get("/live/:sessionId", async (req, res) => {
   const id = Number(req.params["sessionId"]);
   if (Number.isNaN(id)) {
     res.status(400).json({ error: "Invalid sessionId" });
@@ -125227,14 +131213,14 @@ router42.get("/live/:sessionId", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-var live_default = router42;
+var live_default = router43;
 
 // src/routes/analytics.ts
-var import_express43 = __toESM(require_express2(), 1);
-var router43 = (0, import_express43.Router)();
+var import_express44 = __toESM(require_express2(), 1);
+var router44 = (0, import_express44.Router)();
 var MAX_EVENTS = 5e3;
 var eventLog = [];
-router43.post("/analytics/event", (req, res) => {
+router44.post("/analytics/event", (req, res) => {
   const { event, sessionId, userId, role, metadata = {} } = req.body;
   if (!event || !sessionId) {
     return res.status(400).json({ error: "event and sessionId are required" });
@@ -125255,7 +131241,7 @@ router43.post("/analytics/event", (req, res) => {
   eventLog.push(entry);
   return res.json({ ok: true });
 });
-router43.get("/analytics/events", (req, res) => {
+router44.get("/analytics/events", (req, res) => {
   const {
     sessionId,
     grade,
@@ -125279,7 +131265,7 @@ router43.get("/analytics/events", (req, res) => {
   };
   return res.json({ events: results, total: results.length, funnel });
 });
-router43.get("/analytics/attendance/:sessionId", async (req, res) => {
+router44.get("/analytics/attendance/:sessionId", async (req, res) => {
   const sid = Number(req.params["sessionId"]);
   if (Number.isNaN(sid)) return res.status(400).json({ error: "Invalid sessionId" });
   try {
@@ -125326,12 +131312,12 @@ router43.get("/analytics/attendance/:sessionId", async (req, res) => {
     return res.status(500).json({ error: "Query failed" });
   }
 });
-var analytics_default = router43;
+var analytics_default = router44;
 
 // src/routes/chatModeration.ts
-var import_express44 = __toESM(require_express2(), 1);
-var router44 = (0, import_express44.Router)();
-router44.get("/chat-moderation/blocked-words", async (_req, res) => {
+var import_express45 = __toESM(require_express2(), 1);
+var router45 = (0, import_express45.Router)();
+router45.get("/chat-moderation/blocked-words", async (_req, res) => {
   try {
     const words = await db.select().from(blockedWordsTable).orderBy(desc(blockedWordsTable.createdAt));
     return res.json({ words });
@@ -125340,7 +131326,7 @@ router44.get("/chat-moderation/blocked-words", async (_req, res) => {
     return res.status(500).json({ error: "Query failed" });
   }
 });
-router44.post("/chat-moderation/blocked-words", async (req, res) => {
+router45.post("/chat-moderation/blocked-words", async (req, res) => {
   const { word, isActive = true } = req.body;
   if (!word?.trim()) return res.status(400).json({ error: "word is required" });
   try {
@@ -125354,7 +131340,7 @@ router44.post("/chat-moderation/blocked-words", async (req, res) => {
     return res.status(500).json({ error: "Insert failed" });
   }
 });
-router44.patch("/chat-moderation/blocked-words/:id", async (req, res) => {
+router45.patch("/chat-moderation/blocked-words/:id", async (req, res) => {
   const id = Number(req.params["id"]);
   if (Number.isNaN(id)) return res.status(400).json({ error: "invalid id" });
   const { isActive } = req.body;
@@ -125366,7 +131352,7 @@ router44.patch("/chat-moderation/blocked-words/:id", async (req, res) => {
     return res.status(500).json({ error: "Update failed" });
   }
 });
-router44.delete("/chat-moderation/blocked-words/:id", async (req, res) => {
+router45.delete("/chat-moderation/blocked-words/:id", async (req, res) => {
   const id = Number(req.params["id"]);
   if (Number.isNaN(id)) return res.status(400).json({ error: "invalid id" });
   try {
@@ -125377,7 +131363,7 @@ router44.delete("/chat-moderation/blocked-words/:id", async (req, res) => {
     return res.status(500).json({ error: "Delete failed" });
   }
 });
-router44.get("/chat-moderation/student/:studentId/status", async (req, res) => {
+router45.get("/chat-moderation/student/:studentId/status", async (req, res) => {
   try {
     const [row] = await db.select().from(chatModerationTable).where(eq(chatModerationTable.studentId, req.params["studentId"]));
     return res.json({ status: row ?? null });
@@ -125386,7 +131372,7 @@ router44.get("/chat-moderation/student/:studentId/status", async (req, res) => {
     return res.status(500).json({ error: "Query failed" });
   }
 });
-router44.patch("/chat-moderation/student/:studentId/unblock", async (req, res) => {
+router45.patch("/chat-moderation/student/:studentId/unblock", async (req, res) => {
   const { unlockedBy } = req.body;
   try {
     await db.insert(chatModerationTable).values({
@@ -125410,7 +131396,7 @@ router44.patch("/chat-moderation/student/:studentId/unblock", async (req, res) =
     return res.status(500).json({ error: "Update failed" });
   }
 });
-router44.patch("/chat-moderation/student/:studentId/reset-violations", async (req, res) => {
+router45.patch("/chat-moderation/student/:studentId/reset-violations", async (req, res) => {
   try {
     await db.insert(chatModerationTable).values({
       studentId: req.params["studentId"],
@@ -125434,7 +131420,7 @@ router44.patch("/chat-moderation/student/:studentId/reset-violations", async (re
     return res.status(500).json({ error: "Update failed" });
   }
 });
-router44.get("/chat-moderation/by-phone/:phone/status", async (req, res) => {
+router45.get("/chat-moderation/by-phone/:phone/status", async (req, res) => {
   const phone = req.params["phone"].replace(/\D/g, "");
   try {
     const [row] = await db.select().from(chatModerationTable).where(eq(chatModerationTable.phone, phone));
@@ -125444,7 +131430,7 @@ router44.get("/chat-moderation/by-phone/:phone/status", async (req, res) => {
     return res.status(500).json({ error: "Query failed" });
   }
 });
-router44.patch("/chat-moderation/by-phone/:phone/unblock", async (req, res) => {
+router45.patch("/chat-moderation/by-phone/:phone/unblock", async (req, res) => {
   const phone = req.params["phone"].replace(/\D/g, "");
   const { unlockedBy } = req.body;
   try {
@@ -125462,7 +131448,7 @@ router44.patch("/chat-moderation/by-phone/:phone/unblock", async (req, res) => {
     return res.status(500).json({ error: "Update failed" });
   }
 });
-router44.patch("/chat-moderation/by-phone/:phone/reset-violations", async (req, res) => {
+router45.patch("/chat-moderation/by-phone/:phone/reset-violations", async (req, res) => {
   const phone = req.params["phone"].replace(/\D/g, "");
   try {
     await db.update(chatModerationTable).set({
@@ -125478,7 +131464,7 @@ router44.patch("/chat-moderation/by-phone/:phone/reset-violations", async (req, 
     return res.status(500).json({ error: "Update failed" });
   }
 });
-router44.get("/chat-moderation/violations", async (req, res) => {
+router45.get("/chat-moderation/violations", async (req, res) => {
   const { studentId, sessionId, limit: rawLimit } = req.query;
   const limit = Math.min(Number(rawLimit ?? 100), 500);
   try {
@@ -125492,13 +131478,13 @@ router44.get("/chat-moderation/violations", async (req, res) => {
     return res.status(500).json({ error: "Query failed" });
   }
 });
-var chatModeration_default = router44;
+var chatModeration_default = router45;
 
 // src/routes/revenueAnalytics.ts
-var import_express45 = __toESM(require_express2(), 1);
-var router45 = (0, import_express45.Router)();
+var import_express46 = __toESM(require_express2(), 1);
+var router46 = (0, import_express46.Router)();
 var adminOnly20 = requireRole("admin", "super_admin");
-router45.get("/admin/revenue-analytics", adminOnly20, async (_req, res) => {
+router46.get("/admin/revenue-analytics", adminOnly20, async (_req, res) => {
   const [
     capturedPayments,
     ignitePaid,
@@ -125587,7 +131573,7 @@ router45.get("/admin/revenue-analytics", adminOnly20, async (_req, res) => {
     }))
   });
 });
-router45.get("/admin/admissions-analytics", adminOnly20, async (req, res) => {
+router46.get("/admin/admissions-analytics", adminOnly20, async (req, res) => {
   const now = /* @__PURE__ */ new Date();
   const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
   const fromRaw = req.query.from;
@@ -125970,10 +131956,10 @@ router45.get("/admin/admissions-analytics", adminOnly20, async (req, res) => {
     period: { from: from.toISOString(), to: to.toISOString() }
   });
 });
-var revenueAnalytics_default = router45;
+var revenueAnalytics_default = router46;
 
 // src/routes/slides.ts
-var import_express46 = __toESM(require_express2(), 1);
+var import_express47 = __toESM(require_express2(), 1);
 var import_multer = __toESM(require_multer(), 1);
 import path3 from "path";
 import fs3 from "fs";
@@ -125995,8 +131981,8 @@ var upload = (0, import_multer.default)({
     cb(null, [".pdf", ".ppt", ".pptx"].includes(ext));
   }
 });
-var router46 = (0, import_express46.Router)();
-router46.post("/api/slides/upload", upload.single("file"), (req, res) => {
+var router47 = (0, import_express47.Router)();
+router47.post("/api/slides/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "No file uploaded or unsupported type (PDF, PPT, PPTX only)" });
     return;
@@ -126008,7 +131994,7 @@ router46.post("/api/slides/upload", upload.single("file"), (req, res) => {
     isPptx: ext === ".pptx" || ext === ".ppt"
   });
 });
-router46.get("/api/slides/:filename", (req, res) => {
+router47.get("/api/slides/:filename", (req, res) => {
   const { filename } = req.params;
   if (!/^[\w-]+\.(pdf|ppt|pptx)$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });
@@ -126021,7 +132007,7 @@ router46.get("/api/slides/:filename", (req, res) => {
   }
   res.sendFile(filePath);
 });
-router46.delete("/api/slides/:filename", (req, res) => {
+router47.delete("/api/slides/:filename", (req, res) => {
   const { filename } = req.params;
   if (!/^[\w-]+\.(pdf|ppt|pptx)$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });
@@ -126035,62 +132021,63 @@ router46.delete("/api/slides/:filename", (req, res) => {
     res.status(500).json({ error: "Delete failed" });
   }
 });
-var slides_default = router46;
+var slides_default = router47;
 
 // src/routes/index.ts
-var router47 = (0, import_express47.Router)();
-router47.use(health_default);
-router47.use(auth_default);
-router47.use(admin_default);
-router47.use(teacher_default);
-router47.use(announcements_default);
-router47.use(attendance_default);
-router47.use(curriculum_default);
-router47.use(syllabus_default);
-router47.use(demoBatches_default);
-router47.use(subjects_default);
-router47.use(courses_default);
-router47.use(liveClasses_default);
-router47.use(recordings_default);
-router47.use(animatedVideos_default);
-router47.use(homework_default);
-router47.use(assignments_default);
-router47.use(tests_default);
-router47.use(student_default);
-router47.use(mentor_default);
-router47.use(mentorExtended_default);
-router47.use(checkins_default);
-router47.use(staff_default);
-router47.use(operationsDashboard_default);
-router47.use(superAdmin_default);
-router47.use(permissions_default);
-router47.use(mentorAdmin_default);
-router47.use(ignite_default);
-router47.use(payments_default);
-router47.use(commandCenter_default);
-router47.use(adminMentors_default);
-router47.use(adminTeachers_default);
-router47.use(adminRoles_default);
-router47.use(adminAuditLogs_default);
-router47.use(longTermPayments_default);
-router47.use(masteryStudents_default);
-router47.use(masteryPayments_default);
-router47.use(masteryDeployment_default);
-router47.use(masteryRetention_default);
-router47.use(masteryNotifications_default);
-router47.use(masteryAttendance_default);
-router47.use(ignitePerformanceRankings_default);
-router47.use(live_default);
-router47.use(analytics_default);
-router47.use(chatModeration_default);
-router47.use(revenueAnalytics_default);
-router47.use(slides_default);
-var routes_default = router47;
+var router48 = (0, import_express48.Router)();
+router48.use(health_default);
+router48.use(auth_default);
+router48.use(admin_default);
+router48.use(teacher_default);
+router48.use(announcements_default);
+router48.use(attendance_default);
+router48.use(curriculum_default);
+router48.use(syllabus_default);
+router48.use(demoBatches_default);
+router48.use(subjects_default);
+router48.use(courses_default);
+router48.use(liveClasses_default);
+router48.use(livekit_default);
+router48.use(recordings_default);
+router48.use(animatedVideos_default);
+router48.use(homework_default);
+router48.use(assignments_default);
+router48.use(tests_default);
+router48.use(student_default);
+router48.use(mentor_default);
+router48.use(mentorExtended_default);
+router48.use(checkins_default);
+router48.use(staff_default);
+router48.use(operationsDashboard_default);
+router48.use(superAdmin_default);
+router48.use(permissions_default);
+router48.use(mentorAdmin_default);
+router48.use(ignite_default);
+router48.use(payments_default);
+router48.use(commandCenter_default);
+router48.use(adminMentors_default);
+router48.use(adminTeachers_default);
+router48.use(adminRoles_default);
+router48.use(adminAuditLogs_default);
+router48.use(longTermPayments_default);
+router48.use(masteryStudents_default);
+router48.use(masteryPayments_default);
+router48.use(masteryDeployment_default);
+router48.use(masteryRetention_default);
+router48.use(masteryNotifications_default);
+router48.use(masteryAttendance_default);
+router48.use(ignitePerformanceRankings_default);
+router48.use(live_default);
+router48.use(analytics_default);
+router48.use(chatModeration_default);
+router48.use(revenueAnalytics_default);
+router48.use(slides_default);
+var routes_default = router48;
 
 // src/app.ts
 import path4 from "node:path";
 import fs4 from "node:fs";
-var app = (0, import_express48.default)();
+var app = (0, import_express49.default)();
 app.use(
   (0, import_pino_http.default)({
     logger,
@@ -126106,13 +132093,13 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
-app.use(import_express48.default.json({
+app.use(import_express49.default.json({
   limit: "50kb",
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(import_express48.default.urlencoded({ extended: true, limit: "50kb" }));
+app.use(import_express49.default.urlencoded({ extended: true, limit: "50kb" }));
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
@@ -126138,7 +132125,7 @@ app.use("/api", (_req, res) => {
 var staticDir = process.env["STATIC_DIR"] ?? path4.resolve(__dirname, "../../braintam/dist/public");
 if (fs4.existsSync(staticDir)) {
   logger.info({ staticDir }, "Serving frontend static files");
-  app.use(import_express48.default.static(staticDir, { maxAge: "1y", index: false }));
+  app.use(import_express49.default.static(staticDir, { maxAge: "1y", index: false }));
   app.use((_req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.sendFile(path4.join(staticDir, "index.html"));
@@ -126153,6 +132140,22 @@ var import_dist = __toESM(require_dist7(), 1);
 var { Server, Namespace, Socket } = import_dist.default;
 
 // src/socket.ts
+var STAGE_DURATION_MS = 6e4;
+var stageTimers = /* @__PURE__ */ new Map();
+var roomNameCache = /* @__PURE__ */ new Map();
+async function getLiveKitRoomName(sessionId) {
+  if (roomNameCache.has(sessionId)) return roomNameCache.get(sessionId);
+  try {
+    const numericId = Number(sessionId);
+    if (!Number.isFinite(numericId)) return null;
+    const [row] = await db.select({ liveKitRoomName: liveClassesTable.liveKitRoomName }).from(liveClassesTable).where(eq(liveClassesTable.id, numericId)).limit(1);
+    const roomName = row?.liveKitRoomName ?? null;
+    if (roomName) roomNameCache.set(sessionId, roomName);
+    return roomName;
+  } catch {
+    return null;
+  }
+}
 var globalRoom = (sid) => `session-${sid}`;
 var teacherRoom = (sid) => `session-${sid}-teachers`;
 var groupRoom = (sid, gid) => `session-${sid}-grp-${gid}`;
@@ -126254,11 +132257,39 @@ async function loadStageSlots(sessionId) {
       studentName: r.studentName,
       slotNumber: r.slotNumber,
       isMuted: r.isMuted,
-      mentorGroupId: r.mentorGroupId ?? null
+      mentorGroupId: r.mentorGroupId ?? null,
+      stageExpiresAt: r.stageExpiresAt ? r.stageExpiresAt.getTime() : Date.now() + STAGE_DURATION_MS
     }));
   } catch {
     return [];
   }
+}
+async function endStageSlot(io2, sessionId, studentId, reason) {
+  const room = sessionRooms.get(sessionId);
+  room?.stageSlots.delete(studentId);
+  const timerKey = `${sessionId}:${studentId}`;
+  const timer = stageTimers.get(timerKey);
+  if (timer) {
+    clearTimeout(timer);
+    stageTimers.delete(timerKey);
+  }
+  if (isLiveKitConfigured()) {
+    const roomName = await getLiveKitRoomName(sessionId);
+    if (roomName) await updateParticipantPublishPermission(roomName, studentId, false);
+  }
+  db.update(stageSlotsTable).set({ status: "ended", stageEndedAt: /* @__PURE__ */ new Date(), endReason: reason }).where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, studentId))).catch(() => {
+  });
+  io2.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId, reason });
+}
+function scheduleStageExpiry(io2, sessionId, studentId) {
+  const timerKey = `${sessionId}:${studentId}`;
+  const existing = stageTimers.get(timerKey);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    endStageSlot(io2, sessionId, studentId, "timer_expired").catch(() => {
+    });
+  }, STAGE_DURATION_MS);
+  stageTimers.set(timerKey, timer);
 }
 async function seedCacheFromDB() {
   try {
@@ -126369,32 +132400,34 @@ function persistPollAnswer(sessionId, poll, answer) {
   }).catch(() => {
   });
 }
-function computeTop3(room) {
+var LEADERBOARD_TOP_N = 20;
+function computeTopLeaderboard(room, mentorGroupId) {
   if (!room.activePoll || room.pollAnswers.size === 0) return [];
-  const answers = Array.from(room.pollAnswers.values());
+  const answers = Array.from(room.pollAnswers.values()).filter((a) => mentorGroupId == null || a.mentorGroupId === mentorGroupId);
   const sorted = answers.sort((a, b) => {
     if (b.isCorrect !== a.isCorrect) return (b.isCorrect ? 1 : 0) - (a.isCorrect ? 1 : 0);
     return a.responseTimeMs - b.responseTimeMs;
   });
-  return sorted.slice(0, 3).map((a, i) => ({
+  return sorted.slice(0, LEADERBOARD_TOP_N).map((a, i) => ({
     name: a.name,
     rank: i + 1,
     userId: a.userId,
     optionId: a.optionId,
     responseTimeMs: a.responseTimeMs,
-    isCorrect: a.isCorrect
+    isCorrect: a.isCorrect,
+    mentorGroupId: a.mentorGroupId
   }));
 }
-function persistLeaderboard(sessionId, pollId, top3, mentorGroupId) {
+function persistLeaderboard(sessionId, pollId, entries) {
   const sid = Number(sessionId);
-  if (Number.isNaN(sid) || top3.length === 0) return;
-  db.insert(leaderboardAnalyticsTable).values(top3.map((e) => ({
+  if (Number.isNaN(sid) || entries.length === 0) return;
+  db.insert(leaderboardAnalyticsTable).values(entries.map((e) => ({
     sessionId: sid,
     pollId,
     rank: e.rank,
     studentId: e.userId,
     studentName: e.name,
-    mentorGroupId: mentorGroupId ? Number(mentorGroupId) : void 0,
+    mentorGroupId: e.mentorGroupId ? Number(e.mentorGroupId) : void 0,
     optionId: e.optionId,
     isCorrect: e.isCorrect,
     responseTimeMs: e.responseTimeMs,
@@ -126661,12 +132694,14 @@ function setupSocketIO(httpServer2) {
         socket.emit("stage:error", { message: "Student is already on stage." });
         return;
       }
+      const expiresAt = Date.now() + STAGE_DURATION_MS;
       const entry = {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
         isMuted: true,
-        mentorGroupId: payload.studentGroupId || null
+        mentorGroupId: payload.studentGroupId || null,
+        stageExpiresAt: expiresAt
       };
       room.stageSlots.set(payload.studentId, entry);
       db.insert(stageSlotsTable).values({
@@ -126675,9 +132710,20 @@ function setupSocketIO(httpServer2) {
         studentName: payload.studentName,
         mentorGroupId: payload.studentGroupId || null,
         slotNumber: openSlot,
-        isMuted: true
+        isMuted: true,
+        status: "active",
+        invitedByTeacherId: Number(userId) || null,
+        stageStartedAt: /* @__PURE__ */ new Date(),
+        stageExpiresAt: new Date(expiresAt)
       }).onConflictDoNothing().catch(() => {
       });
+      scheduleStageExpiry(io2, sessionId, payload.studentId);
+      if (isLiveKitConfigured()) {
+        getLiveKitRoomName(sessionId).then(async (roomName) => {
+          if (roomName) await updateParticipantPublishPermission(roomName, payload.studentId, true);
+        }).catch(() => {
+        });
+      }
       room.raisedHands.delete(payload.studentId);
       io2.to(globalRoom(sessionId)).emit("classroom:handRaised", {
         uid: payload.studentId,
@@ -126691,7 +132737,8 @@ function setupSocketIO(httpServer2) {
         studentName: payload.studentName,
         slotNumber: openSlot,
         isMuted: true,
-        mentorGroupId: payload.studentGroupId || null
+        mentorGroupId: payload.studentGroupId || null,
+        stageExpiresAt: expiresAt
       });
     });
     socket.on("stage:inviteStudent", (payload) => {
@@ -126722,12 +132769,14 @@ function setupSocketIO(httpServer2) {
         }
       }
       if (!openSlot) return;
+      const acceptExpiresAt = Date.now() + STAGE_DURATION_MS;
       const entry = {
         studentId: userId,
         studentName: name,
         slotNumber: openSlot,
         isMuted: true,
-        mentorGroupId: groupId || null
+        mentorGroupId: groupId || null,
+        stageExpiresAt: acceptExpiresAt
       };
       room.stageSlots.set(userId, entry);
       db.insert(stageSlotsTable).values({
@@ -126736,9 +132785,19 @@ function setupSocketIO(httpServer2) {
         studentName: name,
         mentorGroupId: groupId || null,
         slotNumber: openSlot,
-        isMuted: true
+        isMuted: true,
+        status: "active",
+        stageStartedAt: /* @__PURE__ */ new Date(),
+        stageExpiresAt: new Date(acceptExpiresAt)
       }).onConflictDoNothing().catch(() => {
       });
+      scheduleStageExpiry(io2, sessionId, userId);
+      if (isLiveKitConfigured()) {
+        getLiveKitRoomName(sessionId).then(async (roomName) => {
+          if (roomName) await updateParticipantPublishPermission(roomName, userId, true);
+        }).catch(() => {
+        });
+      }
       room.raisedHands.delete(userId);
       io2.to(globalRoom(sessionId)).emit("classroom:handRaised", {
         uid: userId,
@@ -126752,7 +132811,8 @@ function setupSocketIO(httpServer2) {
         studentName: name,
         slotNumber: openSlot,
         isMuted: true,
-        mentorGroupId: groupId || null
+        mentorGroupId: groupId || null,
+        stageExpiresAt: acceptExpiresAt
       });
     });
     socket.on("stage:toggleMute", (payload) => {
@@ -126769,17 +132829,25 @@ function setupSocketIO(httpServer2) {
     });
     socket.on("stage:removeStudent", (payload) => {
       if (!isStaff) return;
-      room.stageSlots.delete(payload.studentId);
-      db.delete(stageSlotsTable).where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, payload.studentId))).catch(() => {
+      endStageSlot(io2, sessionId, payload.studentId, "teacher_removed").catch(() => {
       });
-      io2.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId: payload.studentId });
     });
     socket.on("showLeaderboard", () => {
       if (!isStaff || !room.activePoll) return;
-      const top3 = computeTop3(room);
       const pollId = room.activePoll.id;
-      persistLeaderboard(sessionId, pollId, top3, groupId);
-      io2.to(globalRoom(sessionId)).emit("showLeaderboard", { top3 });
+      const overall = computeTopLeaderboard(room, null);
+      persistLeaderboard(sessionId, pollId, overall);
+      io2.to(teacherRoom(sessionId)).emit("showLeaderboard", { top3: overall.slice(0, 3), leaderboard: overall });
+      const groupIds = new Set(
+        Array.from(room.pollAnswers.values()).map((a) => a.mentorGroupId).filter((g) => !!g)
+      );
+      for (const gid of groupIds) {
+        const groupTop20 = computeTopLeaderboard(room, gid);
+        io2.to(groupRoom(sessionId, gid)).emit("showLeaderboard", {
+          top3: groupTop20.slice(0, 3),
+          leaderboard: groupTop20
+        });
+      }
       room.activePoll = null;
       setTimeout(() => io2.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
     });
@@ -126801,8 +132869,10 @@ function setupSocketIO(httpServer2) {
           }
         }
       }
-      db.delete(stageSlotsTable).where(eq(stageSlotsTable.sessionId, sessionId)).catch(() => {
-      });
+      for (const studentId of Array.from(room.stageSlots.keys())) {
+        endStageSlot(io2, sessionId, studentId, "class_ended").catch(() => {
+        });
+      }
       sessionRooms.delete(sessionId);
       io2.to(globalRoom(sessionId)).emit("class:ended", { sessionId });
       setTimeout(() => {
@@ -126842,10 +132912,8 @@ function setupSocketIO(httpServer2) {
         const entry = liveStateCache.get(`${sessionId}-${userId}`);
         if (entry) entry.currentStatus = "ABSENT";
         if (room.stageSlots.has(userId)) {
-          room.stageSlots.delete(userId);
-          db.delete(stageSlotsTable).where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, userId))).catch(() => {
+          endStageSlot(io2, sessionId, userId, "student_left").catch(() => {
           });
-          io2.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId: userId });
         }
       }
       room.raisedHands.delete(userId);
@@ -126914,8 +132982,8 @@ async function rotateGrade(grade) {
 function scheduleSundayBatchRotation() {
   const CHECK_INTERVAL_MS = 6e4;
   const tick = async () => {
-    const { h, m, day, dateStr } = getISTDateTime();
-    if (day === 1 && h === 0 && m === 0 && lastRotationDate !== dateStr) {
+    const { h, m, day: day2, dateStr } = getISTDateTime();
+    if (day2 === 1 && h === 0 && m === 0 && lastRotationDate !== dateStr) {
       lastRotationDate = dateStr;
       logger.info({ dateStr }, "Running Sunday midnight batch rotation (12:00 AM Monday IST)\u2026");
       try {

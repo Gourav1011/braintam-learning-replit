@@ -6,6 +6,7 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
   coursesTable, announcementsTable, pointsLedgerTable,
   mentorStudentAssignmentsTable, demoBatchEnrollmentsTable, demoBatchesTable,
+  pollAnalyticsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -462,6 +463,37 @@ router.get("/student/points-history", requireAuth, async (req, res) => {
     history:     history.map(h => ({ ...h, createdAt: h.createdAt.toISOString() })),
     weekPoints,
     monthPoints,
+  });
+});
+
+// ── Live Poll Performance (permanent history) ────────────────────────────
+// Every poll answer is recorded to poll_analytics at answer time and never deleted,
+// so this reflects the student's full participation history across all live classes.
+router.get("/student/poll-history", requireAuth, async (req, res) => {
+  const studentId = String(req.authUser!.id);
+  const rows = await db
+    .select({
+      id: pollAnalyticsTable.id,
+      sessionId: pollAnalyticsTable.sessionId,
+      pollQuestion: pollAnalyticsTable.pollQuestion,
+      optionText: pollAnalyticsTable.optionText,
+      isCorrect: pollAnalyticsTable.isCorrect,
+      responseTimeMs: pollAnalyticsTable.responseTimeMs,
+      answeredAt: pollAnalyticsTable.answeredAt,
+    })
+    .from(pollAnalyticsTable)
+    .where(eq(pollAnalyticsTable.studentId, studentId))
+    .orderBy(desc(pollAnalyticsTable.answeredAt))
+    .limit(200);
+
+  const totalAnswered = rows.length;
+  const totalCorrect = rows.filter(r => r.isCorrect).length;
+
+  res.json({
+    history: rows.map(r => ({ ...r, answeredAt: r.answeredAt.toISOString() })),
+    totalAnswered,
+    totalCorrect,
+    accuracyPct: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0,
   });
 });
 

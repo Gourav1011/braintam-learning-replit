@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { io, type Socket } from "socket.io-client";
+import { useLiveKit } from "@/hooks/use-livekit";
 import {
   Video, VideoOff, Users, MessageSquare, BarChart2, Send,
   Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, X, Upload,
@@ -18,7 +19,10 @@ interface ChatMsg {
 }
 interface PollOpt { id: string; text: string; }
 interface Poll { id: string; question: string; options: PollOpt[]; startedAt?: number; }
-interface LeaderboardEntry { name: string; rank: number; }
+interface LeaderboardEntry {
+  name: string; rank: number;
+  userId?: string; isCorrect?: boolean; responseTimeMs?: number;
+}
 interface RaisedHand { uid: string; name: string; mentorGroupId: string | null; }
 
 // Sprint 3 — Stage overlay
@@ -28,6 +32,7 @@ interface StageSlot {
   slotNumber: number;
   isMuted: boolean;
   mentorGroupId: string | null;
+  stageExpiresAt?: number | null;
 }
 
 interface AttendanceRecord {
@@ -356,6 +361,9 @@ export default function LiveClassroom() {
   const isMentor = role === "mentor";
   const canSeeAttendance = isStaff || isMentor;
 
+  // ── LiveKit — teacher/student video, backend-authorized ─────
+  const livekit = useLiveKit({ sessionId, enabled: connected });
+
   // ── State ──────────────────────────────────────────────────
   const [presentationUrl, setPresentationUrl] = useState(search.get("url") ?? "");
   const [urlInput, setUrlInput] = useState(search.get("url") ?? "");
@@ -512,15 +520,18 @@ export default function LiveClassroom() {
       streamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
       setCameraOn(false);
+      if (isStaff) { void livekit.setCamera(false); void livekit.setMic(false); }
     } else {
       try {
         const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         streamRef.current = s;
         if (videoRef.current) videoRef.current.srcObject = s;
         setCameraOn(true);
+        // Teacher's camera/mic publish into LiveKit so students/mentors can see & hear them.
+        if (isStaff) { void livekit.setCamera(true); void livekit.setMic(true); }
       } catch { alert("Camera unavailable"); }
     }
-  }, [cameraOn]);
+  }, [cameraOn, isStaff, livekit]);
 
   // ── Poll form (Sprint 1 — includes correct answer) ────────
   const [showPollForm, setShowPollForm] = useState(false);
@@ -595,8 +606,9 @@ export default function LiveClassroom() {
     socket.on("pollUpdate", ({ counts, total }: { counts: Record<string, number>; total: number }) => {
       setPollCounts(counts); setPollTotal(total);
     });
-    socket.on("showLeaderboard", ({ top3 }: { top3: LeaderboardEntry[] }) => {
-      setLeaderboard(top3);
+    socket.on("showLeaderboard", ({ top3, leaderboard: full }: { top3: LeaderboardEntry[]; leaderboard?: LeaderboardEntry[] }) => {
+      // Group-scoped Top 20 when available (student/mentor view), fall back to top3 for older payloads.
+      setLeaderboard(full && full.length > 0 ? full : top3);
       setTimeout(() => setLeaderboard(null), 5000);
     });
 
@@ -634,12 +646,22 @@ export default function LiveClassroom() {
         const filtered = prev.filter(s => s.studentId !== slot.studentId);
         return [...filtered, slot].sort((a, b) => a.slotNumber - b.slotNumber);
       });
+      // Backend already granted this student LiveKit publish rights for the 60s window — start publishing.
+      if (slot.studentId === userId && !isStaff) {
+        void livekit.setCamera(true);
+        void livekit.setMic(!slot.isMuted);
+      }
     });
     socket.on("stage:muteStateChanged", ({ studentId, isMuted }: { studentId: string; isMuted: boolean }) => {
       setStageSlots(prev => prev.map(s => s.studentId === studentId ? { ...s, isMuted } : s));
+      if (studentId === userId && !isStaff) void livekit.setMic(!isMuted);
     });
     socket.on("stage:studentRemoved", ({ studentId }: { studentId: string }) => {
       setStageSlots(prev => prev.filter(s => s.studentId !== studentId));
+      if (studentId === userId && !isStaff) {
+        void livekit.setCamera(false);
+        void livekit.setMic(false);
+      }
     });
     socket.on("stage:error", ({ message }: { message: string }) => alert(message));
 
@@ -780,6 +802,19 @@ export default function LiveClassroom() {
   // ── Sprint 3: derived stage helpers ──────────────────────
   const mySlot = stageSlots.find(s => s.studentId === userId);
   const myOnStage = !!mySlot;
+
+  // Backend-authoritative 60s stage countdown (stageExpiresAt is set by the server; we only render the tick).
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (stageSlots.length === 0) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [stageSlots.length]);
+  const secondsLeft = (slot: StageSlot | undefined): number | null => {
+    if (!slot?.stageExpiresAt) return null;
+    const ms = slot.stageExpiresAt - nowTick;
+    return ms > 0 ? Math.ceil(ms / 1000) : 0;
+  };
 
   const embedUrl = getEmbedUrl(presentationUrl);
 
@@ -922,6 +957,9 @@ export default function LiveClassroom() {
               <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-green-700/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2">
                 🎤 You're on stage
                 <span className="text-green-200 font-normal">{mySlot?.isMuted ? "— muted" : "— mic on"}</span>
+                {secondsLeft(mySlot) !== null && (
+                  <span className="text-white font-black bg-green-900/60 px-2 py-0.5 rounded-full">{secondsLeft(mySlot)}s</span>
+                )}
               </div>
             )}
 
@@ -935,9 +973,20 @@ export default function LiveClassroom() {
                     data-student-id={slot.studentId}
                     className="w-28 rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative"
                     style={{ background: "#0f172a", borderColor: slot.studentId === userId ? "#10B981" : "#334155" }}>
-                    {/* Video placeholder (WebRTC hook point) */}
-                    <div className="h-12 flex items-center justify-center bg-gray-900/80">
-                      <div className="text-xl select-none">👤</div>
+                    {/* LiveKit video for this staged student, avatar fallback until they publish */}
+                    <div className="h-12 flex items-center justify-center bg-gray-900/80 relative overflow-hidden">
+                      <video
+                        key={`${slot.studentId}-${livekit.trackVersion}`}
+                        ref={(el) => livekit.attachParticipantVideo(slot.studentId, el)}
+                        autoPlay
+                        playsInline
+                        muted={slot.studentId === userId}
+                        className="w-full h-full object-cover absolute inset-0"
+                        style={{ display: livekit.stagePublishers.has(slot.studentId) ? "block" : "none" }}
+                      />
+                      {!livekit.stagePublishers.has(slot.studentId) && (
+                        <div className="text-xl select-none">👤</div>
+                      )}
                     </div>
 
                     {/* Name + mute bar */}
@@ -968,6 +1017,13 @@ export default function LiveClassroom() {
                     <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-blue-600/80 flex items-center justify-center text-[8px] text-white font-black">
                       {slot.slotNumber}
                     </div>
+
+                    {/* Backend-authoritative countdown */}
+                    {secondsLeft(slot) !== null && (
+                      <div className="absolute top-1 left-6 text-[8px] font-black text-white bg-black/60 px-1 rounded">
+                        {secondsLeft(slot)}s
+                      </div>
+                    )}
 
                     {/* "You" badge */}
                     {slot.studentId === userId && (
@@ -1058,17 +1114,33 @@ export default function LiveClassroom() {
                 <button onClick={toggleCamera} className="absolute bottom-2 right-2 p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all" title={cameraOn ? "Turn off camera" : "Turn on camera"}>
                   {cameraOn ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
                 </button>
+                {cameraOn && !livekit.cameraPublishing && (
+                  <span className="absolute bottom-2 left-2 text-[8px] text-yellow-400 font-bold">connecting…</span>
+                )}
               </>
             ) : teacherInfo ? (
               teacherInfo.online ? (
-                /* ── Teacher is live — show their avatar/stream placeholder ── */
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
-                  </div>
-                  <p className="text-[11px] text-white font-semibold">Teacher</p>
-                </div>
+                /* ── Teacher is live — real LiveKit video when published, avatar fallback otherwise ── */
+                <>
+                  <video
+                    ref={livekit.teacherVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                    style={{ display: livekit.teacherPresent ? "block" : "none" }}
+                  />
+                  <audio ref={livekit.teacherAudioRef} autoPlay />
+                  {!livekit.teacherPresent && (
+                    <div className="flex flex-col items-center justify-center h-full gap-2">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
+                      </div>
+                      <p className="text-[11px] text-white font-semibold">Teacher</p>
+                      <p className="text-[9px] text-gray-500">Camera off</p>
+                    </div>
+                  )}
+                </>
               ) : (
                 /* ── Teacher disconnected — reconnecting placeholder ── */
                 <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
@@ -1376,18 +1448,20 @@ export default function LiveClassroom() {
         </div>
       </div>
 
-      {/* ── Leaderboard overlay (5s auto-close) ── */}
+      {/* ── Leaderboard overlay (5s auto-close, group-scoped Top 20) ── */}
       {leaderboard && leaderboard.length > 0 && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
-          <div className="rounded-3xl p-8 text-center shadow-2xl" style={{ background: NAVY, minWidth: 300 }}>
+          <div className="rounded-3xl p-8 text-center shadow-2xl" style={{ background: NAVY, minWidth: 320, maxHeight: "80vh" }}>
             <div className="text-4xl mb-3">🏆</div>
             <h2 className="text-white font-black text-xl mb-1">Top Responders!</h2>
-            <p className="text-blue-300 text-xs mb-5">Fastest correct answers</p>
-            <div className="space-y-2">
+            <p className="text-blue-300 text-xs mb-5">Fastest correct answers · Top {leaderboard.length}</p>
+            <div className="space-y-1.5 overflow-y-auto pr-1" style={{ maxHeight: "50vh" }}>
               {leaderboard.map(e => (
-                <div key={e.rank} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2">
-                  <span className="text-2xl">{e.rank === 1 ? "🥇" : e.rank === 2 ? "🥈" : "🥉"}</span>
-                  <span className="text-white font-bold">{e.name}</span>
+                <div key={e.rank} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-1.5">
+                  <span className="text-lg w-6 text-center">
+                    {e.rank === 1 ? "🥇" : e.rank === 2 ? "🥈" : e.rank === 3 ? "🥉" : e.rank}
+                  </span>
+                  <span className="text-white font-bold flex-1 text-left text-sm">{e.name}</span>
                 </div>
               ))}
             </div>
