@@ -48,18 +48,26 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## Staff accounts
 
-### Teacher portal (`/teacher/login`)
-| Name   | Email                     | Role        | Password   |
-|--------|---------------------------|-------------|------------|
-| gourav | gourav.manhas10@gmail.com | super_admin | admin2026  |
-| priya  | priya@braintam.com        | academic_mentor | priya2026 |
-| super  | super@braintam.com        | admin       | super2026  |
+**Important:** the app reads from `NEON_DATABASE_URL` at runtime (per the Run & Operate section above), not `DATABASE_URL`. Always verify/manage staff accounts against `NEON_DATABASE_URL` — the two databases have diverged and hold different rows.
+
+### Teacher portal (`/teacher/login`) — role=teacher or super_admin
+| Name         | Email                     | Role        | Password    |
+|--------------|---------------------------|-------------|-------------|
+| Gourav Manhas| gourav.manhas10@gmail.com | super_admin | (set by admin) |
+| Priya Sharma | priya@braintam.com        | teacher     | teacher2026 |
+
+### Admin portal (`/admin/login`)
+| Name          | Email               | Role        | Password       |
+|---------------|---------------------|-------------|----------------|
+| Braintam Super| super@braintam.com  | admin       | (set by admin) |
+| Gourav Manhas | gourav.manhas10@gmail.com | super_admin | (set by admin) |
 
 ### Mentor/Sales SSM portal (`/mentor/login`) — role=mentor
-| Name   | Email                     | mentor_type | Password   |
-|--------|---------------------------|-------------|------------|
-| poonam | braintam20@gmail.com      | sales       | poonam2026 |
-| akshay | akshay@briantam.com       | sales       | (in DB)    |
+| Name         | Email                     | mentor_type | Password       |
+|--------------|---------------------------|-------------|----------------|
+| Mentor Moses | mosesmentor@braintam.com  | sales       | (set by admin) |
+
+Passwords marked "(set by admin)" were created outside this session and are unknown — use the admin panel's password reset flow if access is needed. Teacher account `priya@braintam.com` was created in this session specifically because no `role=teacher` account existed in production, which is why `/teacher/login` previously had no valid account to sign in with.
 
 ## Product
 

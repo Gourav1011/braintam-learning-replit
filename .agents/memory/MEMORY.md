@@ -5,3 +5,4 @@
 - [Annotation canvas must always render](annotation-canvas.md) — canvas must be outside the embedUrl conditional; placing it inside means pen/highlight/clear have no DOM target when no presentation is loaded.
 - [Live classroom sidebar architecture](live-classroom-sidebars.md) — TeacherSidebar (LIVE only, no tabs, purple for suggested), MentorSidebar (group stats + call absent); mentor:suggestStudent → teacher:studentSuggested in teacherRoom only; staffChat via teacherRoom.
 - [Unmemoized callback prop causes infinite refresh](unmemoized-callback-prop-rerender.md) — a plain-function prop (e.g. `flash`) recreated each render breaks child `useCallback([load],[flash])` → useEffect refetch loops.
+- [DATABASE_URL vs NEON_DATABASE_URL divergence](neon-vs-local-staff-accounts.md) — always query NEON_DATABASE_URL for staff/login debugging; local DB rows don't reflect production.
