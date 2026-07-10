@@ -934,8 +934,9 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
   const [teachers, setTeachers] = useState<ScheduleTeacher[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
+  const [subjectFilter, setSubjectFilter] = useState("all");
+  const [layout, setLayout] = useState<"timeline" | "list">("timeline");
 
-  const [finderOpen, setFinderOpen]   = useState(false);
   const [finderStart, setFinderStart] = useState("10:00");
   const [finderEnd, setFinderEnd]     = useState("11:00");
   const [finderResults, setFinderResults] = useState<FindAvailableResult[] | null>(null);
@@ -965,17 +966,28 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
   }
 
   const totalHours = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
-  const hourMarks = Array.from({ length: totalHours + 1 }, (_, i) => TIMELINE_START_HOUR + i);
+  const hourMarks = Array.from({ length: totalHours }, (_, i) => TIMELINE_START_HOUR + i);
 
-  function blockPosition(startsAt: string | null, endsAt: string | null) {
-    if (!startsAt || !endsAt) return null;
-    const s = new Date(startsAt), e = new Date(endsAt);
-    const startFrac = (s.getHours() + s.getMinutes() / 60 - TIMELINE_START_HOUR) / totalHours;
-    const endFrac   = (e.getHours() + e.getMinutes() / 60 - TIMELINE_START_HOUR) / totalHours;
-    const left  = Math.max(0, startFrac) * 100;
-    const width = Math.max(0.5, (Math.min(1, endFrac) - Math.max(0, startFrac))) * 100;
-    if (left >= 100 || left + width <= 0) return null;
-    return { left: `${left}%`, width: `${width}%` };
+  const subjectOptions = Array.from(new Set(teachers.flatMap(t => t.teachingSubjects))).sort();
+  const visibleTeachers = subjectFilter === "all" ? teachers : teachers.filter(t => t.teachingSubjects.includes(subjectFilter));
+
+  function classInHour(t: ScheduleTeacher, hour: number) {
+    return t.classes.find(c => {
+      if (!c.startsAt || !c.endsAt) return false;
+      const s = new Date(c.startsAt), e = new Date(c.endsAt);
+      const sFrac = s.getHours() + s.getMinutes() / 60;
+      const eFrac = e.getHours() + e.getMinutes() / 60;
+      return sFrac < hour + 1 && eFrac > hour;
+    }) ?? null;
+  }
+  function isClassStartHour(c: ScheduleClass, hour: number) {
+    if (!c.startsAt) return false;
+    return new Date(c.startsAt).getHours() === hour;
+  }
+  function fmtTimeRange(startsAt: string | null, endsAt: string | null) {
+    if (!startsAt || !endsAt) return "";
+    const f = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+    return `${f(new Date(startsAt))} - ${f(new Date(endsAt))}`;
   }
 
   const teachingNow = teachers.filter(t => t.currentStatus === "teaching");
@@ -986,137 +998,172 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
     <div className="space-y-4">
       {/* Controls */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <CalendarDays className="w-4 h-4" style={{ color: NAVY }} />
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-400" />
+          <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-400">
+            <option value="all">All Subjects</option>
+            {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
           <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200">
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
         </div>
-        <button onClick={() => { setFinderOpen(o => !o); setFinderResults(null); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
-          style={{ background: ORANGE }}>
-          <Search className="w-3.5 h-3.5" /> Find Available Teacher
-        </button>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+          {[{ key: "timeline" as const, label: "Timeline View" }, { key: "list" as const, label: "List View" }].map(v => (
+            <button key={v.key} onClick={() => setLayout(v.key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              style={layout === v.key ? { background: NAVY, color: "white" } : { color: "#6B7280" }}>
+              {v.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Finder panel */}
-      {finderOpen && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 block mb-1">Start Time</label>
-              <input type="time" value={finderStart} onChange={e => setFinderStart(e.target.value)}
-                className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" />
+      {layout === "timeline" ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+            <h3 className="font-black text-sm" style={{ color: NAVY }}>Daily Timeline — {fmtDate(date)}</h3>
+            <div className="flex items-center gap-3 text-[10px] font-semibold">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />Available</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Class</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />On Leave</span>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 block mb-1">End Time</label>
-              <input type="time" value={finderEnd} onChange={e => setFinderEnd(e.target.value)}
-                className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" />
-            </div>
-            <button onClick={runFinder} disabled={finderLoading}
-              className="px-4 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 disabled:opacity-60" style={{ background: NAVY }}>
-              {finderLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Search
-            </button>
           </div>
-          {finderResults && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {finderResults.map(r => (
-                <div key={r.id} className="flex items-center gap-2 p-2 rounded-xl border" style={{ borderColor: r.available ? "#BBF7D0" : "#FEE2E2", background: r.available ? "#F0FDF4" : "#FEF2F2" }}>
-                  <Avatar name={r.name} avatarUrl={r.avatarUrl} size={7} />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-800 truncate">{r.name}{r.isDefault && <span className="ml-1 text-[9px] font-bold text-blue-500">(Default)</span>}</p>
-                    <p className={`text-[10px] font-semibold truncate ${r.available ? "text-green-600" : "text-red-500"}`}>{r.available ? "Available" : r.reason}</p>
-                  </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+              <Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /><span className="text-sm">Loading schedule…</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-red-500 text-sm">{error}</div>
+          ) : visibleTeachers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400 text-sm">No active teachers found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[900px]">
+                {/* Hour header */}
+                <div className="flex border-b border-gray-100 pl-40">
+                  {hourMarks.map(h => (
+                    <div key={h} className="flex-1 text-center text-[10px] font-bold text-gray-400 py-2 border-l border-gray-50">
+                      {h % 12 === 0 ? 12 : h % 12}{h < 12 ? "AM" : "PM"}
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {finderResults.length === 0 && <p className="text-xs text-gray-400 col-span-full text-center py-2">No teachers found.</p>}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Timeline */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-black text-sm" style={{ color: NAVY }}>Daily Timeline — {fmtDate(date)}</h3>
-          <div className="flex items-center gap-3 text-[10px] font-semibold">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />Available</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Teaching</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />On Leave</span>
-          </div>
-        </div>
-        {loading ? (
-          <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /><span className="text-sm">Loading schedule…</span>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-2 text-red-500 text-sm">{error}</div>
-        ) : teachers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400 text-sm">No active teachers found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <div className="min-w-[720px]">
-              {/* Hour header */}
-              <div className="flex border-b border-gray-100 pl-40">
-                {hourMarks.map(h => (
-                  <div key={h} className="flex-1 text-center text-[10px] font-bold text-gray-400 py-2 border-l border-gray-50">
-                    {h % 12 === 0 ? 12 : h % 12}{h < 12 ? "AM" : "PM"}
+                {/* Rows */}
+                {visibleTeachers.map(t => (
+                  <div key={t.id} className="flex items-stretch border-b border-gray-50 hover:bg-gray-50/40">
+                    <div className="w-40 flex-shrink-0 flex items-center gap-2 px-2 py-2">
+                      <Avatar name={t.name} avatarUrl={t.avatarUrl} size={7} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 truncate">{t.name}</p>
+                        <p className="text-[9px] text-gray-400 truncate">{t.teachingSubjects.join(", ") || "—"}</p>
+                      </div>
+                    </div>
+                    {t.isOnLeave ? (
+                      <div className="flex-1 flex items-center justify-center m-1 rounded-md" style={{ background: "#FEE2E2" }} title={t.leaveReason ?? "On leave"}>
+                        <span className="text-[10px] font-bold" style={{ color: "#991B1B" }}>On Leave{t.leaveReason ? ` — ${t.leaveReason}` : ""}</span>
+                      </div>
+                    ) : (
+                      hourMarks.map(h => {
+                        const c = classInHour(t, h);
+                        if (c) {
+                          if (!isClassStartHour(c, h)) return null;
+                          const s = c.startsAt ? new Date(c.startsAt) : null;
+                          const e = c.endsAt ? new Date(c.endsAt) : null;
+                          const span = s && e ? Math.max(1, Math.ceil((e.getHours() + e.getMinutes() / 60) - (s.getHours() + s.getMinutes() / 60))) : 1;
+                          return (
+                            <div key={h} className="flex items-center justify-center m-1 rounded-md px-1 py-1 text-center overflow-hidden"
+                              style={{ flex: span, background: c.status === "live" ? "#DDD6FE" : "#E0E7FF" }}
+                              title={`${c.title} (${c.subjectName ?? "—"})`}>
+                              <div>
+                                <p className="text-[9px] font-bold truncate" style={{ color: "#4338CA" }}>{c.title}</p>
+                                <p className="text-[8px] text-indigo-500">{fmtTimeRange(c.startsAt, c.endsAt)}</p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={h} className="flex-1 flex items-center justify-center m-1 rounded-md" style={{ background: "#DCFCE7" }}>
+                            <span className="text-[9px] font-bold" style={{ color: "#166534" }}>Available</span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 ))}
               </div>
-              {/* Rows */}
-              {teachers.map(t => (
-                <div key={t.id} className="flex items-center border-b border-gray-50 hover:bg-gray-50/40">
-                  <div className="w-40 flex-shrink-0 flex items-center gap-2 px-2 py-2">
-                    <Avatar name={t.name} avatarUrl={t.avatarUrl} size={7} />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">{t.name}</p>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: statusColor(t.currentStatus).bg, color: statusColor(t.currentStatus).text }}>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 text-left">
+                  {["Teacher", "Status", "Subjects", "Current Class", "Next Class"].map(h => (
+                    <th key={h} className="px-4 py-3 font-bold text-gray-400 text-[10px] uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {loading ? (
+                  <tr><td colSpan={5} className="py-10 text-center text-gray-400">Loading…</td></tr>
+                ) : error ? (
+                  <tr><td colSpan={5} className="py-10 text-center text-red-500">{error}</td></tr>
+                ) : visibleTeachers.length === 0 ? (
+                  <tr><td colSpan={5} className="py-10 text-center text-gray-400">No active teachers found.</td></tr>
+                ) : visibleTeachers.map(t => (
+                  <tr key={t.id} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={t.name} avatarUrl={t.avatarUrl} size={7} />
+                        <span className="font-semibold text-gray-800">{t.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: statusColor(t.currentStatus).bg, color: statusColor(t.currentStatus).text }}>
                         {statusColor(t.currentStatus).label}
                       </span>
-                    </div>
-                  </div>
-                  <div className="relative flex-1 h-10 border-l border-gray-50">
-                    {t.isOnLeave && <div className="absolute inset-y-1 left-0 right-0 rounded-md opacity-70" style={{ background: "#FEE2E2" }} title={t.leaveReason ?? "On leave"} />}
-                    {t.classes.map(c => {
-                      const pos = blockPosition(c.startsAt, c.endsAt);
-                      if (!pos) return null;
-                      return (
-                        <div key={c.id} className="absolute inset-y-1 rounded-md px-1.5 py-0.5 overflow-hidden flex items-center"
-                          style={{ ...pos, background: c.status === "live" ? "#DDD6FE" : "#E0E7FF" }}
-                          title={`${c.title} (${c.subjectName ?? "—"})`}>
-                          <span className="text-[9px] font-bold truncate" style={{ color: "#4338CA" }}>{c.title}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">{t.teachingSubjects.join(", ") || "—"}</td>
+                    <td className="px-4 py-3 text-gray-500">{t.currentClass ? `${t.currentClass.title} (${fmtTimeRange(t.currentClass.startsAt, t.currentClass.endsAt)})` : "—"}</td>
+                    <td className="px-4 py-3 text-gray-500">{t.nextClass ? `${t.nextClass.title} (${fmtTimeRange(t.nextClass.startsAt, t.nextClass.endsAt)})` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Current Status + Next Classes panels */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Current Status + Next Classes + Finder panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <h4 className="font-black text-xs mb-3" style={{ color: NAVY }}>Current Status (Live)</h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-black text-xs" style={{ color: NAVY }}>Current Status (Live)</h4>
+            <button onClick={load} className="text-gray-400 hover:text-gray-600"><RefreshCw className="w-3.5 h-3.5" /></button>
+          </div>
           <div className="space-y-2 max-h-56 overflow-y-auto">
             {teachingNow.length === 0 && onLeave.length === 0 && <p className="text-xs text-gray-400">No teachers currently teaching or on leave.</p>}
             {teachingNow.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs">
                 <Avatar name={t.name} avatarUrl={t.avatarUrl} size={6} />
-                <span className="font-semibold text-gray-700">{t.name}</span>
-                <span className="text-gray-400">— teaching {t.currentClass?.title}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-700 truncate">{t.name}</p>
+                  <p className="text-[10px] text-purple-600 font-semibold">Teaching Now — {t.currentClass?.title}</p>
+                </div>
               </div>
             ))}
             {onLeave.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs">
                 <Avatar name={t.name} avatarUrl={t.avatarUrl} size={6} />
-                <span className="font-semibold text-gray-700">{t.name}</span>
-                <span className="text-red-500">— on leave{t.leaveReason ? `: ${t.leaveReason}` : ""}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-700 truncate">{t.name}</p>
+                  <p className="text-[10px] text-red-500 font-semibold">On Leave{t.leaveReason ? ` — ${t.leaveReason}` : ""}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -1128,12 +1175,49 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
             {nextUp.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs">
                 <Avatar name={t.name} avatarUrl={t.avatarUrl} size={6} />
-                <span className="font-semibold text-gray-700">{t.name}</span>
-                <span className="text-gray-400">
-                  — {t.nextClass?.title} at {t.nextClass?.startsAt ? new Date(t.nextClass.startsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "—"}
-                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-700 truncate">{t.name}</p>
+                  <p className="text-[10px] text-gray-400 truncate">
+                    {t.nextClass?.title} — {t.nextClass ? fmtTimeRange(t.nextClass.startsAt, t.nextClass.endsAt) : ""}
+                  </p>
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <h4 className="font-black text-xs mb-3" style={{ color: NAVY }}>Available Teachers Finder</h4>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 block mb-1">Start Time</label>
+                <input type="time" value={finderStart} onChange={e => setFinderStart(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400" />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 block mb-1">End Time</label>
+                <input type="time" value={finderEnd} onChange={e => setFinderEnd(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400" />
+              </div>
+            </div>
+            <button onClick={runFinder} disabled={finderLoading}
+              className="w-full px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-60" style={{ background: NAVY }}>
+              {finderLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Find Available Teachers
+            </button>
+            {finderResults && (
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pt-1">
+                {finderResults.length === 0 && <p className="text-xs text-gray-400 text-center py-2">No teachers found.</p>}
+                {finderResults.map(r => (
+                  <div key={r.id} className="flex items-center gap-2 p-1.5 rounded-lg border" style={{ borderColor: r.available ? "#BBF7D0" : "#FEE2E2", background: r.available ? "#F0FDF4" : "#FEF2F2" }}>
+                    <Avatar name={r.name} avatarUrl={r.avatarUrl} size={6} />
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-gray-800 truncate">{r.name}{r.isDefault && <span className="ml-1 text-[9px] font-bold text-blue-500">(Default)</span>}</p>
+                      <p className={`text-[10px] font-semibold truncate ${r.available ? "text-green-600" : "text-red-500"}`}>{r.available ? "Available" : r.reason}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1159,11 +1243,11 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [toggleConfirmInfo, setToggleConfirmInfo] = useState<{ activeCourseAssignments: number; upcomingClasses: number } | null>(null);
-  const [view, setView] = useState<"all" | "available" | "engaged" | "inactive" | "schedule">("all");
+  const [view, setView] = useState<"all" | "available" | "engaged" | "onleave" | "inactive" | "schedule">("all");
 
   const debouncedSearch = useDebounce(search, 300);
 
-  const effectiveStatus = view === "inactive" ? "inactive" : (view === "available" || view === "engaged") ? "active" : statusFilter;
+  const effectiveStatus = view === "inactive" ? "inactive" : (view === "available" || view === "engaged" || view === "onleave") ? "active" : statusFilter;
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -1182,6 +1266,7 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
   const displayItems = data
     ? view === "available" ? data.items.filter(t => !t.isOnLeave)
     : view === "engaged"   ? data.items.filter(t => t.isOnLeave)
+    : view === "onleave"   ? data.items.filter(t => t.isOnLeave)
     : data.items
     : [];
 
@@ -1281,6 +1366,7 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
           { key: "all" as const,       label: "All Teachers" },
           { key: "available" as const, label: "Available Teachers" },
           { key: "engaged" as const,   label: "Engaged Teachers" },
+          { key: "onleave" as const,   label: "On Leave" },
           { key: "inactive" as const,  label: "Inactive Teachers" },
           { key: "schedule" as const,  label: "Schedule & Availability" },
         ].map(t => (
