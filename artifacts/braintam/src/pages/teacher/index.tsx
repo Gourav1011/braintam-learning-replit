@@ -155,6 +155,21 @@ export default function TeacherPage() {
   const [createSessionForm, setCreateSessionForm] = useState({ batchId: "", title: "", scheduledAt: "", duration: "60", joinUrl: "" });
   const [createSessionBusy, setCreateSessionBusy] = useState(false);
 
+  // Mastery Live Classes (real course live classes, LiveKit-based)
+  interface MasteryLiveClass { id: number; title: string; subjectId: number; grade: number; courseId: number | null; courseSubjectId: number | null; chapterId: number | null; topicId: number | null; scheduledAt: string; duration: number; status: string; }
+  const [masteryLiveClasses, setMasteryLiveClasses] = useState<MasteryLiveClass[]>([]);
+  const [showMasteryLcForm, setShowMasteryLcForm] = useState(false);
+  const [masteryLcForm, setMasteryLcForm] = useState({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60" });
+  const [masteryLcCourseSubjects, setMasteryLcCourseSubjects] = useState<{ id: number; name: string }[]>([]);
+  const [masteryLcChapters, setMasteryLcChapters] = useState<{ id: number; name: string }[]>([]);
+  const [masteryLcTopics, setMasteryLcTopics] = useState<{ id: number; name: string }[]>([]);
+  const [masteryLcBusy, setMasteryLcBusy] = useState(false);
+
+  // Courses tab: expandable chapters/topics
+  const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
+  const [courseChapters, setCourseChapters] = useState<{ id: number; name: string; topics: { id: number; name: string }[] }[]>([]);
+  const [courseChaptersLoading, setCourseChaptersLoading] = useState(false);
+
   useEffect(() => {
     if (!isLoading && (role === "teacher" || role === "admin")) loadAll();
   }, [isLoading, role]);
@@ -178,6 +193,7 @@ export default function TeacherPage() {
     setSubmissions(hwSub);
     setHwSubmissions(hwSub); setAsgnSubmissions(asgnSub); setTestSubmissions(testSub);
     setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn); setNotes(nts);
+    void loadMasteryLiveClasses();
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000); }
@@ -187,6 +203,84 @@ export default function TeacherPage() {
     const r = await apiFetch(`/teacher/chapters?courseId=${courseId}`);
     setHwChapters(r.ok ? await r.json() : []);
     setHwTopics([]);
+  }
+
+  async function loadMasteryLiveClasses() {
+    const r = await apiFetch("/teacher/live-classes");
+    if (r.ok) setMasteryLiveClasses(await r.json());
+  }
+
+  async function loadMasteryLcCourseSubjects(courseId: string) {
+    if (!courseId) { setMasteryLcCourseSubjects([]); setMasteryLcChapters([]); setMasteryLcTopics([]); return; }
+    const r = await apiFetch(`/teacher/course-subjects?courseId=${courseId}`);
+    setMasteryLcCourseSubjects(r.ok ? await r.json() : []);
+    setMasteryLcChapters([]);
+    setMasteryLcTopics([]);
+  }
+
+  async function loadMasteryLcChapters(courseId: string) {
+    if (!courseId) { setMasteryLcChapters([]); setMasteryLcTopics([]); return; }
+    const r = await apiFetch(`/teacher/chapters?courseId=${courseId}`);
+    setMasteryLcChapters(r.ok ? await r.json() : []);
+    setMasteryLcTopics([]);
+  }
+
+  async function loadMasteryLcTopics(chapterId: string) {
+    if (!chapterId) { setMasteryLcTopics([]); return; }
+    const r = await apiFetch(`/teacher/topics?chapterId=${chapterId}`);
+    setMasteryLcTopics(r.ok ? await r.json() : []);
+  }
+
+  function selectMasteryLcCourse(courseId: string) {
+    setMasteryLcForm(p => ({ ...p, courseId, courseSubjectId: "", chapterId: "", topicId: "" }));
+    void loadMasteryLcCourseSubjects(courseId);
+    void loadMasteryLcChapters(courseId);
+  }
+
+  async function createMasteryLiveClass() {
+    if (!masteryLcForm.title.trim() || !masteryLcForm.courseId || !masteryLcForm.scheduledAt) {
+      flash("Title, course and date/time are required", false);
+      return;
+    }
+    setMasteryLcBusy(true);
+    const r = await apiFetch("/teacher/live-classes", {
+      method: "POST",
+      body: JSON.stringify({
+        title: masteryLcForm.title,
+        courseId: Number(masteryLcForm.courseId),
+        courseSubjectId: masteryLcForm.courseSubjectId ? Number(masteryLcForm.courseSubjectId) : null,
+        chapterId: masteryLcForm.chapterId ? Number(masteryLcForm.chapterId) : null,
+        topicId: masteryLcForm.topicId ? Number(masteryLcForm.topicId) : null,
+        scheduledAt: new Date(masteryLcForm.scheduledAt + ":00+05:30").toISOString(),
+        duration: Number(masteryLcForm.duration) || 60,
+      }),
+    });
+    if (r.ok) {
+      flash("Live class scheduled!");
+      setShowMasteryLcForm(false);
+      setMasteryLcForm({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60" });
+      setMasteryLcCourseSubjects([]); setMasteryLcChapters([]); setMasteryLcTopics([]);
+      await loadMasteryLiveClasses();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      flash(d.error ?? "Failed to schedule live class", false);
+    }
+    setMasteryLcBusy(false);
+  }
+
+  async function toggleCourseExpand(courseId: number) {
+    if (expandedCourseId === courseId) { setExpandedCourseId(null); return; }
+    setExpandedCourseId(courseId);
+    setCourseChaptersLoading(true);
+    const r = await apiFetch(`/teacher/chapters?courseId=${courseId}`);
+    const chapters: { id: number; name: string }[] = r.ok ? await r.json() : [];
+    const withTopics = await Promise.all(chapters.map(async ch => {
+      const tr = await apiFetch(`/teacher/topics?chapterId=${ch.id}`);
+      const topics = tr.ok ? await tr.json() : [];
+      return { ...ch, topics };
+    }));
+    setCourseChapters(withTopics);
+    setCourseChaptersLoading(false);
   }
 
   async function loadHwTopics(chapterId: string) {
@@ -832,6 +926,33 @@ export default function TeacherPage() {
                   <div className="bg-blue-50 rounded-xl p-2 text-center"><div className="font-black text-lg text-blue-600">{c.totalLessons}</div><div className="text-gray-500">Lessons</div></div>
                 </div>
                 {c.rating && <div className="mt-2 text-xs text-yellow-500 font-semibold">★ {c.rating.toFixed(1)}</div>}
+                <button onClick={() => toggleCourseExpand(c.id)}
+                  className="mt-3 w-full flex items-center justify-between text-xs font-semibold text-gray-500 hover:text-gray-700 border-t border-gray-100 pt-3">
+                  Chapters &amp; Topics
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedCourseId === c.id ? "rotate-180" : ""}`} />
+                </button>
+                {expandedCourseId === c.id && (
+                  <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+                    {courseChaptersLoading && <p className="text-xs text-gray-400 text-center py-3">Loading…</p>}
+                    {!courseChaptersLoading && courseChapters.length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-3">No chapters added for this course yet.</p>
+                    )}
+                    {!courseChaptersLoading && courseChapters.map(ch => (
+                      <div key={ch.id} className="bg-gray-50 rounded-xl p-2.5">
+                        <div className="text-xs font-bold text-gray-700 mb-1">📂 {ch.name}</div>
+                        {ch.topics.length > 0 ? (
+                          <ul className="pl-3 space-y-0.5">
+                            {ch.topics.map(t => (
+                              <li key={t.id} className="text-[11px] text-gray-500">🏷 {t.name}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 pl-3">No topics yet</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {courses.length === 0 && (
@@ -1101,6 +1222,111 @@ export default function TeacherPage() {
                 </div>
               </div>
             )}
+
+            {/* ── Mastery Live Classes (for my assigned Courses) ── */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-purple-100">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-bold text-sm" style={{ color: NAVY }}>Course Live Classes</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Live classes for the courses you're assigned to teach</p>
+                </div>
+                <button onClick={() => { setShowMasteryLcForm(v => !v); if (!showMasteryLcForm && masteryLcForm.courseId) void loadMasteryLcCourseSubjects(masteryLcForm.courseId); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity"
+                  style={{ background: "#7C3AED" }}>
+                  <Plus className="w-3.5 h-3.5" /> Schedule Live Class
+                </button>
+              </div>
+
+              {showMasteryLcForm && (
+                <div className="mt-3 border-t border-gray-100 pt-3 space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Course *</label>
+                    <Select value={masteryLcForm.courseId || "__none__"} onValueChange={v => selectMasteryLcCourse(v === "__none__" ? "" : v)}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select your assigned course…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Select course</SelectItem>
+                        {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · {c.subjectName} · Grade {c.grade}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {courses.length === 0 && <p className="text-xs text-amber-600 mt-1">No courses assigned to you yet — ask your admin.</p>}
+                  </div>
+                  {masteryLcForm.courseId && (
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">🎓 Grade {courses.find(c => c.id === Number(masteryLcForm.courseId))?.grade}</span>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">📖 {courses.find(c => c.id === Number(masteryLcForm.courseId))?.subjectName}</span>
+                    </div>
+                  )}
+                  <Input placeholder="Class title *" value={masteryLcForm.title}
+                    onChange={e => setMasteryLcForm(p => ({ ...p, title: e.target.value }))} />
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {masteryLcCourseSubjects.length > 0 && (
+                      <Select value={masteryLcForm.courseSubjectId || "__none__"} onValueChange={v => setMasteryLcForm(p => ({ ...p, courseSubjectId: v === "__none__" ? "" : v }))}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Default subject</SelectItem>
+                          {masteryLcCourseSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {masteryLcChapters.length > 0 && (
+                      <Select value={masteryLcForm.chapterId || "__none__"} onValueChange={v => { const id = v === "__none__" ? "" : v; setMasteryLcForm(p => ({ ...p, chapterId: id, topicId: "" })); void loadMasteryLcTopics(id); }}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Chapter (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No chapter</SelectItem>
+                          {masteryLcChapters.map(ch => <SelectItem key={ch.id} value={String(ch.id)}>{ch.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {masteryLcTopics.length > 0 && (
+                      <Select value={masteryLcForm.topicId || "__none__"} onValueChange={v => setMasteryLcForm(p => ({ ...p, topicId: v === "__none__" ? "" : v }))}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Topic (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No topic</SelectItem>
+                          {masteryLcTopics.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Input type="datetime-local" value={masteryLcForm.scheduledAt}
+                      onChange={e => setMasteryLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
+                    <Input type="number" min="15" placeholder="Duration (minutes)" value={masteryLcForm.duration}
+                      onChange={e => setMasteryLcForm(p => ({ ...p, duration: e.target.value }))} />
+                  </div>
+                  <p className="text-xs text-gray-400">A live class room is created automatically — no meeting link needed.</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={createMasteryLiveClass} disabled={masteryLcBusy || !masteryLcForm.title || !masteryLcForm.courseId || !masteryLcForm.scheduledAt}
+                      className="text-white" style={{ background: "#7C3AED" }}>{masteryLcBusy ? "Scheduling…" : "Schedule"}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowMasteryLcForm(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-3 space-y-2">
+                {masteryLiveClasses.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-3">No course live classes scheduled yet.</p>
+                )}
+                {masteryLiveClasses.map(lc => {
+                  const isLive = lc.status === "live";
+                  const isDone = lc.status === "completed";
+                  return (
+                    <div key={lc.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-xl p-2.5">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate" style={{ color: NAVY }}>{lc.title}</div>
+                        <div className="text-[10px] text-gray-400">{new Date(lc.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {lc.duration}min</div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isLive ? "bg-red-100 text-red-600" : isDone ? "bg-gray-200 text-gray-500" : "bg-blue-50 text-blue-600"}`}>
+                          {isLive ? "🔴 LIVE" : isDone ? "✓ Done" : "⏰ Upcoming"}
+                        </span>
+                        <a href={`/live/${lc.id}?role=teacher&title=${encodeURIComponent(lc.title)}`}
+                          className="text-[11px] px-2.5 py-1 rounded-lg text-white font-semibold" style={{ background: NAVY }}>
+                          Enter Room
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

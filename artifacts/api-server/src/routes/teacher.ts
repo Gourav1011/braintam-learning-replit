@@ -9,7 +9,7 @@ import {
   testSubmissionsTable,
   auditLogsTable, topicNotesTable,
   demoSessionsTable, demoBatchesTable,
-  chaptersTable, topicsTable,
+  chaptersTable, topicsTable, courseSubjectsTable,
 } from "@workspace/db";
 import { eq, and, inArray, desc, sql, gte, lte, or } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -23,6 +23,13 @@ async function getTeacherCourseIds(teacherId: number): Promise<number[]> {
     .from(teacherCoursesTable)
     .where(eq(teacherCoursesTable.teacherId, teacherId));
   return rows.map(r => r.courseId);
+}
+
+async function getTeacherCourseSubjectAccess(teacherId: number): Promise<{ courseId: number; courseSubjectId: number | null }[]> {
+  return db
+    .select({ courseId: teacherCoursesTable.courseId, courseSubjectId: teacherCoursesTable.courseSubjectId })
+    .from(teacherCoursesTable)
+    .where(eq(teacherCoursesTable.teacherId, teacherId));
 }
 
 async function logAudit(
@@ -148,26 +155,53 @@ router.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
 
 router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
-  const { title, subjectId, grade, courseId, scheduledAt, duration, joinUrl } = req.body;
-  if (!title || !subjectId || !grade || !scheduledAt) {
-    res.status(400).json({ error: "title, subjectId, grade, scheduledAt are required" });
+  const isAdmin = req.authUser!.role === "admin" || req.authUser!.role === "super_admin";
+  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration } = req.body;
+  if (!title || !scheduledAt) {
+    res.status(400).json({ error: "title and scheduledAt are required" });
     return;
   }
+  if (!courseId && !grade) {
+    res.status(400).json({ error: "Select a course, or provide grade (and subjectId) manually" });
+    return;
+  }
+
+  let resolvedSubjectId = subjectId ? Number(subjectId) : null;
+  let resolvedGrade = grade ? Number(grade) : null;
+
   if (courseId) {
-    const courseIds = await getTeacherCourseIds(teacherId);
-    if (!courseIds.includes(courseId)) {
-      res.status(403).json({ error: "Not assigned to this course" });
-      return;
+    if (!isAdmin) {
+      const courseIds = await getTeacherCourseIds(teacherId);
+      if (!courseIds.includes(Number(courseId))) {
+        res.status(403).json({ error: "Not assigned to this course" });
+        return;
+      }
+    }
+    const [course] = await db.select({ subjectId: coursesTable.subjectId, grade: coursesTable.grade })
+      .from(coursesTable).where(eq(coursesTable.id, Number(courseId)));
+    if (course) {
+      resolvedSubjectId = resolvedSubjectId ?? course.subjectId;
+      resolvedGrade = resolvedGrade ?? course.grade;
     }
   }
+  // subjectId may legitimately stay null for courses that use the newer
+  // courseSubjects model instead of the global subjects table — only grade
+  // is strictly required to create a live class.
+  if (!resolvedGrade) {
+    res.status(400).json({ error: "Could not resolve grade — select a course or provide it manually" });
+    return;
+  }
+
   const [lc] = await db.insert(liveClassesTable).values({
-    title, subjectId: Number(subjectId), grade: Number(grade),
+    title, subjectId: resolvedSubjectId, grade: resolvedGrade,
     courseId: courseId ? Number(courseId) : null,
+    courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null,
+    chapterId: chapterId ? Number(chapterId) : null,
+    topicId: topicId ? Number(topicId) : null,
     teacherId,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 60,
     teacher: req.authUser!.name,
-    joinUrl: joinUrl ?? null,
     status: "upcoming",
   }).returning();
 
@@ -701,10 +735,31 @@ router.delete("/teacher/notes/:id", teacherOrAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Teacher-safe chapters & topics (fix 403 for admin endpoints) ──
-router.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
+// ── Teacher-safe course subjects, chapters & topics (fix 403 for admin endpoints) ──
+router.get("/teacher/course-subjects", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin" || req.authUser!.role === "super_admin";
   const courseId = Number(req.query.courseId);
   if (!courseId) { res.status(400).json({ error: "courseId required" }); return; }
+  if (!isAdmin) {
+    const access = await getTeacherCourseSubjectAccess(teacherId);
+    if (!access.some(a => a.courseId === courseId)) { res.json([]); return; }
+  }
+  const rows = await db.select().from(courseSubjectsTable)
+    .where(eq(courseSubjectsTable.courseId, courseId))
+    .orderBy(courseSubjectsTable.name);
+  res.json(rows);
+});
+
+router.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin" || req.authUser!.role === "super_admin";
+  const courseId = Number(req.query.courseId);
+  if (!courseId) { res.status(400).json({ error: "courseId required" }); return; }
+  if (!isAdmin) {
+    const courseIds = await getTeacherCourseIds(teacherId);
+    if (!courseIds.includes(courseId)) { res.status(403).json({ error: "Not assigned to this course" }); return; }
+  }
   const rows = await db.select().from(chaptersTable)
     .where(eq(chaptersTable.courseId, courseId))
     .orderBy(chaptersTable.order, chaptersTable.name);
@@ -712,8 +767,15 @@ router.get("/teacher/chapters", teacherOrAdmin, async (req, res) => {
 });
 
 router.get("/teacher/topics", teacherOrAdmin, async (req, res) => {
+  const teacherId = req.authUser!.id;
+  const isAdmin = req.authUser!.role === "admin" || req.authUser!.role === "super_admin";
   const chapterId = Number(req.query.chapterId);
   if (!chapterId) { res.status(400).json({ error: "chapterId required" }); return; }
+  if (!isAdmin) {
+    const [chapter] = await db.select({ courseId: chaptersTable.courseId }).from(chaptersTable).where(eq(chaptersTable.id, chapterId));
+    const courseIds = await getTeacherCourseIds(teacherId);
+    if (!chapter || chapter.courseId === null || !courseIds.includes(chapter.courseId)) { res.status(403).json({ error: "Not assigned to this chapter's course" }); return; }
+  }
   const rows = await db.select().from(topicsTable)
     .where(eq(topicsTable.chapterId, chapterId))
     .orderBy(topicsTable.order, topicsTable.name);
