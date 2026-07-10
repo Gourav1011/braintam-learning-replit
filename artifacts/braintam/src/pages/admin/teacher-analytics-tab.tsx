@@ -921,7 +921,7 @@ function ActionsMenu({ teacher, onAction }: {
 
 // ── Schedule & Availability (Timeline) ────────────────────────────────────────
 const TIMELINE_START_HOUR = 9;
-const TIMELINE_END_HOUR   = 21;
+const TIMELINE_END_HOUR   = 18;
 
 function statusColor(status: "on_leave" | "teaching" | "available") {
   if (status === "on_leave") return { bg: "#FEE2E2", text: "#991B1B", label: "On Leave" };
@@ -984,6 +984,10 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
       return sFrac < hour + 1 && eFrac > hour;
     }) ?? null;
   }
+  function isClassStartHour(c: ScheduleClass, hour: number) {
+    if (!c.startsAt) return false;
+    return new Date(c.startsAt).getHours() === hour;
+  }
   function fmtTimeRange(startsAt: string | null, endsAt: string | null) {
     if (!startsAt || !endsAt) return "";
     const f = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
@@ -1032,9 +1036,10 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
           <div className="p-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-black text-sm" style={{ color: NAVY }}>Daily Timeline — {fmtDate(date)}</h3>
             <div className="flex items-center gap-3 text-[10px] font-semibold flex-wrap">
-              <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-black" style={{ background: "#16A34A" }}>A</span>Available</span>
-              <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-black" style={{ background: "#DC2626" }}>C</span>Class</span>
-              <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full" style={{ background: "#9CA3AF" }} />On Leave</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />Available</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#2563EB" }} />Mastery Class</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Ignite Class</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />On Leave</span>
             </div>
           </div>
           {loading ? (
@@ -1067,26 +1072,32 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
                       </div>
                     </div>
                     {t.isOnLeave ? (
-                      <div className="flex-1 flex items-center justify-center m-1 rounded-md" style={{ background: "#F3F4F6" }} title={t.leaveReason ?? "On leave"}>
-                        <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "#9CA3AF" }} />
-                          <span className="text-[10px] font-bold text-gray-500">On Leave{t.leaveReason ? ` — ${t.leaveReason}` : ""}</span>
-                        </div>
+                      <div className="flex-1 flex items-center justify-center m-1 rounded-md" style={{ background: "#FEE2E2" }} title={t.leaveReason ?? "On leave"}>
+                        <span className="text-[10px] font-bold" style={{ color: "#991B1B" }}>On Leave{t.leaveReason ? ` — ${t.leaveReason}` : ""}</span>
                       </div>
                     ) : (
                       hourMarks.map(h => {
                         const c = classInHour(t, h);
                         if (c) {
+                          if (!isClassStartHour(c, h)) return null;
+                          const s = c.startsAt ? new Date(c.startsAt) : null;
+                          const e = c.endsAt ? new Date(c.endsAt) : null;
+                          const span = s && e ? Math.max(1, Math.ceil((e.getHours() + e.getMinutes() / 60) - (s.getHours() + s.getMinutes() / 60))) : 1;
+                          const isIgnite = c.program === "ignite";
                           return (
-                            <div key={h} className="flex-1 flex items-center justify-center m-1"
-                              title={`${c.title} (${c.subjectName ?? "—"}) ${fmtTimeRange(c.startsAt, c.endsAt)}`}>
-                              <span className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shadow-sm" style={{ background: "#DC2626" }}>C</span>
+                            <div key={h} className="flex items-center justify-center m-1 rounded-md px-1 py-1 text-center overflow-hidden"
+                              style={{ flex: span, background: isIgnite ? "#EDE9FE" : "#DBEAFE" }}
+                              title={`${c.title} (${c.subjectName ?? "—"})`}>
+                              <div>
+                                <p className="text-[9px] font-bold truncate" style={{ color: isIgnite ? "#6D28D9" : "#1D4ED8" }}>{c.title}</p>
+                                <p className="text-[8px]" style={{ color: isIgnite ? "#7C3AED" : "#2563EB" }}>{fmtTimeRange(c.startsAt, c.endsAt)}</p>
+                              </div>
                             </div>
                           );
                         }
                         return (
-                          <div key={h} className="flex-1 flex items-center justify-center m-1" title="Available">
-                            <span className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shadow-sm" style={{ background: "#16A34A" }}>A</span>
+                          <div key={h} className="flex-1 flex items-center justify-center m-1 rounded-md" style={{ background: "#DCFCE7" }}>
+                            <span className="text-[9px] font-bold" style={{ color: "#166534" }}>Available</span>
                           </div>
                         );
                       })
