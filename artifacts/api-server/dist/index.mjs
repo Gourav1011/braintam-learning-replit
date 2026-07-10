@@ -107684,6 +107684,10 @@ var usersTable = pgTable("users", {
   teachingGradesJson: text("teaching_grades_json"),
   // JSON number[] of grades
   joiningDate: timestamp("joining_date"),
+  isOnLeave: boolean("is_on_leave").notNull().default(false),
+  leaveReason: text("leave_reason"),
+  leaveUntil: timestamp("leave_until"),
+  // optional end date; null = indefinite until manually cleared
   // Lead Deployment Engine
   deploymentStatus: text("deployment_status"),
   // Undeployed | Assigned | Reassigned | Converted
@@ -109211,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-0542" : "dev",
-    commit: true ? "5ee8031" : "unknown",
-    buildTime: true ? "2026-07-10T05:42:14.382Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-0625" : "dev",
+    commit: true ? "e8cfc3b" : "unknown",
+    buildTime: true ? "2026-07-10T06:25:56.144Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -128054,6 +128058,15 @@ function parseJsonArray(raw) {
     return [];
   }
 }
+async function generateEmployeeId() {
+  const rows = await db.select({ employeeId: usersTable.employeeId }).from(usersTable).where(and(eq(usersTable.role, "teacher"), isNotNull(usersTable.employeeId)));
+  let max = 0;
+  for (const r of rows) {
+    const m = /BT-T-(\d+)/.exec(r.employeeId ?? "");
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return `BT-T-${String(max + 1).padStart(4, "0")}`;
+}
 async function logTeacherAction(opts) {
   try {
     await db.insert(auditLogsTable).values({
@@ -128115,11 +128128,14 @@ router32.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
         experienceYears: usersTable.experienceYears,
         teachingSubjectsJson: usersTable.teachingSubjectsJson,
         teachingGradesJson: usersTable.teachingGradesJson,
-        joiningDate: usersTable.joiningDate
+        joiningDate: usersTable.joiningDate,
+        isOnLeave: usersTable.isOnLeave,
+        leaveReason: usersTable.leaveReason,
+        leaveUntil: usersTable.leaveUntil
       }).from(usersTable).where(where).orderBy(orderFn(sortCol)).limit(pageSize).offset(offset),
       db.select({ total: count() }).from(usersTable).where(where),
       // Unfiltered — for KPIs
-      db.select({ id: usersTable.id, isActive: usersTable.isActive }).from(usersTable).where(eq(usersTable.role, "teacher")),
+      db.select({ id: usersTable.id, isActive: usersTable.isActive, isOnLeave: usersTable.isOnLeave }).from(usersTable).where(eq(usersTable.role, "teacher")),
       // Course counts per teacher
       db.select({ teacherId: teacherCoursesTable.teacherId, cnt: count() }).from(teacherCoursesTable).groupBy(teacherCoursesTable.teacherId),
       // Live class counts per teacher
@@ -128139,19 +128155,169 @@ router32.get("/admin/cc/teachers", adminOnly10, async (req, res) => {
     const totalTeachers = allTeacherRows.length;
     const activeTeachers = allTeacherRows.filter((t) => t.isActive).length;
     const inactiveTeachers = allTeacherRows.filter((t) => !t.isActive).length;
+    const onLeaveToday = allTeacherRows.filter((t) => t.isActive && t.isOnLeave).length;
     const totalClasses = [...classCountsRaw].reduce((s2, r) => s2 + r.cnt, 0);
     const totalCourses = [...courseCountsRaw].reduce((s2, r) => s2 + r.cnt, 0);
+    const liveNowRows = await db.select({ teacherId: liveClassesTable.teacherId }).from(liveClassesTable).where(and(isNotNull(liveClassesTable.teacherId), eq(liveClassesTable.status, "live")));
+    const teachingNowIds = new Set(liveNowRows.map((r) => r.teacherId));
+    const teachingNow = teachingNowIds.size;
+    const availableNow = allTeacherRows.filter((t) => t.isActive && !t.isOnLeave && !teachingNowIds.has(t.id)).length;
     res.json({
       items,
       total,
       page: pageNum,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-      kpis: { totalTeachers, activeTeachers, inactiveTeachers, totalClasses, totalCourses, avgAttendance: 0 }
+      kpis: { totalTeachers, activeTeachers, inactiveTeachers, totalClasses, totalCourses, avgAttendance: 0, onLeaveToday, teachingNow, availableNow }
     });
   } catch (err) {
     req.log.error({ err }, "teacher list error");
     res.status(500).json({ error: "Failed to list teachers" });
+  }
+});
+router32.get("/admin/cc/teachers/schedule", adminOnly10, async (req, res) => {
+  const { date: date6 } = req.query;
+  const day2 = date6 && !isNaN(Date.parse(date6)) ? new Date(date6) : /* @__PURE__ */ new Date();
+  const dayStart = new Date(day2);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(day2);
+  dayEnd.setHours(23, 59, 59, 999);
+  try {
+    const teachers = await db.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+      isActive: usersTable.isActive,
+      isOnLeave: usersTable.isOnLeave,
+      leaveReason: usersTable.leaveReason,
+      teachingSubjectsJson: usersTable.teachingSubjectsJson
+    }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))).orderBy(asc(usersTable.name));
+    const teacherIds = teachers.map((t) => t.id);
+    const classes = teacherIds.length === 0 ? [] : await db.select({
+      id: liveClassesTable.id,
+      teacherId: liveClassesTable.teacherId,
+      title: liveClassesTable.title,
+      scheduledAt: liveClassesTable.scheduledAt,
+      duration: liveClassesTable.duration,
+      status: liveClassesTable.status,
+      grade: liveClassesTable.grade,
+      subjectId: liveClassesTable.subjectId
+    }).from(liveClassesTable).where(and(
+      isNotNull(liveClassesTable.teacherId),
+      gte(liveClassesTable.scheduledAt, dayStart),
+      lte(liveClassesTable.scheduledAt, dayEnd)
+    ));
+    const subjectIds = [...new Set(classes.map((c) => c.subjectId).filter((v) => v != null))];
+    const subjectRows = subjectIds.length === 0 ? [] : await db.select({ id: courseSubjectsTable.id, name: courseSubjectsTable.name }).from(courseSubjectsTable).where(inArray(courseSubjectsTable.id, subjectIds));
+    const subjectMap = new Map(subjectRows.map((s2) => [s2.id, s2.name]));
+    const now = /* @__PURE__ */ new Date();
+    const classesByTeacher = /* @__PURE__ */ new Map();
+    for (const c of classes) {
+      if (!c.teacherId) continue;
+      if (!classesByTeacher.has(c.teacherId)) classesByTeacher.set(c.teacherId, []);
+      classesByTeacher.get(c.teacherId).push(c);
+    }
+    const rows = teachers.map((t) => {
+      const tClasses = (classesByTeacher.get(t.id) ?? []).map((c) => ({
+        id: c.id,
+        title: c.title,
+        grade: c.grade,
+        subjectName: c.subjectId ? subjectMap.get(c.subjectId) ?? null : null,
+        status: c.status,
+        startsAt: c.scheduledAt,
+        endsAt: c.scheduledAt ? new Date(new Date(c.scheduledAt).getTime() + (c.duration ?? 60) * 6e4) : null
+      })).sort((a, b) => new Date(a.startsAt ?? 0).getTime() - new Date(b.startsAt ?? 0).getTime());
+      const current = tClasses.find((c) => c.startsAt && c.endsAt && new Date(c.startsAt) <= now && now <= new Date(c.endsAt) && c.status !== "cancelled");
+      const next = tClasses.find((c) => c.startsAt && new Date(c.startsAt) > now && c.status !== "cancelled");
+      return {
+        id: t.id,
+        name: t.name,
+        avatarUrl: t.avatarUrl,
+        isOnLeave: t.isOnLeave,
+        leaveReason: t.leaveReason,
+        teachingSubjects: parseJsonArray(t.teachingSubjectsJson),
+        classes: tClasses,
+        currentStatus: t.isOnLeave ? "on_leave" : current ? "teaching" : "available",
+        currentClass: current ?? null,
+        nextClass: next ?? null
+      };
+    });
+    res.json({ date: dayStart.toISOString().slice(0, 10), teachers: rows });
+  } catch (err) {
+    req.log.error({ err }, "teacher schedule error");
+    res.status(500).json({ error: "Failed to load schedule" });
+  }
+});
+router32.get("/admin/cc/teachers/find-available", adminOnly10, async (req, res) => {
+  const { date: date6, startTime, endTime, courseId, courseSubjectId } = req.query;
+  if (!date6 || !startTime || !endTime) {
+    res.status(400).json({ error: "date, startTime and endTime are required" });
+    return;
+  }
+  try {
+    const windowStart = /* @__PURE__ */ new Date(`${date6}T${startTime}:00+05:30`);
+    const windowEnd = /* @__PURE__ */ new Date(`${date6}T${endTime}:00+05:30`);
+    if (isNaN(windowStart.getTime()) || isNaN(windowEnd.getTime()) || windowEnd <= windowStart) {
+      res.status(400).json({ error: "Invalid time window" });
+      return;
+    }
+    const dayStart = new Date(windowStart);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(windowStart);
+    dayEnd.setHours(23, 59, 59, 999);
+    const teachers = await db.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+      isOnLeave: usersTable.isOnLeave,
+      teachingSubjectsJson: usersTable.teachingSubjectsJson
+    }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))).orderBy(asc(usersTable.name));
+    const dayClasses = await db.select({
+      teacherId: liveClassesTable.teacherId,
+      title: liveClassesTable.title,
+      grade: liveClassesTable.grade,
+      scheduledAt: liveClassesTable.scheduledAt,
+      duration: liveClassesTable.duration,
+      status: liveClassesTable.status
+    }).from(liveClassesTable).where(and(isNotNull(liveClassesTable.teacherId), gte(liveClassesTable.scheduledAt, dayStart), lte(liveClassesTable.scheduledAt, dayEnd), or(eq(liveClassesTable.status, "upcoming"), eq(liveClassesTable.status, "live"))));
+    let defaultTeacherId = null;
+    if (courseId) {
+      const [defRow] = await db.select({ teacherId: teacherCoursesTable.teacherId }).from(teacherCoursesTable).where(and(
+        eq(teacherCoursesTable.courseId, Number(courseId)),
+        courseSubjectId ? eq(teacherCoursesTable.courseSubjectId, Number(courseSubjectId)) : isNotNull(teacherCoursesTable.teacherId)
+      )).limit(1);
+      defaultTeacherId = defRow?.teacherId ?? null;
+    }
+    const results = teachers.map((t) => {
+      if (t.isOnLeave) return { id: t.id, name: t.name, avatarUrl: t.avatarUrl, available: false, reason: "On Leave", isDefault: t.id === defaultTeacherId };
+      const clash = dayClasses.find((c) => {
+        if (c.teacherId !== t.id) return false;
+        const s2 = new Date(c.scheduledAt);
+        const e = new Date(s2.getTime() + (c.duration ?? 60) * 6e4);
+        return s2 < windowEnd && e > windowStart;
+      });
+      if (clash) {
+        const s2 = new Date(clash.scheduledAt);
+        const e = new Date(s2.getTime() + (clash.duration ?? 60) * 6e4);
+        return {
+          id: t.id,
+          name: t.name,
+          avatarUrl: t.avatarUrl,
+          available: false,
+          reason: `Busy: ${clash.title} (${s2.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}\u2013${e.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })})`,
+          isDefault: t.id === defaultTeacherId
+        };
+      }
+      return { id: t.id, name: t.name, avatarUrl: t.avatarUrl, available: true, reason: null, isDefault: t.id === defaultTeacherId };
+    }).sort((a, b) => {
+      if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+      if (a.available !== b.available) return a.available ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    res.json({ results });
+  } catch (err) {
+    req.log.error({ err }, "find available teachers error");
+    res.status(500).json({ error: "Failed to find available teachers" });
   }
 });
 router32.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
@@ -128178,7 +128344,10 @@ router32.get("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
       experienceYears: usersTable.experienceYears,
       teachingSubjectsJson: usersTable.teachingSubjectsJson,
       teachingGradesJson: usersTable.teachingGradesJson,
-      joiningDate: usersTable.joiningDate
+      joiningDate: usersTable.joiningDate,
+      isOnLeave: usersTable.isOnLeave,
+      leaveReason: usersTable.leaveReason,
+      leaveUntil: usersTable.leaveUntil
     }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "teacher"))).limit(1);
     if (!teacher) {
       res.status(404).json({ error: "Teacher not found" });
@@ -128283,7 +128452,6 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
     password,
     phone,
     department,
-    employeeId,
     qualification,
     experienceYears,
     teachingSubjects,
@@ -128308,13 +128476,7 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
       res.status(400).json({ error: "A user with this email already exists" });
       return;
     }
-    if (employeeId?.trim()) {
-      const dupe = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.employeeId, employeeId.trim())).limit(1);
-      if (dupe.length > 0) {
-        res.status(400).json({ error: "A teacher with this Employee ID already exists" });
-        return;
-      }
-    }
+    const employeeId = await generateEmployeeId();
     const { createHash } = await import("crypto");
     const passwordHash = createHash("sha256").update(password.trim() + "braintam_salt").digest("hex");
     const [teacher] = await db.insert(usersTable).values({
@@ -128327,7 +128489,7 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
       accountType: "teacher",
       isActive: true,
       grade: 0,
-      employeeId: employeeId?.trim() || null,
+      employeeId,
       qualification: qualification?.trim() || null,
       experienceYears: experienceYears != null ? Number(experienceYears) : null,
       teachingSubjectsJson: Array.isArray(teachingSubjects) ? JSON.stringify(teachingSubjects) : null,
@@ -128378,12 +128540,14 @@ router32.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
     department,
     isActive,
     force,
-    employeeId,
     qualification,
     experienceYears,
     teachingSubjects,
     teachingGrades,
-    joiningDate
+    joiningDate,
+    isOnLeave,
+    leaveReason,
+    leaveUntil
   } = req.body;
   try {
     const [before] = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, department: usersTable.department, isActive: usersTable.isActive }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "teacher"))).limit(1);
@@ -128406,24 +128570,23 @@ router32.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
         return;
       }
     }
-    if (employeeId?.trim()) {
-      const dupe = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.employeeId, employeeId.trim())).limit(1);
-      if (dupe.length > 0 && dupe[0].id !== id) {
-        res.status(400).json({ error: "A teacher with this Employee ID already exists" });
-        return;
-      }
-    }
     const updates = { updatedAt: /* @__PURE__ */ new Date() };
     if (name !== void 0 && name.trim()) updates.name = name.trim();
     if (phone !== void 0) updates.phone = phone || null;
     if (department !== void 0) updates.department = department || null;
     if (isActive !== void 0) updates.isActive = isActive;
-    if (employeeId !== void 0) updates.employeeId = employeeId?.trim() || null;
     if (qualification !== void 0) updates.qualification = qualification?.trim() || null;
     if (experienceYears !== void 0) updates.experienceYears = experienceYears != null ? Number(experienceYears) : null;
     if (teachingSubjects !== void 0) updates.teachingSubjectsJson = Array.isArray(teachingSubjects) ? JSON.stringify(teachingSubjects) : null;
     if (teachingGrades !== void 0) updates.teachingGradesJson = Array.isArray(teachingGrades) ? JSON.stringify(teachingGrades) : null;
     if (joiningDate !== void 0) updates.joiningDate = joiningDate ? new Date(joiningDate) : null;
+    if (isOnLeave !== void 0) updates.isOnLeave = isOnLeave;
+    if (leaveReason !== void 0) updates.leaveReason = leaveReason?.trim() || null;
+    if (leaveUntil !== void 0) updates.leaveUntil = leaveUntil ? new Date(leaveUntil) : null;
+    if (isOnLeave === false) {
+      updates.leaveReason = null;
+      updates.leaveUntil = null;
+    }
     const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({
       id: usersTable.id,
       name: usersTable.name,
@@ -128435,7 +128598,10 @@ router32.patch("/admin/cc/teachers/:id", adminOnly10, async (req, res) => {
       experienceYears: usersTable.experienceYears,
       teachingSubjectsJson: usersTable.teachingSubjectsJson,
       teachingGradesJson: usersTable.teachingGradesJson,
-      joiningDate: usersTable.joiningDate
+      joiningDate: usersTable.joiningDate,
+      isOnLeave: usersTable.isOnLeave,
+      leaveReason: usersTable.leaveReason,
+      leaveUntil: usersTable.leaveUntil
     });
     const actor = req.authUser;
     await logTeacherAction({

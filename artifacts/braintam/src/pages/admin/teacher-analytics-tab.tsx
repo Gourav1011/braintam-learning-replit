@@ -40,6 +40,9 @@ interface TeacherRow {
   teachingSubjects?: string[];
   teachingGrades?: number[];
   joiningDate?: string | null;
+  isOnLeave?: boolean;
+  leaveReason?: string | null;
+  leaveUntil?: string | null;
 }
 
 interface CourseOption {
@@ -71,7 +74,27 @@ interface TeacherListResponse {
   page: number;
   pageSize: number;
   totalPages: number;
-  kpis: { totalTeachers: number; activeTeachers: number; inactiveTeachers: number; totalClasses: number; totalCourses: number; avgAttendance: number };
+  kpis: { totalTeachers: number; activeTeachers: number; inactiveTeachers: number; totalClasses: number; totalCourses: number; avgAttendance: number; onLeaveToday: number; teachingNow: number; availableNow: number };
+}
+
+interface ScheduleClass {
+  id: number; title: string; grade: number | null; subjectName: string | null;
+  status: string | null; startsAt: string | null; endsAt: string | null;
+}
+
+interface ScheduleTeacher {
+  id: number; name: string; avatarUrl: string | null;
+  isOnLeave: boolean; leaveReason: string | null;
+  teachingSubjects: string[];
+  classes: ScheduleClass[];
+  currentStatus: "on_leave" | "teaching" | "available";
+  currentClass: ScheduleClass | null;
+  nextClass: ScheduleClass | null;
+}
+
+interface FindAvailableResult {
+  id: number; name: string; avatarUrl: string | null;
+  available: boolean; reason: string | null; isDefault: boolean;
 }
 
 interface ClassRow {
@@ -173,7 +196,6 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
 }) {
   const [name, setName]       = useState(teacher.name);
   const [phone, setPhone]     = useState(teacher.phone ?? "");
-  const [employeeId, setEmployeeId]           = useState(teacher.employeeId ?? "");
   const [qualification, setQualification]     = useState(teacher.qualification ?? "");
   const [experienceYears, setExperienceYears] = useState(teacher.experienceYears != null ? String(teacher.experienceYears) : "");
   const [subjects, setSubjects] = useState((teacher.teachingSubjects ?? []).join(", "));
@@ -189,7 +211,6 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
         method: "PATCH",
         body: JSON.stringify({
           name: name.trim(), phone: phone || null,
-          employeeId: employeeId.trim() || null,
           qualification: qualification.trim() || null,
           experienceYears: experienceYears.trim() ? Number(experienceYears) : null,
           teachingSubjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
@@ -231,8 +252,7 @@ function EditModal({ teacher, onClose, onSaved, flash }: {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Employee ID</label>
-              <input value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="EMP001"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+              <input value={teacher.employeeId ?? "—"} readOnly className="w-full border border-gray-100 rounded-xl px-3 py-2 text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (yrs)</label>
@@ -284,12 +304,11 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw]     = useState(false);
   const [phone, setPhone]       = useState("");
-  const [employeeId, setEmployeeId]           = useState("");
   const [qualification, setQualification]     = useState("");
   const [experienceYears, setExperienceYears] = useState("");
   const [subjects, setSubjects] = useState("");
   const [grades, setGrades]     = useState("");
-  const [joiningDate, setJoiningDate] = useState("");
+  const [joiningDate, setJoiningDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving]     = useState(false);
 
   async function create() {
@@ -303,7 +322,6 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
           email: email.trim(),
           password: password.trim(),
           phone: phone || undefined,
-          employeeId: employeeId.trim() || undefined,
           qualification: qualification.trim() || undefined,
           experienceYears: experienceYears.trim() ? Number(experienceYears) : undefined,
           teachingSubjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
@@ -365,12 +383,11 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Employee ID</label>
-              <input value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="EMP001"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+              <input value="Auto-generated on save" readOnly className="w-full border border-gray-100 rounded-xl px-3 py-2 text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-1">Experience (yrs)</label>
-              <input type="number" min={0} value={experienceYears} onChange={e => setExperienceYears(e.target.value)}
+              <input type="number" min={0} value={experienceYears} onChange={e => setExperienceYears(e.target.value)} placeholder="0"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
             </div>
           </div>
@@ -390,7 +407,7 @@ function AddTeacherModal({ onClose, onCreated, flash }: {
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1">Joining Date</label>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Joining Date <span className="text-gray-300 font-normal">(defaults to today)</span></label>
             <input type="date" value={joiningDate} onChange={e => setJoiningDate(e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
           </div>
@@ -860,7 +877,7 @@ function AssignCourseModal({ teacherId, onClose, onAssigned, flash }: {
 // ── Row Actions Menu ──────────────────────────────────────────────────────────
 function ActionsMenu({ teacher, onAction }: {
   teacher: TeacherRow;
-  onAction: (a: "view"|"edit"|"toggle-status"|"view-classes") => void;
+  onAction: (a: "view"|"edit"|"toggle-status"|"view-classes"|"toggle-leave") => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -876,6 +893,7 @@ function ActionsMenu({ teacher, onAction }: {
     { key: "edit"          as const, label: "Edit Teacher",  icon: Pencil,      color: "#374151" },
     { key: "toggle-status" as const, label: teacher.isActive ? "Deactivate" : "Activate", icon: teacher.isActive ? UserX : UserCheck, color: teacher.isActive ? "#EF4444" : GREEN },
     { key: "view-classes"  as const, label: "View Classes",  icon: Monitor,     color: ORANGE  },
+    { key: "toggle-leave"  as const, label: teacher.isOnLeave ? "End Leave" : "Mark On Leave", icon: CalendarDays, color: teacher.isOnLeave ? GREEN : "#DC2626" },
   ];
 
   return (
@@ -901,6 +919,228 @@ function ActionsMenu({ teacher, onAction }: {
   );
 }
 
+// ── Schedule & Availability (Timeline) ────────────────────────────────────────
+const TIMELINE_START_HOUR = 9;
+const TIMELINE_END_HOUR   = 18;
+
+function statusColor(status: "on_leave" | "teaching" | "available") {
+  if (status === "on_leave") return { bg: "#FEE2E2", text: "#991B1B", label: "On Leave" };
+  if (status === "teaching") return { bg: "#EDE9FE", text: "#5B21B6", label: "Teaching" };
+  return { bg: "#DCFCE7", text: "#166534", label: "Available" };
+}
+
+function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) => void }) {
+  const [date, setDate]         = useState(() => new Date().toISOString().slice(0, 10));
+  const [teachers, setTeachers] = useState<ScheduleTeacher[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
+
+  const [finderOpen, setFinderOpen]   = useState(false);
+  const [finderStart, setFinderStart] = useState("10:00");
+  const [finderEnd, setFinderEnd]     = useState("11:00");
+  const [finderResults, setFinderResults] = useState<FindAvailableResult[] | null>(null);
+  const [finderLoading, setFinderLoading] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    apiFetch(`/admin/cc/teachers/schedule?date=${date}`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(d => setTeachers(d.teachers ?? []))
+      .catch(e => setError(e instanceof Error ? e.message : "Failed"))
+      .finally(() => setLoading(false));
+  }, [date]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function runFinder() {
+    setFinderLoading(true);
+    try {
+      const p = new URLSearchParams({ date, startTime: finderStart, endTime: finderEnd });
+      const r = await apiFetch(`/admin/cc/teachers/find-available?${p}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Failed to search");
+      setFinderResults(d.results ?? []);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
+    finally { setFinderLoading(false); }
+  }
+
+  const totalHours = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
+  const hourMarks = Array.from({ length: totalHours + 1 }, (_, i) => TIMELINE_START_HOUR + i);
+
+  function blockPosition(startsAt: string | null, endsAt: string | null) {
+    if (!startsAt || !endsAt) return null;
+    const s = new Date(startsAt), e = new Date(endsAt);
+    const startFrac = (s.getHours() + s.getMinutes() / 60 - TIMELINE_START_HOUR) / totalHours;
+    const endFrac   = (e.getHours() + e.getMinutes() / 60 - TIMELINE_START_HOUR) / totalHours;
+    const left  = Math.max(0, startFrac) * 100;
+    const width = Math.max(0.5, (Math.min(1, endFrac) - Math.max(0, startFrac))) * 100;
+    if (left >= 100 || left + width <= 0) return null;
+    return { left: `${left}%`, width: `${width}%` };
+  }
+
+  const teachingNow = teachers.filter(t => t.currentStatus === "teaching");
+  const onLeave     = teachers.filter(t => t.currentStatus === "on_leave");
+  const nextUp      = teachers.filter(t => t.nextClass).sort((a, b) => new Date(a.nextClass!.startsAt ?? 0).getTime() - new Date(b.nextClass!.startsAt ?? 0).getTime()).slice(0, 6);
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4" style={{ color: NAVY }} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-400" />
+          <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200">
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+        </div>
+        <button onClick={() => { setFinderOpen(o => !o); setFinderResults(null); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+          style={{ background: ORANGE }}>
+          <Search className="w-3.5 h-3.5" /> Find Available Teacher
+        </button>
+      </div>
+
+      {/* Finder panel */}
+      {finderOpen && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Start Time</label>
+              <input type="time" value={finderStart} onChange={e => setFinderStart(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">End Time</label>
+              <input type="time" value={finderEnd} onChange={e => setFinderEnd(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" />
+            </div>
+            <button onClick={runFinder} disabled={finderLoading}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 disabled:opacity-60" style={{ background: NAVY }}>
+              {finderLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Search
+            </button>
+          </div>
+          {finderResults && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {finderResults.map(r => (
+                <div key={r.id} className="flex items-center gap-2 p-2 rounded-xl border" style={{ borderColor: r.available ? "#BBF7D0" : "#FEE2E2", background: r.available ? "#F0FDF4" : "#FEF2F2" }}>
+                  <Avatar name={r.name} avatarUrl={r.avatarUrl} size={7} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate">{r.name}{r.isDefault && <span className="ml-1 text-[9px] font-bold text-blue-500">(Default)</span>}</p>
+                    <p className={`text-[10px] font-semibold truncate ${r.available ? "text-green-600" : "text-red-500"}`}>{r.available ? "Available" : r.reason}</p>
+                  </div>
+                </div>
+              ))}
+              {finderResults.length === 0 && <p className="text-xs text-gray-400 col-span-full text-center py-2">No teachers found.</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Timeline */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-black text-sm" style={{ color: NAVY }}>Daily Timeline — {fmtDate(date)}</h3>
+          <div className="flex items-center gap-3 text-[10px] font-semibold">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />Available</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Teaching</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />On Leave</span>
+          </div>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: NAVY }} /><span className="text-sm">Loading schedule…</span>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-2 text-red-500 text-sm">{error}</div>
+        ) : teachers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400 text-sm">No active teachers found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[720px]">
+              {/* Hour header */}
+              <div className="flex border-b border-gray-100 pl-40">
+                {hourMarks.map(h => (
+                  <div key={h} className="flex-1 text-center text-[10px] font-bold text-gray-400 py-2 border-l border-gray-50">
+                    {h % 12 === 0 ? 12 : h % 12}{h < 12 ? "AM" : "PM"}
+                  </div>
+                ))}
+              </div>
+              {/* Rows */}
+              {teachers.map(t => (
+                <div key={t.id} className="flex items-center border-b border-gray-50 hover:bg-gray-50/40">
+                  <div className="w-40 flex-shrink-0 flex items-center gap-2 px-2 py-2">
+                    <Avatar name={t.name} avatarUrl={t.avatarUrl} size={7} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{t.name}</p>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: statusColor(t.currentStatus).bg, color: statusColor(t.currentStatus).text }}>
+                        {statusColor(t.currentStatus).label}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative flex-1 h-10 border-l border-gray-50">
+                    {t.isOnLeave && <div className="absolute inset-y-1 left-0 right-0 rounded-md opacity-70" style={{ background: "#FEE2E2" }} title={t.leaveReason ?? "On leave"} />}
+                    {t.classes.map(c => {
+                      const pos = blockPosition(c.startsAt, c.endsAt);
+                      if (!pos) return null;
+                      return (
+                        <div key={c.id} className="absolute inset-y-1 rounded-md px-1.5 py-0.5 overflow-hidden flex items-center"
+                          style={{ ...pos, background: c.status === "live" ? "#DDD6FE" : "#E0E7FF" }}
+                          title={`${c.title} (${c.subjectName ?? "—"})`}>
+                          <span className="text-[9px] font-bold truncate" style={{ color: "#4338CA" }}>{c.title}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Current Status + Next Classes panels */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <h4 className="font-black text-xs mb-3" style={{ color: NAVY }}>Current Status (Live)</h4>
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {teachingNow.length === 0 && onLeave.length === 0 && <p className="text-xs text-gray-400">No teachers currently teaching or on leave.</p>}
+            {teachingNow.map(t => (
+              <div key={t.id} className="flex items-center gap-2 text-xs">
+                <Avatar name={t.name} avatarUrl={t.avatarUrl} size={6} />
+                <span className="font-semibold text-gray-700">{t.name}</span>
+                <span className="text-gray-400">— teaching {t.currentClass?.title}</span>
+              </div>
+            ))}
+            {onLeave.map(t => (
+              <div key={t.id} className="flex items-center gap-2 text-xs">
+                <Avatar name={t.name} avatarUrl={t.avatarUrl} size={6} />
+                <span className="font-semibold text-gray-700">{t.name}</span>
+                <span className="text-red-500">— on leave{t.leaveReason ? `: ${t.leaveReason}` : ""}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <h4 className="font-black text-xs mb-3" style={{ color: NAVY }}>Next Classes</h4>
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {nextUp.length === 0 && <p className="text-xs text-gray-400">No upcoming classes scheduled today.</p>}
+            {nextUp.map(t => (
+              <div key={t.id} className="flex items-center gap-2 text-xs">
+                <Avatar name={t.name} avatarUrl={t.avatarUrl} size={6} />
+                <span className="font-semibold text-gray-700">{t.name}</span>
+                <span className="text-gray-400">
+                  — {t.nextClass?.title} at {t.nextClass?.startsAt ? new Date(t.nextClass.startsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Teacher Management Component ────────────────────────────────────────
 export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boolean) => void }) {
   const [data, setData]             = useState<TeacherListResponse | null>(null);
@@ -919,22 +1159,31 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [toggleConfirmInfo, setToggleConfirmInfo] = useState<{ activeCourseAssignments: number; upcomingClasses: number } | null>(null);
+  const [view, setView] = useState<"all" | "available" | "engaged" | "inactive" | "schedule">("all");
 
   const debouncedSearch = useDebounce(search, 300);
+
+  const effectiveStatus = view === "inactive" ? "inactive" : (view === "available" || view === "engaged") ? "active" : statusFilter;
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const p = new URLSearchParams({ search: debouncedSearch, status: statusFilter, sort, order, page: String(page), limit: "15" });
+      const p = new URLSearchParams({ search: debouncedSearch, status: effectiveStatus, sort, order, page: String(page), limit: "15" });
       const r = await apiFetch(`/admin/cc/teachers?${p}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setData(await r.json());
     } catch (e) { setError(e instanceof Error ? e.message : "Failed"); }
     finally { setLoading(false); }
-  }, [debouncedSearch, statusFilter, sort, order, page]);
+  }, [debouncedSearch, effectiveStatus, sort, order, page]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, effectiveStatus]);
   useEffect(() => { load(); }, [load]);
+
+  const displayItems = data
+    ? view === "available" ? data.items.filter(t => !t.isOnLeave)
+    : view === "engaged"   ? data.items.filter(t => t.isOnLeave)
+    : data.items
+    : [];
 
   function updateRow(id: number, changes: Partial<TeacherRow>) {
     setData(d => d ? { ...d, items: d.items.map(t => t.id === id ? { ...t, ...changes } : t) } : d);
@@ -959,6 +1208,20 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
       setToggleConfirmInfo(null);
     } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
     finally { setActionLoading(false); }
+  }
+
+  async function toggleLeave(t: TeacherRow) {
+    const nextLeave = !t.isOnLeave;
+    try {
+      const r = await apiFetch(`/admin/cc/teachers/${t.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isOnLeave: nextLeave, leaveReason: nextLeave ? "Marked on leave by admin" : undefined }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Failed");
+      updateRow(t.id, { isOnLeave: nextLeave, leaveReason: d.teacher.leaveReason, leaveUntil: d.teacher.leaveUntil });
+      flash(`${t.name} marked ${nextLeave ? "on leave" : "as returned"}`, true);
+    } catch (e) { flash(e instanceof Error ? e.message : "Failed", false); }
   }
 
   function toggleSort(col: string) {
@@ -997,12 +1260,12 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
       {/* KPI Cards */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         {[
-          { label: "Total",         value: kpis?.totalTeachers ?? "—",   icon: <GraduationCap className="w-4 h-4" />, color: NAVY    },
-          { label: "Active",        value: kpis?.activeTeachers ?? "—",  icon: <UserCheck className="w-4 h-4" />,    color: GREEN   },
-          { label: "Inactive",      value: kpis?.inactiveTeachers ?? "—",icon: <UserX className="w-4 h-4" />,        color: "#EF4444" },
-          { label: "Avg Attendance",value: kpis ? `${kpis.avgAttendance}%` : "—", icon: <CalendarDays className="w-4 h-4" />, color: ORANGE },
-          { label: "Classes",       value: kpis?.totalClasses ?? "—",    icon: <Monitor className="w-4 h-4" />,      color: "#7C3AED" },
-          { label: "Courses",       value: kpis?.totalCourses ?? "—",    icon: <BookOpen className="w-4 h-4" />,     color: "#0284C7" },
+          { label: "Total",           value: kpis?.totalTeachers ?? "—",   icon: <GraduationCap className="w-4 h-4" />, color: NAVY      },
+          { label: "Active",          value: kpis?.activeTeachers ?? "—",  icon: <UserCheck className="w-4 h-4" />,    color: GREEN     },
+          { label: "Available Now",   value: kpis?.availableNow ?? "—",    icon: <Check className="w-4 h-4" />,        color: "#059669" },
+          { label: "Teaching Now",    value: kpis?.teachingNow ?? "—",     icon: <Monitor className="w-4 h-4" />,      color: "#7C3AED" },
+          { label: "On Leave Today",  value: kpis?.onLeaveToday ?? "—",    icon: <CalendarDays className="w-4 h-4" />, color: "#DC2626" },
+          { label: "Inactive",        value: kpis?.inactiveTeachers ?? "—",icon: <UserX className="w-4 h-4" />,        color: "#EF4444" },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm text-center">
             <div className="flex justify-center mb-1" style={{ color: k.color }}>{k.icon}</div>
@@ -1012,6 +1275,27 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
         ))}
       </div>
 
+      {/* View Tabs */}
+      <div className="flex gap-1.5 overflow-x-auto bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5">
+        {[
+          { key: "all" as const,       label: "All Teachers" },
+          { key: "available" as const, label: "Available Teachers" },
+          { key: "engaged" as const,   label: "Engaged Teachers" },
+          { key: "inactive" as const,  label: "Inactive Teachers" },
+          { key: "schedule" as const,  label: "Schedule & Availability" },
+        ].map(t => (
+          <button key={t.key} onClick={() => setView(t.key)}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors"
+            style={view === t.key ? { background: NAVY, color: "white" } : { background: "transparent", color: "#6B7280" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "schedule" ? (
+        <ScheduleAvailabilityView flash={flash} />
+      ) : (
+      <>
       {/* Search + Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 space-y-2">
         <div className="flex gap-2">
@@ -1066,7 +1350,7 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
             <p className="text-sm font-semibold text-red-600">{error}</p>
             <button onClick={load} className="px-4 py-1.5 rounded-xl text-xs font-bold text-white" style={{ background: NAVY }}>Retry</button>
           </div>
-        ) : !data || data.items.length === 0 ? (
+        ) : !data || displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
             <GraduationCap className="w-10 h-10 text-gray-200" />
             <p className="text-sm font-semibold">No teachers found</p>
@@ -1096,7 +1380,7 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data.items.map(t => (
+                {displayItems.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
@@ -1116,7 +1400,12 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
                       <span className="font-bold text-gray-700">{t.classesCount}</span>
                       <span className="text-gray-400 ml-1">classes</span>
                     </td>
-                    <td className="px-4 py-3"><StatusBadge isActive={t.isActive} /></td>
+                    <td className="px-4 py-3 flex items-center gap-1.5">
+                      <StatusBadge isActive={t.isActive} />
+                      {t.isOnLeave && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">On Leave</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(t.createdAt)}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{timeAgo(t.lastLoginDate)}</td>
                     <td className="px-4 py-3">
@@ -1125,6 +1414,7 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
                         else if (action === "edit")     setEditTeacher(t);
                         else if (action === "toggle-status") setToggleTarget(t);
                         else if (action === "view-classes")  setProfileId(t.id);
+                        else if (action === "toggle-leave") toggleLeave(t);
                       }} />
                     </td>
                   </tr>
@@ -1158,6 +1448,8 @@ export function TeacherAnalyticsTab({ flash }: { flash: (msg: string, ok?: boole
               className="p-1.5 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"><ChevronRight className="w-3.5 h-3.5 text-gray-500" /></button>
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* Modals */}

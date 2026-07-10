@@ -1,0 +1,754 @@
+Build the redesigned Administration → Teachers module based on the attached reference image.
+
+IMPORTANT:
+Use the existing Braintam design system, existing sidebar, existing authentication, existing database, existing API structure, existing UI components, and existing role permissions.
+
+Do not create a separate application.
+Do not create duplicate teacher tables.
+Do not use static/mock data in production.
+Do not replace working teacher functionality blindly.
+
+First inspect:
+- Existing Teachers page
+- Existing teacher components
+- Existing teacher APIs
+- Existing database schema
+- Existing live-class tables
+- Existing Ignite and Mastery courses
+- Existing subjects
+- Existing course-teacher assignments
+- Existing user status/login logic
+
+Then extend and refactor the current Teacher module.
+
+==================================================
+PAGE STRUCTURE
+==================================================
+
+Route:
+
+Administration
+→ Teachers
+
+Create a compact responsive page.
+
+Top summary cards:
+
+1. Total Teachers
+2. Active Teachers
+3. Available Now
+4. Teaching Now
+5. On Leave Today
+6. Inactive Teachers
+
+Cards must be compact and use real database counts.
+
+Tabs:
+
+- All Teachers
+- Available Teachers
+- Engaged Teachers
+- On Leave
+- Inactive Teachers
+- Schedule & Availability
+
+Keep the selected tab in the URL query parameter.
+
+Example:
+
+/admin?tab=teachers&teacherView=available
+
+==================================================
+TEACHER STATUS
+==================================================
+
+Teacher statuses:
+
+active
+inactive
+on_leave
+
+Add actions:
+
+- View Profile
+- Edit Teacher
+- Assign Course
+- Assign Subject
+- Assign Live Class
+- Manage Availability
+- Mark On Leave
+- Disable Teacher
+- Reactivate Teacher
+
+Disabling must be soft-disable only.
+
+Never delete historical teacher records.
+
+Inactive teachers:
+
+- Cannot log in
+- Cannot receive new course assignments
+- Cannot receive new live-class assignments
+- Must not appear under Available Teachers
+- Must remain visible in historical classes and reports
+
+Before disabling, check:
+
+- Upcoming live classes
+- Active course assignments
+
+Show a confirmation modal:
+
+“This teacher has X active course assignments and X upcoming live classes.”
+
+Buttons:
+
+Cancel
+Reassign First
+Disable Teacher
+
+==================================================
+TEACHER ASSIGNMENT RULE
+==================================================
+
+Teachers are NOT permanently grade-specific.
+
+Grades are only teaching capabilities.
+
+A teacher may teach:
+
+- Multiple grades
+- Multiple subjects
+- Multiple courses
+- Ignite courses
+- Mastery courses
+- Individual live classes
+
+Assignment hierarchy:
+
+Program
+→ Course
+→ Subject
+→ Teacher
+
+Programs:
+
+Ignite
+Mastery
+
+Assignment types:
+
+1. Default Subject Teacher
+
+Example:
+
+Teacher:
+Priya Sharma
+
+Program:
+Mastery
+
+Course:
+Grade 6 Mastery 2026–27
+
+Subject:
+Mathematics
+
+Result:
+
+Priya becomes the default Mathematics teacher only for that selected course.
+
+When a new Mathematics live class is created for this course, automatically preselect Priya.
+
+Admin may override the teacher.
+
+2. Individual Class Teacher
+
+Assign a teacher only to one selected live class.
+
+Do not modify the default Subject Teacher.
+
+3. Substitute Teacher
+
+Assign a temporary teacher for:
+
+- One class
+- Selected classes
+- Date range
+
+Store:
+
+originalTeacherId
+substituteTeacherId
+startDate
+endDate
+reason
+assignedBy
+createdAt
+
+==================================================
+ADD / EDIT TEACHER
+==================================================
+
+Fields:
+
+Personal:
+
+- Full Name
+- Profile Photo
+- Email
+- Mobile
+- Employee ID
+- Joining Date
+
+Employment Type:
+
+- Full-Time
+- Part-Time
+- Visiting
+- Freelance
+
+Teaching Capabilities:
+
+- Subjects — multi-select
+- Grades — multi-select
+- Boards — multi-select
+
+Professional:
+
+- Qualification
+- Experience
+- Specialization
+
+Do not use grade capability as a permanent assignment.
+
+==================================================
+SCHEDULE & AVAILABILITY TAB
+==================================================
+
+Create three views:
+
+1. Timeline View — Default
+2. Calendar View
+3. Compact List View
+
+Use the attached image as the visual reference.
+
+Filters:
+
+- Date
+- Day/Week view
+- Program
+- Course
+- Subject
+- Teacher
+- Status
+
+==================================================
+TIMELINE VIEW
+==================================================
+
+Create a horizontally scrollable scheduling grid.
+
+Left sticky column:
+
+Teacher
+
+Time columns:
+
+9 AM
+10 AM
+11 AM
+12 PM
+1 PM
+2 PM
+3 PM
+4 PM
+5 PM
+6 PM
+
+Generate time slots dynamically from configured operating hours.
+
+Each teacher is one row.
+
+Display schedule blocks:
+
+AVAILABLE
+
+Light green block.
+
+Show:
+
+Available
+
+LIVE CLASS
+
+Light blue/purple block.
+
+Show:
+
+Grade
+Subject
+Program
+Course
+Start–End time
+
+Example:
+
+Grade 6
+Mathematics
+Mastery
+10:00–11:00
+
+BREAK
+
+Light yellow block.
+
+Show:
+
+Break
+1:00–2:00
+
+ON LEAVE
+
+Light red block.
+
+Show:
+
+On Leave
+
+MEETING / BLOCKED
+
+Light orange block.
+
+Show:
+
+Meeting
+12:00–1:00
+
+CONFLICT
+
+Red warning block.
+
+Show:
+
+Schedule Conflict
+
+Do not hardcode teacher names or schedules.
+
+Use real live-class, availability, break, leave, and blocked-time data.
+
+==================================================
+TEACHER AVAILABILITY
+==================================================
+
+Allow working hours by weekday.
+
+Example:
+
+Monday:
+10:00 AM–7:00 PM
+
+Tuesday:
+10:00 AM–7:00 PM
+
+Allow:
+
+- Multiple working periods per day
+- Breaks
+- Weekly off
+- Leave
+- Meetings
+- Training
+- Manual blocked time
+
+Availability calculation:
+
+Available only when:
+
+Teacher status = active
+
+AND
+
+Selected time is inside working hours
+
+AND
+
+No overlapping live class
+
+AND
+
+No break
+
+AND
+
+No approved leave
+
+AND
+
+No blocked time
+
+==================================================
+CURRENT STATUS SECTION
+==================================================
+
+Below the timeline create three compact panels.
+
+Panel 1:
+
+Current Status — Live
+
+Show:
+
+Teacher
+Current status
+Current class/activity
+Start–End time
+
+Statuses:
+
+Teaching Now
+Available
+On Break
+Meeting
+On Leave
+Offline
+
+Panel 2:
+
+Next Classes
+
+Show:
+
+Teacher
+Course
+Subject
+Program
+Next class time
+Time remaining
+
+Example:
+
+Priya Sharma
+
+Grade 6 Mathematics
+Mastery
+
+11:00 AM–12:00 PM
+
+In 1 hour
+
+Panel 3:
+
+Available Teacher Finder
+
+Inputs:
+
+Date
+Start Time
+End Time
+Program
+Course
+Subject
+
+Button:
+
+Find Available Teachers
+
+Results must prioritize:
+
+1. Default Subject Teacher
+2. Subject expertise
+3. Grade capability
+4. Lowest teaching workload today
+5. Lowest teaching workload this week
+
+Show unavailable teachers with reason:
+
+Busy:
+Grade 7 Science
+4:00–5:00 PM
+
+On Leave
+
+Outside Working Hours
+
+Break
+
+==================================================
+COMPACT LIST VIEW
+==================================================
+
+Columns:
+
+Teacher
+Status
+Subjects
+Current Class
+Next Class
+Available From
+Classes Today
+Teaching Hours
+Free Hours
+Actions
+
+Add:
+
+Search
+
+Search by:
+
+Name
+Employee ID
+Mobile
+Email
+
+Filters:
+
+Status
+Subject
+Grade Capability
+Board
+Program
+Course
+Employment Type
+Availability Date
+Availability Time
+
+==================================================
+SCHEDULING CONFLICTS
+==================================================
+
+Before assigning a teacher to a live class, validate:
+
+- Existing live classes
+- Working hours
+- Breaks
+- Leave
+- Blocked time
+- Substitute assignments
+
+Do not allow overlapping classes.
+
+Show:
+
+Teacher unavailable
+
+Existing class:
+Grade 7 Science
+
+Time:
+4:00 PM–5:00 PM
+
+Super Admin override:
+
+Require:
+
+Confirmation
+Mandatory reason
+Audit log
+
+==================================================
+DATABASE
+==================================================
+
+Inspect existing tables first.
+
+Only add missing structures.
+
+Suggested logical entities if missing:
+
+teacher_profiles
+
+teacher_capabilities
+
+teacher_course_subject_assignments
+
+teacher_working_hours
+
+teacher_breaks
+
+teacher_leaves
+
+teacher_blocked_times
+
+teacher_substitutions
+
+Do not duplicate data already available in users, courses, subjects, live_classes, or existing assignment tables.
+
+Use foreign keys and indexes.
+
+Preserve historical records.
+
+Do not delete completed-class teacher relationships.
+
+==================================================
+PERFORMANCE
+==================================================
+
+The system may have hundreds of teachers and thousands of classes.
+
+Requirements:
+
+- Server-side pagination
+- Indexed queries
+- Debounced search
+- Efficient date-range schedule queries
+- Do not fetch all historical live classes
+- Timeline should request only selected date/week
+- Cache summary counts where appropriate
+
+==================================================
+RESPONSIVE UI
+==================================================
+
+Desktop:
+
+Full timeline grid.
+
+Tablet:
+
+Horizontally scrollable timeline.
+
+Mobile:
+
+Automatically default to Compact List View.
+
+Do not squeeze the complete timeline into a mobile screen.
+
+==================================================
+IMPORTANT
+==================================================
+
+Use real data only.
+
+Do not create demo teachers.
+
+Do not create seed records.
+
+Do not restore deleted test data.
+
+The production database was recently cleaned for the fresh launch.
+
+Do not change:
+
+- Super Admin accounts
+- Roles
+- Permissions
+- Existing production configuration
+- Existing course data without approval
+
+==================================================
+IMPLEMENTATION ORDER
+==================================================
+
+Complete in phases:
+
+Phase 1:
+
+Inspect existing implementation and report:
+
+- Existing reusable components
+- Existing teacher tables
+- Existing APIs
+- Missing functionality
+- Duplicate/leftover grade-specific logic
+
+Phase 2:
+
+Implement:
+
+- Teacher status
+- Active/Inactive tabs
+- Enable/Disable
+- Add/Edit Teacher
+- Course and subject assignments
+
+Phase 3:
+
+Implement:
+
+- Working hours
+- Breaks
+- Leave
+- Blocked time
+- Availability calculation
+
+Phase 4:
+
+Implement:
+
+- Timeline
+- Calendar
+- Compact List
+- Current Status
+- Next Classes
+- Available Teacher Finder
+
+Phase 5:
+
+Integrate:
+
+- Ignite
+- Mastery
+- Live Class Scheduler
+- Teacher Dashboard
+- Attendance
+- Recordings
+
+==================================================
+BEFORE SAYING DONE
+==================================================
+
+Test all of these:
+
+- Add active teacher
+- Edit teacher
+- Disable teacher
+- Reactivate teacher
+- Inactive teacher cannot log in
+- Inactive teacher does not appear as available
+- Existing teacher history remains visible
+- Add multiple subjects
+- Add multiple grade capabilities
+- Assign teacher to Ignite
+- Assign teacher to Mastery
+- Assign default Subject Teacher
+- Default teacher auto-selects in Live Class Scheduler
+- Override teacher for one class
+- Assign substitute teacher
+- Add working hours
+- Add break
+- Add leave
+- Add blocked time
+- Available Teachers calculation
+- Engaged Teachers calculation
+- Timeline View
+- Calendar View
+- Compact List View
+- Current status
+- Next class
+- Available Teacher Finder
+- Conflict prevention
+- Search
+- Filters
+- Pagination
+- Empty database state
+- Desktop
+- Tablet
+- Mobile
+- Existing Admin portal
+- Existing Teacher dashboard
+- No console errors
+- No API errors
+- No duplicate tables
+- No mock data
+- No existing functionality broken
+
+Run the application and test the complete flow.
+
+Do not only create the UI.
+
+Connect all buttons, forms, APIs, database operations, permissions, scheduling rules, and live-class integrations.
+
+Before saying DONE, verify everything is working correctly. Only then say DONE.

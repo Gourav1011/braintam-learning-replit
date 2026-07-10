@@ -76,6 +76,9 @@ export const usersTable = pgTable("users", {
   teachingSubjectsJson: text("teaching_subjects_json"), // JSON string[] of subject names
   teachingGradesJson: text("teaching_grades_json"),     // JSON number[] of grades
   joiningDate: timestamp("joining_date"),
+  isOnLeave: boolean("is_on_leave").notNull().default(false),
+  leaveReason: text("leave_reason"),
+  leaveUntil: timestamp("leave_until"), // optional end date; null = indefinite until manually cleared
   // Lead Deployment Engine
   deploymentStatus: text("deployment_status"),   // Undeployed | Assigned | Reassigned | Converted
   deploymentBatchId: integer("deployment_batch_id"),
