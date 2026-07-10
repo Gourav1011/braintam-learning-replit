@@ -831,7 +831,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       if (!r.ok) { const d = await r.json().catch(() => ({})); flash(d.error ?? "Failed", false); return; }
       const row: TeacherCourseItem = await r.json();
       if (row.id) {
-        setCourseTeachers(p => [...p, row]);
+        const teacherName = allTeachers.find(t => t.id === row.teacherId)?.name ?? row.teacherName ?? "Unknown";
+        setCourseTeachers(p => [...p, { ...row, teacherName }]);
         setCourseStats(p => p ? { ...p, teachersAssigned: p.teachersAssigned + 1 } : p);
       }
       setAddTeacherIdStr("");

@@ -114,7 +114,7 @@ router.get("/teacher/courses", teacherOrAdmin, async (req, res) => {
     rating: coursesTable.rating,
   })
     .from(coursesTable)
-    .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
+    .leftJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
     .where(inArray(coursesTable.id, courseIds));
 
   const enrollmentCounts = await db.select({

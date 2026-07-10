@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1006" : "dev",
-    commit: true ? "22fec5c" : "unknown",
-    buildTime: true ? "2026-07-10T10:06:46.971Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1024" : "dev",
+    commit: true ? "856ebd7" : "unknown",
+    buildTime: true ? "2026-07-10T10:24:35.450Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -119247,7 +119247,7 @@ router14.get("/teacher/courses", teacherOrAdmin, async (req, res) => {
     description: coursesTable.description,
     teacher: coursesTable.teacher,
     rating: coursesTable.rating
-  }).from(coursesTable).innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id)).where(inArray(coursesTable.id, courseIds));
+  }).from(coursesTable).leftJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id)).where(inArray(coursesTable.id, courseIds));
   const enrollmentCounts = await db.select({
     courseId: enrollmentsTable.courseId,
     count: sql`count(*)`
