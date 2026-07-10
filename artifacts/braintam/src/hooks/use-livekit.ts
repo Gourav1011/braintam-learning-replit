@@ -30,22 +30,36 @@ interface UseLiveKitOpts {
   enabled: boolean;
 }
 
+export type LiveKitConnectionState = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
+
 /**
  * Manages a single LiveKit Room connection for the live classroom.
  * - Fetches a backend-minted token scoped to the caller's real, server-verified role.
  * - Attaches the teacher's published video/audio to `teacherVideoRef`.
  * - Exposes camera/mic publish helpers for use by the teacher or a student currently on stage;
  *   LiveKit enforces publish permission server-side, so calls fail silently if not granted.
+ * - Runs fully independently of the Socket.IO chat/presence connection: LiveKit media keeps
+ *   working while Socket.IO reconnects, and vice versa.
  */
 export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const roomRef = useRef<Room | null>(null);
   const teacherVideoRef = useRef<HTMLVideoElement>(null);
   const teacherAudioRef = useRef<HTMLAudioElement>(null);
   const [connected, setConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<LiveKitConnectionState>("idle");
   const [cameraPublishing, setCameraPublishing] = useState(false);
   const [micPublishing, setMicPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [microphoneError, setMicrophoneError] = useState<string | null>(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
+  const [roomName, setRoomName] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<string | null>(null);
   const [teacherPresent, setTeacherPresent] = useState(false);
+  const [teacherVideoSubscribed, setTeacherVideoSubscribed] = useState(false);
+  const [teacherAudioSubscribed, setTeacherAudioSubscribed] = useState(false);
   const [stagePublishers, setStagePublishers] = useState<Set<string>>(new Set());
   // identity -> live video/audio tracks, for rendering arbitrary remote participants (e.g. staged students)
   const tracksByIdentity = useRef<Map<string, { video?: RemoteTrack; audio?: RemoteTrack }>>(new Map());
@@ -54,32 +68,61 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const attachTeacherTrack = useCallback((track: RemoteTrack) => {
     if (track.kind === Track.Kind.Video && teacherVideoRef.current) {
       track.attach(teacherVideoRef.current);
+      setTeacherVideoSubscribed(true);
     } else if (track.kind === Track.Kind.Audio && teacherAudioRef.current) {
       track.attach(teacherAudioRef.current);
+      setTeacherAudioSubscribed(true);
+    }
+  }, []);
+
+  const detachTeacherTrack = useCallback((track: RemoteTrack) => {
+    if (track.kind === Track.Kind.Video) {
+      if (teacherVideoRef.current) track.detach(teacherVideoRef.current);
+      setTeacherVideoSubscribed(false);
+    } else if (track.kind === Track.Kind.Audio) {
+      if (teacherAudioRef.current) track.detach(teacherAudioRef.current);
+      setTeacherAudioSubscribed(false);
     }
   }, []);
 
   /** Attach a remote participant's currently-known video track (e.g. a staged student) to an element. */
-  const attachParticipantVideo = useCallback((identity: string, el: HTMLVideoElement | null) => {
+  const attachParticipantVideo = useCallback((identityKey: string, el: HTMLVideoElement | null) => {
     if (!el) return;
-    const entry = tracksByIdentity.current.get(identity);
+    const entry = tracksByIdentity.current.get(identityKey);
     if (entry?.video) entry.video.attach(el);
   }, []);
 
   useEffect(() => {
-    if (!enabled || !sessionId) return;
+    if (!enabled || !sessionId) {
+      setConnectionState("idle");
+      return;
+    }
     let cancelled = false;
     let room: Room | null = null;
+    setConnectionState("connecting");
+    setConnectionError(null);
+    setTokenError(null);
 
     (async () => {
       try {
         const res = await apiFetch(`/live/${sessionId}/livekit-token`, { method: "POST" });
         if (!res.ok) {
-          setError(`LiveKit auth failed (${res.status})`);
+          let message = `LiveKit auth failed (${res.status})`;
+          try {
+            const body = await res.json();
+            if (typeof body?.error === "string") message = body.error;
+          } catch { /* non-JSON error body */ }
+          if (cancelled) return;
+          setTokenError(message);
+          setConnectionError(message);
+          setConnectionState("disconnected");
           return;
         }
         const data = await res.json();
         if (cancelled) return;
+
+        setRoomName((data.roomName as string) ?? null);
+        setIdentity((data.identity as string) ?? null);
 
         room = new Room({ adaptiveStream: true, dynacast: true });
         roomRef.current = room;
@@ -99,6 +142,9 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           }
         });
         room.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant: RemoteParticipant) => {
+          const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
+          if (isTeacher) detachTeacherTrack(track);
+
           const entry = tracksByIdentity.current.get(participant.identity);
           if (entry) {
             if (track.kind === Track.Kind.Video) delete entry.video;
@@ -118,7 +164,11 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           if (isTeacherRole(safeParseRole(p.metadata))) setTeacherPresent(true);
         });
         room.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
-          if (isTeacherRole(safeParseRole(p.metadata))) setTeacherPresent(false);
+          if (isTeacherRole(safeParseRole(p.metadata))) {
+            setTeacherPresent(false);
+            setTeacherVideoSubscribed(false);
+            setTeacherAudioSubscribed(false);
+          }
           tracksByIdentity.current.delete(p.identity);
           setStagePublishers(prev => {
             const next = new Set(prev);
@@ -137,7 +187,15 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           setCameraPublishing(lp.isCameraEnabled);
           setMicPublishing(lp.isMicrophoneEnabled);
         });
-        room.on(RoomEvent.Disconnected, () => setConnected(false));
+        room.on(RoomEvent.Reconnecting, () => setConnectionState("reconnecting"));
+        room.on(RoomEvent.Reconnected, () => setConnectionState("connected"));
+        room.on(RoomEvent.Disconnected, () => {
+          setConnected(false);
+          setConnectionState("disconnected");
+        });
+        room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+          setAudioBlocked(!room!.canPlaybackAudio);
+        });
 
         await room.connect(data.url as string, data.token as string);
         if (cancelled) {
@@ -145,6 +203,8 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           return;
         }
         setConnected(true);
+        setConnectionState("connected");
+        setAudioBlocked(!room.canPlaybackAudio);
 
         // Attach any teacher tracks already published before we joined.
         room.remoteParticipants.forEach((participant) => {
@@ -156,7 +216,12 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           }
         });
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "LiveKit connection failed");
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "LiveKit connection failed";
+          setError(message);
+          setConnectionError(message);
+          setConnectionState("disconnected");
+        }
       }
     })();
 
@@ -165,20 +230,26 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
       room?.disconnect();
       roomRef.current = null;
       setConnected(false);
+      setConnectionState("idle");
       setCameraPublishing(false);
       setMicPublishing(false);
       setTeacherPresent(false);
+      setTeacherVideoSubscribed(false);
+      setTeacherAudioSubscribed(false);
     };
-  }, [enabled, sessionId, attachTeacherTrack]);
+  }, [enabled, sessionId, attachTeacherTrack, detachTeacherTrack]);
 
   /** Enable/disable local camera publish. Server enforces whether this is actually allowed. */
   const setCamera = useCallback(async (on: boolean) => {
     const room = roomRef.current;
     if (!room) return;
+    setCameraError(null);
     try {
       await room.localParticipant.setCameraEnabled(on);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Camera publish denied");
+      const message = err instanceof Error ? err.message : "Camera permission was denied.";
+      setCameraError(message);
+      setError(message);
     }
   }, []);
 
@@ -186,19 +257,45 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const setMic = useCallback(async (on: boolean) => {
     const room = roomRef.current;
     if (!room) return;
+    setMicrophoneError(null);
     try {
       await room.localParticipant.setMicrophoneEnabled(on);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Microphone publish denied");
+      const message = err instanceof Error ? err.message : "Microphone permission was denied.";
+      setMicrophoneError(message);
+      setError(message);
+    }
+  }, []);
+
+  /** Unlocks browser-blocked autoplay audio for all subscribed remote audio tracks. */
+  const startAudio = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    try {
+      await room.startAudio();
+      setAudioBlocked(!room.canPlaybackAudio);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Class audio was blocked by the browser.");
     }
   }, []);
 
   return {
     connected,
+    connectionState,
     cameraPublishing,
     micPublishing,
     teacherPresent,
+    teacherVideoSubscribed,
+    teacherAudioSubscribed,
     error,
+    connectionError,
+    tokenError,
+    cameraError,
+    microphoneError,
+    audioBlocked,
+    startAudio,
+    roomName,
+    identity,
     teacherVideoRef,
     teacherAudioRef,
     setCamera,

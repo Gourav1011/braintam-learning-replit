@@ -4,15 +4,16 @@ import {
   liveClassesTable, mentorGroupsTable, groupStudentsTable,
   mentorStudentAssignmentsTable, gradeMentorAssignmentsTable, enrollmentsTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.js";
 import { mintLiveKitToken, isLiveKitConfigured } from "../lib/livekit.js";
-import crypto from "crypto";
 
 const router = Router();
 
-function roomNameFor(sessionId: number): string {
-  return `session-${sessionId}-${crypto.randomBytes(4).toString("hex")}`;
+// Every live-class DB record gets its own isolated, deterministic LiveKit room —
+// stable across reconnects/retries and never shared across different live-class records.
+function roomNameFor(liveClassId: number): string {
+  return `braintam-live-${liveClassId}`;
 }
 
 /**
@@ -137,13 +138,25 @@ router.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
 
   let roomName = liveClass.liveKitRoomName;
   if (!roomName) {
-    const candidate = roomNameFor(sessionId);
+    const generatedRoomName = roomNameFor(sessionId);
+    // Idempotent: only writes if no room name exists yet (isNull guard), so concurrent
+    // joins never race-overwrite an already-assigned room name for this live class.
     const [updated] = await db
       .update(liveClassesTable)
-      .set({ liveKitRoomName: sql`COALESCE(${liveClassesTable.liveKitRoomName}, ${candidate})` })
-      .where(eq(liveClassesTable.id, sessionId))
+      .set({ liveKitRoomName: generatedRoomName })
+      .where(and(eq(liveClassesTable.id, sessionId), isNull(liveClassesTable.liveKitRoomName)))
       .returning({ liveKitRoomName: liveClassesTable.liveKitRoomName });
-    roomName = updated?.liveKitRoomName ?? candidate;
+
+    if (updated?.liveKitRoomName) {
+      roomName = updated.liveKitRoomName;
+    } else {
+      const [freshClass] = await db
+        .select({ liveKitRoomName: liveClassesTable.liveKitRoomName })
+        .from(liveClassesTable)
+        .where(eq(liveClassesTable.id, sessionId))
+        .limit(1);
+      roomName = freshClass?.liveKitRoomName ?? generatedRoomName;
+    }
   }
 
   const token = await mintLiveKitToken({

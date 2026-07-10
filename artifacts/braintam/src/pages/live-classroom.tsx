@@ -375,7 +375,11 @@ export default function LiveClassroom() {
   const canSeeAttendance = isStaff || isMentor;
 
   // ── LiveKit — teacher/student video, backend-authorized ─────
-  const livekit = useLiveKit({ sessionId, enabled: connected });
+  // LiveKit connects independently of Socket.IO: chat/presence dropping out must never take
+  // camera/mic/audio down with it, and vice versa. It starts as soon as we have a real
+  // authenticated identity and a valid (non-demo) session id — never tied to `connected`.
+  const hasValidSession = Boolean(sessionId) && sessionId !== "demo" && Number.isFinite(Number(sessionId));
+  const livekit = useLiveKit({ sessionId, enabled: hasValidSession && Boolean(userId) });
 
   // ── State ──────────────────────────────────────────────────
   const [presentationUrl, setPresentationUrl] = useState(search.get("url") ?? "");
@@ -1164,6 +1168,15 @@ export default function LiveClassroom() {
                     style={{ display: livekit.teacherPresent ? "block" : "none" }}
                   />
                   <audio ref={livekit.teacherAudioRef} autoPlay />
+                  {livekit.audioBlocked && (
+                    <button
+                      onClick={() => { void livekit.startAudio(); }}
+                      className="absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1.5 text-[10px] font-bold text-white rounded-md py-1.5 shadow-lg"
+                      style={{ background: ORANGE }}
+                    >
+                      🔊 Enable Class Audio
+                    </button>
+                  )}
                   {!livekit.teacherPresent && (
                     <div className="flex flex-col items-center justify-center h-full gap-2">
                       <div className="relative">
@@ -1635,6 +1648,27 @@ export default function LiveClassroom() {
             {/* Bottom graphic */}
             <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg,#FF6B1A,#ffd700,#FF6B1A)" }} />
           </div>
+        </div>
+      )}
+
+      {import.meta.env.DEV && (
+        <div className="fixed bottom-2 left-2 z-[9999] w-64 rounded-lg bg-black/85 border border-gray-700 text-[9px] font-mono text-gray-300 p-2 space-y-0.5 pointer-events-none select-none">
+          <p className="text-orange-400 font-bold">LiveKit / Socket diagnostics (dev only)</p>
+          <p>Session ID: <span className="text-white">{sessionId}</span></p>
+          <p>Socket.IO: <span className="text-white">{connected ? "Connected" : "Connecting/Disconnected"}</span></p>
+          <p>LiveKit: <span className="text-white">{livekit.connectionState}</span></p>
+          <p>LiveKit Room: <span className="text-white">{livekit.roomName ?? "—"}</span></p>
+          <p>Identity: <span className="text-white">{livekit.identity ?? userId}</span></p>
+          <p>Role: <span className="text-white">{role}</span></p>
+          <p>Teacher Camera: <span className="text-white">{livekit.cameraError ? "Error" : livekit.cameraPublishing ? "Publishing" : "Off"}</span></p>
+          <p>Teacher Mic: <span className="text-white">{livekit.microphoneError ? "Error" : livekit.micPublishing ? "Publishing" : "Off"}</span></p>
+          <p>Remote Teacher Video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
+          <p>Remote Teacher Audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
+          {(livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError) && (
+            <p className="text-red-400">
+              {livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError}
+            </p>
+          )}
         </div>
       )}
 

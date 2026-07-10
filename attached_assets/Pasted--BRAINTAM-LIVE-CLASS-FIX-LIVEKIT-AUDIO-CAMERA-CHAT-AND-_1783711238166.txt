@@ -1,0 +1,1372 @@
+# BRAINTAM LIVE CLASS — FIX LIVEKIT, AUDIO, CAMERA, CHAT, AND MULTIPLE SIMULTANEOUS CLASSES
+
+Work on the existing Braintam Learning monorepo.
+
+This is a repair and stabilization task. Do not redesign the Live Classroom UI, do not replace LiveKit, do not replace Socket.IO, and do not rebuild the module from scratch.
+
+The current Live Classroom has these runtime problems:
+
+* Teacher camera is not working reliably
+* Teacher microphone is not working reliably
+* Students and mentors cannot hear the teacher
+* Students may not receive the teacher video
+* Chat/messages are not working
+* Live-class connection appears inactive
+* Student stage camera/microphone is not working correctly
+* Connection failures are hidden from the UI
+
+The platform must support multiple live classes running simultaneously across different courses, grades, subjects, batches, and teachers.
+
+Before modifying code, inspect the actual implementation and confirm the current architecture.
+
+Important existing files include:
+
+```text
+artifacts/braintam/src/pages/live-classroom.tsx
+
+artifacts/braintam/src/hooks/use-livekit.ts
+
+artifacts/api-server/src/routes/livekit.ts
+
+artifacts/api-server/src/lib/livekit.ts
+
+artifacts/api-server/src/routes/liveClasses.ts
+
+The API server entry file where Express, HTTP server, and Socket.IO are initialized
+
+The Vite configuration file
+
+The Socket.IO classroom server implementation
+```
+
+Do not assume a file path if the repository uses a different path. Search the repository and modify the actual implementation.
+
+---
+
+# REQUIRED BRAINTAM ROLE MODEL
+
+Preserve this permission model exactly.
+
+## Teacher/Admin
+
+Teacher or authorized admin can:
+
+* Publish camera
+* Publish microphone
+* Share screen
+* Watch other approved stage participants
+* Start polls
+* Manage classroom
+* Invite students on stage
+* Remove students from stage
+* Mute stage students
+* Manage raise-hand requests
+
+## Student
+
+Student is viewer-only by default.
+
+Student can:
+
+* Watch teacher video
+* Hear teacher audio
+* Use permitted classroom chat
+* Answer polls
+* View leaderboard
+* Raise hand
+* Receive a stage invitation
+
+Student cannot:
+
+* Turn on camera freely
+* Turn on microphone freely
+* Share screen
+* Publish media without teacher approval
+
+Student camera and microphone may become available only after:
+
+```text
+Teacher invites student
+→ Student receives invitation
+→ Student accepts invitation
+→ Backend grants temporary LiveKit publishing permission
+→ LiveKit confirms permission
+→ Student camera/microphone starts
+→ Student appears on stage
+```
+
+The student must automatically return to viewer-only mode after the existing 60-second stage limit or when removed by the teacher.
+
+## Mentor
+
+Mentor is also viewer-only.
+
+Mentor can:
+
+* Watch teacher video
+* Hear teacher audio
+* View assigned mentor group
+* Use permitted mentor/group chat
+* View assigned students
+* Suggest students to the teacher if supported
+* Monitor attendance
+
+Mentor cannot:
+
+* Publish camera
+* Publish microphone
+* Share screen
+* Receive student-stage publishing permission
+
+Do not weaken backend permissions.
+
+---
+
+# MULTIPLE SIMULTANEOUS LIVE CLASSES
+
+Braintam may run many live classes at the same time.
+
+Examples:
+
+```text
+Live Class ID: 125
+Course: Grade 6 Mastery
+Subject: Mathematics
+Teacher: Teacher A
+LiveKit room:
+braintam-live-125
+
+Live Class ID: 126
+Course: Grade 6 Mastery
+Subject: Science
+Teacher: Teacher B
+LiveKit room:
+braintam-live-126
+
+Live Class ID: 127
+Course: Grade 8 Ignite
+Subject: English
+Teacher: Teacher C
+LiveKit room:
+braintam-live-127
+```
+
+Every scheduled live-class database record must have its own isolated room.
+
+Use the individual live-class database record ID as the stable room identifier.
+
+Preferred fallback:
+
+```ts
+function roomNameFor(
+  liveClassId: number
+): string {
+  return `braintam-live-${liveClassId}`;
+}
+```
+
+Do not create rooms using only:
+
+* Course ID
+* Grade
+* Subject
+* Teacher ID
+* Batch
+* Date
+* One global Braintam room
+
+Different live-class records must always have different rooms.
+
+All users joining the same live-class record must receive the same final room name.
+
+Preserve `liveClassesTable.liveKitRoomName` as the database source of truth.
+
+Required logic:
+
+```ts
+let roomName =
+  liveClass.liveKitRoomName;
+
+if (!roomName) {
+  const generatedRoomName =
+    `braintam-live-${liveClass.id}`;
+
+  const [updated] = await db
+    .update(liveClassesTable)
+    .set({
+      liveKitRoomName:
+        generatedRoomName,
+    })
+    .where(
+      and(
+        eq(
+          liveClassesTable.id,
+          liveClass.id
+        ),
+        isNull(
+          liveClassesTable.liveKitRoomName
+        )
+      )
+    )
+    .returning({
+      liveKitRoomName:
+        liveClassesTable.liveKitRoomName,
+    });
+
+  if (
+    updated?.liveKitRoomName
+  ) {
+    roomName =
+      updated.liveKitRoomName;
+  } else {
+    const [freshClass] =
+      await db
+        .select({
+          liveKitRoomName:
+            liveClassesTable
+              .liveKitRoomName,
+        })
+        .from(
+          liveClassesTable
+        )
+        .where(
+          eq(
+            liveClassesTable.id,
+            liveClass.id
+          )
+        )
+        .limit(1);
+
+    roomName =
+      freshClass
+        ?.liveKitRoomName ??
+      generatedRoomName;
+  }
+}
+```
+
+Adapt this to the repository’s actual Drizzle schema and imports.
+
+Do not overwrite an existing non-null room name during a normal join.
+
+Do not create a new random LiveKit room for each participant.
+
+Socket.IO and LiveKit may use different room-name formats, but both must isolate participants by the same live-class record.
+
+Example:
+
+```text
+Live Class ID:
+125
+
+Socket.IO room:
+125
+
+LiveKit room:
+braintam-live-125
+```
+
+This is valid.
+
+---
+
+# FIX 1 — DECOUPLE LIVEKIT FROM SOCKET.IO
+
+Inspect:
+
+```text
+artifacts/braintam/src/pages/live-classroom.tsx
+```
+
+The current implementation appears to initialize LiveKit using the Socket.IO connection status:
+
+```ts
+const livekit =
+  useLiveKit({
+    sessionId,
+    enabled: connected,
+  });
+```
+
+This creates an unnecessary dependency:
+
+```text
+Socket.IO fails
+→ connected remains false
+→ LiveKit never starts
+→ No camera
+→ No microphone
+→ No teacher audio
+→ No teacher video
+```
+
+Remove this dependency.
+
+Socket.IO and LiveKit must connect independently.
+
+Use separate connection states:
+
+```ts
+const {
+  socket,
+  connected:
+    socketConnected,
+} = useClassroomSocket(
+  sessionId,
+  userId,
+  name,
+  role,
+  groupId,
+  phone
+);
+```
+
+LiveKit should start when:
+
+* Authentication is resolved
+* A real authenticated user exists
+* The live-class session ID is valid
+* The session is not a demo/fallback session
+
+Example:
+
+```ts
+const hasValidSession =
+  Boolean(sessionId) &&
+  sessionId !== "demo" &&
+  Number.isFinite(
+    Number(sessionId)
+  );
+
+const livekit =
+  useLiveKit({
+    sessionId,
+    enabled:
+      hasValidSession &&
+      Boolean(authIdentity),
+  });
+```
+
+Adapt this to the actual authentication provider.
+
+Do not repeatedly reconnect LiveKit because of unstable object references or unrelated React state changes.
+
+Required behavior:
+
+```text
+Socket.IO disconnected
+→ LiveKit video/audio continues
+
+LiveKit reconnecting
+→ Socket.IO chat/polls continue
+```
+
+---
+
+# FIX 2 — REMOVE DUPLICATE TEACHER CAMERA CAPTURE
+
+Inspect the teacher camera implementation.
+
+The current page appears to do both:
+
+```ts
+navigator.mediaDevices
+  .getUserMedia({
+    video: true,
+    audio: false,
+  });
+```
+
+and:
+
+```ts
+livekit.setCamera(true);
+```
+
+Do not maintain two separate camera streams.
+
+Remove the page-level camera stream created only for teacher preview.
+
+Remove unnecessary camera resources such as:
+
+```ts
+const streamRef =
+  useRef<MediaStream | null>(
+    null
+  );
+```
+
+if they are no longer needed.
+
+Do not open the camera directly in `live-classroom.tsx`.
+
+The teacher camera button should use only LiveKit:
+
+```ts
+const toggleCamera =
+  useCallback(async () => {
+    try {
+      await livekit.setCamera(
+        !livekit.cameraPublishing
+      );
+    } catch (error) {
+      console.error(
+        "Teacher camera error:",
+        error
+      );
+    }
+  }, [
+    livekit.cameraPublishing,
+    livekit.setCamera,
+  ]);
+```
+
+Use LiveKit’s local participant camera publication for the teacher preview.
+
+In:
+
+```text
+artifacts/braintam/src/hooks/use-livekit.ts
+```
+
+expose a stable method or ref for attaching the local camera track.
+
+Possible interface:
+
+```ts
+localVideoRef
+```
+
+or:
+
+```ts
+attachLocalVideo(
+  element:
+    HTMLVideoElement
+): void
+```
+
+The same LiveKit camera track must:
+
+* Show the teacher’s local preview
+* Publish to the LiveKit room
+* Be received by students and mentors
+
+Do not create a separate preview stream.
+
+When camera is disabled:
+
+* Unpublish/disable the LiveKit camera track correctly
+* Detach it from the local preview
+* Stop unnecessary capture resources
+* Update UI state
+
+---
+
+# FIX 3 — TEACHER MICROPHONE
+
+The teacher microphone must work independently from the camera.
+
+Teacher must be able to use:
+
+```text
+Camera ON + Microphone ON
+
+Camera OFF + Microphone ON
+
+Camera ON + Microphone OFF
+
+Camera OFF + Microphone OFF
+```
+
+Use LiveKit local participant controls.
+
+Example:
+
+```ts
+await room.localParticipant
+  .setMicrophoneEnabled(
+    enabled
+  );
+```
+
+Expose:
+
+```ts
+micPublishing
+micError
+setMic()
+```
+
+Do not request microphone access before the teacher intentionally enables the microphone.
+
+Handle:
+
+* Permission denied
+* No microphone device
+* Device already in use
+* LiveKit disconnected
+* Publishing permission denied
+
+Show a useful error instead of silently failing.
+
+---
+
+# FIX 4 — STUDENT AND MENTOR AUDIO PLAYBACK
+
+Students and mentors must hear the teacher.
+
+Do not rely only on:
+
+```tsx
+<audio
+  autoPlay
+/>
+```
+
+Modern browsers may block autoplay audio.
+
+Implement LiveKit audio-unlock support.
+
+In the LiveKit hook, expose:
+
+```ts
+audioBlocked:
+  boolean
+
+startAudio:
+  () => Promise<void>
+```
+
+Use the LiveKit room audio API:
+
+```ts
+await room.startAudio();
+```
+
+When audio playback is blocked, show:
+
+```text
+🔊 Enable Class Audio
+```
+
+The button should be clearly visible inside the classroom.
+
+When clicked:
+
+```ts
+await livekit
+  .startAudio();
+```
+
+After successful playback:
+
+* Set `audioBlocked` to false
+* Hide the button
+
+Teacher audio must work when:
+
+* Teacher published microphone before student joined
+* Teacher publishes microphone after student joined
+* Teacher disables and re-enables microphone
+* Teacher reconnects
+* Student reconnects
+* Mentor reconnects
+* Browser initially blocks autoplay
+
+Listen for relevant LiveKit audio playback status events where supported.
+
+Do not create duplicate audio elements for the same remote track.
+
+---
+
+# FIX 5 — REMOTE TEACHER VIDEO AND AUDIO
+
+Ensure remote teacher tracks are identified using authenticated participant metadata or backend role metadata—not display-name guesses.
+
+The LiveKit token already stores role metadata. Parse participant metadata safely.
+
+Teacher identification should prefer:
+
+```text
+participant.metadata.role
+```
+
+or equivalent parsed metadata.
+
+Do not identify the teacher only because their display name starts with:
+
+```text
+teacher
+```
+
+When a teacher camera track is subscribed:
+
+* Attach it to the teacher video element
+* Set teacher video status to subscribed
+* Show the real teacher video
+
+When unpublished/unsubscribed:
+
+* Detach the track
+* Clear the element
+* Show the existing camera-off placeholder
+
+When a teacher microphone track is subscribed:
+
+* Attach it to the correct audio playback system
+* Update teacher audio state
+
+Clean up all attached tracks on unmount and room disconnect.
+
+---
+
+# FIX 6 — VERIFY SOCKET.IO SERVER AND CLIENT
+
+The frontend currently uses:
+
+```ts
+io({
+  path:
+    "/api/socket.io",
+  transports: [
+    "websocket",
+    "polling",
+  ],
+});
+```
+
+Find the actual Socket.IO backend initialization.
+
+Verify the server uses the exact same path:
+
+```ts
+path:
+  "/api/socket.io"
+```
+
+The frontend and backend paths must match exactly.
+
+Verify Socket.IO is attached to the same HTTP server that is actually listening.
+
+Correct architecture:
+
+```ts
+const httpServer =
+  createServer(app);
+
+const io =
+  new Server(
+    httpServer,
+    {
+      path:
+        "/api/socket.io",
+    }
+  );
+
+httpServer.listen(PORT);
+```
+
+Do not attach Socket.IO to one HTTP server and start Express using a different `app.listen()` server.
+
+Check the repository’s real server entry file before modifying anything.
+
+Do not create a second Socket.IO server.
+
+Add client diagnostics:
+
+```ts
+s.on(
+  "connect",
+  () => {
+    console.log(
+      "[Classroom Socket] connected",
+      {
+        socketId:
+          s.id,
+        sessionId,
+      }
+    );
+  }
+);
+
+s.on(
+  "connect_error",
+  error => {
+    console.error(
+      "[Classroom Socket] connection error",
+      {
+        message:
+          error.message,
+        sessionId,
+      }
+    );
+  }
+);
+
+s.on(
+  "disconnect",
+  reason => {
+    console.warn(
+      "[Classroom Socket] disconnected",
+      {
+        reason,
+        sessionId,
+      }
+    );
+  }
+);
+```
+
+Preserve polling fallback.
+
+---
+
+# FIX 7 — VERIFY VITE/REPLIT WEBSOCKET PROXY
+
+Find the actual Vite configuration.
+
+If the frontend uses a Vite development proxy for `/api`, ensure WebSocket upgrades are enabled:
+
+```ts
+server: {
+  proxy: {
+    "/api": {
+      target:
+        actualApiServerUrl,
+      changeOrigin:
+        true,
+      ws:
+        true,
+    },
+  },
+}
+```
+
+Use the actual API server host and port from the repository.
+
+Do not assume port 3000.
+
+Do not change production routing unnecessarily if Replit already proxies `/api` through another mechanism.
+
+Inspect the existing Replit and workspace configuration before changing proxy settings.
+
+---
+
+# FIX 8 — AUTHENTICATED ROLE MUST BE THE SOURCE OF TRUTH
+
+The frontend currently appears to read role from the URL:
+
+```ts
+const role =
+  (
+    search.get("role") ??
+    "student"
+  ).toLowerCase();
+```
+
+Do not trust URL role parameters for permissions.
+
+Use the authenticated user role returned by the existing authentication system.
+
+The backend must remain authoritative.
+
+URL parameters may be used only as a temporary display fallback during development and must never grant permissions.
+
+Required behavior:
+
+```text
+Authenticated teacher
+→ Teacher UI
+→ Backend verifies teacher assignment
+→ Teacher LiveKit token permits publishing
+
+Authenticated student
+→ Student UI
+→ Viewer-only token
+
+Authenticated mentor
+→ Mentor UI
+→ Viewer-only token
+```
+
+Do not allow:
+
+```text
+?role=teacher
+```
+
+to turn a student into a teacher.
+
+Preserve compatibility with the current authentication provider.
+
+---
+
+# FIX 9 — LIVEKIT TOKEN AND AUTHORIZATION
+
+Inspect:
+
+```text
+artifacts/api-server/src/routes/livekit.ts
+
+artifacts/api-server/src/lib/livekit.ts
+```
+
+Preserve server-side authorization.
+
+Required token permissions:
+
+Teacher/admin:
+
+```ts
+{
+  roomJoin: true,
+  canSubscribe: true,
+  canPublish: true,
+  canPublishData: true
+}
+```
+
+Student by default:
+
+```ts
+{
+  roomJoin: true,
+  canSubscribe: true,
+  canPublish: false,
+  canPublishData: true
+}
+```
+
+Mentor:
+
+```ts
+{
+  roomJoin: true,
+  canSubscribe: true,
+  canPublish: false,
+  canPublishData: true
+}
+```
+
+Do not give permanent publishing permission to students.
+
+Do not give publishing permission to mentors.
+
+Keep teacher assignment validation.
+
+Keep course enrollment validation.
+
+Keep mentor-group authorization.
+
+Improve error messages where necessary.
+
+Do not expose API secrets or full tokens in logs.
+
+---
+
+# FIX 10 — STUDENT STAGE PERMISSION FLOW
+
+Preserve the existing stage system and 60-second limit.
+
+Required flow:
+
+```text
+Student is viewer-only
+→ Student raises hand
+→ Teacher selects student
+→ Teacher sends stage invitation
+→ Student sees invitation
+→ Student accepts
+→ Backend grants temporary LiveKit publishing permission
+→ Backend confirms permission update
+→ Student enables camera/microphone
+→ LiveKit confirms publication
+→ Student appears on stage
+```
+
+Do not show the student as successfully live before permission and publication are confirmed.
+
+If permission update fails:
+
+* Keep student viewer-only
+* Do not activate camera/microphone
+* Show an error
+* Notify teacher that stage activation failed
+
+When stage time expires:
+
+```ts
+await livekit
+  .setCamera(false);
+
+await livekit
+  .setMic(false);
+```
+
+Then:
+
+* Remove the student from the stage
+* Revoke publishing permission on the server
+* Update Socket.IO room state
+* Remove the student video from teacher/student views
+* Return student to viewer-only mode
+
+When teacher manually removes the student:
+
+* Disable student camera
+* Disable student microphone
+* Revoke publish permission
+* Clear stage state
+
+When student disconnects:
+
+* Remove stage state
+* Revoke permission where applicable
+* Clean up published tracks
+
+Mentors must never receive stage publishing permission.
+
+---
+
+# FIX 11 — CONNECTION AND ERROR STATES
+
+Do not hide important failures.
+
+Expose these states from the LiveKit hook:
+
+```ts
+connectionState
+
+connectionError
+
+tokenError
+
+cameraError
+
+microphoneError
+
+audioBlocked
+
+roomName
+
+identity
+
+teacherVideoSubscribed
+
+teacherAudioSubscribed
+```
+
+Show user-friendly errors.
+
+Examples:
+
+```text
+Unable to connect to the live class.
+
+LiveKit is not configured on the server.
+
+You are not assigned as the teacher for this class.
+
+You are not enrolled in this class.
+
+Camera permission was denied.
+
+Microphone permission was denied.
+
+No camera was found.
+
+No microphone was found.
+
+Class audio was blocked by the browser.
+
+Chat is reconnecting. Video will continue.
+
+Video is reconnecting. Chat will continue.
+```
+
+Do not show raw secrets, full tokens, stack traces, or sensitive backend information to normal users.
+
+---
+
+# FIX 12 — DEVELOPMENT DIAGNOSTICS PANEL
+
+Add a temporary diagnostics panel visible only during development:
+
+```ts
+import.meta.env.DEV
+```
+
+Show:
+
+```text
+Session ID:
+125
+
+Socket.IO:
+Connected / Connecting / Disconnected
+
+LiveKit:
+Connected / Connecting / Reconnecting / Disconnected
+
+LiveKit Room:
+braintam-live-125
+
+Authenticated Identity:
+Actual user ID
+
+Authenticated Role:
+teacher / student / mentor
+
+Teacher Camera:
+Publishing / Off / Error
+
+Teacher Microphone:
+Publishing / Off / Error
+
+Remote Teacher Video:
+Subscribed / Waiting
+
+Remote Teacher Audio:
+Playing / Blocked / Waiting
+
+Stage Permission:
+Viewer / Requested / Granted / Publishing
+```
+
+Do not show:
+
+* LiveKit API secret
+* LiveKit access token
+* Clerk secret
+* Database URL
+* Session secret
+* Razorpay secret
+
+---
+
+# FIX 13 — VERIFY REPLIT SECRETS
+
+Do not create hardcoded credentials.
+
+Verify the API runtime can read:
+
+```env
+LIVEKIT_URL=
+
+LIVEKIT_API_KEY=
+
+LIVEKIT_API_SECRET=
+```
+
+For LiveKit Cloud:
+
+```env
+LIVEKIT_URL=
+wss://actual-project.livekit.cloud
+
+LIVEKIT_API_KEY=
+actual-project-api-key
+
+LIVEKIT_API_SECRET=
+actual-project-api-secret
+```
+
+Do not literally use:
+
+```env
+devkey
+
+secret
+
+your-project
+```
+
+unless the project is intentionally using a local self-hosted LiveKit server configured with those exact values.
+
+If a secret is missing, report it clearly.
+
+Do not print secret values.
+
+---
+
+# FIX 14 — PRESERVE ALL EXISTING FEATURES
+
+Do not remove or redesign:
+
+* Existing Braintam classroom UI
+* Teacher video area
+* Presentation area
+* PDF upload
+* PPT/PPTX upload
+* Canva presentation support
+* Annotation tools
+* Teacher camera controls
+* Teacher microphone controls
+* Screen sharing
+* Chat
+* Group chat
+* Staff announcements
+* Chat moderation
+* Polls
+* Correct-answer logic
+* Poll leaderboard
+* Response-time ranking
+* Attendance
+* Live/backstage/absent states
+* Raise hand
+* Mentor groups
+* Mentor controls
+* Student stage
+* Maximum stage slots
+* 60-second stage timer
+* Teacher presence
+* Recordings
+* Payment/course promotion UI
+* Existing analytics events
+* Existing authentication
+* Existing database authorization
+
+Do not replace the page with a generic LiveKit example.
+
+---
+
+# FIX 15 — CLEANUP AND REACT STABILITY
+
+Check for:
+
+* Duplicate LiveKit room connections
+* Duplicate Socket.IO connections
+* Effects reconnecting because dependencies change every render
+* Duplicate event listeners
+* Missing event-listener cleanup
+* Media tracks not detached on unmount
+* Camera tracks not stopped
+* Audio tracks attached multiple times
+* Stale React closures
+* State updates after component unmount
+* Multiple token requests for the same session
+* Duplicate stage timers
+* Duplicate heartbeat intervals
+
+Every event listener must have matching cleanup.
+
+Do not create a new room object on every render.
+
+Do not reconnect LiveKit because chat state, poll state, or attendance state changes.
+
+---
+
+# REQUIRED TESTING
+
+After implementing the fixes, run:
+
+```bash
+pnpm typecheck
+```
+
+Then run:
+
+```bash
+pnpm build
+```
+
+Fix all errors before declaring completion.
+
+Do not claim runtime success based only on successful compilation.
+
+Test using separate authenticated browser sessions.
+
+## Test A — Teacher and student
+
+Browser A:
+
+```text
+Normal Chrome window
+
+Authenticated assigned teacher
+
+Live Class ID:
+125
+```
+
+Browser B:
+
+```text
+Chrome Incognito
+
+Authenticated enrolled student
+
+Same Live Class ID:
+125
+```
+
+Verify:
+
+1. Both users receive the same LiveKit room name.
+
+```text
+braintam-live-125
+```
+
+2. Socket.IO connects for both users.
+
+3. LiveKit connects for both users.
+
+4. Teacher enables camera.
+
+5. Teacher sees their LiveKit local preview.
+
+6. Student sees teacher camera.
+
+7. Teacher enables microphone.
+
+8. Student hears teacher.
+
+9. If browser blocks audio, student sees:
+
+```text
+Enable Class Audio
+```
+
+10. Clicking it starts teacher audio.
+
+11. Student sends chat message.
+
+12. Teacher receives chat message.
+
+13. Teacher sends announcement.
+
+14. Student receives announcement.
+
+15. Student cannot enable camera or microphone.
+
+16. Student raises hand.
+
+17. Teacher invites student on stage.
+
+18. Student accepts.
+
+19. Backend grants temporary publishing permission.
+
+20. Student camera/microphone starts only after permission is confirmed.
+
+21. Teacher sees student on stage.
+
+22. Student is removed automatically after 60 seconds.
+
+23. Student camera/microphone stops.
+
+24. Student returns to viewer-only mode.
+
+## Test B — Mentor
+
+Browser C:
+
+```text
+Authenticated assigned mentor
+
+Same Live Class ID:
+125
+```
+
+Verify:
+
+* Mentor sees teacher
+* Mentor hears teacher
+* Mentor sees only permitted group information
+* Mentor cannot publish camera
+* Mentor cannot publish microphone
+* Mentor cannot share screen
+* Mentor cannot receive stage publishing permission
+
+## Test C — Simultaneous class isolation
+
+Run another class:
+
+```text
+Live Class ID:
+126
+
+LiveKit Room:
+braintam-live-126
+```
+
+Verify:
+
+* Class 125 teacher is not visible in Class 126
+* Class 125 audio is not heard in Class 126
+* Class 125 chat does not appear in Class 126
+* Class 125 polls do not appear in Class 126
+* Class 125 attendance does not appear in Class 126
+* Class 125 stage users do not appear in Class 126
+
+Both classes must work simultaneously without interference.
+
+---
+
+# COMPLETION REPORT REQUIRED
+
+After implementation, provide a report containing:
+
+## Confirmed root causes
+
+List only issues verified from the code or runtime logs.
+
+Do not describe assumptions as confirmed facts.
+
+## Files changed
+
+List every modified file.
+
+## Changes made
+
+Explain:
+
+* LiveKit connection fix
+* Socket.IO connection fix
+* Camera fix
+* Microphone fix
+* Audio playback fix
+* Room isolation fix
+* Student stage fix
+* Authentication/role fix
+* Error handling added
+
+## Verification
+
+Report:
+
+```text
+pnpm typecheck:
+Passed / Failed
+
+pnpm build:
+Passed / Failed
+
+Teacher camera:
+Verified / Requires browser test
+
+Teacher microphone:
+Verified / Requires browser test
+
+Student audio:
+Verified / Requires browser test
+
+Chat:
+Verified / Requires browser test
+
+Student stage:
+Verified / Requires browser test
+
+Multiple simultaneous classes:
+Verified / Requires browser test
+```
+
+Do not state that camera, microphone, audio, or WebSocket behavior is verified unless it was tested in real browser sessions.
+
+Do not delete working code merely to simplify implementation.
+
+Do not replace the existing architecture.
+
+Repair the current Braintam Live Classroom safely and incrementally.

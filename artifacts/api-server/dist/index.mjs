@@ -19035,14 +19035,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash = crypto11.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash = crypto10.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash + '"';
     }
@@ -22517,17 +22517,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto10.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto11.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto10.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -33166,7 +33166,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.21.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto11 = require_utils7();
+    var crypto10 = require_utils7();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function saslprep(password) {
       const nonAsciiSpace = /[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g;
@@ -33184,7 +33184,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto11.randomBytes(18).toString("base64");
+      const clientNonce = crypto10.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -33226,20 +33226,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto11.hashByName(hashName, peerCert);
+        const certHash = await crypto10.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto11.deriveKey(saslprep(password), saltBytes, sv.iteration);
-      const clientKey = await crypto11.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto11.sha256(clientKey);
-      const clientSignature = await crypto11.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto10.deriveKey(saslprep(password), saltBytes, sv.iteration);
+      const clientKey = await crypto10.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto10.sha256(clientKey);
+      const clientSignature = await crypto10.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto11.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto11.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto10.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto10.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -35412,7 +35412,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto11 = require_utils7();
+    var crypto10 = require_utils7();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -35659,7 +35659,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto11.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto10.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -46108,7 +46108,7 @@ var require_form_data = __commonJS({
     var parseUrl = __require("url").parse;
     var fs5 = __require("fs");
     var Stream = __require("stream").Stream;
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     var mime = require_mime_types2();
     var asynckit = require_asynckit();
     var setToStringTag = require_es_set_tostringtag();
@@ -46317,7 +46317,7 @@ var require_form_data = __commonJS({
       return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
     };
     FormData2.prototype._generateBoundary = function() {
-      this._boundary = "--------------------------" + crypto11.randomBytes(12).toString("hex");
+      this._boundary = "--------------------------" + crypto10.randomBytes(12).toString("hex");
     };
     FormData2.prototype.getLengthSync = function() {
       var knownLength = this._overheadLength + this._valueLength;
@@ -47404,7 +47404,7 @@ var require_axios = __commonJS({
   "../../node_modules/.pnpm/axios@1.18.1/node_modules/axios/dist/node/axios.cjs"(exports, module) {
     "use strict";
     var FormData$1 = require_form_data();
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     var url2 = __require("url");
     var HttpsProxyAgent = require_dist5();
     var http3 = __require("http");
@@ -48624,7 +48624,7 @@ var require_axios = __commonJS({
         length
       } = alphabet;
       const randomValues = new Uint32Array(size);
-      crypto11.randomFillSync(randomValues);
+      crypto10.randomFillSync(randomValues);
       for (let i = 0; i < size; i++) {
         str += alphabet[randomValues[i] % length];
       }
@@ -51950,7 +51950,7 @@ var require_razorpay_utils = __commonJS({
     } : function(obj) {
       return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
     };
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     function getDateInSecs(date6) {
       return +new Date(date6) / 1e3;
     }
@@ -51987,12 +51987,12 @@ var require_razorpay_utils = __commonJS({
       return new Error("\n" + summary + "\n" + ("Expected(" + (typeof expectedVal === "undefined" ? "undefined" : _typeof(expectedVal)) + ")\n" + prettify(expectedVal) + "\n\n") + ("Got(" + (typeof gotVal === "undefined" ? "undefined" : _typeof(gotVal)) + ")\n" + prettify(gotVal)));
     }
     function validateWebhookSignature(body, signature, secret) {
-      var crypto12 = __require("crypto");
+      var crypto11 = __require("crypto");
       if (!isDefined(body) || !isDefined(signature) || !isDefined(secret)) {
         throw Error("Invalid Parameters: Please give request body,signature sent in X-Razorpay-Signature header and webhook secret from dashboard as parameters");
       }
       body = body.toString();
-      var expectedSignature = crypto12.createHmac("sha256", secret).update(body).digest("hex");
+      var expectedSignature = crypto11.createHmac("sha256", secret).update(body).digest("hex");
       return expectedSignature === signature;
     }
     function validatePaymentVerification() {
@@ -52030,7 +52030,7 @@ var require_razorpay_utils = __commonJS({
         var keyBytes = Buffer.from(secret.slice(0, 16), "utf8");
         var iv = Buffer.alloc(12);
         keyBytes.copy(iv, 0, 0, 12);
-        var cipher = crypto11.createCipheriv("aes-128-gcm", keyBytes, iv);
+        var cipher = crypto10.createCipheriv("aes-128-gcm", keyBytes, iv);
         var encryptedData = cipher.update(dataToEncrypt, "utf8");
         encryptedData = Buffer.concat([encryptedData, cipher.final()]);
         var authTag = cipher.getAuthTag();
@@ -58813,9 +58813,9 @@ var require_disk = __commonJS({
     var fs5 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto11.randomBytes(16, function(err, raw) {
+      crypto10.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -62959,7 +62959,7 @@ var require_accepts2 = __commonJS({
 // ../../node_modules/.pnpm/base64id@2.0.0/node_modules/base64id/lib/base64id.js
 var require_base64id = __commonJS({
   "../../node_modules/.pnpm/base64id@2.0.0/node_modules/base64id/lib/base64id.js"(exports, module) {
-    var crypto11 = __require("crypto");
+    var crypto10 = __require("crypto");
     var Base64Id = function() {
     };
     Base64Id.prototype.getRandomBytes = function(bytes) {
@@ -62967,12 +62967,12 @@ var require_base64id = __commonJS({
       var self2 = this;
       bytes = bytes || 12;
       if (bytes > BUFFER_SIZE) {
-        return crypto11.randomBytes(bytes);
+        return crypto10.randomBytes(bytes);
       }
       var bytesInBuffer = parseInt(BUFFER_SIZE / bytes);
       var threshold = parseInt(bytesInBuffer * 0.85);
       if (!threshold) {
-        return crypto11.randomBytes(bytes);
+        return crypto10.randomBytes(bytes);
       }
       if (this.bytesBufferIndex == null) {
         this.bytesBufferIndex = -1;
@@ -62984,14 +62984,14 @@ var require_base64id = __commonJS({
       if (this.bytesBufferIndex == -1 || this.bytesBufferIndex > threshold) {
         if (!this.isGeneratingBytes) {
           this.isGeneratingBytes = true;
-          crypto11.randomBytes(BUFFER_SIZE, function(err, bytes2) {
+          crypto10.randomBytes(BUFFER_SIZE, function(err, bytes2) {
             self2.bytesBuffer = bytes2;
             self2.bytesBufferIndex = 0;
             self2.isGeneratingBytes = false;
           });
         }
         if (this.bytesBufferIndex == -1) {
-          return crypto11.randomBytes(bytes);
+          return crypto10.randomBytes(bytes);
         }
       }
       var result = this.bytesBuffer.slice(bytes * this.bytesBufferIndex, bytes * (this.bytesBufferIndex + 1));
@@ -63005,7 +63005,7 @@ var require_base64id = __commonJS({
       }
       this.sequenceNumber = this.sequenceNumber + 1 | 0;
       rand.writeInt32BE(this.sequenceNumber, 11);
-      if (crypto11.randomBytes) {
+      if (crypto10.randomBytes) {
         this.getRandomBytes(12).copy(rand);
       } else {
         [0, 4, 8].forEach(function(i) {
@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1658" : "dev",
-    commit: true ? "7f11756" : "unknown",
-    buildTime: true ? "2026-07-10T16:58:55.976Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1928" : "dev",
+    commit: true ? "89a5312" : "unknown",
+    buildTime: true ? "2026-07-10T19:28:29.529Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -115772,10 +115772,9 @@ function isLiveKitConfigured() {
 }
 
 // src/routes/livekit.ts
-import crypto5 from "crypto";
 var router6 = (0, import_express6.Router)();
-function roomNameFor(sessionId) {
-  return `session-${sessionId}-${crypto5.randomBytes(4).toString("hex")}`;
+function roomNameFor(liveClassId) {
+  return `braintam-live-${liveClassId}`;
 }
 router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
   if (!isLiveKitConfigured()) {
@@ -115846,9 +115845,14 @@ router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => 
   }
   let roomName = liveClass.liveKitRoomName;
   if (!roomName) {
-    const candidate = roomNameFor(sessionId);
-    const [updated] = await db.update(liveClassesTable).set({ liveKitRoomName: sql`COALESCE(${liveClassesTable.liveKitRoomName}, ${candidate})` }).where(eq(liveClassesTable.id, sessionId)).returning({ liveKitRoomName: liveClassesTable.liveKitRoomName });
-    roomName = updated?.liveKitRoomName ?? candidate;
+    const generatedRoomName = roomNameFor(sessionId);
+    const [updated] = await db.update(liveClassesTable).set({ liveKitRoomName: generatedRoomName }).where(and(eq(liveClassesTable.id, sessionId), isNull(liveClassesTable.liveKitRoomName))).returning({ liveKitRoomName: liveClassesTable.liveKitRoomName });
+    if (updated?.liveKitRoomName) {
+      roomName = updated.liveKitRoomName;
+    } else {
+      const [freshClass] = await db.select({ liveKitRoomName: liveClassesTable.liveKitRoomName }).from(liveClassesTable).where(eq(liveClassesTable.id, sessionId)).limit(1);
+      roomName = freshClass?.liveKitRoomName ?? generatedRoomName;
+    }
   }
   const token = await mintLiveKitToken({
     roomName,
@@ -116772,7 +116776,7 @@ var student_default = router12;
 
 // src/routes/admin.ts
 var import_express13 = __toESM(require_express2(), 1);
-import crypto6 from "crypto";
+import crypto5 from "crypto";
 function computeCrmHealth(s2) {
   const daysSinceLogin = s2.lastLoginDate ? Math.floor((Date.now() - new Date(s2.lastLoginDate).getTime()) / 864e5) : 999;
   const loginScore = daysSinceLogin <= 1 ? 100 : daysSinceLogin <= 3 ? 80 : daysSinceLogin <= 7 ? 60 : 30;
@@ -116792,7 +116796,7 @@ var router13 = (0, import_express13.Router)();
 var adminOnly = requireRole("admin");
 var allStaffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
 function hashPassword2(pw) {
-  return crypto6.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto5.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 function generateToken2(userId) {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
@@ -120602,9 +120606,9 @@ var syllabus_default = router18;
 
 // src/routes/demoBatches.ts
 var import_express19 = __toESM(require_express2(), 1);
-import crypto7 from "crypto";
+import crypto6 from "crypto";
 function hashPassword3(pw) {
-  return crypto7.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto6.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 var router19 = (0, import_express19.Router)();
 var adminOnly4 = requireRole("admin");
@@ -121337,7 +121341,7 @@ function scheduleDailyQueueReset() {
 }
 
 // src/routes/mentor.ts
-import crypto8 from "crypto";
+import crypto7 from "crypto";
 
 // src/services/sms.ts
 var FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY;
@@ -121514,7 +121518,7 @@ async function runOverdueFollowUpReminders() {
 
 // src/routes/mentor.ts
 function hashPassword4(pw) {
-  return crypto8.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto7.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 var router20 = (0, import_express20.Router)();
 var mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");
@@ -123767,7 +123771,7 @@ var operationsDashboard_default = router24;
 
 // src/routes/superAdmin.ts
 var import_express25 = __toESM(require_express2(), 1);
-import crypto9 from "crypto";
+import crypto8 from "crypto";
 import fs2 from "fs";
 import path2 from "path";
 var router25 = (0, import_express25.Router)();
@@ -123777,7 +123781,7 @@ function ensureBackupDir() {
   if (!fs2.existsSync(BACKUP_DIR)) fs2.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 function hashPassword5(pw) {
-  return crypto9.createHash("sha256").update(pw + "braintam_salt").digest("hex");
+  return crypto8.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 function generateToken3(userId) {
   return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
@@ -126912,7 +126916,7 @@ var ignite_default = router28;
 // src/routes/payments.ts
 var import_express29 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
-import crypto10 from "crypto";
+import crypto9 from "crypto";
 
 // src/lib/masteryPaymentComplete.ts
 async function onMasteryPaymentComplete(opts) {
@@ -127082,7 +127086,7 @@ router29.post("/payments/webhook", async (req, res) => {
     res.sendStatus(200);
     return;
   }
-  const expectedSignature = crypto10.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+  const expectedSignature = crypto9.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
   if (expectedSignature !== receivedSignature) {
     await logEnrolmentError({
       errorType: "signature_mismatch",
@@ -127352,7 +127356,7 @@ router29.post("/payments/verify-demo-payment", async (req, res) => {
     res.status(503).json({ error: "Payment service misconfigured." });
     return;
   }
-  const expectedSig = crypto10.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+  const expectedSig = crypto9.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
   if (expectedSig !== razorpay_signature) {
     await logEnrolmentError({
       errorType: "verify_signature_mismatch",
