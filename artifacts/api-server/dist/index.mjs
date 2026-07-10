@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1548" : "dev",
-    commit: true ? "7fd10dd" : "unknown",
-    buildTime: true ? "2026-07-10T15:48:52.498Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1614" : "dev",
+    commit: true ? "fe28cc9" : "unknown",
+    buildTime: true ? "2026-07-10T16:14:53.248Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133181,7 +133181,8 @@ function setupSocketIO(httpServer2) {
               persistChat(sessionId, userId, msg2, groupId);
               io2.to(groupRoom(sessionId, groupId)).to(teacherRoom(sessionId)).emit("chat:message", msg2);
             } else {
-              socket.emit("chat:message", msg2);
+              persistChat(sessionId, userId, msg2, null);
+              io2.to(globalRoom(sessionId)).emit("chat:message", msg2);
             }
             const strikeMsg = newCount === 1 ? "\u26A0\uFE0F Warning (Strike 1/3): Your message contained inappropriate language and was filtered." : "\u{1F6A8} Final Warning (Strike 2/3): One more violation will permanently block your chat.";
             socket.emit("chat:warning", { message: strikeMsg, strikeCount: newCount });
@@ -133202,7 +133203,8 @@ function setupSocketIO(httpServer2) {
         persistChat(sessionId, userId, msg, groupId);
         io2.to(groupRoom(sessionId, groupId)).to(teacherRoom(sessionId)).emit("chat:message", msg);
       } else {
-        socket.emit("chat:message", msg);
+        persistChat(sessionId, userId, msg, null);
+        io2.to(globalRoom(sessionId)).emit("chat:message", msg);
       }
     });
     socket.on("student:raiseHand", () => {

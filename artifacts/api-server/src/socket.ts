@@ -696,7 +696,11 @@ export function setupSocketIO(httpServer: HttpServer) {
                   .to(teacherRoom(sessionId))
                   .emit("chat:message", msg);
               } else {
-                socket.emit("chat:message", msg);
+                // Course-based classes have no groupId — broadcast to the whole session,
+                // not just back to the sender (previously only echoed to sender, so nobody
+                // else ever saw the message).
+                persistChat(sessionId, userId, msg, null);
+                io.to(globalRoom(sessionId)).emit("chat:message", msg);
               }
 
               // Strike warning to sender only
@@ -723,7 +727,11 @@ export function setupSocketIO(httpServer: HttpServer) {
           .to(teacherRoom(sessionId))
           .emit("chat:message", msg);
       } else {
-        socket.emit("chat:message", msg);
+        // Course-based classes have no groupId — broadcast to the whole session,
+        // not just back to the sender (previously only echoed to sender, so nobody
+        // else ever saw the message).
+        persistChat(sessionId, userId, msg, null);
+        io.to(globalRoom(sessionId)).emit("chat:message", msg);
       }
     });
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { io, type Socket } from "socket.io-client";
 import { useLiveKit } from "@/hooks/use-livekit";
+import { useAuth } from "@/components/auth-provider";
 import {
   Video, VideoOff, Users, MessageSquare, BarChart2, Send,
   Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, X, Upload,
@@ -348,11 +349,20 @@ export default function LiveClassroom() {
   const search = new URLSearchParams(window.location.search);
 
   const role          = (search.get("role") ?? "student").toLowerCase();
-  const rawName       = search.get("name") ?? "Student";
+  // Real authenticated identity — none of the "Join Meet" navigation links across the app
+  // pass `name`/`userId` query params, so relying on those alone made every visitor connect
+  // as the literal fallback string "Student"/"u-student", colliding all users of a given role
+  // into one fake identity (broken chat names, raised hands, attendance, staging, etc).
+  // `useAuth()` resolves the real signed-in user (staff token or Clerk-backed student token)
+  // regardless of role; URL params remain only as a last-resort fallback.
+  const { student: authIdentity } = useAuth();
+  const rawName       = authIdentity?.name ?? search.get("name") ?? "Student";
   // Staff/mentors get their role prefixed for on-screen display (e.g. "teacher priya", "mentor moses");
   // students are shown by name only (e.g. "devik manhas").
   const name          = role === "student" ? rawName : `${role} ${rawName}`;
-  const userId        = search.get("userId") ?? `u-${rawName.toLowerCase().replace(/\s+/g, "-")}`;
+  const userId        = authIdentity?.id != null
+    ? String(authIdentity.id)
+    : (search.get("userId") ?? `u-${rawName.toLowerCase().replace(/\s+/g, "-")}`);
   const groupId       = search.get("groupId") ?? "";
   const phone         = search.get("phone") ?? "";
   const title         = search.get("title") ?? `Live Class · ${sessionId}`;
@@ -829,7 +839,16 @@ export default function LiveClassroom() {
   const embedUrl = getEmbedUrl(presentationUrl);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-950" style={{ fontFamily: "Poppins, sans-serif" }}>
+    <>
+      {/* Shown only on phones in portrait (see .live-classroom-rotate-prompt in index.css) —
+          the classroom layout is sidebar+stage based and unusable in portrait, so we ask
+          the student/mentor/teacher to rotate instead of rendering a broken squished layout. */}
+      <div className="live-classroom-rotate-prompt">
+        <span style={{ fontSize: 40 }}>📱↻</span>
+        <p className="font-bold text-lg">Rotate your phone</p>
+        <p className="text-sm text-gray-400">Turn your device to landscape mode to join the live class</p>
+      </div>
+      <div className="live-classroom-root h-screen flex flex-col overflow-hidden bg-gray-950" style={{ fontFamily: "Poppins, sans-serif" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
@@ -1619,6 +1638,7 @@ export default function LiveClassroom() {
         </div>
       )}
 
-    </div>
+      </div>
+    </>
   );
 }
