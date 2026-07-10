@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1024" : "dev",
-    commit: true ? "856ebd7" : "unknown",
-    buildTime: true ? "2026-07-10T10:24:35.450Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1055" : "dev",
+    commit: true ? "8a43db7" : "unknown",
+    buildTime: true ? "2026-07-10T10:55:19.797Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -117693,9 +117693,10 @@ router13.delete("/admin/live-classes/:id", adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 router13.post("/admin/live-classes", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration: duration3, teacher, joinUrl, isPublished } = req.body;
-  if (!title || !scheduledAt || !teacher) {
-    res.status(400).json({ error: "title, scheduledAt, teacher are required" });
+  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration: duration3, joinUrl, isPublished } = req.body;
+  const teacher = req.body.teacher || "To be assigned";
+  if (!title || !scheduledAt) {
+    res.status(400).json({ error: "title and scheduledAt are required" });
     return;
   }
   let resolvedGrade = grade ? Number(grade) : null;

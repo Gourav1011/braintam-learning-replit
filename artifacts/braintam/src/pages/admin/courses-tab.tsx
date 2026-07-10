@@ -669,7 +669,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
     setLcBusy(true);
     try {
       const hasTeacher = !!lcCreateForm.teacherId;
-      const teacherName = hasTeacher ? (allTeachers.find(t => String(t.id) === lcCreateForm.teacherId)?.name ?? "") : "";
+      const teacherName = hasTeacher ? (allTeachers.find(t => String(t.id) === lcCreateForm.teacherId)?.name ?? "To be assigned") : "To be assigned";
       const r = await apiFetch("/admin/live-classes", {
         method: "POST",
         body: JSON.stringify({

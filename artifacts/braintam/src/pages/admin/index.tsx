@@ -1213,7 +1213,7 @@ function AdminPageInner() {
     const hasTeacher = lcForm.teacherId && lcForm.teacherId !== "none";
     const teacherName = hasTeacher
       ? (teachers.find(t => String(t.id) === lcForm.teacherId)?.name ?? lcForm.teacher)
-      : lcForm.teacher;
+      : (lcForm.teacher || "To be assigned");
     const selectedCourseForLc = lcForm.courseId ? courses.find(c => String(c.id) === lcForm.courseId) : null;
     const r = await apiFetch("/admin/live-classes", {
       method: "POST",

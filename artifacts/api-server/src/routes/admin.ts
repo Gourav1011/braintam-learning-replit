@@ -1051,9 +1051,10 @@ router.delete("/admin/live-classes/:id", adminOnly, async (req, res) => {
 
 // ── Content Creation ─────────────────────────────────────────────
 router.post("/admin/live-classes", adminOnly, async (req, res) => {
-  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration, teacher, joinUrl, isPublished } = req.body;
-  if (!title || !scheduledAt || !teacher) {
-    res.status(400).json({ error: "title, scheduledAt, teacher are required" });
+  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, teacherId, scheduledAt, duration, joinUrl, isPublished } = req.body;
+  const teacher = req.body.teacher || "To be assigned";
+  if (!title || !scheduledAt) {
+    res.status(400).json({ error: "title and scheduledAt are required" });
     return;
   }
 
