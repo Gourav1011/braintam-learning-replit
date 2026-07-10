@@ -19,6 +19,9 @@ import {
   demoBatchesTable,
   demoSessionsTable,
   gradeMentorAssignmentsTable,
+  enrollmentsTable,
+  coursesTable,
+  subjectsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNull, isNotNull } from "drizzle-orm";
 import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
@@ -455,10 +458,10 @@ router.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   res.json(classes);
 });
 
-// ── Demo sessions for mentor live-classes tab ─────────────────────────────
+// ── Demo sessions + course live classes for mentor live-classes tab ────────
 router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
-  const mode = String(req.query.mode ?? "upcoming"); // today | upcoming | completed
+  const mode = String(req.query.mode ?? "upcoming"); // live | today | upcoming | completed
 
   // 1. Build gradeSet from assigned students AND grade-team assignments
   const [studentIds, gradeTeamRows] = await Promise.all([
@@ -489,7 +492,22 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const gradeBatchIds = gradeBatches.map(b => b.id);
 
   const allBatchIds = [...new Set([...directBatchIds, ...gradeBatchIds])];
-  if (allBatchIds.length === 0) { res.json([]); return; }
+
+  // Courses the mentor's assigned students are actually enrolled in — this is how
+  // teacher-scheduled course ("mastery") live classes reach the mentor instantly,
+  // regardless of grade, as soon as a student they mentor is enrolled in that course.
+  const enrolledCourseIds = studentIds.length > 0
+    ? [...new Set((await db.select({ courseId: enrollmentsTable.courseId })
+        .from(enrollmentsTable)
+        .where(inArray(enrollmentsTable.studentId, studentIds))).map(r => r.courseId))]
+    : [];
+  // Also include courses matching the mentor's grade-team assignments
+  const gradeCourseIds = gradeSet.length > 0
+    ? [...new Set((await db.select({ id: coursesTable.id })
+        .from(coursesTable)
+        .where(inArray(coursesTable.grade, gradeSet))).map(r => r.id))]
+    : [];
+  const allCourseIds = [...new Set([...enrolledCourseIds, ...gradeCourseIds])];
 
   // 2. Time filter by mode (IST = UTC+5:30)
   const nowUtc = new Date();
@@ -500,58 +518,117 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const todayIst = new Date(istMidnightMs - IST_OFFSET_MS);  // back to UTC
   const tomorrowIst = new Date(todayIst.getTime() + 86400000);
 
-  let sessions;
-  if (mode === "today") {
-    sessions = await db.select({
-      id: demoSessionsTable.id, topic: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
-      duration: demoSessionsTable.duration, status: demoSessionsTable.status,
-      joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
-      batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
-    }).from(demoSessionsTable)
-      .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
-      .where(and(
-        inArray(demoSessionsTable.batchId, allBatchIds),
-        gte(demoSessionsTable.scheduledAt, todayIst),
-        lte(demoSessionsTable.scheduledAt, tomorrowIst),
-      ))
-      .orderBy(demoSessionsTable.scheduledAt);
-  } else if (mode === "upcoming") {
-    sessions = await db.select({
-      id: demoSessionsTable.id, topic: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
-      duration: demoSessionsTable.duration, status: demoSessionsTable.status,
-      joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
-      batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
-    }).from(demoSessionsTable)
-      .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
-      .where(and(
-        inArray(demoSessionsTable.batchId, allBatchIds),
-        gte(demoSessionsTable.scheduledAt, nowUtc),
-      ))
-      .orderBy(demoSessionsTable.scheduledAt)
-      .limit(30);
-  } else {
-    sessions = await db.select({
-      id: demoSessionsTable.id, topic: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
-      duration: demoSessionsTable.duration, status: demoSessionsTable.status,
-      joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
-      batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
-    }).from(demoSessionsTable)
-      .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
-      .where(and(
-        inArray(demoSessionsTable.batchId, allBatchIds),
-        lte(demoSessionsTable.scheduledAt, nowUtc),
-      ))
-      .orderBy(desc(demoSessionsTable.scheduledAt))
-      .limit(30);
+  const demoSelect = {
+    id: demoSessionsTable.id, topic: demoSessionsTable.title,
+    dayNumber: demoSessionsTable.dayNumber, scheduledAt: demoSessionsTable.scheduledAt,
+    duration: demoSessionsTable.duration, status: demoSessionsTable.status,
+    joinUrl: demoSessionsTable.joinUrl, recordingUrl: demoSessionsTable.recordingUrl,
+    batchId: demoBatchesTable.id, batchTitle: demoBatchesTable.title,
+    batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
+  };
+
+  let demoSessions: Array<Record<string, unknown>> = [];
+  if (allBatchIds.length > 0) {
+    if (mode === "live") {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+        .where(and(inArray(demoSessionsTable.batchId, allBatchIds), eq(demoSessionsTable.status, "live")))
+        .orderBy(demoSessionsTable.scheduledAt);
+    } else if (mode === "today") {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+        .where(and(
+          inArray(demoSessionsTable.batchId, allBatchIds),
+          gte(demoSessionsTable.scheduledAt, todayIst),
+          lte(demoSessionsTable.scheduledAt, tomorrowIst),
+        ))
+        .orderBy(demoSessionsTable.scheduledAt);
+    } else if (mode === "upcoming") {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+        .where(and(
+          inArray(demoSessionsTable.batchId, allBatchIds),
+          eq(demoSessionsTable.status, "scheduled"),
+          gte(demoSessionsTable.scheduledAt, nowUtc),
+        ))
+        .orderBy(demoSessionsTable.scheduledAt)
+        .limit(30);
+    } else {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId))
+        .where(and(
+          inArray(demoSessionsTable.batchId, allBatchIds),
+          eq(demoSessionsTable.status, "completed"),
+        ))
+        .orderBy(desc(demoSessionsTable.scheduledAt))
+        .limit(30);
+    }
   }
 
-  res.json(sessions);
+  // 3. Course ("mastery") live classes scheduled by teachers — normalized to the same shape
+  const courseSelect = {
+    id: liveClassesTable.id, topic: liveClassesTable.title,
+    scheduledAt: liveClassesTable.scheduledAt, duration: liveClassesTable.duration,
+    status: liveClassesTable.status, joinUrl: liveClassesTable.joinUrl,
+    courseTitle: coursesTable.title, courseGrade: coursesTable.grade,
+    subjectName: subjectsTable.name,
+  };
+
+  let courseClassesRaw: Array<Record<string, unknown>> = [];
+  if (allCourseIds.length > 0) {
+    if (mode === "live") {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable)
+        .innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId))
+        .leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId))
+        .where(and(inArray(liveClassesTable.courseId, allCourseIds), eq(liveClassesTable.status, "live")))
+        .orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "today") {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable)
+        .innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId))
+        .leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId))
+        .where(and(
+          inArray(liveClassesTable.courseId, allCourseIds),
+          gte(liveClassesTable.scheduledAt, todayIst),
+          lte(liveClassesTable.scheduledAt, tomorrowIst),
+        ))
+        .orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "upcoming") {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable)
+        .innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId))
+        .leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId))
+        .where(and(
+          inArray(liveClassesTable.courseId, allCourseIds),
+          eq(liveClassesTable.status, "upcoming"),
+        ))
+        .orderBy(liveClassesTable.scheduledAt)
+        .limit(30);
+    } else {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable)
+        .innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId))
+        .leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId))
+        .where(and(
+          inArray(liveClassesTable.courseId, allCourseIds),
+          eq(liveClassesTable.status, "completed"),
+        ))
+        .orderBy(desc(liveClassesTable.scheduledAt))
+        .limit(30);
+    }
+  }
+
+  const courseClasses = courseClassesRaw.map(c => ({
+    id: c.id, topic: c.topic, dayNumber: 0, scheduledAt: c.scheduledAt, duration: c.duration,
+    status: c.status, joinUrl: c.joinUrl, recordingUrl: null,
+    batchId: null, batchTitle: c.courseTitle, batchGrade: c.courseGrade, batchSubject: c.subjectName,
+    isCourseClass: true,
+  }));
+
+  const merged = [...demoSessions, ...courseClasses].sort((a, b) => {
+    const at = new Date(a.scheduledAt as string | Date).getTime();
+    const bt = new Date(b.scheduledAt as string | Date).getTime();
+    return mode === "completed" ? bt - at : at - bt;
+  });
+
+  res.json(merged);
 });
 
 // ── Attendance CRUD ──────────────────────────────────────────────────────

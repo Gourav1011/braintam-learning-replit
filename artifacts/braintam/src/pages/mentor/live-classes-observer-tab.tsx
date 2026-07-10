@@ -20,7 +20,7 @@ interface MentorSession {
   batchSubject: string | null;
 }
 
-type Mode = "today" | "upcoming" | "completed";
+type Mode = "live" | "upcoming" | "completed";
 
 function fmt(d: string) {
   return new Date(d).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -114,7 +114,7 @@ export function LiveClassesObserverTab({ apiFetch, mentorName }: {
   apiFetch: (path: string, opts?: RequestInit) => Promise<Response>;
   mentorName?: string;
 }) {
-  const [mode, setMode] = useState<Mode>("today");
+  const [mode, setMode] = useState<Mode>("live");
   const [sessions, setSessions] = useState<MentorSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [attendSession, setAttendSession] = useState<MentorSession | null>(null);
@@ -137,7 +137,7 @@ export function LiveClassesObserverTab({ apiFetch, mentorName }: {
   }
 
   const tabs: { key: Mode; label: string }[] = [
-    { key: "today",     label: "Today" },
+    { key: "live",      label: "Live" },
     { key: "upcoming",  label: "Upcoming" },
     { key: "completed", label: "Completed" },
   ];
@@ -171,9 +171,9 @@ export function LiveClassesObserverTab({ apiFetch, mentorName }: {
           <Video className="w-10 h-10 mx-auto text-gray-300 mb-2" />
           <p className="text-sm font-semibold text-gray-400">No {mode} sessions</p>
           <p className="text-xs text-gray-400 mt-1">
-            {mode === "today" ? "No sessions scheduled for today" :
-             mode === "upcoming" ? "No upcoming sessions in your batches" :
-             "No completed sessions yet"}
+            {mode === "live" ? "No classes are live right now" :
+             mode === "upcoming" ? "No upcoming classes in your batches or courses" :
+             "No completed classes yet"}
           </p>
         </div>
       ) : (

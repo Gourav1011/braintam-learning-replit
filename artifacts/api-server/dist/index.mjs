@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1434" : "dev",
-    commit: true ? "41a76d3" : "unknown",
-    buildTime: true ? "2026-07-10T14:34:41.932Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1438" : "dev",
+    commit: true ? "0cdf945" : "unknown",
+    buildTime: true ? "2026-07-10T14:38:51.880Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -121925,74 +121925,106 @@ router20.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const gradeBatches = gradeSet.length > 0 ? await db.select({ id: demoBatchesTable.id }).from(demoBatchesTable).where(inArray(demoBatchesTable.grade, gradeSet)) : [];
   const gradeBatchIds = gradeBatches.map((b) => b.id);
   const allBatchIds = [.../* @__PURE__ */ new Set([...directBatchIds, ...gradeBatchIds])];
-  if (allBatchIds.length === 0) {
-    res.json([]);
-    return;
-  }
+  const enrolledCourseIds = studentIds.length > 0 ? [...new Set((await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(inArray(enrollmentsTable.studentId, studentIds))).map((r) => r.courseId))] : [];
+  const gradeCourseIds = gradeSet.length > 0 ? [...new Set((await db.select({ id: coursesTable.id }).from(coursesTable).where(inArray(coursesTable.grade, gradeSet))).map((r) => r.id))] : [];
+  const allCourseIds = [.../* @__PURE__ */ new Set([...enrolledCourseIds, ...gradeCourseIds])];
   const nowUtc = /* @__PURE__ */ new Date();
   const IST_OFFSET_MS2 = 5.5 * 60 * 60 * 1e3;
   const istNowMs = nowUtc.getTime() + IST_OFFSET_MS2;
   const istMidnightMs = istNowMs - istNowMs % 864e5;
   const todayIst = new Date(istMidnightMs - IST_OFFSET_MS2);
   const tomorrowIst = new Date(todayIst.getTime() + 864e5);
-  let sessions;
-  if (mode === "today") {
-    sessions = await db.select({
-      id: demoSessionsTable.id,
-      topic: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber,
-      scheduledAt: demoSessionsTable.scheduledAt,
-      duration: demoSessionsTable.duration,
-      status: demoSessionsTable.status,
-      joinUrl: demoSessionsTable.joinUrl,
-      recordingUrl: demoSessionsTable.recordingUrl,
-      batchId: demoBatchesTable.id,
-      batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade,
-      batchSubject: demoBatchesTable.subject
-    }).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(
-      inArray(demoSessionsTable.batchId, allBatchIds),
-      gte(demoSessionsTable.scheduledAt, todayIst),
-      lte(demoSessionsTable.scheduledAt, tomorrowIst)
-    )).orderBy(demoSessionsTable.scheduledAt);
-  } else if (mode === "upcoming") {
-    sessions = await db.select({
-      id: demoSessionsTable.id,
-      topic: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber,
-      scheduledAt: demoSessionsTable.scheduledAt,
-      duration: demoSessionsTable.duration,
-      status: demoSessionsTable.status,
-      joinUrl: demoSessionsTable.joinUrl,
-      recordingUrl: demoSessionsTable.recordingUrl,
-      batchId: demoBatchesTable.id,
-      batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade,
-      batchSubject: demoBatchesTable.subject
-    }).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(
-      inArray(demoSessionsTable.batchId, allBatchIds),
-      gte(demoSessionsTable.scheduledAt, nowUtc)
-    )).orderBy(demoSessionsTable.scheduledAt).limit(30);
-  } else {
-    sessions = await db.select({
-      id: demoSessionsTable.id,
-      topic: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber,
-      scheduledAt: demoSessionsTable.scheduledAt,
-      duration: demoSessionsTable.duration,
-      status: demoSessionsTable.status,
-      joinUrl: demoSessionsTable.joinUrl,
-      recordingUrl: demoSessionsTable.recordingUrl,
-      batchId: demoBatchesTable.id,
-      batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade,
-      batchSubject: demoBatchesTable.subject
-    }).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(
-      inArray(demoSessionsTable.batchId, allBatchIds),
-      lte(demoSessionsTable.scheduledAt, nowUtc)
-    )).orderBy(desc(demoSessionsTable.scheduledAt)).limit(30);
+  const demoSelect = {
+    id: demoSessionsTable.id,
+    topic: demoSessionsTable.title,
+    dayNumber: demoSessionsTable.dayNumber,
+    scheduledAt: demoSessionsTable.scheduledAt,
+    duration: demoSessionsTable.duration,
+    status: demoSessionsTable.status,
+    joinUrl: demoSessionsTable.joinUrl,
+    recordingUrl: demoSessionsTable.recordingUrl,
+    batchId: demoBatchesTable.id,
+    batchTitle: demoBatchesTable.title,
+    batchGrade: demoBatchesTable.grade,
+    batchSubject: demoBatchesTable.subject
+  };
+  let demoSessions = [];
+  if (allBatchIds.length > 0) {
+    if (mode === "live") {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(inArray(demoSessionsTable.batchId, allBatchIds), eq(demoSessionsTable.status, "live"))).orderBy(demoSessionsTable.scheduledAt);
+    } else if (mode === "today") {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(
+        inArray(demoSessionsTable.batchId, allBatchIds),
+        gte(demoSessionsTable.scheduledAt, todayIst),
+        lte(demoSessionsTable.scheduledAt, tomorrowIst)
+      )).orderBy(demoSessionsTable.scheduledAt);
+    } else if (mode === "upcoming") {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(
+        inArray(demoSessionsTable.batchId, allBatchIds),
+        eq(demoSessionsTable.status, "scheduled"),
+        gte(demoSessionsTable.scheduledAt, nowUtc)
+      )).orderBy(demoSessionsTable.scheduledAt).limit(30);
+    } else {
+      demoSessions = await db.select(demoSelect).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoSessionsTable.batchId)).where(and(
+        inArray(demoSessionsTable.batchId, allBatchIds),
+        eq(demoSessionsTable.status, "completed")
+      )).orderBy(desc(demoSessionsTable.scheduledAt)).limit(30);
+    }
   }
-  res.json(sessions);
+  const courseSelect = {
+    id: liveClassesTable.id,
+    topic: liveClassesTable.title,
+    scheduledAt: liveClassesTable.scheduledAt,
+    duration: liveClassesTable.duration,
+    status: liveClassesTable.status,
+    joinUrl: liveClassesTable.joinUrl,
+    courseTitle: coursesTable.title,
+    courseGrade: coursesTable.grade,
+    subjectName: subjectsTable.name
+  };
+  let courseClassesRaw = [];
+  if (allCourseIds.length > 0) {
+    if (mode === "live") {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable).innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId)).leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId)).where(and(inArray(liveClassesTable.courseId, allCourseIds), eq(liveClassesTable.status, "live"))).orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "today") {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable).innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId)).leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId)).where(and(
+        inArray(liveClassesTable.courseId, allCourseIds),
+        gte(liveClassesTable.scheduledAt, todayIst),
+        lte(liveClassesTable.scheduledAt, tomorrowIst)
+      )).orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "upcoming") {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable).innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId)).leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId)).where(and(
+        inArray(liveClassesTable.courseId, allCourseIds),
+        eq(liveClassesTable.status, "upcoming")
+      )).orderBy(liveClassesTable.scheduledAt).limit(30);
+    } else {
+      courseClassesRaw = await db.select(courseSelect).from(liveClassesTable).innerJoin(coursesTable, eq(coursesTable.id, liveClassesTable.courseId)).leftJoin(subjectsTable, eq(subjectsTable.id, liveClassesTable.subjectId)).where(and(
+        inArray(liveClassesTable.courseId, allCourseIds),
+        eq(liveClassesTable.status, "completed")
+      )).orderBy(desc(liveClassesTable.scheduledAt)).limit(30);
+    }
+  }
+  const courseClasses = courseClassesRaw.map((c) => ({
+    id: c.id,
+    topic: c.topic,
+    dayNumber: 0,
+    scheduledAt: c.scheduledAt,
+    duration: c.duration,
+    status: c.status,
+    joinUrl: c.joinUrl,
+    recordingUrl: null,
+    batchId: null,
+    batchTitle: c.courseTitle,
+    batchGrade: c.courseGrade,
+    batchSubject: c.subjectName,
+    isCourseClass: true
+  }));
+  const merged = [...demoSessions, ...courseClasses].sort((a, b) => {
+    const at = new Date(a.scheduledAt).getTime();
+    const bt = new Date(b.scheduledAt).getTime();
+    return mode === "completed" ? bt - at : at - bt;
+  });
+  res.json(merged);
 });
 router20.get("/mentor/attendance", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
