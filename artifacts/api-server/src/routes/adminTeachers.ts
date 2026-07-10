@@ -171,7 +171,7 @@ router.get("/admin/cc/teachers/schedule", adminOnly, async (req, res) => {
 
   try {
     const teachers = await db.select({
-      id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl,
+      id: usersTable.id, name: usersTable.name, email: usersTable.email, avatarUrl: usersTable.avatarUrl,
       isActive: usersTable.isActive, isOnLeave: usersTable.isOnLeave, leaveReason: usersTable.leaveReason,
       teachingSubjectsJson: usersTable.teachingSubjectsJson,
     }).from(usersTable)
@@ -223,7 +223,7 @@ router.get("/admin/cc/teachers/schedule", adminOnly, async (req, res) => {
       const next = tClasses.find(c => c.startsAt && new Date(c.startsAt) > now && c.status !== "cancelled");
 
       return {
-        id: t.id, name: t.name, avatarUrl: t.avatarUrl,
+        id: t.id, name: t.name, email: t.email, avatarUrl: t.avatarUrl,
         isOnLeave: t.isOnLeave, leaveReason: t.leaveReason,
         teachingSubjects: parseJsonArray(t.teachingSubjectsJson),
         classes: tClasses,

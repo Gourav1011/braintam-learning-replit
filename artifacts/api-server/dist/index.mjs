@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1000" : "dev",
-    commit: true ? "fcea516" : "unknown",
-    buildTime: true ? "2026-07-10T10:00:19.830Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1006" : "dev",
+    commit: true ? "22fec5c" : "unknown",
+    buildTime: true ? "2026-07-10T10:06:46.971Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -128186,6 +128186,7 @@ router32.get("/admin/cc/teachers/schedule", adminOnly10, async (req, res) => {
     const teachers = await db.select({
       id: usersTable.id,
       name: usersTable.name,
+      email: usersTable.email,
       avatarUrl: usersTable.avatarUrl,
       isActive: usersTable.isActive,
       isOnLeave: usersTable.isOnLeave,
@@ -128237,6 +128238,7 @@ router32.get("/admin/cc/teachers/schedule", adminOnly10, async (req, res) => {
       return {
         id: t.id,
         name: t.name,
+        email: t.email,
         avatarUrl: t.avatarUrl,
         isOnLeave: t.isOnLeave,
         leaveReason: t.leaveReason,

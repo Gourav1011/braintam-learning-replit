@@ -83,7 +83,7 @@ interface ScheduleClass {
 }
 
 interface ScheduleTeacher {
-  id: number; name: string; avatarUrl: string | null;
+  id: number; name: string; email: string | null; avatarUrl: string | null;
   isOnLeave: boolean; leaveReason: string | null;
   teachingSubjects: string[];
   classes: ScheduleClass[];
@@ -920,8 +920,8 @@ function ActionsMenu({ teacher, onAction }: {
 }
 
 // ── Schedule & Availability (Timeline) ────────────────────────────────────────
-const TIMELINE_START_HOUR = 9;
-const TIMELINE_END_HOUR   = 18;
+const TIMELINE_START_HOUR = 11;
+const TIMELINE_END_HOUR   = 22;
 
 function statusColor(status: "on_leave" | "teaching" | "available") {
   if (status === "on_leave") return { bg: "#FEE2E2", text: "#991B1B", label: "On Leave" };
@@ -1038,7 +1038,7 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
             <div className="flex items-center gap-3 text-[10px] font-semibold flex-wrap">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />Available</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#2563EB" }} />Mastery Class</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Ignite Class</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#EA580C" }} />Ignite Class</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />On Leave</span>
             </div>
           </div>
@@ -1068,7 +1068,7 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
                       <Avatar name={t.name} avatarUrl={t.avatarUrl} size={7} />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-gray-800 truncate">{t.name}</p>
-                        <p className="text-[9px] text-gray-400 truncate">{t.teachingSubjects.join(", ") || "—"}</p>
+                        <p className="text-[9px] text-gray-400 truncate">{t.email || "—"}</p>
                       </div>
                     </div>
                     {t.isOnLeave ? (
@@ -1086,11 +1086,11 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
                           const isIgnite = c.program === "ignite";
                           return (
                             <div key={h} className="flex items-center justify-center m-1 rounded-md px-1 py-1 text-center overflow-hidden"
-                              style={{ flex: span, background: isIgnite ? "#EDE9FE" : "#DBEAFE" }}
+                              style={{ flex: span, background: isIgnite ? "#FFEDD5" : "#DBEAFE" }}
                               title={`${c.title} (${c.subjectName ?? "—"})`}>
                               <div>
-                                <p className="text-[9px] font-bold truncate" style={{ color: isIgnite ? "#6D28D9" : "#1D4ED8" }}>{c.title}</p>
-                                <p className="text-[8px]" style={{ color: isIgnite ? "#7C3AED" : "#2563EB" }}>{fmtTimeRange(c.startsAt, c.endsAt)}</p>
+                                <p className="text-[9px] font-bold truncate" style={{ color: isIgnite ? "#C2410C" : "#1D4ED8" }}>{c.title}</p>
+                                <p className="text-[8px]" style={{ color: isIgnite ? "#EA580C" : "#2563EB" }}>{fmtTimeRange(c.startsAt, c.endsAt)}</p>
                               </div>
                             </div>
                           );
