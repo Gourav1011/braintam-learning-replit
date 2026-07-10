@@ -61,7 +61,7 @@ import { MentorsTab } from "./mentors-tab";
 import { DashboardTab } from "./dashboard-tab";
 import { Student360Page } from "./student360-page";
 import { CourseAnalyticsTab } from "./course-analytics-tab";
-import { TeacherManagementView } from "./command-center-teachers-tab";
+import { TeacherAnalyticsTab } from "./teacher-analytics-tab";
 import { HealthTab } from "./health-tab";
 import { PaymentsTab } from "./payments-tab";
 import { GamificationTab } from "./gamification-tab";
@@ -3092,7 +3092,7 @@ function AdminPageInner() {
         {tab === "course-analytics" && <CourseAnalyticsTab />}
 
         {/* ── Teachers ─────────────────────────────────────────────────── */}
-        {tab === "teacher-analytics" && <TeacherManagementView flash={flash} />}
+        {tab === "teacher-analytics" && <TeacherAnalyticsTab flash={flash} />}
 
         {/* ── Learning Health ───────────────────────────────────────────── */}
         {tab === "health" && <HealthTab onViewStudents={() => setTab("mastery-students")} />}
