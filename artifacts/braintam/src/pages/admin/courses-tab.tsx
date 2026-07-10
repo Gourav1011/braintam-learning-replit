@@ -322,6 +322,14 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [allTeachers, setAllTeachers] = useState<TeacherUser[]>([]);
   const [dashLoading, setDashLoading] = useState(false);
 
+  // ── Course live-class scheduling state ──
+  const emptyLcForm = { title: "", teacherId: "", scheduledAt: "", duration: "60", joinUrl: "" };
+  const [showLcCreate, setShowLcCreate] = useState(false);
+  const [lcCreateForm, setLcCreateForm] = useState(emptyLcForm);
+  const [lcBusy, setLcBusy] = useState(false);
+  const [changingTeacherFor, setChangingTeacherFor] = useState<number | null>(null);
+  const [teacherChangeValue, setTeacherChangeValue] = useState("");
+
   // ── Navigation state ──
   const [view, setView] = useState<CmsView>("courses");
   const [courseTab, setCourseTab] = useState<CourseTab>("overview");
@@ -573,6 +581,71 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
       );
     } catch { flash("Failed to load course data", false); }
     setDashLoading(false);
+  };
+
+  const reloadCourseLiveClasses = async (courseId: number) => {
+    try {
+      const liveRes = await apiFetch(`/admin/live-classes`).then(r => r.json());
+      setCourseLiveClasses((Array.isArray(liveRes) ? liveRes : []).filter((lc: LiveClassItem) => lc.courseId === courseId));
+    } catch { /* silent */ }
+  };
+
+  const createCourseLiveClass = async () => {
+    if (!selectedCourse) return;
+    if (!lcCreateForm.title.trim() || !lcCreateForm.scheduledAt) { flash("Title and date/time are required", false); return; }
+    setLcBusy(true);
+    try {
+      const hasTeacher = !!lcCreateForm.teacherId;
+      const teacherName = hasTeacher ? (allTeachers.find(t => String(t.id) === lcCreateForm.teacherId)?.name ?? "") : "";
+      const r = await apiFetch("/admin/live-classes", {
+        method: "POST",
+        body: JSON.stringify({
+          title: lcCreateForm.title,
+          courseId: selectedCourse.id,
+          grade: selectedCourse.grade,
+          teacherId: hasTeacher ? Number(lcCreateForm.teacherId) : null,
+          teacher: teacherName,
+          scheduledAt: new Date(lcCreateForm.scheduledAt + ":00+05:30").toISOString(),
+          duration: Number(lcCreateForm.duration),
+          joinUrl: lcCreateForm.joinUrl || null,
+        }),
+      });
+      if (r.ok) {
+        flash("Live class scheduled!", true);
+        setShowLcCreate(false);
+        setLcCreateForm(emptyLcForm);
+        await reloadCourseLiveClasses(selectedCourse.id);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        flash(d.error ?? "Failed to schedule class", false);
+      }
+    } catch { flash("Failed to schedule class", false); }
+    setLcBusy(false);
+  };
+
+  const changeLiveClassTeacher = async (lc: LiveClassItem) => {
+    if (!selectedCourse) return;
+    if (!teacherChangeValue) { flash("Select a teacher", false); return; }
+    setLcBusy(true);
+    try {
+      const teacherName = teacherChangeValue === "__none__" ? null : (allTeachers.find(t => String(t.id) === teacherChangeValue)?.name ?? null);
+      const r = await apiFetch(`/admin/live-classes/${lc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          teacherId: teacherChangeValue === "__none__" ? null : Number(teacherChangeValue),
+          teacher: teacherName,
+        }),
+      });
+      if (r.ok) {
+        flash("Teacher updated!", true);
+        setChangingTeacherFor(null);
+        await reloadCourseLiveClasses(selectedCourse.id);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        flash(d.error ?? "Failed to update teacher", false);
+      }
+    } catch { flash("Failed to update teacher", false); }
+    setLcBusy(false);
   };
 
   // ── Course Subjects CRUD ─────────────────────────────────────────
@@ -1425,6 +1498,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                       setCourseTab(tab.id);
                       if (tab.id === "students") loadMasteryStudents(selectedCourse.id);
                       if (tab.id === "teachers") loadAllTeachers();
+                      if (tab.id === "liveclasses") loadAllTeachers();
                     }}
                     className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${active ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                     <Icon className="w-3.5 h-3.5" />
@@ -1955,11 +2029,44 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     <h3 className="font-bold text-sm" style={{ color: NAVY }}>Live Classes Schedule</h3>
                     <p className="text-xs text-gray-400 mt-0.5">{courseLiveClasses.length} classes scheduled for this course</p>
                   </div>
-                  <a href="/admin#liveclasses"
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-orange-300 hover:text-orange-600 font-medium">
-                    Manage All Live Classes →
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => setShowLcCreate(v => !v)} className="text-white gap-1.5" style={{ background: ORANGE }}>
+                      <Plus className="w-3.5 h-3.5" /> Schedule Class
+                    </Button>
+                    <a href="/admin#liveclasses"
+                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-orange-300 hover:text-orange-600 font-medium">
+                      Manage All Live Classes →
+                    </a>
+                  </div>
                 </div>
+
+                {showLcCreate && (
+                  <div className="bg-white rounded-2xl p-4 border border-orange-200 shadow-sm space-y-3">
+                    <h4 className="font-bold text-xs" style={{ color: NAVY }}>New Live Class for {selectedCourse?.title}</h4>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <Input placeholder="Class title *" value={lcCreateForm.title}
+                        onChange={e => setLcCreateForm(p => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+                      <Select value={lcCreateForm.teacherId || "__none__"} onValueChange={v => setLcCreateForm(p => ({ ...p, teacherId: v === "__none__" ? "" : v }))}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Assign teacher" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No specific teacher</SelectItem>
+                          {allTeachers.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input type="number" min="15" placeholder="Duration (minutes)" value={lcCreateForm.duration}
+                        onChange={e => setLcCreateForm(p => ({ ...p, duration: e.target.value }))} />
+                      <Input type="datetime-local" value={lcCreateForm.scheduledAt}
+                        onChange={e => setLcCreateForm(p => ({ ...p, scheduledAt: e.target.value }))} />
+                      <Input placeholder="Join link (Google Meet / Zoom)" value={lcCreateForm.joinUrl}
+                        onChange={e => setLcCreateForm(p => ({ ...p, joinUrl: e.target.value }))} />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={createCourseLiveClass} disabled={lcBusy || !lcCreateForm.title || !lcCreateForm.scheduledAt}
+                        className="text-white" style={{ background: ORANGE }}>{lcBusy ? "Scheduling…" : "Schedule"}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setShowLcCreate(false); setLcCreateForm(emptyLcForm); }}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-3">
@@ -1994,7 +2101,29 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-gray-800 truncate">{lc.title}</p>
-                          <p className="text-xs text-gray-500">{lc.teacher ?? "No teacher"}</p>
+                          {changingTeacherFor === lc.id ? (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <Select value={teacherChangeValue || "__none__"} onValueChange={setTeacherChangeValue}>
+                                <SelectTrigger className="h-7 text-xs w-40"><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">No teacher</SelectItem>
+                                  {allTeachers.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" className="h-7 text-xs px-2 text-white" style={{ background: NAVY }}
+                                disabled={lcBusy} onClick={() => changeLiveClassTeacher(lc)}>Save</Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setChangingTeacherFor(null)}>✕</Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs text-gray-500">{lc.teacher ?? "No teacher"}</p>
+                              <button
+                                onClick={() => { setChangingTeacherFor(lc.id); setTeacherChangeValue(lc.teacherId ? String(lc.teacherId) : "__none__"); }}
+                                className="text-[10px] text-orange-500 hover:text-orange-700 font-medium underline underline-offset-2">
+                                {lc.teacher ? "Change" : "Assign"} teacher
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="text-xs text-gray-600 font-medium">
