@@ -88606,7 +88606,7 @@ var ListLiveClassesResponseItem = objectType({
   "duration": numberType().optional(),
   "teacher": stringType(),
   "teacherAvatar": stringType().nullish(),
-  "status": enumType(["upcoming", "live", "ended"]),
+  "status": enumType(["upcoming", "live", "completed"]),
   "thumbnailUrl": stringType().nullish(),
   "studentsJoined": numberType().nullish()
 });
@@ -88624,7 +88624,7 @@ var GetLiveClassResponse = objectType({
   "duration": numberType().optional(),
   "teacher": stringType(),
   "teacherAvatar": stringType().nullish(),
-  "status": enumType(["upcoming", "live", "ended"]),
+  "status": enumType(["upcoming", "live", "completed"]),
   "thumbnailUrl": stringType().nullish(),
   "studentsJoined": numberType().nullish()
 });
@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1414" : "dev",
-    commit: true ? "4833664" : "unknown",
-    buildTime: true ? "2026-07-10T14:14:17.437Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1432" : "dev",
+    commit: true ? "3e3afb4" : "unknown",
+    buildTime: true ? "2026-07-10T14:32:58.682Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133532,6 +133532,54 @@ function scheduleSundayBatchRotation() {
   logger.info("Sunday midnight batch rotation job scheduled (fires 12:00 AM Monday IST)");
 }
 
+// src/jobs/liveClassStatusSync.ts
+async function runLiveClassStatusSync() {
+  try {
+    const now = /* @__PURE__ */ new Date();
+    const liveClassesStarted = await db.update(liveClassesTable).set({ status: "live" }).where(and(
+      or(eq(liveClassesTable.status, "upcoming"), eq(liveClassesTable.status, "scheduled")),
+      lte(liveClassesTable.scheduledAt, now),
+      sql`${liveClassesTable.scheduledAt} + (${liveClassesTable.duration} * interval '1 minute') > ${now}`
+    )).returning({ id: liveClassesTable.id });
+    const liveClassesEnded = await db.update(liveClassesTable).set({ status: "completed" }).where(and(
+      ne(liveClassesTable.status, "completed"),
+      sql`${liveClassesTable.scheduledAt} + (${liveClassesTable.duration} * interval '1 minute') <= ${now}`
+    )).returning({ id: liveClassesTable.id });
+    const demoSessionsStarted = await db.update(demoSessionsTable).set({ status: "live" }).where(and(
+      eq(demoSessionsTable.status, "scheduled"),
+      lte(demoSessionsTable.scheduledAt, now),
+      sql`${demoSessionsTable.scheduledAt} + (${demoSessionsTable.duration} * interval '1 minute') > ${now}`
+    )).returning({ id: demoSessionsTable.id });
+    const demoSessionsEnded = await db.update(demoSessionsTable).set({ status: "completed" }).where(and(
+      ne(demoSessionsTable.status, "completed"),
+      sql`${demoSessionsTable.scheduledAt} + (${demoSessionsTable.duration} * interval '1 minute') <= ${now}`
+    )).returning({ id: demoSessionsTable.id });
+    if (liveClassesStarted.length || liveClassesEnded.length || demoSessionsStarted.length || demoSessionsEnded.length) {
+      logger.info(
+        {
+          liveClassesStarted: liveClassesStarted.length,
+          liveClassesEnded: liveClassesEnded.length,
+          demoSessionsStarted: demoSessionsStarted.length,
+          demoSessionsEnded: demoSessionsEnded.length
+        },
+        "Live class status sync applied transitions"
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, "Live class status sync job failed");
+  }
+}
+function scheduleLiveClassStatusSync() {
+  const CHECK_INTERVAL_MS = 3e4;
+  runLiveClassStatusSync().catch(() => {
+  });
+  setInterval(() => {
+    runLiveClassStatusSync().catch(() => {
+    });
+  }, CHECK_INTERVAL_MS);
+  logger.info("Live class status auto-sync job scheduled (checks every 30s)");
+}
+
 // src/index.ts
 var rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -133552,6 +133600,7 @@ httpServer.listen(port, (err) => {
   scheduleReminderJob();
   scheduleDailyQueueReset();
   scheduleSundayBatchRotation();
+  scheduleLiveClassStatusSync();
   seedCoursePricing().catch((e) => logger.error({ err: e }, "Course pricing seed failed"));
 });
 function scheduleReminderJob() {

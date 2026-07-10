@@ -843,7 +843,7 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [upcoming, live, ended]
+          enum: [upcoming, live, completed]
         thumbnailUrl:
           type: ["string", "null"]
         studentsJoined:

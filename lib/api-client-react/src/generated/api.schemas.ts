@@ -134,7 +134,7 @@ export type LiveClassStatus = typeof LiveClassStatus[keyof typeof LiveClassStatu
 export const LiveClassStatus = {
   upcoming: 'upcoming',
   live: 'live',
-  ended: 'ended',
+  completed: 'completed',
 } as const;
 
 export interface LiveClass {

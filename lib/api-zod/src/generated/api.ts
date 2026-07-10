@@ -188,7 +188,7 @@ export const ListLiveClassesResponseItem = zod.object({
   "duration": zod.number().optional(),
   "teacher": zod.string(),
   "teacherAvatar": zod.string().nullish(),
-  "status": zod.enum(['upcoming', 'live', 'ended']),
+  "status": zod.enum(['upcoming', 'live', 'completed']),
   "thumbnailUrl": zod.string().nullish(),
   "studentsJoined": zod.number().nullish()
 })
@@ -212,7 +212,7 @@ export const GetLiveClassResponse = zod.object({
   "duration": zod.number().optional(),
   "teacher": zod.string(),
   "teacherAvatar": zod.string().nullish(),
-  "status": zod.enum(['upcoming', 'live', 'ended']),
+  "status": zod.enum(['upcoming', 'live', 'completed']),
   "thumbnailUrl": zod.string().nullish(),
   "studentsJoined": zod.number().nullish()
 })

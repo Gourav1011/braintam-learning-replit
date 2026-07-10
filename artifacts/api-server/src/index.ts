@@ -5,6 +5,7 @@ import { setupSocketIO } from "./socket.js";
 import { runOverdueFollowUpReminders } from "./jobs/overdueFollowUpReminders.js";
 import { scheduleDailyQueueReset } from "./jobs/dailyQueueReset.js";
 import { scheduleSundayBatchRotation } from "./jobs/sundayBatchRotation.js";
+import { scheduleLiveClassStatusSync } from "./jobs/liveClassStatusSync.js";
 import { seedCoursePricing } from "./routes/longTermPayments.js";
 
 const rawPort = process.env["PORT"];
@@ -31,6 +32,7 @@ httpServer.listen(port, (err?: Error) => {
   scheduleReminderJob();
   scheduleDailyQueueReset();
   scheduleSundayBatchRotation();
+  scheduleLiveClassStatusSync();
   seedCoursePricing().catch(e => logger.error({ err: e }, "Course pricing seed failed"));
 });
 

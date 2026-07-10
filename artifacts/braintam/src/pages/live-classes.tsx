@@ -438,7 +438,7 @@ function AuthLiveClassesView() {
 
   const liveNow  = (classes ?? []).filter(c => c.status === "live");
   const upcoming = (classes ?? []).filter(c => c.status === "upcoming");
-  const ended    = (classes ?? []).filter(c => c.status === "ended");
+  const ended    = (classes ?? []).filter(c => c.status === "completed");
 
   const SUBJ_GRAD: Record<string, string> = {
     Mathematics: "linear-gradient(135deg,#1d4ed8,#1e40af)",
@@ -464,7 +464,7 @@ function AuthLiveClassesView() {
             className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
             style={{ background: cls.status === "live" ? "#EF4444" : cls.status === "upcoming" ? NAVY : "#94a3b8" }}
           >
-            {cls.status === "live" ? "🔴 LIVE NOW" : cls.status === "upcoming" ? "⏰ Upcoming" : "✓ Ended"}
+            {cls.status === "live" ? "🔴 LIVE NOW" : cls.status === "upcoming" ? "⏰ Upcoming" : "✓ Class Ended"}
           </span>
           <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{cls.subjectName}</span>
         </div>
@@ -501,7 +501,7 @@ function AuthLiveClassesView() {
             <button
               className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: cls.status === "live" ? "#EF4444" : "#94a3b8" }}
-              disabled={cls.status === "ended"}
+              disabled={cls.status === "completed"}
               data-testid={`join-class-${cls.id}`}
             >
               {cls.status === "live" ? "🚀 Join Now" : "Class Ended"}
