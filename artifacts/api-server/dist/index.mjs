@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1254" : "dev",
-    commit: true ? "d832ec9" : "unknown",
-    buildTime: true ? "2026-07-10T12:54:06.710Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1414" : "dev",
+    commit: true ? "4833664" : "unknown",
+    buildTime: true ? "2026-07-10T14:14:17.437Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133234,7 +133234,7 @@ function setupSocketIO(httpServer2) {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         mentorGroupId: payload.studentGroupId || null,
         stageExpiresAt: expiresAt
       };
@@ -133245,7 +133245,7 @@ function setupSocketIO(httpServer2) {
         studentName: payload.studentName,
         mentorGroupId: payload.studentGroupId || null,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         status: "active",
         invitedByTeacherId: Number(userId) || null,
         stageStartedAt: /* @__PURE__ */ new Date(),
@@ -133271,7 +133271,7 @@ function setupSocketIO(httpServer2) {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         mentorGroupId: payload.studentGroupId || null,
         stageExpiresAt: expiresAt
       });
@@ -133309,7 +133309,7 @@ function setupSocketIO(httpServer2) {
         studentId: userId,
         studentName: name,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         mentorGroupId: groupId || null,
         stageExpiresAt: acceptExpiresAt
       };
@@ -133320,7 +133320,7 @@ function setupSocketIO(httpServer2) {
         studentName: name,
         mentorGroupId: groupId || null,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         status: "active",
         stageStartedAt: /* @__PURE__ */ new Date(),
         stageExpiresAt: new Date(acceptExpiresAt)
@@ -133345,7 +133345,7 @@ function setupSocketIO(httpServer2) {
         studentId: userId,
         studentName: name,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         mentorGroupId: groupId || null,
         stageExpiresAt: acceptExpiresAt
       });
