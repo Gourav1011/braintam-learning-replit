@@ -554,9 +554,12 @@ export function setupSocketIO(httpServer: HttpServer) {
     socket.join(globalRoom(sessionId));
     if (isStaff) {
       socket.join(teacherRoom(sessionId));
-    } else if (isMentor && groupId) {
-      socket.join(groupRoom(sessionId, groupId));
-      socket.join(teacherRoom(sessionId)); // mentors also see teacher room
+    } else if (isMentor) {
+      // Mentors always see the teacher room (for staff chat, suggestions, etc.),
+      // even sales/non-group mentors who observe via direct student assignments
+      // rather than a mentor group (groupId may be empty for them).
+      if (groupId) socket.join(groupRoom(sessionId, groupId));
+      socket.join(teacherRoom(sessionId));
     } else if (groupId) {
       socket.join(groupRoom(sessionId, groupId));
     }

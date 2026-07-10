@@ -1449,7 +1449,7 @@ function StudentDetailView({ lead, onBack, onLeadUpdated }: {
 interface LiveSession {
   id: number; topic: string; dayNumber: number; scheduledAt: string;
   duration: number; status: string; joinUrl: string | null;
-  recordingUrl: string | null; batchId: number; batchTitle: string;
+  recordingUrl: string | null; batchId: number | null; batchTitle: string;
   batchGrade: number | null; batchSubject: string | null;
 }
 
@@ -1461,11 +1461,11 @@ function fmtSessionTime(d: string) {
 }
 
 function LiveClassesView() {
-  const [tab, setTab] = useState<"upcoming" | "completed">("upcoming");
+  const [tab, setTab] = useState<"live" | "upcoming" | "completed">("live");
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (t: "upcoming" | "completed") => {
+  const load = useCallback(async (t: "live" | "upcoming" | "completed") => {
     setLoading(true);
     try {
       const r = await apiFetch(`/mentor/live-sessions?mode=${t}`);
@@ -1498,11 +1498,11 @@ function LiveClassesView() {
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-          {(["upcoming", "completed"] as const).map(t => (
+          {(["live", "upcoming", "completed"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize"
               style={{ background: tab === t ? "white" : "transparent", color: tab === t ? NAVY : "#6B7280", boxShadow: tab === t ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>
-              {t === "upcoming" ? "Upcoming" : "Completed"}
+              {t === "live" ? "Live" : t === "upcoming" ? "Upcoming" : "Completed"}
             </button>
           ))}
         </div>
@@ -1515,7 +1515,8 @@ function LiveClassesView() {
             <Video className="w-9 h-9 mx-auto text-gray-200 mb-2" />
             <p className="text-sm font-semibold text-gray-400">No {tab} sessions</p>
             <p className="text-xs text-gray-400 mt-1">
-              {tab === "upcoming" ? "No upcoming sessions in your batches" : "No completed sessions yet"}
+              {tab === "live" ? "No classes are live right now" :
+               tab === "upcoming" ? "No upcoming sessions in your batches or courses" : "No completed sessions yet"}
             </p>
           </div>
         ) : (

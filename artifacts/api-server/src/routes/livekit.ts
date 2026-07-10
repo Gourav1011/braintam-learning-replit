@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { liveClassesTable, mentorGroupsTable, groupStudentsTable } from "@workspace/db";
+import {
+  liveClassesTable, mentorGroupsTable, groupStudentsTable,
+  mentorStudentAssignmentsTable, gradeMentorAssignmentsTable, enrollmentsTable,
+} from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.js";
 import { mintLiveKitToken, isLiveKitConfigured } from "../lib/livekit.js";
@@ -62,7 +65,34 @@ router.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
       .from(mentorGroupsTable)
       .where(and(eq(mentorGroupsTable.mentorId, user.id), eq(mentorGroupsTable.sessionId, sessionId)))
       .limit(1);
-    if (!group) {
+
+    // course-based ("mastery") live classes don't use mentor_groups at all — a mentor is
+    // authorized instead if one of their assigned students is enrolled in liveClass.courseId,
+    // or the class's grade matches one of their active grade-team assignments.
+    let hasCourseAccess = false;
+    if (!group && liveClass.courseId) {
+      const [assignedStudent] = await db
+        .select({ studentId: mentorStudentAssignmentsTable.studentId })
+        .from(mentorStudentAssignmentsTable)
+        .innerJoin(enrollmentsTable, and(
+          eq(enrollmentsTable.studentId, mentorStudentAssignmentsTable.studentId),
+          eq(enrollmentsTable.courseId, liveClass.courseId),
+        ))
+        .where(and(eq(mentorStudentAssignmentsTable.mentorId, user.id), eq(mentorStudentAssignmentsTable.isActive, true)))
+        .limit(1);
+      const [gradeAssignment] = await db
+        .select({ id: gradeMentorAssignmentsTable.id })
+        .from(gradeMentorAssignmentsTable)
+        .where(and(
+          eq(gradeMentorAssignmentsTable.mentorId, user.id),
+          eq(gradeMentorAssignmentsTable.isActive, true),
+          eq(gradeMentorAssignmentsTable.grade, liveClass.grade),
+        ))
+        .limit(1);
+      hasCourseAccess = Boolean(assignedStudent || gradeAssignment);
+    }
+
+    if (!group && !hasCourseAccess) {
       res.status(403).json({ error: "You are not assigned to a mentor group in this session" });
       return;
     }
@@ -74,18 +104,32 @@ router.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
       .from(mentorGroupsTable)
       .where(eq(mentorGroupsTable.sessionId, sessionId));
     const groupIds = groups.map(g => g.id);
-    if (groupIds.length === 0) {
-      res.status(403).json({ error: "No mentor groups configured for this session" });
-      return;
+
+    let isGroupMember = false;
+    if (groupIds.length > 0) {
+      const membership = await db
+        .select()
+        .from(groupStudentsTable)
+        .where(eq(groupStudentsTable.studentId, String(user.id)))
+        .limit(1000)
+        .then(rows => rows.some(r => groupIds.includes(r.mentorGroupId)));
+      isGroupMember = membership;
     }
-    const [membership] = await db
-      .select()
-      .from(groupStudentsTable)
-      .where(eq(groupStudentsTable.studentId, String(user.id)))
-      .limit(1000)
-      .then(rows => rows.filter(r => groupIds.includes(r.mentorGroupId)));
-    if (!membership) {
-      res.status(403).json({ error: "You are not enrolled in this session's group" });
+
+    // course-based live classes have no mentor_groups — authorize instead via direct
+    // course enrollment (student's own enrollments row for liveClass.courseId).
+    let isCourseEnrolled = false;
+    if (!isGroupMember && liveClass.courseId) {
+      const [enrollment] = await db
+        .select({ id: enrollmentsTable.id })
+        .from(enrollmentsTable)
+        .where(and(eq(enrollmentsTable.studentId, user.id), eq(enrollmentsTable.courseId, liveClass.courseId)))
+        .limit(1);
+      isCourseEnrolled = Boolean(enrollment);
+    }
+
+    if (!isGroupMember && !isCourseEnrolled) {
+      res.status(403).json({ error: "You are not enrolled in this session's group or course" });
       return;
     }
     canPublish = false; // students only get camera/mic publish rights while actively staged

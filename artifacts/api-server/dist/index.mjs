@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1438" : "dev",
-    commit: true ? "0cdf945" : "unknown",
-    buildTime: true ? "2026-07-10T14:38:51.880Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1548" : "dev",
+    commit: true ? "7fd10dd" : "unknown",
+    buildTime: true ? "2026-07-10T15:48:52.498Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -115807,7 +115807,20 @@ router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => 
     canPublishScreen = true;
   } else if (user.role === "mentor" || user.role === "sales_mentor" || user.role === "academic_mentor") {
     const [group] = await db.select().from(mentorGroupsTable).where(and(eq(mentorGroupsTable.mentorId, user.id), eq(mentorGroupsTable.sessionId, sessionId))).limit(1);
-    if (!group) {
+    let hasCourseAccess = false;
+    if (!group && liveClass.courseId) {
+      const [assignedStudent] = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).innerJoin(enrollmentsTable, and(
+        eq(enrollmentsTable.studentId, mentorStudentAssignmentsTable.studentId),
+        eq(enrollmentsTable.courseId, liveClass.courseId)
+      )).where(and(eq(mentorStudentAssignmentsTable.mentorId, user.id), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+      const [gradeAssignment] = await db.select({ id: gradeMentorAssignmentsTable.id }).from(gradeMentorAssignmentsTable).where(and(
+        eq(gradeMentorAssignmentsTable.mentorId, user.id),
+        eq(gradeMentorAssignmentsTable.isActive, true),
+        eq(gradeMentorAssignmentsTable.grade, liveClass.grade)
+      )).limit(1);
+      hasCourseAccess = Boolean(assignedStudent || gradeAssignment);
+    }
+    if (!group && !hasCourseAccess) {
       res.status(403).json({ error: "You are not assigned to a mentor group in this session" });
       return;
     }
@@ -115815,13 +115828,18 @@ router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => 
   } else {
     const groups = await db.select({ id: mentorGroupsTable.id }).from(mentorGroupsTable).where(eq(mentorGroupsTable.sessionId, sessionId));
     const groupIds = groups.map((g) => g.id);
-    if (groupIds.length === 0) {
-      res.status(403).json({ error: "No mentor groups configured for this session" });
-      return;
+    let isGroupMember = false;
+    if (groupIds.length > 0) {
+      const membership = await db.select().from(groupStudentsTable).where(eq(groupStudentsTable.studentId, String(user.id))).limit(1e3).then((rows) => rows.some((r) => groupIds.includes(r.mentorGroupId)));
+      isGroupMember = membership;
     }
-    const [membership] = await db.select().from(groupStudentsTable).where(eq(groupStudentsTable.studentId, String(user.id))).limit(1e3).then((rows) => rows.filter((r) => groupIds.includes(r.mentorGroupId)));
-    if (!membership) {
-      res.status(403).json({ error: "You are not enrolled in this session's group" });
+    let isCourseEnrolled = false;
+    if (!isGroupMember && liveClass.courseId) {
+      const [enrollment] = await db.select({ id: enrollmentsTable.id }).from(enrollmentsTable).where(and(eq(enrollmentsTable.studentId, user.id), eq(enrollmentsTable.courseId, liveClass.courseId))).limit(1);
+      isCourseEnrolled = Boolean(enrollment);
+    }
+    if (!isGroupMember && !isCourseEnrolled) {
+      res.status(403).json({ error: "You are not enrolled in this session's group or course" });
       return;
     }
     canPublish = false;
@@ -133050,8 +133068,8 @@ function setupSocketIO(httpServer2) {
     socket.join(globalRoom(sessionId));
     if (isStaff) {
       socket.join(teacherRoom(sessionId));
-    } else if (isMentor && groupId) {
-      socket.join(groupRoom(sessionId, groupId));
+    } else if (isMentor) {
+      if (groupId) socket.join(groupRoom(sessionId, groupId));
       socket.join(teacherRoom(sessionId));
     } else if (groupId) {
       socket.join(groupRoom(sessionId, groupId));
