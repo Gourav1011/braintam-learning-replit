@@ -17,3 +17,9 @@ id = "AsLgDikorxGhEB-RJtxx3"
 uri = "file://braintam-android-studio.tar.gz"
 type = "unspecified"
 title = "Braintam — Complete Android Studio Project"
+
+[[outputs]]
+id = "7iOObOkHA0mz1GbIVwCNr"
+uri = "file://exports/braintam-livekit-bundle.txt"
+type = "text"
+title = "Braintam LiveKit / Live-Class Files Bundle"
