@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout";
@@ -103,13 +103,15 @@ function ContentCard({ item }: { item: ContentItem }) {
         </div>
       </div>
       <div className="flex-shrink-0">
-        {isLiveNow && item.joinUrl && (
-          <Button size="sm" className="text-xs h-7 px-3 bg-red-500 hover:bg-red-600 text-white"
-            onClick={() => window.open(item.joinUrl!, "_blank")}>Join</Button>
+        {isLiveNow && (
+          <Link href={`/live/${item.id}?role=student&title=${encodeURIComponent(item.title)}`}>
+            <Button size="sm" className="text-xs h-7 px-3 bg-red-500 hover:bg-red-600 text-white">Join</Button>
+          </Link>
         )}
-        {!isLiveNow && item.contentType === "LIVE_CLASS" && item.status === "upcoming" && item.joinUrl && (
-          <Button size="sm" variant="outline" className="text-xs h-7 px-3"
-            onClick={() => window.open(item.joinUrl!, "_blank")}>Join</Button>
+        {!isLiveNow && item.contentType === "LIVE_CLASS" && item.status === "upcoming" && (
+          <Link href={`/live/${item.id}?role=student&title=${encodeURIComponent(item.title)}`}>
+            <Button size="sm" variant="outline" className="text-xs h-7 px-3">Join</Button>
+          </Link>
         )}
         {item.contentType === "RECORDING" && item.videoUrl && (
           <Button size="sm" variant="outline" className={`text-xs h-7 px-3 ${cfg.text} ${cfg.border} hover:${cfg.bg}`}

@@ -39,7 +39,7 @@ class AdminErrorBoundary extends Component<{ children: ReactNode }, { error: Err
 import {
   Users, BookOpen, GraduationCap, UserCheck, Plus, Trash2, Shield,
   ChevronRight, BarChart3, Link as LinkIcon, Bell, Image, Edit2, X,
-  TrendingUp, Award, Calendar, Activity, Video, Clock, ExternalLink,
+  TrendingUp, Award, Calendar, Activity, Video, Clock,
   Eye, EyeOff, Copy, RefreshCw, Search, Filter, Download, Upload,
   CheckSquare, Square, AlertTriangle, UserX, UserCheck2, Key, FileText,
   DollarSign, LayoutDashboard, Lock, ChevronDown, ChevronUp, LogOut,
@@ -782,8 +782,7 @@ function AdminPageInner() {
   const [showAnnForm, setShowAnnForm] = useState(false);
   const [showBannerForm, setShowBannerForm] = useState(false);
   const [showLcForm, setShowLcForm] = useState(false);
-  const [editingLc, setEditingLc] = useState<LiveClassItem | null>(null);
-  const [editingLcFull, setEditingLcFull] = useState<{ id: number; title: string; teacher: string; grade: string; scheduledAt: string; duration: string; joinUrl: string } | null>(null);
+  const [editingLcFull, setEditingLcFull] = useState<{ id: number; title: string; teacher: string; grade: string; scheduledAt: string; duration: string } | null>(null);
   const [auditSearch, setAuditSearch] = useState("");
   const [auditRoleFilter, setAuditRoleFilter] = useState("all");
 
@@ -1248,12 +1247,6 @@ function AdminPageInner() {
     await apiFetch(`/admin/live-classes/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }); loadAll();
   }
 
-  async function updateLiveClassJoinUrl(id: number, joinUrl: string) {
-    const r = await apiFetch(`/admin/live-classes/${id}`, { method: "PATCH", body: JSON.stringify({ joinUrl }) });
-    if (r.ok) { flash("Join link updated!"); setEditingLc(null); loadAll(); }
-    else flash("Failed to update link", false);
-  }
-
   async function updateLiveClassFull() {
     if (!editingLcFull) return;
     setBusy(true);
@@ -1265,7 +1258,6 @@ function AdminPageInner() {
         grade: Number(editingLcFull.grade),
         scheduledAt: new Date(editingLcFull.scheduledAt + ":00+05:30").toISOString(),
         duration: Number(editingLcFull.duration),
-        joinUrl: editingLcFull.joinUrl || null,
       }),
     });
     if (r.ok) { flash("Live class updated!"); setEditingLcFull(null); loadAll(); }
@@ -2835,18 +2827,13 @@ function AdminPageInner() {
                     placeholder="Assign teacher (active only)"
                     searchPlaceholder="Search teachers…"
                   />
-                  <Input
-                    placeholder="Teacher name *"
-                    value={lcForm.teacher}
-                    onChange={e => setLcForm(p => ({ ...p, teacher: e.target.value }))}
-                  />
                   <Input type="datetime-local" value={lcForm.scheduledAt} onChange={e => setLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
                   <Input placeholder="Duration (minutes)" type="number" min="15" value={lcForm.duration} onChange={e => setLcForm(p => ({ ...p, duration: e.target.value }))} />
-                  <Input placeholder="Join link (Google Meet / Zoom)" value={lcForm.joinUrl} onChange={e => setLcForm(p => ({ ...p, joinUrl: e.target.value }))} className="sm:col-span-2" />
+                  <p className="text-xs text-gray-400 sm:col-span-2">A live class room is created automatically — no meeting link needed.</p>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={createLiveClass}
-                    disabled={busy || !lcForm.title || !lcForm.scheduledAt || !lcForm.teacher || (!lcForm.grade && !lcForm.courseId)}
+                    disabled={busy || !lcForm.title || !lcForm.scheduledAt || (!lcForm.grade && !lcForm.courseId)}
                     className="text-white" style={{ background: ORANGE }}>Schedule</Button>
                   <Button size="sm" variant="ghost" onClick={() => { setShowLcForm(false); setLcCourseSubjects([]); setLcChapters([]); setLcTopics([]); }}>Cancel</Button>
                 </div>
@@ -2882,25 +2869,12 @@ function AdminPageInner() {
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(lc.scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{lc.duration} min</span>
                         </div>
-                        {editingLc?.id === lc.id ? (
-                          <div className="flex items-center gap-2 mt-2">
-                            <Input className="h-7 text-xs" placeholder="Paste join URL…" defaultValue={lc.joinUrl ?? ""} id={`join-url-${lc.id}`} />
-                            <Button size="sm" className="h-7 text-xs text-white px-3" style={{ background: NAVY }}
-                              onClick={() => { const el = document.getElementById(`join-url-${lc.id}`) as HTMLInputElement; updateLiveClassJoinUrl(lc.id, el.value); }}>Save</Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingLc(null)}>✕</Button>
-                          </div>
-                        ) : lc.joinUrl ? (
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <a href={lc.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-blue-500 hover:text-blue-700 truncate max-w-xs">
-                              <ExternalLink className="w-3 h-3 flex-shrink-0" /><span className="truncate">{lc.joinUrl}</span>
-                            </a>
-                            <button onClick={() => setEditingLc(lc)} className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0"><Edit2 className="w-3 h-3" /></button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setEditingLc(lc)} className="mt-1.5 text-xs text-orange-500 hover:text-orange-700 flex items-center gap-1">
-                            <LinkIcon className="w-3 h-3" /> Add join link
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <a href={`/live/${lc.id}?role=admin&title=${encodeURIComponent(lc.title)}`} target="_blank" rel="noopener noreferrer"
+                            className="text-xs flex items-center gap-1 text-blue-500 hover:text-blue-700">
+                            <LinkIcon className="w-3 h-3 flex-shrink-0" /><span>Enter Live Room</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -2924,9 +2898,7 @@ function AdminPageInner() {
                             grade: String(lc.grade),
                             scheduledAt: (() => { const d = new Date(lc.scheduledAt); const ist = new Date(d.getTime() + 5.5*60*60*1000); const p = (n: number) => String(n).padStart(2,"0"); return `${ist.getUTCFullYear()}-${p(ist.getUTCMonth()+1)}-${p(ist.getUTCDate())}T${p(ist.getUTCHours())}:${p(ist.getUTCMinutes())}`; })(),
                             duration: String(lc.duration),
-                            joinUrl: lc.joinUrl ?? "",
                           });
-                          setEditingLc(null);
                         }}
                         className="text-blue-400 hover:text-blue-600 transition-colors p-1" title="Edit">
                         <Edit2 className="w-4 h-4" />
@@ -2970,12 +2942,6 @@ function AdminPageInner() {
                         type="number" min="15"
                         value={editingLcFull.duration}
                         onChange={e => setEditingLcFull(p => p && ({ ...p, duration: e.target.value }))}
-                      />
-                      <Input
-                        className="sm:col-span-2 h-8 text-xs"
-                        placeholder="Join link (Google Meet / Zoom)"
-                        value={editingLcFull.joinUrl}
-                        onChange={e => setEditingLcFull(p => p && ({ ...p, joinUrl: e.target.value }))}
                       />
                       <div className="sm:col-span-2 flex gap-2">
                         <Button size="sm" className="h-7 text-xs text-white px-4" style={{ background: NAVY }}

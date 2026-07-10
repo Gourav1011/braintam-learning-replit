@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useListLiveClasses, useListSubjects, useJoinLiveClass, getListLiveClassesQueryKey } from "@workspace/api-client-react";
+import { useListLiveClasses, useListSubjects, getListLiveClassesQueryKey } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -436,14 +436,6 @@ function AuthLiveClassesView() {
   });
   const { data: subjects } = useListSubjects();
 
-  const joinMutation = useJoinLiveClass({
-    mutation: {
-      onSuccess: (data) => {
-        if (data.joinUrl) window.open(data.joinUrl, "_blank", "noopener,noreferrer");
-      }
-    }
-  });
-
   const liveNow  = (classes ?? []).filter(c => c.status === "live");
   const upcoming = (classes ?? []).filter(c => c.status === "upcoming");
   const ended    = (classes ?? []).filter(c => c.status === "ended");
@@ -505,15 +497,16 @@ function AuthLiveClassesView() {
         {cls.status === "upcoming" ? (
           <ReminderButton classId={cls.id} title={cls.title} scheduledAt={cls.scheduledAt} />
         ) : (
-          <button
-            className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ background: cls.status === "live" ? "#EF4444" : "#94a3b8" }}
-            disabled={cls.status === "ended" || joinMutation.isPending}
-            onClick={() => joinMutation.mutate({ id: cls.id })}
-            data-testid={`join-class-${cls.id}`}
-          >
-            {cls.status === "live" ? "🚀 Join Now" : "Class Ended"}
-          </button>
+          <Link href={`/live/${cls.id}?role=student&title=${encodeURIComponent(cls.title)}`}>
+            <button
+              className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ background: cls.status === "live" ? "#EF4444" : "#94a3b8" }}
+              disabled={cls.status === "ended"}
+              data-testid={`join-class-${cls.id}`}
+            >
+              {cls.status === "live" ? "🚀 Join Now" : "Class Ended"}
+            </button>
+          </Link>
         )}
       </div>
     </motion.div>

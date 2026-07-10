@@ -330,6 +330,14 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
   const [changingTeacherFor, setChangingTeacherFor] = useState<number | null>(null);
   const [teacherChangeValue, setTeacherChangeValue] = useState("");
 
+  // ── Generate live classes (bulk, from topics) ──
+  const emptyGenForm = { courseSubjectId: "", chapterId: "", teacherId: "", startAt: "", intervalDays: "3", duration: "60" };
+  const [showGenerateLc, setShowGenerateLc] = useState(false);
+  const [genForm, setGenForm] = useState(emptyGenForm);
+  const [genChapters, setGenChapters] = useState<ChapterItem[]>([]);
+  const [genTopics, setGenTopics] = useState<TopicItem[]>([]);
+  const [genBusy, setGenBusy] = useState(false);
+
   // ── Navigation state ──
   const [view, setView] = useState<CmsView>("courses");
   const [courseTab, setCourseTab] = useState<CourseTab>("overview");
@@ -563,6 +571,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
     setDashLoading(true);
     setShowAddSubject(false);
     setEditingSubject(null);
+    void loadAllTeachers();
 
     try {
       const [subjectsRes, statsRes, liveRes, teachersRes] = await Promise.all([
@@ -590,6 +599,70 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
     } catch { /* silent */ }
   };
 
+  const openGenerateLc = () => {
+    setGenForm(emptyGenForm);
+    setGenChapters([]);
+    setGenTopics([]);
+    setShowGenerateLc(true);
+    setCourseTab("liveclasses");
+    void loadAllTeachers();
+  };
+
+  const loadGenChapters = async (courseSubjectId: string) => {
+    setGenTopics([]);
+    if (!courseSubjectId) { setGenChapters([]); return; }
+    try {
+      const r = await apiFetch(`/admin/chapters?courseSubjectId=${courseSubjectId}`);
+      const d = await r.json();
+      setGenChapters(Array.isArray(d) ? d : []);
+    } catch { setGenChapters([]); }
+  };
+
+  const loadGenTopics = async (chapterId: string) => {
+    if (!chapterId) { setGenTopics([]); return; }
+    try {
+      const r = await apiFetch(`/admin/topics?chapterId=${chapterId}`);
+      const d = await r.json();
+      setGenTopics(Array.isArray(d) ? d : []);
+    } catch { setGenTopics([]); }
+  };
+
+  const generateLiveClasses = async () => {
+    if (!selectedCourse || !genForm.chapterId || genTopics.length === 0 || !genForm.startAt) return;
+    setGenBusy(true);
+    const teacherName = genForm.teacherId ? (allTeachers.find(t => String(t.id) === genForm.teacherId)?.name ?? "To be assigned") : "To be assigned";
+    const intervalDays = Number(genForm.intervalDays) || 1;
+    const start = new Date(genForm.startAt + ":00+05:30");
+    let created = 0;
+    try {
+      for (let i = 0; i < genTopics.length; i++) {
+        const topic = genTopics[i];
+        const scheduledAt = new Date(start.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
+        const r = await apiFetch("/admin/live-classes", {
+          method: "POST",
+          body: JSON.stringify({
+            title: topic.name,
+            courseId: selectedCourse.id,
+            courseSubjectId: Number(genForm.courseSubjectId),
+            chapterId: Number(genForm.chapterId),
+            topicId: topic.id,
+            grade: selectedCourse.grade,
+            teacherId: genForm.teacherId ? Number(genForm.teacherId) : null,
+            teacher: teacherName,
+            scheduledAt: scheduledAt.toISOString(),
+            duration: Number(genForm.duration),
+          }),
+        });
+        if (r.ok) created++;
+      }
+      flash(created > 0 ? `Generated ${created} live class${created === 1 ? "" : "es"} from topics!` : "No classes were generated", created > 0);
+      setShowGenerateLc(false);
+      setGenForm(emptyGenForm);
+      await reloadCourseLiveClasses(selectedCourse.id);
+    } catch { flash("Failed to generate live classes", false); }
+    setGenBusy(false);
+  };
+
   const createCourseLiveClass = async () => {
     if (!selectedCourse) return;
     if (!lcCreateForm.title.trim() || !lcCreateForm.scheduledAt) { flash("Title and date/time are required", false); return; }
@@ -607,7 +680,6 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
           teacher: teacherName,
           scheduledAt: new Date(lcCreateForm.scheduledAt + ":00+05:30").toISOString(),
           duration: Number(lcCreateForm.duration),
-          joinUrl: lcCreateForm.joinUrl || null,
         }),
       });
       if (r.ok) {
@@ -1727,7 +1799,7 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     <div className="grid grid-cols-2 gap-2">
                       {([
                         { icon: Upload,    label: "Upload Syllabus",      sub: "Upload & auto-generate curriculum",  iconBg: "#ECFDF5", iconClr: "#059669", action: () => { setCourseTab("curriculum"); setSubjectTab("syllabus"); } },
-                        { icon: Wand2,     label: "Generate Live Classes", sub: "Auto-generate classes from topics",  iconBg: "#F5F3FF", iconClr: "#7C3AED", action: () => setCourseTab("liveclasses") },
+                        { icon: Wand2,     label: "Generate Live Classes", sub: "Auto-generate classes from topics",  iconBg: "#F5F3FF", iconClr: "#7C3AED", action: openGenerateLc },
                         { icon: UserCheck, label: "Assign Teachers",       sub: "Assign teachers to subjects",        iconBg: "#FFF7ED", iconClr: "#EA580C", action: () => { setCourseTab("teachers"); loadAllTeachers(); } },
                         { icon: BookOpen,  label: "Study Materials",       sub: "Upload study materials & resources", iconBg: "#EFF6FF", iconClr: "#2563EB", action: () => setCourseTab("documents") },
                         { icon: Megaphone, label: "Send Announcement",     sub: "Notify students & parents",          iconBg: "#EFF6FF", iconClr: "#3B82F6", action: () => flash("Announcement feature coming soon — stay tuned!", true) },
@@ -2031,6 +2103,9 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     <p className="text-xs text-gray-400 mt-0.5">{courseLiveClasses.length} classes scheduled for this course</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={openGenerateLc} className="gap-1.5">
+                      <Wand2 className="w-3.5 h-3.5" /> Generate from Topics
+                    </Button>
                     <Button size="sm" onClick={() => setShowLcCreate(v => !v)} className="text-white gap-1.5" style={{ background: ORANGE }}>
                       <Plus className="w-3.5 h-3.5" /> Schedule Class
                     </Button>
@@ -2040,6 +2115,61 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                     </a>
                   </div>
                 </div>
+
+                {showGenerateLc && (
+                  <div className="bg-white rounded-2xl p-4 border border-purple-200 shadow-sm space-y-3">
+                    <h4 className="font-bold text-xs" style={{ color: NAVY }}>Auto-generate Live Classes from Topics</h4>
+                    <p className="text-xs text-gray-400">Pick a subject and chapter — one live class will be created per topic in that chapter.</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <Select value={genForm.courseSubjectId || "__none__"} onValueChange={v => {
+                        const val = v === "__none__" ? "" : v;
+                        setGenForm(p => ({ ...p, courseSubjectId: val, chapterId: "" }));
+                        void loadGenChapters(val);
+                      }}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="① Select subject" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Select subject</SelectItem>
+                          {courseSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select value={genForm.chapterId || "__none__"} disabled={genChapters.length === 0} onValueChange={v => {
+                        const val = v === "__none__" ? "" : v;
+                        setGenForm(p => ({ ...p, chapterId: val }));
+                        void loadGenTopics(val);
+                      }}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="② Select chapter" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Select chapter</SelectItem>
+                          {genChapters.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {genForm.chapterId && (
+                        <p className="text-xs sm:col-span-2 -mt-1.5" style={{ color: genTopics.length ? "#16A34A" : "#D97706" }}>
+                          {genTopics.length > 0 ? `✓ ${genTopics.length} topic(s) found — will create ${genTopics.length} live classes` : "⚠ No topics in this chapter yet."}
+                        </p>
+                      )}
+                      <Select value={genForm.teacherId || "__none__"} onValueChange={v => setGenForm(p => ({ ...p, teacherId: v === "__none__" ? "" : v }))}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Assign teacher (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No specific teacher</SelectItem>
+                          {allTeachers.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input type="datetime-local" value={genForm.startAt}
+                        onChange={e => setGenForm(p => ({ ...p, startAt: e.target.value }))} placeholder="Start date & time" />
+                      <Input type="number" min="1" placeholder="Days between classes" value={genForm.intervalDays}
+                        onChange={e => setGenForm(p => ({ ...p, intervalDays: e.target.value }))} />
+                      <Input type="number" min="15" placeholder="Duration (minutes)" value={genForm.duration}
+                        onChange={e => setGenForm(p => ({ ...p, duration: e.target.value }))} />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={generateLiveClasses}
+                        disabled={genBusy || !genForm.chapterId || genTopics.length === 0 || !genForm.startAt}
+                        className="text-white" style={{ background: "#7C3AED" }}>{genBusy ? "Generating…" : `Generate ${genTopics.length || ""} Classes`}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setShowGenerateLc(false); setGenForm(emptyGenForm); }}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
 
                 {showLcCreate && (
                   <div className="bg-white rounded-2xl p-4 border border-orange-200 shadow-sm space-y-3">
@@ -2057,9 +2187,8 @@ export function CourseManagementTab({ flash }: { flash: (msg: string, ok?: boole
                       <Input type="number" min="15" placeholder="Duration (minutes)" value={lcCreateForm.duration}
                         onChange={e => setLcCreateForm(p => ({ ...p, duration: e.target.value }))} />
                       <Input type="datetime-local" value={lcCreateForm.scheduledAt}
-                        onChange={e => setLcCreateForm(p => ({ ...p, scheduledAt: e.target.value }))} />
-                      <Input placeholder="Join link (Google Meet / Zoom)" value={lcCreateForm.joinUrl}
-                        onChange={e => setLcCreateForm(p => ({ ...p, joinUrl: e.target.value }))} />
+                        onChange={e => setLcCreateForm(p => ({ ...p, scheduledAt: e.target.value }))} className="sm:col-span-2" />
+                      <p className="text-xs text-gray-400 sm:col-span-2">A live class room is created automatically — no meeting link needed.</p>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={createCourseLiveClass} disabled={lcBusy || !lcCreateForm.title || !lcCreateForm.scheduledAt}
