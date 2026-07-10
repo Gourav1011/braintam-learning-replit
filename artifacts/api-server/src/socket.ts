@@ -825,7 +825,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         mentorGroupId: payload.studentGroupId || null,
         stageExpiresAt: expiresAt,
       };
@@ -838,7 +838,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         studentName: payload.studentName,
         mentorGroupId: payload.studentGroupId || null,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         status: "active",
         invitedByTeacherId: Number(userId) || null,
         stageStartedAt: new Date(),
@@ -863,7 +863,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
-        isMuted: true,
+        isMuted: false,
         mentorGroupId: payload.studentGroupId || null,
         stageExpiresAt: expiresAt,
       });
@@ -901,14 +901,14 @@ export function setupSocketIO(httpServer: HttpServer) {
       const acceptExpiresAt = Date.now() + STAGE_DURATION_MS;
       const entry: StageSlotEntry = {
         studentId: userId, studentName: name,
-        slotNumber: openSlot, isMuted: true, mentorGroupId: groupId || null,
+        slotNumber: openSlot, isMuted: false, mentorGroupId: groupId || null,
         stageExpiresAt: acceptExpiresAt,
       };
       room.stageSlots.set(userId, entry);
 
       db.insert(stageSlotsTable).values({
         sessionId, studentId: userId, studentName: name,
-        mentorGroupId: groupId || null, slotNumber: openSlot, isMuted: true,
+        mentorGroupId: groupId || null, slotNumber: openSlot, isMuted: false,
         status: "active",
         stageStartedAt: new Date(),
         stageExpiresAt: new Date(acceptExpiresAt),
@@ -927,7 +927,7 @@ export function setupSocketIO(httpServer: HttpServer) {
       });
       io.to(globalRoom(sessionId)).emit("stage:studentInvited", {
         studentId: userId, studentName: name,
-        slotNumber: openSlot, isMuted: true, mentorGroupId: groupId || null,
+        slotNumber: openSlot, isMuted: false, mentorGroupId: groupId || null,
         stageExpiresAt: acceptExpiresAt,
       });
     });

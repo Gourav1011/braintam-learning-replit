@@ -348,8 +348,11 @@ export default function LiveClassroom() {
   const search = new URLSearchParams(window.location.search);
 
   const role          = (search.get("role") ?? "student").toLowerCase();
-  const name          = search.get("name") ?? "Student";
-  const userId        = search.get("userId") ?? `u-${name.toLowerCase().replace(/\s+/g, "-")}`;
+  const rawName       = search.get("name") ?? "Student";
+  // Staff/mentors get their role prefixed for on-screen display (e.g. "teacher priya", "mentor moses");
+  // students are shown by name only (e.g. "devik manhas").
+  const name          = role === "student" ? rawName : `${role} ${rawName}`;
+  const userId        = search.get("userId") ?? `u-${rawName.toLowerCase().replace(/\s+/g, "-")}`;
   const groupId       = search.get("groupId") ?? "";
   const phone         = search.get("phone") ?? "";
   const title         = search.get("title") ?? `Live Class · ${sessionId}`;
@@ -520,18 +523,25 @@ export default function LiveClassroom() {
       streamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
       setCameraOn(false);
-      if (isStaff) { void livekit.setCamera(false); void livekit.setMic(false); }
+      if (isStaff) { void livekit.setCamera(false); }
     } else {
       try {
         const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         streamRef.current = s;
         if (videoRef.current) videoRef.current.srcObject = s;
         setCameraOn(true);
-        // Teacher's camera/mic publish into LiveKit so students/mentors can see & hear them.
-        if (isStaff) { void livekit.setCamera(true); void livekit.setMic(true); }
+        // Teacher's camera publishes into LiveKit so students/mentors can see them.
+        if (isStaff) { void livekit.setCamera(true); }
       } catch { alert("Camera unavailable"); }
     }
   }, [cameraOn, isStaff, livekit]);
+
+  // ── Mic (independent of camera — teacher must be able to talk without video) ──
+  const toggleMic = useCallback(async () => {
+    if (!isStaff) return;
+    const next = !livekit.micPublishing;
+    await livekit.setMic(next);
+  }, [isStaff, livekit]);
 
   // ── Poll form (Sprint 1 — includes correct answer) ────────
   const [showPollForm, setShowPollForm] = useState(false);
@@ -1111,10 +1121,15 @@ export default function LiveClassroom() {
                     <p className="text-[10px] text-gray-500">Teacher</p>
                   </div>
                 )}
-                <button onClick={toggleCamera} className="absolute bottom-2 right-2 p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all" title={cameraOn ? "Turn off camera" : "Turn on camera"}>
-                  {cameraOn ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
-                </button>
-                {cameraOn && !livekit.cameraPublishing && (
+                <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+                  <button onClick={toggleMic} className="p-1.5 rounded-full transition-all" style={{ background: livekit.micPublishing ? GREEN : "rgba(31,41,55,0.8)", color: livekit.micPublishing ? "white" : "#d1d5db" }} title={livekit.micPublishing ? "Mute microphone" : "Unmute microphone"}>
+                    <Mic className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={toggleCamera} className="p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all" title={cameraOn ? "Turn off camera" : "Turn on camera"}>
+                    {cameraOn ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {((cameraOn && !livekit.cameraPublishing) || (livekit.micPublishing && !livekit.connected)) && (
                   <span className="absolute bottom-2 left-2 text-[8px] text-yellow-400 font-bold">connecting…</span>
                 )}
               </>

@@ -92,7 +92,7 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           setTrackVersion(v => v + 1);
           setStagePublishers(prev => new Set(prev).add(participant.identity));
 
-          const isTeacher = safeParseRole(participant.metadata) === "teacher";
+          const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
           if (isTeacher) {
             setTeacherPresent(true);
             attachTeacherTrack(track);
@@ -115,10 +115,10 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           setTrackVersion(v => v + 1);
         });
         room.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
-          if (safeParseRole(p.metadata) === "teacher") setTeacherPresent(true);
+          if (isTeacherRole(safeParseRole(p.metadata))) setTeacherPresent(true);
         });
         room.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
-          if (safeParseRole(p.metadata) === "teacher") setTeacherPresent(false);
+          if (isTeacherRole(safeParseRole(p.metadata))) setTeacherPresent(false);
           tracksByIdentity.current.delete(p.identity);
           setStagePublishers(prev => {
             const next = new Set(prev);
@@ -148,7 +148,7 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
 
         // Attach any teacher tracks already published before we joined.
         room.remoteParticipants.forEach((participant) => {
-          if (safeParseRole(participant.metadata) === "teacher") {
+          if (isTeacherRole(safeParseRole(participant.metadata))) {
             setTeacherPresent(true);
             participant.trackPublications.forEach((pub) => {
               if (pub.track) attachTeacherTrack(pub.track);
@@ -216,6 +216,12 @@ function safeParseRole(metadata: string | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+// The instructor broadcasting into a class isn't always role="teacher" — admins/super_admins
+// can also be assigned as the live instructor. Treat any of these as "the teacher" for display.
+function isTeacherRole(role: string | null): boolean {
+  return role === "teacher" || role === "admin" || role === "super_admin";
 }
 
 export { createLocalTracks };
