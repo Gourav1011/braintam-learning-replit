@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-1106" : "dev",
-    commit: true ? "5d830ae" : "unknown",
-    buildTime: true ? "2026-07-10T11:06:45.830Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-1131" : "dev",
+    commit: true ? "97c9fc6" : "unknown",
+    buildTime: true ? "2026-07-10T11:31:22.273Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -119212,7 +119212,7 @@ router14.get("/teacher/dashboard", teacherOrAdmin, async (req, res) => {
     subjectName: subjectsTable.name,
     grade: coursesTable.grade,
     totalLessons: coursesTable.totalLessons
-  }).from(coursesTable).innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id)).where(inArray(coursesTable.id, courseIds)) : [];
+  }).from(coursesTable).leftJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id)).where(inArray(coursesTable.id, courseIds)) : [];
   const upcomingClasses = courseIds.length ? await db.select().from(liveClassesTable).where(and(
     inArray(liveClassesTable.courseId, courseIds),
     eq(liveClassesTable.status, "upcoming")

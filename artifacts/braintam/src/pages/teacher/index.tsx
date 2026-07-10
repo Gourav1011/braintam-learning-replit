@@ -1204,10 +1204,7 @@ export default function TeacherPage() {
                       <label className="text-xs font-semibold text-gray-600 mb-1 block">Topic</label>
                       <Input value={editForm.topic} onChange={e => setEditForm(p => ({ ...p, topic: e.target.value }))} placeholder="Session topic / title" />
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">📹 Meet Link (optional)</label>
-                      <Input value={editForm.joinUrl} onChange={e => setEditForm(p => ({ ...p, joinUrl: e.target.value }))} placeholder="https://meet.google.com/..." />
-                    </div>
+                    <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2">🎥 This class runs in an in-app live room — no external meeting link needed.</p>
                     <div>
                       <label className="text-xs font-semibold text-gray-600 mb-1 block">🎬 Recording Link (optional)</label>
                       <Input value={editForm.recordingUrl} onChange={e => setEditForm(p => ({ ...p, recordingUrl: e.target.value }))} placeholder="https://..." />
@@ -1414,10 +1411,7 @@ export default function TeacherPage() {
                         <Input type="number" value={createSessionForm.duration} onChange={e => setCreateSessionForm(p => ({ ...p, duration: e.target.value }))} placeholder="60" />
                       </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Meet Link (optional)</label>
-                      <Input value={createSessionForm.joinUrl} onChange={e => setCreateSessionForm(p => ({ ...p, joinUrl: e.target.value }))} placeholder="https://meet.google.com/…" />
-                    </div>
+                    <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2">🎥 This class runs in an in-app live room — no external meeting link needed.</p>
                   </div>
                   <div className="flex gap-2 pt-1">
                     <Button size="sm" onClick={createSession}
@@ -1505,12 +1499,6 @@ export default function TeacherPage() {
                               <Pencil className="w-3 h-3" /> Edit
                             </button>
                           </>
-                        )}
-                        {s.joinUrl && (
-                          <a href={s.joinUrl} target="_blank" rel="noreferrer"
-                            className="text-xs px-2 py-1.5 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 flex items-center gap-1">
-                            📹
-                          </a>
                         )}
                       </div>
                     </div>

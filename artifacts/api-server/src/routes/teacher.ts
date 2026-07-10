@@ -65,7 +65,7 @@ router.get("/teacher/dashboard", teacherOrAdmin, async (req, res) => {
         totalLessons: coursesTable.totalLessons,
       })
         .from(coursesTable)
-        .innerJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
+        .leftJoin(subjectsTable, eq(coursesTable.subjectId, subjectsTable.id))
         .where(inArray(coursesTable.id, courseIds))
     : [];
 
