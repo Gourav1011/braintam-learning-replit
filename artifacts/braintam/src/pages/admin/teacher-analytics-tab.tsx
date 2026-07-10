@@ -79,7 +79,7 @@ interface TeacherListResponse {
 
 interface ScheduleClass {
   id: number; title: string; grade: number | null; subjectName: string | null;
-  status: string | null; startsAt: string | null; endsAt: string | null;
+  program: string | null; status: string | null; startsAt: string | null; endsAt: string | null;
 }
 
 interface ScheduleTeacher {
@@ -935,6 +935,7 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [subjectFilter, setSubjectFilter] = useState("all");
+  const [programFilter, setProgramFilter] = useState("all");
   const [layout, setLayout] = useState<"timeline" | "list">("timeline");
 
   const [finderStart, setFinderStart] = useState("10:00");
@@ -969,7 +970,10 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
   const hourMarks = Array.from({ length: totalHours }, (_, i) => TIMELINE_START_HOUR + i);
 
   const subjectOptions = Array.from(new Set(teachers.flatMap(t => t.teachingSubjects))).sort();
-  const visibleTeachers = subjectFilter === "all" ? teachers : teachers.filter(t => t.teachingSubjects.includes(subjectFilter));
+  const programOptions = Array.from(new Set(teachers.flatMap(t => t.classes.map(c => c.program)).filter((p): p is string => !!p))).sort();
+  const visibleTeachers = teachers
+    .filter(t => subjectFilter === "all" || t.teachingSubjects.includes(subjectFilter))
+    .filter(t => programFilter === "all" || t.classes.some(c => c.program === programFilter));
 
   function classInHour(t: ScheduleTeacher, hour: number) {
     return t.classes.find(c => {
@@ -1007,6 +1011,11 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
             <option value="all">All Subjects</option>
             {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <select value={programFilter} onChange={e => setProgramFilter(e.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-400">
+            <option value="all">All Programs</option>
+            {programOptions.map(p => <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+          </select>
           <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 border border-gray-200">
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
@@ -1026,9 +1035,10 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-black text-sm" style={{ color: NAVY }}>Daily Timeline — {fmtDate(date)}</h3>
-            <div className="flex items-center gap-3 text-[10px] font-semibold">
+            <div className="flex items-center gap-3 text-[10px] font-semibold flex-wrap">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#059669" }} />Available</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Class</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#2563EB" }} />Mastery Class</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#7C3AED" }} />Ignite Class</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#DC2626" }} />On Leave</span>
             </div>
           </div>
@@ -1073,13 +1083,14 @@ function ScheduleAvailabilityView({ flash }: { flash: (m: string, ok?: boolean) 
                           const s = c.startsAt ? new Date(c.startsAt) : null;
                           const e = c.endsAt ? new Date(c.endsAt) : null;
                           const span = s && e ? Math.max(1, Math.ceil((e.getHours() + e.getMinutes() / 60) - (s.getHours() + s.getMinutes() / 60))) : 1;
+                          const isIgnite = c.program === "ignite";
                           return (
                             <div key={h} className="flex items-center justify-center m-1 rounded-md px-1 py-1 text-center overflow-hidden"
-                              style={{ flex: span, background: c.status === "live" ? "#DDD6FE" : "#E0E7FF" }}
+                              style={{ flex: span, background: isIgnite ? "#EDE9FE" : "#DBEAFE" }}
                               title={`${c.title} (${c.subjectName ?? "—"})`}>
                               <div>
-                                <p className="text-[9px] font-bold truncate" style={{ color: "#4338CA" }}>{c.title}</p>
-                                <p className="text-[8px] text-indigo-500">{fmtTimeRange(c.startsAt, c.endsAt)}</p>
+                                <p className="text-[9px] font-bold truncate" style={{ color: isIgnite ? "#6D28D9" : "#1D4ED8" }}>{c.title}</p>
+                                <p className="text-[8px]" style={{ color: isIgnite ? "#7C3AED" : "#2563EB" }}>{fmtTimeRange(c.startsAt, c.endsAt)}</p>
                               </div>
                             </div>
                           );

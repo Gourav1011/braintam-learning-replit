@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-10-0634" : "dev",
-    commit: true ? "70ba3ab" : "unknown",
-    buildTime: true ? "2026-07-10T06:34:58.624Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-10-0710" : "dev",
+    commit: true ? "c13885c" : "unknown",
+    buildTime: true ? "2026-07-10T07:10:49.586Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -128201,7 +128201,8 @@ router32.get("/admin/cc/teachers/schedule", adminOnly10, async (req, res) => {
       duration: liveClassesTable.duration,
       status: liveClassesTable.status,
       grade: liveClassesTable.grade,
-      subjectId: liveClassesTable.subjectId
+      subjectId: liveClassesTable.subjectId,
+      courseId: liveClassesTable.courseId
     }).from(liveClassesTable).where(and(
       isNotNull(liveClassesTable.teacherId),
       gte(liveClassesTable.scheduledAt, dayStart),
@@ -128210,6 +128211,9 @@ router32.get("/admin/cc/teachers/schedule", adminOnly10, async (req, res) => {
     const subjectIds = [...new Set(classes.map((c) => c.subjectId).filter((v) => v != null))];
     const subjectRows = subjectIds.length === 0 ? [] : await db.select({ id: courseSubjectsTable.id, name: courseSubjectsTable.name }).from(courseSubjectsTable).where(inArray(courseSubjectsTable.id, subjectIds));
     const subjectMap = new Map(subjectRows.map((s2) => [s2.id, s2.name]));
+    const courseIds = [...new Set(classes.map((c) => c.courseId).filter((v) => v != null))];
+    const courseRows = courseIds.length === 0 ? [] : await db.select({ id: coursesTable.id, courseType: coursesTable.courseType }).from(coursesTable).where(inArray(coursesTable.id, courseIds));
+    const courseTypeMap = new Map(courseRows.map((c) => [c.id, c.courseType]));
     const now = /* @__PURE__ */ new Date();
     const classesByTeacher = /* @__PURE__ */ new Map();
     for (const c of classes) {
@@ -128223,6 +128227,7 @@ router32.get("/admin/cc/teachers/schedule", adminOnly10, async (req, res) => {
         title: c.title,
         grade: c.grade,
         subjectName: c.subjectId ? subjectMap.get(c.subjectId) ?? null : null,
+        program: c.courseId ? courseTypeMap.get(c.courseId) ?? null : null,
         status: c.status,
         startsAt: c.scheduledAt,
         endsAt: c.scheduledAt ? new Date(new Date(c.scheduledAt).getTime() + (c.duration ?? 60) * 6e4) : null

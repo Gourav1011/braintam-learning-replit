@@ -1,0 +1,510 @@
+import {
+  Search,
+  Plus,
+  CalendarDays,
+  Clock3,
+  Users,
+  UserCheck,
+  GraduationCap,
+  Coffee,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  MoreVertical,
+} from "lucide-react";
+
+const teachers = [
+  {
+    name: "Priya Sharma",
+    initials: "PS",
+    subject: "Mathematics",
+    classes: [
+      { start: 1, width: 2, type: "live", title: "Grade 6 Mathematics", program: "Mastery", time: "10:00–11:00" },
+      { start: 4, width: 1, type: "break", title: "Break", time: "1:00–2:00" },
+      { start: 6, width: 2, type: "ignite", title: "Grade 4 Mathematics", program: "Ignite", time: "3:00–4:00" },
+    ],
+  },
+  {
+    name: "Rahul Verma",
+    initials: "RV",
+    subject: "Science",
+    classes: [
+      { start: 0, width: 2, type: "ignite", title: "Grade 8 Science", program: "Ignite", time: "9:00–10:00" },
+      { start: 5, width: 2, type: "live", title: "Grade 7 Science", program: "Mastery", time: "2:00–3:00" },
+    ],
+  },
+  {
+    name: "Anjali Mehta",
+    initials: "AM",
+    subject: "English",
+    classes: [
+      { start: 0, width: 9, type: "leave", title: "On Leave", time: "Full Day" },
+    ],
+  },
+  {
+    name: "Amit Kumar",
+    initials: "AK",
+    subject: "Physics",
+    classes: [
+      { start: 2, width: 2, type: "live", title: "Grade 9 Physics", program: "Mastery", time: "11:00–12:00" },
+      { start: 7, width: 2, type: "blocked", title: "Faculty Meeting", time: "4:00–5:00" },
+    ],
+  },
+];
+
+const hours = [
+  "9 AM",
+  "10 AM",
+  "11 AM",
+  "12 PM",
+  "1 PM",
+  "2 PM",
+  "3 PM",
+  "4 PM",
+  "5 PM",
+];
+
+const blockStyles: Record<string, string> = {
+  live: "border-blue-200 bg-blue-50 text-blue-800",
+  ignite: "border-violet-200 bg-violet-50 text-violet-800",
+  break: "border-amber-200 bg-amber-50 text-amber-800",
+  leave: "border-red-200 bg-red-50 text-red-700",
+  blocked: "border-orange-200 bg-orange-50 text-orange-800",
+};
+
+export default function TeacherManagementDesign() {
+  return (
+    <div className="min-h-screen bg-[#f6f8fc] p-5 text-slate-900">
+      {/* HEADER */}
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#082c72]">
+            Teacher Management
+          </h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Manage teachers, assignments, schedules and availability
+          </p>
+        </div>
+
+        <button className="flex h-10 items-center gap-2 rounded-xl bg-[#0b347d] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#092b69]">
+          <Plus size={17} />
+          Add Teacher
+        </button>
+      </div>
+
+      {/* SUMMARY */}
+
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <SummaryCard
+          icon={<Users size={18} />}
+          value="48"
+          label="Total Teachers"
+        />
+
+        <SummaryCard
+          icon={<UserCheck size={18} />}
+          value="42"
+          label="Active"
+        />
+
+        <SummaryCard
+          icon={<Clock3 size={18} />}
+          value="16"
+          label="Available Now"
+        />
+
+        <SummaryCard
+          icon={<GraduationCap size={18} />}
+          value="19"
+          label="Teaching Now"
+        />
+
+        <SummaryCard
+          icon={<CalendarDays size={18} />}
+          value="4"
+          label="On Leave"
+        />
+
+        <SummaryCard
+          icon={<Users size={18} />}
+          value="2"
+          label="Inactive"
+        />
+      </div>
+
+      {/* TABS */}
+
+      <div className="mb-4 overflow-x-auto rounded-xl border bg-white px-2">
+        <div className="flex min-w-max gap-1">
+          {[
+            "All Teachers",
+            "Available",
+            "Engaged",
+            "On Leave",
+            "Inactive",
+            "Schedule & Availability",
+          ].map((tab, index) => (
+            <button
+              key={tab}
+              className={`border-b-2 px-4 py-3 text-sm font-semibold ${
+                index === 5
+                  ? "border-[#0b347d] text-[#0b347d]"
+                  : "border-transparent text-slate-500 hover:text-[#0b347d]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* FILTER BAR */}
+
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
+        <div className="relative min-w-[220px] flex-1">
+          <Search
+            size={17}
+            className="absolute left-3 top-2.5 text-slate-400"
+          />
+
+          <input
+            placeholder="Search teacher..."
+            className="h-10 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-blue-400"
+          />
+        </div>
+
+        <select className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
+          <option>All Subjects</option>
+          <option>Mathematics</option>
+          <option>Science</option>
+          <option>English</option>
+        </select>
+
+        <select className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
+          <option>All Programs</option>
+          <option>Ignite</option>
+          <option>Mastery</option>
+        </select>
+
+        <button className="flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium">
+          <Filter size={16} />
+          More Filters
+        </button>
+      </div>
+
+      {/* SCHEDULE HEADER */}
+
+      <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+          <div>
+            <h2 className="font-bold text-[#082c72]">
+              Teacher Schedule & Availability
+            </h2>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Live overview of classes, free timings and teacher workload
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button className="rounded-lg border p-2">
+              <ChevronLeft size={17} />
+            </button>
+
+            <button className="flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold">
+              <CalendarDays size={16} />
+              10 July 2026
+            </button>
+
+            <button className="rounded-lg border p-2">
+              <ChevronRight size={17} />
+            </button>
+
+            <div className="ml-2 flex rounded-lg bg-slate-100 p-1">
+              <button className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold shadow-sm">
+                Timeline
+              </button>
+
+              <button className="px-3 py-1.5 text-xs font-medium text-slate-500">
+                Calendar
+              </button>
+
+              <button className="px-3 py-1.5 text-xs font-medium text-slate-500">
+                List
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* TIMELINE */}
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[1180px]">
+            <div className="grid grid-cols-[220px_repeat(9,minmax(100px,1fr))] border-b bg-slate-50">
+              <div className="sticky left-0 z-20 border-r bg-slate-50 px-5 py-3 text-xs font-bold uppercase text-slate-500">
+                Teacher
+              </div>
+
+              {hours.map((hour) => (
+                <div
+                  key={hour}
+                  className="border-r px-3 py-3 text-center text-xs font-bold text-slate-500"
+                >
+                  {hour}
+                </div>
+              ))}
+            </div>
+
+            {teachers.map((teacher) => (
+              <div
+                key={teacher.name}
+                className="grid min-h-[94px] grid-cols-[220px_repeat(9,minmax(100px,1fr))] border-b last:border-b-0"
+              >
+                <div className="sticky left-0 z-10 flex items-center gap-3 border-r bg-white px-5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0b347d] text-xs font-bold text-white">
+                    {teacher.initials}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-[#082c72]">
+                      {teacher.name}
+                    </p>
+
+                    <p className="text-xs text-slate-500">
+                      {teacher.subject}
+                    </p>
+                  </div>
+
+                  <button className="ml-auto text-slate-400">
+                    <MoreVertical size={17} />
+                  </button>
+                </div>
+
+                <div className="relative col-span-9 grid grid-cols-9">
+                  {hours.map((hour) => (
+                    <div
+                      key={hour}
+                      className="border-r bg-[linear-gradient(to_bottom,transparent_49%,#f8fafc_50%)]"
+                    />
+                  ))}
+
+                  {teacher.classes.map((item, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        gridColumn: `${item.start + 1} / span ${item.width}`,
+                      }}
+                      className={`absolute inset-y-3 z-10 mx-1 rounded-lg border p-2 shadow-sm ${
+                        blockStyles[item.type]
+                      }`}
+                    >
+                      <p className="truncate text-xs font-bold">
+                        {item.title}
+                      </p>
+
+                      {item.program && (
+                        <p className="mt-0.5 truncate text-[10px] font-medium opacity-75">
+                          {item.program}
+                        </p>
+                      )}
+
+                      <p className="mt-1 text-[10px] font-semibold">
+                        {item.time}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* LEGEND */}
+
+        <div className="flex flex-wrap gap-5 border-t bg-slate-50 px-5 py-3 text-xs">
+          <Legend color="bg-green-100 border-green-300" label="Available" />
+
+          <Legend color="bg-blue-100 border-blue-300" label="Live Class" />
+
+          <Legend color="bg-violet-100 border-violet-300" label="Ignite" />
+
+          <Legend color="bg-yellow-100 border-yellow-300" label="Break" />
+
+          <Legend color="bg-red-100 border-red-300" label="On Leave" />
+
+          <Legend color="bg-orange-100 border-orange-300" label="Blocked" />
+        </div>
+      </div>
+
+      {/* BOTTOM PANELS */}
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <InfoPanel title="Teaching Now" count="19">
+          <TeacherStatus
+            initials="PS"
+            name="Priya Sharma"
+            detail="Grade 6 Mathematics · Mastery"
+            timing="10:00–11:00 AM"
+          />
+
+          <TeacherStatus
+            initials="AK"
+            name="Amit Kumar"
+            detail="Grade 9 Physics · Mastery"
+            timing="11:00–12:00 PM"
+          />
+        </InfoPanel>
+
+        <InfoPanel title="Next Classes" count="12">
+          <TeacherStatus
+            initials="RV"
+            name="Rahul Verma"
+            detail="Grade 7 Science · Mastery"
+            timing="Starts in 45 minutes"
+          />
+
+          <TeacherStatus
+            initials="PS"
+            name="Priya Sharma"
+            detail="Grade 4 Mathematics · Ignite"
+            timing="Starts at 3:00 PM"
+          />
+        </InfoPanel>
+
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h3 className="font-bold text-[#082c72]">
+            Find Available Teacher
+          </h3>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Find the best available teacher for a class
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <input
+              type="date"
+              className="h-10 rounded-lg border px-3 text-sm"
+            />
+
+            <input
+              type="time"
+              className="h-10 rounded-lg border px-3 text-sm"
+            />
+
+            <select className="h-10 rounded-lg border px-3 text-sm">
+              <option>Select Subject</option>
+            </select>
+
+            <select className="h-10 rounded-lg border px-3 text-sm">
+              <option>Select Course</option>
+            </select>
+          </div>
+
+          <button className="mt-4 h-10 w-full rounded-lg bg-[#0b347d] text-sm font-bold text-white">
+            Find Available Teachers
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-[#0b347d]">
+        {icon}
+      </div>
+
+      <p className="text-xl font-bold text-[#082c72]">{value}</p>
+
+      <p className="mt-1 text-xs font-medium text-slate-500">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function Legend({
+  color,
+  label,
+}: {
+  color: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`h-3 w-3 rounded border ${color}`} />
+
+      <span className="font-medium text-slate-600">{label}</span>
+    </div>
+  );
+}
+
+function InfoPanel({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-bold text-[#082c72]">{title}</h3>
+
+        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#0b347d]">
+          {count}
+        </span>
+      </div>
+
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function TeacherStatus({
+  initials,
+  name,
+  detail,
+  timing,
+}: {
+  initials: string;
+  name: string;
+  detail: string;
+  timing: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border p-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b347d] text-[11px] font-bold text-white">
+        {initials}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-[#082c72]">
+          {name}
+        </p>
+
+        <p className="truncate text-xs text-slate-500">
+          {detail}
+        </p>
+      </div>
+
+      <span className="text-[11px] font-semibold text-slate-500">
+        {timing}
+      </span>
+    </div>
+  );
+}

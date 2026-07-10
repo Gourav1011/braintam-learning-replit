@@ -183,6 +183,7 @@ router.get("/admin/cc/teachers/schedule", adminOnly, async (req, res) => {
       id: liveClassesTable.id, teacherId: liveClassesTable.teacherId, title: liveClassesTable.title,
       scheduledAt: liveClassesTable.scheduledAt, duration: liveClassesTable.duration,
       status: liveClassesTable.status, grade: liveClassesTable.grade, subjectId: liveClassesTable.subjectId,
+      courseId: liveClassesTable.courseId,
     }).from(liveClassesTable)
       .where(and(
         isNotNull(liveClassesTable.teacherId),
@@ -194,6 +195,11 @@ router.get("/admin/cc/teachers/schedule", adminOnly, async (req, res) => {
     const subjectRows = subjectIds.length === 0 ? [] : await db.select({ id: courseSubjectsTable.id, name: courseSubjectsTable.name })
       .from(courseSubjectsTable).where(inArray(courseSubjectsTable.id, subjectIds));
     const subjectMap = new Map(subjectRows.map(s => [s.id, s.name]));
+
+    const courseIds = [...new Set(classes.map(c => c.courseId).filter((v): v is number => v != null))];
+    const courseRows = courseIds.length === 0 ? [] : await db.select({ id: coursesTable.id, courseType: coursesTable.courseType })
+      .from(coursesTable).where(inArray(coursesTable.id, courseIds));
+    const courseTypeMap = new Map(courseRows.map(c => [c.id, c.courseType]));
 
     const now = new Date();
     const classesByTeacher = new Map<number, typeof classes>();
@@ -207,6 +213,7 @@ router.get("/admin/cc/teachers/schedule", adminOnly, async (req, res) => {
       const tClasses = (classesByTeacher.get(t.id) ?? []).map(c => ({
         id: c.id, title: c.title, grade: c.grade,
         subjectName: c.subjectId ? subjectMap.get(c.subjectId) ?? null : null,
+        program: c.courseId ? courseTypeMap.get(c.courseId) ?? null : null,
         status: c.status,
         startsAt: c.scheduledAt,
         endsAt: c.scheduledAt ? new Date(new Date(c.scheduledAt).getTime() + (c.duration ?? 60) * 60000) : null,
