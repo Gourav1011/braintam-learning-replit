@@ -936,6 +936,84 @@ function AuthCoursesView() {
           </div>
         )}
 
+        {/* ── Animated Videos Banner ── */}
+        <Link href="/animated-videos">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            transition={{ duration: 0.25 }}
+            className="relative overflow-hidden rounded-2xl cursor-pointer select-none"
+            style={{
+              background: "linear-gradient(135deg, #c8f7dc 0%, #a7f3c8 40%, #d1fae5 100%)",
+              border: "1.5px solid #6ee7b7",
+              boxShadow: "0 4px 20px rgba(16,185,129,0.15)",
+            }}
+          >
+            {/* decorative stars */}
+            <span className="absolute top-3 right-40 text-xl pointer-events-none select-none opacity-70">⭐</span>
+            <span className="absolute bottom-4 right-56 text-sm pointer-events-none select-none opacity-60">✨</span>
+            <span className="absolute top-5 left-1/2 text-xs pointer-events-none select-none opacity-50 hidden md:block">⭐</span>
+
+            <div className="flex items-center gap-4 md:gap-6 px-5 md:px-8 py-5 md:py-6">
+              {/* TV character */}
+              <div className="relative flex-shrink-0">
+                <div
+                  className="w-16 h-14 md:w-20 md:h-18 rounded-2xl flex items-center justify-center text-4xl md:text-5xl shadow-md"
+                  style={{ background: "linear-gradient(145deg, #34d399, #059669)", fontSize: "clamp(32px,5vw,48px)" }}
+                >
+                  📺
+                </div>
+                {/* play button badge */}
+                <div
+                  className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                  style={{ background: "#059669" }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="white">
+                    <polygon points="2,1 9,5 2,9" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* text */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] md:text-xs font-black uppercase tracking-widest mb-0.5" style={{ color: "#065f46" }}>
+                  <span className="hidden md:inline">Learn with </span>Animated Videos
+                </p>
+                <h3 className="text-lg md:text-2xl font-black leading-tight" style={{ color: "#064e3b" }}>
+                  <span className="md:hidden">ANIMATED VIDEOS</span>
+                  <span className="hidden md:inline">LEARN WITH ANIMATED VIDEOS</span>
+                </h3>
+                <p className="text-xs md:text-sm mt-1 md:mt-1.5 font-medium" style={{ color: "#047857" }}>
+                  Fun videos and stories that make learning easy!
+                </p>
+                {/* mobile button */}
+                <button
+                  className="mt-3 md:hidden inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black text-white shadow-md"
+                  style={{ background: "#059669" }}
+                >
+                  Explore Videos →
+                </button>
+              </div>
+
+              {/* desktop button + popcorn */}
+              <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+                <button
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-black text-white shadow-md whitespace-nowrap"
+                  style={{ background: "#059669", boxShadow: "0 4px 14px rgba(5,150,105,0.4)" }}
+                >
+                  Explore Videos →
+                </button>
+                <span className="text-4xl select-none">🍿</span>
+              </div>
+
+              {/* mobile popcorn (right side) */}
+              <span className="md:hidden text-3xl flex-shrink-0 select-none">🍿</span>
+            </div>
+          </motion.div>
+        </Link>
+
         {/* Search + filter */}
         <div className="flex gap-2">
           <div className="relative flex-1">

@@ -1,0 +1,2014 @@
+/**
+ * BRAINTAM STUDENT LEARN PAGE
+ *
+ * IMPLEMENTATION RULES:
+ *
+ * 1. Replace the existing student My Courses/Learn page UI with this design.
+ * 2. Keep all existing backend APIs, database logic and routes.
+ * 3. Connect this UI to the project's existing API hooks.
+ * 4. Do not use the demo data below in production.
+ * 5. Map existing API responses to the interfaces below.
+ * 6. Do not modify teacher/admin portals.
+ * 7. Do not delete old courses.
+ * 8. Completed courses must remain accessible to students.
+ * 9. Current courses and completed courses must be separated.
+ * 10. Preserve existing lesson, recording and material routes.
+ */
+
+import React, {
+  useMemo,
+  useState
+} from "react";
+
+import {
+  Bell,
+  BookOpen,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CirclePlay,
+  Clock3,
+  FileText,
+  FlaskConical,
+  GraduationCap,
+  Home,
+  Languages,
+  Laptop,
+  LibraryBig,
+  LockKeyhole,
+  MessageCircle,
+  MonitorPlay,
+  Play,
+  Rocket,
+  Search,
+  Trophy,
+  Video
+} from "lucide-react";
+
+import "./StudentLearnPage.css";
+
+/* =========================================================
+   TYPES
+========================================================= */
+
+type MainLearnTab =
+  | "current"
+  | "completed";
+
+interface Student {
+  id: string;
+  name: string;
+  firstName?: string;
+  grade: string;
+  avatarUrl?: string | null;
+}
+
+interface IgniteDay {
+  day: number;
+  completed: boolean;
+  locked?: boolean;
+}
+
+interface IgniteProgram {
+  id: string;
+  name: string;
+  grade: string;
+  completedDays: number;
+  totalDays: number;
+  nextSession?: {
+    date?: string;
+    time?: string;
+    label?: string;
+  } | null;
+  days: IgniteDay[];
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  slug?: string;
+  lessonCount: number;
+  completedLessons?: number;
+  progress: number;
+  icon?: string | null;
+  thumbnailUrl?: string | null;
+  lastLessonId?: string | null;
+}
+
+interface ContinueLearningData {
+  subjectId: string;
+  subjectName: string;
+  lessonId: string;
+  lessonTitle: string;
+  progress: number;
+}
+
+interface CompletedCourse {
+  id: string;
+  title: string;
+  grade: string;
+  academicYear?: string | null;
+  completedAt?: string | null;
+
+  subjectCount: number;
+  lessonCount: number;
+  recordingCount: number;
+  materialCount: number;
+
+  thumbnailUrl?: string | null;
+
+  subjects?: Subject[];
+}
+
+interface LearnPageData {
+  student: Student;
+
+  igniteProgram?: IgniteProgram | null;
+
+  continueLearning?:
+    ContinueLearningData | null;
+
+  currentSubjects: Subject[];
+
+  completedCourses:
+    CompletedCourse[];
+}
+
+/* =========================================================
+   EXISTING API CONNECTION
+========================================================= */
+
+/**
+ * IMPORTANT:
+ *
+ * Replace this function with the existing Braintam query hook.
+ *
+ * Example:
+ *
+ * const {
+ *   data,
+ *   isLoading,
+ *   error
+ * } = useStudentLearningQuery();
+ *
+ * Then map the existing API response:
+ *
+ * const pageData = mapExistingResponse(data);
+ *
+ * Do not create a duplicate API if the required data already exists.
+ */
+
+function useExistingStudentLearnData(): {
+  data: LearnPageData | null;
+  isLoading: boolean;
+  error: Error | null;
+} {
+  /*
+   * REPLIT:
+   *
+   * Remove this placeholder return.
+   *
+   * Find and use the existing:
+   *
+   * - current student API
+   * - enrolled course API
+   * - Ignite course API
+   * - subject API
+   * - lesson-progress API
+   * - completed/archived course API
+   * - recordings API
+   * - study-material API
+   */
+
+  return {
+    data: null,
+    isLoading: false,
+    error: null
+  };
+}
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function clampProgress(
+  progress?: number | null
+) {
+  return Math.min(
+    100,
+    Math.max(
+      0,
+      Number(progress || 0)
+    )
+  );
+}
+
+function getFirstName(
+  student?: Student | null
+) {
+  return (
+    student?.firstName ||
+    student?.name
+      ?.trim()
+      .split(/\s+/)[0] ||
+    "Student"
+  );
+}
+
+function getSubjectVisual(
+  subjectName: string
+) {
+  const normalized =
+    subjectName
+      .toLowerCase()
+      .trim();
+
+  if (
+    normalized.includes("math")
+  ) {
+    return {
+      emoji: "123",
+      className: "subject-blue"
+    };
+  }
+
+  if (
+    normalized.includes("science") ||
+    normalized.includes("physics") ||
+    normalized.includes("chemistry") ||
+    normalized.includes("biology")
+  ) {
+    return {
+      emoji: "⚗",
+      className: "subject-green"
+    };
+  }
+
+  if (
+    normalized.includes("english")
+  ) {
+    return {
+      emoji: "📖",
+      className: "subject-orange"
+    };
+  }
+
+  if (
+    normalized.includes("hindi")
+  ) {
+    return {
+      emoji: "अ",
+      className: "subject-pink"
+    };
+  }
+
+  if (
+    normalized.includes("computer")
+  ) {
+    return {
+      emoji: "🖥",
+      className: "subject-purple"
+    };
+  }
+
+  if (
+    normalized.includes("social")
+  ) {
+    return {
+      emoji: "🌍",
+      className: "subject-cyan"
+    };
+  }
+
+  if (
+    normalized.includes("sanskrit")
+  ) {
+    return {
+      emoji: "ॐ",
+      className: "subject-yellow"
+    };
+  }
+
+  if (
+    normalized.includes("french")
+  ) {
+    return {
+      emoji: "🇫🇷",
+      className: "subject-blue"
+    };
+  }
+
+  return {
+    emoji: "📚",
+    className: "subject-purple"
+  };
+}
+
+function formatCompletionDate(
+  value?: string | null
+) {
+  if (!value) {
+    return "Course completed";
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "Course completed";
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-IN",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    }
+  ).format(date);
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+export default function StudentLearnPage() {
+  const {
+    data,
+    isLoading,
+    error
+  } = useExistingStudentLearnData();
+
+  const [
+    activeTab,
+    setActiveTab
+  ] =
+    useState<MainLearnTab>(
+      "current"
+    );
+
+  const [
+    search,
+    setSearch
+  ] = useState("");
+
+  const [
+    selectedSubject,
+    setSelectedSubject
+  ] = useState("all");
+
+  const filteredSubjects =
+    useMemo(() => {
+      if (!data) {
+        return [];
+      }
+
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      return data.currentSubjects
+        .filter((subject) => {
+          const matchesSearch =
+            !query ||
+            subject.name
+              .toLowerCase()
+              .includes(query);
+
+          const matchesFilter =
+            selectedSubject ===
+              "all" ||
+            subject.id ===
+              selectedSubject;
+
+          return (
+            matchesSearch &&
+            matchesFilter
+          );
+        });
+    }, [
+      data,
+      search,
+      selectedSubject
+    ]);
+
+  const filteredCompletedCourses =
+    useMemo(() => {
+      if (!data) {
+        return [];
+      }
+
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      return data.completedCourses
+        .filter((course) => {
+          return (
+            !query ||
+            course.title
+              .toLowerCase()
+              .includes(query) ||
+            course.grade
+              .toLowerCase()
+              .includes(query) ||
+            course.academicYear
+              ?.toLowerCase()
+              .includes(query)
+          );
+        });
+    }, [
+      data,
+      search
+    ]);
+
+  if (isLoading) {
+    return (
+      <LearnPageSkeleton />
+    );
+  }
+
+  if (error) {
+    return (
+      <LearnErrorState />
+    );
+  }
+
+  if (!data) {
+    return (
+      <LearnEmptyState />
+    );
+  }
+
+  return (
+    <div className="learn-page">
+      <LearnTopBar
+        student={data.student}
+      />
+
+      <main className="learn-content">
+        <header className="learn-header">
+          <div>
+            <h1>
+              My Learning
+              <span
+                aria-hidden="true"
+              >
+                📖
+              </span>
+            </h1>
+
+            <p>
+              Explore your subjects
+              and keep learning
+            </p>
+          </div>
+
+          <div
+            className="learn-header-art"
+            aria-hidden="true"
+          >
+            <span className="header-planet">
+              🪐
+            </span>
+
+            <span className="header-rocket">
+              🚀
+            </span>
+          </div>
+        </header>
+
+        <LearnMainTabs
+          activeTab={activeTab}
+          completedCount={
+            data
+              .completedCourses
+              .length
+          }
+          onChange={setActiveTab}
+        />
+
+        <SearchAndFilter
+          search={search}
+          onSearchChange={
+            setSearch
+          }
+          activeTab={activeTab}
+          subjects={
+            data.currentSubjects
+          }
+          selectedSubject={
+            selectedSubject
+          }
+          onSubjectChange={
+            setSelectedSubject
+          }
+        />
+
+        {activeTab ===
+        "current" ? (
+          <CurrentLearning
+            data={data}
+            subjects={
+              filteredSubjects
+            }
+          />
+        ) : (
+          <CompletedLearning
+            courses={
+              filteredCompletedCourses
+            }
+          />
+        )}
+      </main>
+
+      <AskMentorButton />
+
+      <StudentBottomNav
+        active="learn"
+      />
+    </div>
+  );
+}
+
+/* =========================================================
+   TOP BAR
+========================================================= */
+
+function LearnTopBar({
+  student
+}: {
+  student: Student;
+}) {
+  return (
+    <header className="student-topbar">
+      <a
+        href="/dashboard"
+        className="mobile-logo"
+        aria-label="Braintam Home"
+      >
+        <img
+          src="/logo.png"
+          alt="Braintam"
+        />
+      </a>
+
+      <div className="topbar-actions">
+        <button
+          className="icon-button"
+          aria-label="Notifications"
+          type="button"
+        >
+          <Bell size={22} />
+
+          <span
+            className=
+              "notification-dot"
+          />
+        </button>
+
+        <a
+          href="/profile"
+          className=
+            "mobile-profile"
+          aria-label={
+            `${student.name} profile`
+          }
+        >
+          {student.avatarUrl ? (
+            <img
+              src={
+                student.avatarUrl
+              }
+              alt=""
+            />
+          ) : (
+            <span>
+              {getFirstName(
+                student
+              )
+                .charAt(0)
+                .toUpperCase()}
+            </span>
+          )}
+        </a>
+      </div>
+    </header>
+  );
+}
+
+/* =========================================================
+   MAIN TABS
+========================================================= */
+
+function LearnMainTabs({
+  activeTab,
+  completedCount,
+  onChange
+}: {
+  activeTab: MainLearnTab;
+  completedCount: number;
+  onChange:
+    (
+      tab: MainLearnTab
+    ) => void;
+}) {
+  return (
+    <div
+      className="learning-tabs"
+      role="tablist"
+      aria-label=
+        "Learning sections"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={
+          activeTab ===
+          "current"
+        }
+        className={
+          activeTab ===
+          "current"
+            ? "learning-tab active"
+            : "learning-tab"
+        }
+        onClick={() =>
+          onChange("current")
+        }
+      >
+        <BookOpen
+          size={18}
+        />
+
+        Current Learning
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        aria-selected={
+          activeTab ===
+          "completed"
+        }
+        className={
+          activeTab ===
+          "completed"
+            ? "learning-tab active"
+            : "learning-tab"
+        }
+        onClick={() =>
+          onChange(
+            "completed"
+          )
+        }
+      >
+        <GraduationCap
+          size={18}
+        />
+
+        Completed Courses
+
+        {completedCount >
+          0 && (
+          <span
+            className=
+              "tab-count"
+          >
+            {completedCount}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+function SearchAndFilter({
+  search,
+  onSearchChange,
+  activeTab,
+  subjects,
+  selectedSubject,
+  onSubjectChange
+}: {
+  search: string;
+
+  onSearchChange:
+    (
+      value: string
+    ) => void;
+
+  activeTab:
+    MainLearnTab;
+
+  subjects:
+    Subject[];
+
+  selectedSubject:
+    string;
+
+  onSubjectChange:
+    (
+      value: string
+    ) => void;
+}) {
+  return (
+    <section
+      className=
+        "learn-search-row"
+    >
+      <label
+        className=
+          "learn-search"
+      >
+        <Search
+          size={20}
+        />
+
+        <input
+          value={search}
+          onChange={(event) =>
+            onSearchChange(
+              event.target.value
+            )
+          }
+          placeholder={
+            activeTab ===
+            "current"
+              ? "Search subjects or lessons..."
+              : "Search completed courses..."
+          }
+        />
+      </label>
+
+      {activeTab ===
+        "current" && (
+        <label
+          className=
+            "subject-filter"
+        >
+          <select
+            value={
+              selectedSubject
+            }
+            onChange={(
+              event
+            ) =>
+              onSubjectChange(
+                event
+                  .target
+                  .value
+              )
+            }
+          >
+            <option
+              value="all"
+            >
+              All Subjects
+            </option>
+
+            {subjects.map(
+              (subject) => (
+                <option
+                  key={
+                    subject.id
+                  }
+                  value={
+                    subject.id
+                  }
+                >
+                  {
+                    subject.name
+                  }
+                </option>
+              )
+            )}
+          </select>
+
+          <ChevronDown
+            size={18}
+          />
+        </label>
+      )}
+    </section>
+  );
+}
+
+/* =========================================================
+   CURRENT LEARNING
+========================================================= */
+
+function CurrentLearning({
+  data,
+  subjects
+}: {
+  data: LearnPageData;
+  subjects: Subject[];
+}) {
+  return (
+    <div className="current-learning">
+      {data.igniteProgram && (
+        <IgniteProgramCard
+          program={
+            data.igniteProgram
+          }
+        />
+      )}
+
+      <div className="learning-main-grid">
+        <ContinueLearningCard
+          item={
+            data.continueLearning
+          }
+        />
+
+        <SubjectsSection
+          subjects={subjects}
+        />
+      </div>
+
+      <AnimatedVideosBanner />
+    </div>
+  );
+}
+
+/* =========================================================
+   IGNITE
+========================================================= */
+
+function IgniteProgramCard({
+  program
+}: {
+  program: IgniteProgram;
+}) {
+  const progress =
+    clampProgress(
+      (
+        program.completedDays /
+        Math.max(
+          program.totalDays,
+          1
+        )
+      ) *
+        100
+    );
+
+  return (
+    <section
+      className=
+        "ignite-program"
+    >
+      <div
+        className=
+          "ignite-main"
+      >
+        <p
+          className=
+            "section-label green"
+        >
+          Current Program
+        </p>
+
+        <div
+          className=
+            "ignite-title-row"
+        >
+          <span
+            className=
+              "ignite-icon"
+            aria-hidden="true"
+          >
+            🚀
+          </span>
+
+          <div>
+            <div
+              className=
+                "title-with-badge"
+            >
+              <h2>
+                {program.name}
+              </h2>
+
+              <span
+                className=
+                  "grade-badge"
+              >
+                {program.grade}
+              </span>
+            </div>
+
+            <p>
+              Day{" "}
+              {
+                program.completedDays
+              }{" "}
+              of{" "}
+              {
+                program.totalDays
+              }{" "}
+              completed
+            </p>
+          </div>
+        </div>
+
+        <div
+          className=
+            "ignite-days"
+          aria-label=
+            "Program days"
+        >
+          {program.days.map(
+            (day) => (
+              <div
+                key={
+                  day.day
+                }
+                className={[
+                  "ignite-day",
+                  day.completed
+                    ? "complete"
+                    : "",
+                  day.locked
+                    ? "locked"
+                    : ""
+                ]
+                  .filter(
+                    Boolean
+                  )
+                  .join(" ")}
+              >
+                {day.completed ? (
+                  <Check
+                    size={15}
+                  />
+                ) : day.locked ? (
+                  <LockKeyhole
+                    size={13}
+                  />
+                ) : (
+                  <span
+                    className=
+                      "empty-day"
+                  />
+                )}
+
+                D{day.day}
+              </div>
+            )
+          )}
+        </div>
+
+        <div
+          className=
+            "ignite-progress-row"
+        >
+          <div
+            className=
+              "progress-track"
+          >
+            <div
+              className=
+                "progress-fill green"
+              style={{
+                width:
+                  `${progress}%`
+              }}
+            />
+          </div>
+
+          <strong>
+            {Math.round(
+              progress
+            )}
+            %
+          </strong>
+        </div>
+      </div>
+
+      <div
+        className=
+          "ignite-rocket-art"
+        aria-hidden="true"
+      >
+        🚀
+      </div>
+
+      <div
+        className=
+          "next-session"
+      >
+        <div
+          className=
+            "next-session-title"
+        >
+          <CalendarDays
+            size={19}
+          />
+
+          <strong>
+            Next session
+          </strong>
+        </div>
+
+        {program.nextSession ? (
+          <p>
+            {program
+              .nextSession
+              .label ||
+              [
+                program
+                  .nextSession
+                  .date,
+                program
+                  .nextSession
+                  .time
+              ]
+                .filter(
+                  Boolean
+                )
+                .join(
+                  " • "
+                )}
+          </p>
+        ) : (
+          <p>
+            No session
+            scheduled yet
+          </p>
+        )}
+
+        <a
+          href={
+            `/courses/${program.id}`
+          }
+          className=
+            "primary-button green"
+        >
+          View Program
+
+          <ChevronRight
+            size={18}
+          />
+        </a>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   CONTINUE LEARNING
+========================================================= */
+
+function ContinueLearningCard({
+  item
+}: {
+  item?:
+    ContinueLearningData |
+    null;
+}) {
+  if (!item) {
+    return (
+      <section
+        className=
+          "continue-card empty"
+      >
+        <p
+          className=
+            "section-label purple"
+        >
+          Continue Learning
+        </p>
+
+        <div
+          className=
+            "continue-empty-icon"
+        >
+          <BookOpen
+            size={30}
+          />
+        </div>
+
+        <h2>
+          Start your learning
+          journey
+        </h2>
+
+        <p>
+          Choose a subject to
+          begin your next
+          lesson.
+        </p>
+
+        <a
+          href="#my-subjects"
+          className=
+            "primary-button purple"
+        >
+          Explore Subjects
+
+          <ChevronRight
+            size={18}
+          />
+        </a>
+      </section>
+    );
+  }
+
+  const progress =
+    clampProgress(
+      item.progress
+    );
+
+  return (
+    <section
+      className=
+        "continue-card"
+    >
+      <p
+        className=
+          "section-label purple"
+      >
+        Continue Learning
+      </p>
+
+      <div
+        className=
+          "continue-content"
+      >
+        <div
+          className=
+            "continue-icon"
+        >
+          <BookOpen
+            size={28}
+          />
+        </div>
+
+        <div
+          className=
+            "continue-copy"
+        >
+          <h2>
+            {
+              item.subjectName
+            }
+          </h2>
+
+          <p>
+            {
+              item.lessonTitle
+            }
+          </p>
+
+          <div
+            className=
+              "continue-progress"
+          >
+            <div
+              className=
+                "progress-track"
+            >
+              <div
+                className=
+                  "progress-fill purple"
+                style={{
+                  width:
+                    `${progress}%`
+                }}
+              />
+            </div>
+
+            <strong>
+              {Math.round(
+                progress
+              )}
+              %
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <a
+        href={
+          `/lessons/${item.lessonId}`
+        }
+        className=
+          "primary-button purple continue-button"
+      >
+        Continue
+
+        <ChevronRight
+          size={18}
+        />
+      </a>
+    </section>
+  );
+}
+
+/* =========================================================
+   SUBJECTS
+========================================================= */
+
+function SubjectsSection({
+  subjects
+}: {
+  subjects: Subject[];
+}) {
+  return (
+    <section
+      id="my-subjects"
+      className=
+        "subjects-section"
+    >
+      <div
+        className=
+          "section-title-row"
+      >
+        <h2>
+          <BookOpen
+            size={21}
+          />
+
+          My Subjects
+        </h2>
+
+        {subjects.length >
+          4 && (
+          <a
+            href="/subjects"
+            className=
+              "text-link"
+          >
+            See All
+
+            <ChevronRight
+              size={17}
+            />
+          </a>
+        )}
+      </div>
+
+      {subjects.length >
+      0 ? (
+        <div
+          className=
+            "subject-scroller"
+        >
+          {subjects.map(
+            (subject) => (
+              <SubjectCard
+                key={
+                  subject.id
+                }
+                subject={
+                  subject
+                }
+              />
+            )
+          )}
+        </div>
+      ) : (
+        <div
+          className=
+            "subjects-empty"
+        >
+          <LibraryBig
+            size={38}
+          />
+
+          <h3>
+            Your subjects are
+            being prepared
+          </h3>
+
+          <p>
+            New lessons and
+            learning activities
+            will appear here
+            soon.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SubjectCard({
+  subject
+}: {
+  subject: Subject;
+}) {
+  const visual =
+    getSubjectVisual(
+      subject.name
+    );
+
+  const progress =
+    clampProgress(
+      subject.progress
+    );
+
+  const hasStarted =
+    progress > 0;
+
+  const actionHref =
+    subject.lastLessonId
+      ? `/lessons/${subject.lastLessonId}`
+      : `/subjects/${subject.id}`;
+
+  return (
+    <article
+      className={
+        `subject-card ${visual.className}`
+      }
+    >
+      <div
+        className=
+          "subject-icon"
+        aria-hidden="true"
+      >
+        {visual.emoji}
+      </div>
+
+      <h3>
+        {subject.name}
+      </h3>
+
+      <p>
+        {subject.lessonCount}{" "}
+        {subject.lessonCount ===
+        1
+          ? "Lesson"
+          : "Lessons"}
+      </p>
+
+      <div
+        className=
+          "subject-progress"
+      >
+        <div
+          className=
+            "progress-track"
+        >
+          <div
+            className=
+              "progress-fill"
+            style={{
+              width:
+                `${progress}%`
+            }}
+          />
+        </div>
+      </div>
+
+      <span
+        className=
+          "subject-status"
+      >
+        {hasStarted
+          ? `${Math.round(
+              progress
+            )}% Complete`
+          : "Not Started"}
+      </span>
+
+      <a
+        href={actionHref}
+        className=
+          "subject-button"
+      >
+        {hasStarted
+          ? "Continue"
+          : "Start Learning"}
+
+        <ChevronRight
+          size={15}
+        />
+      </a>
+    </article>
+  );
+}
+
+/* =========================================================
+   ANIMATED VIDEOS
+========================================================= */
+
+function AnimatedVideosBanner() {
+  return (
+    <section
+      className=
+        "animated-banner"
+    >
+      <div
+        className=
+          "animated-illustration"
+        aria-hidden="true"
+      >
+        📺
+      </div>
+
+      <div
+        className=
+          "animated-copy"
+      >
+        <h2>
+          Learn with Animated
+          Videos
+        </h2>
+
+        <p>
+          Fun videos and
+          stories that make
+          learning easy!
+        </p>
+      </div>
+
+      <a
+        href="/animated-videos"
+        className=
+          "primary-button green"
+      >
+        <Play
+          size={17}
+          fill="currentColor"
+        />
+
+        Explore Videos
+
+        <ChevronRight
+          size={18}
+        />
+      </a>
+
+      <div
+        className=
+          "popcorn-art"
+        aria-hidden="true"
+      >
+        🍿
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   COMPLETED COURSES
+========================================================= */
+
+function CompletedLearning({
+  courses
+}: {
+  courses:
+    CompletedCourse[];
+}) {
+  return (
+    <section
+      className=
+        "completed-learning"
+    >
+      <div
+        className=
+          "completed-intro"
+      >
+        <div
+          className=
+            "completed-intro-icon"
+        >
+          <GraduationCap
+            size={28}
+          />
+        </div>
+
+        <div>
+          <h2>
+            Your Completed
+            Courses
+          </h2>
+
+          <p>
+            Revisit previous
+            lessons, watch class
+            recordings and open
+            your study materials.
+          </p>
+        </div>
+      </div>
+
+      {courses.length >
+      0 ? (
+        <div
+          className=
+            "completed-course-grid"
+        >
+          {courses.map(
+            (course) => (
+              <CompletedCourseCard
+                key={
+                  course.id
+                }
+                course={
+                  course
+                }
+              />
+            )
+          )}
+        </div>
+      ) : (
+        <CompletedCoursesEmpty />
+      )}
+    </section>
+  );
+}
+
+function CompletedCourseCard({
+  course
+}: {
+  course: CompletedCourse;
+}) {
+  const [
+    imageFailed,
+    setImageFailed
+  ] = useState(false);
+
+  const showImage =
+    Boolean(
+      course.thumbnailUrl
+    ) &&
+    !imageFailed;
+
+  return (
+    <article
+      className=
+        "completed-course-card"
+    >
+      <div
+        className=
+          "completed-course-cover"
+      >
+        {showImage ? (
+          <img
+            src={
+              course.thumbnailUrl!
+            }
+            alt=""
+            onError={() =>
+              setImageFailed(
+                true
+              )
+            }
+          />
+        ) : (
+          <div
+            className=
+              "course-cover-fallback"
+          >
+            <GraduationCap
+              size={43}
+            />
+
+            <span>
+              {course.grade}
+            </span>
+          </div>
+        )}
+
+        <span
+          className=
+            "completed-badge"
+        >
+          <Check
+            size={14}
+          />
+
+          Completed
+        </span>
+      </div>
+
+      <div
+        className=
+          "completed-course-body"
+      >
+        <div
+          className=
+            "completed-course-meta"
+        >
+          <span>
+            {course.grade}
+          </span>
+
+          {course.academicYear && (
+            <span>
+              {
+                course.academicYear
+              }
+            </span>
+          )}
+        </div>
+
+        <h3>
+          {course.title}
+        </h3>
+
+        <p
+          className=
+            "completion-date"
+        >
+          <CalendarDays
+            size={15}
+          />
+
+          {formatCompletionDate(
+            course.completedAt
+          )}
+        </p>
+
+        <div
+          className=
+            "course-resource-grid"
+        >
+          <div>
+            <BookOpen
+              size={18}
+            />
+
+            <strong>
+              {
+                course.subjectCount
+              }
+            </strong>
+
+            <span>
+              Subjects
+            </span>
+          </div>
+
+          <div>
+            <CirclePlay
+              size={18}
+            />
+
+            <strong>
+              {
+                course.recordingCount
+              }
+            </strong>
+
+            <span>
+              Recordings
+            </span>
+          </div>
+
+          <div>
+            <FileText
+              size={18}
+            />
+
+            <strong>
+              {
+                course.materialCount
+              }
+            </strong>
+
+            <span>
+              Materials
+            </span>
+          </div>
+        </div>
+
+        <a
+          href={
+            `/courses/${course.id}?view=completed`
+          }
+          className=
+            "completed-course-button"
+        >
+          Open Completed Course
+
+          <ChevronRight
+            size={17}
+          />
+        </a>
+      </div>
+    </article>
+  );
+}
+
+function CompletedCoursesEmpty() {
+  return (
+    <div
+      className=
+        "completed-empty"
+    >
+      <div
+        className=
+          "completed-empty-icon"
+      >
+        <GraduationCap
+          size={42}
+        />
+      </div>
+
+      <h2>
+        Your completed courses
+        will appear here
+      </h2>
+
+      <p>
+        After completing a
+        course or moving to a
+        new grade, you can still
+        revisit its lessons,
+        recordings and study
+        materials from this
+        section.
+      </p>
+
+      <a
+        href="/courses"
+        className=
+          "primary-button purple"
+      >
+        Continue Learning
+
+        <ChevronRight
+          size={18}
+        />
+      </a>
+    </div>
+  );
+}
+
+/* =========================================================
+   ASK MENTOR
+========================================================= */
+
+function AskMentorButton() {
+  return (
+    <a
+      href="/mentor-support"
+      className=
+        "ask-mentor-button"
+    >
+      <MessageCircle
+        size={20}
+      />
+
+      <span>
+        Ask Mentor
+      </span>
+    </a>
+  );
+}
+
+/* =========================================================
+   MOBILE NAV
+========================================================= */
+
+function StudentBottomNav({
+  active
+}: {
+  active:
+    | "home"
+    | "classes"
+    | "learn"
+    | "tasks"
+    | "rewards";
+}) {
+  const items = [
+    {
+      id: "home",
+      label: "Home",
+      href: "/dashboard",
+      icon: Home
+    },
+    {
+      id: "classes",
+      label: "Classes",
+      href:
+        "/live-classes",
+      icon: Video
+    },
+    {
+      id: "learn",
+      label: "Learn",
+      href: "/courses",
+      icon: BookOpen
+    },
+    {
+      id: "tasks",
+      label: "Tasks",
+      href: "/tasks",
+      icon:
+        ClipboardTaskIcon
+    },
+    {
+      id: "rewards",
+      label: "Rewards",
+      href: "/rewards",
+      icon: Trophy
+    }
+  ] as const;
+
+  return (
+    <nav
+      className=
+        "student-bottom-nav"
+      aria-label=
+        "Student navigation"
+    >
+      {items.map(
+        (item) => {
+          const Icon =
+            item.icon;
+
+          const isActive =
+            active ===
+            item.id;
+
+          return (
+            <a
+              key={
+                item.id
+              }
+              href={
+                item.href
+              }
+              className={
+                isActive
+                  ? "bottom-nav-item active"
+                  : "bottom-nav-item"
+              }
+              aria-current={
+                isActive
+                  ? "page"
+                  : undefined
+              }
+            >
+              <span
+                className=
+                  "bottom-nav-icon"
+              >
+                <Icon
+                  size={22}
+                />
+              </span>
+
+              <span>
+                {
+                  item.label
+                }
+              </span>
+            </a>
+          );
+        }
+      )}
+    </nav>
+  );
+}
+
+function ClipboardTaskIcon({
+  size = 22
+}: {
+  size?: number;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect
+        x="5"
+        y="4"
+        width="14"
+        height="17"
+        rx="2"
+      />
+
+      <path
+        d="M9 4V2h6v2"
+      />
+
+      <path
+        d="m9 13 2 2 4-4"
+      />
+    </svg>
+  );
+}
+
+/* =========================================================
+   STATES
+========================================================= */
+
+function LearnPageSkeleton() {
+  return (
+    <div
+      className=
+        "learn-state-page"
+    >
+      <div
+        className=
+          "skeleton heading"
+      />
+
+      <div
+        className=
+          "skeleton search"
+      />
+
+      <div
+        className=
+          "skeleton program"
+      />
+
+      <div
+        className=
+          "skeleton cards"
+      />
+    </div>
+  );
+}
+
+function LearnErrorState() {
+  return (
+    <div
+      className=
+        "learn-state-page centered"
+    >
+      <BookOpen
+        size={44}
+      />
+
+      <h1>
+        We couldn't load your
+        learning page
+      </h1>
+
+      <p>
+        Please try again in a
+        moment.
+      </p>
+
+      <button
+        type="button"
+        className=
+          "primary-button purple"
+        onClick={() =>
+          window.location
+            .reload()
+        }
+      >
+        Try Again
+      </button>
+    </div>
+  );
+}
+
+function LearnEmptyState() {
+  return (
+    <div
+      className=
+        "learn-state-page centered"
+    >
+      <LibraryBig
+        size={46}
+      />
+
+      <h1>
+        Your learning program
+        is being prepared
+      </h1>
+
+      <p>
+        Your subjects and
+        lessons will appear
+        here soon.
+      </p>
+
+      <a
+        href="/mentor-support"
+        className=
+          "primary-button green"
+      >
+        Ask Mentor
+      </a>
+    </div>
+  );
+}
