@@ -2,22 +2,19 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetStudentProfile, useGetStudentProgress, getGetStudentProfileQueryKey, getGetStudentProgressQueryKey } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   User, Star, Trophy, BookOpen, CheckSquare, School, Mail, Pencil,
   Camera, Phone, MapPin, FileText, ClipboardList, Lock, X, Check,
-  UserCheck, ChevronDown, ChevronUp, Zap, ChevronRight, BarChart3,
+  UserCheck, BarChart3,
 } from "lucide-react";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
-import { PointsHub } from "@/components/points-hub";
 
 import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
@@ -122,7 +119,6 @@ export default function ProfilePage() {
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
-  const [selectedBadgeIdx, setSelectedBadgeIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile, isLoading: profileLoading } = useGetStudentProfile({
@@ -231,8 +227,6 @@ export default function ProfilePage() {
   const rankNum     = progress?.rank ?? (student as any)?.rank ?? null;
   const streak      = (student as any)?.streak ?? 0;
 
-  const enrolledCourses: { id: number; title: string }[] = p?.enrolledCourses ?? [];
-
   const fmt = (done: number | undefined, total: number | undefined) => {
     const d = done ?? 0;
     const t = total ?? 0;
@@ -246,117 +240,6 @@ export default function ProfilePage() {
     { icon: FileText,      label: "Homework Done",      value: fmt(progress?.homeworkSubmitted, progress?.homeworkTotal),                             color: "text-blue-500 bg-blue-50" },
     { icon: ClipboardList, label: "Assignments Done",   value: fmt(progress?.assignmentsSubmitted, progress?.assignmentsTotal),                       color: "text-pink-500 bg-pink-50" },
     { icon: BookOpen,      label: "Avg Score",          value: progress?.averageScore !== undefined ? `${Math.round(progress.averageScore)}%` : "—",  color: "text-green-500 bg-green-50" },
-  ];
-
-  const allAchievements = [
-    {
-      icon: "🔥", label: "3-Day Streak", unlocked: streak >= 3,
-      bg: "#fff7ed", border: "#fed7aa", glowColor: "#fb923c",
-      description: "Login and learn for 3 days in a row without breaking your streak.",
-      requirement: `Maintain a 3-day learning streak (current: ${streak} days)`,
-      reward: "+15 Bonus XP", rewardXP: 15,
-      progress: Math.min(100, Math.round((streak / 3) * 100)),
-      progressText: `${Math.min(streak, 3)}/3 days`,
-    },
-    {
-      icon: "🔥", label: "7-Day Streak", unlocked: streak >= 7,
-      bg: "#fff7ed", border: "#fed7aa", glowColor: "#ef4444",
-      description: "A whole week of consistent learning — you're on fire!",
-      requirement: `Maintain a 7-day learning streak (current: ${streak} days)`,
-      reward: "+20 Bonus XP", rewardXP: 20,
-      progress: Math.min(100, Math.round((streak / 7) * 100)),
-      progressText: `${Math.min(streak, 7)}/7 days`,
-    },
-    {
-      icon: "⭐", label: "Points Collector", unlocked: totalPoints >= 50,
-      bg: "#fefce8", border: "#fde68a", glowColor: "#eab308",
-      description: "You've collected your first real XP by completing activities on Braintam.",
-      requirement: `Earn 50 total XP (current: ${totalPoints} XP)`,
-      reward: "+10 Bonus XP", rewardXP: 10,
-      progress: Math.min(100, Math.round((totalPoints / 50) * 100)),
-      progressText: `${Math.min(totalPoints, 50)}/50 XP`,
-    },
-    {
-      icon: "💎", label: "XP Pro (200+)", unlocked: totalPoints >= 200,
-      bg: "#f0f9ff", border: "#bae6fd", glowColor: "#3b82f6",
-      description: "You've proven yourself as a dedicated learner with 200+ XP earned.",
-      requirement: `Earn 200 total XP (current: ${totalPoints} XP)`,
-      reward: "+25 Bonus XP", rewardXP: 25,
-      progress: Math.min(100, Math.round((totalPoints / 200) * 100)),
-      progressText: `${Math.min(totalPoints, 200)}/200 XP`,
-    },
-    {
-      icon: "🏅", label: "First Quiz Done", unlocked: (progress?.testsAttempted ?? 0) > 0,
-      bg: "#f0fdf4", border: "#bbf7d0", glowColor: "#22c55e",
-      description: "You took the leap! Completing your first test shows real courage.",
-      requirement: `Attempt at least 1 test (completed: ${progress?.testsAttempted ?? 0})`,
-      reward: "+15 Bonus XP", rewardXP: 15,
-      progress: (progress?.testsAttempted ?? 0) > 0 ? 100 : 0,
-      progressText: `${progress?.testsAttempted ?? 0}/1 tests`,
-    },
-    {
-      icon: "🚀", label: "Course Explorer", unlocked: (progress?.coursesCompleted ?? 0) > 0,
-      bg: "#eff6ff", border: "#bfdbfe", glowColor: "#6366f1",
-      description: "You've completed your first full course — the universe is your playground!",
-      requirement: `Complete at least 1 course (completed: ${progress?.coursesCompleted ?? 0})`,
-      reward: "+50 Bonus XP", rewardXP: 50,
-      progress: (progress?.coursesCompleted ?? 0) > 0 ? 100 : 0,
-      progressText: `${progress?.coursesCompleted ?? 0}/1 courses`,
-    },
-    {
-      icon: "🧪", label: "Multi-Subject Learner", unlocked: (progress?.subjectWise?.length ?? 0) >= 2,
-      bg: "#faf5ff", border: "#e9d5ff", glowColor: "#8b5cf6",
-      description: "Learning across multiple subjects shows true academic curiosity!",
-      requirement: `Study at least 2 subjects (current: ${progress?.subjectWise?.length ?? 0})`,
-      reward: "+20 Bonus XP", rewardXP: 20,
-      progress: Math.min(100, Math.round(((progress?.subjectWise?.length ?? 0) / 2) * 100)),
-      progressText: `${progress?.subjectWise?.length ?? 0}/2 subjects`,
-    },
-    {
-      icon: "🏆", label: "Top 5 Learner", unlocked: !!rankNum && rankNum <= 5,
-      bg: "#fefce8", border: "#fde68a", glowColor: "#f59e0b",
-      description: "You're in the top 5 on your grade's leaderboard — absolutely elite!",
-      requirement: `Reach rank #5 or higher (current rank: ${rankNum ? `#${rankNum}` : "unranked"})`,
-      reward: "+100 Bonus XP", rewardXP: 100,
-      progress: rankNum ? Math.min(100, Math.round(((10 - Math.min(rankNum, 10)) / 5) * 100)) : 0,
-      progressText: rankNum ? `Rank #${rankNum}` : "Not yet ranked",
-    },
-    {
-      icon: "🌍", label: "Earth Explorer", unlocked: totalPoints >= 0,
-      bg: "#f0fdf4", border: "#86efac", glowColor: "#22c55e",
-      description: "You began your Braintam Space Journey! Every champion starts on Earth.",
-      requirement: "Create your account and start learning",
-      reward: "🎖 Explorer Badge", rewardXP: 0,
-      progress: 100,
-      progressText: "Completed!",
-    },
-    {
-      icon: "🌙", label: "Moon Explorer", unlocked: totalPoints >= 100,
-      bg: "#f8fafc", border: "#cbd5e1", glowColor: "#94a3b8",
-      description: "Reach 100 XP to launch from Earth and land on the Moon!",
-      requirement: `Earn 100 XP (current: ${totalPoints} XP)`,
-      reward: "🌙 Moon Badge", rewardXP: 30,
-      progress: Math.min(100, Math.round((totalPoints / 100) * 100)),
-      progressText: `${Math.min(totalPoints, 100)}/100 XP`,
-    },
-    {
-      icon: "🔴", label: "Mars Explorer", unlocked: totalPoints >= 300,
-      bg: "#fff1f2", border: "#fecdd3", glowColor: "#ef4444",
-      description: "Conquer Mars by earning 300 XP — you're a true space explorer!",
-      requirement: `Earn 300 XP (current: ${totalPoints} XP)`,
-      reward: "🔴 Mars Badge", rewardXP: 50,
-      progress: Math.min(100, Math.round((totalPoints / 300) * 100)),
-      progressText: `${Math.min(totalPoints, 300)}/300 XP`,
-    },
-    {
-      icon: "🪐", label: "Saturn Explorer", unlocked: totalPoints >= 600,
-      bg: "#fffbeb", border: "#fde68a", glowColor: "#f59e0b",
-      description: "Reach Saturn's rings at 600 XP — you're among the greats!",
-      requirement: `Earn 600 XP (current: ${totalPoints} XP)`,
-      reward: "🪐 Saturn Ring", rewardXP: 100,
-      progress: Math.min(100, Math.round((totalPoints / 600) * 100)),
-      progressText: `${Math.min(totalPoints, 600)}/600 XP`,
-    },
   ];
 
   return (
@@ -587,32 +470,6 @@ export default function ProfilePage() {
       {/* ── Content ── */}
       <div className="p-4 md:p-6 md:max-w-5xl md:mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
 
-        {/* Enrolled Courses */}
-        <div
-          className="rounded-2xl p-4 flex items-center gap-3"
-          style={{ background: `linear-gradient(135deg, ${NAVY}, #123D7A)` }}
-        >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-            style={{ background: "rgba(212,175,55,0.2)" }}>👑</div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm">Enrolled Courses</p>
-            {profileLoading
-              ? <div className="h-3 w-40 bg-white/20 rounded animate-pulse mt-1" />
-              : <p className="text-white/60 text-xs mt-0.5 line-clamp-2">
-                  {enrolledCourses.length > 0
-                    ? enrolledCourses.map(c => c.title).join(" · ")
-                    : "No courses enrolled yet"}
-                </p>
-            }
-          </div>
-          {enrolledCourses.length > 0 && (
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full flex-shrink-0"
-              style={{ background: "#D4AF37", color: NAVY }}>
-              {enrolledCourses.length} Active
-            </span>
-          )}
-        </div>
-
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           {statsCards.map((s, i) => (
@@ -635,316 +492,140 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* Two-column layout on desktop */}
+
+        {/* Mentor & Poll Performance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Left column: score + subject progress */}
-          <div className="space-y-5">
-            {/* Average score */}
-            {!progressLoading && progress?.averageScore !== undefined && (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="font-semibold">Average Test Score</span>
-                    <span className="font-bold text-primary">{Math.round(progress.averageScore)}%</span>
-                  </div>
-                  <Progress value={progress.averageScore} className="h-3" />
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Subject Progress */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Subject Progress</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {progressLoading
-                  ? [...Array(4)].map((_, i) => <Skeleton key={i} className="w-full h-6" />)
-                  : (progress?.subjectWise ?? []).length === 0
-                    ? <p className="text-sm text-muted-foreground text-center py-3">No subject data yet</p>
-                    : (progress?.subjectWise ?? []).map(sp => (
-                        <div key={sp.subjectId} data-testid={`progress-${sp.subjectId}`}>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-medium">{sp.subjectName}</span>
-                            <span className="text-muted-foreground">{Math.round(sp.progress)}%</span>
-                          </div>
-                          <Progress value={sp.progress} className="h-2" />
-                        </div>
-                      ))
-                }
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right column: achievements + teacher + points hub */}
-          <div className="space-y-5">
-            {/* Achievement Gallery */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">🏅 Achievement Gallery</h2>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Tap a badge to learn more</p>
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-full font-bold"
-                  style={{ background: "rgba(11,43,107,0.08)", color: NAVY }}>
-                  {allAchievements.filter(a => a.unlocked).length}/{allAchievements.length} earned
-                </span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                {allAchievements.map((ach, idx) => (
-                  <motion.button
-                    key={ach.label}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setSelectedBadgeIdx(selectedBadgeIdx === idx ? null : idx)}
-                    className="relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl border text-center cursor-pointer transition-all"
-                    style={{
-                      background: ach.unlocked ? ach.bg : "#f9f9f9",
-                      borderColor: selectedBadgeIdx === idx ? ach.glowColor : ach.unlocked ? ach.border : "#e5e7eb",
-                      boxShadow: selectedBadgeIdx === idx ? `0 0 12px ${ach.glowColor}55` : ach.unlocked ? `0 2px 8px ${ach.glowColor}22` : "none",
-                    }}
-                    data-testid={`badge-${ach.label.replace(/\s+/g, "-").toLowerCase()}`}
-                  >
-                    <span className={`text-2xl leading-none ${ach.unlocked ? "" : "grayscale opacity-40"}`}>
-                      {ach.icon}
-                    </span>
-                    <span className={`text-[10px] font-bold leading-tight ${ach.unlocked ? "text-gray-700" : "text-gray-400"}`}>
-                      {ach.label}
-                    </span>
-                    {ach.unlocked ? (
-                      <span className="absolute top-1 right-1.5 text-[8px] font-black text-green-600 bg-green-100 rounded-full px-1">✓</span>
-                    ) : (
-                      <div className="w-full px-1">
-                        <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-orange-400" style={{ width: `${ach.progress}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </motion.button>
-                ))}
-              </div>
-
-              {/* Badge detail panel */}
-              <AnimatePresence>
-                {selectedBadgeIdx !== null && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-3 rounded-3xl border p-4 relative"
-                    style={{
-                      background: allAchievements[selectedBadgeIdx].unlocked
-                        ? allAchievements[selectedBadgeIdx].bg
-                        : "#f9f9f9",
-                      borderColor: allAchievements[selectedBadgeIdx].glowColor + "66",
-                      boxShadow: `0 4px 20px ${allAchievements[selectedBadgeIdx].glowColor}22`,
-                    }}
-                  >
-                    <button
-                      onClick={() => setSelectedBadgeIdx(null)}
-                      className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
-                    >
-                      <X className="w-3 h-3 text-gray-600" />
-                    </button>
-                    <div className="flex items-start gap-3">
-                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
-                        style={{ background: allAchievements[selectedBadgeIdx].border + "66" }}>
-                        {allAchievements[selectedBadgeIdx].unlocked
-                          ? allAchievements[selectedBadgeIdx].icon
-                          : <span className="grayscale opacity-50">{allAchievements[selectedBadgeIdx].icon}</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-black text-gray-800">{allAchievements[selectedBadgeIdx].label}</h3>
-                          {allAchievements[selectedBadgeIdx].unlocked ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">✓ Earned</span>
-                          ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">🔒 Locked</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">{allAchievements[selectedBadgeIdx].description}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-start gap-2 text-xs text-gray-600">
-                        <span className="font-bold text-gray-400 flex-shrink-0">Requirement:</span>
-                        <span>{allAchievements[selectedBadgeIdx].requirement}</span>
-                      </div>
-                      {!allAchievements[selectedBadgeIdx].unlocked && (
-                        <div>
-                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                            <span>Progress</span>
-                            <span className="font-bold">{allAchievements[selectedBadgeIdx].progressText}</span>
-                          </div>
-                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <motion.div className="h-full rounded-full"
-                              initial={{ width: 0 }}
-                              animate={{ width: `${allAchievements[selectedBadgeIdx].progress}%` }}
-                              transition={{ duration: 0.6 }}
-                              style={{ background: `linear-gradient(90deg, ${allAchievements[selectedBadgeIdx].glowColor}, ${allAchievements[selectedBadgeIdx].glowColor}99)` }} />
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-1">
-                        <Zap className="w-3.5 h-3.5 text-yellow-500" />
-                        <span className="text-xs font-bold" style={{ color: "#ca8a04" }}>Reward: {allAchievements[selectedBadgeIdx].reward}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Know Your Mentor */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-              <Card className="border-2 border-blue-100 overflow-hidden">
-                <CardContent className="p-0">
-                  {/* Header strip */}
-                  <div className="flex items-center gap-3 px-4 py-3"
-                    style={{ background: `linear-gradient(135deg,${NAVY},#1A3F8A)` }}>
-                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                      <UserCheck className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-white">Know Your Mentor</p>
-                      <p className="text-[11px] text-blue-200">Your dedicated guide &amp; support</p>
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  <div className="px-4 py-3">
-                    {myMentor === "loading" ? (
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gray-100 animate-pulse" />
-                        <div className="space-y-2 flex-1">
-                          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
-                          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
-                        </div>
-                      </div>
-                    ) : myMentor === null ? (
-                      <div className="flex items-center gap-3 py-1">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: "#F3F4F6" }}>
-                          <UserCheck className="w-5 h-5 text-gray-300" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-400">No mentor assigned yet</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Your admin will assign one soon</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        {/* Avatar circle with initial */}
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-lg"
-                          style={{ background: `linear-gradient(135deg,${ORANGE},#e85d04)` }}>
-                          {myMentor.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-gray-800 truncate">{myMentor.name}</p>
-                          {myMentor.phone ? (
-                            <a href={`tel:${myMentor.phone}`}
-                              className="flex items-center gap-1 mt-1 group">
-                              <Phone className="w-3 h-3 flex-shrink-0" style={{ color: NAVY }} />
-                              <span className="text-xs font-semibold group-hover:underline" style={{ color: NAVY }}>
-                                {myMentor.phone}
-                              </span>
-                            </a>
-                          ) : (
-                            <p className="text-xs text-gray-400 mt-0.5">No contact number added</p>
-                          )}
-                          {myMentor.email && (
-                            <p className="text-[11px] text-gray-400 mt-0.5 truncate">{myMentor.email}</p>
-                          )}
-                        </div>
-                        <div className="flex-shrink-0">
-                          <span className="text-[10px] font-bold px-2 py-1 rounded-full"
-                            style={{ background: "#ECFDF5", color: "#059669" }}>
-                            Active
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Live Poll Performance */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
-              <Card className="overflow-hidden">
+          {/* Know Your Mentor */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <Card className="border-2 border-blue-100 overflow-hidden">
+              <CardContent className="p-0">
                 <div className="flex items-center gap-3 px-4 py-3"
                   style={{ background: `linear-gradient(135deg,${NAVY},#1A3F8A)` }}>
                   <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                    <BarChart3 className="w-4 h-4 text-white" />
+                    <UserCheck className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-white">Live Poll Performance</p>
-                    <p className="text-[11px] text-blue-200">Your answers from live class polls</p>
+                    <p className="font-bold text-sm text-white">Know Your Mentor</p>
+                    <p className="text-[11px] text-blue-200">Your dedicated guide &amp; support</p>
                   </div>
                 </div>
-
-                <CardContent className="px-4 py-3">
-                  {pollHistory === "loading" ? (
-                    <div className="space-y-2">
-                      <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
-                      <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+                <div className="px-4 py-3">
+                  {myMentor === "loading" ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 animate-pulse" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+                      </div>
                     </div>
-                  ) : !pollHistory || pollHistory.totalAnswered === 0 ? (
-                    <p className="text-sm text-gray-400 py-1">No poll answers yet — join a live class to participate!</p>
+                  ) : myMentor === null ? (
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: "#F3F4F6" }}>
+                        <UserCheck className="w-5 h-5 text-gray-300" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-400">No mentor assigned yet</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Your admin will assign one soon</p>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        <div className="text-center rounded-xl py-2" style={{ background: "#F3F4F6" }}>
-                          <p className="text-lg font-black" style={{ color: NAVY }}>{pollHistory.totalAnswered}</p>
-                          <p className="text-[10px] text-gray-500 font-semibold">Answered</p>
-                        </div>
-                        <div className="text-center rounded-xl py-2" style={{ background: "#ECFDF5" }}>
-                          <p className="text-lg font-black" style={{ color: "#059669" }}>{pollHistory.totalCorrect}</p>
-                          <p className="text-[10px] text-gray-500 font-semibold">Correct</p>
-                        </div>
-                        <div className="text-center rounded-xl py-2" style={{ background: "#FFF7ED" }}>
-                          <p className="text-lg font-black" style={{ color: ORANGE }}>{pollHistory.accuracyPct}%</p>
-                          <p className="text-[10px] text-gray-500 font-semibold">Accuracy</p>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-lg"
+                        style={{ background: `linear-gradient(135deg,${ORANGE},#e85d04)` }}>
+                        {myMentor.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                        {pollHistory.history.slice(0, 20).map(h => (
-                          <div key={h.id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
-                            <span className="mt-0.5 flex-shrink-0">
-                              {h.isCorrect
-                                ? <Check className="w-3.5 h-3.5 text-green-500" />
-                                : <X className="w-3.5 h-3.5 text-red-400" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-gray-800 truncate">{myMentor.name}</p>
+                        {myMentor.phone ? (
+                          <a href={`tel:${myMentor.phone}`} className="flex items-center gap-1 mt-1 group">
+                            <Phone className="w-3 h-3 flex-shrink-0" style={{ color: NAVY }} />
+                            <span className="text-xs font-semibold group-hover:underline" style={{ color: NAVY }}>
+                              {myMentor.phone}
                             </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-700 truncate">{h.pollQuestion}</p>
-                              <p className="text-[11px] text-gray-400 truncate">Answered: {h.optionText}</p>
-                            </div>
-                            <span className="text-[10px] text-gray-400 flex-shrink-0">
-                              {new Date(h.answeredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                            </span>
-                          </div>
-                        ))}
+                          </a>
+                        ) : (
+                          <p className="text-xs text-gray-400 mt-0.5">No contact number added</p>
+                        )}
+                        {myMentor.email && (
+                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{myMentor.email}</p>
+                        )}
                       </div>
-                    </>
+                      <div className="flex-shrink-0">
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full"
+                          style={{ background: "#ECFDF5", color: "#059669" }}>
+                          Active
+                        </span>
+                      </div>
+                    </div>
                   )}
-                </CardContent>
-              </Card>
-            </motion.div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-            {/* Points Hub */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <PointsHub
-                data={{
-                  totalPoints:       progress?.totalPoints ?? student?.points ?? 0,
-                  rank:              progress?.rank        ?? student?.rank  ?? null,
-                  streakDays:        student?.streak       ?? 0,
-                  dailyLoginClaimed: (p as any)?.dailyLoginClaimed ?? false,
-                }}
-                isLoading={progressLoading}
-              />
-            </motion.div>
-          </div>
+          {/* Live Poll Performance */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+            <Card className="overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3"
+                style={{ background: `linear-gradient(135deg,${NAVY},#1A3F8A)` }}>
+                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                  <BarChart3 className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-white">Live Poll Performance</p>
+                  <p className="text-[11px] text-blue-200">Your answers from live class polls</p>
+                </div>
+              </div>
+              <CardContent className="px-4 py-3">
+                {pollHistory === "loading" ? (
+                  <div className="space-y-2">
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+                  </div>
+                ) : !pollHistory || pollHistory.totalAnswered === 0 ? (
+                  <p className="text-sm text-gray-400 py-1">No poll answers yet — join a live class to participate!</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="text-center rounded-xl py-2" style={{ background: "#F3F4F6" }}>
+                        <p className="text-lg font-black" style={{ color: NAVY }}>{pollHistory.totalAnswered}</p>
+                        <p className="text-[10px] text-gray-500 font-semibold">Answered</p>
+                      </div>
+                      <div className="text-center rounded-xl py-2" style={{ background: "#ECFDF5" }}>
+                        <p className="text-lg font-black" style={{ color: "#059669" }}>{pollHistory.totalCorrect}</p>
+                        <p className="text-[10px] text-gray-500 font-semibold">Correct</p>
+                      </div>
+                      <div className="text-center rounded-xl py-2" style={{ background: "#FFF7ED" }}>
+                        <p className="text-lg font-black" style={{ color: ORANGE }}>{pollHistory.accuracyPct}%</p>
+                        <p className="text-[10px] text-gray-500 font-semibold">Accuracy</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                      {pollHistory.history.slice(0, 20).map(h => (
+                        <div key={h.id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                          <span className="mt-0.5 flex-shrink-0">
+                            {h.isCorrect
+                              ? <Check className="w-3.5 h-3.5 text-green-500" />
+                              : <X className="w-3.5 h-3.5 text-red-400" />}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-700 truncate">{h.pollQuestion}</p>
+                            <p className="text-[11px] text-gray-400 truncate">Answered: {h.optionText}</p>
+                          </div>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">
+                            {new Date(h.answeredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
         </div>
       </div>
     </AppLayout>
