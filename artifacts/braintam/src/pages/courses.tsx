@@ -909,63 +909,75 @@ function AuthCoursesView() {
     return Object.values(map);
   }, [courses]);
 
+  // Subject icon/color helpers
+  const getSubjStyle = (name: string, fallbackIdx: number) => {
+    const n = name.toLowerCase();
+    if (n.includes("math")) return { color: "#2563eb", icon: "123", text: true };
+    if (n.includes("science")) return { color: "#059669", icon: "🧪", text: false };
+    if (n.includes("english")) return { color: "#ea580c", icon: "📖", text: false };
+    if (n.includes("hindi")) return { color: "#db2777", icon: "अ", text: true };
+    if (n.includes("computer")) return { color: "#7c3aed", icon: "💻", text: false };
+    if (n.includes("evs") || n.includes("environment")) return { color: "#0891b2", icon: "🌍", text: false };
+    if (n.includes("social") || n.includes("sst")) return { color: "#b45309", icon: "🗺️", text: false };
+    return { color: SUBJ_COLORS[fallbackIdx % SUBJ_COLORS.length], icon: SUBJ_EMOJIS[fallbackIdx % SUBJ_EMOJIS.length], text: false };
+  };
+
+  const continueLearningSubj = subjectProgress.filter(s => s.done > 0)
+    .sort((a, b) => (b.done / Math.max(b.total, 1)) - (a.done / Math.max(a.total, 1)))[0] ?? null;
+
   return (
     <AppLayout>
-      {/* Navy header */}
-      <div
-        className="px-4 pt-5 pb-4 relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg,#0A2342 0%,#123D7A 100%)" }}
-      >
-        <div
-          className="absolute inset-0 pointer-events-none opacity-5"
-          style={{ backgroundImage: "radial-gradient(circle,white 1px,transparent 1px)", backgroundSize: "24px 24px" }}
-        />
-        <div className="relative">
-          <p className="text-white/60 text-xs font-medium">Grade {student?.grade ?? "—"}</p>
-          <h1 className="text-white text-xl font-extrabold mt-0.5">My Learning</h1>
-          <p className="text-white/50 text-xs mt-0.5">Explore your subjects and keep learning</p>
-        </div>
+      {/* ── WHITE HEADER ── */}
+      <div style={{ background: "white", borderBottom: "1px solid #f0f4f8" }}>
+        <div className="px-4 pt-5 pb-4 max-w-5xl mx-auto relative overflow-hidden">
+          {/* Desktop decorative */}
+          <div className="hidden md:block absolute right-6 top-2 pointer-events-none select-none" style={{ lineHeight: 1 }}>
+            <div style={{ fontSize: 58, animation: "float 6s ease-in-out infinite" }}>🌍</div>
+            <div style={{ fontSize: 40, textAlign: "right", marginTop: -6, animation: "float 5s ease-in-out infinite 0.8s" }}>👨‍🚀</div>
+          </div>
 
-        {/* Tab switcher inside header */}
-        <div className="relative mt-4 flex gap-1 bg-white/10 rounded-xl p-1 w-fit">
-          <button
-            onClick={() => setActiveTab("current")}
-            className="px-4 py-2 rounded-lg text-xs font-black transition-all"
-            style={{
-              background: activeTab === "current" ? "white" : "transparent",
-              color: activeTab === "current" ? "#0A2342" : "rgba(255,255,255,0.65)",
-              boxShadow: activeTab === "current" ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
-            }}
-          >
-            📚 Current Learning
-          </button>
-          <button
-            onClick={() => setActiveTab("completed")}
-            className="px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5"
-            style={{
-              background: activeTab === "completed" ? "white" : "transparent",
-              color: activeTab === "completed" ? "#059669" : "rgba(255,255,255,0.65)",
-              boxShadow: activeTab === "completed" ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
-            }}
-          >
-            ✓ Completed Courses
-            {completedCourses.length > 0 && (
-              <span
-                className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
-                style={{ background: activeTab === "completed" ? "#059669" : "rgba(255,255,255,0.25)", color: "white" }}
-              >
-                {completedCourses.length}
-              </span>
-            )}
-          </button>
+          <h1 className="text-2xl md:text-3xl font-black leading-tight" style={{ color: NAVY }}>
+            My Learning <span style={{ fontStyle: "normal" }}>📖</span>
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">Explore your subjects and keep learning</p>
+
+          {/* Tab pills */}
+          <div className="flex gap-2 mt-4 flex-wrap">
+            <button
+              onClick={() => setActiveTab("current")}
+              className="px-5 py-2 rounded-full text-sm font-black transition-all"
+              style={{
+                background: activeTab === "current" ? NAVY : "#f1f5f9",
+                color: activeTab === "current" ? "white" : "#64748b",
+              }}
+            >
+              Current Learning
+            </button>
+            <button
+              onClick={() => setActiveTab("completed")}
+              className="px-5 py-2 rounded-full text-sm font-black transition-all flex items-center gap-1.5"
+              style={{
+                background: activeTab === "completed" ? "#059669" : "#f1f5f9",
+                color: activeTab === "completed" ? "white" : "#64748b",
+              }}
+            >
+              Completed Courses
+              {completedCourses.length > 0 && (
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.3)" }}>
+                  {completedCourses.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="p-4 md:p-6 max-w-5xl mx-auto" style={{ background: "#F8FAFC" }}>
+      {/* ── CONTENT AREA ── */}
+      <div className="px-4 pb-8 py-4 md:p-6 max-w-5xl mx-auto space-y-4" style={{ background: "#f8fafc" }}>
 
-        {/* ── COMPLETED COURSES TAB ── */}
+        {/* ════════ COMPLETED COURSES TAB ════════ */}
         {activeTab === "completed" && (
-          <div className="space-y-4 pt-1">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="text-base">🎓</span>
               <h2 className="text-sm font-black uppercase tracking-wide" style={{ color: NAVY }}>Completed Courses</h2>
@@ -975,49 +987,32 @@ function AuthCoursesView() {
                 </span>
               )}
             </div>
-
             {completedLoading ? (
-              <div className="space-y-4">
-                {[1, 2].map(i => <Skeleton key={i} className="h-44 rounded-2xl" />)}
-              </div>
+              <div className="space-y-4">{[1, 2].map(i => <Skeleton key={i} className="h-44 rounded-2xl" />)}</div>
             ) : completedCourses.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                className="text-center py-16 rounded-2xl border-2 border-dashed border-gray-200 bg-white"
-              >
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                className="text-center py-16 rounded-2xl border-2 border-dashed border-gray-200 bg-white">
                 <div className="text-5xl mb-3">🎓</div>
                 <p className="text-sm font-bold text-gray-700">No completed courses yet</p>
                 <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
-                  Your completed programs will appear here — all lessons, recordings, and materials will stay accessible.
+                  Your completed programs will appear here — all lessons, recordings, and materials stay accessible.
                 </p>
               </motion.div>
             ) : (
               <div className="space-y-4">
                 {completedCourses.map((c, i) => (
-                  <motion.div
-                    key={c.enrollmentId}
+                  <motion.div key={c.enrollmentId}
                     initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                     className="rounded-2xl overflow-hidden bg-white"
-                    style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)", border: "1.5px solid #d1fae5" }}
-                  >
-                    {/* Green top accent */}
-                    <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #059669, #34d399)" }} />
+                    style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)", border: "1.5px solid #d1fae5" }}>
+                    <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg,#059669,#34d399)" }} />
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          {/* Badge row */}
                           <div className="flex items-center gap-2 flex-wrap mb-2">
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "#d1fae5", color: "#059669" }}>
-                              ✓ Completed
-                            </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
-                              Grade {c.grade}
-                            </span>
-                            {c.academicYear && (
-                              <span className="text-[10px] font-bold text-gray-400">
-                                Academic Year {c.academicYear}
-                              </span>
-                            )}
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "#d1fae5", color: "#059669" }}>✓ Completed</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Grade {c.grade}</span>
+                            {c.academicYear && <span className="text-[10px] font-bold text-gray-400">Academic Year {c.academicYear}</span>}
                           </div>
                           <h3 className="text-base font-black leading-tight" style={{ color: NAVY }}>{c.courseTitle}</h3>
                           {c.completedAt && (
@@ -1025,20 +1020,13 @@ function AuthCoursesView() {
                               Completed {new Date(c.completedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             </p>
                           )}
-                          {c.completionNote && (
-                            <p className="text-[11px] italic text-gray-400 mt-0.5">{c.completionNote}</p>
-                          )}
                         </div>
-                        {/* Lock icon */}
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#f0fdf4" }}>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                            <path d="m9 12 2 2 4-4" />
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="m9 12 2 2 4-4" />
                           </svg>
                         </div>
                       </div>
-
-                      {/* Stats row */}
                       <div className="mt-4 grid grid-cols-4 gap-2">
                         {[
                           { icon: "📚", count: c.subjectCount, label: "Subjects" },
@@ -1053,28 +1041,20 @@ function AuthCoursesView() {
                           </div>
                         ))}
                       </div>
-
-                      {/* CTA */}
-                      <div className="mt-4 flex gap-2">
-                        <Link href={`/courses/${c.courseId}`} className="flex-1">
-                          <button
-                            className="w-full py-2.5 rounded-xl text-xs font-black text-white transition-all hover:opacity-90"
-                            style={{ background: "linear-gradient(135deg, #059669, #34d399)" }}
-                          >
-                            Open Completed Course →
-                          </button>
-                        </Link>
-                      </div>
+                      <Link href={`/courses/${c.courseId}`} className="block mt-4">
+                        <button className="w-full py-2.5 rounded-xl text-xs font-black text-white transition-all hover:opacity-90"
+                          style={{ background: "linear-gradient(135deg,#059669,#34d399)" }}>
+                          Open Completed Course →
+                        </button>
+                      </Link>
                     </div>
                   </motion.div>
                 ))}
-
-                {/* Info callout */}
                 <div className="rounded-xl p-4 flex gap-3 items-start" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
                   <span className="text-lg flex-shrink-0">ℹ️</span>
                   <p className="text-xs text-green-700 font-medium leading-relaxed">
                     All content in completed courses — lessons, recordings, and study materials — remains accessible for review.
-                    New homework and test submissions are closed unless your admin reopens the course.
+                    New submissions are closed unless your admin reopens the course.
                   </p>
                 </div>
               </div>
@@ -1082,346 +1062,301 @@ function AuthCoursesView() {
           </div>
         )}
 
-        {/* ── CURRENT LEARNING TAB ── */}
-        {activeTab === "current" && <div className="space-y-5 pt-1">
-
-        {/* Continue Learning — subject progress cards */}
-        {subjectProgress.length > 0 && (
-          <div>
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Continue Learning</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {subjectProgress.map(sp => {
-                const pct   = sp.total > 0 ? Math.round((sp.done / sp.total) * 100) : 0;
-                const color = SUBJ_COLORS[sp.idx % SUBJ_COLORS.length];
-                const emoji = SUBJ_EMOJIS[sp.idx % SUBJ_EMOJIS.length];
-                return (
-                  <div
-                    key={sp.id}
-                    className="rounded-2xl p-3.5"
-                    style={{ background: "white", boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-xl mb-2 flex items-center justify-center text-lg"
-                      style={{ background: `${color}18` }}
-                    >{emoji}</div>
-                    <div className="text-xs font-bold text-gray-800 truncate">{sp.name}</div>
-                    <div className="text-[10px] text-gray-400 mb-2">{pct}% complete</div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
-                    </div>
-                    <button
-                      className="w-full text-[10px] font-bold py-1.5 rounded-lg text-white"
-                      style={{ background: color }}
-                      onClick={() => setSubject(String(sp.id))}
-                    >
-                      Continue →
-                    </button>
-                  </div>
-                );
-              })}
+        {/* ════════ CURRENT LEARNING TAB ════════ */}
+        {activeTab === "current" && (
+          <>
+            {/* Search row */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search subjects or lessons..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-10 h-11 text-sm rounded-2xl border-gray-200 bg-white"
+                  data-testid="search-courses"
+                />
+              </div>
+              <Select value={subject} onValueChange={setSubject}>
+                <SelectTrigger className="w-36 h-11 text-sm rounded-2xl border-gray-200 bg-white font-semibold" data-testid="subject-filter">
+                  <SelectValue placeholder="All Subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {(subjects ?? []).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-        )}
 
-        {/* ── Animated Videos Banner ── */}
-        <Link href="/animated-videos">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            transition={{ duration: 0.25 }}
-            className="relative overflow-hidden rounded-2xl cursor-pointer select-none"
-            style={{
-              background: "linear-gradient(135deg, #c8f7dc 0%, #a7f3c8 40%, #d1fae5 100%)",
-              border: "1.5px solid #6ee7b7",
-              boxShadow: "0 4px 20px rgba(16,185,129,0.15)",
-            }}
-          >
-            {/* decorative stars */}
-            <span className="absolute top-3 right-40 text-xl pointer-events-none select-none opacity-70">⭐</span>
-            <span className="absolute bottom-4 right-56 text-sm pointer-events-none select-none opacity-60">✨</span>
-            <span className="absolute top-5 left-1/2 text-xs pointer-events-none select-none opacity-50 hidden md:block">⭐</span>
-
-            <div className="flex items-center gap-4 md:gap-6 px-5 md:px-8 py-5 md:py-6">
-              {/* TV character */}
-              <div className="relative flex-shrink-0">
-                <div
-                  className="w-16 h-14 md:w-20 md:h-18 rounded-2xl flex items-center justify-center text-4xl md:text-5xl shadow-md"
-                  style={{ background: "linear-gradient(145deg, #34d399, #059669)", fontSize: "clamp(32px,5vw,48px)" }}
-                >
-                  📺
-                </div>
-                {/* play button badge */}
-                <div
-                  className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
-                  style={{ background: "#059669" }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="white">
-                    <polygon points="2,1 9,5 2,9" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* text */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] md:text-xs font-black uppercase tracking-widest mb-0.5" style={{ color: "#065f46" }}>
-                  <span className="hidden md:inline">Learn with </span>Animated Videos
-                </p>
-                <h3 className="text-lg md:text-2xl font-black leading-tight" style={{ color: "#064e3b" }}>
-                  <span className="md:hidden">ANIMATED VIDEOS</span>
-                  <span className="hidden md:inline">LEARN WITH ANIMATED VIDEOS</span>
-                </h3>
-                <p className="text-xs md:text-sm mt-1 md:mt-1.5 font-medium" style={{ color: "#047857" }}>
-                  Fun videos and stories that make learning easy!
-                </p>
-                {/* mobile button */}
-                <button
-                  className="mt-3 md:hidden inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black text-white shadow-md"
-                  style={{ background: "#059669" }}
-                >
-                  Explore Videos →
-                </button>
-              </div>
-
-              {/* desktop button + popcorn */}
-              <div className="hidden md:flex items-center gap-4 flex-shrink-0">
-                <button
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-black text-white shadow-md whitespace-nowrap"
-                  style={{ background: "#059669", boxShadow: "0 4px 14px rgba(5,150,105,0.4)" }}
-                >
-                  Explore Videos →
-                </button>
-                <span className="text-4xl select-none">🍿</span>
-              </div>
-
-              {/* mobile popcorn (right side) */}
-              <span className="md:hidden text-3xl flex-shrink-0 select-none">🍿</span>
-            </div>
-          </motion.div>
-        </Link>
-
-        {/* Search + filter */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <Input
-              placeholder="Search courses..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm rounded-xl"
-              data-testid="search-courses"
-            />
-          </div>
-          <Select value={subject} onValueChange={setSubject}>
-            <SelectTrigger className="w-36 h-9 text-sm rounded-xl" data-testid="subject-filter">
-              <SelectValue placeholder="All Subjects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {(subjects ?? []).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Course cards */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-72 rounded-3xl" />)}
-          </div>
-        ) : (courses ?? []).length === 0 ? (
-          <motion.div className="text-center py-20 rounded-3xl border-2 border-dashed border-gray-200"
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="text-5xl mb-4">🚀</div>
-            {(search || subject !== "all") ? (
-              <>
-                <p className="text-base font-bold text-gray-700">No courses found</p>
-                <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
-              </>
-            ) : (
-              <>
-                <p className="text-base font-bold text-gray-700">Your learning adventure is about to begin</p>
-                <p className="text-sm text-gray-400 mt-2 max-w-xs mx-auto">
-                  You'll see your courses here once your teacher enrolls you. Contact your admin to get started!
-                </p>
-              </>
-            )}
-          </motion.div>
-        ) : (
-          <div className="space-y-5">
-            {/* ── Ignite Courses (demo batches blended in) ── */}
-            {demoLoading && <Skeleton className="h-28 rounded-2xl" />}
-            {!demoLoading && demoBatches.map(({ batch, sessions }) => {
-              const nextSession = sessions.find(s => s.status === "upcoming" || s.status === "live");
+            {/* ── CURRENT PROGRAM card ── */}
+            {demoLoading && <Skeleton className="h-52 rounded-2xl" />}
+            {!demoLoading && demoBatches.length > 0 && (() => {
+              const { batch, sessions } = demoBatches[0];
               const completedCount = sessions.filter(s => s.status === "completed").length;
               const pct = batch.totalDays > 0 ? Math.round((completedCount / batch.totalDays) * 100) : 0;
+              const nextSession = sessions.find(s => s.status === "upcoming" || s.status === "live");
+              const displaySessions = sessions.slice(0, 5);
               return (
-                <motion.div key={batch.id}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl overflow-hidden flex"
-                  style={{ background: "white", boxShadow: "0 2px 12px rgba(5,150,105,0.10)", border: `1.5px solid ${IGNITE}30` }}>
-                  {/* Green left accent stripe */}
-                  <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: `linear-gradient(180deg, ${IGNITE}, #34d399)` }} />
-                  <div className="flex-1 p-4 min-w-0">
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl overflow-hidden"
+                  style={{ border: "1px solid #e2e8f0", borderLeft: "4px solid #059669", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                  <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
+                      {/* Left: program info */}
                       <div className="flex-1 min-w-0">
-                        {/* Badge row */}
-                        <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                            style={{ background: `${IGNITE}15`, color: IGNITE }}>✦ Ignite Course</span>
-                          {batch.grade && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-blue-50 text-blue-600">Grade {batch.grade}</span>}
-                          {batch.subject && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-purple-50 text-purple-600">{batch.subject}</span>}
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "#059669" }}>Current Program</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xl">🚀</span>
+                          <h3 className="text-base font-black" style={{ color: NAVY }}>{batch.title}</h3>
+                          {batch.grade && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Grade {batch.grade}</span>
+                          )}
                         </div>
-                        <h3 className="text-sm font-black leading-tight truncate" style={{ color: NAVY }}>{batch.title}</h3>
-                        {batch.teacherName && <p className="text-[11px] text-gray-400 mt-0.5">👩‍🏫 {batch.teacherName}</p>}
-                      </div>
-                      {/* Day counter */}
-                      <div className="text-right shrink-0">
-                        <div className="text-base font-black leading-none" style={{ color: IGNITE }}>{completedCount}<span className="text-gray-300 font-normal">/{batch.totalDays}</span></div>
-                        <div className="text-[10px] text-gray-400">days done</div>
-                      </div>
-                    </div>
+                        <p className="text-[11px] text-gray-400 mt-1.5">Day {completedCount} of {batch.totalDays} completed</p>
 
-                    {/* Progress bar */}
-                    <div className="mt-2.5 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${IGNITE}, #34d399)` }} />
-                    </div>
-
-                    {/* Session dots */}
-                    {sessions.length > 0 && (
-                      <div className="mt-2.5 flex gap-1 overflow-x-auto no-scrollbar">
-                        {sessions.map(s => {
-                          const isLive = s.status === "live";
-                          const isDone = s.status === "completed";
-                          return (
-                            <div key={s.id} className="shrink-0 text-center rounded-lg px-2 py-1 border"
-                              style={{
-                                minWidth: 44,
-                                background: isLive ? `${IGNITE}12` : isDone ? "#f0fdf4" : "#fafafa",
-                                borderColor: isLive ? IGNITE : isDone ? "#6ee7b7" : "#e5e7eb",
-                              }}>
-                              <div className="text-[10px] font-black" style={{ color: isLive ? IGNITE : isDone ? IGNITE : "#9ca3af" }}>
-                                {isLive ? "🔴 Live" : isDone ? "✓" : `D${s.dayNumber}`}
+                        {/* Day dots */}
+                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                          {displaySessions.map(s => {
+                            const isDone = s.status === "completed";
+                            const isLive = s.status === "live";
+                            return (
+                              <div key={s.id}
+                                className="flex items-center justify-center gap-0.5 px-2.5 py-1 rounded-full text-[10px] font-black border"
+                                style={{
+                                  background: isDone ? "#059669" : isLive ? "#fff7ed" : "#f8fafc",
+                                  borderColor: isDone ? "#059669" : isLive ? "#f97316" : "#e2e8f0",
+                                  color: isDone ? "white" : isLive ? "#f97316" : "#94a3b8",
+                                  minWidth: 36,
+                                }}>
+                                {isDone ? "✓" : ""} D{s.dayNumber}
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* CTA */}
-                    <div className="mt-3 flex gap-2">
-                      {nextSession?.joinUrl ? (
-                        <a href={nextSession.joinUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex-1 text-center text-xs font-black py-2 rounded-xl text-white transition-all hover:opacity-90"
-                          style={{ background: nextSession.status === "live" ? "#dc2626" : IGNITE }}>
-                          {nextSession.status === "live" ? "🔴 Join Live" : "▶ Join Next Class"}
-                        </a>
-                      ) : batch.joinLink ? (
-                        <a href={batch.joinLink} target="_blank" rel="noopener noreferrer"
-                          className="flex-1 text-center text-xs font-black py-2 rounded-xl text-white"
-                          style={{ background: IGNITE }}>▶ Open Class Link</a>
-                      ) : (
-                        <div className="flex-1 text-center text-xs py-2 rounded-xl text-gray-400 bg-gray-50 font-medium">
-                          No session scheduled yet
+                            );
+                          })}
                         </div>
-                      )}
+
+                        {/* Progress bar */}
+                        <div className="flex items-center gap-2 mt-3">
+                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "#059669" }} />
+                          </div>
+                          <span className="text-xs font-black shrink-0" style={{ color: "#059669" }}>{pct}%</span>
+                        </div>
+                      </div>
+
+                      {/* Right: next session */}
+                      <div className="shrink-0 text-right">
+                        <div className="flex items-center gap-1 justify-end">
+                          <span className="text-sm">📅</span>
+                          <span className="text-[10px] font-black" style={{ color: ORANGE }}>Next session</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-0.5 leading-tight max-w-[88px]">
+                          {nextSession
+                            ? new Date(nextSession.scheduledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                            : "No session scheduled yet"}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* View Program button */}
+                    {nextSession?.joinUrl ? (
+                      <a href={nextSession.joinUrl} target="_blank" rel="noopener noreferrer"
+                        className="mt-4 block w-full text-center py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90"
+                        style={{ background: "#059669", boxShadow: "0 4px 12px rgba(5,150,105,0.3)" }}>
+                        {nextSession.status === "live" ? "🔴 Join Live Class" : "View Program →"}
+                      </a>
+                    ) : (
+                      <button className="mt-4 w-full py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90"
+                        style={{ background: "#059669", boxShadow: "0 4px 12px rgba(5,150,105,0.3)" }}>
+                        View Program →
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               );
-            })}
+            })()}
 
-            {/* ── Enrolled courses as adventure cards ── */}
-            {(courses ?? []).filter(c => c.completedLessons != null).length > 0 && (
+            {/* ── CONTINUE LEARNING card ── */}
+            {continueLearningSubj && (() => {
+              const sp = continueLearningSubj;
+              const pct = sp.total > 0 ? Math.round((sp.done / sp.total) * 100) : 0;
+              const s = getSubjStyle(sp.name, sp.idx);
+              return (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl p-4"
+                  style={{ border: "1px solid #ede9fe", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#7c3aed" }}>Continue Learning</p>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-black"
+                      style={{ background: `${s.color}18`, fontSize: s.text ? 15 : 22, color: s.color }}>
+                      {s.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black" style={{ color: NAVY }}>{sp.name}</h3>
+                      <p className="text-[11px] text-gray-400">{sp.done} of {sp.total} lessons done</p>
+                      <div className="mt-1.5 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "#7c3aed" }} />
+                      </div>
+                      <p className="text-[10px] mt-0.5 font-semibold" style={{ color: "#7c3aed" }}>{pct}%</p>
+                    </div>
+                    <button
+                      className="px-4 py-2.5 rounded-xl text-xs font-black text-white flex-shrink-0 transition-all hover:opacity-90"
+                      style={{ background: "#7c3aed" }}
+                      onClick={() => setSubject(String(sp.id))}>
+                      Continue →
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })()}
+
+            {/* ── MY SUBJECTS horizontal scroll ── */}
+            {subjectProgress.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-base">🚀</span>
-                  <h2 className="text-sm font-black uppercase tracking-wide" style={{ color: NAVY }}>
-                    Your Learning Adventures
-                  </h2>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold ml-1"
-                    style={{ background: `rgba(255,107,26,0.1)`, color: ORANGE }}>
-                    {(courses ?? []).filter(c => c.completedLessons != null).length} Active
-                  </span>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">📖</span>
+                    <h2 className="text-sm font-black uppercase tracking-wide" style={{ color: NAVY }}>My Subjects</h2>
+                  </div>
+                  <button className="text-xs font-bold" style={{ color: "#059669" }}
+                    onClick={() => setSubject("all")}>See All ›</button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(courses ?? [])
-                    .filter(c => c.completedLessons != null)
-                    .map((course, i) => <AdventureCourseCard key={course.id} course={course} idx={i} />)}
+                <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}>
+                  {subjectProgress.map(sp => {
+                    const pct = sp.total > 0 ? Math.round((sp.done / sp.total) * 100) : 0;
+                    const s = getSubjStyle(sp.name, sp.idx);
+                    return (
+                      <div
+                        key={sp.id}
+                        className="flex-shrink-0 rounded-2xl p-3.5 bg-white flex flex-col"
+                        style={{ width: 132, scrollSnapAlign: "start", boxShadow: "0 2px 10px rgba(0,0,0,0.07)", border: "1px solid #f1f5f9" }}>
+                        {/* Colored circle icon */}
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center mb-2.5 font-black"
+                          style={{ background: s.color, color: "white", fontSize: s.text ? 14 : 22, flexShrink: 0 }}>
+                          {s.icon}
+                        </div>
+                        <p className="text-xs font-black leading-tight mb-0.5 truncate" style={{ color: NAVY }}>{sp.name}</p>
+                        <p className="text-[10px] text-gray-400 mb-2">{sp.total} Lessons</p>
+                        {/* Progress accent line */}
+                        <div className="w-full h-1 rounded-full overflow-hidden mb-1.5" style={{ background: `${s.color}20` }}>
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: s.color }} />
+                        </div>
+                        <p className="text-[9px] mb-2.5 font-semibold" style={{ color: pct > 0 ? s.color : "#94a3b8" }}>
+                          {pct > 0 ? `${pct}% Complete` : "Not Started"}
+                        </p>
+                        <button
+                          className="w-full mt-auto py-1.5 rounded-lg text-[10px] font-black border transition-all"
+                          style={{
+                            borderColor: s.color,
+                            color: pct > 0 ? "white" : s.color,
+                            background: pct > 0 ? s.color : "transparent",
+                          }}
+                          onClick={() => setSubject(String(sp.id))}>
+                          {pct > 0 ? "Continue →" : "Start Learning →"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* ── All courses (non-enrolled shown as compact cards) ── */}
-            <div>
-              {(courses ?? []).filter(c => c.completedLessons != null).length > 0 && (
+            {/* ── ANIMATED VIDEOS banner ── */}
+            <Link href="/animated-videos">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                className="relative overflow-hidden rounded-2xl cursor-pointer select-none"
+                style={{ background: "linear-gradient(135deg,#c8f7dc 0%,#a7f3c8 40%,#d1fae5 100%)", border: "1.5px solid #6ee7b7", boxShadow: "0 4px 20px rgba(16,185,129,0.15)" }}>
+                <span className="absolute top-3 right-36 text-lg opacity-60 pointer-events-none">⭐</span>
+                <span className="absolute bottom-3 right-52 text-sm opacity-50 pointer-events-none">✨</span>
+                <div className="flex items-center gap-4 px-5 py-5">
+                  {/* TV icon */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-16 h-14 rounded-2xl flex items-center justify-center text-4xl shadow-md"
+                      style={{ background: "linear-gradient(145deg,#34d399,#059669)" }}>📺</div>
+                    <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                      style={{ background: "#059669" }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="white"><polygon points="2,1 9,5 2,9" /></svg>
+                    </div>
+                  </div>
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest mb-0.5" style={{ color: "#065f46" }}>Animated Videos</p>
+                    <h3 className="text-lg font-black leading-tight" style={{ color: "#064e3b" }}>ANIMATED VIDEOS</h3>
+                    <p className="text-xs mt-1 font-medium" style={{ color: "#047857" }}>Fun videos and stories that make learning easy!</p>
+                    <button className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-black text-white shadow-md"
+                      style={{ background: "#059669" }}>Explore Videos →</button>
+                  </div>
+                  <span className="text-3xl flex-shrink-0">🍿</span>
+                </div>
+              </motion.div>
+            </Link>
+
+            {/* ── Browse All Courses (desktop search results) ── */}
+            {(search || subject !== "all") && (
+              <div>
                 <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-                  Browse All Courses ({courses?.length ?? 0})
+                  Search Results ({courses?.length ?? 0})
                 </h2>
-              )}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {(courses ?? []).map((course, i) => {
-                  const pct = (course.totalLessons && course.completedLessons != null)
-                    ? Math.round((course.completedLessons / course.totalLessons) * 100) : null;
-                  const subjIdx = subjectProgress.findIndex(s => s.id === course.subjectId);
-                  const accentColor = SUBJ_COLORS[subjIdx >= 0 ? subjIdx % SUBJ_COLORS.length : i % SUBJ_COLORS.length];
-                  const isEnrolled = course.completedLessons != null;
-                  return (
-                    <motion.div key={course.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                      <Link href={`/courses/${course.id}`}>
-                        <div
-                          className="rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-all bg-white"
-                          style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}
-                          data-testid={`course-card-${course.id}`}
-                        >
-                          <div className="relative h-28">
-                            <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            <div className="absolute bottom-2 left-2">
-                              <span className="text-[10px] font-bold text-white/90 bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                                {course.subjectName}
-                              </span>
+                {isLoading ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
+                  </div>
+                ) : (courses ?? []).length === 0 ? (
+                  <div className="text-center py-10 rounded-2xl border border-dashed border-gray-200 bg-white">
+                    <p className="text-sm font-bold text-gray-700">No courses found</p>
+                    <p className="text-xs text-gray-400 mt-1">Try different keywords</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {(courses ?? []).map((course, i) => {
+                      const pct = (course.totalLessons && course.completedLessons != null)
+                        ? Math.round((course.completedLessons / course.totalLessons) * 100) : null;
+                      const s = getSubjStyle(course.subjectName ?? "", i);
+                      return (
+                        <motion.div key={course.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                          <Link href={`/courses/${course.id}`}>
+                            <div className="rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-all bg-white"
+                              style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }} data-testid={`course-card-${course.id}`}>
+                              <div className="relative h-24">
+                                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                {course.completedLessons != null && (
+                                  <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "#22c55e", color: "white" }}>✓ Enrolled</div>
+                                )}
+                              </div>
+                              <div className="p-2.5">
+                                <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-1">{course.title}</h3>
+                                {pct !== null ? (
+                                  <>
+                                    <div className="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                                      <span>Progress</span><span className="font-bold" style={{ color: s.color }}>{pct}%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: s.color }} />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <p className="text-[9px] text-gray-400">{course.totalLessons} lessons</p>
+                                )}
+                              </div>
                             </div>
-                            {isEnrolled && (
-                              <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
-                                style={{ background: "#22c55e", color: "white" }}>
-                                ✓ Enrolled
-                              </div>
-                            )}
-                            {course.rating && (
-                              <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/30 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
-                                <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-                                <span className="text-[10px] font-bold text-white">{course.rating}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-2.5">
-                            <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-1.5">{course.title}</h3>
-                            {pct !== null ? (
-                              <>
-                                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                                  <span>Progress</span>
-                                  <span className="font-bold" style={{ color: accentColor }}>{pct}%</span>
-                                </div>
-                                <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: accentColor }} />
-                                </div>
-                              </>
-                            ) : (
-                              <p className="text-[10px] text-gray-400">{course.totalLessons} lessons</p>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
-        </div>}
+
         <div className="h-2" />
       </div>
     </AppLayout>
