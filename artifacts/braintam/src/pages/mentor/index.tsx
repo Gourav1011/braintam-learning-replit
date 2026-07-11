@@ -185,12 +185,13 @@ function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtDate(d: string) { return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" }); }
 function fmtDateTime(d: string) { return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
 function getClassState(cls: LiveClass): "upcoming" | "live" | "completed" {
+  // Trust DB status for live/completed — teacher controls when live ends
+  if (cls.status === "live") return "live";
+  if (cls.status === "completed") return "completed";
+  // For upcoming/scheduled, use time math to detect if it's started
   const now = new Date();
   const start = new Date(cls.scheduledAt);
-  const end = new Date(start.getTime() + cls.duration * 60000);
-  if (now < start) return "upcoming";
-  if (now > end) return "completed";
-  return "live";
+  return now >= start ? "live" : "upcoming";
 }
 
 function LeadStageDropdown({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
