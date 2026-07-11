@@ -348,14 +348,14 @@ export default function LiveClassroom() {
   const sessionId = params.sessionId ?? "demo";
   const search = new URLSearchParams(window.location.search);
 
-  const role          = (search.get("role") ?? "student").toLowerCase();
   // Real authenticated identity — none of the "Join Meet" navigation links across the app
-  // pass `name`/`userId` query params, so relying on those alone made every visitor connect
-  // as the literal fallback string "Student"/"u-student", colliding all users of a given role
-  // into one fake identity (broken chat names, raised hands, attendance, staging, etc).
+  // pass `name`/`userId`/`role` query params, so relying on URL alone made every visitor
+  // connect as the literal fallback string "Student"/"u-student"/"student", colliding all
+  // users of a given role into one fake identity (broken chat names, raised hands, staging, etc).
   // `useAuth()` resolves the real signed-in user (staff token or Clerk-backed student token)
-  // regardless of role; URL params remain only as a last-resort fallback.
-  const { student: authIdentity } = useAuth();
+  // and is the primary source for both identity AND role. URL params are last-resort fallback only.
+  const { student: authIdentity, role: authRole } = useAuth();
+  const role          = (authRole ?? search.get("role") ?? "student").toLowerCase();
   const rawName       = authIdentity?.name ?? search.get("name") ?? "Student";
   // Staff/mentors get their role prefixed for on-screen display (e.g. "teacher priya", "mentor moses");
   // students are shown by name only (e.g. "devik manhas").
