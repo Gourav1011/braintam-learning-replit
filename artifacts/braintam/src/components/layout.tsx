@@ -195,6 +195,88 @@ function StudentSidebar() {
   );
 }
 
+function StudentMobileHeader() {
+  const { student, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function handleLogout() { logout(); setLocation("/"); }
+
+  return (
+    <header
+      className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 h-12"
+      style={{ background: "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", boxShadow: "0 1px 0 rgba(0,0,0,0.07)" }}
+    >
+      {/* Logo */}
+      <Link href="/dashboard">
+        <img src={braintamLogo} alt="Braintam" className="h-8 w-auto object-contain cursor-pointer" />
+      </Link>
+
+      {/* Avatar button */}
+      <div className="relative" ref={ref}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full transition-colors hover:bg-gray-100"
+        >
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #0B2B6B, #1a4a9b)" }}
+          >
+            {student?.name?.charAt(0)?.toUpperCase() ?? "S"}
+          </div>
+          <div className="text-left hidden xs:block">
+            <p className="text-xs font-bold text-gray-800 leading-none">{student?.name?.split(" ")[0] ?? "Student"}</p>
+          </div>
+          <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: 6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-1 w-44 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden z-50"
+            >
+              {/* Student info */}
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-xs font-black text-gray-800">{student?.name ?? "Student"}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {student?.grade ? `Grade ${student.grade}` : "Braintam Student"}
+                </p>
+              </div>
+              <Link href="/profile" onClick={() => setOpen(false)}>
+                <div className="px-4 py-3 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-2.5 transition-colors">
+                  <User className="w-3.5 h-3.5" />
+                  My Profile
+                </div>
+              </Link>
+              <div className="h-px bg-gray-100" />
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-3 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </header>
+  );
+}
+
 function StudentMobileNav() {
   const [location] = useLocation();
 
@@ -389,11 +471,14 @@ function StudentLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
+      {/* Mobile top header (logo + profile/logout) */}
+      <StudentMobileHeader />
+
       {/* Desktop sidebar */}
       <StudentSidebar />
 
-      {/* Main content */}
-      <div className="md:ml-[176px] min-h-screen">
+      {/* Main content — pt-12 on mobile to clear the fixed top header */}
+      <div className="md:ml-[176px] min-h-screen pt-12 md:pt-0">
         <div className="pb-[60px] md:pb-4 min-h-screen">
           <DemoPaywall>{children}</DemoPaywall>
         </div>
