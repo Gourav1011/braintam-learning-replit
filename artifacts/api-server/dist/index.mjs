@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1416" : "dev",
-    commit: true ? "8771e94" : "unknown",
-    buildTime: true ? "2026-07-11T14:16:33.030Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1437" : "dev",
+    commit: true ? "88cdff9" : "unknown",
+    buildTime: true ? "2026-07-11T14:37:21.556Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -132930,7 +132930,8 @@ function getSessionRoom(sid) {
       pollAnswers: /* @__PURE__ */ new Map(),
       stageSlots: /* @__PURE__ */ new Map(),
       teacher: null,
-      activePresentation: null
+      activePresentation: null,
+      currentSlide: 1
     });
   }
   return sessionRooms.get(sid);
@@ -133235,7 +133236,8 @@ function setupSocketIO(httpServer2) {
         activePoll: room.activePoll ? { ...room.activePoll, correctOptionId: void 0 } : null,
         stage: Array.from(room.stageSlots.values()),
         teacher: room.teacher,
-        activePresentation: room.activePresentation
+        activePresentation: room.activePresentation,
+        currentSlide: room.currentSlide
       });
       const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
       socket.emit("classroom:joined", {
@@ -133624,12 +133626,20 @@ function setupSocketIO(httpServer2) {
       const url2 = String(payload?.url ?? "").trim().slice(0, 2048);
       if (!url2) return;
       room.activePresentation = { url: url2, updatedAt: Date.now(), updatedBy: name };
+      room.currentSlide = 1;
       io2.to(globalRoom(sessionId)).emit("presentation:started", { url: url2 });
     });
     socket.on("presentation:stop", () => {
       if (!isStaff) return;
       room.activePresentation = null;
+      room.currentSlide = 1;
       io2.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+    });
+    socket.on("presentation:navigate", (payload) => {
+      if (!isStaff) return;
+      const page = Math.max(1, Math.round(Number(payload?.page ?? 1)));
+      room.currentSlide = page;
+      io2.to(globalRoom(sessionId)).emit("presentation:navigated", { page });
     });
     socket.on("mentor:suggestStudent", (payload) => {
       if (!isMentor) return;

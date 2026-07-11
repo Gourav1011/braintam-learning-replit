@@ -99,6 +99,7 @@ interface SessionRoom {
   stageSlots: Map<string, StageSlotEntry>;  // key = studentId
   teacher: { name: string; userId: string } | null;
   activePresentation: PresentationState | null;
+  currentSlide: number;
 }
 
 interface StageSlotEntry {
@@ -238,6 +239,7 @@ function getSessionRoom(sid: string): SessionRoom {
       stageSlots: new Map(),
       teacher: null,
       activePresentation: null,
+      currentSlide: 1,
     });
   }
   return sessionRooms.get(sid)!;
@@ -646,6 +648,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         stage: Array.from(room.stageSlots.values()),
         teacher: room.teacher,
         activePresentation: room.activePresentation,
+        currentSlide: room.currentSlide,
       });
 
       // Diagnostic acknowledgement — sends socket ID, canonical room name and
@@ -1105,13 +1108,23 @@ export function setupSocketIO(httpServer: HttpServer) {
       const url = String(payload?.url ?? "").trim().slice(0, 2048);
       if (!url) return;
       room.activePresentation = { url, updatedAt: Date.now(), updatedBy: name };
+      room.currentSlide = 1;
       io.to(globalRoom(sessionId)).emit("presentation:started", { url });
     });
 
     socket.on("presentation:stop", () => {
       if (!isStaff) return;
       room.activePresentation = null;
+      room.currentSlide = 1;
       io.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+    });
+
+    socket.on("presentation:navigate", (payload: { dir: "prev" | "next"; page: number }) => {
+      if (!isStaff) return;
+      const page = Math.max(1, Math.round(Number(payload?.page ?? 1)));
+      room.currentSlide = page;
+      // Broadcast to everyone in the room (including teacher so their iframe also reloads)
+      io.to(globalRoom(sessionId)).emit("presentation:navigated", { page });
     });
 
     // ── Mentor silently suggests a student to the teacher ─────

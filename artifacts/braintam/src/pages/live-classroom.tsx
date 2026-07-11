@@ -110,6 +110,17 @@ function getEmbedUrl(url: string): string {
   return url;
 }
 
+// Returns a slide-specific URL for Google Slides (slide=id.pN); other
+// providers don't support direct page navigation via URL so return unchanged.
+function getSlideUrl(embedUrl: string, page: number): string {
+  if (page <= 1 || !embedUrl) return embedUrl;
+  if (embedUrl.includes("docs.google.com/presentation")) {
+    const sep = embedUrl.includes("?") ? "&" : "?";
+    return `${embedUrl}${sep}slide=id.p${page}`;
+  }
+  return embedUrl;
+}
+
 function fmtDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
   return `${Math.round(sec / 60)}m`;
@@ -404,6 +415,7 @@ export default function LiveClassroom() {
   const [urlInput, setUrlInput] = useState(search.get("url") ?? "");
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(1);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -542,19 +554,13 @@ export default function LiveClassroom() {
 
   // ── Slide navigation (arrow buttons) ───────────────────────
   const navigateSlide = useCallback((dir: "prev" | "next") => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    // Try to focus the iframe and send an arrow key event
-    iframe.focus();
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.dispatchEvent(new KeyboardEvent("keydown", {
-        key: dir === "next" ? "ArrowRight" : "ArrowLeft",
-        code: dir === "next" ? "ArrowRight" : "ArrowLeft",
-        bubbles: true, cancelable: true,
-      }));
-    } catch { /* cross-origin — Canva has own nav */ }
-  }, []);
+    // Track page + broadcast to all clients via socket
+    setCurrentSlide(prev => {
+      const next = dir === "next" ? prev + 1 : Math.max(1, prev - 1);
+      socket?.emit("presentation:navigate", { dir, page: next });
+      return next;
+    });
+  }, [socket]);
 
   // ── Camera ─────────────────────────────────────────────────
   const [cameraOn, setCameraOn] = useState(false);
@@ -632,12 +638,14 @@ export default function LiveClassroom() {
       activePoll: Poll | null; stage?: StageSlot[];
       teacher?: { name: string; userId: string } | null;
       activePresentation?: { url: string } | null;
+      currentSlide?: number;
     }) => {
       setChat(s.chat);
       setRaisedHands(s.raisedHands);
       setRaiseHandEnabled(s.raiseHandEnabled);
       if (s.activePoll) { setActivePoll(s.activePoll); setPanelMode("poll"); }
       if (s.stage) setStageSlots(s.stage);
+      if (s.currentSlide && s.currentSlide > 1) setCurrentSlide(s.currentSlide);
       // Only update teacherInfo from roomState if we're not the teacher (teacher sets own info at mount)
       if (!isStaff && s.teacher) {
         setTeacherInfo({ name: s.teacher.name, userId: s.teacher.userId, online: true });
@@ -653,10 +661,15 @@ export default function LiveClassroom() {
 
     // Presentation sync — server broadcasts teacher's presentation to all viewers
     socket.on("presentation:started", ({ url }: { url: string }) => {
+      setCurrentSlide(1);
       if (!isStaff) setPresentationUrl(url);
     });
     socket.on("presentation:stopped", () => {
+      setCurrentSlide(1);
       if (!isStaff) setPresentationUrl("");
+    });
+    socket.on("presentation:navigated", ({ page }: { page: number }) => {
+      setCurrentSlide(page);
     });
 
     socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
@@ -1006,6 +1019,7 @@ export default function LiveClassroom() {
                   if (e.key === "Enter") {
                     const normalized = getEmbedUrl(urlInput) ?? urlInput;
                     setPresentationUrl(normalized);
+                    setCurrentSlide(1);
                     socket?.emit("presentation:start", { url: normalized });
                   }
                 }}
@@ -1014,6 +1028,7 @@ export default function LiveClassroom() {
                 onClick={() => {
                   const normalized = getEmbedUrl(urlInput) ?? urlInput;
                   setPresentationUrl(normalized);
+                  setCurrentSlide(1);
                   socket?.emit("presentation:start", { url: normalized });
                 }}
                 disabled={!urlInput.trim()}
@@ -1038,8 +1053,16 @@ export default function LiveClassroom() {
           {/* Slides / PDF */}
           <div className="relative flex-1 overflow-hidden">
             {embedUrl ? (
-              <iframe ref={iframeRef} src={embedUrl} className="w-full h-full border-0" allow="fullscreen" title="Presentation" allowFullScreen
-                style={isStaff ? undefined : { pointerEvents: "none" }} />
+              <iframe
+                key={currentSlide}
+                ref={iframeRef}
+                src={getSlideUrl(embedUrl, currentSlide)}
+                className="w-full h-full border-0"
+                allow="fullscreen"
+                title="Presentation"
+                allowFullScreen
+                style={isStaff ? undefined : { pointerEvents: "none" }}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
