@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { liveClassesTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNull, or } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
@@ -12,20 +12,26 @@ router.get("/live-classes", attachUser, async (req, res) => {
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
 
-  let studentFilter: ReturnType<typeof inArray> | ReturnType<typeof eq> | undefined;
-  if (user && user.role === "student") {
+  // Non-authenticated users see nothing
+  if (!user) {
+    res.json([]);
+    return;
+  }
+
+  // Students: see (a) classes linked to their enrolled courses, OR
+  //           (b) grade-level classes with no specific course (courseId IS NULL)
+  // Teachers/Admins/Mentors: see all classes (no courseId filter)
+  let studentFilter: ReturnType<typeof or> | undefined;
+  if (user.role === "student") {
     const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
       .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map(e => e.courseId);
-    if (enrolledIds.length > 0) {
-      studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
-    } else {
-      res.json([]);
-      return;
-    }
-  } else if (!user) {
-    res.json([]);
-    return;
+
+    // grade-level classes (courseId IS NULL) are visible to any student of that grade
+    const gradeOpenFilter = isNull(liveClassesTable.courseId);
+    studentFilter = enrolledIds.length > 0
+      ? or(inArray(liveClassesTable.courseId, enrolledIds), gradeOpenFilter)
+      : gradeOpenFilter;
   }
 
   const classes = await db.select({
