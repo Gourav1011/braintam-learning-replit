@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1359" : "dev",
-    commit: true ? "29b5df0" : "unknown",
-    buildTime: true ? "2026-07-11T13:59:44.608Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1416" : "dev",
+    commit: true ? "8771e94" : "unknown",
+    buildTime: true ? "2026-07-11T14:16:33.030Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -121995,7 +121995,11 @@ router20.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   let rangeStart;
   let rangeEnd;
   if (upcoming) {
-    rangeStart = /* @__PURE__ */ new Date();
+    const IST_OFFSET_MS2 = 5.5 * 60 * 60 * 1e3;
+    const nowMs = Date.now();
+    const istNowMs = nowMs + IST_OFFSET_MS2;
+    const istMidnightMs = istNowMs - istNowMs % 864e5;
+    rangeStart = new Date(istMidnightMs - IST_OFFSET_MS2);
     rangeEnd = /* @__PURE__ */ new Date();
     rangeEnd.setDate(rangeEnd.getDate() + 14);
   } else {

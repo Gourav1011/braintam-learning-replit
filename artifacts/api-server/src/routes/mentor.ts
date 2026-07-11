@@ -427,7 +427,13 @@ router.get("/mentor/live-classes", mentorAuth, async (req, res) => {
   let rangeStart: Date;
   let rangeEnd: Date;
   if (upcoming) {
-    rangeStart = new Date();
+    // Start from beginning of today (IST midnight in UTC) so currently-live
+    // classes that started earlier today are included in the selector
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const istNowMs = nowMs + IST_OFFSET_MS;
+    const istMidnightMs = istNowMs - (istNowMs % 86400000);
+    rangeStart = new Date(istMidnightMs - IST_OFFSET_MS); // today IST midnight in UTC
     rangeEnd = new Date();
     rangeEnd.setDate(rangeEnd.getDate() + 14);
   } else {

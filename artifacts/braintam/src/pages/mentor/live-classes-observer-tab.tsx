@@ -131,6 +131,13 @@ export function LiveClassesObserverTab({ apiFetch, mentorName }: {
 
   useEffect(() => { void load(mode); }, [mode]);
 
+  // Auto-refresh every 30s when on "live" tab so newly-started classes appear
+  useEffect(() => {
+    if (mode !== "live") return;
+    const t = setInterval(() => { void load("live"); }, 30000);
+    return () => clearInterval(t);
+  }, [mode]);
+
   function joinClassroom(s: MentorSession) {
     const url = `/live/${s.id}?role=mentor${s.joinUrl ? `&meetLink=${encodeURIComponent(s.joinUrl)}` : ""}`;
     window.location.href = url;
