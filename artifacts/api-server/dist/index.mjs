@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1742" : "dev",
-    commit: true ? "bba5e7d" : "unknown",
-    buildTime: true ? "2026-07-11T17:42:56.044Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1800" : "dev",
+    commit: true ? "650ec75" : "unknown",
+    buildTime: true ? "2026-07-11T18:00:46.537Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
