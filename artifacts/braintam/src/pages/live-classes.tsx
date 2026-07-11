@@ -495,7 +495,6 @@ function AuthLiveClassesView() {
 
         <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-4">
           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{cls.duration} min</span>
-          <span className="flex items-center gap-1"><Users className="w-3 h-3" />{cls.studentsJoined ?? 0} joined</span>
           {cls.status === "upcoming" && (
             <span className="flex items-center gap-1 font-bold ml-auto" style={{ color: NAVY }}>
               ⏱ {countdown(cls.scheduledAt)}

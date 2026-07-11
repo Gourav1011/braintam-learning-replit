@@ -26,12 +26,14 @@ export async function runLiveClassStatusSync(): Promise<void> {
       ))
       .returning({ id: liveClassesTable.id });
 
-    // live (or still upcoming but window has fully passed) → completed
+    // Only auto-complete classes still in "upcoming" state that have fully passed
+    // (i.e. they were never manually started). "live" classes stay live until
+    // the teacher manually ends them via the teacher portal.
     const liveClassesEnded = await db
       .update(liveClassesTable)
       .set({ status: "completed" })
       .where(and(
-        ne(liveClassesTable.status, "completed"),
+        eq(liveClassesTable.status, "upcoming"),
         sql`${liveClassesTable.scheduledAt} + (${liveClassesTable.duration} * interval '1 minute') <= ${now}`,
       ))
       .returning({ id: liveClassesTable.id });
