@@ -441,7 +441,7 @@ function AuthLiveClassesView() {
   };
 
   const { data: classes, isLoading } = useListLiveClasses(params, {
-    query: { queryKey: getListLiveClassesQueryKey(params) }
+    query: { queryKey: getListLiveClassesQueryKey(params), refetchInterval: 30000, staleTime: 0 }
   });
   const { data: subjects } = useListSubjects();
 
