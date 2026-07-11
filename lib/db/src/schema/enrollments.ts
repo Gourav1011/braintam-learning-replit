@@ -11,6 +11,11 @@ export const enrollmentsTable = pgTable("enrollments", {
   enrollmentType: text("enrollment_type").notNull().default("mastery"),
   academicYear: text("academic_year"),
   enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  // Lifecycle status: 'active' | 'completed' | 'archived'
+  // Never delete — mark completed when a student finishes or moves to a new grade.
+  status: text("status").notNull().default("active"),
+  completedAt: timestamp("completed_at"),
+  completionNote: text("completion_note"),
 }, (t) => [unique().on(t.studentId, t.courseId)]);
 
 export const insertEnrollmentSchema = createInsertSchema(enrollmentsTable).omit({ id: true, enrolledAt: true });

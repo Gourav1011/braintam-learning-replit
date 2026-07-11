@@ -494,6 +494,47 @@ router.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
+// ── PATCH /admin/enrollments/:id/complete ───────────────────────────────────
+// Marks an enrollment as completed. Content remains accessible read-only.
+// Removes the enrollment from the student's "Current Learning" and places it
+// under "Completed Courses" — it is NEVER deleted.
+router.patch("/admin/enrollments/:id/complete", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { note } = req.body as { note?: string };
+  const [row] = await db
+    .update(enrollmentsTable)
+    .set({ status: "completed", completedAt: new Date(), completionNote: note ?? null })
+    .where(eq(enrollmentsTable.id, id))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Enrollment not found" }); return; }
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "enrollment_completed", "enrollment", id, String(id),
+    JSON.stringify({ studentId: row.studentId, courseId: row.courseId }),
+  );
+  res.json(row);
+});
+
+// ── PATCH /admin/enrollments/:id/reopen ─────────────────────────────────────
+// Reopens a completed enrollment so the student can submit new work.
+router.patch("/admin/enrollments/:id/reopen", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [row] = await db
+    .update(enrollmentsTable)
+    .set({ status: "active", completedAt: null, completionNote: null })
+    .where(eq(enrollmentsTable.id, id))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Enrollment not found" }); return; }
+  await logAudit(
+    req.authUser!.id, req.authUser!.name,
+    "enrollment_reopened", "enrollment", id, String(id),
+    JSON.stringify({ studentId: row.studentId, courseId: row.courseId }),
+  );
+  res.json(row);
+});
+
 // ── Course Management ────────────────────────────────────────────
 router.get("/admin/courses", adminOnly, async (req, res) => {
   const courses = await db.select({

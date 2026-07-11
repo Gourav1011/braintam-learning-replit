@@ -835,13 +835,31 @@ interface DemoBatchItem {
   }>;
 }
 
+interface CompletedCourse {
+  enrollmentId: number;
+  courseId: number;
+  courseTitle: string;
+  grade: number;
+  totalLessons: number;
+  subjectCount: number;
+  recordingCount: number;
+  chapterCount: number;
+  academicYear: string | null;
+  enrolledAt: string;
+  completedAt: string | null;
+  completionNote: string | null;
+}
+
 function AuthCoursesView() {
   const [subject, setSubject] = useState<string>("all");
   const [search, setSearch]   = useState("");
+  const [activeTab, setActiveTab] = useState<"current" | "completed">("current");
   const { student } = useAuth();
 
   const [demoBatches, setDemoBatches] = useState<DemoBatchItem[]>([]);
   const [demoLoading, setDemoLoading] = useState(true);
+  const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
+  const [completedLoading, setCompletedLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem(STUDENT_TOKEN_KEY);
@@ -854,6 +872,19 @@ function AuthCoursesView() {
       .catch(() => {})
       .finally(() => setDemoLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "completed") return;
+    setCompletedLoading(true);
+    const token = localStorage.getItem(STUDENT_TOKEN_KEY);
+    fetch(`${API_BASE}/api/student/my-courses/completed`, {
+      headers: token ? { "Authorization": `Bearer ${token}` } : {},
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: CompletedCourse[]) => setCompletedCourses(data))
+      .catch(() => {})
+      .finally(() => setCompletedLoading(false));
+  }, [activeTab]);
 
   const params = {
     subjectId: subject !== "all" ? Number(subject) : undefined,
@@ -882,7 +913,7 @@ function AuthCoursesView() {
     <AppLayout>
       {/* Navy header */}
       <div
-        className="px-4 pt-5 pb-5 relative overflow-hidden"
+        className="px-4 pt-5 pb-4 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg,#0A2342 0%,#123D7A 100%)" }}
       >
         <div
@@ -891,12 +922,168 @@ function AuthCoursesView() {
         />
         <div className="relative">
           <p className="text-white/60 text-xs font-medium">Grade {student?.grade ?? "—"}</p>
-          <h1 className="text-white text-xl font-extrabold mt-0.5">My Courses</h1>
-          <p className="text-white/50 text-xs mt-0.5">Continue where you left off</p>
+          <h1 className="text-white text-xl font-extrabold mt-0.5">My Learning</h1>
+          <p className="text-white/50 text-xs mt-0.5">Explore your subjects and keep learning</p>
+        </div>
+
+        {/* Tab switcher inside header */}
+        <div className="relative mt-4 flex gap-1 bg-white/10 rounded-xl p-1 w-fit">
+          <button
+            onClick={() => setActiveTab("current")}
+            className="px-4 py-2 rounded-lg text-xs font-black transition-all"
+            style={{
+              background: activeTab === "current" ? "white" : "transparent",
+              color: activeTab === "current" ? "#0A2342" : "rgba(255,255,255,0.65)",
+              boxShadow: activeTab === "current" ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
+            }}
+          >
+            📚 Current Learning
+          </button>
+          <button
+            onClick={() => setActiveTab("completed")}
+            className="px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5"
+            style={{
+              background: activeTab === "completed" ? "white" : "transparent",
+              color: activeTab === "completed" ? "#059669" : "rgba(255,255,255,0.65)",
+              boxShadow: activeTab === "completed" ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
+            }}
+          >
+            ✓ Completed Courses
+            {completedCourses.length > 0 && (
+              <span
+                className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
+                style={{ background: activeTab === "completed" ? "#059669" : "rgba(255,255,255,0.25)", color: "white" }}
+              >
+                {completedCourses.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+      <div className="p-4 md:p-6 max-w-5xl mx-auto" style={{ background: "#F8FAFC" }}>
+
+        {/* ── COMPLETED COURSES TAB ── */}
+        {activeTab === "completed" && (
+          <div className="space-y-4 pt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🎓</span>
+              <h2 className="text-sm font-black uppercase tracking-wide" style={{ color: NAVY }}>Completed Courses</h2>
+              {completedCourses.length > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: "#d1fae5", color: "#059669" }}>
+                  {completedCourses.length} Course{completedCourses.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {completedLoading ? (
+              <div className="space-y-4">
+                {[1, 2].map(i => <Skeleton key={i} className="h-44 rounded-2xl" />)}
+              </div>
+            ) : completedCourses.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                className="text-center py-16 rounded-2xl border-2 border-dashed border-gray-200 bg-white"
+              >
+                <div className="text-5xl mb-3">🎓</div>
+                <p className="text-sm font-bold text-gray-700">No completed courses yet</p>
+                <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+                  Your completed programs will appear here — all lessons, recordings, and materials will stay accessible.
+                </p>
+              </motion.div>
+            ) : (
+              <div className="space-y-4">
+                {completedCourses.map((c, i) => (
+                  <motion.div
+                    key={c.enrollmentId}
+                    initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                    className="rounded-2xl overflow-hidden bg-white"
+                    style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)", border: "1.5px solid #d1fae5" }}
+                  >
+                    {/* Green top accent */}
+                    <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #059669, #34d399)" }} />
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {/* Badge row */}
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "#d1fae5", color: "#059669" }}>
+                              ✓ Completed
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                              Grade {c.grade}
+                            </span>
+                            {c.academicYear && (
+                              <span className="text-[10px] font-bold text-gray-400">
+                                Academic Year {c.academicYear}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-base font-black leading-tight" style={{ color: NAVY }}>{c.courseTitle}</h3>
+                          {c.completedAt && (
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Completed {new Date(c.completedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </p>
+                          )}
+                          {c.completionNote && (
+                            <p className="text-[11px] italic text-gray-400 mt-0.5">{c.completionNote}</p>
+                          )}
+                        </div>
+                        {/* Lock icon */}
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#f0fdf4" }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                            <path d="m9 12 2 2 4-4" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Stats row */}
+                      <div className="mt-4 grid grid-cols-4 gap-2">
+                        {[
+                          { icon: "📚", count: c.subjectCount, label: "Subjects" },
+                          { icon: "📖", count: c.totalLessons, label: "Lessons" },
+                          { icon: "🎥", count: c.recordingCount, label: "Recordings" },
+                          { icon: "📋", count: c.chapterCount, label: "Materials" },
+                        ].map(stat => (
+                          <div key={stat.label} className="rounded-xl py-2.5 px-1 text-center" style={{ background: "#f8fafc" }}>
+                            <div className="text-base leading-none mb-0.5">{stat.icon}</div>
+                            <div className="text-sm font-black" style={{ color: NAVY }}>{stat.count}</div>
+                            <div className="text-[9px] text-gray-400 font-medium">{stat.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CTA */}
+                      <div className="mt-4 flex gap-2">
+                        <Link href={`/courses/${c.courseId}`} className="flex-1">
+                          <button
+                            className="w-full py-2.5 rounded-xl text-xs font-black text-white transition-all hover:opacity-90"
+                            style={{ background: "linear-gradient(135deg, #059669, #34d399)" }}
+                          >
+                            Open Completed Course →
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Info callout */}
+                <div className="rounded-xl p-4 flex gap-3 items-start" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                  <span className="text-lg flex-shrink-0">ℹ️</span>
+                  <p className="text-xs text-green-700 font-medium leading-relaxed">
+                    All content in completed courses — lessons, recordings, and study materials — remains accessible for review.
+                    New homework and test submissions are closed unless your admin reopens the course.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CURRENT LEARNING TAB ── */}
+        {activeTab === "current" && <div className="space-y-5 pt-1">
 
         {/* Continue Learning — subject progress cards */}
         {subjectProgress.length > 0 && (
@@ -1234,6 +1421,7 @@ function AuthCoursesView() {
             </div>
           </div>
         )}
+        </div>}
         <div className="h-2" />
       </div>
     </AppLayout>

@@ -6,7 +6,8 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
   coursesTable, announcementsTable, pointsLedgerTable,
   mentorStudentAssignmentsTable, demoBatchEnrollmentsTable, demoBatchesTable,
-  pollAnalyticsTable,
+  pollAnalyticsTable, courseSubjectsTable, recordingsTable, chaptersTable,
+  academicYearsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
 import { eq, desc, sql, inArray, and, or, isNull } from "drizzle-orm";
@@ -521,7 +522,11 @@ router.get("/student/my-courses", requireAuth, async (req, res) => {
     })
     .from(enrollmentsTable)
     .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
-    .where(and(eq(enrollmentsTable.studentId, studentId), eq(coursesTable.isArchived, false)))
+    .where(and(
+      eq(enrollmentsTable.studentId, studentId),
+      eq(coursesTable.isArchived, false),
+      eq(enrollmentsTable.status, "active"),
+    ))
     .orderBy(desc(enrollmentsTable.enrolledAt));
 
   const batchIds = enrollmentRows.map((e) => e.batchId).filter(Boolean) as number[];
@@ -559,6 +564,59 @@ router.get("/student/my-courses", requireAuth, async (req, res) => {
   });
 
   res.json(result);
+});
+
+// ── GET /student/my-courses/completed ───────────────────────────────────────
+// Returns past (completed/archived) enrollments with content counts.
+// Courses returned here are NEVER deleted — status is 'completed' or 'archived'.
+router.get("/student/my-courses/completed", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+
+  const rows = await db
+    .select({
+      enrollmentId: enrollmentsTable.id,
+      courseId: enrollmentsTable.courseId,
+      courseTitle: coursesTable.title,
+      courseGrade: coursesTable.grade,
+      totalLessons: coursesTable.totalLessons,
+      academicYearId: coursesTable.academicYearId,
+      enrolledAt: enrollmentsTable.enrolledAt,
+      completedAt: enrollmentsTable.completedAt,
+      completionNote: enrollmentsTable.completionNote,
+      subjectCount: sql<number>`(
+        SELECT COUNT(*)::int FROM course_subjects WHERE course_id = ${coursesTable.id}
+      )`,
+      recordingCount: sql<number>`(
+        SELECT COUNT(*)::int FROM recordings WHERE course_id = ${coursesTable.id}
+      )`,
+      chapterCount: sql<number>`(
+        SELECT COUNT(*)::int FROM chapters WHERE course_id = ${coursesTable.id}
+      )`,
+      academicYearName: academicYearsTable.name,
+    })
+    .from(enrollmentsTable)
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .leftJoin(academicYearsTable, eq(coursesTable.academicYearId, academicYearsTable.id))
+    .where(and(
+      eq(enrollmentsTable.studentId, studentId),
+      sql`${enrollmentsTable.status} IN ('completed', 'archived')`,
+    ))
+    .orderBy(desc(enrollmentsTable.completedAt));
+
+  res.json(rows.map(r => ({
+    enrollmentId: r.enrollmentId,
+    courseId: r.courseId,
+    courseTitle: r.courseTitle,
+    grade: r.courseGrade,
+    totalLessons: r.totalLessons,
+    subjectCount: r.subjectCount ?? 0,
+    recordingCount: r.recordingCount ?? 0,
+    chapterCount: r.chapterCount ?? 0,
+    academicYear: r.academicYearName ?? null,
+    enrolledAt: r.enrolledAt,
+    completedAt: r.completedAt ?? null,
+    completionNote: r.completionNote ?? null,
+  })));
 });
 
 router.get("/student/my-mentor", requireAuth, async (req, res) => {

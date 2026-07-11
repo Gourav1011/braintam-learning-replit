@@ -107964,7 +107964,12 @@ var enrollmentsTable = pgTable("enrollments", {
   enrolledBy: integer("enrolled_by"),
   enrollmentType: text("enrollment_type").notNull().default("mastery"),
   academicYear: text("academic_year"),
-  enrolledAt: timestamp("enrolled_at").defaultNow().notNull()
+  enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  // Lifecycle status: 'active' | 'completed' | 'archived'
+  // Never delete — mark completed when a student finishes or moves to a new grade.
+  status: text("status").notNull().default("active"),
+  completedAt: timestamp("completed_at"),
+  completionNote: text("completion_note")
 }, (t) => [unique().on(t.studentId, t.courseId)]);
 var insertEnrollmentSchema = createInsertSchema(enrollmentsTable).omit({ id: true, enrolledAt: true });
 
@@ -109215,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1255" : "dev",
-    commit: true ? "d417284" : "unknown",
-    buildTime: true ? "2026-07-11T12:55:33.091Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1310" : "dev",
+    commit: true ? "4e62272" : "unknown",
+    buildTime: true ? "2026-07-11T13:10:17.396Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -116726,7 +116731,11 @@ router12.get("/student/my-courses", requireAuth, async (req, res) => {
     totalLessons: coursesTable.totalLessons,
     courseGrade: coursesTable.grade,
     instanceName: coursesTable.instanceName
-  }).from(enrollmentsTable).innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id)).where(and(eq(enrollmentsTable.studentId, studentId), eq(coursesTable.isArchived, false))).orderBy(desc(enrollmentsTable.enrolledAt));
+  }).from(enrollmentsTable).innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id)).where(and(
+    eq(enrollmentsTable.studentId, studentId),
+    eq(coursesTable.isArchived, false),
+    eq(enrollmentsTable.status, "active")
+  )).orderBy(desc(enrollmentsTable.enrolledAt));
   const batchIds = enrollmentRows.map((e) => e.batchId).filter(Boolean);
   const batchRows = batchIds.length > 0 ? await db.select().from(demoBatchesTable).where(inArray(demoBatchesTable.id, batchIds)) : [];
   const batchMap = new Map(batchRows.map((b) => [b.id, b]));
@@ -116756,6 +116765,47 @@ router12.get("/student/my-courses", requireAuth, async (req, res) => {
     };
   });
   res.json(result);
+});
+router12.get("/student/my-courses/completed", requireAuth, async (req, res) => {
+  const studentId = req.authUser.id;
+  const rows = await db.select({
+    enrollmentId: enrollmentsTable.id,
+    courseId: enrollmentsTable.courseId,
+    courseTitle: coursesTable.title,
+    courseGrade: coursesTable.grade,
+    totalLessons: coursesTable.totalLessons,
+    academicYearId: coursesTable.academicYearId,
+    enrolledAt: enrollmentsTable.enrolledAt,
+    completedAt: enrollmentsTable.completedAt,
+    completionNote: enrollmentsTable.completionNote,
+    subjectCount: sql`(
+        SELECT COUNT(*)::int FROM course_subjects WHERE course_id = ${coursesTable.id}
+      )`,
+    recordingCount: sql`(
+        SELECT COUNT(*)::int FROM recordings WHERE course_id = ${coursesTable.id}
+      )`,
+    chapterCount: sql`(
+        SELECT COUNT(*)::int FROM chapters WHERE course_id = ${coursesTable.id}
+      )`,
+    academicYearName: academicYearsTable.name
+  }).from(enrollmentsTable).innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id)).leftJoin(academicYearsTable, eq(coursesTable.academicYearId, academicYearsTable.id)).where(and(
+    eq(enrollmentsTable.studentId, studentId),
+    sql`${enrollmentsTable.status} IN ('completed', 'archived')`
+  )).orderBy(desc(enrollmentsTable.completedAt));
+  res.json(rows.map((r) => ({
+    enrollmentId: r.enrollmentId,
+    courseId: r.courseId,
+    courseTitle: r.courseTitle,
+    grade: r.courseGrade,
+    totalLessons: r.totalLessons,
+    subjectCount: r.subjectCount ?? 0,
+    recordingCount: r.recordingCount ?? 0,
+    chapterCount: r.chapterCount ?? 0,
+    academicYear: r.academicYearName ?? null,
+    enrolledAt: r.enrolledAt,
+    completedAt: r.completedAt ?? null,
+    completionNote: r.completionNote ?? null
+  })));
 });
 router12.get("/student/my-mentor", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
@@ -117212,6 +117262,51 @@ router13.delete("/admin/enrollments/:id", adminOnly, async (req, res) => {
     );
   }
   res.json({ success: true });
+});
+router13.patch("/admin/enrollments/:id/complete", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const { note } = req.body;
+  const [row] = await db.update(enrollmentsTable).set({ status: "completed", completedAt: /* @__PURE__ */ new Date(), completionNote: note ?? null }).where(eq(enrollmentsTable.id, id)).returning();
+  if (!row) {
+    res.status(404).json({ error: "Enrollment not found" });
+    return;
+  }
+  await logAudit(
+    req.authUser.id,
+    req.authUser.name,
+    "enrollment_completed",
+    "enrollment",
+    id,
+    String(id),
+    JSON.stringify({ studentId: row.studentId, courseId: row.courseId })
+  );
+  res.json(row);
+});
+router13.patch("/admin/enrollments/:id/reopen", adminOnly, async (req, res) => {
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [row] = await db.update(enrollmentsTable).set({ status: "active", completedAt: null, completionNote: null }).where(eq(enrollmentsTable.id, id)).returning();
+  if (!row) {
+    res.status(404).json({ error: "Enrollment not found" });
+    return;
+  }
+  await logAudit(
+    req.authUser.id,
+    req.authUser.name,
+    "enrollment_reopened",
+    "enrollment",
+    id,
+    String(id),
+    JSON.stringify({ studentId: row.studentId, courseId: row.courseId })
+  );
+  res.json(row);
 });
 router13.get("/admin/courses", adminOnly, async (req, res) => {
   const courses = await db.select({
