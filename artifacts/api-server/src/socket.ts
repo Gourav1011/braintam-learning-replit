@@ -581,8 +581,9 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     const room = getSessionRoom(sessionId);
 
-    // ── Block non-staff from joining completed live classes ────────────────
-    if (!isStaff && !isMentor && Number.isFinite(Number(sessionId))) {
+    // ── Block EVERYONE from joining a completed live class ────────────────
+    // DB is the source of truth: once status = "completed", no one can re-enter.
+    if (Number.isFinite(Number(sessionId))) {
       db.select({ status: liveClassesTable.status })
         .from(liveClassesTable)
         .where(eq(liveClassesTable.id, Number(sessionId)))
@@ -590,6 +591,8 @@ export function setupSocketIO(httpServer: HttpServer) {
         .then(([row]) => {
           if (row?.status === "completed") {
             socket.emit("class:ended");
+            // Force-disconnect after giving the event time to arrive
+            setTimeout(() => socket.disconnect(true), 1500);
           }
         })
         .catch(() => {});
@@ -1081,6 +1084,16 @@ export function setupSocketIO(httpServer: HttpServer) {
       if (!isStaff) return;
 
       const sid = Number(sessionId);
+
+      // ── Persist "completed" status to DB immediately ──────────
+      // This is the critical step that prevents anyone from re-joining.
+      // All subsequent connection attempts (any role) will be rejected.
+      if (!Number.isNaN(sid)) {
+        db.update(liveClassesTable)
+          .set({ status: "completed" })
+          .where(eq(liveClassesTable.id, sid))
+          .catch(() => {});
+      }
 
       // Mark all still-live students as left
       for (const [key, entry] of liveStateCache.entries()) {

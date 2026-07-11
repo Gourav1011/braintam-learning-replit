@@ -850,11 +850,11 @@ export default function LiveClassroom() {
       setStaffChat(prev => [...prev, msg].slice(-150));
     });
 
-    // ── Class ended — redirect everyone out ──────────────────
+    // ── Class ended — show ended screen + redirect everyone out ──
     socket.on("class:ended", () => {
-      setTimeout(() => {
-        window.location.href = isStaff ? "/teacher" : "/dashboard";
-      }, 3500);
+      setClassEnded(true);
+      const target = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
+      setTimeout(() => { window.location.href = target; }, 3500);
     });
 
     // ── Diagnostics: server-ack confirming room join ──────────
@@ -984,14 +984,15 @@ export default function LiveClassroom() {
 
   const embedUrl = getEmbedUrl(presentationUrl);
 
-  if (classEnded && !isStaff) {
+  if (classEnded) {
+    const redirectTarget = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-6 bg-gray-950 text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
         <div className="text-6xl">🔚</div>
         <h2 className="text-2xl font-bold">This class has ended</h2>
-        <p className="text-gray-400 text-sm">The live session is no longer available. Redirecting you to dashboard…</p>
-        <a href="/dashboard" className="mt-2 px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
-          Go to Dashboard
+        <p className="text-gray-400 text-sm">The session is permanently closed and cannot be re-entered. Redirecting you…</p>
+        <a href={redirectTarget} className="mt-2 px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+          {isStaff ? "Back to Teacher Portal" : isMentor ? "Back to Mentor Portal" : "Go to Dashboard"}
         </a>
       </div>
     );

@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1800" : "dev",
-    commit: true ? "650ec75" : "unknown",
-    buildTime: true ? "2026-07-11T18:00:46.537Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1806" : "dev",
+    commit: true ? "3a5ff28" : "unknown",
+    buildTime: true ? "2026-07-11T18:06:34.680Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133181,10 +133181,11 @@ function setupSocketIO(httpServer2) {
       socket.join(groupRoom(sessionId, groupId));
     }
     const room = getSessionRoom(sessionId);
-    if (!isStaff && !isMentor && Number.isFinite(Number(sessionId))) {
+    if (Number.isFinite(Number(sessionId))) {
       db.select({ status: liveClassesTable.status }).from(liveClassesTable).where(eq(liveClassesTable.id, Number(sessionId))).limit(1).then(([row]) => {
         if (row?.status === "completed") {
           socket.emit("class:ended");
+          setTimeout(() => socket.disconnect(true), 1500);
         }
       }).catch(() => {
       });
@@ -133604,6 +133605,10 @@ function setupSocketIO(httpServer2) {
     socket.on("class:end", () => {
       if (!isStaff) return;
       const sid = Number(sessionId);
+      if (!Number.isNaN(sid)) {
+        db.update(liveClassesTable).set({ status: "completed" }).where(eq(liveClassesTable.id, sid)).catch(() => {
+        });
+      }
       for (const [key, entry] of liveStateCache.entries()) {
         if (!key.startsWith(`${sessionId}-`)) continue;
         if (entry.currentStatus !== "ABSENT") {
