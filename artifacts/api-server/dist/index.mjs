@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1811" : "dev",
-    commit: true ? "e0dc149" : "unknown",
-    buildTime: true ? "2026-07-11T18:11:40.902Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1822" : "dev",
+    commit: true ? "e502696" : "unknown",
+    buildTime: true ? "2026-07-11T18:22:43.199Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -109473,6 +109473,13 @@ router2.post("/auth/register", async (req, res) => {
     phone: null,
     grade: grade ?? 0,
     role: "student",
+    // Email/password sign-ups are also website leads — visible in CRM immediately.
+    accountType: "lead",
+    leadStage: "new",
+    leadSource: "Website",
+    isWebsiteLead: true,
+    assignmentStatus: "unassigned",
+    isCurrentWeek: false,
     passwordHash: password ? hashPassword(password) : null,
     points: 0,
     streakDays: 1
@@ -109540,6 +109547,14 @@ router2.post("/auth/clerk-sync", async (req, res) => {
     phone: null,
     grade: 0,
     role: "student",
+    // New Clerk sign-ups are website leads — visible in the CRM from day one.
+    // Admins/mentors can later convert them to demo_student or paid_student.
+    accountType: "lead",
+    leadStage: "new",
+    leadSource: "Website",
+    isWebsiteLead: true,
+    assignmentStatus: "unassigned",
+    isCurrentWeek: false,
     passwordHash: null,
     points: 0,
     streakDays: 1

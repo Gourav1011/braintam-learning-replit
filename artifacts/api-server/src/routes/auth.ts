@@ -54,6 +54,13 @@ router.post("/auth/register", async (req, res) => {
     phone: null,
     grade: grade ?? 0,
     role: "student",
+    // Email/password sign-ups are also website leads — visible in CRM immediately.
+    accountType: "lead",
+    leadStage: "new",
+    leadSource: "Website",
+    isWebsiteLead: true,
+    assignmentStatus: "unassigned",
+    isCurrentWeek: false,
     passwordHash: password ? hashPassword(password) : null,
     points: 0,
     streakDays: 1,
@@ -127,6 +134,14 @@ router.post("/auth/clerk-sync", async (req, res) => {
     phone: null,
     grade: 0,
     role: "student",
+    // New Clerk sign-ups are website leads — visible in the CRM from day one.
+    // Admins/mentors can later convert them to demo_student or paid_student.
+    accountType: "lead",
+    leadStage: "new",
+    leadSource: "Website",
+    isWebsiteLead: true,
+    assignmentStatus: "unassigned",
+    isCurrentWeek: false,
     passwordHash: null,
     points: 0,
     streakDays: 1,
