@@ -1038,7 +1038,8 @@ export default function LiveClassroom() {
           {/* Slides / PDF */}
           <div className="relative flex-1 overflow-hidden">
             {embedUrl ? (
-              <iframe ref={iframeRef} src={embedUrl} className="w-full h-full border-0" allow="fullscreen" title="Presentation" allowFullScreen />
+              <iframe ref={iframeRef} src={embedUrl} className="w-full h-full border-0" allow="fullscreen" title="Presentation" allowFullScreen
+                style={isStaff ? undefined : { pointerEvents: "none" }} />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
