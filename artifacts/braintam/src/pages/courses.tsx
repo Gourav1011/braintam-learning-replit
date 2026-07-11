@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCourses, useListSubjects, getListCoursesQueryKey } from "@workspace/api-client-react";
 import { API_BASE } from "@/lib/api-base";
@@ -856,9 +856,9 @@ function AuthCoursesView() {
   const [activeTab, setActiveTab] = useState<"current" | "completed">("current");
   const { student } = useAuth();
 
+  const [, setLocation] = useLocation();
   const [demoBatches, setDemoBatches] = useState<DemoBatchItem[]>([]);
   const [demoLoading, setDemoLoading] = useState(true);
-  const [showProgramSyllabus, setShowProgramSyllabus] = useState(false);
   const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
 
@@ -1158,7 +1158,7 @@ function AuthCoursesView() {
                       </div>
                     </div>
 
-                    {/* View Program / Join button */}
+                    {/* Buttons */}
                     <div className="flex gap-2 mt-4">
                       {nextSession?.joinUrl && nextSession.status === "live" && (
                         <a href={nextSession.joinUrl} target="_blank" rel="noopener noreferrer"
@@ -1167,58 +1167,12 @@ function AuthCoursesView() {
                           🔴 Join Live Class
                         </a>
                       )}
-                      <button onClick={() => setShowProgramSyllabus(v => !v)}
+                      <button onClick={() => setLocation(`/demo-batches/${batch.id}`)}
                         className="flex-1 py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90"
                         style={{ background: "#059669", boxShadow: "0 4px 12px rgba(5,150,105,0.3)" }}>
-                        {showProgramSyllabus ? "Hide Syllabus ↑" : "View Program →"}
+                        View Program →
                       </button>
                     </div>
-
-                    {/* Expandable syllabus */}
-                    {showProgramSyllabus && (
-                      <div className="mt-4 rounded-xl overflow-hidden border border-gray-100">
-                        <div className="px-4 py-2.5 flex items-center gap-2"
-                          style={{ background: "#f0fdf4", borderBottom: "1px solid #dcfce7" }}>
-                          <span className="text-sm">📋</span>
-                          <span className="text-xs font-black uppercase tracking-wider" style={{ color: "#059669" }}>
-                            Program Syllabus — {sessions.length} Sessions
-                          </span>
-                        </div>
-                        <div className="divide-y divide-gray-50">
-                          {sessions.map(s => {
-                            const isDone = s.status === "completed";
-                            const isLive = s.status === "live";
-                            const isNext = !isDone && !isLive && s.id === nextSession?.id;
-                            return (
-                              <div key={s.id} className="flex items-center gap-3 px-4 py-3"
-                                style={{ background: isLive ? "#fff7ed" : isNext ? "#f0fdf4" : "white" }}>
-                                <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black"
-                                  style={{
-                                    background: isDone ? "#059669" : isLive ? "#f97316" : isNext ? "#dcfce7" : "#f1f5f9",
-                                    color: isDone || isLive ? "white" : isNext ? "#059669" : "#94a3b8",
-                                  }}>
-                                  {isDone ? "✓" : isLive ? "●" : `D${s.dayNumber}`}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold truncate" style={{ color: NAVY }}>{s.title}</p>
-                                  <p className="text-[10px] text-gray-400 mt-0.5">
-                                    {new Date(s.scheduledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                    {" · "}{s.duration} min
-                                  </p>
-                                </div>
-                                <span className="text-[10px] font-bold shrink-0 px-2 py-0.5 rounded-full"
-                                  style={{
-                                    background: isDone ? "#dcfce7" : isLive ? "#fff7ed" : isNext ? "#dbeafe" : "#f1f5f9",
-                                    color: isDone ? "#059669" : isLive ? "#f97316" : isNext ? "#2563eb" : "#94a3b8",
-                                  }}>
-                                  {isDone ? "Done" : isLive ? "Live" : isNext ? "Next" : "Upcoming"}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               );

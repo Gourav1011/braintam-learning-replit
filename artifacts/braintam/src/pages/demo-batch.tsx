@@ -151,9 +151,9 @@ export default function DemoBatchPage() {
         ) : (
           <>
             {/* Back */}
-            <button onClick={() => setLocation("/demo-batches")}
+            <button onClick={() => setLocation("/courses")}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors px-4 pt-4 pb-2">
-              <ChevronLeft className="w-4 h-4" />Back to Demo Batches
+              <ChevronLeft className="w-4 h-4" />Back to My Learning
             </button>
 
             {/* Hero */}
