@@ -414,9 +414,18 @@ function PublicLiveClassesView() {
 }
 
 // ── Authenticated view ──────────────────────────────────────────────────
+function getInitialLiveTab() {
+  const p = new URLSearchParams(window.location.search);
+  const t = p.get("tab");
+  if (t === "completed") return "completed";
+  if (t === "live") return "live";
+  return "upcoming";
+}
+
 function AuthLiveClassesView() {
   const [subject, setSubject] = useState<string>("all");
   const [, setTick] = useState(0);
+  const [activeTab, setActiveTab] = useState(getInitialLiveTab);
   const { student } = useAuth();
 
   // Re-render every 30s so countdown timers stay fresh
@@ -542,7 +551,36 @@ function AuthLiveClassesView() {
         </div>
       </div>
 
-      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5" style={{ background: "#F8FAFC" }}>
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4" style={{ background: "#F8FAFC" }}>
+        {/* Tab bar */}
+        <div className="flex gap-2">
+          {[
+            { id: "upcoming",  label: "Upcoming",  emoji: "⏰", count: upcoming.length },
+            { id: "live",      label: "Live Now",   emoji: "🔴", count: liveNow.length  },
+            { id: "completed", label: "Completed",  emoji: "✓",  count: ended.length    },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl text-xs font-bold transition-all"
+              style={{
+                background: activeTab === tab.id ? NAVY : "white",
+                color: activeTab === tab.id ? "white" : "#6B7280",
+                boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+              }}
+            >
+              <span>{tab.emoji}</span>
+              <span>{tab.label}</span>
+              {tab.count > 0 && (
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.id ? "bg-white/20 text-white" : "bg-orange-500 text-white"
+                }`}>{tab.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Subject filter */}
         <Select value={subject} onValueChange={setSubject}>
           <SelectTrigger className="w-44 h-9 text-sm rounded-xl" data-testid="subject-filter">
             <SelectValue placeholder="All Subjects" />
@@ -557,58 +595,28 @@ function AuthLiveClassesView() {
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
           </div>
-        ) : (classes ?? []).length === 0 ? (
-          <div className="flex flex-col items-center text-center py-14 px-4">
-            <div
-              className="w-24 h-24 rounded-3xl flex items-center justify-center mb-5"
-              style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}
-            >
-              <Video className="w-12 h-12 text-white opacity-80" />
-            </div>
-            <h2 className="text-lg font-extrabold text-gray-800">No Classes Scheduled</h2>
-            <p className="text-sm text-gray-400 mt-2 max-w-xs">
-              Your next live class will appear here. New sessions are added regularly!
-            </p>
-            <div className="mt-5 flex flex-col gap-2 w-full max-w-xs">
-              {[
-                { icon: "📅", title: "Classes 5–6× per week",         sub: "New sessions added every day" },
-                { icon: "🔔", title: "Get reminders via WhatsApp",     sub: "Never miss a session again" },
-              ].map(item => (
-                <div
-                  key={item.title}
-                  className="flex items-center gap-3 rounded-2xl p-3"
-                  style={{ background: "white", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}
-                >
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-base">{item.icon}</div>
-                  <div className="text-left">
-                    <p className="text-xs font-bold text-gray-700">{item.title}</p>
-                    <p className="text-[10px] text-gray-400">{item.sub}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         ) : (
-          <>
-            {liveNow.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">🔴 Live Now</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{liveNow.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+          (() => {
+            const tabClasses = activeTab === "live" ? liveNow : activeTab === "completed" ? ended : upcoming;
+            if (tabClasses.length === 0) return (
+              <div className="flex flex-col items-center text-center py-14 px-4">
+                <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-5" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
+                  <Video className="w-12 h-12 text-white opacity-80" />
+                </div>
+                <h2 className="text-lg font-extrabold text-gray-800">
+                  {activeTab === "live" ? "No Classes Live Right Now" : activeTab === "completed" ? "No Past Classes Yet" : "No Upcoming Classes"}
+                </h2>
+                <p className="text-sm text-gray-400 mt-2 max-w-xs">
+                  {activeTab === "upcoming" ? "Your next live class will appear here. New sessions are added regularly!" : "Check back soon!"}
+                </p>
               </div>
-            )}
-            {upcoming.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">⏰ Upcoming Classes</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{upcoming.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
+            );
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {tabClasses.map(cls => <ClassCard key={cls.id} cls={cls} />)}
               </div>
-            )}
-            {ended.length > 0 && (
-              <div>
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">✓ Past Classes</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{ended.map(cls => <ClassCard key={cls.id} cls={cls} />)}</div>
-              </div>
-            )}
-          </>
+            );
+          })()
         )}
         <div className="h-2" />
       </div>

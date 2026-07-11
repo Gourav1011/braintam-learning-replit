@@ -54,6 +54,8 @@ import EnrollPage from "@/pages/enroll";
 import EnrollFullPage from "@/pages/enroll-full";
 import DownloadAppPage from "@/pages/download-app";
 import SpaceJourneyPage from "@/pages/space-journey";
+import TasksPage from "@/pages/tasks";
+import RewardsPage from "@/pages/rewards";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -439,17 +441,24 @@ function Router() {
       <Route path="/live/:sessionId" component={LiveClassroomPage} />
       <Route path="/courses" component={CoursesPage} />
       <Route path="/courses/:id"><ProtectedRoute component={CourseDetailPage} /></Route>
-      <Route path="/recordings"><ProtectedRoute component={RecordingsPage} /></Route>
-      <Route path="/animated-videos"><ProtectedRoute component={AnimatedVideosPage} /></Route>
-      <Route path="/homework"><ProtectedRoute component={HomeworkPage} /></Route>
-      <Route path="/assignments"><ProtectedRoute component={AssignmentsPage} /></Route>
-      <Route path="/tests"><ProtectedRoute component={TestsPage} /></Route>
+      <Route path="/recordings"><Redirect to="/live-classes?tab=completed" /></Route>
+      <Route path="/animated-videos"><Redirect to="/courses?section=animated-videos" /></Route>
+
+      {/* New unified pages */}
+      <Route path="/tasks"><ProtectedRoute component={TasksPage} /></Route>
+      <Route path="/rewards"><ProtectedRoute component={RewardsPage} /></Route>
+
+      {/* Legacy routes — redirect to new destinations */}
+      <Route path="/homework"><Redirect to="/tasks?tab=homework" /></Route>
+      <Route path="/assignments"><Redirect to="/tasks?tab=assignments" /></Route>
+      <Route path="/tests"><Redirect to="/tasks?tab=tests" /></Route>
       <Route path="/tests/:id"><ProtectedRoute component={TestTakingPage} /></Route>
+      <Route path="/leaderboard"><Redirect to="/rewards?tab=leaderboard" /></Route>
+      <Route path="/space-journey"><Redirect to="/rewards?tab=journey" /></Route>
+
       <Route path="/profile"><ProtectedRoute component={ProfilePage} /></Route>
-      <Route path="/leaderboard" component={LeaderboardPage} />
       <Route path="/demo-batches"><ProtectedRoute component={DemoBatchesPage} /></Route>
       <Route path="/demo-batches/:id"><ProtectedRoute component={DemoBatchPage} /></Route>
-      <Route path="/space-journey"><ProtectedRoute component={SpaceJourneyPage} /></Route>
 
       <Route component={NotFound} />
     </Switch>

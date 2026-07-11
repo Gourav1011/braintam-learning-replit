@@ -1,0 +1,3286 @@
+# BRAINTAM STUDENT PORTAL — COMPLETE UI REDESIGN
+
+## PRIMARY OBJECTIVE
+
+Redesign the existing Braintam student portal into a simple, child-friendly learning experience for Grade 1–5 students.
+
+The existing portal currently has too many independent sidebar options:
+
+- Dashboard
+- Live Classes
+- Courses
+- Recordings
+- Animated Videos
+- Homework
+- Assignments
+- Tests
+- Leaderboard
+
+Replace this with only five primary navigation destinations:
+
+1. Home
+2. Classes
+3. Learn
+4. Tasks
+5. Rewards
+
+The Space Journey must become Braintam's main visual attraction. It should contain lightweight, premium animations without reducing performance.
+
+---
+
+# CRITICAL IMPLEMENTATION RULES
+
+Before modifying code:
+
+1. Inspect the existing student portal routes.
+2. Inspect all current student components.
+3. Inspect current API hooks and query functions.
+4. Inspect the existing sidebar.
+5. Inspect current live-class data.
+6. Inspect course, subject and lesson relationships.
+7. Inspect homework, assignment and test APIs.
+8. Inspect XP, rank, leaderboard and achievement logic.
+9. Reuse existing components where practical.
+10. Preserve all backend functionality.
+
+DO NOT:
+
+- Create a separate static demo.
+- Create duplicate student pages.
+- create duplicate database tables.
+- Delete existing APIs.
+- Replace real data with hardcoded mock data.
+- hardcode student names.
+- hardcode grades.
+- hardcode subjects.
+- hardcode XP.
+- hardcode rank.
+- hardcode teacher names.
+- hardcode class information.
+- change teacher or admin portals.
+- modify existing business logic unless required to fix an identified bug.
+- award XP from frontend code.
+- install Three.js.
+- install a heavy particle library.
+- use large autoplay animations.
+
+The frontend must display data from the existing APIs.
+
+If an API value is missing, use a safe empty state instead of fake data.
+
+---
+
+# REQUIRED ROUTE BEHAVIOUR
+
+Preserve existing routes wherever possible.
+
+Recommended route mapping:
+
+```tsx
+/dashboard
+→ Home
+
+/live-classes
+→ Classes
+
+/courses
+→ Learn
+
+/tasks
+→ Tasks
+
+/rewards
+→ Rewards
+```
+
+Existing routes such as these must continue working:
+
+```tsx
+/recordings
+/animated-videos
+/homework
+/assignments
+/tests
+/leaderboard
+/space-journey
+/achievements
+```
+
+If these routes already exist, either:
+
+- keep them as child/detail routes; or
+- redirect them to the correct parent page and activate the relevant tab.
+
+Recommended mappings:
+
+```tsx
+/recordings
+→ /live-classes?tab=completed
+
+/animated-videos
+→ /courses?section=animated-videos
+
+/homework
+→ /tasks?tab=homework
+
+/assignments
+→ /tasks?tab=assignments
+
+/tests
+→ /tasks?tab=tests
+
+/leaderboard
+→ /rewards?tab=leaderboard
+
+/space-journey
+→ /rewards?tab=journey
+
+/achievements
+→ /rewards?tab=achievements
+```
+
+Do not break old bookmarks or internal links.
+
+---
+
+# REQUIRED COMPONENT STRUCTURE
+
+Adapt this structure to the existing framework.
+
+```text
+student/
+├── layout/
+│   ├── StudentLayout
+│   ├── StudentSidebar
+│   ├── StudentMobileNav
+│   ├── StudentHeader
+│   └── StudentProfileMenu
+│
+├── home/
+│   ├── HomePage
+│   ├── NextLiveClass
+│   ├── TodayTasks
+│   ├── StudentProgress
+│   └── MotivationCard
+│
+├── classes/
+│   ├── ClassesPage
+│   ├── ClassesTabs
+│   ├── LiveClassCard
+│   ├── UpcomingClassCard
+│   └── CompletedClassCard
+│
+├── learn/
+│   ├── LearnPage
+│   ├── ContinueLearning
+│   ├── SubjectGrid
+│   ├── SubjectCard
+│   └── AnimatedVideosBanner
+│
+├── tasks/
+│   ├── TasksPage
+│   ├── TaskTabs
+│   ├── TaskFilters
+│   └── TaskCard
+│
+└── rewards/
+    ├── RewardsPage
+    ├── RewardsTabs
+    ├── SpaceJourney
+    ├── JourneyProgress
+    ├── JourneyLevel
+    ├── XPGuide
+    ├── Leaderboard
+    ├── Achievements
+    └── LevelUnlockModal
+```
+
+Do not create this exact folder structure if the project already has an established structure. Integrate cleanly into the existing architecture.
+
+---
+
+# NAVIGATION CONFIGURATION
+
+Use a single navigation configuration.
+
+```tsx
+import {
+  Home,
+  Video,
+  BookOpen,
+  ClipboardCheck,
+  Trophy
+} from "lucide-react";
+
+export const studentNavigation = [
+  {
+    id: "home",
+    label: "Home",
+    href: "/dashboard",
+    icon: Home,
+    theme: "purple"
+  },
+  {
+    id: "classes",
+    label: "Classes",
+    href: "/live-classes",
+    icon: Video,
+    theme: "coral"
+  },
+  {
+    id: "learn",
+    label: "Learn",
+    href: "/courses",
+    icon: BookOpen,
+    theme: "green"
+  },
+  {
+    id: "tasks",
+    label: "Tasks",
+    href: "/tasks",
+    icon: ClipboardCheck,
+    theme: "orange"
+  },
+  {
+    id: "rewards",
+    label: "Rewards",
+    href: "/rewards",
+    icon: Trophy,
+    theme: "yellow"
+  }
+];
+```
+
+If Lucide React is not installed, reuse the project's current icon package.
+
+Do not install a second icon package only for this redesign.
+
+---
+
+# DESKTOP SIDEBAR
+
+The desktop sidebar must contain only:
+
+```text
+BRAINTAM LOGO
+
+Home
+
+Classes
+
+Learn
+
+Tasks
+
+Rewards
+
+
+Student profile
+Student grade
+```
+
+Do not display these separately:
+
+```text
+Courses
+Recordings
+Animated Videos
+Homework
+Assignments
+Tests
+Leaderboard
+Space Journey
+Achievements
+Logout
+```
+
+The profile area opens a small menu:
+
+```text
+My Profile
+Settings
+Help & Support
+Logout
+```
+
+Sidebar requirements:
+
+```css
+width: 176px;
+height: 100dvh;
+position: fixed;
+left: 0;
+top: 0;
+background: #ffffff;
+border-right: 1px solid #e7ecf5;
+```
+
+Navigation item:
+
+```css
+min-height: 52px;
+border-radius: 13px;
+padding: 8px 12px;
+font-size: 14px;
+font-weight: 700;
+```
+
+Use large rounded icon containers.
+
+---
+
+# MOBILE NAVIGATION
+
+At widths below 768px:
+
+- Hide desktop sidebar.
+- Show a fixed bottom navigation.
+- Use five items only.
+- Keep labels visible.
+
+```text
+Home | Classes | Learn | Tasks | Rewards
+```
+
+Bottom navigation requirements:
+
+```css
+position: fixed;
+bottom: 0;
+left: 0;
+right: 0;
+height: 72px;
+background: rgba(255, 255, 255, 0.96);
+backdrop-filter: blur(18px);
+border-top: 1px solid #e5eaf3;
+z-index: 100;
+```
+
+Add safe-area support:
+
+```css
+padding-bottom: env(safe-area-inset-bottom);
+```
+
+---
+
+# HOME PAGE
+
+The Home page must answer:
+
+> What should the student do next?
+
+Do not make the page unnecessarily long.
+
+Required order:
+
+1. Greeting
+2. Next live class
+3. Today's tasks
+4. Current learning progress
+5. Compact motivation card
+
+Do not show these full sections on Home:
+
+- Full course list
+- Four large zero-stat cards
+- Full leaderboard
+- Full achievement collection
+- Full Space Journey
+- Duplicate course cards
+
+## Greeting
+
+Use real student data.
+
+```tsx
+<h1>
+  Hi {student.firstName}! <span>👋</span>
+</h1>
+
+<p>
+  Let's make today amazing!
+</p>
+```
+
+Use fallback:
+
+```tsx
+const displayName =
+  student?.firstName ||
+  student?.name?.split(" ")[0] ||
+  "Student";
+```
+
+Do not hardcode Devik.
+
+## Header statistics
+
+Display:
+
+```text
+Current streak
+Current XP
+Current rank
+Notifications
+```
+
+Use API values.
+
+Hide unavailable values instead of showing fake values.
+
+## Next live class
+
+Display:
+
+```text
+NEXT LIVE CLASS
+
+Subject – Topic
+
+Teacher
+
+Date and time
+
+Join Class
+```
+
+If no class is scheduled:
+
+```text
+No live class scheduled
+
+Explore your subjects while you wait.
+
+[ Continue Learning ]
+```
+
+If the class is live:
+
+```text
+LIVE NOW
+
+[ Join Live Class ]
+```
+
+Use the existing classroom joining logic.
+
+Do not replace existing class permissions or joining behaviour.
+
+## Today's tasks
+
+Combine:
+
+- homework
+- assignments
+- tests
+- live-class attendance task if applicable
+
+Sort by:
+
+1. live now
+2. due today
+3. upcoming
+4. completed
+
+Show a maximum of four tasks.
+
+Display:
+
+```text
+Task title
+Subject
+Status
+XP reward
+```
+
+Do not award XP from this component.
+
+## Student progress
+
+Display:
+
+```text
+Current Space Journey level
+
+Current XP
+
+XP needed for next level
+
+Progress bar
+
+View Journey
+```
+
+Clicking View Journey opens:
+
+```text
+/rewards?tab=journey
+```
+
+---
+
+# CLASSES PAGE
+
+Title:
+
+```text
+My Classes
+
+Join live sessions with your teachers
+```
+
+Required tabs:
+
+```text
+Upcoming
+Live Now
+Completed
+```
+
+Default tab:
+
+```text
+Upcoming
+```
+
+Display a badge on Live Now only when at least one class is currently live.
+
+## Live class card
+
+Display:
+
+```text
+LIVE NOW
+
+Subject – Topic
+
+Teacher
+
+Started X minutes ago
+
+Join Live Class
+```
+
+Only animate the red live indicator.
+
+Do not animate the entire card.
+
+## Upcoming card
+
+Display:
+
+```text
+Subject
+
+Topic
+
+Teacher
+
+Date
+
+Time
+
+View Details
+```
+
+## Completed class
+
+Display:
+
+```text
+Subject
+
+Topic
+
+Teacher
+
+Completion date
+
+Watch Recording
+```
+
+Only show Watch Recording if a valid recording exists.
+
+Do not show:
+
+```text
+0 joined
+Attendance totals
+Internal diagnostics
+Room IDs
+Provider IDs
+Teacher-only information
+```
+
+---
+
+# LEARN PAGE
+
+Page title:
+
+```text
+My Learning
+
+Explore your subjects and keep learning
+```
+
+The page contains:
+
+1. Continue Learning
+2. My Subjects
+3. Animated Videos
+
+## Continue Learning
+
+Display the student's most recently accessed lesson.
+
+```text
+CONTINUE LEARNING
+
+Subject
+
+Chapter or lesson
+
+Lesson X of Y
+
+Progress percentage
+
+Continue Learning
+```
+
+If no lesson has been started:
+
+```text
+Start your learning journey
+
+Choose a subject below to begin.
+```
+
+## IMPORTANT TERMINOLOGY
+
+Never display:
+
+```text
+Other Courses
+```
+
+Display:
+
+```text
+My Subjects
+```
+
+The subject cards must come from the subjects assigned to the student's enrolled course.
+
+Do not hardcode subject availability by grade.
+
+Potential subjects include:
+
+```text
+Mathematics
+Science
+English
+Hindi
+Social Science
+Computer Science
+Physics
+Chemistry
+Biology
+Sanskrit
+French
+```
+
+Only show subjects returned by the current course/student API.
+
+## Subject card
+
+Display:
+
+```text
+Subject icon
+
+Subject name
+
+Lesson count
+
+Completion percentage
+
+Continue or Start Learning
+```
+
+Use responsive layout:
+
+```css
+grid-template-columns:
+repeat(auto-fit, minmax(220px, 1fr));
+```
+
+## Animated videos
+
+Show one compact banner:
+
+```text
+ANIMATED VIDEOS
+
+Fun videos to make learning easy!
+
+Explore Videos
+```
+
+Link to the existing animated-video route.
+
+---
+
+# TASKS PAGE
+
+Title:
+
+```text
+My Tasks
+
+Complete your work and earn XP
+```
+
+Required tabs:
+
+```text
+All
+Homework
+Assignments
+Tests
+```
+
+Filters:
+
+```text
+Pending
+Completed
+Overdue
+```
+
+Task card must display:
+
+```text
+Task type
+
+Subject
+
+Title
+
+Due date
+
+Status
+
+XP reward
+
+Action
+```
+
+Actions:
+
+```text
+Start Homework
+Open Assignment
+Start Test
+View Result
+Review
+```
+
+Use existing permission, attempt and submission logic.
+
+Do not create frontend-only completion states.
+
+---
+
+# REWARDS PAGE
+
+Required tabs:
+
+```text
+Space Journey
+Leaderboard
+Achievements
+```
+
+Default tab:
+
+```text
+Space Journey
+```
+
+The Space Journey must be the visual attraction of Braintam.
+
+Only the Space Journey area should use the immersive dark-space design.
+
+Do not make every student page dark.
+
+---
+
+# SPACE JOURNEY
+
+## Visual direction
+
+Use:
+
+```css
+background:
+linear-gradient(
+  180deg,
+  #07142e 0%,
+  #091a3b 50%,
+  #071126 100%
+);
+```
+
+The design should feel:
+
+```text
+Premium
+Magical
+Educational
+Calm
+Rewarding
+```
+
+It must not feel:
+
+```text
+Like a video game lobby
+Overstimulating
+Heavy
+Slow
+Flashing
+```
+
+## Journey levels
+
+Use these levels unless equivalent levels already exist in the backend:
+
+```tsx
+export const journeyLevels = [
+  {
+    id: 1,
+    name: "Earth Explorer",
+    minXP: 0,
+    maxXP: 100,
+    icon: "🌍",
+    reward: "Explorer Badge",
+    bonusXP: 50
+  },
+  {
+    id: 2,
+    name: "Moon Explorer",
+    minXP: 100,
+    maxXP: 300,
+    icon: "🌙",
+    reward: "Moon Badge",
+    bonusXP: 100
+  },
+  {
+    id: 3,
+    name: "Mars Explorer",
+    minXP: 300,
+    maxXP: 600,
+    icon: "🔴",
+    reward: "Mars Badge",
+    bonusXP: 150
+  },
+  {
+    id: 4,
+    name: "Saturn Explorer",
+    minXP: 600,
+    maxXP: 1000,
+    icon: "🪐",
+    reward: "Saturn Ring",
+    bonusXP: 200
+  },
+  {
+    id: 5,
+    name: "Galaxy Master",
+    minXP: 1000,
+    maxXP: 2000,
+    icon: "🌌",
+    reward: "Galaxy Medal",
+    bonusXP: 300
+  },
+  {
+    id: 6,
+    name: "Universe Champion",
+    minXP: 2000,
+    maxXP: null,
+    icon: "👑",
+    reward: "Champion Crown",
+    bonusXP: 500
+  }
+];
+```
+
+If levels are already stored in the backend, use backend levels instead.
+
+Do not create a conflicting second level system.
+
+## Current level calculation
+
+If not already returned by the API:
+
+```tsx
+export function getCurrentJourneyLevel(
+  xp: number,
+  levels: typeof journeyLevels
+) {
+  return (
+    [...levels]
+      .reverse()
+      .find((level) => xp >= level.minXP) ||
+    levels[0]
+  );
+}
+```
+
+Progress calculation:
+
+```tsx
+export function getJourneyProgress(
+  xp: number,
+  level: {
+    minXP: number;
+    maxXP: number | null;
+  }
+) {
+  if (level.maxXP === null) {
+    return 100;
+  }
+
+  const earnedInLevel =
+    Math.max(0, xp - level.minXP);
+
+  const levelRange =
+    level.maxXP - level.minXP;
+
+  return Math.min(
+    100,
+    Math.max(
+      0,
+      (earnedInLevel / levelRange) * 100
+    )
+  );
+}
+```
+
+---
+
+# SPACE JOURNEY ANIMATION RULES
+
+Animations must be lightweight.
+
+Prefer CSS animations.
+
+If Framer Motion is already installed, it may be used for:
+
+- page entrance
+- progress animation
+- level-unlock modal
+- tab transition
+
+Do not install Framer Motion only for small effects if CSS can handle them.
+
+## Star field
+
+Use one fixed star layer.
+
+Maximum:
+
+```text
+25–35 stars
+```
+
+Do not render hundreds of elements.
+
+Generate stable stars once:
+
+```tsx
+import {
+  useMemo
+} from "react";
+
+export function useJourneyStars(
+  count = 30
+) {
+  return useMemo(
+    () =>
+      Array.from(
+        {
+          length: count
+        },
+        (_, index) => ({
+          id: index,
+          left:
+            `${Math.random() * 100}%`,
+          top:
+            `${Math.random() * 100}%`,
+          size:
+            `${1 + Math.random() * 2}px`,
+          delay:
+            `${Math.random() * 4}s`,
+          duration:
+            `${3 + Math.random() * 4}s`
+        })
+      ),
+    [count]
+  );
+}
+```
+
+Render:
+
+```tsx
+<div
+  className="journey-stars"
+  aria-hidden="true"
+>
+  {stars.map((star) => (
+    <span
+      key={star.id}
+      className="journey-star"
+      style={{
+        left: star.left,
+        top: star.top,
+        width: star.size,
+        height: star.size,
+        animationDelay: star.delay,
+        animationDuration:
+          star.duration
+      }}
+    />
+  ))}
+</div>
+```
+
+## Current planet animation
+
+Only animate the current planet.
+
+Locked planets remain still.
+
+## Current level glow
+
+Only the active level glows.
+
+Do not add glow animation to every card.
+
+## Rocket
+
+Use one small rocket near the current level.
+
+Do not animate multiple rockets.
+
+Do not let it cover text.
+
+## Progress animation
+
+Animate from zero to the real percentage once when the component mounts.
+
+Duration:
+
+```text
+1.2 seconds
+```
+
+Do not restart the animation on every unrelated state update.
+
+## Unlock celebration
+
+When a new level is unlocked:
+
+1. Fill progress.
+2. Glow the planet.
+3. Open the lock.
+4. Reveal the badge.
+5. Show a small star burst.
+6. Open the unlock modal.
+
+Do not replay the celebration after every refresh.
+
+Store acknowledgement using the existing user preference/profile system if available.
+
+Fallback:
+
+```tsx
+const acknowledgementKey =
+  `braintam-journey-level-${studentId}-${levelId}`;
+
+const wasAcknowledged =
+  localStorage.getItem(
+    acknowledgementKey
+  ) === "true";
+```
+
+Do not store XP itself in localStorage.
+
+XP must remain server-controlled.
+
+---
+
+# COMPLETE CSS
+
+Add these styles to the existing student stylesheet or CSS module.
+
+Do not duplicate global resets if they already exist.
+
+```css
+:root {
+  --bt-bg: #f7f9fd;
+  --bt-white: #ffffff;
+
+  --bt-navy: #09295c;
+  --bt-dark-navy: #07142e;
+
+  --bt-purple: #7257f5;
+  --bt-purple-soft: #eeeaff;
+
+  --bt-blue: #3563e9;
+  --bt-blue-soft: #eaf0ff;
+
+  --bt-green: #18b96b;
+  --bt-green-soft: #e8faef;
+
+  --bt-orange: #ff970f;
+  --bt-orange-soft: #fff2de;
+
+  --bt-yellow: #f6bc16;
+  --bt-yellow-soft: #fff7d8;
+
+  --bt-coral: #ff6077;
+  --bt-coral-soft: #ffecef;
+
+  --bt-text: #102a56;
+  --bt-muted: #66738c;
+
+  --bt-border: #e6ebf4;
+
+  --bt-card-shadow:
+    0 5px 18px
+    rgba(20, 45, 85, 0.07);
+
+  --bt-card-radius: 16px;
+
+  --bt-sidebar-width: 176px;
+
+  --bt-fast: 180ms;
+  --bt-normal: 250ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+
+  background:
+    var(--bt-bg);
+
+  color:
+    var(--bt-text);
+}
+
+button,
+a,
+input,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color:
+    transparent;
+}
+
+.bt-student-layout {
+  min-height: 100dvh;
+
+  background:
+    var(--bt-bg);
+}
+
+.bt-student-sidebar {
+  position: fixed;
+
+  z-index: 100;
+
+  top: 0;
+  bottom: 0;
+  left: 0;
+
+  width:
+    var(--bt-sidebar-width);
+
+  display: flex;
+
+  flex-direction: column;
+
+  padding:
+    20px 12px 14px;
+
+  overflow-y: auto;
+
+  background:
+    var(--bt-white);
+
+  border-right:
+    1px solid
+    var(--bt-border);
+}
+
+.bt-sidebar-logo {
+  display: flex;
+
+  align-items: center;
+
+  min-height: 48px;
+
+  padding:
+    0 8px;
+
+  margin-bottom:
+    24px;
+}
+
+.bt-sidebar-logo img {
+  width: 104px;
+
+  max-height: 42px;
+
+  object-fit: contain;
+}
+
+.bt-student-nav {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 9px;
+}
+
+.bt-nav-item {
+  position: relative;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  min-height: 52px;
+
+  padding:
+    8px 10px;
+
+  overflow: hidden;
+
+  color:
+    var(--bt-text);
+
+  text-decoration: none;
+
+  font-size: 14px;
+
+  font-weight: 750;
+
+  border-radius: 13px;
+
+  transition:
+    background
+    var(--bt-normal)
+    ease,
+    color
+    var(--bt-normal)
+    ease,
+    transform
+    var(--bt-fast)
+    ease;
+}
+
+.bt-nav-item:hover {
+  transform:
+    translateX(2px);
+}
+
+.bt-nav-icon {
+  width: 34px;
+
+  height: 34px;
+
+  flex: 0 0 34px;
+
+  display: grid;
+
+  place-items: center;
+
+  color:
+    var(--item-color);
+
+  background:
+    var(--item-soft);
+
+  border-radius: 10px;
+
+  transition:
+    transform
+    var(--bt-fast)
+    ease,
+    color
+    var(--bt-fast)
+    ease,
+    background
+    var(--bt-fast)
+    ease;
+}
+
+.bt-nav-item:hover
+.bt-nav-icon {
+  transform:
+    scale(1.04);
+}
+
+.bt-nav-item.is-active {
+  color:
+    var(--item-color);
+
+  background:
+    var(--item-soft);
+}
+
+.bt-nav-item.is-active
+.bt-nav-icon {
+  color:
+    #ffffff;
+
+  background:
+    var(--item-color);
+
+  box-shadow:
+    0 6px 14px
+    color-mix(
+      in srgb,
+      var(--item-color)
+      28%,
+      transparent
+    );
+}
+
+.bt-theme-purple {
+  --item-color:
+    var(--bt-purple);
+
+  --item-soft:
+    var(--bt-purple-soft);
+}
+
+.bt-theme-coral {
+  --item-color:
+    var(--bt-coral);
+
+  --item-soft:
+    var(--bt-coral-soft);
+}
+
+.bt-theme-green {
+  --item-color:
+    var(--bt-green);
+
+  --item-soft:
+    var(--bt-green-soft);
+}
+
+.bt-theme-orange {
+  --item-color:
+    var(--bt-orange);
+
+  --item-soft:
+    var(--bt-orange-soft);
+}
+
+.bt-theme-yellow {
+  --item-color:
+    #c48d00;
+
+  --item-soft:
+    var(--bt-yellow-soft);
+}
+
+.bt-sidebar-profile {
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin-top: auto;
+
+  padding:
+    12px 9px;
+
+  color:
+    var(--bt-text);
+
+  background:
+    #f8faff;
+
+  border:
+    1px solid
+    var(--bt-border);
+
+  border-radius: 14px;
+
+  cursor: pointer;
+
+  transition:
+    transform
+    var(--bt-fast)
+    ease,
+    box-shadow
+    var(--bt-normal)
+    ease;
+}
+
+.bt-sidebar-profile:hover {
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    var(--bt-card-shadow);
+}
+
+.bt-profile-avatar {
+  width: 38px;
+
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  display: grid;
+
+  place-items: center;
+
+  overflow: hidden;
+
+  color:
+    var(--bt-purple);
+
+  background:
+    var(--bt-purple-soft);
+
+  border-radius: 50%;
+
+  font-weight: 800;
+}
+
+.bt-profile-avatar img {
+  width: 100%;
+
+  height: 100%;
+
+  object-fit: cover;
+}
+
+.bt-profile-copy {
+  min-width: 0;
+
+  flex: 1;
+
+  text-align: left;
+}
+
+.bt-profile-name {
+  display: block;
+
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow:
+    ellipsis;
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+.bt-profile-grade {
+  display: block;
+
+  margin-top: 2px;
+
+  color:
+    var(--bt-muted);
+
+  font-size: 11px;
+
+  font-weight: 650;
+}
+
+.bt-student-main {
+  min-height: 100dvh;
+
+  margin-left:
+    var(--bt-sidebar-width);
+}
+
+.bt-page-container {
+  width: min(
+    1180px,
+    calc(100% - 40px)
+  );
+
+  margin:
+    0 auto;
+
+  padding:
+    28px 0 56px;
+}
+
+.bt-page-header {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content:
+    space-between;
+
+  gap: 24px;
+
+  margin-bottom:
+    24px;
+}
+
+.bt-page-title {
+  margin: 0;
+
+  color:
+    var(--bt-text);
+
+  font-size:
+    clamp(
+      25px,
+      3vw,
+      34px
+    );
+
+  line-height: 1.15;
+
+  letter-spacing:
+    -0.035em;
+}
+
+.bt-page-subtitle {
+  margin:
+    7px 0 0;
+
+  color:
+    var(--bt-muted);
+
+  font-size: 14px;
+}
+
+.bt-card {
+  background:
+    var(--bt-white);
+
+  border:
+    1px solid
+    rgba(
+      16,
+      42,
+      86,
+      0.08
+    );
+
+  border-radius:
+    var(--bt-card-radius);
+
+  box-shadow:
+    var(--bt-card-shadow);
+
+  transition:
+    transform
+    var(--bt-fast)
+    ease,
+    box-shadow
+    var(--bt-normal)
+    ease;
+}
+
+.bt-card-hover:hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 10px 28px
+    rgba(
+      20,
+      45,
+      85,
+      0.11
+    );
+}
+
+.bt-button {
+  min-height: 42px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content:
+    center;
+
+  gap: 8px;
+
+  padding:
+    9px 17px;
+
+  border: 0;
+
+  border-radius:
+    10px;
+
+  cursor: pointer;
+
+  text-decoration: none;
+
+  font-size: 13px;
+
+  font-weight: 800;
+
+  transition:
+    transform
+    var(--bt-fast)
+    ease,
+    filter
+    var(--bt-fast)
+    ease,
+    box-shadow
+    var(--bt-normal)
+    ease;
+}
+
+.bt-button:hover {
+  transform:
+    translateY(-1px)
+    scale(1.015);
+
+  filter:
+    brightness(1.03);
+}
+
+.bt-button:active {
+  transform:
+    scale(0.98);
+}
+
+.bt-button-primary {
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7257f5,
+      #4e49dc
+    );
+
+  box-shadow:
+    0 7px 16px
+    rgba(
+      90,
+      74,
+      226,
+      0.22
+    );
+}
+
+.bt-button-secondary {
+  color:
+    var(--bt-text);
+
+  background:
+    #ffffff;
+
+  border:
+    1px solid
+    var(--bt-border);
+}
+
+.bt-home-hero {
+  position: relative;
+
+  min-height: 215px;
+
+  display: flex;
+
+  align-items: center;
+
+  padding:
+    30px;
+
+  overflow: hidden;
+
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #101b58 0%,
+      #172878 55%,
+      #27298d 100%
+    );
+
+  border-radius: 20px;
+
+  box-shadow:
+    0 16px 36px
+    rgba(
+      13,
+      31,
+      95,
+      0.2
+    );
+}
+
+.bt-home-hero-content {
+  position: relative;
+
+  z-index: 3;
+
+  width: min(
+    620px,
+    70%
+  );
+}
+
+.bt-eyebrow {
+  margin-bottom: 9px;
+
+  font-size: 12px;
+
+  font-weight: 850;
+
+  letter-spacing:
+    0.08em;
+
+  text-transform:
+    uppercase;
+
+  opacity: 0.78;
+}
+
+.bt-home-hero h2 {
+  margin:
+    0 0 9px;
+
+  font-size:
+    clamp(
+      22px,
+      3vw,
+      34px
+    );
+
+  line-height: 1.15;
+}
+
+.bt-home-hero-meta {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px 16px;
+
+  margin-bottom:
+    19px;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      0.78
+    );
+
+  font-size: 13px;
+}
+
+.bt-home-planet {
+  position: absolute;
+
+  z-index: 1;
+
+  top: 27px;
+
+  right: 25%;
+
+  font-size: 48px;
+
+  animation:
+    btPlanetFloat
+    6s
+    ease-in-out
+    infinite;
+}
+
+.bt-home-star {
+  position: absolute;
+
+  z-index: 1;
+
+  width: 3px;
+
+  height: 3px;
+
+  background:
+    #ffffff;
+
+  border-radius: 50%;
+
+  animation:
+    btTwinkle
+    5s
+    ease-in-out
+    infinite;
+}
+
+.bt-home-grid {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.2fr)
+    minmax(280px, 0.8fr);
+
+  gap: 18px;
+
+  margin-top: 20px;
+}
+
+.bt-section-card {
+  padding: 20px;
+}
+
+.bt-section-heading {
+  display: flex;
+
+  align-items: center;
+
+  justify-content:
+    space-between;
+
+  gap: 16px;
+
+  margin-bottom: 16px;
+}
+
+.bt-section-heading h2,
+.bt-section-heading h3 {
+  margin: 0;
+
+  color:
+    var(--bt-text);
+
+  font-size: 17px;
+}
+
+.bt-progress-track {
+  position: relative;
+
+  width: 100%;
+
+  height: 8px;
+
+  overflow: hidden;
+
+  background:
+    #e7edf7;
+
+  border-radius:
+    999px;
+}
+
+.bt-progress-fill {
+  height: 100%;
+
+  background:
+    linear-gradient(
+      90deg,
+      #ff9d14,
+      #f5c728
+    );
+
+  border-radius:
+    inherit;
+
+  transform-origin:
+    left center;
+
+  animation:
+    btProgressReveal
+    1.2s
+    cubic-bezier(
+      0.2,
+      0.8,
+      0.2,
+      1
+    )
+    both;
+}
+
+.bt-tabs {
+  display: inline-flex;
+
+  max-width: 100%;
+
+  padding: 4px;
+
+  overflow-x: auto;
+
+  background:
+    #eef2f8;
+
+  border-radius:
+    13px;
+
+  scrollbar-width: none;
+}
+
+.bt-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.bt-tab {
+  min-height: 38px;
+
+  padding:
+    8px 16px;
+
+  white-space: nowrap;
+
+  color:
+    var(--bt-muted);
+
+  background:
+    transparent;
+
+  border: 0;
+
+  border-radius:
+    10px;
+
+  cursor: pointer;
+
+  font-size: 13px;
+
+  font-weight: 750;
+
+  transition:
+    color
+    var(--bt-fast)
+    ease,
+    background
+    var(--bt-fast)
+    ease,
+    box-shadow
+    var(--bt-fast)
+    ease;
+}
+
+.bt-tab.is-active {
+  color:
+    var(--bt-text);
+
+  background:
+    #ffffff;
+
+  box-shadow:
+    0 3px 9px
+    rgba(
+      20,
+      45,
+      85,
+      0.08
+    );
+}
+
+.bt-live-dot {
+  width: 8px;
+
+  height: 8px;
+
+  display: inline-block;
+
+  background:
+    #ff3e55;
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 0
+    rgba(
+      255,
+      62,
+      85,
+      0.4
+    );
+
+  animation:
+    btLivePulse
+    2s
+    ease-in-out
+    infinite;
+}
+
+.bt-subject-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        220px,
+        1fr
+      )
+    );
+
+  gap: 16px;
+}
+
+.bt-subject-card {
+  min-height: 190px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  padding: 19px;
+}
+
+.bt-subject-icon {
+  width: 52px;
+
+  height: 52px;
+
+  display: grid;
+
+  place-items: center;
+
+  margin-bottom: 16px;
+
+  background:
+    var(--bt-blue-soft);
+
+  border-radius: 15px;
+
+  font-size: 27px;
+}
+
+.bt-subject-name {
+  margin:
+    0 0 5px;
+
+  font-size: 17px;
+}
+
+.bt-subject-meta {
+  color:
+    var(--bt-muted);
+
+  font-size: 12px;
+}
+
+.bt-subject-action {
+  margin-top: auto;
+
+  padding-top: 17px;
+}
+
+.bt-space-journey {
+  position: relative;
+
+  min-height:
+    calc(
+      100dvh - 50px
+    );
+
+  padding:
+    clamp(
+      22px,
+      4vw,
+      46px
+    );
+
+  overflow: hidden;
+
+  color:
+    #ffffff;
+
+  background:
+    linear-gradient(
+      180deg,
+      #07142e 0%,
+      #091a3b 50%,
+      #071126 100%
+    );
+
+  border-radius: 22px;
+
+  isolation: isolate;
+}
+
+.bt-space-journey::before {
+  position: absolute;
+
+  z-index: -2;
+
+  inset: 0;
+
+  content: "";
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      circle at 15% 15%,
+      rgba(
+        85,
+        101,
+        255,
+        0.2
+      ),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 85% 38%,
+      rgba(
+        29,
+        189,
+        116,
+        0.11
+      ),
+      transparent 27%
+    );
+}
+
+.bt-journey-stars {
+  position: absolute;
+
+  z-index: -1;
+
+  inset: 0;
+
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+.bt-journey-star {
+  position: absolute;
+
+  display: block;
+
+  background:
+    #ffffff;
+
+  border-radius: 50%;
+
+  opacity: 0.25;
+
+  box-shadow:
+    0 0 6px
+    rgba(
+      255,
+      255,
+      255,
+      0.65
+    );
+
+  animation:
+    btTwinkle
+    4s
+    ease-in-out
+    infinite;
+}
+
+.bt-journey-header {
+  position: relative;
+
+  z-index: 2;
+
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content:
+    space-between;
+
+  gap: 20px;
+
+  margin-bottom: 24px;
+}
+
+.bt-journey-title {
+  margin: 0;
+
+  font-size:
+    clamp(
+      27px,
+      4vw,
+      43px
+    );
+
+  line-height: 1.1;
+
+  letter-spacing:
+    -0.04em;
+}
+
+.bt-journey-subtitle {
+  margin:
+    8px 0 0;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      0.62
+    );
+}
+
+.bt-xp-pill {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  min-height: 42px;
+
+  padding:
+    8px 14px;
+
+  color:
+    #ffffff;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    );
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.11
+    );
+
+  border-radius:
+    999px;
+
+  backdrop-filter:
+    blur(12px);
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+.bt-current-journey {
+  position: relative;
+
+  z-index: 2;
+
+  display: grid;
+
+  grid-template-columns:
+    auto
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 20px;
+
+  padding:
+    22px;
+
+  margin-bottom: 22px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(
+        43,
+        75,
+        145,
+        0.72
+      ),
+      rgba(
+        27,
+        50,
+        102,
+        0.66
+      )
+    );
+
+  border:
+    1px solid
+    rgba(
+      59,
+      224,
+      145,
+      0.38
+    );
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 0 18px
+    rgba(
+      28,
+      211,
+      128,
+      0.15
+    );
+
+  animation:
+    btLevelGlow
+    3.4s
+    ease-in-out
+    infinite;
+}
+
+.bt-current-planet {
+  width: 76px;
+
+  height: 76px;
+
+  display: grid;
+
+  place-items: center;
+
+  background:
+    rgba(
+      22,
+      189,
+      109,
+      0.18
+    );
+
+  border-radius: 50%;
+
+  font-size: 45px;
+
+  animation:
+    btPlanetFloat
+    5s
+    ease-in-out
+    infinite;
+}
+
+.bt-journey-grid {
+  position: relative;
+
+  z-index: 2;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.25fr)
+    minmax(270px, 0.75fr);
+
+  gap: 20px;
+}
+
+.bt-level-list,
+.bt-xp-guide {
+  padding: 18px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.045
+    );
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.1
+    );
+
+  border-radius: 18px;
+
+  backdrop-filter:
+    blur(12px);
+}
+
+.bt-level-item {
+  position: relative;
+
+  display: grid;
+
+  grid-template-columns:
+    54px
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 14px;
+
+  min-height: 91px;
+
+  padding:
+    13px 15px;
+
+  margin-bottom: 11px;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      0.82
+    );
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.035
+    );
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    );
+
+  border-radius: 15px;
+
+  transition:
+    transform
+    var(--bt-fast)
+    ease,
+    background
+    var(--bt-normal)
+    ease;
+}
+
+.bt-level-item:last-child {
+  margin-bottom: 0;
+}
+
+.bt-level-item.is-current {
+  color:
+    #ffffff;
+
+  background:
+    rgba(
+      26,
+      191,
+      111,
+      0.1
+    );
+
+  border-color:
+    rgba(
+      45,
+      222,
+      137,
+      0.65
+    );
+}
+
+.bt-level-item.is-locked {
+  opacity: 0.48;
+}
+
+.bt-level-item:not(
+  .is-locked
+):hover {
+  transform:
+    translateX(2px);
+}
+
+.bt-level-planet {
+  width: 50px;
+
+  height: 50px;
+
+  display: grid;
+
+  place-items: center;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.07
+    );
+
+  border-radius: 50%;
+
+  font-size: 29px;
+}
+
+.bt-level-item.is-current
+.bt-level-planet {
+  animation:
+    btPlanetFloat
+    5s
+    ease-in-out
+    infinite;
+}
+
+.bt-journey-rocket {
+  position: absolute;
+
+  z-index: 3;
+
+  right: 20px;
+
+  top: -15px;
+
+  font-size: 31px;
+
+  filter:
+    drop-shadow(
+      0 7px 10px
+      rgba(
+        0,
+        0,
+        0,
+        0.2
+      )
+    );
+
+  animation:
+    btRocketHover
+    4s
+    ease-in-out
+    infinite;
+
+  pointer-events: none;
+}
+
+.bt-xp-row {
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  min-height: 50px;
+
+  padding:
+    10px 12px;
+
+  margin-bottom: 8px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.055
+    );
+
+  border-radius: 12px;
+}
+
+.bt-xp-row:last-child {
+  margin-bottom: 0;
+}
+
+.bt-xp-icon {
+  width: 32px;
+
+  height: 32px;
+
+  display: grid;
+
+  place-items: center;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    );
+
+  border-radius: 9px;
+}
+
+.bt-xp-label {
+  min-width: 0;
+
+  flex: 1;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      0.78
+    );
+
+  font-size: 12px;
+
+  font-weight: 650;
+}
+
+.bt-xp-value {
+  color:
+    #ffd234;
+
+  font-size: 12px;
+
+  font-weight: 850;
+}
+
+.bt-mobile-nav {
+  display: none;
+}
+
+@keyframes btTwinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+
+    transform:
+      scale(0.85);
+  }
+
+  50% {
+    opacity: 0.9;
+
+    transform:
+      scale(1.15);
+  }
+}
+
+@keyframes btPlanetFloat {
+  0%,
+  100% {
+    transform:
+      translateY(0);
+  }
+
+  50% {
+    transform:
+      translateY(-6px);
+  }
+}
+
+@keyframes btRocketHover {
+  0%,
+  100% {
+    transform:
+      translateY(0)
+      rotate(-5deg);
+  }
+
+  50% {
+    transform:
+      translateY(-5px)
+      rotate(2deg);
+  }
+}
+
+@keyframes btLevelGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 12px
+      rgba(
+        28,
+        211,
+        128,
+        0.14
+      );
+  }
+
+  50% {
+    box-shadow:
+      0 0 27px
+      rgba(
+        28,
+        211,
+        128,
+        0.33
+      );
+  }
+}
+
+@keyframes btLivePulse {
+  0% {
+    box-shadow:
+      0 0 0 0
+      rgba(
+        255,
+        62,
+        85,
+        0.42
+      );
+  }
+
+  65% {
+    box-shadow:
+      0 0 0 7px
+      rgba(
+        255,
+        62,
+        85,
+        0
+      );
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0
+      rgba(
+        255,
+        62,
+        85,
+        0
+      );
+  }
+}
+
+@keyframes btProgressReveal {
+  from {
+    transform:
+      scaleX(0);
+  }
+
+  to {
+    transform:
+      scaleX(1);
+  }
+}
+
+@media (
+  max-width: 1000px
+) {
+  .bt-home-grid,
+  .bt-journey-grid {
+    grid-template-columns:
+      1fr;
+  }
+}
+
+@media (
+  max-width: 767px
+) {
+  :root {
+    --bt-sidebar-width:
+      0px;
+  }
+
+  .bt-student-sidebar {
+    display: none;
+  }
+
+  .bt-student-main {
+    margin-left: 0;
+
+    padding-bottom: 86px;
+  }
+
+  .bt-page-container {
+    width:
+      calc(
+        100% - 28px
+      );
+
+    padding:
+      20px 0 36px;
+  }
+
+  .bt-page-header {
+    flex-direction:
+      column;
+
+    gap: 14px;
+  }
+
+  .bt-home-hero {
+    min-height: 260px;
+
+    align-items:
+      flex-start;
+
+    padding:
+      24px 20px;
+  }
+
+  .bt-home-hero-content {
+    width: 100%;
+  }
+
+  .bt-home-planet {
+    right: 22px;
+
+    top: auto;
+
+    bottom: 20px;
+
+    font-size: 39px;
+  }
+
+  .bt-current-journey {
+    grid-template-columns:
+      60px
+      minmax(0, 1fr);
+
+    padding: 17px;
+  }
+
+  .bt-current-planet {
+    width: 58px;
+
+    height: 58px;
+
+    font-size: 35px;
+  }
+
+  .bt-current-journey
+  > :last-child {
+    grid-column:
+      1 / -1;
+  }
+
+  .bt-space-journey {
+    min-height: auto;
+
+    padding:
+      24px 15px;
+
+    border-radius: 17px;
+  }
+
+  .bt-journey-header {
+    flex-direction:
+      column;
+  }
+
+  .bt-level-list,
+  .bt-xp-guide {
+    padding: 12px;
+  }
+
+  .bt-level-item {
+    grid-template-columns:
+      46px
+      minmax(0, 1fr)
+      auto;
+
+    min-height: 80px;
+
+    padding:
+      11px;
+  }
+
+  .bt-level-planet {
+    width: 43px;
+
+    height: 43px;
+
+    font-size: 25px;
+  }
+
+  .bt-mobile-nav {
+    position: fixed;
+
+    z-index: 1000;
+
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    min-height: 72px;
+
+    display: grid;
+
+    grid-template-columns:
+      repeat(
+        5,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+    padding:
+      7px 6px
+      calc(
+        7px +
+        env(
+          safe-area-inset-bottom
+        )
+      );
+
+    background:
+      rgba(
+        255,
+        255,
+        255,
+        0.96
+      );
+
+    border-top:
+      1px solid
+      var(--bt-border);
+
+    box-shadow:
+      0 -8px 28px
+      rgba(
+        20,
+        45,
+        85,
+        0.09
+      );
+
+    backdrop-filter:
+      blur(18px);
+  }
+
+  .bt-mobile-nav-item {
+    display: flex;
+
+    flex-direction:
+      column;
+
+    align-items: center;
+
+    justify-content:
+      center;
+
+    gap: 4px;
+
+    min-width: 0;
+
+    color:
+      var(--bt-muted);
+
+    text-decoration: none;
+
+    font-size: 10px;
+
+    font-weight: 750;
+  }
+
+  .bt-mobile-nav-icon {
+    width: 31px;
+
+    height: 31px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 10px;
+  }
+
+  .bt-mobile-nav-item.is-active {
+    color:
+      var(--item-color);
+  }
+
+  .bt-mobile-nav-item.is-active
+  .bt-mobile-nav-icon {
+    color:
+      #ffffff;
+
+    background:
+      var(--item-color);
+  }
+}
+
+@media (
+  max-width: 480px
+) {
+  .bt-subject-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .bt-home-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .bt-page-title {
+    font-size: 27px;
+  }
+
+  .bt-tabs {
+    width: 100%;
+  }
+
+  .bt-tab {
+    flex: 1;
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior:
+      auto !important;
+
+    animation-duration:
+      0.01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+
+    transition-duration:
+      0.01ms !important;
+  }
+}
+```
+
+---
+
+# REQUIRED DATA CONNECTIONS
+
+Use existing APIs for:
+
+```text
+Student:
+- name
+- profile image
+- grade
+- course
+- batch
+
+Classes:
+- live classes
+- upcoming classes
+- completed classes
+- recordings
+- teacher
+- subject
+- date
+- time
+
+Learning:
+- enrolled course
+- assigned subjects
+- chapters
+- lessons
+- lesson progress
+- last opened lesson
+- animated videos
+
+Tasks:
+- homework
+- assignments
+- tests
+- due date
+- completion status
+- score
+- XP reward
+
+Rewards:
+- total XP
+- current level
+- next level
+- streak
+- leaderboard rank
+- achievements
+```
+
+Do not use placeholder data in production.
+
+Loading states must use skeletons.
+
+Error states must use friendly messages.
+
+Empty states must include a useful next action.
+
+---
+
+# EMPTY STATES
+
+## No upcoming classes
+
+```text
+No upcoming classes yet
+
+We'll let you know when your next class is scheduled.
+
+[ Explore My Subjects ]
+```
+
+## No tasks
+
+```text
+You're all caught up! 🎉
+
+No pending tasks right now.
+
+[ Continue Learning ]
+```
+
+## No subjects
+
+```text
+Your subjects are being prepared
+
+Please check again soon or contact your mentor.
+
+[ Ask Mentor ]
+```
+
+## No recording
+
+Do not show a broken button.
+
+Display:
+
+```text
+Recording is being prepared
+```
+
+## No achievements
+
+```text
+Your first achievement is waiting! ⭐
+
+Complete a class or task to begin.
+```
+
+---
+
+# ACCESSIBILITY
+
+All interactive elements must:
+
+- be keyboard accessible;
+- have visible focus states;
+- use semantic buttons and links;
+- have accessible names;
+- meet reasonable colour contrast;
+- avoid flashing;
+- support reduced motion.
+
+Minimum touch target:
+
+```css
+min-width: 42px;
+min-height: 42px;
+```
+
+Images require useful alt text.
+
+Decorative stars and planets must use:
+
+```tsx
+aria-hidden="true"
+```
+
+---
+
+# FINAL ACCEPTANCE CHECKLIST
+
+The implementation is complete only when:
+
+- [ ] Sidebar contains exactly five primary items.
+- [ ] Dashboard is renamed Home in the UI.
+- [ ] Classes contains Upcoming, Live Now and Completed.
+- [ ] Learn contains Continue Learning, My Subjects and Animated Videos.
+- [ ] “Other Courses” is not shown anywhere.
+- [ ] Subject cards use real assigned subjects.
+- [ ] Tasks combines Homework, Assignments and Tests.
+- [ ] Rewards contains Space Journey, Leaderboard and Achievements.
+- [ ] Space Journey is the default Rewards tab.
+- [ ] Space Journey has lightweight stars.
+- [ ] Only the current planet floats.
+- [ ] Only the current level glows.
+- [ ] Only one small rocket animates.
+- [ ] Locked planets remain still.
+- [ ] Progress animates once.
+- [ ] Level-unlock animation does not replay on every refresh.
+- [ ] XP remains server-controlled.
+- [ ] Existing live-class joining still works.
+- [ ] Existing lesson navigation still works.
+- [ ] Existing task submission still works.
+- [ ] Existing leaderboard logic still works.
+- [ ] Home and Leaderboard show the same rank.
+- [ ] No real data has been replaced with hardcoded data.
+- [ ] Desktop sidebar works.
+- [ ] Tablet layout works.
+- [ ] Mobile bottom navigation works.
+- [ ] Existing admin and teacher portals remain unchanged.
+- [ ] Existing old routes continue working.
+- [ ] No heavy animation library was added.
+- [ ] No duplicate pages or database tables were created.
+
+---
+
+# FINAL IMPLEMENTATION INSTRUCTION
+
+Implement this redesign directly in the existing Braintam student portal.
+
+First inspect the current architecture and map every existing feature to the new five-section navigation.
+
+Preserve all APIs, authentication, database logic, role permissions, live-class joining, lesson progress, task submissions, XP logic, leaderboard logic and existing routes.
+
+Do not create a disconnected sample page.
+
+After implementation:
+
+1. Run TypeScript checks.
+2. Run the project build.
+3. Fix all build errors.
+4. Test desktop navigation.
+5. Test mobile navigation.
+6. Test live-class joining.
+7. Test course and lesson opening.
+8. Test homework.
+9. Test assignments.
+10. Test tests.
+11. Test recordings.
+12. Test XP display.
+13. Test Space Journey.
+14. Test leaderboard consistency.
+15. Report all files modified.
+16. Report any API fields that were unavailable.

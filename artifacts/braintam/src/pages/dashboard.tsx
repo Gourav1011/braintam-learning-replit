@@ -98,10 +98,10 @@ function TodaysMissions({
   streak, pendingHw, upcomingTests, isLoading,
 }: { streak: number; pendingHw: number; upcomingTests: number; isLoading: boolean }) {
   const missions = [
-    { icon: "🎥", label: "Attend Live Class",  done: false,                            href: "/live-classes", pts: "+10 XP" },
-    { icon: "📚", label: "Complete Homework",  done: !isLoading && pendingHw === 0,    href: "/homework",     pts: "+5 XP"  },
-    { icon: "📝", label: "Complete a Test",    done: !isLoading && upcomingTests === 0, href: "/tests",       pts: "+10 XP" },
-    { icon: "🔥", label: "Maintain Streak",    done: streak > 0,                       href: "/profile",      pts: "+5 XP"  },
+    { icon: "🎥", label: "Attend Live Class",  done: false,                            href: "/live-classes",        pts: "+10 XP" },
+    { icon: "📚", label: "Complete Homework",  done: !isLoading && pendingHw === 0,    href: "/tasks?tab=homework",  pts: "+5 XP"  },
+    { icon: "📝", label: "Complete a Test",    done: !isLoading && upcomingTests === 0, href: "/tasks?tab=tests",    pts: "+10 XP" },
+    { icon: "🔥", label: "Maintain Streak",    done: streak > 0,                       href: "/profile",             pts: "+5 XP"  },
   ];
   const completed = missions.filter(m => m.done).length;
 
@@ -628,7 +628,7 @@ export default function DashboardPage() {
       value: dashboard?.pendingHomework ?? 0,
       icon: FileText,
       gradient: "linear-gradient(135deg, #ea580c, #c2410c)",
-      href: "/homework",
+      href: "/tasks?tab=homework",
       desc: "Pending tasks",
     },
     {
@@ -636,7 +636,7 @@ export default function DashboardPage() {
       value: dashboard?.pendingAssignments ?? 0,
       icon: BookOpen,
       gradient: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-      href: "/assignments",
+      href: "/tasks?tab=assignments",
       desc: "Due soon",
     },
     {
@@ -644,7 +644,7 @@ export default function DashboardPage() {
       value: dashboard?.upcomingTests ?? 0,
       icon: CheckSquare,
       gradient: "linear-gradient(135deg, #059669, #047857)",
-      href: "/tests",
+      href: "/tasks?tab=tests",
       desc: "Upcoming",
     },
   ];
