@@ -581,6 +581,20 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     const room = getSessionRoom(sessionId);
 
+    // ── Block non-staff from joining completed live classes ────────────────
+    if (!isStaff && !isMentor && Number.isFinite(Number(sessionId))) {
+      db.select({ status: liveClassesTable.status })
+        .from(liveClassesTable)
+        .where(eq(liveClassesTable.id, Number(sessionId)))
+        .limit(1)
+        .then(([row]) => {
+          if (row?.status === "completed") {
+            socket.emit("class:ended");
+          }
+        })
+        .catch(() => {});
+    }
+
     // ── Immediate student presence: mark LIVE on connect, don't wait for heartbeat ──
     // The heartbeat fires up to 15s after connect. Marking immediately means the teacher
     // sees PRESENT(n) the moment the student's socket joins the room.
@@ -1117,6 +1131,17 @@ export function setupSocketIO(httpServer: HttpServer) {
       room.activePresentation = null;
       room.currentSlide = 1;
       io.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+    });
+
+    // ── Annotation sync ─────────────────────────────────────────
+    socket.on("annotation:draw", (seg: unknown) => {
+      if (!isStaff) return;
+      // broadcast to everyone EXCEPT the teacher (who already drew locally)
+      socket.to(globalRoom(sessionId)).emit("annotation:draw", seg);
+    });
+    socket.on("annotation:clear", () => {
+      if (!isStaff) return;
+      socket.to(globalRoom(sessionId)).emit("annotation:clear");
     });
 
     socket.on("presentation:navigate", (payload: { dir: "prev" | "next"; page: number }) => {

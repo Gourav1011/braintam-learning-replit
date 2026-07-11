@@ -126,6 +126,26 @@ function fmtDuration(sec: number): string {
   return `${Math.round(sec / 60)}m`;
 }
 
+type DrawSegment = { mode: "pen" | "hl"; color: string; x1: number; y1: number; x2: number; y2: number; };
+
+function AnnotationOverlay({ segments }: { segments: DrawSegment[] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx || !canvas) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const seg of segments) {
+      ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2);
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      if (seg.mode === "pen") { ctx.strokeStyle = seg.color; ctx.lineWidth = 3; ctx.globalAlpha = 1; }
+      else { ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 24; ctx.globalAlpha = 0.18; }
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+  }, [segments]);
+  return <canvas ref={ref} width={1280} height={720} className="absolute inset-0 w-full h-full" style={{ pointerEvents: "none" }} />;
+}
+
 // ── Annotation canvas ──────────────────────────────────────────
 const PEN_COLORS = [
   { id: "orange", hex: "#FF6B1A", label: "Orange" },
@@ -136,8 +156,8 @@ const PEN_COLORS = [
 type PenColorId = typeof PEN_COLORS[number]["id"];
 
 function AnnotationCanvas({
-  mode, penColor, canvasRef,
-}: { mode: "none" | "pen" | "highlighter"; penColor: string; canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
+  mode, penColor, canvasRef, onSegment,
+}: { mode: "none" | "pen" | "highlighter"; penColor: string; canvasRef: React.RefObject<HTMLCanvasElement | null>; onSegment?: (seg: DrawSegment) => void; }) {
   const isDrawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
 
@@ -158,7 +178,9 @@ function AnnotationCanvas({
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     if (mode === "pen") { ctx.strokeStyle = penColor; ctx.lineWidth = 3; ctx.globalAlpha = 1; }
     else { ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 24; ctx.globalAlpha = 0.18; }
-    ctx.stroke(); ctx.globalAlpha = 1; last.current = p;
+    ctx.stroke(); ctx.globalAlpha = 1;
+    onSegment?.({ mode: mode === "pen" ? "pen" : "hl", color: penColor, x1: last.current.x, y1: last.current.y, x2: p.x, y2: p.y });
+    last.current = p;
   };
   const onUp = () => { isDrawing.current = false; last.current = null; };
 
@@ -510,10 +532,19 @@ export default function LiveClassroom() {
   const [penColorId, setPenColorId] = useState<PenColorId>("orange");
   const penColor = PEN_COLORS.find(c => c.id === penColorId)?.hex ?? ORANGE;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [annotSegments, setAnnotSegments] = useState<DrawSegment[]>([]);
+  const [classEnded, setClassEnded] = useState(false);
+
   const clearAnnotations = useCallback(() => {
     const c = canvasRef.current;
     if (c) c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
-  }, []);
+    setAnnotSegments([]);
+    socket?.emit("annotation:clear");
+  }, [socket]);
+
+  const handleSegment = useCallback((seg: DrawSegment) => {
+    socket?.emit("annotation:draw", seg);
+  }, [socket]);
 
   // ── Slide upload ────────────────────────────────────────────
   const cleanupUploadedSlide = useCallback(async (filename: string) => {
@@ -615,6 +646,36 @@ export default function LiveClassroom() {
     return () => clearInterval(t);
   }, [socket, isStaff, isMentor]);
 
+  // ── postMessage listener — detect built-in Google Slides navigation ──
+  // When teacher uses the iframe's own prev/next controls, Google Slides
+  // broadcasts a "presenter" message with the new slide hash. We catch it
+  // and emit a socket event so all clients follow along automatically.
+  useEffect(() => {
+    if (!isStaff || !socket) return;
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.type === "presenter" && typeof data.hash === "string") {
+          const match = (data.hash as string).match(/id\.p(\d+)/);
+          if (match) {
+            const page = parseInt(match[1], 10);
+            if (Number.isFinite(page) && page >= 1) {
+              setCurrentSlide(prev => {
+                if (prev !== page) {
+                  socket.emit("presentation:navigate", { dir: "next", page });
+                  setAnnotSegments([]);
+                }
+                return page;
+              });
+            }
+          }
+        }
+      } catch { /* not a slide message */ }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isStaff, socket]);
+
   // ── Helper to upsert registry entry ───────────────────────
   const upsert = useCallback((rec: Partial<AttendanceRecord> & { userId: string }) => {
     setRegistry(prev => {
@@ -670,7 +731,19 @@ export default function LiveClassroom() {
     });
     socket.on("presentation:navigated", ({ page }: { page: number }) => {
       setCurrentSlide(page);
+      setAnnotSegments([]);
     });
+
+    // ── Annotation sync — receive teacher drawings ───────────
+    socket.on("annotation:draw", (seg: unknown) => {
+      if (!seg || typeof seg !== "object") return;
+      const s = seg as DrawSegment;
+      setAnnotSegments(prev => [...prev, s]);
+    });
+    socket.on("annotation:clear", () => setAnnotSegments([]));
+
+    // ── Class ended — non-staff are shown an ended screen ────
+    socket.on("class:ended", () => setClassEnded(true));
 
     socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
     socket.on("chat:blocked", () => {
@@ -809,6 +882,7 @@ export default function LiveClassroom() {
       socket.off("presentation:started"); socket.off("presentation:stopped");
       socket.off("attendance:snapshot");
       socket.off("class:ended");
+      socket.off("annotation:draw"); socket.off("annotation:clear");
       socket.off("teacher:studentSuggested");
       socket.off("staffChat:message");
       socket.off("classroom:joined");
@@ -909,6 +983,19 @@ export default function LiveClassroom() {
   };
 
   const embedUrl = getEmbedUrl(presentationUrl);
+
+  if (classEnded && !isStaff) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-gray-950 text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="text-6xl">🔚</div>
+        <h2 className="text-2xl font-bold">This class has ended</h2>
+        <p className="text-gray-400 text-sm">The live session is no longer available. Redirecting you to dashboard…</p>
+        <a href="/dashboard" className="mt-2 px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+          Go to Dashboard
+        </a>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -1071,8 +1158,9 @@ export default function LiveClassroom() {
                 </p>
               </div>
             )}
-            {/* Annotation canvas — always present so pen/highlight/clear always work */}
-            {isStaff && <AnnotationCanvas mode={annotMode} penColor={penColor} canvasRef={canvasRef} />}
+            {/* Annotation canvas — teacher draws; AnnotationOverlay replays segments for students/mentors */}
+            {isStaff && <AnnotationCanvas mode={annotMode} penColor={penColor} canvasRef={canvasRef} onSegment={handleSegment} />}
+            {!isStaff && <AnnotationOverlay segments={annotSegments} />}
 
             {/* Sprint 3 — "You're on stage" banner for invited students */}
             {myOnStage && !isStaff && (

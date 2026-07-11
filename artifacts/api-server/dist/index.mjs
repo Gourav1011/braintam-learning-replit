@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1502" : "dev",
-    commit: true ? "3fc7d4d" : "unknown",
-    buildTime: true ? "2026-07-11T15:02:02.187Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1742" : "dev",
+    commit: true ? "bba5e7d" : "unknown",
+    buildTime: true ? "2026-07-11T17:42:56.044Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133181,6 +133181,14 @@ function setupSocketIO(httpServer2) {
       socket.join(groupRoom(sessionId, groupId));
     }
     const room = getSessionRoom(sessionId);
+    if (!isStaff && !isMentor && Number.isFinite(Number(sessionId))) {
+      db.select({ status: liveClassesTable.status }).from(liveClassesTable).where(eq(liveClassesTable.id, Number(sessionId))).limit(1).then(([row]) => {
+        if (row?.status === "completed") {
+          socket.emit("class:ended");
+        }
+      }).catch(() => {
+      });
+    }
     if (!isStaff && !isMentor && sessionId) {
       const cacheKey = `${sessionId}-${userId}`;
       const prev = liveStateCache.get(cacheKey);
@@ -133634,6 +133642,14 @@ function setupSocketIO(httpServer2) {
       room.activePresentation = null;
       room.currentSlide = 1;
       io2.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+    });
+    socket.on("annotation:draw", (seg) => {
+      if (!isStaff) return;
+      socket.to(globalRoom(sessionId)).emit("annotation:draw", seg);
+    });
+    socket.on("annotation:clear", () => {
+      if (!isStaff) return;
+      socket.to(globalRoom(sessionId)).emit("annotation:clear");
     });
     socket.on("presentation:navigate", (payload) => {
       if (!isStaff) return;
