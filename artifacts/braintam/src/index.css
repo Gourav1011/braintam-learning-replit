@@ -378,3 +378,42 @@
 .bt-offer-pulse  { animation: bt-offer-pulse 2s ease-in-out infinite; will-change: transform; }
 .bt-shimmer-ray  { animation: bt-shimmer-sweep 2.4s ease-in-out infinite; will-change: transform; }
 .bt-fire-flicker { animation: bt-fire-flicker 0.7s ease-in-out infinite; will-change: transform; display: inline-block; }
+
+/* ── Live Classroom mobile layout ──────────────────────────── */
+.classroom-sidebar {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.classroom-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.classroom-composer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+}
+
+/* Mobile landscape: tighten the right panel so chat stays usable */
+@media (max-height: 500px) and (orientation: landscape) {
+  .classroom-sidebar .relative.bg-black {
+    height: 100px !important;
+  }
+
+  .classroom-sidebar .relative.bg-black video,
+  .classroom-sidebar .relative.bg-black > div {
+    height: 100px;
+  }
+
+  .classroom-messages {
+    font-size: 11px;
+  }
+}

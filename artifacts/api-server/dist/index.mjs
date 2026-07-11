@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-0509" : "dev",
-    commit: true ? "a4fa732" : "unknown",
-    buildTime: true ? "2026-07-11T05:09:05.109Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-0529" : "dev",
+    commit: true ? "f502151" : "unknown",
+    buildTime: true ? "2026-07-11T05:29:59.280Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -132833,14 +132833,18 @@ function getSessionRoom(sid) {
       activePoll: null,
       pollAnswers: /* @__PURE__ */ new Map(),
       stageSlots: /* @__PURE__ */ new Map(),
-      teacher: null
+      teacher: null,
+      activePresentation: null
     });
   }
   return sessionRooms.get(sid);
 }
 async function loadStageSlots(sessionId) {
   try {
-    const rows = await db.select().from(stageSlotsTable).where(eq(stageSlotsTable.sessionId, sessionId));
+    const rows = await db.select().from(stageSlotsTable).where(and(
+      eq(stageSlotsTable.sessionId, sessionId),
+      eq(stageSlotsTable.status, "active")
+    ));
     return rows.map((r) => ({
       studentId: r.studentId,
       studentName: r.studentName,
@@ -132855,7 +132859,8 @@ async function loadStageSlots(sessionId) {
 }
 async function endStageSlot(io2, sessionId, studentId, reason) {
   const room = sessionRooms.get(sessionId);
-  room?.stageSlots.delete(studentId);
+  if (!room?.stageSlots.has(studentId)) return;
+  room.stageSlots.delete(studentId);
   const timerKey = `${sessionId}:${studentId}`;
   const timer = stageTimers.get(timerKey);
   if (timer) {
@@ -133109,7 +133114,23 @@ function setupSocketIO(httpServer2) {
         loadStageSlots(sessionId)
       ]);
       if (room.stageSlots.size === 0 && dbStageSlots.length > 0) {
-        for (const s2 of dbStageSlots) room.stageSlots.set(s2.studentId, s2);
+        for (const s2 of dbStageSlots) {
+          const remainingMs = s2.stageExpiresAt - Date.now();
+          if (remainingMs <= 0) {
+            endStageSlot(io2, sessionId, s2.studentId, "timer_expired").catch(() => {
+            });
+            continue;
+          }
+          room.stageSlots.set(s2.studentId, s2);
+          const timerKey = `${sessionId}:${s2.studentId}`;
+          if (!stageTimers.has(timerKey)) {
+            const timer = setTimeout(() => {
+              endStageSlot(io2, sessionId, s2.studentId, "timer_expired").catch(() => {
+              });
+            }, remainingMs);
+            stageTimers.set(timerKey, timer);
+          }
+        }
       }
       socket.emit("roomState", {
         chat: recentChat,
@@ -133117,7 +133138,8 @@ function setupSocketIO(httpServer2) {
         raiseHandEnabled: room.raiseHandEnabled,
         activePoll: room.activePoll ? { ...room.activePoll, correctOptionId: void 0 } : null,
         stage: Array.from(room.stageSlots.values()),
-        teacher: room.teacher
+        teacher: room.teacher,
+        activePresentation: room.activePresentation
       });
       const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
       socket.emit("classroom:joined", {
@@ -133500,6 +133522,18 @@ function setupSocketIO(httpServer2) {
       setTimeout(() => {
         io2.in(globalRoom(sessionId)).disconnectSockets(true);
       }, 4e3);
+    });
+    socket.on("presentation:start", (payload) => {
+      if (!isStaff) return;
+      const url2 = String(payload?.url ?? "").trim().slice(0, 2048);
+      if (!url2) return;
+      room.activePresentation = { url: url2, updatedAt: Date.now(), updatedBy: name };
+      io2.to(globalRoom(sessionId)).emit("presentation:started", { url: url2 });
+    });
+    socket.on("presentation:stop", () => {
+      if (!isStaff) return;
+      room.activePresentation = null;
+      io2.to(globalRoom(sessionId)).emit("presentation:stopped", {});
     });
     socket.on("mentor:suggestStudent", (payload) => {
       if (!isMentor) return;

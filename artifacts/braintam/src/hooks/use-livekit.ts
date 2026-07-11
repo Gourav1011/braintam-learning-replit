@@ -206,13 +206,31 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
         setConnectionState("connected");
         setAudioBlocked(!room.canPlaybackAudio);
 
-        // Attach any teacher tracks already published before we joined.
+        // Attach any tracks already published before we joined.
         room.remoteParticipants.forEach((participant) => {
-          if (isTeacherRole(safeParseRole(participant.metadata))) {
+          const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
+          if (isTeacher) {
             setTeacherPresent(true);
             participant.trackPublications.forEach((pub) => {
               if (pub.track) attachTeacherTrack(pub.track);
             });
+          } else {
+            // Seed stage publishers for non-teacher participants already streaming.
+            // Without this, students joining after a stage student started publishing
+            // would never see the stage video (they missed the TrackSubscribed event).
+            const entry: { video?: RemoteTrack; audio?: RemoteTrack } = {};
+            let hasTrack = false;
+            participant.trackPublications.forEach((pub) => {
+              if (pub.isSubscribed && pub.track) {
+                if (pub.track.kind === Track.Kind.Video) { entry.video = pub.track as RemoteTrack; hasTrack = true; }
+                else if (pub.track.kind === Track.Kind.Audio) { entry.audio = pub.track as RemoteTrack; hasTrack = true; }
+              }
+            });
+            if (hasTrack) {
+              tracksByIdentity.current.set(participant.identity, entry);
+              setStagePublishers(prev => new Set(prev).add(participant.identity));
+              setTrackVersion(v => v + 1);
+            }
           }
         });
       } catch (err) {

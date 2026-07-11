@@ -85,6 +85,12 @@ interface ChatMsg {
   ts: number;
 }
 
+interface PresentationState {
+  url: string;
+  updatedAt: number;
+  updatedBy: string;
+}
+
 interface SessionRoom {
   raisedHands: Map<string, { name: string; mentorGroupId: string | null }>;
   raiseHandEnabled: boolean;
@@ -92,6 +98,7 @@ interface SessionRoom {
   pollAnswers: Map<string, PollAnswer>;
   stageSlots: Map<string, StageSlotEntry>;  // key = studentId
   teacher: { name: string; userId: string } | null;
+  activePresentation: PresentationState | null;
 }
 
 interface StageSlotEntry {
@@ -230,6 +237,7 @@ function getSessionRoom(sid: string): SessionRoom {
       pollAnswers: new Map(),
       stageSlots: new Map(),
       teacher: null,
+      activePresentation: null,
     });
   }
   return sessionRooms.get(sid)!;
@@ -241,7 +249,10 @@ async function loadStageSlots(sessionId: string): Promise<StageSlotEntry[]> {
     const rows = await db
       .select()
       .from(stageSlotsTable)
-      .where(eq(stageSlotsTable.sessionId, sessionId));
+      .where(and(
+        eq(stageSlotsTable.sessionId, sessionId),
+        eq(stageSlotsTable.status, "active"),
+      ));
     return rows.map(r => ({
       studentId: r.studentId,
       studentName: r.studentName,
@@ -261,7 +272,9 @@ async function endStageSlot(
   reason: "teacher_removed" | "timer_expired" | "student_left" | "class_ended",
 ): Promise<void> {
   const room = sessionRooms.get(sessionId);
-  room?.stageSlots.delete(studentId);
+  // Idempotency guard — if slot already removed, do nothing
+  if (!room?.stageSlots.has(studentId)) return;
+  room.stageSlots.delete(studentId);
 
   const timerKey = `${sessionId}:${studentId}`;
   const timer = stageTimers.get(timerKey);
@@ -600,9 +613,26 @@ export function setupSocketIO(httpServer: HttpServer) {
         loadStageSlots(sessionId),
       ]);
 
-      // Seed in-memory stageSlots if empty (handles server restart)
+      // Seed in-memory stageSlots if empty (handles server restart).
+      // Use remaining time from DB so 60s is not restarted fresh on each reconnect.
       if (room.stageSlots.size === 0 && dbStageSlots.length > 0) {
-        for (const s of dbStageSlots) room.stageSlots.set(s.studentId, s);
+        for (const s of dbStageSlots) {
+          const remainingMs = s.stageExpiresAt - Date.now();
+          if (remainingMs <= 0) {
+            // Already expired — clean up without re-adding to memory
+            endStageSlot(io, sessionId, s.studentId, "timer_expired").catch(() => {});
+            continue;
+          }
+          room.stageSlots.set(s.studentId, s);
+          // Only start timer if not already running (idempotent on multiple connects)
+          const timerKey = `${sessionId}:${s.studentId}`;
+          if (!stageTimers.has(timerKey)) {
+            const timer = setTimeout(() => {
+              endStageSlot(io, sessionId, s.studentId, "timer_expired").catch(() => {});
+            }, remainingMs);
+            stageTimers.set(timerKey, timer);
+          }
+        }
       }
 
       socket.emit("roomState", {
@@ -615,6 +645,7 @@ export function setupSocketIO(httpServer: HttpServer) {
           : null,
         stage: Array.from(room.stageSlots.values()),
         teacher: room.teacher,
+        activePresentation: room.activePresentation,
       });
 
       // Diagnostic acknowledgement — sends socket ID, canonical room name and
@@ -1066,6 +1097,21 @@ export function setupSocketIO(httpServer: HttpServer) {
       setTimeout(() => {
         io.in(globalRoom(sessionId)).disconnectSockets(true);
       }, 4000);
+    });
+
+    // ── Presentation sync (teacher broadcasts URL to all viewers) ──
+    socket.on("presentation:start", (payload: { url: string }) => {
+      if (!isStaff) return;
+      const url = String(payload?.url ?? "").trim().slice(0, 2048);
+      if (!url) return;
+      room.activePresentation = { url, updatedAt: Date.now(), updatedBy: name };
+      io.to(globalRoom(sessionId)).emit("presentation:started", { url });
+    });
+
+    socket.on("presentation:stop", () => {
+      if (!isStaff) return;
+      room.activePresentation = null;
+      io.to(globalRoom(sessionId)).emit("presentation:stopped", {});
     });
 
     // ── Mentor silently suggests a student to the teacher ─────

@@ -395,6 +395,10 @@ export default function LiveClassroom() {
   const hasValidSession = Boolean(sessionId) && sessionId !== "demo" && Number.isFinite(Number(sessionId));
   const livekit = useLiveKit({ sessionId, enabled: hasValidSession && Boolean(userId) });
 
+  // Only show diagnostics when explicitly opted in — Replit preview is DEV but used by real testers
+  const showDiagnostics = import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get("debug") === "classroom";
+
   // ── State ──────────────────────────────────────────────────
   const [presentationUrl, setPresentationUrl] = useState(search.get("url") ?? "");
   const [urlInput, setUrlInput] = useState(search.get("url") ?? "");
@@ -519,19 +523,22 @@ export default function LiveClassroom() {
       if (uploadedFilename) void cleanupUploadedSlide(uploadedFilename);
       setUploadedFilename(data.filename);
 
+      let broadcastUrl: string;
       if (data.isPptx) {
-        // Use Office Online viewer for PPT/PPTX
+        // Use Office Online viewer for PPT/PPTX (needs a publicly accessible URL)
         const publicBase = window.location.origin;
-        const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicBase + data.fileUrl)}`;
-        setPresentationUrl(embedUrl);
+        broadcastUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicBase + data.fileUrl)}`;
       } else {
         // PDF — serve directly from our server (same origin, browser renders natively)
-        setPresentationUrl(data.fileUrl);
+        broadcastUrl = data.fileUrl;
       }
+      setPresentationUrl(broadcastUrl);
+      // Broadcast to all students/mentors via Socket.IO
+      socket?.emit("presentation:start", { url: broadcastUrl });
     } finally {
       setIsUploading(false);
     }
-  }, [uploadedFilename, cleanupUploadedSlide]);
+  }, [uploadedFilename, cleanupUploadedSlide, socket]);
 
   // ── Slide navigation (arrow buttons) ───────────────────────
   const navigateSlide = useCallback((dir: "prev" | "next") => {
@@ -624,6 +631,7 @@ export default function LiveClassroom() {
       chat: ChatMsg[]; raisedHands: RaisedHand[]; raiseHandEnabled: boolean;
       activePoll: Poll | null; stage?: StageSlot[];
       teacher?: { name: string; userId: string } | null;
+      activePresentation?: { url: string } | null;
     }) => {
       setChat(s.chat);
       setRaisedHands(s.raisedHands);
@@ -634,6 +642,21 @@ export default function LiveClassroom() {
       if (!isStaff && s.teacher) {
         setTeacherInfo({ name: s.teacher.name, userId: s.teacher.userId, online: true });
       }
+      // Restore ongoing presentation for all roles (catches late joiners and reconnects)
+      if (s.activePresentation?.url) {
+        setPresentationUrl(s.activePresentation.url);
+      } else if (s.activePresentation === null) {
+        // Server explicitly cleared the presentation
+        if (!isStaff) setPresentationUrl("");
+      }
+    });
+
+    // Presentation sync — server broadcasts teacher's presentation to all viewers
+    socket.on("presentation:started", ({ url }: { url: string }) => {
+      if (!isStaff) setPresentationUrl(url);
+    });
+    socket.on("presentation:stopped", () => {
+      if (!isStaff) setPresentationUrl("");
     });
 
     socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
@@ -770,6 +793,7 @@ export default function LiveClassroom() {
       socket.off("stage:studentRemoved"); socket.off("stage:error");
       socket.off("teacher:joined"); socket.off("teacher:left");
       socket.off("stage:micInvite");
+      socket.off("presentation:started"); socket.off("presentation:stopped");
       socket.off("attendance:snapshot");
       socket.off("class:ended");
       socket.off("teacher:studentSuggested");
@@ -978,10 +1002,20 @@ export default function LiveClassroom() {
                 placeholder="Canva: Share → Embed link   |   or paste a PDF URL"
                 value={urlInput}
                 onChange={e => setUrlInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && setPresentationUrl(urlInput)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    const normalized = getEmbedUrl(urlInput) ?? urlInput;
+                    setPresentationUrl(normalized);
+                    socket?.emit("presentation:start", { url: normalized });
+                  }
+                }}
               />
               <button
-                onClick={() => setPresentationUrl(urlInput)}
+                onClick={() => {
+                  const normalized = getEmbedUrl(urlInput) ?? urlInput;
+                  setPresentationUrl(normalized);
+                  socket?.emit("presentation:start", { url: normalized });
+                }}
                 disabled={!urlInput.trim()}
                 className="px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-40"
                 style={{ background: NAVY }}
@@ -1143,7 +1177,11 @@ export default function LiveClassroom() {
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
-                  <button onClick={() => { setPresentationUrl(""); setUrlInput(""); if (uploadedFilename) { void cleanupUploadedSlide(uploadedFilename); setUploadedFilename(null); } }}
+                  <button onClick={() => {
+                    setPresentationUrl(""); setUrlInput("");
+                    socket?.emit("presentation:stop");
+                    if (uploadedFilename) { void cleanupUploadedSlide(uploadedFilename); setUploadedFilename(null); }
+                  }}
                     className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-2">
                     <Settings className="w-3 h-3 inline mr-1" />Change Slide
                   </button>
@@ -1156,7 +1194,7 @@ export default function LiveClassroom() {
         {/* ═══════════════════════════════════════════════════
             RIGHT PANEL (20% fixed)
         ═══════════════════════════════════════════════════ */}
-        <div className="flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
+        <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           <div className="relative bg-black flex-shrink-0" style={{ height: 190 }}>
@@ -1320,7 +1358,7 @@ export default function LiveClassroom() {
               )}
 
               {/* Messages — students only see own mentor + teacher */}
-              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+              <div className="classroom-messages flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-2" style={{ minHeight: 0 }}>
                 {chat.length === 0 && <p className="text-[11px] text-gray-600 text-center mt-6">No messages yet</p>}
                 {chat
                   .filter(msg => {
@@ -1360,9 +1398,9 @@ export default function LiveClassroom() {
                   🚫 Your chat access is temporarily disabled. Please contact your mentor.
                 </div>
               ) : (
-                <div className="p-2 border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
                   <input
-                    className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-w-0 bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     placeholder={isStaff ? "Announce to all…" : "Say something…"}
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
@@ -1370,7 +1408,7 @@ export default function LiveClassroom() {
                     maxLength={300}
                     disabled={!isStaff && chatBlocked}
                   />
-                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="p-1.5 rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
+                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -1682,9 +1720,9 @@ export default function LiveClassroom() {
         </div>
       )}
 
-      {import.meta.env.DEV && (
+      {showDiagnostics && (
         <div className="fixed bottom-2 left-2 z-[9999] w-72 rounded-lg bg-black/90 border border-gray-700 text-[9px] font-mono text-gray-300 p-2 space-y-0.5 pointer-events-none select-none">
-          <p className="text-orange-400 font-bold text-[10px]">⚡ Live Classroom Diagnostics</p>
+          <p className="text-orange-400 font-bold text-[10px]">⚡ Live Classroom Diagnostics (debug mode)</p>
 
           <p className="text-gray-500 font-semibold pt-0.5">─ Identity</p>
           <p>Auth loading: <span className={authLoading ? "text-yellow-400" : "text-green-400"}>{authLoading ? "yes" : "no"}</span></p>
@@ -1706,10 +1744,19 @@ export default function LiveClassroom() {
           <p>Status: <span className="text-white">{livekit.connectionState}</span></p>
           <p>Room: <span className="text-white">{livekit.roomName ?? "—"}</span></p>
           <p>Identity: <span className="text-white">{livekit.identity ?? userId}</span></p>
-          <p>Camera: <span className="text-white">{livekit.cameraError ? "Error" : livekit.cameraPublishing ? "Publishing" : "Off"}</span></p>
-          <p>Mic: <span className="text-white">{livekit.microphoneError ? "Error" : livekit.micPublishing ? "Publishing" : "Off"}</span></p>
-          <p>Remote video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
-          <p>Remote audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
+          {isStaff ? (
+            <>
+              <p>Local Teacher Camera: <span className="text-white">{livekit.cameraError ? "Error" : livekit.cameraPublishing ? "Publishing" : "Off"}</span></p>
+              <p>Local Teacher Mic: <span className="text-white">{livekit.microphoneError ? "Error" : livekit.micPublishing ? "Publishing" : "Off"}</span></p>
+            </>
+          ) : (
+            <>
+              <p>Local Camera: <span className="text-gray-500">Not permitted</span></p>
+              <p>Local Microphone: <span className="text-gray-500">Not permitted</span></p>
+              <p>Remote Teacher Video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
+              <p>Remote Teacher Audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
+            </>
+          )}
 
           {(livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError) && (
             <p className="text-red-400 pt-0.5">

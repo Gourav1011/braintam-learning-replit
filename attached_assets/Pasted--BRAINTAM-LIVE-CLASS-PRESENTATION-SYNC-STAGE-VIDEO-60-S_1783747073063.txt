@@ -1,0 +1,935 @@
+# BRAINTAM LIVE CLASS — PRESENTATION SYNC, STAGE VIDEO, 60-SECOND CLEANUP, MOBILE CHAT, AND REMOVE DIAGNOSTICS
+
+The previous real-time fixes improved the classroom connection. Do not rebuild the classroom and do not change working authentication, LiveKit token permissions, Socket.IO room logic, teacher camera, or teacher microphone.
+
+Real mobile testing has now confirmed the following remaining issues.
+
+## Confirmed current behavior
+
+Student diagnostics show:
+
+```text id="xgz2bw"
+Session ID: 1
+Socket.IO: Connected
+LiveKit: connected
+LiveKit Room: session-1-1729a31a
+Identity: 41
+Role: student
+Remote Teacher Video: Waiting
+Remote Teacher Audio: Waiting
+```
+
+The classroom is opening in mobile landscape, but the layout is still compressed.
+
+Remaining problems:
+
+1. Canva embed links are not appearing for students.
+2. PDF/PPT presentations are not appearing for students.
+3. Presentation state appears to remain local to the teacher instead of synchronizing through the classroom.
+4. A student invited on stage is visible to the teacher but not visible to other students.
+5. The stage student should be visible to the teacher, students, and mentors in the same live class.
+6. After the 60-second stage limit ends, the student remains/reappears and the timer starts again.
+7. Stage cleanup is not removing the student from every client and from LiveKit publishing state.
+8. Student mobile chat is compressed, overlapping, and poorly aligned.
+9. The development diagnostics panel is visible to teachers and students and covers classroom content.
+10. The diagnostics panel must not appear in the normal classroom UI.
+
+Do not declare completion from typecheck/build alone.
+
+---
+
+# FIX 1 — SYNCHRONIZE CANVA EMBED STATE
+
+Inspect how the teacher currently enters and presents a Canva link.
+
+Find:
+
+* Teacher Canva input state
+* Present button handler
+* Socket.IO event emitted
+* Server event listener
+* Classroom state storage
+* Student event listener
+* Student presentation renderer
+
+The presentation must not remain only in teacher React state.
+
+When the teacher clicks Present, create a normalized presentation state:
+
+```ts id="8z2v5n"
+type PresentationState = {
+  type:
+    | "canva"
+    | "pdf"
+    | "ppt"
+    | "screen"
+    | null;
+
+  url:
+    string | null;
+
+  title?:
+    string;
+
+  updatedAt:
+    number;
+
+  updatedBy:
+    string;
+};
+```
+
+Use the repository’s existing types if equivalent types already exist.
+
+Store one active presentation state per live-class session.
+
+Broadcast it through the existing canonical Socket.IO classroom room.
+
+Use the actual existing room convention. Do not rename working rooms unnecessarily.
+
+Example flow:
+
+```text id="3rlc4t"
+Teacher enters Canva URL
+
+→ Teacher clicks Present
+
+→ Client validates and normalizes URL
+
+→ Client emits presentation update
+
+→ Server validates authenticated teacher
+
+→ Server stores active presentation for Live Class 1
+
+→ Server broadcasts presentation update to all users in session-1
+
+→ Students and mentors receive the same state
+
+→ Student presentation area renders Canva embed immediately
+```
+
+Do not require students to refresh.
+
+When a student joins after presentation has already started, include the current presentation state in the initial `roomState`.
+
+---
+
+# FIX 2 — NORMALIZE CANVA LINKS
+
+Support common Canva links safely.
+
+Do not embed arbitrary unsupported Canva editor URLs directly.
+
+Create one Canva URL normalization helper.
+
+Accept valid Canva presentation/view/embed links and convert them to the correct embeddable form where possible.
+
+Reject invalid or unsupported links with a useful teacher-facing message.
+
+Do not expose editable Canva links to students.
+
+Use an iframe with appropriate permissions:
+
+```tsx id="0p9d8n"
+<iframe
+  src={safeEmbedUrl}
+  title="Braintam Presentation"
+  allowFullScreen
+  loading="eager"
+  referrerPolicy="strict-origin-when-cross-origin"
+/>
+```
+
+Do not use unsafe raw HTML injection.
+
+If Canva blocks a URL from embedding, show:
+
+```text id="75i7aq"
+This Canva link cannot be embedded.
+
+Use Canva:
+Share → Public view link
+or
+Share → More → Embed
+```
+
+Do not silently show a black screen.
+
+---
+
+# FIX 3 — SYNCHRONIZE PDF AND PPT/PPTX
+
+Inspect the current upload flow.
+
+Determine whether PDF/PPT files are:
+
+* Uploaded to persistent storage
+* Converted to images/PDF
+* Represented by a public authenticated URL
+* Stored only as a local browser object URL
+
+Do not broadcast:
+
+```text id="qf72do"
+blob:
+```
+
+URLs to students.
+
+A browser-local `blob:` URL works only in the teacher’s browser and cannot work for students.
+
+Required flow:
+
+```text id="w2k9oq"
+Teacher uploads PDF/PPT
+
+→ File uploads to server/object storage
+
+→ Server returns a student-accessible URL or file ID
+
+→ Presentation state stores that URL/file ID
+
+→ Socket.IO broadcasts presentation state
+
+→ Students load the same presentation
+```
+
+If the current implementation uses:
+
+```ts id="wm6apv"
+URL.createObjectURL(file)
+```
+
+for presentation sharing, keep it only for temporary teacher preview, not for student delivery.
+
+For PDF:
+
+* Use the existing PDF renderer if available.
+* Synchronize current page number.
+* Synchronize next/previous page changes.
+* Include current page in `roomState`.
+
+For PPT/PPTX:
+
+* Use the existing server conversion/rendering pipeline if one exists.
+* If no conversion pipeline exists, do not pretend local PPT files can be shared directly.
+* Upload and convert to a student-viewable format such as PDF or slide images.
+* Report clearly if conversion infrastructure is missing.
+
+Do not remove current upload UI.
+
+---
+
+# FIX 4 — PRESENTATION EVENTS
+
+Use the existing Socket.IO naming conventions where possible.
+
+Required presentation actions:
+
+```text id="3wnhzn"
+presentation:start
+
+presentation:update
+
+presentation:page
+
+presentation:stop
+```
+
+Do not create duplicate events if equivalent events already exist.
+
+All presentation events must:
+
+* Validate authenticated teacher/admin role
+* Use the current live-class session
+* Broadcast to all participants in that class only
+* Update the server-side classroom state
+* Be included in reconnect/initial room state
+
+Students and mentors are viewers only and cannot change the presentation.
+
+---
+
+# FIX 5 — STAGE STUDENT MUST BE VISIBLE TO EVERY CLASS PARTICIPANT
+
+Current behavior:
+
+```text id="93j5kb"
+Teacher invites student
+
+→ Student publishes camera
+
+→ Teacher sees stage student
+
+→ Other students do not see stage student
+```
+
+Fix LiveKit remote participant rendering.
+
+Every participant in the same LiveKit room must be able to subscribe to an approved stage student.
+
+Required visibility:
+
+| Viewer        | Teacher video | Approved stage student |
+| ------------- | ------------: | ---------------------: |
+| Teacher       | Local preview |                Visible |
+| Student       |       Visible |                Visible |
+| Mentor        |       Visible |                Visible |
+| Stage student |       Visible |  Local preview/visible |
+
+Do not give normal students publishing permission.
+
+Only the approved stage student publishes temporarily.
+
+All students and mentors remain subscribers.
+
+Inspect the LiveKit hook for stage publisher tracking:
+
+```ts id="9xzw84"
+stagePublishers
+```
+
+Do not build stage video only from teacher-side Socket.IO state.
+
+When any participant subscribes to a remote approved stage student:
+
+* Identify the participant using authenticated LiveKit identity.
+* Match identity to the active stage slot.
+* Attach the camera track to the correct stage tile.
+* Attach microphone audio through the shared audio renderer.
+* Update stage publisher state.
+
+Handle stage students who are already publishing before another student joins.
+
+After LiveKit connects, inspect existing remote participants and publications.
+
+Do not rely only on future `TrackSubscribed` events.
+
+---
+
+# FIX 6 — RENDER STAGE VIDEO FOR STUDENTS AND MENTORS
+
+The student and mentor classroom layouts must include the active stage area.
+
+Do not render stage tiles only when:
+
+```ts id="x3r6t8"
+role === "teacher"
+```
+
+Render active stage participants for:
+
+```text id="nvrd8h"
+teacher
+
+student
+
+mentor
+```
+
+Controls remain role-specific:
+
+Teacher:
+
+* Remove student
+* Mute student
+* End stage
+
+Student/mentor:
+
+* View only
+* No stage management controls
+
+The stage area should not cover the teacher presentation.
+
+Use responsive layouts.
+
+Desktop example:
+
+```text id="jvm8z4"
+┌──────────────────────────────┬───────────┐
+│                              │ Teacher   │
+│ Presentation                 ├───────────┤
+│                              │ Student   │
+│                              │ On Stage  │
+└──────────────────────────────┴───────────┘
+```
+
+Mobile landscape example:
+
+```text id="ehshn0"
+┌───────────────────────┬─────────┐
+│ Presentation          │ Teacher │
+│                       ├─────────┤
+│                       │ Student │
+└───────────────────────┴─────────┘
+```
+
+Do not show empty stage slots to normal students unless required by the design.
+
+---
+
+# FIX 7 — FIX THE 60-SECOND STAGE TIMER
+
+The required limit is **60 seconds**, not 60 minutes.
+
+Current bug:
+
+```text id="0krm3a"
+Timer reaches zero
+
+→ Student is not fully removed
+
+→ Existing stage state remains
+
+→ Timer starts again
+
+→ Same student appears again
+```
+
+There must be one authoritative stage timer on the server.
+
+Do not run independent authoritative 60-second timers on every client.
+
+Server stage state should include:
+
+```ts id="3ekc90"
+type StageSlot = {
+  studentId:
+    string;
+
+  startedAt:
+    number;
+
+  expiresAt:
+    number;
+
+  status:
+    "invited"
+    | "accepted"
+    | "live"
+    | "expired";
+};
+```
+
+When the student becomes live:
+
+```ts id="js8qsp"
+expiresAt =
+  Date.now() +
+  60_000;
+```
+
+The server owns expiration.
+
+Clients only display:
+
+```ts id="21q3f3"
+Math.max(
+  0,
+  Math.ceil(
+    (
+      expiresAt -
+      Date.now()
+    ) /
+    1000
+  )
+)
+```
+
+Do not restart the timer when:
+
+* Component rerenders
+* Socket reconnects
+* Room state is received
+* Track is subscribed
+* Stage publisher state changes
+
+At expiration, run one idempotent cleanup function.
+
+Example:
+
+```ts id="9mh52s"
+async function expireStageSlot(
+  sessionId:
+    string,
+
+  studentId:
+    string
+) {
+  // Return immediately
+  // if already expired
+  // or removed.
+
+  // Mark expired.
+
+  // Remove slot from
+  // active stage state.
+
+  // Revoke LiveKit
+  // publishing permission.
+
+  // Emit stage removal
+  // to the class.
+
+  // Tell the student
+  // to disable camera/mic.
+
+  // Clear server timer.
+}
+```
+
+Required expiration flow:
+
+```text id="p0ptnp"
+60 seconds reached
+
+→ Server marks slot expired
+
+→ Server removes active stage slot
+
+→ Server revokes student publish permission
+
+→ Server emits stage:expired or existing equivalent
+
+→ Student disables camera
+
+→ Student disables microphone
+
+→ Teacher removes stage tile
+
+→ Other students remove stage tile
+
+→ Mentors remove stage tile
+
+→ Student returns to viewer-only mode
+
+→ Timer does not restart
+```
+
+The cleanup must be idempotent.
+
+If the same expiration event runs twice, the second execution must do nothing.
+
+---
+
+# FIX 8 — CLEAN UP STAGE ON ALL EXIT PATHS
+
+Use the same cleanup logic for:
+
+* 60-second expiration
+* Teacher removes student
+* Student leaves stage
+* Student disconnects
+* Teacher ends class
+* LiveKit participant disconnects
+* Socket reconnect after expiration
+
+Clear:
+
+* Server stage state
+* Server timer
+* Socket.IO stage state
+* LiveKit publishing permission
+* Student camera
+* Student microphone
+* Stage video publication
+* Stage tile on every client
+* Raise-hand state if appropriate
+
+Do not recreate an expired stage slot from stale `roomState`.
+
+Do not merge stale stage state over newer expired state.
+
+Use timestamps/versioning if needed.
+
+---
+
+# FIX 9 — MOBILE STUDENT CHAT LAYOUT
+
+The screenshot confirms the student chat UI is compressed and overlapping.
+
+The mobile landscape viewport is approximately wide but short.
+
+Fix the student layout without changing desktop design.
+
+The classroom root should use:
+
+```css id="kmy79u"
+.live-classroom {
+  width:
+    100vw;
+
+  height:
+    100dvh;
+
+  min-height:
+    0;
+
+  overflow:
+    hidden;
+}
+```
+
+Every flex/grid parent containing the chat panel must include:
+
+```css id="zd6bdf"
+min-width:
+  0;
+
+min-height:
+  0;
+```
+
+The right panel must be a vertical flex layout:
+
+```css id="dz8d0q"
+.classroom-sidebar {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  height:
+    100%;
+
+  min-height:
+    0;
+
+  overflow:
+    hidden;
+}
+```
+
+Tabs:
+
+```css id="tr87bp"
+.classroom-tabs {
+  flex:
+    0 0 auto;
+}
+```
+
+Messages:
+
+```css id="i6w3s4"
+.classroom-messages {
+  flex:
+    1 1 auto;
+
+  min-height:
+    0;
+
+  overflow-y:
+    auto;
+
+  overflow-x:
+    hidden;
+
+  padding:
+    8px;
+}
+```
+
+Composer:
+
+```css id="vfrsfn"
+.classroom-composer {
+  flex:
+    0 0 auto;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    6px;
+
+  padding:
+    6px;
+
+  padding-bottom:
+    max(
+      6px,
+      env(
+        safe-area-inset-bottom
+      )
+    );
+}
+```
+
+Input:
+
+```css id="b4dlp3"
+.classroom-composer
+input {
+  min-width:
+    0;
+
+  flex:
+    1;
+}
+```
+
+Do not place the message composer outside the visible viewport.
+
+Do not allow messages to render behind the composer.
+
+Do not allow chat messages to overlap tabs.
+
+Keep the send button fully visible.
+
+For mobile landscape:
+
+* Reduce header height.
+* Reduce tab height.
+* Reduce unnecessary padding.
+* Keep the message input visible.
+* Keep at least several messages visible.
+* Allow smooth vertical scrolling.
+* Avoid tiny unreadable text.
+* Avoid horizontal scrolling.
+
+Test with the approximate viewport shown in the screenshot.
+
+---
+
+# FIX 10 — REMOVE DIAGNOSTICS FROM NORMAL CLASSROOM
+
+The diagnostics panel currently covers classroom content and is visible to teachers and students.
+
+Remove it from the normal UI.
+
+Do not show diagnostics merely because:
+
+```ts id="o0nigq"
+import.meta.env.DEV
+```
+
+Replit preview/development mode is used by real testers, so `DEV` alone is not sufficient.
+
+Default:
+
+```text id="dmrj77"
+Diagnostics hidden
+```
+
+If diagnostics are still needed, require an explicit opt-in:
+
+```ts id="efzhsk"
+const showDiagnostics =
+  import.meta.env.DEV &&
+  new URLSearchParams(
+    window.location.search
+  ).get("debug") ===
+    "classroom";
+```
+
+Only show the panel when the URL includes:
+
+```text id="7ezm0f"
+?debug=classroom
+```
+
+Do not show it for normal teacher, student, or mentor links.
+
+Add a small close button if displayed.
+
+Do not show secrets, tokens, or credentials.
+
+Normal classroom URL:
+
+```text id="qiw1f3"
+/live/1
+```
+
+No diagnostics.
+
+Debug URL:
+
+```text id="rwym18"
+/live/1?debug=classroom
+```
+
+Diagnostics allowed in development only.
+
+---
+
+# FIX 11 — CORRECT STUDENT DIAGNOSTIC LABELS
+
+If diagnostics are enabled manually, student local teacher fields should not display misleading values.
+
+For a student:
+
+```text id="c8cd2c"
+Local Camera:
+Not permitted
+
+Local Microphone:
+Not permitted
+
+Remote Teacher Video:
+Subscribed / Waiting
+
+Remote Teacher Audio:
+Playing / Blocked / Waiting
+```
+
+For a teacher:
+
+```text id="0fizbi"
+Local Teacher Camera:
+Publishing / Off
+
+Local Teacher Microphone:
+Publishing / Off
+```
+
+Do not show:
+
+```text id="vpw5y7"
+Teacher Camera:
+Off
+```
+
+on a student if it actually refers to the student’s local camera.
+
+---
+
+# FIX 12 — PRESERVE EXISTING PERMISSIONS
+
+Do not change:
+
+Teacher:
+
+* Camera allowed
+* Microphone allowed
+* Screen share allowed
+
+Student:
+
+* Viewer-only by default
+* Camera blocked
+* Microphone blocked
+* Temporary camera/mic only after teacher approval
+
+Mentor:
+
+* Viewer-only
+* Camera blocked
+* Microphone blocked
+
+Approved stage student:
+
+* Temporary camera/mic
+* Maximum 60 seconds
+* Automatically returns to viewer mode
+
+---
+
+# REQUIRED TESTS
+
+Do not claim completion from typecheck/build only.
+
+## Presentation test
+
+Teacher:
+
+1. Enter valid Canva presentation link.
+2. Click Present.
+3. Student sees it immediately without refresh.
+4. Mentor sees it immediately without refresh.
+5. Student joining later receives current presentation state.
+
+PDF:
+
+1. Teacher uploads PDF.
+2. File is uploaded to shared storage.
+3. Student receives the presentation.
+4. Student does not receive a teacher-local `blob:` URL.
+5. Page changes synchronize.
+
+PPT/PPTX:
+
+1. Teacher uploads presentation.
+2. Verify actual conversion/viewing pipeline.
+3. Student sees the presentation.
+4. If conversion is unavailable, report it honestly.
+
+## Stage test
+
+1. Student raises hand.
+2. Teacher invites student.
+3. Student accepts.
+4. Student camera/mic publishes.
+5. Teacher sees stage student.
+6. Other student sees stage student.
+7. Mentor sees stage student.
+8. Timer counts from 60 to 0 once.
+9. At zero, student camera/mic stops.
+10. Stage tile disappears for everyone.
+11. Publish permission is revoked.
+12. Timer does not restart.
+13. Student does not reappear.
+
+## Mobile chat test
+
+Test in mobile landscape.
+
+Verify:
+
+* Chat tabs aligned
+* Messages readable
+* Messages scroll
+* Composer visible
+* Input visible
+* Send button visible
+* No overlap
+* No hidden content behind composer
+* No horizontal overflow
+
+## Diagnostics test
+
+Normal:
+
+```text id="st8kjf"
+/live/1
+```
+
+No diagnostics.
+
+Debug:
+
+```text id="i7zz6o"
+/live/1?debug=classroom
+```
+
+Diagnostics visible only in development.
+
+## Build
+
+Run:
+
+```bash id="j24ovj"
+pnpm typecheck
+pnpm build
+```
+
+Provide:
+
+* Confirmed root causes
+* Exact files changed
+* Canva synchronization result
+* PDF synchronization result
+* PPT/PPTX support status
+* Stage video visibility result
+* 60-second cleanup result
+* Mobile chat result
+* Diagnostics removal result
+* Typecheck result
+* Build result
+* Runtime tests completed
