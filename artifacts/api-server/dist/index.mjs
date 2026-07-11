@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-1310" : "dev",
-    commit: true ? "4e62272" : "unknown",
-    buildTime: true ? "2026-07-11T13:10:17.396Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-1333" : "dev",
+    commit: true ? "42e7552" : "unknown",
+    buildTime: true ? "2026-07-11T13:33:51.263Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -109795,19 +109795,16 @@ router5.get("/live-classes", attachUser, async (req, res) => {
   const parsed = ListLiveClassesQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
-  let studentFilter;
-  if (user && user.role === "student") {
-    const enrolled = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
-    const enrolledIds = enrolled.map((e) => e.courseId);
-    if (enrolledIds.length > 0) {
-      studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
-    } else {
-      res.json([]);
-      return;
-    }
-  } else if (!user) {
+  if (!user) {
     res.json([]);
     return;
+  }
+  let studentFilter;
+  if (user.role === "student") {
+    const enrolled = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
+    const enrolledIds = enrolled.map((e) => e.courseId);
+    const gradeOpenFilter = isNull(liveClassesTable.courseId);
+    studentFilter = enrolledIds.length > 0 ? or(inArray(liveClassesTable.courseId, enrolledIds), gradeOpenFilter) : gradeOpenFilter;
   }
   const classes = await db.select({
     id: liveClassesTable.id,
