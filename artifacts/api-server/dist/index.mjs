@@ -109215,9 +109215,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-11-0349" : "dev",
-    commit: true ? "7edaf2d" : "unknown",
-    buildTime: true ? "2026-07-11T03:49:34.070Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-11-0504" : "dev",
+    commit: true ? "3846bc0" : "unknown",
+    buildTime: true ? "2026-07-11T05:04:16.267Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133079,6 +133079,30 @@ function setupSocketIO(httpServer2) {
       socket.join(groupRoom(sessionId, groupId));
     }
     const room = getSessionRoom(sessionId);
+    if (!isStaff && !isMentor && sessionId) {
+      const cacheKey = `${sessionId}-${userId}`;
+      const prev = liveStateCache.get(cacheKey);
+      const prevStatus = prev?.currentStatus ?? "ABSENT";
+      const now = /* @__PURE__ */ new Date();
+      liveStateCache.set(cacheKey, {
+        lastSeenAt: now,
+        currentStatus: "LIVE",
+        name,
+        mentorGroupId: groupId,
+        phone,
+        sessionId,
+        userId,
+        role
+      });
+      if (prevStatus !== "LIVE") {
+        const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
+        const payload = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
+        io2.to(teacherRoom(sessionId)).to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId)).emit(eventType, payload);
+      }
+    }
+    if (isStaff) {
+      room.teacher = { name, userId };
+    }
     (async () => {
       const [recentChat, dbStageSlots] = await Promise.all([
         loadRecentChat(sessionId, groupId, isStaff),
@@ -133094,6 +133118,14 @@ function setupSocketIO(httpServer2) {
         activePoll: room.activePoll ? { ...room.activePoll, correctOptionId: void 0 } : null,
         stage: Array.from(room.stageSlots.values()),
         teacher: room.teacher
+      });
+      const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
+      socket.emit("classroom:joined", {
+        sessionId,
+        socketId: socket.id,
+        roomName: globalRoom(sessionId),
+        memberCount: socketsInGlobal.length,
+        role
       });
     })().catch(() => {
       socket.emit("roomState", {
@@ -133115,7 +133147,6 @@ function setupSocketIO(httpServer2) {
       });
     }
     if (isStaff) {
-      room.teacher = { name, userId };
       socket.to(globalRoom(sessionId)).emit("teacher:joined", { name, userId });
     }
     socket.on("heartbeat:ping", () => {
@@ -133491,7 +133522,16 @@ function setupSocketIO(httpServer2) {
       io2.to(teacherRoom(sessionId)).emit("staffChat:message", msg);
     });
     socket.on("request:attendance", () => {
-      const snap = Array.from(liveStateCache.entries()).filter(([k]) => k.startsWith(`${sessionId}-`)).map(([, v]) => v);
+      const snap = Array.from(liveStateCache.entries()).filter(([k]) => k.startsWith(`${sessionId}-`)).map(([, v]) => ({
+        userId: v.userId,
+        name: v.name,
+        phone: v.phone ?? null,
+        mentorGroupId: v.mentorGroupId,
+        status: v.currentStatus,
+        // <── critical: currentStatus → status
+        totalDurationSeconds: 0,
+        joinedAt: null
+      }));
       socket.emit("attendance:snapshot", { students: snap });
     });
     socket.on("disconnect", () => {

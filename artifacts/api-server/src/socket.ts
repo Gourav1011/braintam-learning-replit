@@ -566,6 +566,33 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     const room = getSessionRoom(sessionId);
 
+    // ── Immediate student presence: mark LIVE on connect, don't wait for heartbeat ──
+    // The heartbeat fires up to 15s after connect. Marking immediately means the teacher
+    // sees PRESENT(n) the moment the student's socket joins the room.
+    if (!isStaff && !isMentor && sessionId) {
+      const cacheKey = `${sessionId}-${userId}`;
+      const prev = liveStateCache.get(cacheKey);
+      const prevStatus = prev?.currentStatus ?? "ABSENT";
+      const now = new Date();
+      liveStateCache.set(cacheKey, {
+        lastSeenAt: now,
+        currentStatus: "LIVE",
+        name, mentorGroupId: groupId, phone, sessionId, userId, role,
+      });
+      if (prevStatus !== "LIVE") {
+        const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
+        const payload = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
+        io.to(teacherRoom(sessionId))
+          .to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId))
+          .emit(eventType, payload);
+      }
+    }
+
+    // ── Teacher presence: record room state and broadcast immediately ─────────
+    if (isStaff) {
+      room.teacher = { name, userId };
+    }
+
     // ── Send initial room state (async — loads chat + stage from DB) ──
     (async () => {
       const [recentChat, dbStageSlots] = await Promise.all([
@@ -589,6 +616,18 @@ export function setupSocketIO(httpServer: HttpServer) {
         stage: Array.from(room.stageSlots.values()),
         teacher: room.teacher,
       });
+
+      // Diagnostic acknowledgement — sends socket ID, canonical room name and
+      // current member count back to the connecting socket so the client dev panel
+      // can confirm the socket joined the right room.
+      const socketsInGlobal = await io.in(globalRoom(sessionId)).fetchSockets();
+      socket.emit("classroom:joined", {
+        sessionId,
+        socketId: socket.id,
+        roomName: globalRoom(sessionId),
+        memberCount: socketsInGlobal.length,
+        role,
+      });
     })().catch(() => {
       socket.emit("roomState", {
         chat: [],
@@ -611,9 +650,8 @@ export function setupSocketIO(httpServer: HttpServer) {
     }
 
     // ── Teacher presence broadcast ─────────────────────────────
+    // room.teacher is set above on connect. Now broadcast to existing sockets.
     if (isStaff) {
-      room.teacher = { name, userId };
-      // Notify everyone already in the room that teacher is here
       socket.to(globalRoom(sessionId)).emit("teacher:joined", { name, userId });
     }
 
@@ -1053,10 +1091,20 @@ export function setupSocketIO(httpServer: HttpServer) {
     });
 
     // ── Attendance snapshot on demand (5-second client heartbeat) ────
+    // NOTE: CacheEntry uses `currentStatus`; client's AttendanceRecord expects `status` —
+    // we must map here or the client always sees every student as "ABSENT".
     socket.on("request:attendance", () => {
       const snap = Array.from(liveStateCache.entries())
         .filter(([k]) => k.startsWith(`${sessionId}-`))
-        .map(([, v]) => v);
+        .map(([, v]) => ({
+          userId: v.userId,
+          name: v.name,
+          phone: v.phone ?? null,
+          mentorGroupId: v.mentorGroupId,
+          status: v.currentStatus, // <── critical: currentStatus → status
+          totalDurationSeconds: 0,
+          joinedAt: null,
+        }));
       socket.emit("attendance:snapshot", { students: snap });
     });
 

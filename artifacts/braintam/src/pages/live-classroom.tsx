@@ -62,12 +62,19 @@ function handleOutbound(phone: string | null, protocol: "TEL" | "WA"): void {
 // ── Socket hook ────────────────────────────────────────────────
 function useClassroomSocket(
   sessionId: string, userId: string, name: string,
-  role: string, groupId: string, phone: string
+  role: string, groupId: string, phone: string,
+  enabled: boolean = true
 ) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    // Wait for auth to resolve before opening the socket.
+    // Without this guard the socket connects with role="student" (before auth loads),
+    // then immediately reconnects with the real role. This double-connect race causes
+    // teacher:joined / chat / poll events to be missed during the reconnect window.
+    if (!enabled) return;
+
     const s = io({
       path: "/api/socket.io",
       transports: ["websocket", "polling"],
@@ -76,8 +83,12 @@ function useClassroomSocket(
     s.on("connect", () => setConnected(true));
     s.on("disconnect", () => setConnected(false));
     setSocket(s);
-    return () => { s.disconnect(); };
-  }, [sessionId, userId, name, role, groupId, phone]);
+    return () => {
+      s.disconnect();
+      setSocket(null);
+      setConnected(false);
+    };
+  }, [sessionId, userId, name, role, groupId, phone, enabled]);
 
   return { socket, connected };
 }
@@ -354,7 +365,7 @@ export default function LiveClassroom() {
   // users of a given role into one fake identity (broken chat names, raised hands, staging, etc).
   // `useAuth()` resolves the real signed-in user (staff token or Clerk-backed student token)
   // and is the primary source for both identity AND role. URL params are last-resort fallback only.
-  const { student: authIdentity, role: authRole } = useAuth();
+  const { student: authIdentity, role: authRole, isLoading: authLoading } = useAuth();
   const role          = (authRole ?? search.get("role") ?? "student").toLowerCase();
   const rawName       = authIdentity?.name ?? search.get("name") ?? "Student";
   // Staff/mentors get their role prefixed for on-screen display (e.g. "teacher priya", "mentor moses");
@@ -369,7 +380,10 @@ export default function LiveClassroom() {
   const meetLink      = search.get("meetLink") ?? "";      // Sprint 2 — Join Meet button
   const recordingUrl  = search.get("recordingUrl") ?? "";  // Sprint 2 — View Recording button
 
-  const { socket, connected } = useClassroomSocket(sessionId, userId, name, role, groupId, phone);
+  // Don't connect until auth resolves — prevents the double-connect race where the socket
+  // first joins as role="student" then immediately reconnects with the real role, during
+  // which teacher:joined / chat / poll events can be permanently missed.
+  const { socket, connected } = useClassroomSocket(sessionId, userId, name, role, groupId, phone, !authLoading);
   const isStaff  = role === "teacher" || role === "admin";
   const isMentor = role === "mentor";
   const canSeeAttendance = isStaff || isMentor;
@@ -416,6 +430,14 @@ export default function LiveClassroom() {
 
   // ── Sprint 3: Stage state ─────────────────────────────────
   const [stageSlots, setStageSlots] = useState<StageSlot[]>([]);
+
+  // ── Diagnostics: classroom:joined ack from server ─────────
+  const [classroomJoined, setClassroomJoined] = useState<{
+    socketId: string; roomName: string; memberCount: number; role: string;
+  } | null>(null);
+  // Track last socket events for diagnostics
+  const lastSocketSent = useRef<string>("—");
+  const lastSocketReceived = useRef<string>("—");
 
   // ── Teacher presence (shown in camera panel for all roles) ──
   const [teacherInfo, setTeacherInfo] = useState<{ name: string; userId: string; online: boolean } | null>(
@@ -726,6 +748,12 @@ export default function LiveClassroom() {
       }, 3500);
     });
 
+    // ── Diagnostics: server-ack confirming room join ──────────
+    socket.on("classroom:joined", (d: { sessionId: string; socketId: string; roomName: string; memberCount: number; role: string }) => {
+      lastSocketReceived.current = `classroom:joined (room: ${d.roomName}, members: ${d.memberCount})`;
+      setClassroomJoined({ socketId: d.socketId, roomName: d.roomName, memberCount: d.memberCount, role: d.role });
+    });
+
     // ── Attendance 5-second heartbeat ─────────────────────────
     const attendanceTick = setInterval(() => {
       if (canSeeAttendance) socket.emit("request:attendance");
@@ -746,18 +774,21 @@ export default function LiveClassroom() {
       socket.off("class:ended");
       socket.off("teacher:studentSuggested");
       socket.off("staffChat:message");
+      socket.off("classroom:joined");
     };
   }, [socket, upsert]);
 
   // ── Actions ────────────────────────────────────────────────
   const sendChat = () => {
     if (!socket || !chatInput.trim()) return;
+    lastSocketSent.current = `chat:send "${chatInput.trim().slice(0, 30)}"`;
     socket.emit("chat:send", chatInput.trim());
     setChatInput("");
   };
 
   const submitPoll = (optionId: string) => {
     if (!socket || myPollAnswer) return;
+    lastSocketSent.current = `submitPoll { optionId: "${optionId}" }`;
     socket.emit("submitPoll", { optionId });
   };
 
@@ -1652,21 +1683,37 @@ export default function LiveClassroom() {
       )}
 
       {import.meta.env.DEV && (
-        <div className="fixed bottom-2 left-2 z-[9999] w-64 rounded-lg bg-black/85 border border-gray-700 text-[9px] font-mono text-gray-300 p-2 space-y-0.5 pointer-events-none select-none">
-          <p className="text-orange-400 font-bold">LiveKit / Socket diagnostics (dev only)</p>
+        <div className="fixed bottom-2 left-2 z-[9999] w-72 rounded-lg bg-black/90 border border-gray-700 text-[9px] font-mono text-gray-300 p-2 space-y-0.5 pointer-events-none select-none">
+          <p className="text-orange-400 font-bold text-[10px]">⚡ Live Classroom Diagnostics</p>
+
+          <p className="text-gray-500 font-semibold pt-0.5">─ Identity</p>
+          <p>Auth loading: <span className={authLoading ? "text-yellow-400" : "text-green-400"}>{authLoading ? "yes" : "no"}</span></p>
           <p>Session ID: <span className="text-white">{sessionId}</span></p>
-          <p>Socket.IO: <span className="text-white">{connected ? "Connected" : "Connecting/Disconnected"}</span></p>
-          <p>LiveKit: <span className="text-white">{livekit.connectionState}</span></p>
-          <p>LiveKit Room: <span className="text-white">{livekit.roomName ?? "—"}</span></p>
-          <p>Identity: <span className="text-white">{livekit.identity ?? userId}</span></p>
+          <p>User ID: <span className="text-white">{userId}</span></p>
           <p>Role: <span className="text-white">{role}</span></p>
-          <p>Teacher Camera: <span className="text-white">{livekit.cameraError ? "Error" : livekit.cameraPublishing ? "Publishing" : "Off"}</span></p>
-          <p>Teacher Mic: <span className="text-white">{livekit.microphoneError ? "Error" : livekit.micPublishing ? "Publishing" : "Off"}</span></p>
-          <p>Remote Teacher Video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
-          <p>Remote Teacher Audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
+
+          <p className="text-gray-500 font-semibold pt-0.5">─ Socket.IO</p>
+          <p>Status: <span className={connected ? "text-green-400" : "text-yellow-400"}>{connected ? "Connected" : authLoading ? "Waiting for auth…" : "Connecting…"}</span></p>
+          <p>Socket ID: <span className="text-white">{classroomJoined?.socketId ?? (connected ? "pending ack…" : "—")}</span></p>
+          <p>Server room: <span className="text-white">{classroomJoined?.roomName ?? (connected ? "pending ack…" : "—")}</span></p>
+          <p>Expected room: <span className="text-blue-300">session-{sessionId}</span></p>
+          <p>Room match: <span className={classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "text-green-400" : "text-red-400") : "text-gray-500"}>{classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "✓ yes" : "✗ MISMATCH") : "—"}</span></p>
+          <p>Members: <span className="text-white">{classroomJoined?.memberCount ?? "—"}</span></p>
+          <p>Last sent: <span className="text-cyan-400">{lastSocketSent.current}</span></p>
+          <p>Last recv: <span className="text-cyan-400">{lastSocketReceived.current}</span></p>
+
+          <p className="text-gray-500 font-semibold pt-0.5">─ LiveKit</p>
+          <p>Status: <span className="text-white">{livekit.connectionState}</span></p>
+          <p>Room: <span className="text-white">{livekit.roomName ?? "—"}</span></p>
+          <p>Identity: <span className="text-white">{livekit.identity ?? userId}</span></p>
+          <p>Camera: <span className="text-white">{livekit.cameraError ? "Error" : livekit.cameraPublishing ? "Publishing" : "Off"}</span></p>
+          <p>Mic: <span className="text-white">{livekit.microphoneError ? "Error" : livekit.micPublishing ? "Publishing" : "Off"}</span></p>
+          <p>Remote video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
+          <p>Remote audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
+
           {(livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError) && (
-            <p className="text-red-400">
-              {livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError}
+            <p className="text-red-400 pt-0.5">
+              ERR: {livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError}
             </p>
           )}
         </div>

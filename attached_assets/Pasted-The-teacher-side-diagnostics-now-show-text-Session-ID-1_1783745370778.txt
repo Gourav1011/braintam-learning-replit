@@ -1,0 +1,521 @@
+The teacher-side diagnostics now show:
+
+```text
+Session ID: 1
+Socket.IO: Connected
+LiveKit: connected
+LiveKit Room: session-1-1729a31a
+Identity: 40
+Role: teacher
+Teacher Camera: Publishing
+Teacher Mic: Publishing
+Present: 0
+```
+
+The teacher camera preview is visible and camera/microphone show Publishing.
+
+However, real testing still shows:
+
+* Student remains on “Waiting for teacher to join”
+* Teacher sees `PRESENT (0)` even while the student is inside the same class
+* Teacher chat messages appear for the student only after refreshing
+* Raise hand does not update the teacher
+* Polls do not reach the student
+* Mobile classroom layout is broken in portrait and does not fit correctly in landscape
+
+Do not redesign or rewrite the classroom yet.
+
+Do not make assumptions based only on `Socket.IO: Connected`.
+
+A Socket.IO transport connection does not prove that teacher and student joined the same logical classroom room.
+
+Perform a runtime investigation and fix the confirmed event synchronization issue.
+
+## 1. Compare teacher and student runtime state
+
+Use one authenticated teacher and one authenticated student in the same Live Class ID `1`.
+
+Capture and compare:
+
+```text
+Teacher:
+Session ID
+Socket ID
+Socket.IO connected state
+Canonical Socket.IO classroom room
+Socket.IO room member count
+LiveKit room name
+LiveKit identity
+Authenticated role
+
+Student:
+Session ID
+Socket ID
+Socket.IO connected state
+Canonical Socket.IO classroom room
+Socket.IO room member count
+LiveKit room name
+LiveKit identity
+Authenticated role
+```
+
+Both users must have:
+
+```text
+Session ID:
+1
+
+Socket.IO room:
+classroom:1
+
+Socket.IO member count:
+2
+
+Same LiveKit room:
+session-1-1729a31a
+```
+
+The existing LiveKit room name is old but valid if both participants receive exactly the same stored room name.
+
+Do not change or reset the room name merely because it is not `braintam-live-1`.
+
+Only fix the LiveKit room if teacher and student actually receive different room names.
+
+## 2. Add missing Socket.IO diagnostics
+
+The current diagnostics only show:
+
+```text
+Socket.IO:
+Connected
+```
+
+This is insufficient.
+
+Add development-only diagnostics:
+
+```text
+Socket ID:
+<actual socket ID>
+
+Session ID:
+1
+
+Expected Socket Room:
+classroom:1
+
+Server Room Joined:
+Yes / No
+
+Server Room Member Count:
+<number>
+
+Authenticated Role:
+teacher / student / mentor
+
+Last Socket Event Sent:
+<event name>
+
+Last Socket Event Received:
+<event name>
+
+Last Socket Error:
+<error or none>
+```
+
+Do not expose authentication tokens or secrets.
+
+The server must acknowledge room joining.
+
+After joining the canonical classroom room, emit an acknowledgement event such as:
+
+```ts
+socket.emit(
+  "classroom:joined",
+  {
+    sessionId,
+    roomName,
+    memberCount
+  }
+);
+```
+
+Use the repository’s existing naming conventions if an equivalent acknowledgement already exists.
+
+## 3. Verify one canonical Socket.IO room
+
+Find the actual Socket.IO classroom server.
+
+Use one helper everywhere:
+
+```ts
+function classroomRoom(
+  sessionId: string | number
+): string {
+  return `classroom:${String(sessionId)}`;
+}
+```
+
+On connection:
+
+```ts
+const normalizedSessionId =
+  String(sessionId);
+
+const roomName =
+  classroomRoom(
+    normalizedSessionId
+  );
+
+await socket.join(
+  roomName
+);
+
+socket.data.sessionId =
+  normalizedSessionId;
+
+socket.data.classroomRoom =
+  roomName;
+```
+
+Every classroom event must use:
+
+```ts
+socket.data.classroomRoom
+```
+
+Do not reconstruct room names differently in chat, attendance, teacher presence, raise hand, polls, or stage handlers.
+
+Check for mismatches such as:
+
+```text
+Teacher joins:
+classroom:1
+
+Student joins:
+1
+
+Chat broadcasts:
+session:1
+
+Poll broadcasts:
+live-class:1
+```
+
+If such mismatches exist, fix them so all real-time classroom features use:
+
+```text
+classroom:1
+```
+
+## 4. Trace teacher presence
+
+Teacher presence must not depend on camera state.
+
+When the authenticated teacher socket joins:
+
+```ts
+teacher online
+→ update room state
+→ broadcast teacher presence
+→ include teacher in initial roomState
+```
+
+A student joining after the teacher must immediately receive teacher presence from `roomState`.
+
+Verify client and server use the exact same event names and payload shapes.
+
+Log:
+
+```text
+[Classroom]
+teacher joined
+
+sessionId:
+1
+
+room:
+classroom:1
+
+teacherId:
+40
+
+memberCount:
+2
+```
+
+## 5. Trace attendance
+
+When the student joins:
+
+```text
+student authenticated
+→ student joins classroom:1
+→ attendance state updated
+→ teacher receives attendance update
+→ PRESENT changes from 0 to 1
+```
+
+The teacher must not need to refresh.
+
+Use authenticated student ID as the stable identity.
+
+Prevent duplicate entries after reconnect.
+
+Log:
+
+```text
+[Classroom]
+student joined
+
+sessionId:
+1
+
+room:
+classroom:1
+
+studentId:
+<actual ID>
+
+attendanceCount:
+1
+```
+
+## 6. Trace chat
+
+Current behavior:
+
+```text
+Teacher sends message
+→ Message is saved
+→ Student sees it only after refresh
+```
+
+This indicates persistence works but live broadcast is failing.
+
+Trace:
+
+```text
+Teacher emits:
+chat:send
+
+Server receives:
+chat:send
+
+Server saves message
+
+Server broadcasts:
+chat:message
+
+Student receives:
+chat:message
+```
+
+Verify exact event names and payload shapes.
+
+Broadcast to the canonical classroom room:
+
+```ts
+io
+  .to(
+    socket.data
+      .classroomRoom
+  )
+  .emit(
+    "chat:message",
+    savedMessage
+  );
+```
+
+Do not emit only to the sender.
+
+Add logs for every stage.
+
+## 7. Trace raise hand
+
+Trace:
+
+```text
+Student clicks Raise Hand
+
+Client emits event
+
+Server receives event
+
+Server validates authenticated student
+
+Server updates raised-hand state
+
+Server broadcasts to classroom:1
+
+Teacher receives event
+
+Teacher UI updates
+```
+
+Check exact event names and payload shapes on both client and server.
+
+Do not invent new event names unless the existing names are inconsistent.
+
+## 8. Trace polls
+
+Trace:
+
+```text
+Teacher starts poll
+
+Server receives poll event
+
+Server validates teacher
+
+Server stores active poll for Live Class 1
+
+Server broadcasts to classroom:1
+
+Student receives poll immediately
+
+Student answers
+
+Teacher receives updated results
+```
+
+Poll state must be isolated by live-class ID.
+
+Verify event names and payloads match exactly.
+
+## 9. Verify LiveKit teacher detection
+
+Teacher diagnostics show:
+
+```text
+LiveKit:
+connected
+
+Camera:
+Publishing
+
+Microphone:
+Publishing
+```
+
+On the student side, verify:
+
+```text
+LiveKit:
+connected
+
+LiveKit Room:
+session-1-1729a31a
+
+Remote Teacher:
+Found
+
+Teacher Video:
+Subscribed
+
+Teacher Audio:
+Playing or Blocked
+```
+
+If teacher and student room names match but student still shows “Waiting for teacher,” inspect remote participant detection.
+
+Use LiveKit participant metadata role:
+
+```text
+role:
+teacher
+```
+
+Do not identify the teacher only from display name.
+
+After student connects, immediately inspect existing:
+
+```ts
+room.remoteParticipants
+```
+
+Do not rely only on future participant-connected events.
+
+Attach already-published teacher camera and microphone tracks.
+
+## 10. Mobile landscape fix
+
+After the real-time issue is repaired, fix the mobile classroom layout.
+
+Requirements:
+
+* Landscape-first classroom
+* Full viewport using `100dvh`
+* No horizontal overflow
+* Video/presentation area automatically fits
+* Camera tiles use appropriate `object-fit`
+* Chat/poll panel remains accessible
+* Controls remain visible
+* Support Android Chrome and iPhone Safari
+* Preserve desktop layout
+
+When mobile is in portrait, show:
+
+```text
+Rotate your phone
+
+Live classes work best in landscape mode.
+```
+
+When rotated to landscape, hide the message automatically and show the fitted classroom.
+
+Do not attempt to force rotation because browser support is unreliable.
+
+## Required verification
+
+Do not report success from typecheck/build alone.
+
+Test with:
+
+```text
+Teacher:
+Authenticated teacher
+Live Class ID 1
+
+Student:
+Authenticated student
+Live Class ID 1
+```
+
+Confirm:
+
+* Both joined `classroom:1`
+* Socket room member count is at least 2
+* Both receive the same LiveKit room
+* Student sees teacher online without refresh
+* Student sees teacher camera
+* Student hears teacher microphone
+* Teacher sees PRESENT (1)
+* Teacher message appears instantly for student
+* Student message appears instantly for teacher
+* Raise hand appears instantly for teacher
+* Poll appears instantly for student
+* Poll answer updates teacher results
+* Student remains viewer-only
+* Mobile portrait shows rotation prompt
+* Mobile landscape auto-fits correctly
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm build
+```
+
+Then provide:
+
+* Confirmed root cause
+* Exact files changed
+* Teacher and student Socket.IO room names
+* Socket room member count
+* Teacher and student LiveKit room names
+* Runtime event test results
+* Typecheck result
+* Build result
+
+Do not claim the real-time issue is fixed unless it works without refreshing.
