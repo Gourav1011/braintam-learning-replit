@@ -222,14 +222,16 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Live classroom — force full-bleed landscape on phones.
-     Shown/hidden purely via CSS media queries (no JS orientation listener needed). */
+  /* Live classroom — full-bleed on all screens. */
   .live-classroom-root {
     height: 100vh;
     height: 100dvh;
   }
   .live-classroom-rotate-prompt { display: none; }
+
+  /* ── Portrait mobile: teachers still rotate, students/mentors get a proper portrait layout ── */
   @media (max-width: 900px) and (orientation: portrait) {
+    /* Default: hide the classroom + show rotate prompt for all roles */
     .live-classroom-root { display: none !important; }
     .live-classroom-rotate-prompt {
       display: flex;
@@ -245,7 +247,75 @@
       text-align: center;
       padding: 2rem;
     }
+
+    /* Override: students and mentors get the portrait classroom layout instead of the rotate prompt */
+    .live-classroom-root.classroom-role-student,
+    .live-classroom-root.classroom-role-mentor {
+      display: flex !important;
+    }
+    .live-classroom-rotate-prompt.classroom-role-student,
+    .live-classroom-rotate-prompt.classroom-role-mentor {
+      display: none !important;
+    }
+
+    /* ── Portrait mobile layout for student / mentor ── */
+
+    /* Hide the topbar — student name + LIVE status is in the compact info strip */
+    .live-classroom-root.classroom-role-student .classroom-topbar,
+    .live-classroom-root.classroom-role-mentor .classroom-topbar {
+      display: none;
+    }
+
+    /* Main container becomes a vertical column */
+    .live-classroom-root.classroom-role-student .classroom-main,
+    .live-classroom-root.classroom-role-mentor .classroom-main {
+      flex-direction: column;
+    }
+
+    /* Left attendance sidebar — hidden; attendance is teacher/mentor only and not needed on student mobile */
+    .live-classroom-root.classroom-role-student .classroom-left-sidebar,
+    .live-classroom-root.classroom-role-mentor .classroom-left-sidebar {
+      display: none !important;
+    }
+
+    /* Presentation panel — hidden on student mobile portrait; teacher video IS the main content */
+    .live-classroom-root.classroom-role-student .classroom-content,
+    .live-classroom-root.classroom-role-mentor .classroom-content {
+      display: none;
+    }
+
+    /* Right sidebar becomes full-width full-height column */
+    .live-classroom-root.classroom-role-student .classroom-sidebar,
+    .live-classroom-root.classroom-role-mentor .classroom-sidebar {
+      width: 100% !important;
+      border-left: none !important;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Teacher video panel: full width, 16:9 aspect ratio */
+    .live-classroom-root.classroom-role-student .classroom-teacher-video,
+    .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
+      height: auto !important;
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      flex-shrink: 0;
+    }
+
+    /* Mobile info strip: visible only in portrait */
+    .classroom-mobile-info {
+      display: flex !important;
+    }
+
+    /* Safe-area padding at the bottom of the chat composer */
+    .classroom-composer {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
   }
+
+  /* Hide the mobile info strip on desktop / landscape (shown only via the portrait rule above) */
+  .classroom-mobile-info { display: none; }
+
   @media (max-width: 900px) and (orientation: landscape) {
     .live-classroom-root {
       width: 100vw;

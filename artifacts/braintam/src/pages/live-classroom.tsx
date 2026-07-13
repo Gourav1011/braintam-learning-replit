@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import PDFViewer from "@/components/PDFViewer";
 import { useParams } from "wouter";
 import { io, type Socket } from "socket.io-client";
 import { useLiveKit } from "@/hooks/use-livekit";
@@ -438,6 +439,7 @@ export default function LiveClassroom() {
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(1);
+  const [totalSlides, setTotalSlides] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -632,9 +634,28 @@ export default function LiveClassroom() {
   // ── Sidebar ────────────────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // ── Chat scroll ────────────────────────────────────────────
+  // ── Chat scroll + input ref ────────────────────────────────
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
+
+  // ── Fullscreen for students/mentors on mobile ──────────────
+  // Requests browser fullscreen on first user interaction, which is the
+  // earliest browsers allow it. Silently ignored if the browser blocks it.
+  useEffect(() => {
+    if (isStaff) return;
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobileDevice) return;
+    const req = () => {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    };
+    document.addEventListener("click", req, { once: true });
+    document.addEventListener("touchstart", req, { once: true });
+    return () => {
+      document.removeEventListener("click", req);
+      document.removeEventListener("touchstart", req);
+    };
+  }, [isStaff]);
 
   // ── Heartbeat (15s) ────────────────────────────────────────
   useEffect(() => {
@@ -894,12 +915,20 @@ export default function LiveClassroom() {
     lastSocketSent.current = `chat:send "${chatInput.trim().slice(0, 30)}"`;
     socket.emit("chat:send", chatInput.trim());
     setChatInput("");
+    // Dismiss the mobile keyboard and scroll the latest message into view.
+    chatInputRef.current?.blur();
+    requestAnimationFrame(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); });
   };
 
   const submitPoll = (optionId: string) => {
     if (!socket || myPollAnswer) return;
     lastSocketSent.current = `submitPoll { optionId: "${optionId}" }`;
     socket.emit("submitPoll", { optionId });
+    // After the result is shown for ~3.5 s, return to chat automatically.
+    // This also fires if the server's pollEnded event is delayed.
+    if (!isStaff) {
+      setTimeout(() => { setPanelMode("chat"); }, 3500);
+    }
   };
 
   const launchPoll = () => {
@@ -982,6 +1011,12 @@ export default function LiveClassroom() {
   };
 
   const embedUrl = getEmbedUrl(presentationUrl);
+  // Local PDF files uploaded via /api/slides/upload are rendered with PDF.js
+  // so the teacher can navigate page-by-page and students stay in sync.
+  // Office Online / Canva / Google Slides URLs keep the iframe path.
+  const isLocalPdf = Boolean(presentationUrl) &&
+    presentationUrl.includes("/api/slides/") &&
+    presentationUrl.toLowerCase().endsWith(".pdf");
 
   if (classEnded) {
     const redirectTarget = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
@@ -999,18 +1034,18 @@ export default function LiveClassroom() {
 
   return (
     <>
-      {/* Shown only on phones in portrait (see .live-classroom-rotate-prompt in index.css) —
-          the classroom layout is sidebar+stage based and unusable in portrait, so we ask
-          the student/mentor/teacher to rotate instead of rendering a broken squished layout. */}
-      <div className="live-classroom-rotate-prompt">
+      {/* Shown only on phones in portrait for teachers (see CSS in index.css).
+          Students and mentors get a proper portrait layout instead — the rotate prompt
+          is hidden for role-student and role-mentor via CSS. */}
+      <div className={`live-classroom-rotate-prompt classroom-role-${role}`}>
         <span style={{ fontSize: 40 }}>📱↻</span>
         <p className="font-bold text-lg">Rotate your phone</p>
         <p className="text-sm text-gray-400">Turn your device to landscape mode to join the live class</p>
       </div>
-      <div className="live-classroom-root h-screen flex flex-col overflow-hidden bg-gray-950" style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-gray-950`} style={{ fontFamily: "Poppins, sans-serif" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+      <div className="classroom-topbar flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
@@ -1059,9 +1094,10 @@ export default function LiveClassroom() {
       </div>
 
       {/* ── Main layout ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="classroom-main flex flex-1 overflow-hidden">
 
         {/* Sidebar — teacher sees present-only list; mentor sees group stats */}
+        <div className="classroom-left-sidebar" style={{ display: "contents" }}>
         {isStaff && (
           <TeacherSidebar
             registry={registry}
@@ -1080,11 +1116,12 @@ export default function LiveClassroom() {
             onCollapse={() => setSidebarCollapsed(p => !p)}
           />
         )}
+        </div>{/* /classroom-left-sidebar */}
 
         {/* ═══════════════════════════════════════════════════
             PRESENTATION PANEL (left, ~80%)
         ═══════════════════════════════════════════════════ */}
-        <div className="flex flex-col relative bg-gray-950 flex-1 min-w-0">
+        <div className="classroom-content flex flex-col relative bg-gray-950 flex-1 min-w-0">
 
           {/* URL bar + Upload (teacher only, no URL yet) */}
           {isStaff && !presentationUrl && (
@@ -1139,7 +1176,15 @@ export default function LiveClassroom() {
 
           {/* Slides / PDF */}
           <div className="relative flex-1 overflow-hidden">
-            {embedUrl ? (
+            {isLocalPdf ? (
+              /* Local PDF — rendered page-by-page with PDF.js so teacher controls which page students see */
+              <PDFViewer
+                url={presentationUrl}
+                page={currentSlide}
+                onPageCount={n => setTotalSlides(n)}
+                className="w-full h-full"
+              />
+            ) : embedUrl ? (
               <iframe
                 key={currentSlide}
                 ref={iframeRef}
@@ -1309,7 +1354,7 @@ export default function LiveClassroom() {
         <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
-          <div className="relative bg-black flex-shrink-0" style={{ height: 190 }}>
+          <div className="classroom-teacher-video relative bg-black flex-shrink-0" style={{ height: 190 }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
@@ -1398,6 +1443,24 @@ export default function LiveClassroom() {
               </div>
             )}
           </div>
+
+          {/* ── Mobile info strip (visible only on portrait mobile via CSS) ─── */}
+          {!isStaff && (
+            <div className="classroom-mobile-info flex items-center justify-between px-3 py-1.5 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-semibold text-gray-200 truncate">{rawName}</span>
+                {livekit.connectionState === "reconnecting" && (
+                  <span className="text-[9px] text-yellow-400 font-bold">📡 Reconnecting…</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
+                <span className={`text-[9px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-500"}`}>
+                  {connected ? "LIVE" : "Connecting…"}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Raised hands queue (teacher/mentor) — Sprint 3: approve to stage */}
           {canSeeAttendance && visibleHands.length > 0 && (
@@ -1520,13 +1583,18 @@ export default function LiveClassroom() {
               ) : (
                 <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
                   <input
-                    className="flex-1 min-w-0 bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    ref={chatInputRef}
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ fontSize: 16 }}
                     placeholder={isStaff ? "Announce to all…" : "Say something…"}
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && sendChat()}
                     maxLength={300}
                     disabled={!isStaff && chatBlocked}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
                   />
                   <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
                     <Send className="w-3.5 h-3.5" />

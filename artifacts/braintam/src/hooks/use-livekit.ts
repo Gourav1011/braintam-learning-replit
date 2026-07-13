@@ -45,6 +45,10 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const roomRef = useRef<Room | null>(null);
   const teacherVideoRef = useRef<HTMLVideoElement>(null);
   const teacherAudioRef = useRef<HTMLAudioElement>(null);
+  // Tracks auto-created <audio> elements for non-teacher stage participants.
+  // LiveKit's track.attach() without args creates an element; we must store and
+  // remove it ourselves on unsubscribe/disconnect so we don't leak audio nodes.
+  const stageAudioEls = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [connected, setConnected] = useState(false);
   const [connectionState, setConnectionState] = useState<LiveKitConnectionState>("idle");
   const [cameraPublishing, setCameraPublishing] = useState(false);
@@ -124,7 +128,17 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
         setRoomName((data.roomName as string) ?? null);
         setIdentity((data.identity as string) ?? null);
 
-        room = new Room({ adaptiveStream: true, dynacast: true });
+        room = new Room({
+          adaptiveStream: true,
+          dynacast: true,
+          // Capture constraints applied to every mic track published from this room.
+          // Reduces echo feedback when a student goes on stage next to a speaker.
+          audioCaptureDefaults: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
         roomRef.current = room;
 
         room.on(RoomEvent.TrackSubscribed, (track, _pub, participant: RemoteParticipant) => {
@@ -139,11 +153,30 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           if (isTeacher) {
             setTeacherPresent(true);
             attachTeacherTrack(track);
+          } else if (track.kind === Track.Kind.Audio) {
+            // Stage participant audio — auto-create a hidden <audio> element so
+            // the teacher and all listeners can hear the on-stage student.
+            // LiveKit never delivers a participant's own tracks back to them,
+            // so there is no self-echo risk from this code path.
+            const audioEl = track.attach() as HTMLAudioElement;
+            audioEl.setAttribute("data-stage-audio", participant.identity);
+            document.body.appendChild(audioEl);
+            stageAudioEls.current.set(participant.identity, audioEl);
           }
         });
         room.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant: RemoteParticipant) => {
           const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
           if (isTeacher) detachTeacherTrack(track);
+
+          // Remove the auto-created stage audio element when the track unsubscribes.
+          if (!isTeacher && track.kind === Track.Kind.Audio) {
+            const el = stageAudioEls.current.get(participant.identity);
+            if (el) {
+              track.detach(el);
+              el.remove();
+              stageAudioEls.current.delete(participant.identity);
+            }
+          }
 
           const entry = tracksByIdentity.current.get(participant.identity);
           if (entry) {
@@ -182,6 +215,9 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
             setTeacherVideoSubscribed(false);
             setTeacherAudioSubscribed(false);
           }
+          // Remove any stage audio element that was auto-created for this participant.
+          const el = stageAudioEls.current.get(p.identity);
+          if (el) { el.remove(); stageAudioEls.current.delete(p.identity); }
           tracksByIdentity.current.delete(p.identity);
           setStagePublishers(prev => {
             const next = new Set(prev);
@@ -243,6 +279,13 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
               tracksByIdentity.current.set(participant.identity, entry);
               setStagePublishers(prev => new Set(prev).add(participant.identity));
               setTrackVersion(v => v + 1);
+              // Auto-attach audio for late joiners just like we do in TrackSubscribed.
+              if (entry.audio && !stageAudioEls.current.has(participant.identity)) {
+                const audioEl = entry.audio.attach() as HTMLAudioElement;
+                audioEl.setAttribute("data-stage-audio", participant.identity);
+                document.body.appendChild(audioEl);
+                stageAudioEls.current.set(participant.identity, audioEl);
+              }
             }
           }
         });
@@ -258,6 +301,9 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
 
     return () => {
       cancelled = true;
+      // Remove all auto-created stage audio elements before disconnecting.
+      stageAudioEls.current.forEach(el => el.remove());
+      stageAudioEls.current.clear();
       room?.disconnect();
       roomRef.current = null;
       setConnected(false);

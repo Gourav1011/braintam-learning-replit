@@ -1,0 +1,413 @@
+Implement a complete mobile UX and media reliability improvement for the Braintam Live Classroom.
+
+IMPORTANT:
+- First inspect the existing live-class architecture and reuse the current components.
+- Do not redesign the desktop teacher portal unnecessarily.
+- Do not break features already working: chat, polls, attendance, timer, student presence, on-stage requests, class status, and existing LiveKit integration.
+- Fix the underlying implementation; do not add fake UI states.
+- Test all three roles separately: Teacher, Student, and Mentor.
+- Prioritize mobile browser experience because most students attend classes using mobile phones.
+
+==================================================
+1. STUDENT MOBILE CHAT — CLOSE KEYBOARD AFTER SEND
+==================================================
+
+Current issue:
+After a student types and sends a chat message, the mobile keyboard remains open. The student cannot properly see the chat, teacher video, or classroom controls.
+
+Required behaviour:
+- After a chat message is successfully sent:
+  - Clear the message input.
+  - Remove focus from the input using blur().
+  - Automatically close/dismiss the mobile keyboard.
+  - Scroll the latest chat message into view.
+- The keyboard should not reopen automatically.
+- Keep the chat input easily accessible when the student wants to type another message.
+- Ensure this works on Android Chrome, Android WebView/PWA, and iOS Safari where supported.
+
+==================================================
+2. REDESIGN STUDENT MOBILE LIVE-CLASS UI
+==================================================
+
+Current issue:
+The student mobile interface is crowded and badly aligned. Teacher video, chat, class information, and browser/header elements consume too much screen space. Students cannot comfortably see the teacher video and chat together.
+
+Required mobile layout:
+
+A. Remove the existing large top classroom heading/header on mobile.
+
+Do not show a separate large header containing:
+- Class link
+- Large LIVE heading
+- Class name/title
+- Student name
+- Unnecessary navigation or duplicate information
+
+The LIVE indicator can appear as a small overlay inside the teacher video.
+
+B. Teacher video should be the main focus.
+
+The teacher video area should:
+- Use the maximum practical screen width.
+- Maintain the correct aspect ratio.
+- Never appear stretched.
+- Never be hidden behind chat.
+- Never overlap the chat panel.
+- Display a small LIVE badge inside the video.
+- Show proper states:
+  - Teacher is connecting
+  - Teacher camera is off
+  - Teacher is offline
+  - Reconnecting
+- Display teacher screen sharing or presentation properly when active.
+
+C. Add one compact information strip below the teacher video.
+
+The compact strip should show:
+- Student name
+- Class status: LIVE / Connecting / Ended
+- Network/reconnection state only when necessary
+
+Do not repeat the class name and LIVE status in multiple places.
+
+D. Chat should remain clearly visible below the video.
+
+The mobile screen should follow approximately:
+
+Teacher Video / Presentation
+↓
+Compact student name + LIVE status strip
+↓
+Single Chat/Poll interaction panel
+↓
+Compact message input
+
+The layout must:
+- Use the available viewport height.
+- Avoid unnecessary empty space.
+- Avoid overlapping elements.
+- Avoid nested scrolling where possible.
+- Respect safe-area insets.
+- Work in portrait and landscape orientation.
+- Work on common Android mobile screen sizes.
+
+==================================================
+3. IMMERSIVE FULL-SCREEN MOBILE CLASSROOM
+==================================================
+
+Current requirement:
+When a student opens or joins a live class in a mobile browser, the classroom should enter an immersive viewing experience.
+
+Implement the following:
+
+- Request browser fullscreen using the Fullscreen API after the student taps “Join Class” or another valid user interaction.
+- Hide the app’s own unnecessary header/navigation inside the live-class route.
+- Use a full viewport classroom layout.
+- Use:
+  - 100dvh where supported
+  - Safe fallbacks for browsers that do not fully support dynamic viewport units
+  - env(safe-area-inset-top)
+  - env(safe-area-inset-bottom)
+
+Important browser limitation:
+Browsers do not always allow fullscreen automatically without user interaction. Therefore:
+- Request fullscreen immediately after the student taps “Join Class.”
+- If fullscreen is blocked, continue with a full-viewport app layout.
+- Do not repeatedly show permission prompts.
+- Do not break class joining if fullscreen is rejected.
+
+For installed PWA/app mode:
+- Use standalone/fullscreen display behaviour where supported.
+
+Regarding the mobile operating-system status bar:
+- Hide it in supported fullscreen/PWA/app modes.
+- Do not rely on unsupported browser hacks.
+- If the browser does not permit hiding the system status bar, maximize the classroom viewport and remove all unnecessary Braintam headers.
+
+==================================================
+4. MERGE CHAT AND POLL INTO ONE PANEL
+==================================================
+
+Do not use separate permanent Chat and Poll panels on mobile.
+
+Create one unified interaction panel.
+
+Normal state:
+- The panel displays live chat.
+- Students can read messages.
+- Students can send messages.
+
+When the teacher publishes/pushes a poll:
+- The same chat panel temporarily changes into the active poll interface.
+- Show:
+  - Question
+  - Answer options
+  - Submit/select interaction
+- Student selects one answer.
+- Prevent duplicate submissions.
+- Show immediate result:
+  - Correct
+  - Incorrect
+- Clearly indicate the selected answer.
+- Show the correct answer when permitted by the current poll logic.
+- After displaying the result briefly, automatically close the poll view and return to the live chat.
+- Suggested result display time: approximately 2–4 seconds.
+- Preserve all previous chat messages.
+- Do not lose unread chat messages while the poll is active.
+- If the teacher closes the poll before the student answers, return to chat automatically.
+- Avoid disruptive popups or modals covering the teacher video.
+
+==================================================
+5. FIX LIVEKIT AUDIO AND VIDEO FOR ALL REQUIRED ROLES
+==================================================
+
+This is a critical issue.
+
+Current behaviour:
+- Teacher can turn on camera and microphone locally.
+- Student can sometimes detect the teacher.
+- Teacher video/audio is not reliably received by students.
+- Student video can be visible to the teacher during on-stage mode.
+- Student microphone/audio is not audible to the teacher, the student, or other permitted participants.
+- Student media appears partially connected but audio is not functioning correctly.
+
+Investigate and fix the actual LiveKit media flow.
+
+Teacher:
+- Confirm teacher token has:
+  - canPublish: true
+  - canSubscribe: true
+- Confirm camera track is actually published to the connected LiveKit Room.
+- Confirm microphone track is actually published.
+- Do not treat a local camera preview as proof that the track is published.
+- Confirm camera/microphone are enabled on the same connected Room instance used by the classroom.
+- Check for duplicate Room instances.
+- Check TrackPublished, LocalTrackPublished, TrackMuted, TrackUnmuted, and publication errors.
+
+Student:
+- Confirm normal viewer token has:
+  - canSubscribe: true
+  - canPublish: false by default
+- Confirm teacher video tracks are subscribed and attached to the correct video element.
+- Confirm teacher audio tracks are subscribed and attached correctly.
+- Implement LiveKit audio playback/start handling for browser autoplay restrictions.
+- If audio playback is blocked, show one clear “Tap to enable class audio” action.
+- Do not repeatedly show the prompt after audio starts.
+
+On-stage student:
+- Only an approved/on-stage student may publish camera and microphone.
+- When approved:
+  - Update permissions correctly.
+  - Enable camera/microphone publishing.
+  - Confirm tracks are actually published.
+- Teacher must hear the on-stage student.
+- Other students should hear the on-stage student if the classroom model permits it.
+- Do not play the student’s own microphone audio back to the same student, because that causes echo/feedback.
+- The student should see their own local camera preview but should not hear their own microphone playback.
+- Use echo cancellation, noise suppression, and automatic gain control where supported.
+- When stage time ends or teacher removes the student:
+  - Unpublish/disable student camera.
+  - Unpublish/disable student microphone.
+  - Restore viewer-only permissions and UI.
+
+Add safe diagnostics:
+- Room name
+- Participant identity
+- Role
+- Connection state
+- Track source
+- Track SID
+- Published state
+- Subscribed state
+- Muted state
+- Audio playback state
+
+Never log:
+- API secrets
+- Full access tokens
+- Private credentials
+
+==================================================
+6. REPLACE CANVA PRESENTATION WITH TEACHER FILE UPLOAD
+==================================================
+
+Current issue:
+The Canva presentation is unreliable. Slides cannot reliably move forward or backward for students.
+
+Remove Canva as the primary live presentation method.
+
+Add presentation upload inside the Teacher Live-Class Portal.
+
+Teacher should be able to upload:
+- PDF
+- PPT
+- PPTX
+
+Required behaviour:
+- Teacher uploads a presentation for the current live session.
+- The presentation appears in the teacher presentation area.
+- Students see the same active presentation.
+- Mentor viewers see the same active presentation.
+- Teacher controls:
+  - Previous slide/page
+  - Next slide/page
+  - Current slide/page number
+  - Total slides/pages
+  - Stop presentation
+  - Remove presentation
+- Student and mentor presentation view must stay synchronized with the teacher.
+- Students and mentors must not control slide navigation.
+- Do not allow students or mentors to move forward/backward independently.
+
+Implementation considerations:
+- PDFs may be rendered using the project’s existing PDF renderer or PDF.js.
+- PPT/PPTX files are not reliably rendered directly by browsers.
+- Use a secure server-side conversion workflow to convert PPT/PPTX into PDF or slide images before presenting.
+- Do not fake PPT support by embedding an unreliable browser preview.
+- Validate file type and file size.
+- Use secure generated filenames.
+- Prevent executable or unsupported uploads.
+
+Session lifecycle:
+- Presentation should belong only to the current live-class session.
+- When the teacher ends/stops the class:
+  - Stop broadcasting the presentation.
+  - Remove it from the active classroom state.
+  - Automatically delete/reject the temporary presentation file according to the existing storage strategy.
+  - Do not leave it active for the next class.
+- If permanent storage is required for recordings/history, implement that separately and do not keep it in active live-session state.
+
+==================================================
+7. MENTOR LIVE CLASS — VIEWER-ONLY EXPERIENCE
+==================================================
+
+Current issue:
+Mentor live-class UI has the same poor mobile layout as the student UI.
+
+Give mentors the same clean responsive viewing layout as students:
+
+Teacher Video / Presentation
+↓
+Compact class information/status
+↓
+Unified interaction panel
+↓
+Mentor chat input
+
+Mentor permissions:
+- Mentor is a viewer only.
+- Mentor cannot turn on camera.
+- Mentor cannot turn on microphone.
+- Mentor cannot publish video.
+- Mentor cannot publish audio.
+- Mentor cannot share screen.
+- Mentor cannot control teacher presentation.
+- Mentor cannot move slides.
+- Mentor cannot modify class settings.
+- Mentor cannot start/end the class.
+- Mentor cannot change student stage permissions unless a separate existing permission explicitly allows it.
+
+Mentor may:
+- Watch teacher video.
+- Hear teacher audio.
+- View the synchronized presentation.
+- Read classroom chat.
+- Chat with teacher and students according to the current classroom chat rules.
+
+Enforce viewer-only permissions in both:
+1. Frontend UI
+2. LiveKit token/server permissions
+
+Do not rely only on hiding buttons.
+
+==================================================
+8. RESPONSIVE AND ACCESSIBILITY REQUIREMENTS
+==================================================
+
+Test at minimum:
+
+Mobile portrait:
+- 360 × 800
+- 375 × 812
+- 390 × 844
+- 412 × 915
+
+Mobile landscape:
+- Common Android landscape dimensions
+
+Desktop:
+- Existing teacher experience must remain functional.
+
+Ensure:
+- No horizontal overflow.
+- No overlapping video/chat.
+- No hidden send button.
+- No chat input behind the mobile keyboard.
+- Use visualViewport or equivalent handling where needed.
+- Use accessible touch targets.
+- Use readable font sizes.
+- Do not allow mobile browsers to zoom unexpectedly when focusing the chat input; keep input font size appropriate.
+- Preserve safe-area spacing.
+
+==================================================
+9. DO NOT BREAK EXISTING FEATURES
+==================================================
+
+Preserve:
+- Existing chat history
+- Poll creation
+- Poll responses
+- Attendance
+- Live/absent status
+- Teacher controls
+- Student on-stage request/approval
+- Stage timer
+- Class timer
+- Class ending
+- Recording integration
+- Existing authentication
+- Role permissions
+- Current API routes unless migration is required
+
+Do not redesign unrelated dashboards.
+
+==================================================
+10. IMPLEMENTATION PROCESS
+==================================================
+
+Before coding:
+1. Inspect all existing Student, Teacher, Mentor, LiveKit, Chat, Poll, Presentation, and mobile-layout files.
+2. Identify the exact components and APIs involved.
+3. Identify the current cause of teacher/student audio failure.
+4. Identify whether the production token endpoint and LiveKit configuration are healthy.
+5. Provide a short implementation plan.
+
+Then implement in safe phases:
+
+Phase 1:
+- Fix LiveKit teacher audio/video.
+- Fix approved student on-stage audio/video.
+- Fix browser audio playback handling.
+
+Phase 2:
+- Redesign student mobile layout.
+- Add immersive/fullscreen behaviour.
+- Close keyboard after chat send.
+
+Phase 3:
+- Merge Chat and Poll into one mobile interaction panel.
+
+Phase 4:
+- Implement mentor viewer-only responsive layout and enforce server permissions.
+
+Phase 5:
+- Replace Canva presentation flow with secure PDF/PPT/PPTX upload, conversion, synchronized teacher controls, and automatic session cleanup.
+
+After implementation:
+- Run typecheck.
+- Run production build.
+- Test Teacher + Student + Mentor simultaneously.
+- Test mobile and desktop.
+- Report all changed files.
+- Report any database migration or environment variable required.
+- Do not claim success without testing the media publication/subscription flow.
