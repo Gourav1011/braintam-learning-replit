@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-13-1751" : "dev",
-    commit: true ? "71d0df8" : "unknown",
-    buildTime: true ? "2026-07-13T17:51:46.118Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-13-1838" : "dev",
+    commit: true ? "de45c1b" : "unknown",
+    buildTime: true ? "2026-07-13T18:38:37.605Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -132946,7 +132946,8 @@ function getSessionRoom(sid) {
       stageSlots: /* @__PURE__ */ new Map(),
       teacher: null,
       activePresentation: null,
-      currentSlide: 1
+      currentSlide: 1,
+      demoMode: false
     });
   }
   return sessionRooms.get(sid);
@@ -133261,7 +133262,8 @@ function setupSocketIO(httpServer2) {
         stage: Array.from(room.stageSlots.values()),
         teacher: room.teacher,
         activePresentation: room.activePresentation,
-        currentSlide: room.currentSlide
+        currentSlide: room.currentSlide,
+        demoMode: room.demoMode
       });
       const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
       socket.emit("classroom:joined", {
@@ -133662,6 +133664,16 @@ function setupSocketIO(httpServer2) {
       room.activePresentation = null;
       room.currentSlide = 1;
       io2.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+    });
+    socket.on("demo:start", () => {
+      if (!isStaff) return;
+      room.demoMode = true;
+      io2.to(globalRoom(sessionId)).emit("demo:started");
+    });
+    socket.on("demo:stop", () => {
+      if (!isStaff) return;
+      room.demoMode = false;
+      io2.to(globalRoom(sessionId)).emit("demo:stopped");
     });
     socket.on("annotation:draw", (seg) => {
       if (!isStaff) return;

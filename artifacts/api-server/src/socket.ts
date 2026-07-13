@@ -100,6 +100,7 @@ interface SessionRoom {
   teacher: { name: string; userId: string } | null;
   activePresentation: PresentationState | null;
   currentSlide: number;
+  demoMode: boolean;
 }
 
 interface StageSlotEntry {
@@ -240,6 +241,7 @@ function getSessionRoom(sid: string): SessionRoom {
       teacher: null,
       activePresentation: null,
       currentSlide: 1,
+      demoMode: false,
     });
   }
   return sessionRooms.get(sid)!;
@@ -666,6 +668,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         teacher: room.teacher,
         activePresentation: room.activePresentation,
         currentSlide: room.currentSlide,
+        demoMode: room.demoMode,
       });
 
       // Diagnostic acknowledgement — sends socket ID, canonical room name and
@@ -1146,7 +1149,19 @@ export function setupSocketIO(httpServer: HttpServer) {
       io.to(globalRoom(sessionId)).emit("presentation:stopped", {});
     });
 
-    // ── Annotation sync ─────────────────────────────────────────
+    // ── Demo Mode — teacher shows their own camera full-screen ──
+    socket.on("demo:start", () => {
+      if (!isStaff) return;
+      room.demoMode = true;
+      io.to(globalRoom(sessionId)).emit("demo:started");
+    });
+
+    socket.on("demo:stop", () => {
+      if (!isStaff) return;
+      room.demoMode = false;
+      io.to(globalRoom(sessionId)).emit("demo:stopped");
+    });
+
     socket.on("annotation:draw", (seg: unknown) => {
       if (!isStaff) return;
       // broadcast to everyone EXCEPT the teacher (who already drew locally)

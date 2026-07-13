@@ -6,7 +6,7 @@ import { useLiveKit } from "@/hooks/use-livekit";
 import { useAuth } from "@/components/auth-provider";
 import {
   Video, VideoOff, Users, MessageSquare, BarChart2, Send,
-  Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, X, Upload,
+  Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, MicOff, X, Upload, Eye,
 } from "lucide-react";
 
 const NAVY = "#0B2B6B";
@@ -440,6 +440,9 @@ export default function LiveClassroom() {
   const [isUploading, setIsUploading] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(1);
   const [totalSlides, setTotalSlides] = useState(0);
+  const [demoMode, setDemoMode] = useState(false);      // teacher toggles; students receive via socket
+  const [demoModeActive, setDemoModeActive] = useState(false); // non-staff: set from socket
+  const demoVideoRef = useRef<HTMLVideoElement>(null);   // mirrors teacher cam in main content area
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -617,6 +620,34 @@ export default function LiveClassroom() {
     }
   }, [cameraOn, isStaff, livekit]);
 
+  // ── Demo Mode — sync teacher camera stream into the main content video element ──
+  const isShowingDemo = isStaff ? demoMode : demoModeActive;
+  useEffect(() => {
+    const target = demoVideoRef.current;
+    if (!target || !isShowingDemo) return;
+    if (isStaff) {
+      // Teacher: mirror their own camera stream
+      const srcVideo = document.querySelector<HTMLVideoElement>(".classroom-teacher-video video");
+      if (srcVideo?.srcObject) {
+        target.srcObject = srcVideo.srcObject;
+        void target.play().catch(() => {});
+      }
+    } else {
+      // Student/mentor: mirror the LiveKit teacher track
+      const srcVideo = livekit.teacherVideoRef.current;
+      if (srcVideo?.srcObject) {
+        target.srcObject = srcVideo.srcObject;
+        void target.play().catch(() => {});
+      }
+    }
+  }, [isShowingDemo, isStaff, livekit.teacherVideoRef]);
+
+  const toggleDemoMode = useCallback(() => {
+    const next = !demoMode;
+    setDemoMode(next);
+    socket?.emit(next ? "demo:start" : "demo:stop");
+  }, [demoMode, socket]);
+
   // ── Mic (independent of camera — teacher must be able to talk without video) ──
   const toggleMic = useCallback(async () => {
     if (!isStaff) return;
@@ -738,6 +769,10 @@ export default function LiveClassroom() {
         // Server explicitly cleared the presentation
         if (!isStaff) setPresentationUrl("");
       }
+      if ((s as any).demoMode) {
+        if (isStaff) setDemoMode(true);
+        else setDemoModeActive(true);
+      }
     });
 
     // Presentation sync — server broadcasts teacher's presentation to all viewers
@@ -748,6 +783,16 @@ export default function LiveClassroom() {
     socket.on("presentation:stopped", () => {
       setCurrentSlide(1);
       if (!isStaff) setPresentationUrl("");
+    });
+
+    // ── Demo mode — teacher camera goes full-screen ───────────
+    socket.on("demo:started", () => {
+      if (!isStaff) setDemoModeActive(true);
+      else setDemoMode(true);
+    });
+    socket.on("demo:stopped", () => {
+      setDemoModeActive(false);
+      if (isStaff) setDemoMode(false);
     });
     socket.on("presentation:navigated", ({ page }: { page: number }) => {
       setCurrentSlide(page);
@@ -1124,7 +1169,7 @@ export default function LiveClassroom() {
         <div className="classroom-content flex flex-col relative bg-gray-950 flex-1 min-w-0">
 
           {/* URL bar + Upload (teacher only, no URL yet) */}
-          {isStaff && !presentationUrl && (
+          {isStaff && !presentationUrl && !demoMode && (
             <div className="flex gap-2 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
               {/* Hidden file input */}
               <input
@@ -1171,12 +1216,56 @@ export default function LiveClassroom() {
                   : <Upload className="w-4 h-4" />}
                 <span>{isUploading ? "Uploading…" : "Upload PPT/PDF"}</span>
               </button>
+              <button
+                onClick={toggleDemoMode}
+                title="Demonstration Mode — show your camera full-screen"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 flex-shrink-0"
+                style={{ background: "#7C3AED" }}
+              >
+                <Eye className="w-4 h-4" />
+                <span>Demo Mode</span>
+              </button>
+            </div>
+          )}
+          {/* Demo mode active banner — teacher can exit */}
+          {isStaff && demoMode && (
+            <div className="flex items-center justify-between px-4 py-2 bg-purple-950 border-b border-purple-800 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                <span className="text-sm font-bold text-purple-300">Demonstration Mode — your camera is the main screen</span>
+              </div>
+              <button
+                onClick={toggleDemoMode}
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-900 hover:bg-purple-800 text-purple-200 font-semibold transition-all"
+              >✕ Exit Demo</button>
             </div>
           )}
 
-          {/* Slides / PDF */}
+          {/* Slides / PDF / Demo */}
           <div className="relative flex-1 overflow-hidden">
-            {isLocalPdf ? (
+            {isShowingDemo ? (
+              /* ── Demo Mode: teacher camera fills the entire main content area ── */
+              <div className="relative w-full h-full bg-black flex items-center justify-center">
+                <video
+                  ref={demoVideoRef}
+                  autoPlay
+                  playsInline
+                  muted={isStaff}
+                  className="w-full h-full object-cover"
+                />
+                {/* Purple pill badge */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-purple-900/80 border border-purple-700 text-purple-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
+                  <Eye className="w-3.5 h-3.5" />
+                  Demonstration Mode
+                </div>
+                {/* Student sees teacher name */}
+                {!isStaff && teacherInfo && (
+                  <div className="absolute bottom-4 left-4 text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    👨‍🏫 {teacherInfo.name}
+                  </div>
+                )}
+              </div>
+            ) : isLocalPdf ? (
               /* Local PDF — rendered page-by-page with PDF.js so teacher controls which page students see */
               <PDFViewer
                 url={presentationUrl}
@@ -1196,11 +1285,23 @@ export default function LiveClassroom() {
                 style={isStaff ? undefined : { pointerEvents: "none" }}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
+              <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-6">
                 <Monitor className="w-20 h-20 opacity-10" />
-                <p className="text-sm">
-                  {isStaff ? "Paste a Canva or PDF URL above to start presenting" : "Waiting for teacher to share slides…"}
-                </p>
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-sm text-gray-500">
+                    {isStaff ? "Share slides or start demonstrating" : "Waiting for teacher to share slides…"}
+                  </p>
+                  {isStaff && (
+                    <button
+                      onClick={toggleDemoMode}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 mt-1"
+                      style={{ background: "#7C3AED" }}
+                    >
+                      <Eye className="w-4 h-4" />
+                      Start Demo Mode
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             {/* Annotation canvas — teacher draws; AnnotationOverlay replays segments for students/mentors */}
@@ -1386,12 +1487,33 @@ export default function LiveClassroom() {
                     <p className="text-[10px] text-gray-500">Teacher</p>
                   </div>
                 )}
-                <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
-                  <button onClick={toggleMic} className="p-1.5 rounded-full transition-all" style={{ background: livekit.micPublishing ? GREEN : "rgba(31,41,55,0.8)", color: livekit.micPublishing ? "white" : "#d1d5db" }} title={livekit.micPublishing ? "Mute microphone" : "Unmute microphone"}>
-                    <Mic className="w-3.5 h-3.5" />
+                {/* ── Mic + Camera controls — dark circular buttons ── */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <button
+                    onClick={toggleMic}
+                    title={livekit.micPublishing ? "Mute" : "Unmute"}
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    style={{
+                      background: livekit.micPublishing ? "rgba(16,185,129,0.18)" : "rgba(17,24,39,0.85)",
+                      border: `1.5px solid ${livekit.micPublishing ? "#10B981" : "#374151"}`,
+                      color: livekit.micPublishing ? "#10B981" : "#9CA3AF",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    {livekit.micPublishing ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
                   </button>
-                  <button onClick={toggleCamera} className="p-1.5 rounded-full bg-gray-800/80 text-gray-300 hover:bg-gray-700 transition-all" title={cameraOn ? "Turn off camera" : "Turn on camera"}>
-                    {cameraOn ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                  <button
+                    onClick={toggleCamera}
+                    title={cameraOn ? "Turn off camera" : "Turn on camera"}
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    style={{
+                      background: cameraOn ? "rgba(59,130,246,0.18)" : "rgba(17,24,39,0.85)",
+                      border: `1.5px solid ${cameraOn ? "#3B82F6" : "#374151"}`,
+                      color: cameraOn ? "#3B82F6" : "#9CA3AF",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
                   </button>
                 </div>
                 {((cameraOn && !livekit.cameraPublishing) || (livekit.micPublishing && !livekit.connected)) && (
