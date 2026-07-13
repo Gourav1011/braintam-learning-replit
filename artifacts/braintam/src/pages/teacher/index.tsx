@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Redirect } from "wouter";
 import { Student360Modal } from "@/pages/admin/student360-modal";
@@ -159,7 +159,9 @@ export default function TeacherPage() {
   interface MasteryLiveClass { id: number; title: string; subjectId: number; grade: number; courseId: number | null; courseSubjectId: number | null; chapterId: number | null; topicId: number | null; scheduledAt: string; duration: number; status: string; }
   const [masteryLiveClasses, setMasteryLiveClasses] = useState<MasteryLiveClass[]>([]);
   const [showMasteryLcForm, setShowMasteryLcForm] = useState(false);
-  const [masteryLcForm, setMasteryLcForm] = useState({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60" });
+  const [masteryLcForm, setMasteryLcForm] = useState({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60", slideUrl: "" });
+  const [masteryLcSlideUploading, setMasteryLcSlideUploading] = useState(false);
+  const masteryLcFileRef = useRef<HTMLInputElement>(null);
   const [masteryLcCourseSubjects, setMasteryLcCourseSubjects] = useState<{ id: number; name: string }[]>([]);
   const [masteryLcChapters, setMasteryLcChapters] = useState<{ id: number; name: string }[]>([]);
   const [masteryLcTopics, setMasteryLcTopics] = useState<{ id: number; name: string }[]>([]);
@@ -237,6 +239,30 @@ export default function TeacherPage() {
     void loadMasteryLcChapters(courseId);
   }
 
+  async function uploadMasteryLcSlide(file: File) {
+    setMasteryLcSlideUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const token = localStorage.getItem("braintam_staff_token");
+      const r = await fetch(`${BASE}/slides/upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setMasteryLcForm(p => ({ ...p, slideUrl: d.fileUrl }));
+        flash("Slide uploaded!");
+      } else {
+        flash("Failed to upload slide", false);
+      }
+    } catch {
+      flash("Upload error", false);
+    }
+    setMasteryLcSlideUploading(false);
+  }
+
   async function createMasteryLiveClass() {
     if (!masteryLcForm.title.trim() || !masteryLcForm.courseId || !masteryLcForm.scheduledAt) {
       flash("Title, course and date/time are required", false);
@@ -253,12 +279,13 @@ export default function TeacherPage() {
         topicId: masteryLcForm.topicId ? Number(masteryLcForm.topicId) : null,
         scheduledAt: new Date(masteryLcForm.scheduledAt + ":00+05:30").toISOString(),
         duration: Number(masteryLcForm.duration) || 60,
+        slideUrl: masteryLcForm.slideUrl || null,
       }),
     });
     if (r.ok) {
       flash("Live class scheduled!");
       setShowMasteryLcForm(false);
-      setMasteryLcForm({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60" });
+      setMasteryLcForm({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60", slideUrl: "" });
       setMasteryLcCourseSubjects([]); setMasteryLcChapters([]); setMasteryLcTopics([]);
       await loadMasteryLiveClasses();
     } else {
@@ -1287,6 +1314,28 @@ export default function TeacherPage() {
                       onChange={e => setMasteryLcForm(p => ({ ...p, scheduledAt: e.target.value }))} />
                     <Input type="number" min="15" placeholder="Duration (minutes)" value={masteryLcForm.duration}
                       onChange={e => setMasteryLcForm(p => ({ ...p, duration: e.target.value }))} />
+                  </div>
+                  {/* Pre-upload slide for this class */}
+                  <div className="border border-dashed border-gray-200 rounded-xl p-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-gray-600">Pre-upload Slides (optional)</p>
+                    <p className="text-[10px] text-gray-400">Students will see this PDF automatically when they join.</p>
+                    <input
+                      ref={masteryLcFileRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) void uploadMasteryLcSlide(f); e.target.value = ""; }}
+                    />
+                    {masteryLcForm.slideUrl ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-green-600 font-semibold">✓ Slide uploaded</span>
+                        <button onClick={() => setMasteryLcForm(p => ({ ...p, slideUrl: "" }))} className="text-[10px] text-red-400 hover:text-red-600">Remove</button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => masteryLcFileRef.current?.click()} disabled={masteryLcSlideUploading} className="text-xs h-8">
+                        {masteryLcSlideUploading ? "Uploading…" : "📎 Upload PDF"}
+                      </Button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400">A live class room is created automatically — no meeting link needed.</p>
                   <div className="flex gap-2">

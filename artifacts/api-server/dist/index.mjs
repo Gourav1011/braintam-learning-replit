@@ -107792,6 +107792,7 @@ var liveClassesTable = pgTable("live_classes", {
   studentsJoined: integer("students_joined").default(0),
   joinUrl: text("join_url"),
   liveKitRoomName: text("livekit_room_name").unique(),
+  slideUrl: text("slide_url"),
   isPublished: boolean("is_published").notNull().default(true),
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at"),
@@ -109220,9 +109221,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-13-1948" : "dev",
-    commit: true ? "00de2ac" : "unknown",
-    buildTime: true ? "2026-07-13T19:48:52.896Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-13-2040" : "dev",
+    commit: true ? "48193bd" : "unknown",
+    buildTime: true ? "2026-07-13T20:40:44.226Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -119403,7 +119404,7 @@ router14.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
 router14.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin" || req.authUser.role === "super_admin";
-  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration: duration3 } = req.body;
+  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration: duration3, slideUrl } = req.body;
   if (!title || !scheduledAt) {
     res.status(400).json({ error: "title and scheduledAt are required" });
     return;
@@ -119444,6 +119445,7 @@ router14.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     scheduledAt: new Date(scheduledAt),
     duration: duration3 ?? 60,
     teacher: req.authUser.name,
+    slideUrl: slideUrl ?? null,
     status: "upcoming"
   }).returning();
   await logAudit2(teacherId, req.authUser.name, "live_class_created", "live_class", lc.id, lc.title);
@@ -133260,6 +133262,15 @@ function setupSocketIO(httpServer2) {
           }
         }
       }
+      let classSlideUrl = null;
+      try {
+        const numericId = Number(sessionId);
+        if (Number.isFinite(numericId)) {
+          const [lcRow] = await db.select({ slideUrl: liveClassesTable.slideUrl }).from(liveClassesTable).where(eq(liveClassesTable.id, numericId)).limit(1);
+          classSlideUrl = lcRow?.slideUrl ?? null;
+        }
+      } catch {
+      }
       socket.emit("roomState", {
         chat: recentChat,
         raisedHands: Array.from(room.raisedHands.entries()).map(([uid, h]) => ({ uid, ...h })),
@@ -133269,7 +133280,8 @@ function setupSocketIO(httpServer2) {
         teacher: room.teacher,
         activePresentation: room.activePresentation,
         currentSlide: room.currentSlide,
-        demoMode: room.demoMode
+        demoMode: room.demoMode,
+        slideUrl: classSlideUrl
       });
       const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
       socket.emit("classroom:joined", {

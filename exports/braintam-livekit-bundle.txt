@@ -2060,7 +2060,7 @@ export async function updateParticipantPublishPermission(
 export async function removeParticipant(roomName: string, identity: string): Promise<void> {
   try {
     const client = getRoomServiceClient();
-    await client.removeParticipant(roomName, identity);
+    await client.removeParticipant(roomName, identity);q
   } catch (err) {
     logger.warn({ err, roomName, identity }, "LiveKit removeParticipant failed");
   }

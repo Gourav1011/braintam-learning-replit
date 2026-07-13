@@ -21,6 +21,10 @@ export default function PDFViewer({ url, page, onPageCount, className = "" }: PD
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
 
+  // Store callback in a ref so it never triggers PDF reload (caller may pass inline fn)
+  const onPageCountRef = useRef(onPageCount);
+  useEffect(() => { onPageCountRef.current = onPageCount; }, [onPageCount]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -34,22 +38,24 @@ export default function PDFViewer({ url, page, onPageCount, className = "" }: PD
         if (cancelled) return;
         pdfRef.current = pdf;
         setPageCount(pdf.numPages);
-        onPageCount?.(pdf.numPages);
+        onPageCountRef.current?.(pdf.numPages);
         setLoading(false);
       } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load PDF");
-          setLoading(false);
-        }
+        if (cancelled) return; // AbortError from destroy() on unmount — suppress
+        const msg = e instanceof Error ? e.message : String(e);
+        // Suppress generic abort errors
+        if (msg.toLowerCase().includes("abort") || msg.toLowerCase().includes("signal")) return;
+        setError(msg || "Failed to load PDF");
+        setLoading(false);
       }
     })();
 
     return () => {
       cancelled = true;
-      void loadingTask.destroy();
+      loadingTask.destroy().catch(() => {}); // prevent unhandled AbortError
       pdfRef.current = null;
     };
-  }, [url, onPageCount]);
+  }, [url]); // intentionally omit onPageCount — use stable ref instead
 
   const renderPage = useCallback(async (pageNum: number) => {
     const pdf = pdfRef.current;
@@ -64,17 +70,14 @@ export default function PDFViewer({ url, page, onPageCount, className = "" }: PD
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      const renderTask = pdfPage.render({ canvas, canvasContext: ctx, viewport });
-      await renderTask.promise;
+      await pdfPage.render({ canvas, canvasContext: ctx, viewport }).promise;
     } catch {
-      // Render cancelled — next render will take over
+      // Render cancelled on slide change — next render takes over
     }
   }, []);
 
   useEffect(() => {
-    if (!loading && !error) {
-      void renderPage(page);
-    }
+    if (!loading && !error) void renderPage(page);
   }, [page, loading, error, renderPage]);
 
   if (error) {
@@ -88,18 +91,21 @@ export default function PDFViewer({ url, page, onPageCount, className = "" }: PD
   return (
     <div className={`relative bg-gray-900 flex items-center justify-center overflow-hidden ${className}`}>
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-gray-400">Loading PDF…</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-950 z-10">
+          <img src="/braintam-logo.png" alt="Braintam" className="w-28 opacity-75" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#FF6B1A", borderTopColor: "transparent" }} />
+            <span className="text-sm text-gray-400">Loading slides…</span>
+          </div>
         </div>
       )}
       <canvas
         ref={canvasRef}
         className="max-w-full max-h-full object-contain"
-        style={{ display: loading ? "none" : "block" }}
+        style={{ opacity: loading ? 0 : 1, transition: "opacity 0.25s" }}
       />
-      {pageCount > 0 && (
-        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
+      {!loading && pageCount > 0 && (
+        <div className="absolute bottom-2 right-10 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full pointer-events-none">
           {page} / {pageCount}
         </div>
       )}

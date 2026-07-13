@@ -656,6 +656,20 @@ export function setupSocketIO(httpServer: HttpServer) {
         }
       }
 
+      // Fetch pre-uploaded slide URL for this class (set during scheduling)
+      let classSlideUrl: string | null = null;
+      try {
+        const numericId = Number(sessionId);
+        if (Number.isFinite(numericId)) {
+          const [lcRow] = await db
+            .select({ slideUrl: liveClassesTable.slideUrl })
+            .from(liveClassesTable)
+            .where(eq(liveClassesTable.id, numericId))
+            .limit(1);
+          classSlideUrl = lcRow?.slideUrl ?? null;
+        }
+      } catch { /* ignore */ }
+
       socket.emit("roomState", {
         chat: recentChat,
         raisedHands: Array.from(room.raisedHands.entries())
@@ -669,6 +683,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         activePresentation: room.activePresentation,
         currentSlide: room.currentSlide,
         demoMode: room.demoMode,
+        slideUrl: classSlideUrl,
       });
 
       // Diagnostic acknowledgement — sends socket ID, canonical room name and

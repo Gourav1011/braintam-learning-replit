@@ -156,7 +156,7 @@ router.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
 router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
   const isAdmin = req.authUser!.role === "admin" || req.authUser!.role === "super_admin";
-  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration } = req.body;
+  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration, slideUrl } = req.body;
   if (!title || !scheduledAt) {
     res.status(400).json({ error: "title and scheduledAt are required" });
     return;
@@ -202,6 +202,7 @@ router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 60,
     teacher: req.authUser!.name,
+    slideUrl: slideUrl ?? null,
     status: "upcoming",
   }).returning();
 

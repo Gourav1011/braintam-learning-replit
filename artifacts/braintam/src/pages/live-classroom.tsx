@@ -10,6 +10,9 @@ import {
   Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2,
 } from "lucide-react";
 
+const ROUND_LOGO = "/braintam-logo-round.png";
+const BRAND_LOGO = "/braintam-logo.png";
+
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 const GREEN = "#10B981";
@@ -491,6 +494,10 @@ export default function LiveClassroom() {
   const redoStackRef    = useRef<Map<number, DrawSegment[][]>>(new Map());
   const currentStrokeRef = useRef<DrawSegment[]>([]);
   const prevSlideRef    = useRef(1);
+  // Memoized page-count callback — prevents PDFViewer from reloading PDF on every parent render
+  const handlePageCount = useCallback((n: number) => setTotalSlides(n), []);
+  // Q&A overlay (teacher: center-screen raised-hands panel)
+  const [showQnaOverlay, setShowQnaOverlay] = useState(false);
   // ── Class pause/resume ──────────────────────────────────────
   const [classPaused, setClassPaused] = useState(false);
   const [classPausedActive, setClassPausedActive] = useState(false);
@@ -902,6 +909,10 @@ export default function LiveClassroom() {
         // Server explicitly cleared the presentation
         if (!isStaff) setPresentationUrl("");
       }
+      // Auto-load pre-uploaded slide (teacher set it in scheduling form)
+      if (!s.activePresentation?.url && (s as any).slideUrl && !isStaff) {
+        setPresentationUrl((s as any).slideUrl);
+      }
       if ((s as any).demoMode) {
         if (isStaff) setDemoMode(true);
         else setDemoModeActive(true);
@@ -1231,6 +1242,7 @@ export default function LiveClassroom() {
       {/* ── Top bar ──────────────────────────────────────────── */}
       <div className="classroom-topbar flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
+          <img src={BRAND_LOGO} alt="Braintam" className="h-7 opacity-90 flex-shrink-0" />
           <div className="flex items-center gap-1.5">
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
             <span className={`text-[10px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-600"}`}>
@@ -1363,33 +1375,40 @@ export default function LiveClassroom() {
               </div>
             )}
 
-            {isShowingDemo ? (
-              /* ── Demo Mode: teacher camera fills the entire main content area ── */
-              <div className="relative w-full h-full bg-black flex items-center justify-center">
-                <video ref={demoVideoRef} autoPlay playsInline muted={isStaff} className="w-full h-full object-cover" />
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-purple-900/80 border border-purple-700 text-purple-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
-                  Demonstration Mode
-                </div>
-                {!isStaff && teacherInfo && (
-                  <div className="absolute bottom-4 left-4 text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                    👨‍🏫 {teacherInfo.name}
-                  </div>
-                )}
+            {/* PDFViewer — always mounted when url exists so demo-mode exit never triggers a reload */}
+            {presentationUrl ? (
+              <div
+                className="absolute inset-0 w-full h-full"
+                style={{ visibility: isShowingDemo ? "hidden" : "visible" }}
+              >
+                <PDFViewer
+                  url={presentationUrl}
+                  page={currentSlide}
+                  onPageCount={handlePageCount}
+                  className="w-full h-full"
+                />
               </div>
-            ) : presentationUrl ? (
-              /* Native PDF viewer — works for both teacher and students */
-              <PDFViewer
-                url={presentationUrl}
-                page={currentSlide}
-                onPageCount={n => setTotalSlides(n)}
-                className="w-full h-full"
-              />
-            ) : (
+            ) : !isShowingDemo ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
                 <p className="text-sm text-gray-500">
                   {isStaff ? "Upload a PDF above to start presenting" : "Waiting for teacher to share slides…"}
                 </p>
+              </div>
+            ) : null}
+
+            {/* ── Demo Mode: overlays on top so PDFViewer stays mounted beneath ── */}
+            {isShowingDemo && (
+              <div className="absolute inset-0 z-20 w-full h-full bg-black flex items-center justify-center">
+                <video ref={demoVideoRef} autoPlay playsInline muted={isStaff} className="w-full h-full object-cover" style={{ transform: "scaleX(-1)" }} />
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-purple-900/80 border border-purple-700 text-purple-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg backdrop-blur-sm pointer-events-none">
+                  Demonstration Mode
+                </div>
+                {!isStaff && teacherInfo && (
+                  <div className="absolute bottom-4 left-4 text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
+                    👨‍🏫 {teacherInfo.name}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1526,6 +1545,20 @@ export default function LiveClassroom() {
             )}
           </div>
 
+          {/* ── Student floating raise-hand button (when Q&A is open) ── */}
+          {!isStaff && !isMentor && raiseHandEnabled && (
+            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+              <button
+                onClick={toggleHand}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl transition-all active:scale-95 ${myHandRaised ? "text-white border-2 border-yellow-400" : "text-white"}`}
+                style={{ background: myHandRaised ? "#B45309" : ORANGE }}
+              >
+                <Hand className="w-4 h-4" />
+                {myHandRaised ? "Lower Hand" : "Raise Hand for Q&A"}
+              </button>
+            </div>
+          )}
+
           {/* Annotation toolbar (teacher only) */}
           {isStaff && (
             <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0 flex-wrap">
@@ -1577,6 +1610,27 @@ export default function LiveClassroom() {
                   <Trash2 className="w-3.5 h-3.5" /></button>
               </div>
 
+              {/* Q&A toggle button (teacher toolbar) */}
+              <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
+                <button
+                  onClick={() => toggleRaiseHandFeature(!raiseHandEnabled)}
+                  className={`flex items-center gap-1.5 px-3 h-8 rounded-lg font-semibold text-[11px] transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                  title="Open/Close Q&A"
+                >
+                  <Hand className="w-3.5 h-3.5" />
+                  {raiseHandEnabled ? "Close Q&A" : "Open Q&A"}
+                </button>
+                {raiseHandEnabled && visibleHands.length > 0 && (
+                  <button
+                    onClick={() => setShowQnaOverlay(true)}
+                    className="flex items-center gap-1 px-3 h-8 rounded-lg font-bold text-[11px] bg-yellow-500 hover:bg-yellow-400 text-black transition-all animate-pulse"
+                    title="View raised hands"
+                  >
+                    ✋ {visibleHands.length}
+                  </button>
+                )}
+              </div>
+
               {/* Slide navigation */}
               {presentationUrl && (
                 <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-2">
@@ -1621,16 +1675,24 @@ export default function LiveClassroom() {
                   autoPlay
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover"
-                  style={{ display: livekit.teacherPresent && teacherInfo?.online ? "block" : "none" }}
+                  style={{ display: livekit.teacherPresent && teacherInfo?.online ? "block" : "none", transform: "scaleX(-1)" }}
                 />
                 <audio ref={livekit.teacherAudioRef} autoPlay />
               </>
             )}
 
+            {/* Round Braintam logo — top-right corner of teacher camera panel */}
+            <img
+              src={ROUND_LOGO}
+              alt="Braintam"
+              className="absolute top-2 right-2 z-10 rounded-full pointer-events-none"
+              style={{ width: 30, height: 30, opacity: 0.88 }}
+            />
+
             {isStaff ? (
               /* ── Teacher sees their own camera ── */
               <>
-                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none" }} />
+                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none", transform: "scaleX(-1)" }} />
                 {!cameraOn && (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
@@ -2231,6 +2293,73 @@ export default function LiveClassroom() {
       )}
 
       </div>
+
+      {/* ── Q&A Center-Screen Overlay (teacher: shows who raised hands) ─── */}
+      {isStaff && showQnaOverlay && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowQnaOverlay(false); }}
+        >
+          <div className="bg-gray-900 border border-yellow-700/40 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <Hand className="w-5 h-5 text-yellow-400" />
+                <h3 className="text-white font-bold text-base">Q&A — Raised Hands</h3>
+                <span className="bg-yellow-500 text-black text-xs font-black px-2 py-0.5 rounded-full">{visibleHands.length}</span>
+              </div>
+              <button onClick={() => setShowQnaOverlay(false)} className="text-gray-500 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* List */}
+            <div className="max-h-80 overflow-y-auto divide-y divide-gray-800">
+              {visibleHands.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-8">No students have raised their hand yet.</p>
+              ) : visibleHands.map(h => {
+                const alreadyOnStage = stageSlots.some(s => s.studentId === h.uid);
+                const stageFull = stageSlots.length >= 5;
+                const isSuggested = suggestedStudents.has(h.uid);
+                return (
+                  <div key={h.uid} className={`flex items-center justify-between px-5 py-3 ${isSuggested ? "bg-purple-900/20" : "hover:bg-gray-800/50"}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-400 flex-shrink-0">✋</div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-white font-semibold truncate">{h.name}</p>
+                        {isSuggested && <p className="text-[10px] text-purple-400">★ Suggested by mentor</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {!alreadyOnStage && !stageFull && (
+                        <button
+                          onClick={() => { approveToStage(h); setShowQnaOverlay(false); }}
+                          className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold transition-all"
+                        >
+                          → Stage
+                        </button>
+                      )}
+                      {alreadyOnStage && <span className="text-xs text-green-400 font-semibold">On stage</span>}
+                      {stageFull && !alreadyOnStage && <span className="text-xs text-gray-500">Stage full</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-gray-800 flex items-center justify-between">
+              <button
+                onClick={() => toggleRaiseHandFeature(false)}
+                className="text-xs text-red-400 hover:text-red-300 font-semibold"
+              >Close Q&A</button>
+              <button
+                onClick={() => setShowQnaOverlay(false)}
+                className="text-xs px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold"
+              >Dismiss</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
