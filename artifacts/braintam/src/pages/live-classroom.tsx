@@ -443,6 +443,7 @@ export default function LiveClassroom() {
   const [demoMode, setDemoMode] = useState(false);      // teacher toggles; students receive via socket
   const [demoModeActive, setDemoModeActive] = useState(false); // non-staff: set from socket
   const demoVideoRef = useRef<HTMLVideoElement>(null);   // mirrors teacher cam in main content area
+  const selfViewRef = useRef<HTMLVideoElement>(null);    // student sees their own camera when on stage
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1055,6 +1056,13 @@ export default function LiveClassroom() {
     return ms > 0 ? Math.ceil(ms / 1000) : 0;
   };
 
+  // ── Student self-view — attach local camera when on stage ──────
+  useEffect(() => {
+    if (myOnStage && !isStaff && selfViewRef.current) {
+      livekit.attachLocalCameraTo(selfViewRef.current);
+    }
+  }, [myOnStage, isStaff, livekit]);
+
   const embedUrl = getEmbedUrl(presentationUrl);
   // Local PDF files uploaded via /api/slides/upload are rendered with PDF.js
   // so the teacher can navigate page-by-page and students stay in sync.
@@ -1216,15 +1224,6 @@ export default function LiveClassroom() {
                   : <Upload className="w-4 h-4" />}
                 <span>{isUploading ? "Uploading…" : "Upload PPT/PDF"}</span>
               </button>
-              <button
-                onClick={toggleDemoMode}
-                title="Demonstration Mode — show your camera full-screen"
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 flex-shrink-0"
-                style={{ background: "#7C3AED" }}
-              >
-                <Eye className="w-4 h-4" />
-                <span>Demo Mode</span>
-              </button>
             </div>
           )}
           {/* Demo mode active banner — teacher can exit */}
@@ -1285,23 +1284,11 @@ export default function LiveClassroom() {
                 style={isStaff ? undefined : { pointerEvents: "none" }}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-6">
+              <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-sm text-gray-500">
-                    {isStaff ? "Share slides or start demonstrating" : "Waiting for teacher to share slides…"}
-                  </p>
-                  {isStaff && (
-                    <button
-                      onClick={toggleDemoMode}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 mt-1"
-                      style={{ background: "#7C3AED" }}
-                    >
-                      <Eye className="w-4 h-4" />
-                      Start Demo Mode
-                    </button>
-                  )}
-                </div>
+                <p className="text-sm text-gray-500">
+                  {isStaff ? "Upload a PPT/PDF or paste a URL above to start presenting" : "Waiting for teacher to share slides…"}
+                </p>
               </div>
             )}
             {/* Annotation canvas — teacher draws; AnnotationOverlay replays segments for students/mentors */}
@@ -1319,18 +1306,51 @@ export default function LiveClassroom() {
               </div>
             )}
 
-            {/* Sprint 3 — Dynamic 5-slot stage overlay */}
+            {/* ── Student self-view — bottom-left floating tile when on stage ── */}
+            {myOnStage && !isStaff && (
+              <div className="absolute bottom-4 left-4 z-50 w-32 rounded-xl overflow-hidden shadow-2xl border-2 border-green-500/70" style={{ background: "#0f172a" }}>
+                <div className="relative" style={{ aspectRatio: "4/3" }}>
+                  <video
+                    ref={selfViewRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="px-2 py-1 bg-black/80 flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                  <span className="text-[9px] text-white font-semibold truncate flex-1">{rawName}</span>
+                  <span className="text-[9px]">{mySlot?.isMuted ? "🔇" : "🔊"}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Sprint 3 — Dynamic 5-slot stage strip */}
             {stageSlots.length > 0 && (
-              <div data-testid="stage-overlay" className="absolute bottom-4 left-4 right-4 flex gap-2 justify-center z-40 pointer-events-none">
-                {stageSlots.map(slot => (
+              <div
+                data-testid="stage-overlay"
+                className="absolute bottom-4 flex gap-2 z-40 pointer-events-none"
+                style={{
+                  left: myOnStage && !isStaff ? 160 : 16,
+                  right: 16,
+                  justifyContent: "flex-start",
+                }}>
+                {stageSlots
+                  .filter(slot => !(slot.studentId === userId && !isStaff)) /* hide self — shown in self-view tile */
+                  .map(slot => (
                   <div
                     key={slot.studentId}
                     data-testid="stage-slot"
                     data-student-id={slot.studentId}
-                    className="w-28 rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative"
-                    style={{ background: "#0f172a", borderColor: slot.studentId === userId ? "#10B981" : "#334155" }}>
-                    {/* LiveKit video for this staged student, avatar fallback until they publish */}
-                    <div className="h-12 flex items-center justify-center bg-gray-900/80 relative overflow-hidden">
+                    className="rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative flex-shrink-0"
+                    style={{
+                      width: 120,
+                      background: "#0f172a",
+                      borderColor: slot.studentId === userId ? "#10B981" : "#1E40AF",
+                    }}>
+                    {/* Video area — 4:3 aspect */}
+                    <div className="relative flex items-center justify-center bg-gray-900" style={{ aspectRatio: "4/3" }}>
                       <video
                         key={`${slot.studentId}-${livekit.trackVersion}`}
                         ref={(el) => livekit.attachParticipantVideo(slot.studentId, el)}
@@ -1341,23 +1361,29 @@ export default function LiveClassroom() {
                         style={{ display: livekit.stagePublishers.has(slot.studentId) ? "block" : "none" }}
                       />
                       {!livekit.stagePublishers.has(slot.studentId) && (
-                        <div className="text-xl select-none">👤</div>
+                        <div className="text-2xl select-none">👤</div>
+                      )}
+                      {/* Countdown badge */}
+                      {secondsLeft(slot) !== null && (
+                        <div className="absolute top-1 right-1 text-[8px] font-black text-white bg-black/70 px-1.5 py-0.5 rounded-full">
+                          {secondsLeft(slot)}s
+                        </div>
                       )}
                     </div>
 
-                    {/* Name + mute bar */}
-                    <div className="px-1.5 py-1 bg-black/70 flex items-center justify-between gap-1">
+                    {/* Name + mute row */}
+                    <div className="px-2 py-1 bg-black/80 flex items-center justify-between gap-1">
                       <span className="text-[9px] text-white font-semibold truncate flex-1">{slot.studentName}</span>
                       <span className="text-[10px]">{slot.isMuted ? "🔇" : "🔊"}</span>
                     </div>
 
-                    {/* Teacher controls — always visible (no hover dependency) */}
+                    {/* Teacher controls */}
                     {isStaff && (
-                      <div className="flex justify-center gap-1 bg-gray-900/90 px-1 py-1">
+                      <div className="flex justify-center gap-1 bg-gray-900/95 px-1.5 py-1">
                         <button
                           data-testid={`stage-mute-${slot.studentId}`}
                           onClick={() => toggleStageMute(slot.studentId, !slot.isMuted)}
-                          className="text-[8px] bg-gray-700 hover:bg-gray-500 text-white px-1.5 py-0.5 rounded font-bold">
+                          className="text-[8px] bg-gray-700 hover:bg-gray-500 text-white px-2 py-0.5 rounded font-bold">
                           {slot.isMuted ? "Unmute" : "Mute"}
                         </button>
                         <button
@@ -1367,23 +1393,6 @@ export default function LiveClassroom() {
                           ✕
                         </button>
                       </div>
-                    )}
-
-                    {/* Slot number badge */}
-                    <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-blue-600/80 flex items-center justify-center text-[8px] text-white font-black">
-                      {slot.slotNumber}
-                    </div>
-
-                    {/* Backend-authoritative countdown */}
-                    {secondsLeft(slot) !== null && (
-                      <div className="absolute top-1 left-6 text-[8px] font-black text-white bg-black/60 px-1 rounded">
-                        {secondsLeft(slot)}s
-                      </div>
-                    )}
-
-                    {/* "You" badge */}
-                    {slot.studentId === userId && (
-                      <div className="absolute top-1 right-1 text-[8px] bg-green-600 text-white px-1 rounded font-bold">You</div>
                     )}
                   </div>
                 ))}
@@ -1419,31 +1428,20 @@ export default function LiveClassroom() {
               )}
               <button onClick={clearAnnotations} className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-1">🗑 Clear</button>
               {presentationUrl && (
-                <>
-                  {/* ‹ › slide navigation — always visible when presenting */}
-                  <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-3">
-                    <button
-                      onClick={() => navigateSlide("prev")}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
-                      title="Previous slide">
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => navigateSlide("next")}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
-                      title="Next slide">
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <button onClick={() => {
-                    setPresentationUrl(""); setUrlInput("");
-                    socket?.emit("presentation:stop");
-                    if (uploadedFilename) { void cleanupUploadedSlide(uploadedFilename); setUploadedFilename(null); }
-                  }}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-2">
-                    <Settings className="w-3 h-3 inline mr-1" />Change Slide
+                <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-3">
+                  <button
+                    onClick={() => navigateSlide("prev")}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                    title="Previous slide">
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                </>
+                  <button
+                    onClick={() => navigateSlide("next")}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                    title="Next slide">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -1487,12 +1485,12 @@ export default function LiveClassroom() {
                     <p className="text-[10px] text-gray-500">Teacher</p>
                   </div>
                 )}
-                {/* ── Mic + Camera controls — dark circular buttons ── */}
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                {/* ── Mic + Camera + Demo controls ── */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
                   <button
                     onClick={toggleMic}
                     title={livekit.micPublishing ? "Mute" : "Unmute"}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
                     style={{
                       background: livekit.micPublishing ? "rgba(16,185,129,0.18)" : "rgba(17,24,39,0.85)",
                       border: `1.5px solid ${livekit.micPublishing ? "#10B981" : "#374151"}`,
@@ -1500,12 +1498,12 @@ export default function LiveClassroom() {
                       backdropFilter: "blur(6px)",
                     }}
                   >
-                    {livekit.micPublishing ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                    {livekit.micPublishing ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
                   </button>
                   <button
                     onClick={toggleCamera}
                     title={cameraOn ? "Turn off camera" : "Turn on camera"}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
                     style={{
                       background: cameraOn ? "rgba(59,130,246,0.18)" : "rgba(17,24,39,0.85)",
                       border: `1.5px solid ${cameraOn ? "#3B82F6" : "#374151"}`,
@@ -1513,7 +1511,21 @@ export default function LiveClassroom() {
                       backdropFilter: "blur(6px)",
                     }}
                   >
-                    {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                    {cameraOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+                  </button>
+                  {/* Demo Mode icon — teacher only */}
+                  <button
+                    onClick={toggleDemoMode}
+                    title={demoMode ? "Exit Demonstration Mode" : "Demonstration Mode — show your camera full-screen"}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    style={{
+                      background: demoMode ? "rgba(124,58,237,0.35)" : "rgba(17,24,39,0.85)",
+                      border: `1.5px solid ${demoMode ? "#7C3AED" : "#374151"}`,
+                      color: demoMode ? "#A78BFA" : "#9CA3AF",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 {((cameraOn && !livekit.cameraPublishing) || (livekit.micPublishing && !livekit.connected)) && (
