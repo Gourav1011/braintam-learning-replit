@@ -160,6 +160,19 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           }
           setTrackVersion(v => v + 1);
         });
+        room.on(RoomEvent.TrackMuted, (pub, participant) => {
+          const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
+          if (isTeacher) {
+            if (pub.kind === Track.Kind.Video) setTeacherVideoSubscribed(false);
+            else if (pub.kind === Track.Kind.Audio) setTeacherAudioSubscribed(false);
+          }
+          setTrackVersion(v => v + 1);
+        });
+        room.on(RoomEvent.TrackUnmuted, (pub, participant) => {
+          const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
+          if (isTeacher && pub.track) attachTeacherTrack(pub.track as RemoteTrack);
+          setTrackVersion(v => v + 1);
+        });
         room.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
           if (isTeacherRole(safeParseRole(p.metadata))) setTeacherPresent(true);
         });
@@ -257,6 +270,18 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
     };
   }, [enabled, sessionId, attachTeacherTrack, detachTeacherTrack]);
 
+  /**
+   * Attach the LiveKit local camera track to a video element.
+   * Call this after setCamera(true) resolves so the teacher sees their own feed
+   * without a separate getUserMedia stream competing for the camera device.
+   */
+  const attachLocalCameraTo = useCallback((el: HTMLVideoElement | null) => {
+    const room = roomRef.current;
+    if (!el || !room) return;
+    const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+    if (pub?.track) pub.track.attach(el);
+  }, []);
+
   /** Enable/disable local camera publish. Server enforces whether this is actually allowed. */
   const setCamera = useCallback(async (on: boolean) => {
     const room = roomRef.current;
@@ -318,6 +343,7 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
     teacherAudioRef,
     setCamera,
     setMic,
+    attachLocalCameraTo,
     stagePublishers,
     trackVersion,
     attachParticipantVideo,

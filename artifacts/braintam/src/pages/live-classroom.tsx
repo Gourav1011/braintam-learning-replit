@@ -417,7 +417,7 @@ export default function LiveClassroom() {
   // first joins as role="student" then immediately reconnects with the real role, during
   // which teacher:joined / chat / poll events can be permanently missed.
   const { socket, connected } = useClassroomSocket(sessionId, userId, name, role, groupId, phone, !authLoading);
-  const isStaff  = role === "teacher" || role === "admin";
+  const isStaff  = role === "teacher" || role === "admin" || role === "super_admin";
   const isMentor = role === "mentor";
   const canSeeAttendance = isStaff || isMentor;
 
@@ -594,25 +594,24 @@ export default function LiveClassroom() {
   }, [socket]);
 
   // ── Camera ─────────────────────────────────────────────────
+  // Uses LiveKit's own local track for the preview — no separate getUserMedia call.
+  // Two competing getUserMedia streams on the same device caused publish failures in production.
   const [cameraOn, setCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const toggleCamera = useCallback(async () => {
     if (cameraOn) {
-      streamRef.current?.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
       setCameraOn(false);
-      if (isStaff) { void livekit.setCamera(false); }
+      if (isStaff) {
+        void livekit.setCamera(false);
+        if (videoRef.current) videoRef.current.srcObject = null;
+      }
     } else {
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        streamRef.current = s;
-        if (videoRef.current) videoRef.current.srcObject = s;
-        setCameraOn(true);
-        // Teacher's camera publishes into LiveKit so students/mentors can see them.
-        if (isStaff) { void livekit.setCamera(true); }
-      } catch { alert("Camera unavailable"); }
+      if (!isStaff) return;
+      setCameraOn(true);
+      // setCameraEnabled publishes the track to LiveKit; then attach its local
+      // MediaStream to videoRef so the teacher sees their own feed.
+      await livekit.setCamera(true);
+      livekit.attachLocalCameraTo(videoRef.current);
     }
   }, [cameraOn, isStaff, livekit]);
 
@@ -1316,6 +1315,22 @@ export default function LiveClassroom() {
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
             </div>
 
+            {/* Always mounted for students so refs are valid the instant LiveKit fires TrackSubscribed —
+                if the video element only renders inside teacherInfo?.online, the attach call happens
+                when teacherVideoRef.current is still null (race between socket roomState and LiveKit). */}
+            {!isStaff && (
+              <>
+                <video
+                  ref={livekit.teacherVideoRef}
+                  autoPlay
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ display: livekit.teacherPresent && teacherInfo?.online ? "block" : "none" }}
+                />
+                <audio ref={livekit.teacherAudioRef} autoPlay />
+              </>
+            )}
+
             {isStaff ? (
               /* ── Teacher sees their own camera ── */
               <>
@@ -1340,16 +1355,8 @@ export default function LiveClassroom() {
               </>
             ) : teacherInfo ? (
               teacherInfo.online ? (
-                /* ── Teacher is live — real LiveKit video when published, avatar fallback otherwise ── */
+                /* ── Teacher is live — video/audio elements mounted above; show overlays here ── */
                 <>
-                  <video
-                    ref={livekit.teacherVideoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                    style={{ display: livekit.teacherPresent ? "block" : "none" }}
-                  />
-                  <audio ref={livekit.teacherAudioRef} autoPlay />
                   {livekit.audioBlocked && (
                     <button
                       onClick={() => { void livekit.startAudio(); }}
