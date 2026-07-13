@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-13-1838" : "dev",
-    commit: true ? "de45c1b" : "unknown",
-    buildTime: true ? "2026-07-13T18:38:37.605Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-13-1906" : "dev",
+    commit: true ? "119ee00" : "unknown",
+    buildTime: true ? "2026-07-13T19:06:11.166Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -132682,9 +132682,9 @@ var upload = (0, import_multer.default)({
   }
 });
 var router47 = (0, import_express47.Router)();
-router47.post("/api/slides/upload", upload.single("file"), (req, res) => {
+router47.post("/slides/upload", upload.single("file"), (req, res, next) => {
   if (!req.file) {
-    res.status(400).json({ error: "No file uploaded or unsupported type (PDF, PPT, PPTX only)" });
+    res.status(400).json({ error: "Unsupported file type \u2014 only PDF, PPT, or PPTX allowed." });
     return;
   }
   const ext = path3.extname(req.file.filename).toLowerCase();
@@ -132693,8 +132693,14 @@ router47.post("/api/slides/upload", upload.single("file"), (req, res) => {
     fileUrl: `/api/slides/${req.file.filename}`,
     isPptx: ext === ".pptx" || ext === ".ppt"
   });
+  void next;
 });
-router47.get("/api/slides/:filename", (req, res) => {
+router47.use("/slides/upload", (err, _req, res, _next) => {
+  const msg = err instanceof Error ? err.message : "Upload error";
+  const isLimit = msg.includes("LIMIT_FILE_SIZE") || msg.includes("File too large");
+  res.status(400).json({ error: isLimit ? "File is too large (max 60 MB)." : `Upload failed: ${msg}` });
+});
+router47.get("/slides/:filename", (req, res) => {
   const { filename } = req.params;
   if (!/^[\w-]+\.(pdf|ppt|pptx)$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });
@@ -132707,7 +132713,7 @@ router47.get("/api/slides/:filename", (req, res) => {
   }
   res.sendFile(filePath);
 });
-router47.delete("/api/slides/:filename", (req, res) => {
+router47.delete("/slides/:filename", (req, res) => {
   const { filename } = req.params;
   if (!/^[\w-]+\.(pdf|ppt|pptx)$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });

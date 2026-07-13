@@ -26,9 +26,9 @@ const upload = multer({
 
 const router = Router();
 
-router.post("/api/slides/upload", upload.single("file"), (req, res) => {
+router.post("/slides/upload", upload.single("file"), (req, res, next) => {
   if (!req.file) {
-    res.status(400).json({ error: "No file uploaded or unsupported type (PDF, PPT, PPTX only)" });
+    res.status(400).json({ error: "Unsupported file type — only PDF, PPT, or PPTX allowed." });
     return;
   }
   const ext = path.extname(req.file.filename).toLowerCase();
@@ -37,9 +37,17 @@ router.post("/api/slides/upload", upload.single("file"), (req, res) => {
     fileUrl: `/api/slides/${req.file.filename}`,
     isPptx: ext === ".pptx" || ext === ".ppt",
   });
+  void next;
 });
 
-router.get("/api/slides/:filename", (req, res) => {
+// multer error handler — catches LIMIT_FILE_SIZE and other upload errors
+router.use("/slides/upload", (err: unknown, _req: import("express").Request, res: import("express").Response, _next: import("express").NextFunction) => {
+  const msg = err instanceof Error ? err.message : "Upload error";
+  const isLimit = msg.includes("LIMIT_FILE_SIZE") || msg.includes("File too large");
+  res.status(400).json({ error: isLimit ? "File is too large (max 60 MB)." : `Upload failed: ${msg}` });
+});
+
+router.get("/slides/:filename", (req, res) => {
   const { filename } = req.params;
   if (!/^[\w-]+\.(pdf|ppt|pptx)$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });
@@ -53,7 +61,7 @@ router.get("/api/slides/:filename", (req, res) => {
   res.sendFile(filePath);
 });
 
-router.delete("/api/slides/:filename", (req, res) => {
+router.delete("/slides/:filename", (req, res) => {
   const { filename } = req.params;
   if (!/^[\w-]+\.(pdf|ppt|pptx)$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });

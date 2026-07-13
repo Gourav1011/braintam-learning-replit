@@ -650,10 +650,20 @@ export default function LiveClassroom() {
   }, [demoMode, socket]);
 
   // ── Mic (independent of camera — teacher must be able to talk without video) ──
+  const micBusyRef = useRef(false);
+  const [micProcessing, setMicProcessing] = useState(false);
   const toggleMic = useCallback(async () => {
     if (!isStaff) return;
-    const next = !livekit.micPublishing;
-    await livekit.setMic(next);
+    if (micBusyRef.current) return;
+    micBusyRef.current = true;
+    setMicProcessing(true);
+    try {
+      const next = !livekit.micPublishing;
+      await livekit.setMic(next);
+    } finally {
+      micBusyRef.current = false;
+      setMicProcessing(false);
+    }
   }, [isStaff, livekit]);
 
   // ── Poll form (Sprint 1 — includes correct answer) ────────
@@ -1453,7 +1463,7 @@ export default function LiveClassroom() {
         <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
-          <div className="classroom-teacher-video relative bg-black flex-shrink-0" style={{ height: 190 }}>
+          <div className="classroom-teacher-video relative bg-black flex-shrink-0" style={{ aspectRatio: "1/1", width: "100%" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
@@ -1488,17 +1498,21 @@ export default function LiveClassroom() {
                 {/* ── Mic + Camera + Demo controls ── */}
                 <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
                   <button
-                    onClick={toggleMic}
-                    title={livekit.micPublishing ? "Mute" : "Unmute"}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    onClick={() => { void toggleMic(); }}
+                    disabled={micProcessing}
+                    title={micProcessing ? "Toggling mic…" : livekit.micPublishing ? "Mute" : "Unmute"}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
                       background: livekit.micPublishing ? "rgba(16,185,129,0.18)" : "rgba(17,24,39,0.85)",
-                      border: `1.5px solid ${livekit.micPublishing ? "#10B981" : "#374151"}`,
+                      border: `1.5px solid ${livekit.micPublishing ? "#10B981" : micProcessing ? "#6B7280" : "#374151"}`,
                       color: livekit.micPublishing ? "#10B981" : "#9CA3AF",
                       backdropFilter: "blur(6px)",
                     }}
                   >
-                    {livekit.micPublishing ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
+                    {micProcessing
+                      ? <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      : livekit.micPublishing ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />
+                    }
                   </button>
                   <button
                     onClick={toggleCamera}
