@@ -1,0 +1,75 @@
+Investigate the LiveKit teacher-to-student media issue on the deployed VPS. Do not make major changes yet. First inspect the existing implementation and report the root cause.
+
+Current behaviour on VPS:
+
+* Chat works correctly.
+* Polls work correctly.
+* Teacher and student join the live class successfully.
+* On-stage calling works.
+* Teacher can see that the student is live.
+* Teacher can enable/open the local camera.
+* Student detects that the teacher is online but shows “Teacher camera is off.”
+* Teacher video is not visible to the student.
+* Teacher audio is not heard by the student.
+* Student video may not render correctly after going on stage.
+* The same live-class implementation works better in the Replit development environment.
+
+Please investigate these areas:
+
+1. Compare LiveKit configuration in Replit development and production/VPS:
+
+   * LIVEKIT_URL
+   * VITE_LIVEKIT_URL
+   * LIVEKIT_API_KEY
+   * LIVEKIT_API_SECRET
+   * Any frontend build-time LiveKit URL
+   * Any fallback URL or hardcoded Replit URL
+
+2. Trace the teacher camera and microphone flow:
+
+   * Confirm that `setCameraEnabled(true)` and `setMicrophoneEnabled(true)` are called on the connected LiveKit room’s `localParticipant`.
+   * Confirm that the teacher video and audio tracks are actually published to LiveKit, not only displayed in a local browser preview.
+   * Check for duplicate Room objects or a local preview created from a different Room/participant instance.
+   * Check whether the teacher token has `canPublish: true`.
+   * Check whether teacher tracks are being unpublished, muted, or disconnected immediately after publication.
+
+3. Trace the student subscription/rendering flow:
+
+   * Confirm the student token has `canSubscribe: true`.
+   * Confirm the student receives teacher `TrackPublished`, `TrackSubscribed`, `TrackMuted`, and `TrackUnmuted` events.
+   * Confirm the student identifies the teacher using the correct identity, role, or participant metadata.
+   * Check whether the UI incorrectly shows “Teacher camera is off” because it is looking for the wrong participant identity or metadata.
+   * Confirm subscribed teacher video tracks are attached to the student video element.
+   * Confirm teacher audio tracks are attached or handled through LiveKit audio playback.
+   * Check browser autoplay/audio-start handling.
+
+4. Verify teacher and student are joining exactly the same LiveKit room:
+
+   * Log room name.
+   * Log participant identity.
+   * Log role/metadata.
+   * Log token permissions without exposing secrets.
+
+5. Add temporary safe diagnostics for both teacher and student:
+
+   * Room connection state
+   * Room name
+   * Local participant identity
+   * Remote participant identities
+   * Published camera and microphone track state
+   * Track source
+   * Track SID
+   * Muted/unmuted state
+   * Subscription state
+   * Track publication/subscription failures
+
+Do not expose API keys, secrets, or full access tokens.
+
+Before changing code, provide:
+
+A. The exact root cause or strongest evidence
+B. Whether the problem is VPS configuration, LiveKit token permissions, teacher track publishing, student subscription/rendering, participant-role detection, or browser autoplay
+C. Exact files and functions involved
+D. A minimal fix plan
+
+Do not redesign the classroom UI and do not modify chat, polls, attendance, timer, or on-stage logic unless directly required.
