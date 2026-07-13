@@ -1,0 +1,184 @@
+Update the TEACHER LIVE-CLASS PORTAL only.
+
+1. PAUSE-ONLY TEACHER MEDIA CONTROL
+
+Remove separate Mic On/Off and Camera On/Off buttons.
+
+Keep only:
+
+⏸ Pause Class / ▶ Resume Class
+
+Normal state:
+- Teacher camera and microphone automatically remain ON.
+
+Pause:
+- Turn off/mute teacher camera and microphone together.
+- Keep teacher connected to the same LiveKit room.
+- Do not disconnect or recreate the room.
+- Keep chat, polls, attendance, presentation, and timer active.
+- Students should see:
+  “Class temporarily paused. Your teacher will be back shortly.”
+
+Resume:
+- Restore teacher camera and microphone together.
+- Confirm both tracks are published before showing the class as resumed.
+- Pause/Resume must not freeze.
+
+2. REMOVE THIRD-PARTY PRESENTATION VIEWERS
+
+Remove Microsoft Office Viewer, Microsoft embed, Canva embed, Google viewer, iframe presentation viewer, and any third-party slide controls from the live classroom.
+
+Do not depend on external Next, Previous, or Full Screen controls.
+
+Build Braintam’s own native presentation viewer and annotation system.
+
+3. BRAINTAM PRESENTATION SYSTEM
+
+Teacher can upload:
+
+- PDF
+- PPT
+- PPTX
+- Maximum file size: 200 MB
+
+For PPT/PPTX:
+- Convert the file on the backend into PDF or individual slide images.
+- Do not display the original PPT using Microsoft Office Viewer.
+- Use LibreOffice headless or another reliable server-side conversion method.
+
+For PDF:
+- Render pages directly using PDF.js or the existing reliable PDF renderer.
+
+Create Braintam’s own controls:
+
+← Previous
+Slide 2 of 20
+Next →
+⛶ Full Screen
+
+These controls must be part of the Braintam UI and must not come from Microsoft, Canva, Google, or another embedded viewer.
+
+Teacher should be able to:
+
+- Move to the previous slide.
+- Move to the next slide.
+- Jump to a slide using slide thumbnails.
+- Enter and exit full screen.
+- Zoom in and out.
+- Fit slide to screen.
+- Use pen.
+- Select pen colour.
+- Select pen thickness.
+- Use highlighter.
+- Use eraser.
+- Undo.
+- Redo.
+- Clear the current slide.
+
+4. SAVE ALL TEACHER WRITING
+
+Every slide must have its own saved annotation layer.
+
+Example:
+
+Teacher writes on Slide 1
+→ moves to Slide 2
+→ writes on Slide 2
+→ returns to Slide 1
+→ all Slide 1 writing must still be present.
+
+Annotations must remain after:
+
+- Changing slides
+- Refreshing the browser
+- Closing and reopening the live class
+- Pausing/resuming the class
+- Temporary internet disconnection
+- Ending the class
+
+Do not save annotations only in React state.
+
+Save annotation data per:
+
+- Live-class ID
+- Presentation ID
+- Slide/page number
+- Teacher ID
+
+Use debounced autosave and show:
+
+Saving…
+Saved
+
+5. STUDENT AND MENTOR SYNCHRONIZATION
+
+Students and mentors should automatically see:
+
+- The same slide selected by the teacher.
+- Teacher handwriting.
+- Highlights.
+- Eraser changes.
+- Slide changes in near real time.
+
+Students and mentors are view-only:
+
+- No Next button.
+- No Previous button.
+- No drawing.
+- No erasing.
+- No slide control.
+
+Only the teacher controls the presentation.
+
+6. FINAL ANNOTATED DOWNLOAD
+
+After the class, generate one final annotated PDF containing:
+
+- Original slide content.
+- All teacher handwriting.
+- All highlights.
+- All saved annotations on every slide.
+
+Teacher should see:
+
+Download Annotated PDF
+
+Use one final PDF output for both PPT/PPTX and PDF uploads. Do not export back to editable PPTX in this phase.
+
+Keep the original presentation, annotations, and final annotated PDF available in the Teacher Portal for 48 hours.
+
+Add:
+
+Recent Annotated Presentations
+
+Show:
+
+- Class name
+- Date
+- View
+- Download Annotated PDF
+- Expiry time
+
+Do not delete the presentation when the teacher closes or ends the class. Delete temporary presentation data only after 48 hours.
+
+7. IMPORTANT
+
+Do not modify unrelated Teacher Portal features.
+
+Before implementation:
+
+- Inspect the existing Microsoft presentation integration.
+- Remove it from the live presentation flow.
+- Reuse only useful upload/conversion code if appropriate.
+- Do not retain Microsoft iframe/viewer controls.
+- Explain the proposed native Braintam architecture.
+
+Then implement, run typecheck and production build, and report:
+
+- Changed files
+- Database migration
+- New API routes
+- New dependencies
+- LibreOffice/PDF conversion requirements
+- VPS installation commands
+- Nginx changes required for 200 MB uploads

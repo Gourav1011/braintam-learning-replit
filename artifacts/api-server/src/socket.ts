@@ -1162,6 +1162,17 @@ export function setupSocketIO(httpServer: HttpServer) {
       io.to(globalRoom(sessionId)).emit("demo:stopped");
     });
 
+    // ── Pause / Resume class (teacher mutes camera+mic; students see banner) ──
+    socket.on("class:pause", () => {
+      if (!isStaff) return;
+      io.to(globalRoom(sessionId)).emit("class:paused");
+    });
+
+    socket.on("class:resume", () => {
+      if (!isStaff) return;
+      io.to(globalRoom(sessionId)).emit("class:resumed");
+    });
+
     socket.on("annotation:draw", (seg: unknown) => {
       if (!isStaff) return;
       // broadcast to everyone EXCEPT the teacher (who already drew locally)

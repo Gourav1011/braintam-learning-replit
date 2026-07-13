@@ -109220,9 +109220,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-13-1906" : "dev",
-    commit: true ? "119ee00" : "unknown",
-    buildTime: true ? "2026-07-13T19:06:11.166Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-13-1948" : "dev",
+    commit: true ? "00de2ac" : "unknown",
+    buildTime: true ? "2026-07-13T19:48:52.896Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -132675,7 +132675,7 @@ var storage = import_multer.default.diskStorage({
 });
 var upload = (0, import_multer.default)({
   storage,
-  limits: { fileSize: 60 * 1024 * 1024 },
+  limits: { fileSize: 200 * 1024 * 1024 },
   fileFilter: (_req, file2, cb) => {
     const ext = path3.extname(file2.originalname).toLowerCase();
     cb(null, [".pdf", ".ppt", ".pptx"].includes(ext));
@@ -133680,6 +133680,14 @@ function setupSocketIO(httpServer2) {
       if (!isStaff) return;
       room.demoMode = false;
       io2.to(globalRoom(sessionId)).emit("demo:stopped");
+    });
+    socket.on("class:pause", () => {
+      if (!isStaff) return;
+      io2.to(globalRoom(sessionId)).emit("class:paused");
+    });
+    socket.on("class:resume", () => {
+      if (!isStaff) return;
+      io2.to(globalRoom(sessionId)).emit("class:resumed");
     });
     socket.on("annotation:draw", (seg) => {
       if (!isStaff) return;

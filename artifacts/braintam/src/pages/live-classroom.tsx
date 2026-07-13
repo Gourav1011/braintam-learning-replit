@@ -5,8 +5,9 @@ import { io, type Socket } from "socket.io-client";
 import { useLiveKit } from "@/hooks/use-livekit";
 import { useAuth } from "@/components/auth-provider";
 import {
-  Video, VideoOff, Users, MessageSquare, BarChart2, Send,
-  Trophy, Monitor, Hand, Settings, ChevronLeft, ChevronRight, Mic, MicOff, X, Upload, Eye,
+  Users, MessageSquare, BarChart2, Send,
+  Trophy, Monitor, Hand, ChevronLeft, ChevronRight, X, Upload, Mic,
+  Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2,
 } from "lucide-react";
 
 const NAVY = "#0B2B6B";
@@ -95,39 +96,38 @@ function useClassroomSocket(
 }
 
 // ── Helpers ────────────────────────────────────────────────────
-function getEmbedUrl(url: string): string {
-  if (!url.trim()) return "";
-  try {
-    if (url.includes("canva.com/design/")) {
-      const u = new URL(url);
-      // Keep the full path (design ID + hash) — only replace the trailing
-      // /edit or /view segment, then add /view?embed
-      // e.g. /design/<id>/<hash>/edit  →  /design/<id>/<hash>/view?embed
-      // e.g. /design/<id>/<hash>/view  →  /design/<id>/<hash>/view?embed
-      const cleanPath = u.pathname.replace(/\/(edit|view)\/?$/, "");
-      return `https://www.canva.com${cleanPath}/view?embed`;
-    }
-  } catch { /* fall through */ }
-  return url;
-}
-
-// Returns a slide-specific URL for Google Slides (slide=id.pN); other
-// providers don't support direct page navigation via URL so return unchanged.
-function getSlideUrl(embedUrl: string, page: number): string {
-  if (page <= 1 || !embedUrl) return embedUrl;
-  if (embedUrl.includes("docs.google.com/presentation")) {
-    const sep = embedUrl.includes("?") ? "&" : "?";
-    return `${embedUrl}${sep}slide=id.p${page}`;
-  }
-  return embedUrl;
-}
-
 function fmtDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
   return `${Math.round(sec / 60)}m`;
 }
 
-type DrawSegment = { mode: "pen" | "hl"; color: string; x1: number; y1: number; x2: number; y2: number; };
+type DrawSegment = { mode: "pen" | "hl" | "eraser"; color: string; width: number; x1: number; y1: number; x2: number; y2: number; };
+
+/** Replays a flat list of segments onto the canvas from scratch. */
+function replaySegments(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, segs: DrawSegment[]) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const seg of segs) {
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (seg.mode === "eraser") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1)";
+      ctx.lineWidth = seg.width ?? 24;
+    } else if (seg.mode === "pen") {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth = seg.width ?? 3;
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 24;
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
 
 function AnnotationOverlay({ segments }: { segments: DrawSegment[] }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -135,14 +135,7 @@ function AnnotationOverlay({ segments }: { segments: DrawSegment[] }) {
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const seg of segments) {
-      ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2);
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      if (seg.mode === "pen") { ctx.strokeStyle = seg.color; ctx.lineWidth = 3; ctx.globalAlpha = 1; }
-      else { ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 24; ctx.globalAlpha = 0.18; }
-      ctx.stroke(); ctx.globalAlpha = 1;
-    }
+    replaySegments(ctx, canvas, segments);
   }, [segments]);
   return <canvas ref={ref} width={1280} height={720} className="absolute inset-0 w-full h-full" style={{ pointerEvents: "none" }} />;
 }
@@ -153,37 +146,79 @@ const PEN_COLORS = [
   { id: "red",    hex: "#EF4444", label: "Red" },
   { id: "blue",   hex: "#3B82F6", label: "Blue" },
   { id: "green",  hex: "#22C55E", label: "Green" },
+  { id: "white",  hex: "#FFFFFF", label: "White" },
+  { id: "black",  hex: "#111827", label: "Black" },
 ] as const;
 type PenColorId = typeof PEN_COLORS[number]["id"];
 
 function AnnotationCanvas({
-  mode, penColor, canvasRef, onSegment,
-}: { mode: "none" | "pen" | "highlighter"; penColor: string; canvasRef: React.RefObject<HTMLCanvasElement | null>; onSegment?: (seg: DrawSegment) => void; }) {
+  mode, penColor, penWidth, canvasRef, onSegment, onStrokeComplete,
+}: {
+  mode: "none" | "pen" | "highlighter" | "eraser";
+  penColor: string;
+  penWidth: number;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  onSegment?: (seg: DrawSegment) => void;
+  onStrokeComplete?: () => void;
+}) {
   const isDrawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
 
-  const pos = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const r = canvasRef.current!.getBoundingClientRect();
+  const getPos = (clientX: number, clientY: number) => {
+    const c = canvasRef.current!;
+    const r = c.getBoundingClientRect();
     return {
-      x: (e.clientX - r.left) * (canvasRef.current!.width / r.width),
-      y: (e.clientY - r.top) * (canvasRef.current!.height / r.height),
+      x: (clientX - r.left) * (c.width / r.width),
+      y: (clientY - r.top) * (c.height / r.height),
     };
   };
 
-  const onDown = (e: React.MouseEvent<HTMLCanvasElement>) => { if (mode !== "none") { isDrawing.current = true; last.current = pos(e); } };
-  const onMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current || !last.current || mode === "none" || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext("2d")!;
-    const p = pos(e);
-    ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y);
+  const drawSeg = (seg: DrawSegment) => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    if (mode === "pen") { ctx.strokeStyle = penColor; ctx.lineWidth = 3; ctx.globalAlpha = 1; }
-    else { ctx.strokeStyle = "#FFD700"; ctx.lineWidth = 24; ctx.globalAlpha = 0.18; }
-    ctx.stroke(); ctx.globalAlpha = 1;
-    onSegment?.({ mode: mode === "pen" ? "pen" : "hl", color: penColor, x1: last.current.x, y1: last.current.y, x2: p.x, y2: p.y });
+    if (seg.mode === "eraser") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1)";
+      ctx.lineWidth = seg.width;
+    } else if (seg.mode === "pen") {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth = seg.width;
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 24;
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const onDown = (clientX: number, clientY: number) => {
+    if (mode === "none") return;
+    isDrawing.current = true;
+    last.current = getPos(clientX, clientY);
+  };
+  const onMove = (clientX: number, clientY: number) => {
+    if (!isDrawing.current || !last.current || mode === "none") return;
+    const p = getPos(clientX, clientY);
+    const seg: DrawSegment = {
+      mode: mode === "pen" ? "pen" : mode === "eraser" ? "eraser" : "hl",
+      color: penColor,
+      width: mode === "eraser" ? penWidth * 6 : mode === "pen" ? penWidth : 24,
+      x1: last.current.x, y1: last.current.y,
+      x2: p.x, y2: p.y,
+    };
+    drawSeg(seg);
+    onSegment?.(seg);
     last.current = p;
   };
-  const onUp = () => { isDrawing.current = false; last.current = null; };
+  const onUp = () => {
+    if (isDrawing.current) { isDrawing.current = false; last.current = null; onStrokeComplete?.(); }
+  };
 
   return (
     <canvas
@@ -191,9 +226,15 @@ function AnnotationCanvas({
       className="absolute inset-0 w-full h-full"
       style={{
         pointerEvents: mode !== "none" ? "auto" : "none",
-        cursor: mode === "pen" ? "crosshair" : mode === "highlighter" ? "cell" : "default",
+        cursor: mode === "eraser" ? "cell" : mode === "pen" ? "crosshair" : mode === "highlighter" ? "crosshair" : "default",
+        touchAction: "none",
       }}
-      onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+      onMouseDown={e => onDown(e.clientX, e.clientY)}
+      onMouseMove={e => onMove(e.clientX, e.clientY)}
+      onMouseUp={onUp} onMouseLeave={onUp}
+      onTouchStart={e => { e.preventDefault(); const t = e.touches[0]; onDown(t.clientX, t.clientY); }}
+      onTouchMove={e => { e.preventDefault(); const t = e.touches[0]; onMove(t.clientX, t.clientY); }}
+      onTouchEnd={onUp}
     />
   );
 }
@@ -435,17 +476,28 @@ export default function LiveClassroom() {
 
   // ── State ──────────────────────────────────────────────────
   const [presentationUrl, setPresentationUrl] = useState(search.get("url") ?? "");
-  const [urlInput, setUrlInput] = useState(search.get("url") ?? "");
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(1);
   const [totalSlides, setTotalSlides] = useState(0);
-  const [demoMode, setDemoMode] = useState(false);      // teacher toggles; students receive via socket
-  const [demoModeActive, setDemoModeActive] = useState(false); // non-staff: set from socket
-  const demoVideoRef = useRef<HTMLVideoElement>(null);   // mirrors teacher cam in main content area
-  const selfViewRef = useRef<HTMLVideoElement>(null);    // student sees their own camera when on stage
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoModeActive, setDemoModeActive] = useState(false);
+  const demoVideoRef = useRef<HTMLVideoElement>(null);
+  const selfViewRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── Per-slide annotation persistence ───────────────────────
+  const annotsBySlideRef = useRef<Map<number, DrawSegment[]>>(new Map());
+  const undoStackRef    = useRef<Map<number, DrawSegment[][]>>(new Map()); // per slide: stack of committed strokes
+  const redoStackRef    = useRef<Map<number, DrawSegment[][]>>(new Map());
+  const currentStrokeRef = useRef<DrawSegment[]>([]);
+  const prevSlideRef    = useRef(1);
+  // ── Class pause/resume ──────────────────────────────────────
+  const [classPaused, setClassPaused] = useState(false);
+  const [classPausedActive, setClassPausedActive] = useState(false);
+  const [pauseProcessing, setPauseProcessing] = useState(false);
+  // ── Fullscreen ─────────────────────────────────────────────
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const presentationPanelRef = useRef<HTMLDivElement>(null);
 
   const [panelMode, setPanelMode] = useState<"chat" | "poll" | "staffchat">("chat");
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -534,9 +586,10 @@ export default function LiveClassroom() {
   }, [badgePos, sessionId, userId, role, grade, programName]);
 
   // ── Annotation ─────────────────────────────────────────────
-  const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter">("none");
+  const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter" | "eraser">("none");
   const [penColorId, setPenColorId] = useState<PenColorId>("orange");
   const penColor = PEN_COLORS.find(c => c.id === penColorId)?.hex ?? ORANGE;
+  const [penWidth, setPenWidth] = useState(3);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [annotSegments, setAnnotSegments] = useState<DrawSegment[]>([]);
   const [classEnded, setClassEnded] = useState(false);
@@ -545,10 +598,87 @@ export default function LiveClassroom() {
     const c = canvasRef.current;
     if (c) c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
     setAnnotSegments([]);
+    annotsBySlideRef.current.set(currentSlide, []);
+    undoStackRef.current.set(currentSlide, []);
+    redoStackRef.current.set(currentSlide, []);
     socket?.emit("annotation:clear");
-  }, [socket]);
+  }, [socket, currentSlide]);
+
+  // ── Per-slide annotation save/restore ─────────────────────
+  // When slide changes: save current segments for the old slide, restore for the new one,
+  // and broadcast the restored state so students stay in sync.
+  useEffect(() => {
+    const prev = prevSlideRef.current;
+    if (prev === currentSlide) return;
+    // Save current in-memory state for the leaving slide
+    const leavingSegs = annotsBySlideRef.current.get(prev) ?? annotSegments;
+    annotsBySlideRef.current.set(prev, leavingSegs);
+    // Restore annotations for the arriving slide
+    const restored = annotsBySlideRef.current.get(currentSlide) ?? [];
+    setAnnotSegments(restored);
+    // Redraw teacher canvas with restored annotations
+    const c = canvasRef.current;
+    const ctx = c?.getContext("2d");
+    if (ctx && c) replaySegments(ctx, c, restored);
+    // Broadcast to students: clear → replay this slide's annotations
+    if (isStaff && socket) {
+      socket.emit("annotation:clear");
+      for (const seg of restored) socket.emit("annotation:draw", seg);
+    }
+    prevSlideRef.current = currentSlide;
+  }, [currentSlide]); // intentionally omit annotSegments — we use the ref as source of truth
+
+  // ── Undo / Redo (stroke-based) ─────────────────────────────
+  const handleStrokeComplete = useCallback(() => {
+    const stroke = [...currentStrokeRef.current];
+    if (!stroke.length) return;
+    currentStrokeRef.current = [];
+    const prevSegs = annotsBySlideRef.current.get(currentSlide) ?? [];
+    const nextSegs = [...prevSegs, ...stroke];
+    annotsBySlideRef.current.set(currentSlide, nextSegs);
+    const stack = undoStackRef.current.get(currentSlide) ?? [];
+    undoStackRef.current.set(currentSlide, [...stack, stroke]);
+    redoStackRef.current.set(currentSlide, []); // clear redo on new stroke
+    setAnnotSegments(nextSegs);
+  }, [currentSlide]);
+
+  const handleUndo = useCallback(() => {
+    const stack = undoStackRef.current.get(currentSlide) ?? [];
+    if (!stack.length) return;
+    const newStack = stack.slice(0, -1);
+    const removed = stack[stack.length - 1];
+    undoStackRef.current.set(currentSlide, newStack);
+    const redoStack = redoStackRef.current.get(currentSlide) ?? [];
+    redoStackRef.current.set(currentSlide, [...redoStack, removed]);
+    // Rebuild segments from undo stack
+    const newSegs = newStack.flat();
+    annotsBySlideRef.current.set(currentSlide, newSegs);
+    setAnnotSegments(newSegs);
+    const c = canvasRef.current; const ctx = c?.getContext("2d");
+    if (ctx && c) replaySegments(ctx, c, newSegs);
+    socket?.emit("annotation:clear");
+    for (const seg of newSegs) socket?.emit("annotation:draw", seg);
+  }, [currentSlide, socket]);
+
+  const handleRedo = useCallback(() => {
+    const redoStack = redoStackRef.current.get(currentSlide) ?? [];
+    if (!redoStack.length) return;
+    const newRedo = redoStack.slice(0, -1);
+    const stroke = redoStack[redoStack.length - 1];
+    redoStackRef.current.set(currentSlide, newRedo);
+    const stack = undoStackRef.current.get(currentSlide) ?? [];
+    undoStackRef.current.set(currentSlide, [...stack, stroke]);
+    const prevSegs = annotsBySlideRef.current.get(currentSlide) ?? [];
+    const newSegs = [...prevSegs, ...stroke];
+    annotsBySlideRef.current.set(currentSlide, newSegs);
+    setAnnotSegments(newSegs);
+    const c = canvasRef.current; const ctx = c?.getContext("2d");
+    if (ctx && c) replaySegments(ctx, c, newSegs);
+    for (const seg of stroke) socket?.emit("annotation:draw", seg);
+  }, [currentSlide, socket]);
 
   const handleSegment = useCallback((seg: DrawSegment) => {
+    currentStrokeRef.current.push(seg);
     socket?.emit("annotation:draw", seg);
   }, [socket]);
 
@@ -560,29 +690,33 @@ export default function LiveClassroom() {
   }, []);
 
   const handleFileUpload = useCallback(async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "ppt" || ext === "pptx") {
+      alert("PPT/PPTX files must be converted to PDF first.\n\nUse File → Save As → PDF in PowerPoint or Google Slides, then upload the PDF.");
+      return;
+    }
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/slides/upload", { method: "POST", body: formData });
-      if (!res.ok) { alert("Upload failed — file may be too large or wrong type."); return; }
+      if (!res.ok) { alert("Upload failed — file may be too large (max 200 MB) or wrong type (PDF only)."); return; }
       const data = await res.json() as { filename: string; fileUrl: string; isPptx: boolean };
 
-      // Cleanup previous uploaded file if any
       if (uploadedFilename) void cleanupUploadedSlide(uploadedFilename);
       setUploadedFilename(data.filename);
 
-      let broadcastUrl: string;
-      if (data.isPptx) {
-        // Use Office Online viewer for PPT/PPTX (needs a publicly accessible URL)
-        const publicBase = window.location.origin;
-        broadcastUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicBase + data.fileUrl)}`;
-      } else {
-        // PDF — serve directly from our server (same origin, browser renders natively)
-        broadcastUrl = data.fileUrl;
-      }
+      const broadcastUrl = data.fileUrl;
       setPresentationUrl(broadcastUrl);
-      // Broadcast to all students/mentors via Socket.IO
+      setCurrentSlide(1);
+      // Clear all per-slide annotations on new file
+      annotsBySlideRef.current.clear();
+      undoStackRef.current.clear();
+      redoStackRef.current.clear();
+      prevSlideRef.current = 1;
+      setAnnotSegments([]);
+      const c = canvasRef.current;
+      if (c) c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
       socket?.emit("presentation:start", { url: broadcastUrl });
     } finally {
       setIsUploading(false);
@@ -600,26 +734,33 @@ export default function LiveClassroom() {
   }, [socket]);
 
   // ── Camera ─────────────────────────────────────────────────
-  // Uses LiveKit's own local track for the preview — no separate getUserMedia call.
-  // Two competing getUserMedia streams on the same device caused publish failures in production.
   const [cameraOn, setCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const toggleCamera = useCallback(async () => {
-    if (cameraOn) {
-      setCameraOn(false);
-      if (isStaff) {
-        void livekit.setCamera(false);
+
+  // ── Pause / Resume class ────────────────────────────────────
+  const togglePause = useCallback(async () => {
+    if (!isStaff || pauseProcessing) return;
+    setPauseProcessing(true);
+    try {
+      if (!classPaused) {
+        await livekit.setMic(false);
+        await livekit.setCamera(false);
         if (videoRef.current) videoRef.current.srcObject = null;
+        setCameraOn(false);
+        setClassPaused(true);
+        socket?.emit("class:pause");
+      } else {
+        await livekit.setCamera(true);
+        livekit.attachLocalCameraTo(videoRef.current);
+        setCameraOn(true);
+        await livekit.setMic(true);
+        setClassPaused(false);
+        socket?.emit("class:resume");
       }
-    } else {
-      if (!isStaff) return;
-      setCameraOn(true);
-      // setCameraEnabled publishes the track to LiveKit; then attach its local
-      // MediaStream to videoRef so the teacher sees their own feed.
-      await livekit.setCamera(true);
-      livekit.attachLocalCameraTo(videoRef.current);
+    } finally {
+      setPauseProcessing(false);
     }
-  }, [cameraOn, isStaff, livekit]);
+  }, [classPaused, pauseProcessing, isStaff, livekit, socket]);
 
   // ── Demo Mode — sync teacher camera stream into the main content video element ──
   const isShowingDemo = isStaff ? demoMode : demoModeActive;
@@ -627,14 +768,12 @@ export default function LiveClassroom() {
     const target = demoVideoRef.current;
     if (!target || !isShowingDemo) return;
     if (isStaff) {
-      // Teacher: mirror their own camera stream
       const srcVideo = document.querySelector<HTMLVideoElement>(".classroom-teacher-video video");
       if (srcVideo?.srcObject) {
         target.srcObject = srcVideo.srcObject;
         void target.play().catch(() => {});
       }
     } else {
-      // Student/mentor: mirror the LiveKit teacher track
       const srcVideo = livekit.teacherVideoRef.current;
       if (srcVideo?.srcObject) {
         target.srcObject = srcVideo.srcObject;
@@ -648,23 +787,6 @@ export default function LiveClassroom() {
     setDemoMode(next);
     socket?.emit(next ? "demo:start" : "demo:stop");
   }, [demoMode, socket]);
-
-  // ── Mic (independent of camera — teacher must be able to talk without video) ──
-  const micBusyRef = useRef(false);
-  const [micProcessing, setMicProcessing] = useState(false);
-  const toggleMic = useCallback(async () => {
-    if (!isStaff) return;
-    if (micBusyRef.current) return;
-    micBusyRef.current = true;
-    setMicProcessing(true);
-    try {
-      const next = !livekit.micPublishing;
-      await livekit.setMic(next);
-    } finally {
-      micBusyRef.current = false;
-      setMicProcessing(false);
-    }
-  }, [isStaff, livekit]);
 
   // ── Poll form (Sprint 1 — includes correct answer) ────────
   const [showPollForm, setShowPollForm] = useState(false);
@@ -933,6 +1055,10 @@ export default function LiveClassroom() {
       setTimeout(() => { window.location.href = target; }, 3500);
     });
 
+    // ── Pause / Resume class ──────────────────────────────────
+    socket.on("class:paused",  () => { if (!isStaff) setClassPausedActive(true); });
+    socket.on("class:resumed", () => { if (!isStaff) setClassPausedActive(false); });
+
     // ── Diagnostics: server-ack confirming room join ──────────
     socket.on("classroom:joined", (d: { sessionId: string; socketId: string; roomName: string; memberCount: number; role: string }) => {
       lastSocketReceived.current = `classroom:joined (room: ${d.roomName}, members: ${d.memberCount})`;
@@ -962,6 +1088,7 @@ export default function LiveClassroom() {
       socket.off("teacher:studentSuggested");
       socket.off("staffChat:message");
       socket.off("classroom:joined");
+      socket.off("class:paused"); socket.off("class:resumed");
     };
   }, [socket, upsert]);
 
@@ -1073,13 +1200,7 @@ export default function LiveClassroom() {
     }
   }, [myOnStage, isStaff, livekit]);
 
-  const embedUrl = getEmbedUrl(presentationUrl);
-  // Local PDF files uploaded via /api/slides/upload are rendered with PDF.js
-  // so the teacher can navigate page-by-page and students stay in sync.
-  // Office Online / Canva / Google Slides URLs keep the iframe path.
-  const isLocalPdf = Boolean(presentationUrl) &&
-    presentationUrl.includes("/api/slides/") &&
-    presentationUrl.toLowerCase().endsWith(".pdf");
+  // All presentations are native PDFs served from /api/slides/ — no iframe viewers.
 
   if (classEnded) {
     const redirectTarget = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
@@ -1186,54 +1307,32 @@ export default function LiveClassroom() {
         ═══════════════════════════════════════════════════ */}
         <div className="classroom-content flex flex-col relative bg-gray-950 flex-1 min-w-0">
 
-          {/* URL bar + Upload (teacher only, no URL yet) */}
+          {/* Upload bar (teacher only, no presentation yet) */}
           {isStaff && !presentationUrl && !demoMode && (
-            <div className="flex gap-2 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
-              {/* Hidden file input */}
+            <div className="flex items-center gap-3 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.ppt,.pptx"
+                accept=".pdf"
                 className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); e.target.value = ""; }}
               />
-              <input
-                className="flex-1 bg-gray-800 text-white text-sm rounded-xl px-4 py-2 border border-gray-700 focus:border-blue-500 outline-none placeholder-gray-600"
-                placeholder="Canva: Share → Embed link   |   or paste a PDF URL"
-                value={urlInput}
-                onChange={e => setUrlInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    const normalized = getEmbedUrl(urlInput) ?? urlInput;
-                    setPresentationUrl(normalized);
-                    setCurrentSlide(1);
-                    socket?.emit("presentation:start", { url: normalized });
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  const normalized = getEmbedUrl(urlInput) ?? urlInput;
-                  setPresentationUrl(normalized);
-                  setCurrentSlide(1);
-                  socket?.emit("presentation:start", { url: normalized });
-                }}
-                disabled={!urlInput.trim()}
-                className="px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-40"
-                style={{ background: NAVY }}
-              >Present</button>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                title="Upload PDF or PPT"
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-all hover:opacity-90"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-all hover:opacity-90"
                 style={{ background: "#059669" }}
               >
-                {isUploading
-                  ? <span className="animate-spin text-base">⏳</span>
-                  : <Upload className="w-4 h-4" />}
-                <span>{isUploading ? "Uploading…" : "Upload PPT/PDF"}</span>
+                {isUploading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Upload className="w-4 h-4" />}
+                <span>{isUploading ? "Uploading…" : "Upload PDF"}</span>
               </button>
+              <span className="text-xs text-gray-500">PDF only · max 200 MB · PPT/PPTX: export as PDF first</span>
+              {presentationUrl && (
+                <button
+                  onClick={() => { setPresentationUrl(""); setUploadedFilename(null); socket?.emit("presentation:stop"); }}
+                  className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400"
+                >✕ Clear</button>
+              )}
             </div>
           )}
           {/* Demo mode active banner — teacher can exit */}
@@ -1251,59 +1350,76 @@ export default function LiveClassroom() {
           )}
 
           {/* Slides / PDF / Demo */}
-          <div className="relative flex-1 overflow-hidden">
+          <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden">
+
+            {/* Class Paused banner — non-staff only */}
+            {classPausedActive && !isStaff && (
+              <div className="absolute inset-0 z-50 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                <div className="flex items-center gap-3 bg-gray-900 border border-yellow-600 text-yellow-300 text-base font-bold px-6 py-4 rounded-2xl shadow-2xl">
+                  <Pause className="w-5 h-5" />
+                  Class is temporarily paused
+                </div>
+                <p className="text-gray-400 text-sm">The teacher will be back shortly…</p>
+              </div>
+            )}
+
             {isShowingDemo ? (
               /* ── Demo Mode: teacher camera fills the entire main content area ── */
               <div className="relative w-full h-full bg-black flex items-center justify-center">
-                <video
-                  ref={demoVideoRef}
-                  autoPlay
-                  playsInline
-                  muted={isStaff}
-                  className="w-full h-full object-cover"
-                />
-                {/* Purple pill badge */}
+                <video ref={demoVideoRef} autoPlay playsInline muted={isStaff} className="w-full h-full object-cover" />
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-purple-900/80 border border-purple-700 text-purple-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
-                  <Eye className="w-3.5 h-3.5" />
                   Demonstration Mode
                 </div>
-                {/* Student sees teacher name */}
                 {!isStaff && teacherInfo && (
                   <div className="absolute bottom-4 left-4 text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
                     👨‍🏫 {teacherInfo.name}
                   </div>
                 )}
               </div>
-            ) : isLocalPdf ? (
-              /* Local PDF — rendered page-by-page with PDF.js so teacher controls which page students see */
+            ) : presentationUrl ? (
+              /* Native PDF viewer — works for both teacher and students */
               <PDFViewer
                 url={presentationUrl}
                 page={currentSlide}
                 onPageCount={n => setTotalSlides(n)}
                 className="w-full h-full"
               />
-            ) : embedUrl ? (
-              <iframe
-                key={currentSlide}
-                ref={iframeRef}
-                src={getSlideUrl(embedUrl, currentSlide)}
-                className="w-full h-full border-0"
-                allow="fullscreen"
-                title="Presentation"
-                allowFullScreen
-                style={isStaff ? undefined : { pointerEvents: "none" }}
-              />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
                 <p className="text-sm text-gray-500">
-                  {isStaff ? "Upload a PPT/PDF or paste a URL above to start presenting" : "Waiting for teacher to share slides…"}
+                  {isStaff ? "Upload a PDF above to start presenting" : "Waiting for teacher to share slides…"}
                 </p>
               </div>
             )}
+
             {/* Annotation canvas — teacher draws; AnnotationOverlay replays segments for students/mentors */}
-            {isStaff && <AnnotationCanvas mode={annotMode} penColor={penColor} canvasRef={canvasRef} onSegment={handleSegment} />}
+            {isStaff && (
+              <AnnotationCanvas
+                mode={annotMode}
+                penColor={penColor}
+                penWidth={penWidth}
+                canvasRef={canvasRef}
+                onSegment={handleSegment}
+                onStrokeComplete={handleStrokeComplete}
+              />
+            )}
             {!isStaff && <AnnotationOverlay segments={annotSegments} />}
+
+            {/* Fullscreen toggle (teacher + student, bottom-right corner) */}
+            <button
+              onClick={() => {
+                if (!isFullscreen) {
+                  presentationPanelRef.current?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+                } else {
+                  document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+                }
+              }}
+              className="absolute bottom-3 right-3 z-30 w-8 h-8 rounded-lg bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all"
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
 
             {/* Sprint 3 — "You're on stage" banner for invited students */}
             {myOnStage && !isStaff && (
@@ -1412,45 +1528,69 @@ export default function LiveClassroom() {
 
           {/* Annotation toolbar (teacher only) */}
           {isStaff && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0 flex-wrap">
-              <span className="text-[10px] text-gray-500 font-semibold mr-1 uppercase tracking-wide">Annotate</span>
-              {(["none", "pen", "highlighter"] as const).map(m => (
-                <button key={m} onClick={() => setAnnotMode(m)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${annotMode === m
-                    ? m === "pen" ? "bg-orange-600 text-white" : m === "highlighter" ? "bg-yellow-500 text-black" : "bg-gray-700 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
-                  {m === "none" ? "Off" : m === "pen" ? "✏️ Pen" : "🖍️ Highlight"}
-                </button>
-              ))}
-              {/* Pen color swatches — only visible in pen mode */}
-              {annotMode === "pen" && (
-                <div className="flex items-center gap-1 ml-1 border-l border-gray-700 pl-2">
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0 flex-wrap">
+              {/* Mode buttons */}
+              <button onClick={() => setAnnotMode("none")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all text-xs font-bold ${annotMode === "none" ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"}`}
+                title="Off">✕</button>
+              <button onClick={() => setAnnotMode("pen")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "pen" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                title="Pen"><Pencil className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setAnnotMode("highlighter")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "highlighter" ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                title="Highlight"><Highlighter className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setAnnotMode("eraser")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "eraser" ? "bg-red-700 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                title="Eraser"><Eraser className="w-3.5 h-3.5" /></button>
+
+              {/* Pen color swatches (pen mode) */}
+              {(annotMode === "pen") && (
+                <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
                   {PEN_COLORS.map(c => (
-                    <button
-                      key={c.id}
-                      title={c.label}
-                      onClick={() => setPenColorId(c.id)}
+                    <button key={c.id} title={c.label} onClick={() => setPenColorId(c.id)}
                       className={`w-5 h-5 rounded-full border-2 transition-all ${penColorId === c.id ? "border-white scale-110" : "border-transparent hover:border-gray-400"}`}
-                      style={{ background: c.hex }}
-                    />
+                      style={{ background: c.hex }} />
                   ))}
                 </div>
               )}
-              <button onClick={clearAnnotations} className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 ml-1">🗑 Clear</button>
+
+              {/* Thickness slider (pen + eraser) */}
+              {(annotMode === "pen" || annotMode === "eraser") && (
+                <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2">
+                  <span className="text-[9px] text-gray-500 uppercase tracking-wide">Size</span>
+                  <input type="range" min={1} max={12} value={penWidth} onChange={e => setPenWidth(Number(e.target.value))}
+                    className="w-16 h-1.5 accent-orange-500 cursor-pointer" />
+                  <span className="text-[10px] text-gray-400 w-4 text-right">{penWidth}</span>
+                </div>
+              )}
+
+              {/* Undo / Redo */}
+              <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
+                <button onClick={handleUndo} title="Undo (Ctrl+Z)"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all active:scale-95">
+                  <Undo2 className="w-3.5 h-3.5" /></button>
+                <button onClick={handleRedo} title="Redo"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all active:scale-95">
+                  <Redo2 className="w-3.5 h-3.5" /></button>
+                <button onClick={clearAnnotations} title="Clear all"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-red-400 hover:bg-red-900 transition-all active:scale-95">
+                  <Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+
+              {/* Slide navigation */}
               {presentationUrl && (
-                <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-3">
+                <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-2">
+                  <button onClick={() => navigateSlide("prev")}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                    title="Previous"><ChevronLeft className="w-4 h-4" /></button>
+                  <span className="text-[10px] text-gray-400 px-1">{currentSlide}{totalSlides > 0 ? ` / ${totalSlides}` : ""}</span>
+                  <button onClick={() => navigateSlide("next")}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                    title="Next"><ChevronRight className="w-4 h-4" /></button>
                   <button
-                    onClick={() => navigateSlide("prev")}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
-                    title="Previous slide">
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => navigateSlide("next")}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
-                    title="Next slide">
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                    onClick={() => { setPresentationUrl(""); setUploadedFilename(null); socket?.emit("presentation:stop"); }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-400 transition-all ml-1"
+                    title="Stop presentation"><X className="w-3.5 h-3.5" /></button>
                 </div>
               )}
             </div>
@@ -1463,7 +1603,9 @@ export default function LiveClassroom() {
         <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
-          <div className="classroom-teacher-video relative bg-black flex-shrink-0" style={{ aspectRatio: "1/1", width: "100%" }}>
+          {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
+          <div className="classroom-teacher-video relative bg-black flex-shrink-0"
+            style={isStaff ? { height: 190 } : { aspectRatio: "1/1", width: "100%" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
@@ -1495,55 +1637,41 @@ export default function LiveClassroom() {
                     <p className="text-[10px] text-gray-500">Teacher</p>
                   </div>
                 )}
-                {/* ── Mic + Camera + Demo controls ── */}
-                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+                {/* ── Pause / Resume + Demo controls ── */}
+                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5">
+                  {/* Pause / Resume class */}
                   <button
-                    onClick={() => { void toggleMic(); }}
-                    disabled={micProcessing}
-                    title={micProcessing ? "Toggling mic…" : livekit.micPublishing ? "Mute" : "Unmute"}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => void togglePause()}
+                    disabled={pauseProcessing}
+                    title={classPaused ? "Resume class" : "Pause class (mutes mic & camera)"}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95 disabled:opacity-50"
                     style={{
-                      background: livekit.micPublishing ? "rgba(16,185,129,0.18)" : "rgba(17,24,39,0.85)",
-                      border: `1.5px solid ${livekit.micPublishing ? "#10B981" : micProcessing ? "#6B7280" : "#374151"}`,
-                      color: livekit.micPublishing ? "#10B981" : "#9CA3AF",
+                      background: classPaused ? "rgba(245,158,11,0.25)" : "rgba(17,24,39,0.85)",
+                      border: `1.5px solid ${classPaused ? "#F59E0B" : "#374151"}`,
+                      color: classPaused ? "#FCD34D" : "#9CA3AF",
                       backdropFilter: "blur(6px)",
                     }}
                   >
-                    {micProcessing
-                      ? <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                      : livekit.micPublishing ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />
-                    }
+                    {pauseProcessing
+                      ? <span className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      : classPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                    {classPaused ? "Resume" : "Pause"}
                   </button>
-                  <button
-                    onClick={toggleCamera}
-                    title={cameraOn ? "Turn off camera" : "Turn on camera"}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
-                    style={{
-                      background: cameraOn ? "rgba(59,130,246,0.18)" : "rgba(17,24,39,0.85)",
-                      border: `1.5px solid ${cameraOn ? "#3B82F6" : "#374151"}`,
-                      color: cameraOn ? "#3B82F6" : "#9CA3AF",
-                      backdropFilter: "blur(6px)",
-                    }}
-                  >
-                    {cameraOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
-                  </button>
-                  {/* Demo Mode icon — teacher only */}
+                  {/* Demo Mode */}
                   <button
                     onClick={toggleDemoMode}
-                    title={demoMode ? "Exit Demonstration Mode" : "Demonstration Mode — show your camera full-screen"}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95"
+                    title={demoMode ? "Exit Demonstration Mode" : "Demo — show camera full-screen"}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 text-xs font-bold"
                     style={{
                       background: demoMode ? "rgba(124,58,237,0.35)" : "rgba(17,24,39,0.85)",
                       border: `1.5px solid ${demoMode ? "#7C3AED" : "#374151"}`,
                       color: demoMode ? "#A78BFA" : "#9CA3AF",
                       backdropFilter: "blur(6px)",
                     }}
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </button>
+                  >👁</button>
                 </div>
-                {((cameraOn && !livekit.cameraPublishing) || (livekit.micPublishing && !livekit.connected)) && (
-                  <span className="absolute bottom-2 left-2 text-[8px] text-yellow-400 font-bold">connecting…</span>
+                {!livekit.connected && (
+                  <span className="absolute top-2 right-2 text-[8px] text-yellow-400 font-bold">connecting…</span>
                 )}
               </>
             ) : teacherInfo ? (
