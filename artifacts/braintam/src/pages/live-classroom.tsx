@@ -1718,7 +1718,7 @@ export default function LiveClassroom() {
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
           <div className="classroom-teacher-video relative bg-black flex-shrink-0"
-            style={isStaff ? { height: 190 } : { height: 90, width: "100%" }}>
+            style={isStaff ? { height: 190 } : { height: 170, width: "100%" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
