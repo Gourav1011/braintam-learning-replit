@@ -822,6 +822,7 @@ export default function LiveClassroom() {
   const [pollOpts, setPollOpts] = useState(["", "", "", ""]);
   const [pollCorrectIdx, setPollCorrectIdx] = useState<number | null>(null); // index into pollOpts
   const [myPollCorrect, setMyPollCorrect] = useState<boolean | null>(null);  // feedback after submit
+  const [studentPollVisible, setStudentPollVisible] = useState(false); // inline poll for students
 
   // ── Sidebar ────────────────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -934,7 +935,10 @@ export default function LiveClassroom() {
       setChat(s.chat);
       setRaisedHands(s.raisedHands);
       setRaiseHandEnabled(s.raiseHandEnabled);
-      if (s.activePoll) { setActivePoll(s.activePoll); setPanelMode("poll"); }
+      if (s.activePoll) {
+        setActivePoll(s.activePoll);
+        if (isStaff || isMentor) setPanelMode("poll"); else setStudentPollVisible(true);
+      }
       if (s.stage) setStageSlots(s.stage);
       if (s.currentSlide && s.currentSlide > 1) setCurrentSlide(s.currentSlide);
       // Only update teacherInfo from roomState if we're not the teacher (teacher sets own info at mount)
@@ -1003,9 +1007,14 @@ export default function LiveClassroom() {
     });
 
     socket.on("pollStarted", (poll: Poll) => {
-      setActivePoll(poll); setMyPollAnswer(null); setPollCounts({}); setPollTotal(0); setPanelMode("poll");
+      setActivePoll(poll); setMyPollAnswer(null); setPollCounts({}); setPollTotal(0);
+      if (isStaff || isMentor) setPanelMode("poll"); else setStudentPollVisible(true);
     });
-    socket.on("pollEnded", () => { setActivePoll(null); setMyPollAnswer(null); setMyPollCorrect(null); setPanelMode("chat"); });
+    socket.on("pollEnded", () => {
+      setActivePoll(null); setMyPollAnswer(null); setMyPollCorrect(null);
+      setStudentPollVisible(false);
+      if (isStaff || isMentor) setPanelMode("chat");
+    });
     socket.on("pollUpdate", ({ counts, total }: { counts: Record<string, number>; total: number }) => {
       setPollCounts(counts); setPollTotal(total);
     });
@@ -1041,6 +1050,10 @@ export default function LiveClassroom() {
     socket.on("pollSubmitted", ({ optionId, isCorrect }: { optionId: string; isCorrect: boolean }) => {
       setMyPollAnswer(optionId);
       setMyPollCorrect(isCorrect);
+      // Auto-dismiss poll panel for students 3 s after server confirms answer
+      if (!isStaff && !isMentor) {
+        setTimeout(() => setStudentPollVisible(false), 3000);
+      }
     });
 
     // ── Sprint 3: Stage events ────────────────────────────────
@@ -1161,11 +1174,7 @@ export default function LiveClassroom() {
     if (!socket || myPollAnswer) return;
     lastSocketSent.current = `submitPoll { optionId: "${optionId}" }`;
     socket.emit("submitPoll", { optionId });
-    // After the result is shown for ~3.5 s, return to chat automatically.
-    // This also fires if the server's pollEnded event is delayed.
-    if (!isStaff) {
-      setTimeout(() => { setPanelMode("chat"); }, 3500);
-    }
+    // Auto-dismiss is handled by the pollSubmitted socket event (3 s after server confirms).
   };
 
   const launchPoll = () => {
@@ -1704,12 +1713,12 @@ export default function LiveClassroom() {
         {/* ═══════════════════════════════════════════════════
             RIGHT PANEL (20% fixed)
         ═══════════════════════════════════════════════════ */}
-        <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 300 }}>
+        <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: "20%", minWidth: 190, maxWidth: 280 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
           <div className="classroom-teacher-video relative bg-black flex-shrink-0"
-            style={isStaff ? { height: 190 } : { aspectRatio: "1/1", width: "100%" }}>
+            style={isStaff ? { height: 190 } : { height: 120, width: "100%" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
@@ -1936,7 +1945,94 @@ export default function LiveClassroom() {
             </div>
           )}
 
-          {/* Panel tabs */}
+          {/* Panel area: students get always-visible chat + inline poll; staff/mentor get tabs */}
+          {(!isStaff && !isMentor) ? (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              {/* Inline poll — auto-shows on teacher launch, auto-hides 3 s after answer */}
+              {studentPollVisible && activePoll && (
+                <div className="flex-shrink-0 border-b border-orange-800/40 bg-orange-950/20 px-3 py-2.5 space-y-2">
+                  <p className="text-[11px] font-bold text-orange-300 leading-snug">{activePoll.question}</p>
+                  {activePoll.options.map(opt => {
+                    const chosen = myPollAnswer === opt.id;
+                    return (
+                      <button key={opt.id} onClick={() => submitPoll(opt.id)} disabled={!!myPollAnswer}
+                        className={`w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-gray-700 disabled:hover:bg-gray-800"}`}
+                        style={chosen ? { background: NAVY } : {}}>
+                        {opt.id}. {opt.text}
+                      </button>
+                    );
+                  })}
+                  {myPollAnswer && (
+                    <p className={`text-[11px] text-center font-black py-0.5 rounded-lg ${myPollCorrect === true ? "text-green-400 bg-green-950/40" : myPollCorrect === false ? "text-red-400 bg-red-950/40" : "text-blue-400"}`}>
+                      {myPollCorrect === true ? "✅ Correct!" : myPollCorrect === false ? "❌ Wrong answer" : "✓ Submitted!"}
+                    </p>
+                  )}
+                </div>
+              )}
+              {/* Chat messages */}
+              <div className="classroom-messages flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-2" style={{ minHeight: 0 }}>
+                {chat.length === 0 && <p className="text-[11px] text-gray-600 text-center mt-6">No messages yet</p>}
+                {chat
+                  .filter(msg => {
+                    if (msg.role === "teacher" || msg.role === "admin") return true;
+                    if (msg.role === "mentor" && (msg as any).mentorGroupId != null && (msg as any).mentorGroupId !== groupId) return false;
+                    return true;
+                  })
+                  .map(msg => (
+                    <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
+                        {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
+                        {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
+                        {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
+                      </div>
+                      <p className="text-xs text-gray-200 leading-snug break-words">{msg.text}</p>
+                    </div>
+                  ))}
+                <div ref={chatEndRef} />
+              </div>
+              {chatWarning && (
+                <div className={`mx-2 mb-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border flex-shrink-0 ${chatWarning.strikeCount >= 2 ? "bg-red-900/40 border-red-700 text-red-300" : "bg-yellow-900/40 border-yellow-700 text-yellow-300"}`}>
+                  {chatWarning.message}
+                </div>
+              )}
+              {raiseHandEnabled && (
+                <div className="px-2 pt-1 flex-shrink-0">
+                  <button onClick={toggleHand}
+                    className={`w-full py-1.5 text-xs font-bold rounded-xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
+                    <Hand className="w-3 h-3 inline mr-1" />{myHandRaised ? "Lower Hand" : "Raise Hand"}
+                  </button>
+                </div>
+              )}
+              {chatBlocked ? (
+                <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-red-900/50 border border-red-700 text-red-300 text-xs font-medium flex-shrink-0 text-center">
+                  🚫 Your chat access is temporarily disabled.
+                </div>
+              ) : (
+                <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                  <input
+                    ref={chatInputRef}
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ fontSize: 13 }}
+                    placeholder="Say something…"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
+                    maxLength={300}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                  />
+                  <button onClick={sendChat} disabled={!chatInput.trim() || chatBlocked}
+                    className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: NAVY }}>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (<>
+          {/* Panel tabs (staff / mentor only) */}
           <div className="flex border-b border-gray-800 flex-shrink-0">
             <button onClick={() => setPanelMode("chat")}
               className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "chat" ? "border-blue-500 text-blue-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
@@ -2177,6 +2273,7 @@ export default function LiveClassroom() {
               </div>
             </div>
           )}
+          </>)}
           </div>{/* /classroom-sidebar-bottom */}
         </div>
       </div>
