@@ -361,6 +361,8 @@
     .live-classroom-root.classroom-role-mentor .classroom-sidebar { width: 25% !important; min-width: 160px; max-width: 240px; height: 100dvh; flex-shrink: 0; display: flex !important; flex-direction: column !important; }
     .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
     .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom { flex: 1 1 0 !important; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .live-classroom-root.classroom-role-student .classroom-teacher-video,
+    .live-classroom-root.classroom-role-mentor .classroom-teacher-video { height: 40dvh !important; flex: 0 0 40dvh !important; width: 100% !important; aspect-ratio: unset !important; }
     .classroom-composer { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   }
 
@@ -380,6 +382,8 @@
   .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-sidebar { width: 25% !important; min-width: 160px !important; max-width: 240px !important; height: 100dvh !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; }
   .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-sidebar-bottom,
   .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-sidebar-bottom { flex: 1 1 0 !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-teacher-video,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-teacher-video { height: 40dvh !important; flex: 0 0 40dvh !important; width: 100% !important; aspect-ratio: unset !important; }
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
