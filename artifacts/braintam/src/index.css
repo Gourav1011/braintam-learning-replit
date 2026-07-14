@@ -284,7 +284,7 @@
     .live-classroom-root.classroom-role-mentor .classroom-content {
       display: flex !important;
       flex-direction: column;
-      flex: 0 0 75dvh;
+      flex: 0 0 30dvh;
       min-height: 0;
       order: 2;
       overflow: hidden;
@@ -309,7 +309,7 @@
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
       order: 1;
-      height: 10dvh !important;
+      height: 38dvh !important;
       aspect-ratio: unset !important;
       width: 100% !important;
       flex-shrink: 0;
