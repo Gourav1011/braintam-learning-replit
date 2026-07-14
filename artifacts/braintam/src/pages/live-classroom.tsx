@@ -1392,8 +1392,8 @@ export default function LiveClassroom() {
             <img
               src={BRAND_LOGO}
               alt="Braintam"
-              className="absolute top-3 right-14 z-10 pointer-events-none"
-              style={{ height: 22, opacity: 0.75 }}
+              className="absolute top-3 right-3 z-10 pointer-events-none"
+              style={{ height: 44, opacity: 0.82 }}
             />
 
             {/* Class Paused banner — non-staff only */}
