@@ -386,14 +386,14 @@
       flex-direction: column;
     }
 
-    /* Teacher video: flex-grow fills all space above the chat, overflow:hidden gives
-       absolute-positioned children (the <video>) a valid containing-block height */
+    /* Teacher video: explicit 0% flex-basis makes the resolved (post-grow) height
+       definitively calculable by the browser, so absolute children with inset-0 / h-full
+       get the real allocated height — not the content height (which is 0 because all
+       children are absolutely positioned). */
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      flex: 1 1 auto !important;
-      height: auto !important;
+      flex: 1 1 0% !important;
       min-height: 80px !important;
-      overflow: hidden !important;
       aspect-ratio: unset !important;
       width: 100% !important;
     }
