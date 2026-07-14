@@ -386,17 +386,19 @@
       flex-direction: column;
     }
 
-    /* Teacher video: flex-grow to fill all space above the chat panel — no fixed height, no gap */
+    /* Teacher video: flex-grow fills all space above the chat, overflow:hidden gives
+       absolute-positioned children (the <video>) a valid containing-block height */
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      flex: 1 1 0 !important;
-      height: 0 !important;
+      flex: 1 1 auto !important;
+      height: auto !important;
       min-height: 80px !important;
+      overflow: hidden !important;
       aspect-ratio: unset !important;
       width: 100% !important;
     }
 
-    /* Sidebar bottom (chat): fixed at 55% so teacher video fills the rest */
+    /* Sidebar bottom (chat): fixed at 55% of sidebar height */
     .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
     .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom {
       flex: 0 0 55% !important;
