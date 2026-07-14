@@ -386,19 +386,20 @@
       flex-direction: column;
     }
 
-    /* Teacher video: 35% of sidebar height */
+    /* Teacher video: flex-grow to fill all space above the chat panel — no fixed height, no gap */
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      height: 35% !important;
+      flex: 1 1 0 !important;
+      height: 0 !important;
+      min-height: 80px !important;
       aspect-ratio: unset !important;
       width: 100% !important;
-      flex-shrink: 0;
     }
 
-    /* Sidebar bottom (chat): fills remaining 70% of sidebar */
+    /* Sidebar bottom (chat): fixed at 55% so teacher video fills the rest */
     .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
     .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom {
-      flex: 1 1 0;
+      flex: 0 0 55% !important;
       min-height: 0;
       display: flex;
       flex-direction: column;
