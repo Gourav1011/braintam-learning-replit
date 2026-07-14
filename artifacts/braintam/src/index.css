@@ -341,8 +341,9 @@
   /* Hide the mobile info strip on desktop (shown by the portrait + landscape rules below) */
   .classroom-mobile-info { display: none; }
 
-  /* ── Landscape mobile: compact header + presentation left + sidebar right ── */
-  @media (max-width: 900px) and (orientation: landscape) {
+  /* ── Landscape mobile: compact header + presentation left + sidebar right ──
+     Use 1200px so all Android/iOS phones in landscape (typically 640–1080 CSS px) are covered. */
+  @media (max-width: 1200px) and (orientation: landscape) and (max-height: 600px) {
     .live-classroom-root {
       width: 100vw;
       width: 100dvw;
