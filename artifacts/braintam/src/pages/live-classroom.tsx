@@ -1388,6 +1388,13 @@ export default function LiveClassroom() {
 
           {/* Slides / PDF / Demo */}
           <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden">
+            {/* Braintam logo — permanent top-right watermark on the presentation window */}
+            <img
+              src={BRAND_LOGO}
+              alt="Braintam"
+              className="absolute top-3 right-14 z-10 pointer-events-none"
+              style={{ height: 22, opacity: 0.75 }}
+            />
 
             {/* Class Paused banner — non-staff only */}
             {classPausedActive && !isStaff && (
@@ -1692,7 +1699,9 @@ export default function LiveClassroom() {
 
             {/* Always mounted for students so refs are valid the instant LiveKit fires TrackSubscribed —
                 if the video element only renders inside teacherInfo?.online, the attach call happens
-                when teacherVideoRef.current is still null (race between socket roomState and LiveKit). */}
+                when teacherVideoRef.current is still null (race between socket roomState and LiveKit).
+                Video is hidden during demo mode — the demo full-screen already shows the teacher,
+                so displaying it here too creates a distracting duplicate. */}
             {!isStaff && (
               <>
                 <video
@@ -1700,7 +1709,7 @@ export default function LiveClassroom() {
                   autoPlay
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover"
-                  style={{ display: livekit.teacherPresent && teacherInfo?.online ? "block" : "none", transform: "scaleX(-1)" }}
+                  style={{ display: livekit.teacherPresent && teacherInfo?.online && !isShowingDemo ? "block" : "none", transform: "scaleX(-1)" }}
                 />
                 <audio ref={livekit.teacherAudioRef} autoPlay />
               </>
@@ -1718,10 +1727,18 @@ export default function LiveClassroom() {
               /* ── Teacher sees their own camera ── */
               <>
                 <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none", transform: "scaleX(-1)" }} />
-                {!cameraOn && (
+                {!cameraOn && !demoMode && (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
                     <p className="text-[10px] text-gray-500">Teacher</p>
+                  </div>
+                )}
+                {/* Demo mode active — show a purple overlay so teacher knows demo is on */}
+                {demoMode && (
+                  <div className="absolute inset-0 bg-purple-950/80 flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+                    <span className="text-2xl">👁</span>
+                    <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">Demo Mode</span>
+                    <span className="text-[9px] text-purple-400">Camera on main screen</span>
                   </div>
                 )}
                 {/* ── Pause / Resume + Demo controls ── */}
@@ -1765,6 +1782,15 @@ export default function LiveClassroom() {
               teacherInfo.online ? (
                 /* ── Teacher is live — video/audio elements mounted above; show overlays here ── */
                 <>
+                  {/* When teacher is in demo mode, show a purple indicator in the sidebar panel
+                      so students know the small panel is intentionally blank (camera is on main screen) */}
+                  {isShowingDemo && (
+                    <div className="absolute inset-0 bg-purple-950/70 flex flex-col items-center justify-center gap-1.5 pointer-events-none z-10">
+                      <span className="text-xl">👁</span>
+                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">Demo Mode</span>
+                      <span className="text-[9px] text-purple-400 text-center px-2">Teacher camera shown on main screen</span>
+                    </div>
+                  )}
                   {livekit.audioBlocked && (
                     <button
                       onClick={() => { void livekit.startAudio(); }}
@@ -1774,7 +1800,7 @@ export default function LiveClassroom() {
                       🔊 Enable Class Audio
                     </button>
                   )}
-                  {!livekit.teacherPresent && (
+                  {!livekit.teacherPresent && !isShowingDemo && (
                     <div className="flex flex-col items-center justify-center h-full gap-2">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
