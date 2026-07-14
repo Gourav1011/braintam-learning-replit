@@ -1754,16 +1754,13 @@ export default function LiveClassroom() {
                 Video is hidden during demo mode — the demo full-screen already shows the teacher,
                 so displaying it here too creates a distracting duplicate. */}
             {!isStaff && (
-              <>
-                <video
-                  ref={livekit.teacherVideoRef}
-                  autoPlay
-                  playsInline
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ display: livekit.teacherPresent && teacherInfo?.online && !isShowingDemo ? "block" : "none", transform: "scaleX(-1)" }}
-                />
-                <audio ref={livekit.teacherAudioRef} autoPlay />
-              </>
+              <video
+                ref={livekit.teacherVideoRef}
+                autoPlay
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ display: livekit.teacherPresent && teacherInfo?.online && !isShowingDemo ? "block" : "none", transform: "scaleX(-1)" }}
+              />
             )}
 
             {/* Round Braintam logo — top-right corner of teacher camera panel */}

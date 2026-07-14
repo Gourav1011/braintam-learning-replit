@@ -48,7 +48,6 @@ const TEACHER_AUDIO_ATTR = "data-teacher-audio";
 export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const roomRef = useRef<Room | null>(null);
   const teacherVideoRef = useRef<HTMLVideoElement>(null);
-  const teacherAudioRef = useRef<HTMLAudioElement>(null);
   // Tracks auto-created <audio> elements for non-teacher stage participants.
   // LiveKit's track.attach() without args creates an element; we must store and
   // remove it ourselves on unsubscribe/disconnect so we don't leak audio nodes.
@@ -404,7 +403,6 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
     roomName,
     identity,
     teacherVideoRef,
-    teacherAudioRef,
     setCamera,
     setMic,
     attachLocalCameraTo,
