@@ -109221,9 +109221,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-14-0603" : "dev",
-    commit: true ? "1447f86" : "unknown",
-    buildTime: true ? "2026-07-14T06:03:20.668Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-14-0703" : "dev",
+    commit: true ? "27fce27" : "unknown",
+    buildTime: true ? "2026-07-14T07:03:39.949Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -132955,7 +132955,8 @@ function getSessionRoom(sid) {
       teacher: null,
       activePresentation: null,
       currentSlide: 1,
-      demoMode: false
+      demoMode: false,
+      chatMuted: false
     });
   }
   return sessionRooms.get(sid);
@@ -133281,6 +133282,7 @@ function setupSocketIO(httpServer2) {
         activePresentation: room.activePresentation,
         currentSlide: room.currentSlide,
         demoMode: room.demoMode,
+        chatMuted: room.chatMuted,
         slideUrl: classSlideUrl
       });
       const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
@@ -133340,6 +133342,10 @@ function setupSocketIO(httpServer2) {
     socket.on("chat:send", (rawText) => {
       const rawSanitized = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
       if (!rawSanitized) return;
+      if (!isStaff && room.chatMuted) {
+        socket.emit("chat:muted", { message: "\u{1F4AC} Chat is muted by the teacher." });
+        return;
+      }
       if (isStaff) {
         const msg2 = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -133702,6 +133708,16 @@ function setupSocketIO(httpServer2) {
     socket.on("class:resume", () => {
       if (!isStaff) return;
       io2.to(globalRoom(sessionId)).emit("class:resumed");
+    });
+    socket.on("chat:mute", () => {
+      if (!isStaff) return;
+      room.chatMuted = true;
+      io2.to(globalRoom(sessionId)).emit("chat:muted", { message: "\u{1F4AC} Chat has been muted by the teacher." });
+    });
+    socket.on("chat:unmute", () => {
+      if (!isStaff) return;
+      room.chatMuted = false;
+      io2.to(globalRoom(sessionId)).emit("chat:unmuted");
     });
     socket.on("annotation:draw", (seg) => {
       if (!isStaff) return;

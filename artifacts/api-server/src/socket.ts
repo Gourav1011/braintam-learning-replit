@@ -101,6 +101,7 @@ interface SessionRoom {
   activePresentation: PresentationState | null;
   currentSlide: number;
   demoMode: boolean;
+  chatMuted: boolean;
 }
 
 interface StageSlotEntry {
@@ -242,6 +243,7 @@ function getSessionRoom(sid: string): SessionRoom {
       activePresentation: null,
       currentSlide: 1,
       demoMode: false,
+      chatMuted: false,
     });
   }
   return sessionRooms.get(sid)!;
@@ -683,6 +685,7 @@ export function setupSocketIO(httpServer: HttpServer) {
         activePresentation: room.activePresentation,
         currentSlide: room.currentSlide,
         demoMode: room.demoMode,
+        chatMuted: room.chatMuted,
         slideUrl: classSlideUrl,
       });
 
@@ -754,6 +757,12 @@ export function setupSocketIO(httpServer: HttpServer) {
     socket.on("chat:send", (rawText: string) => {
       const rawSanitized = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
       if (!rawSanitized) return;
+
+      // Block messages when teacher has muted the chat (staff can still send)
+      if (!isStaff && room.chatMuted) {
+        socket.emit("chat:muted", { message: "💬 Chat is muted by the teacher." });
+        return;
+      }
 
       // Staff bypass all moderation
       if (isStaff) {
@@ -1194,6 +1203,18 @@ export function setupSocketIO(httpServer: HttpServer) {
     socket.on("class:resume", () => {
       if (!isStaff) return;
       io.to(globalRoom(sessionId)).emit("class:resumed");
+    });
+
+    // ── Mute / Unmute chat (teacher only) ────────────────────
+    socket.on("chat:mute", () => {
+      if (!isStaff) return;
+      room.chatMuted = true;
+      io.to(globalRoom(sessionId)).emit("chat:muted", { message: "💬 Chat has been muted by the teacher." });
+    });
+    socket.on("chat:unmute", () => {
+      if (!isStaff) return;
+      room.chatMuted = false;
+      io.to(globalRoom(sessionId)).emit("chat:unmuted");
     });
 
     socket.on("annotation:draw", (seg: unknown) => {

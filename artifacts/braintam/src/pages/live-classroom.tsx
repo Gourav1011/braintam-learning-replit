@@ -502,6 +502,9 @@ export default function LiveClassroom() {
   const [classPaused, setClassPaused] = useState(false);
   const [classPausedActive, setClassPausedActive] = useState(false);
   const [pauseProcessing, setPauseProcessing] = useState(false);
+  // ── Chat mute (teacher toggles; students/mentors blocked) ───
+  const [chatMuted, setChatMuted] = useState(false);       // teacher: current toggle state
+  const [isChatMuted, setIsChatMuted] = useState(false);   // student/mentor: received from server
   // ── Fullscreen ─────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
   // ── JS-driven landscape detection (bypasses unreliable CSS orientation media query on Android) ──
@@ -980,6 +983,10 @@ export default function LiveClassroom() {
         if (isStaff) setDemoMode(true);
         else setDemoModeActive(true);
       }
+      if ((s as any).chatMuted) {
+        if (isStaff) setChatMuted(true);
+        else setIsChatMuted(true);
+      }
     });
 
     // Presentation sync — server broadcasts teacher's presentation to all viewers
@@ -1145,6 +1152,9 @@ export default function LiveClassroom() {
     // ── Pause / Resume class ──────────────────────────────────
     socket.on("class:paused",  () => { if (!isStaff) setClassPausedActive(true); });
     socket.on("class:resumed", () => { if (!isStaff) setClassPausedActive(false); });
+    // ── Chat mute/unmute ────────────────────────────────────
+    socket.on("chat:muted",   () => { if (!isStaff) setIsChatMuted(true); else setChatMuted(true); });
+    socket.on("chat:unmuted", () => { if (!isStaff) setIsChatMuted(false); else setChatMuted(false); });
 
     // ── Diagnostics: server-ack confirming room join ──────────
     socket.on("classroom:joined", (d: { sessionId: string; socketId: string; roomName: string; memberCount: number; role: string }) => {
@@ -1176,6 +1186,7 @@ export default function LiveClassroom() {
       socket.off("staffChat:message");
       socket.off("classroom:joined");
       socket.off("class:paused"); socket.off("class:resumed");
+      socket.off("chat:muted"); socket.off("chat:unmuted");
     };
   }, [socket, upsert]);
 
@@ -2027,6 +2038,10 @@ export default function LiveClassroom() {
                 <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-red-900/50 border border-red-700 text-red-300 text-xs font-medium flex-shrink-0 text-center">
                   🚫 Your chat access is temporarily disabled.
                 </div>
+              ) : isChatMuted ? (
+                <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
+                  💬 Chat is muted by the teacher.
+                </div>
               ) : (
                 <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
                   <input
@@ -2074,11 +2089,19 @@ export default function LiveClassroom() {
             <div className="flex flex-col flex-1 overflow-hidden">
               {/* Teacher controls */}
               {isStaff && (
-                <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
+                <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0 flex items-center gap-2">
                   <button
                     onClick={() => toggleRaiseHandFeature(!raiseHandEnabled)}
                     className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/30" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
                     ✋ {raiseHandEnabled ? "Close Q&A" : "Open Q&A"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (chatMuted) { socket?.emit("chat:unmute"); setChatMuted(false); }
+                      else { socket?.emit("chat:mute"); setChatMuted(true); }
+                    }}
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all flex items-center gap-1 ${chatMuted ? "bg-red-700/30 text-red-300 border border-red-700/40" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
+                    💬 {chatMuted ? "Unmute Chat" : "Mute Chat"}
                   </button>
                 </div>
               )}
@@ -2118,10 +2141,14 @@ export default function LiveClassroom() {
                 </div>
               )}
 
-              {/* Blocked banner or chat input */}
+              {/* Blocked / muted banner or chat input */}
               {!isStaff && chatBlocked ? (
                 <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-red-900/50 border border-red-700 text-red-300 text-xs font-medium flex-shrink-0 text-center">
                   🚫 Your chat access is temporarily disabled. Please contact your mentor.
+                </div>
+              ) : !isStaff && isChatMuted ? (
+                <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
+                  💬 Chat is muted by the teacher.
                 </div>
               ) : (
                 <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
