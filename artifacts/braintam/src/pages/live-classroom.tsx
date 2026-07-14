@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import {
   Users, MessageSquare, BarChart2, Send,
   Trophy, Monitor, Hand, ChevronLeft, ChevronRight, X, Upload, Mic,
-  Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2,
+  Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2, RotateCcw,
 } from "lucide-react";
 
 const ROUND_LOGO = "/braintam-logo-round.png";
@@ -831,23 +831,41 @@ export default function LiveClassroom() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
 
-  // ── Fullscreen for students/mentors on mobile ──────────────
-  // Requests browser fullscreen on first user interaction, which is the
-  // earliest browsers allow it. Silently ignored if the browser blocks it.
+  // ── Fullscreen + landscape lock for students/mentors on mobile ──────────────
+  // Immediately tries to go fullscreen + lock to landscape.
+  // Also retries on first user interaction (some browsers need a gesture).
   useEffect(() => {
     if (isStaff) return;
     const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (!isMobileDevice) return;
-    const req = () => {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+    const lockToLandscape = async () => {
+      try { await document.documentElement.requestFullscreen(); } catch { /* blocked */ }
+      try { await (screen.orientation as any).lock("landscape"); } catch { /* not supported */ }
     };
-    document.addEventListener("click", req, { once: true });
-    document.addEventListener("touchstart", req, { once: true });
+    void lockToLandscape();
+    const onInteract = () => void lockToLandscape();
+    document.addEventListener("click", onInteract, { once: true });
+    document.addEventListener("touchstart", onInteract, { once: true });
     return () => {
-      document.removeEventListener("click", req);
-      document.removeEventListener("touchstart", req);
+      document.removeEventListener("click", onInteract);
+      document.removeEventListener("touchstart", onInteract);
     };
   }, [isStaff]);
+
+  // ── Orientation + fullscreen toggle helpers (for mobile header buttons) ──
+  const toggleOrientation = useCallback(() => {
+    const type = screen.orientation?.type ?? "";
+    const next = type.startsWith("portrait") ? "landscape" : "portrait";
+    (screen.orientation as any).lock?.(next).catch(() => {});
+  }, []);
+
+  const toggleMobileFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, []);
 
   // ── Heartbeat (15s) ────────────────────────────────────────
   useEffect(() => {
@@ -1720,7 +1738,7 @@ export default function LiveClassroom() {
               src={ROUND_LOGO}
               alt="Braintam"
               className="absolute top-2 right-2 z-10 rounded-full pointer-events-none"
-              style={{ width: 30, height: 30, opacity: 0.88 }}
+              style={{ width: 38, height: 38, opacity: 0.88 }}
             />
 
             {isStaff ? (
@@ -1833,24 +1851,46 @@ export default function LiveClassroom() {
             )}
           </div>
 
-          {/* ── Mobile info strip (visible only on portrait mobile via CSS) ─── */}
+          {/* ── Mobile info strip (portrait + landscape mobile, hidden on desktop via CSS) ─── */}
           {!isStaff && (
-            <div className="classroom-mobile-info flex items-center justify-between px-3 py-1.5 bg-gray-900 border-b border-gray-800 flex-shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[11px] font-semibold text-gray-200 truncate">{rawName}</span>
+            <div className="classroom-mobile-info flex items-center justify-between px-2.5 py-1.5 bg-gray-950 border-b border-gray-800 flex-shrink-0 gap-1.5" style={{ minHeight: 36 }}>
+              {/* Left: name | subject | LIVE */}
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                <span className="text-[10px] font-bold text-gray-100 truncate max-w-[80px]">{rawName}</span>
+                <span className="text-gray-700 text-[9px] flex-shrink-0">|</span>
+                <span className="text-[9px] text-gray-400 truncate max-w-[70px] flex-shrink-0">{title}</span>
+                <span className="text-gray-700 text-[9px] flex-shrink-0">|</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
+                  <span className={`text-[9px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-500"}`}>
+                    {connected ? "LIVE" : "…"}
+                  </span>
+                </div>
                 {livekit.connectionState === "reconnecting" && (
-                  <span className="text-[9px] text-yellow-400 font-bold">📡 Reconnecting…</span>
+                  <span className="text-[8px] text-yellow-400 font-bold flex-shrink-0">📡</span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
-                <span className={`text-[9px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-500"}`}>
-                  {connected ? "LIVE" : "Connecting…"}
-                </span>
+              {/* Right: rotate + fullscreen buttons */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={toggleOrientation}
+                  title="Switch orientation"
+                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={toggleMobileFullscreen}
+                  title="Toggle fullscreen"
+                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           )}
 
+          <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Raised hands queue (teacher/mentor) — Sprint 3: approve to stage */}
           {canSeeAttendance && visibleHands.length > 0 && (
             <div className="border-b border-yellow-800/30 flex-shrink-0 max-h-32 overflow-y-auto">
@@ -1974,7 +2014,7 @@ export default function LiveClassroom() {
                   <input
                     ref={chatInputRef}
                     className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ fontSize: 16 }}
+                    style={{ fontSize: isStaff ? 16 : 13 }}
                     placeholder={isStaff ? "Announce to all…" : "Say something…"}
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
@@ -2138,6 +2178,7 @@ export default function LiveClassroom() {
               </div>
             </div>
           )}
+          </div>{/* /classroom-sidebar-bottom */}
         </div>
       </div>
 

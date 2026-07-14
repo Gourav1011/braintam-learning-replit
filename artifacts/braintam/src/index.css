@@ -260,49 +260,75 @@
 
     /* ── Portrait mobile layout for student / mentor ── */
 
-    /* Hide the topbar — student name + LIVE status is in the compact info strip */
+    /* Hide the full topbar — compact info strip (classroom-mobile-info) replaces it */
     .live-classroom-root.classroom-role-student .classroom-topbar,
     .live-classroom-root.classroom-role-mentor .classroom-topbar {
       display: none;
     }
 
-    /* Main container becomes a vertical column */
+    /* Main container: flex column, items fill the screen */
     .live-classroom-root.classroom-role-student .classroom-main,
     .live-classroom-root.classroom-role-mentor .classroom-main {
       flex-direction: column;
+      align-items: stretch;
     }
 
-    /* Left attendance sidebar — hidden; attendance is teacher/mentor only and not needed on student mobile */
+    /* Left attendance sidebar — not needed on student mobile */
     .live-classroom-root.classroom-role-student .classroom-left-sidebar,
     .live-classroom-root.classroom-role-mentor .classroom-left-sidebar {
       display: none !important;
     }
 
-    /* Presentation panel — hidden on student mobile portrait; teacher video IS the main content */
+    /* Presentation/content panel: show in portrait (middle section), fixed height */
     .live-classroom-root.classroom-role-student .classroom-content,
     .live-classroom-root.classroom-role-mentor .classroom-content {
-      display: none;
+      display: flex !important;
+      flex-direction: column;
+      flex: 0 0 30dvh;
+      min-height: 0;
+      order: 2;
+      overflow: hidden;
     }
 
-    /* Right sidebar becomes full-width full-height column */
+    /* Dissolve the right sidebar so its children become direct flex children of .classroom-main.
+       This lets CSS order reposition teacher-video, mobile-info, and sidebar-bottom independently. */
     .live-classroom-root.classroom-role-student .classroom-sidebar,
     .live-classroom-root.classroom-role-mentor .classroom-sidebar {
-      width: 100% !important;
+      display: contents !important;
+      width: auto !important;
       border-left: none !important;
-      flex: 1;
-      min-height: 0;
     }
 
-    /* Teacher video panel: full width, 16:9 aspect ratio */
+    /* Mobile info strip (header bar): order 0 — very top of screen */
+    .live-classroom-root.classroom-role-student .classroom-mobile-info,
+    .live-classroom-root.classroom-role-mentor .classroom-mobile-info {
+      order: 0;
+      display: flex !important;
+    }
+
+    /* Teacher video panel: order 1 — just below header, compact fixed height */
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      height: auto !important;
-      aspect-ratio: 16 / 9;
-      width: 100%;
+      order: 1;
+      height: 24dvh !important;
+      aspect-ratio: unset !important;
+      width: 100% !important;
       flex-shrink: 0;
     }
 
-    /* Mobile info strip: visible only in portrait */
+    /* Sidebar-bottom (chat/poll): order 3 — bottom, takes all remaining space */
+    .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
+    .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom {
+      order: 3;
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex !important;
+      flex-direction: column;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    /* Mobile info strip: always visible inside portrait media query */
     .classroom-mobile-info {
       display: flex !important;
     }
@@ -313,15 +339,70 @@
     }
   }
 
-  /* Hide the mobile info strip on desktop / landscape (shown only via the portrait rule above) */
+  /* Hide the mobile info strip on desktop (shown by the portrait + landscape rules below) */
   .classroom-mobile-info { display: none; }
 
+  /* ── Landscape mobile: compact header + presentation left + sidebar right ── */
   @media (max-width: 900px) and (orientation: landscape) {
     .live-classroom-root {
       width: 100vw;
       width: 100dvw;
       height: 100vh;
       height: 100dvh;
+    }
+
+    /* Hide the full topbar for students/mentors in landscape — use compact info strip */
+    .live-classroom-root.classroom-role-student .classroom-topbar,
+    .live-classroom-root.classroom-role-mentor .classroom-topbar {
+      display: none;
+    }
+
+    /* Show mobile info strip in landscape too */
+    .live-classroom-root.classroom-role-student .classroom-mobile-info,
+    .live-classroom-root.classroom-role-mentor .classroom-mobile-info {
+      display: flex !important;
+    }
+
+    /* Root becomes a column so mobile-info sits above the horizontal content row */
+    .live-classroom-root.classroom-role-student,
+    .live-classroom-root.classroom-role-mentor {
+      flex-direction: column;
+    }
+
+    /* classroom-main fills remaining vertical space as a row */
+    .live-classroom-root.classroom-role-student .classroom-main,
+    .live-classroom-root.classroom-role-mentor .classroom-main {
+      flex: 1 1 0;
+      min-height: 0;
+      flex-direction: row;
+    }
+
+    /* Right sidebar: 36% width in landscape mobile */
+    .live-classroom-root.classroom-role-student .classroom-sidebar,
+    .live-classroom-root.classroom-role-mentor .classroom-sidebar {
+      width: 36% !important;
+      min-width: 200px;
+      flex-shrink: 0;
+      flex-direction: column;
+    }
+
+    /* Teacher video: 30% of sidebar height — small square at top */
+    .live-classroom-root.classroom-role-student .classroom-teacher-video,
+    .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
+      height: 30% !important;
+      aspect-ratio: unset !important;
+      width: 100% !important;
+      flex-shrink: 0;
+    }
+
+    /* Sidebar bottom (chat): fills remaining 70% of sidebar */
+    .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
+    .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
   }
   .toggle-elevate::before,
