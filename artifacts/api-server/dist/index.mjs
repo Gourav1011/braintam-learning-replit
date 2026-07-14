@@ -109221,9 +109221,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-13-2040" : "dev",
-    commit: true ? "48193bd" : "unknown",
-    buildTime: true ? "2026-07-13T20:40:44.226Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-14-0316" : "dev",
+    commit: true ? "d03d886" : "unknown",
+    buildTime: true ? "2026-07-14T03:16:27.723Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133505,10 +133505,11 @@ function setupSocketIO(httpServer2) {
       });
       scheduleStageExpiry(io2, sessionId, payload.studentId);
       if (isLiveKitConfigured()) {
-        getLiveKitRoomName(sessionId).then(async (roomName) => {
+        try {
+          const roomName = await getLiveKitRoomName(sessionId);
           if (roomName) await updateParticipantPublishPermission(roomName, payload.studentId, true);
-        }).catch(() => {
-        });
+        } catch {
+        }
       }
       room.raisedHands.delete(payload.studentId);
       io2.to(globalRoom(sessionId)).emit("classroom:handRaised", {
@@ -133543,7 +133544,7 @@ function setupSocketIO(httpServer2) {
         fromTeacher: name
       });
     });
-    socket.on("stage:acceptInvite", () => {
+    socket.on("stage:acceptInvite", async () => {
       if (isStaff || isMentor) return;
       if (room.stageSlots.size >= 5 || room.stageSlots.has(userId)) return;
       const occupied = new Set(Array.from(room.stageSlots.values()).map((s2) => s2.slotNumber));
@@ -133579,10 +133580,11 @@ function setupSocketIO(httpServer2) {
       });
       scheduleStageExpiry(io2, sessionId, userId);
       if (isLiveKitConfigured()) {
-        getLiveKitRoomName(sessionId).then(async (roomName) => {
+        try {
+          const roomName = await getLiveKitRoomName(sessionId);
           if (roomName) await updateParticipantPublishPermission(roomName, userId, true);
-        }).catch(() => {
-        });
+        } catch {
+        }
       }
       room.raisedHands.delete(userId);
       io2.to(globalRoom(sessionId)).emit("classroom:handRaised", {

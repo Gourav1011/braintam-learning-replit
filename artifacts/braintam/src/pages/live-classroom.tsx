@@ -744,6 +744,27 @@ export default function LiveClassroom() {
   const [cameraOn, setCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // ── Auto-start teacher camera + mic the moment LiveKit connects ──
+  // Teachers must publish immediately so students hear them from the start.
+  // We use a one-shot ref so this only fires once per mount even if
+  // livekit.connected briefly flickers during reconnects.
+  const teacherMediaStarted = useRef(false);
+  useEffect(() => {
+    if (!livekit.connected || !isStaff || teacherMediaStarted.current) return;
+    teacherMediaStarted.current = true;
+    void (async () => {
+      try {
+        await livekit.setCamera(true);
+        livekit.attachLocalCameraTo(videoRef.current);
+        setCameraOn(true);
+      } catch { /* camera permission denied — teacher can still teach with mic */ }
+      try {
+        await livekit.setMic(true);
+      } catch { /* mic permission denied */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livekit.connected]);
+
   // ── Pause / Resume class ────────────────────────────────────
   const togglePause = useCallback(async () => {
     if (!isStaff || pauseProcessing) return;
@@ -1010,10 +1031,14 @@ export default function LiveClassroom() {
         const filtered = prev.filter(s => s.studentId !== slot.studentId);
         return [...filtered, slot].sort((a, b) => a.slotNumber - b.slotNumber);
       });
-      // Backend already granted this student LiveKit publish rights for the 60s window — start publishing.
+      // Backend awaits the LiveKit permission grant before emitting this event, but the grant
+      // still has to propagate from the LiveKit API server to the client SDK. A short delay
+      // gives the SDK time to receive the updated permission before we try to publish.
       if (slot.studentId === userId && !isStaff) {
-        void livekit.setCamera(true);
-        void livekit.setMic(!slot.isMuted);
+        setTimeout(() => {
+          void livekit.setCamera(true);
+          void livekit.setMic(!slot.isMuted);
+        }, 600);
       }
     });
     socket.on("stage:muteStateChanged", ({ studentId, isMuted }: { studentId: string; isMuted: boolean }) => {

@@ -964,10 +964,14 @@ export function setupSocketIO(httpServer: HttpServer) {
       }).onConflictDoNothing().catch(() => {});
 
       scheduleStageExpiry(io, sessionId, payload.studentId);
+
+      // Grant LiveKit publish permission BEFORE emitting stage:studentInvited so the
+      // student's setMic(true) call doesn't race against the permission not yet applied.
       if (isLiveKitConfigured()) {
-        getLiveKitRoomName(sessionId).then(async roomName => {
+        try {
+          const roomName = await getLiveKitRoomName(sessionId);
           if (roomName) await updateParticipantPublishPermission(roomName, payload.studentId, true);
-        }).catch(() => {});
+        } catch { /* non-fatal — student can retry via mute/unmute */ }
       }
 
       // Clear hand from raise-hand queue
@@ -1007,7 +1011,7 @@ export function setupSocketIO(httpServer: HttpServer) {
     });
 
     // ── Student accepts mic invite → gets put on stage ────────
-    socket.on("stage:acceptInvite", () => {
+    socket.on("stage:acceptInvite", async () => {
       if (isStaff || isMentor) return;
       if (room.stageSlots.size >= 5 || room.stageSlots.has(userId)) return;
 
@@ -1033,10 +1037,14 @@ export function setupSocketIO(httpServer: HttpServer) {
       }).onConflictDoNothing().catch(() => {});
 
       scheduleStageExpiry(io, sessionId, userId);
+
+      // Grant LiveKit publish permission BEFORE emitting stage:studentInvited so the
+      // student's setMic(true) call doesn't race against the permission not yet applied.
       if (isLiveKitConfigured()) {
-        getLiveKitRoomName(sessionId).then(async roomName => {
+        try {
+          const roomName = await getLiveKitRoomName(sessionId);
           if (roomName) await updateParticipantPublishPermission(roomName, userId, true);
-        }).catch(() => {});
+        } catch { /* non-fatal */ }
       }
 
       room.raisedHands.delete(userId);
