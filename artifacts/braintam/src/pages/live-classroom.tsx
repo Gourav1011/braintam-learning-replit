@@ -1884,7 +1884,7 @@ export default function LiveClassroom() {
           <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
           {!isStaff && (
-            <div className="classroom-mobile-info flex items-center justify-between px-2 flex-shrink-0 gap-1" style={{ height: 28, background: "#0B2B6B", borderBottom: "1px solid rgba(255,107,26,0.4)" }}>
+            <div className="classroom-mobile-info flex items-center justify-between px-2 flex-shrink-0 gap-1" style={{ height: 28, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", borderBottom: "1px solid rgba(255,107,26,0.35)" }}>
               {/* Left: subject | LIVE */}
               <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                 <span className="text-[9px] text-gray-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
