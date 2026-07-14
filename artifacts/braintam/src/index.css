@@ -342,79 +342,44 @@
   .classroom-mobile-info { display: none; }
 
   /* ── Landscape mobile: PPT left, sidebar right ──
-     No max-height guard — covers all phones regardless of resolution. */
+     Triggered BOTH by CSS media query and by the JS-driven .is-landscape-mobile class
+     (React sets that class via window.innerWidth/innerHeight so it works even on Android
+     devices where the CSS `orientation: landscape` media feature misfires). */
+
+  /* Shared rule factory — applied by both the @media block and the class selector below */
   @media (max-width: 1200px) and (orientation: landscape) {
-    .live-classroom-root {
-      width: 100dvw;
-      height: 100dvh;
-    }
-
-    /* Hide topbar for students/mentors — info strip replaces it */
+    .live-classroom-root { width: 100dvw; height: 100dvh; }
     .live-classroom-root.classroom-role-student .classroom-topbar,
-    .live-classroom-root.classroom-role-mentor .classroom-topbar {
-      display: none;
-    }
-
-    /* Show mobile info strip */
+    .live-classroom-root.classroom-role-mentor .classroom-topbar { display: none; }
     .live-classroom-root.classroom-role-student .classroom-mobile-info,
-    .live-classroom-root.classroom-role-mentor .classroom-mobile-info {
-      display: flex !important;
-    }
-
-    /* classroom-main: full viewport height, horizontal row */
+    .live-classroom-root.classroom-role-mentor .classroom-mobile-info { display: flex !important; }
     .live-classroom-root.classroom-role-student .classroom-main,
-    .live-classroom-root.classroom-role-mentor .classroom-main {
-      flex: 1 1 0;
-      height: 100dvh;
-      min-height: 0;
-      flex-direction: row;
-    }
-
-    /* Hide left attendance panel */
+    .live-classroom-root.classroom-role-mentor .classroom-main { flex: 1 1 0; height: 100dvh; min-height: 0; flex-direction: row !important; }
     .live-classroom-root.classroom-role-student .classroom-left-sidebar,
-    .live-classroom-root.classroom-role-mentor .classroom-left-sidebar {
-      display: none !important;
-    }
-
-    /* Right sidebar: 34% width, full height, flex column */
+    .live-classroom-root.classroom-role-mentor .classroom-left-sidebar { display: none !important; }
     .live-classroom-root.classroom-role-student .classroom-sidebar,
-    .live-classroom-root.classroom-role-mentor .classroom-sidebar {
-      width: 34% !important;
-      min-width: 180px;
-      max-width: 280px;
-      height: 100dvh;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Teacher video: explicit dvh height so the absolutely-positioned <video inset-0>
-       always gets a definite containing-block — same technique used in portrait. */
-    .live-classroom-root.classroom-role-student .classroom-teacher-video,
-    .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      height: 42dvh !important;
-      flex-shrink: 0 !important;
-      flex-grow: 0 !important;
-      width: 100% !important;
-      aspect-ratio: unset !important;
-      overflow: hidden;
-    }
-
-    /* Sidebar bottom (info strip + chat): fills remaining height */
+    .live-classroom-root.classroom-role-mentor .classroom-sidebar { width: 34% !important; min-width: 180px; max-width: 280px; height: 100dvh; flex-shrink: 0; display: flex !important; flex-direction: column !important; }
     .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
-    .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom {
-      flex: 1 1 0 !important;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* Safe-area padding for chat composer */
-    .classroom-composer {
-      padding-bottom: max(8px, env(safe-area-inset-bottom));
-    }
+    .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom { flex: 1 1 0 !important; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .classroom-composer { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   }
+
+  /* JS class-driven version: same rules, wins over portrait's display:contents !important
+     because these selectors are more specific (extra .is-landscape-mobile class). */
+  .live-classroom-root.is-landscape-mobile { width: 100dvw; height: 100dvh; }
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-topbar,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-topbar { display: none !important; }
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-mobile-info,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-mobile-info { display: flex !important; }
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-main,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-main { flex: 1 1 0 !important; height: 100dvh !important; min-height: 0 !important; flex-direction: row !important; }
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-left-sidebar,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-left-sidebar { display: none !important; }
+  /* sidebar: override portrait's display:contents!important via higher specificity */
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-sidebar,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-sidebar { width: 34% !important; min-width: 180px !important; max-width: 280px !important; height: 100dvh !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; }
+  .live-classroom-root.is-landscape-mobile.classroom-role-student .classroom-sidebar-bottom,
+  .live-classroom-root.is-landscape-mobile.classroom-role-mentor .classroom-sidebar-bottom { flex: 1 1 0 !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";

@@ -504,6 +504,26 @@ export default function LiveClassroom() {
   const [pauseProcessing, setPauseProcessing] = useState(false);
   // ── Fullscreen ─────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // ── JS-driven landscape detection (bypasses unreliable CSS orientation media query on Android) ──
+  const [isLandscapeMobile, setIsLandscapeMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 1200 && window.innerWidth > window.innerHeight;
+  });
+  useEffect(() => {
+    const check = () => {
+      setIsLandscapeMobile(window.innerWidth <= 1200 && window.innerWidth > window.innerHeight);
+    };
+    window.addEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    // also fire after a short delay post-rotation (some Android browsers report stale values immediately)
+    const onOrientationChange = () => { setTimeout(check, 150); };
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+      window.removeEventListener("orientationchange", onOrientationChange);
+    };
+  }, []);
   const presentationPanelRef = useRef<HTMLDivElement>(null);
 
   const [panelMode, setPanelMode] = useState<"chat" | "poll" | "staffchat">("chat");
@@ -1289,7 +1309,7 @@ export default function LiveClassroom() {
         <p className="font-bold text-lg">Rotate your phone</p>
         <p className="text-sm text-gray-400">Turn your device to landscape mode to join the live class</p>
       </div>
-      <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-gray-950`} style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-gray-950${isLandscapeMobile ? " is-landscape-mobile" : ""}`} style={{ fontFamily: "Poppins, sans-serif" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
       <div className="classroom-topbar flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
@@ -1718,7 +1738,11 @@ export default function LiveClassroom() {
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
           <div className="classroom-teacher-video relative bg-black flex-shrink-0"
-            style={isStaff ? { height: 190 } : { width: "100%", aspectRatio: "4/3" }}>
+            style={isStaff
+              ? { height: 190 }
+              : isLandscapeMobile
+                ? { width: "100%", height: "42dvh", overflow: "hidden" }
+                : { width: "100%", aspectRatio: "4/3" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
