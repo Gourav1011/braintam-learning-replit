@@ -341,71 +341,78 @@
   /* Hide the mobile info strip on desktop (shown by the portrait + landscape rules below) */
   .classroom-mobile-info { display: none; }
 
-  /* ── Landscape mobile: compact header + presentation left + sidebar right ──
-     Use 1200px so all Android/iOS phones in landscape (typically 640–1080 CSS px) are covered. */
-  @media (max-width: 1200px) and (orientation: landscape) and (max-height: 600px) {
+  /* ── Landscape mobile: PPT left, sidebar right ──
+     No max-height guard — covers all phones regardless of resolution. */
+  @media (max-width: 1200px) and (orientation: landscape) {
     .live-classroom-root {
-      width: 100vw;
       width: 100dvw;
-      height: 100vh;
       height: 100dvh;
     }
 
-    /* Hide the full topbar for students/mentors in landscape — use compact info strip */
+    /* Hide topbar for students/mentors — info strip replaces it */
     .live-classroom-root.classroom-role-student .classroom-topbar,
     .live-classroom-root.classroom-role-mentor .classroom-topbar {
       display: none;
     }
 
-    /* Show mobile info strip in landscape too */
+    /* Show mobile info strip */
     .live-classroom-root.classroom-role-student .classroom-mobile-info,
     .live-classroom-root.classroom-role-mentor .classroom-mobile-info {
       display: flex !important;
     }
 
-    /* Root becomes a column so mobile-info sits above the horizontal content row */
-    .live-classroom-root.classroom-role-student,
-    .live-classroom-root.classroom-role-mentor {
-      flex-direction: column;
-    }
-
-    /* classroom-main fills remaining vertical space as a row */
+    /* classroom-main: full viewport height, horizontal row */
     .live-classroom-root.classroom-role-student .classroom-main,
     .live-classroom-root.classroom-role-mentor .classroom-main {
       flex: 1 1 0;
+      height: 100dvh;
       min-height: 0;
       flex-direction: row;
     }
 
-    /* Right sidebar: 36% width in landscape mobile */
+    /* Hide left attendance panel */
+    .live-classroom-root.classroom-role-student .classroom-left-sidebar,
+    .live-classroom-root.classroom-role-mentor .classroom-left-sidebar {
+      display: none !important;
+    }
+
+    /* Right sidebar: 34% width, full height, flex column */
     .live-classroom-root.classroom-role-student .classroom-sidebar,
     .live-classroom-root.classroom-role-mentor .classroom-sidebar {
-      width: 36% !important;
-      min-width: 200px;
+      width: 34% !important;
+      min-width: 180px;
+      max-width: 280px;
+      height: 100dvh;
       flex-shrink: 0;
+      display: flex;
       flex-direction: column;
     }
 
-    /* Teacher video: explicit 0% flex-basis makes the resolved (post-grow) height
-       definitively calculable by the browser, so absolute children with inset-0 / h-full
-       get the real allocated height — not the content height (which is 0 because all
-       children are absolutely positioned). */
+    /* Teacher video: explicit dvh height so the absolutely-positioned <video inset-0>
+       always gets a definite containing-block — same technique used in portrait. */
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      flex: 1 1 0% !important;
-      min-height: 80px !important;
-      aspect-ratio: unset !important;
+      height: 42dvh !important;
+      flex-shrink: 0 !important;
+      flex-grow: 0 !important;
       width: 100% !important;
+      aspect-ratio: unset !important;
+      overflow: hidden;
     }
 
-    /* Sidebar bottom (chat): fixed at 55% of sidebar height */
+    /* Sidebar bottom (info strip + chat): fills remaining height */
     .live-classroom-root.classroom-role-student .classroom-sidebar-bottom,
     .live-classroom-root.classroom-role-mentor .classroom-sidebar-bottom {
-      flex: 0 0 55% !important;
+      flex: 1 1 0 !important;
       min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+    }
+
+    /* Safe-area padding for chat composer */
+    .classroom-composer {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
   }
   .toggle-elevate::before,
