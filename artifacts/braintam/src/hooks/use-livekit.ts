@@ -41,6 +41,10 @@ export type LiveKitConnectionState = "idle" | "connecting" | "connected" | "reco
  * - Runs fully independently of the Socket.IO chat/presence connection: LiveKit media keeps
  *   working while Socket.IO reconnects, and vice versa.
  */
+// Attribute used to identify the auto-created teacher audio element in the DOM.
+// Module-level so it's stable across renders and accessible in cleanup closures.
+const TEACHER_AUDIO_ATTR = "data-teacher-audio";
+
 export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const roomRef = useRef<Room | null>(null);
   const teacherVideoRef = useRef<HTMLVideoElement>(null);
@@ -69,12 +73,23 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const tracksByIdentity = useRef<Map<string, { video?: RemoteTrack; audio?: RemoteTrack }>>(new Map());
   const [trackVersion, setTrackVersion] = useState(0);
 
+  // Key used to find the auto-created teacher audio element in the DOM.
+  const TEACHER_AUDIO_ATTR = "data-teacher-audio";
+
   const attachTeacherTrack = useCallback((track: RemoteTrack) => {
     if (track.kind === Track.Kind.Video && teacherVideoRef.current) {
       track.attach(teacherVideoRef.current);
       setTeacherVideoSubscribed(true);
-    } else if (track.kind === Track.Kind.Audio && teacherAudioRef.current) {
-      track.attach(teacherAudioRef.current);
+    } else if (track.kind === Track.Kind.Audio) {
+      // Use the same auto-create pattern as stage audio: track.attach() with no
+      // argument lets LiveKit create its own <audio> element and call .play() on it
+      // via the LiveKit SDK's internal autoplay handling — this bypasses the browser's
+      // autoplay block that silently mutes React-managed <audio autoPlay> elements.
+      // Remove any stale teacher audio element first (e.g. after track restart).
+      document.querySelector(`[${TEACHER_AUDIO_ATTR}]`)?.remove();
+      const audioEl = track.attach() as HTMLAudioElement;
+      audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
+      document.body.appendChild(audioEl);
       setTeacherAudioSubscribed(true);
     }
   }, []);
@@ -84,7 +99,8 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
       if (teacherVideoRef.current) track.detach(teacherVideoRef.current);
       setTeacherVideoSubscribed(false);
     } else if (track.kind === Track.Kind.Audio) {
-      if (teacherAudioRef.current) track.detach(teacherAudioRef.current);
+      const el = document.querySelector(`[${TEACHER_AUDIO_ATTR}]`);
+      if (el) { track.detach(el as HTMLAudioElement); el.remove(); }
       setTeacherAudioSubscribed(false);
     }
   }, []);
@@ -301,6 +317,8 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
 
     return () => {
       cancelled = true;
+      // Remove auto-created teacher audio element.
+      document.querySelector(`[${TEACHER_AUDIO_ATTR}]`)?.remove();
       // Remove all auto-created stage audio elements before disconnecting.
       stageAudioEls.current.forEach(el => el.remove());
       stageAudioEls.current.clear();
