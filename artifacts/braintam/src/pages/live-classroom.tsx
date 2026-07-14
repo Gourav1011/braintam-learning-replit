@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import {
   Users, MessageSquare, BarChart2, Send,
   Trophy, Monitor, Hand, ChevronLeft, ChevronRight, X, Upload, Mic,
-  Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2, RotateCcw,
+  Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, RotateCcw,
 } from "lucide-react";
 
 const ROUND_LOGO = "/braintam-logo-round.png";
@@ -1504,20 +1504,6 @@ export default function LiveClassroom() {
             )}
             {!isStaff && <AnnotationOverlay segments={annotSegments} />}
 
-            {/* Fullscreen toggle (teacher + student, bottom-right corner) */}
-            <button
-              onClick={() => {
-                if (!isFullscreen) {
-                  presentationPanelRef.current?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
-                } else {
-                  document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
-                }
-              }}
-              className="absolute bottom-3 right-3 z-30 w-8 h-8 rounded-lg bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all"
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
 
             {/* Sprint 3 — "You're on stage" banner for invited students */}
             {myOnStage && !isStaff && (
@@ -1899,7 +1885,7 @@ export default function LiveClassroom() {
                   <span className="text-[8px] text-yellow-400 font-bold flex-shrink-0">📡</span>
                 )}
               </div>
-              {/* Right: rotate + fullscreen buttons */}
+              {/* Right: rotate button */}
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={toggleOrientation}
@@ -1907,13 +1893,6 @@ export default function LiveClassroom() {
                   className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={toggleMobileFullscreen}
-                  title="Toggle fullscreen"
-                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
