@@ -557,7 +557,7 @@ export default function LiveClassroom() {
   const salePrice    = search.get("scholarshipPrice") ?? "12000";
   const payLink      = search.get("paymentLink") ?? "/enroll";
   const [showBrochure, setShowBrochure] = useState(false);
-  const [badgeDismissed, setBadgeDismissed] = useState(false);
+  const [badgeDismissed, setBadgeDismissed] = useState(true); // hidden until payment flow is ready
   const [badgePos, setBadgePos] = useState({ x: 0, y: 0 });
   const badgeRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -1718,7 +1718,7 @@ export default function LiveClassroom() {
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
           <div className="classroom-teacher-video relative bg-black flex-shrink-0"
-            style={isStaff ? { height: 190 } : { height: 120, width: "100%" }}>
+            style={isStaff ? { height: 190 } : { height: 90, width: "100%" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
@@ -1864,11 +1864,9 @@ export default function LiveClassroom() {
           {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
           {!isStaff && (
             <div className="classroom-mobile-info flex items-center justify-between px-2.5 py-1.5 bg-gray-950 border-b border-gray-800 flex-shrink-0 gap-1.5" style={{ minHeight: 36 }}>
-              {/* Left: name | subject | LIVE */}
+              {/* Left: subject | LIVE */}
               <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                <span className="text-[10px] font-bold text-gray-100 truncate max-w-[80px]">{rawName}</span>
-                <span className="text-gray-700 text-[9px] flex-shrink-0">|</span>
-                <span className="text-[9px] text-gray-400 truncate max-w-[70px] flex-shrink-0">{title}</span>
+                <span className="text-[9px] text-gray-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
                 <span className="text-gray-700 text-[9px] flex-shrink-0">|</span>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
