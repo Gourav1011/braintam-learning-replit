@@ -1851,7 +1851,8 @@ export default function LiveClassroom() {
             )}
           </div>
 
-          {/* ── Mobile info strip (portrait + landscape mobile, hidden on desktop via CSS) ─── */}
+          <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
           {!isStaff && (
             <div className="classroom-mobile-info flex items-center justify-between px-2.5 py-1.5 bg-gray-950 border-b border-gray-800 flex-shrink-0 gap-1.5" style={{ minHeight: 36 }}>
               {/* Left: name | subject | LIVE */}
@@ -1889,8 +1890,6 @@ export default function LiveClassroom() {
               </div>
             </div>
           )}
-
-          <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Raised hands queue (teacher/mentor) — Sprint 3: approve to stage */}
           {canSeeAttendance && visibleHands.length > 0 && (
             <div className="border-b border-yellow-800/30 flex-shrink-0 max-h-32 overflow-y-auto">
