@@ -309,7 +309,7 @@
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
       order: 1;
-      height: 24dvh !important;
+      height: 38dvh !important;
       aspect-ratio: unset !important;
       width: 100% !important;
       flex-shrink: 0;
@@ -386,10 +386,10 @@
       flex-direction: column;
     }
 
-    /* Teacher video: 30% of sidebar height — small square at top */
+    /* Teacher video: 35% of sidebar height */
     .live-classroom-root.classroom-role-student .classroom-teacher-video,
     .live-classroom-root.classroom-role-mentor .classroom-teacher-video {
-      height: 30% !important;
+      height: 35% !important;
       aspect-ratio: unset !important;
       width: 100% !important;
       flex-shrink: 0;

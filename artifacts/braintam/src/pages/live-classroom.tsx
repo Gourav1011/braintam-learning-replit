@@ -1718,7 +1718,7 @@ export default function LiveClassroom() {
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
           <div className="classroom-teacher-video relative bg-black flex-shrink-0"
-            style={isStaff ? { height: 190 } : { height: 170, width: "100%" }}>
+            style={isStaff ? { height: 190 } : { width: "100%", aspectRatio: "4/3" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
               <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
@@ -1863,7 +1863,7 @@ export default function LiveClassroom() {
           <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
           {!isStaff && (
-            <div className="classroom-mobile-info flex items-center justify-between px-2.5 py-1.5 bg-gray-950 border-b border-gray-800 flex-shrink-0 gap-1.5" style={{ minHeight: 36 }}>
+            <div className="classroom-mobile-info flex items-center justify-between px-3 py-1.5 flex-shrink-0 gap-1.5" style={{ minHeight: 34, background: "#0B2B6B", borderBottom: "1px solid rgba(255,107,26,0.35)" }}>
               {/* Left: subject | LIVE */}
               <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                 <span className="text-[9px] text-gray-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
