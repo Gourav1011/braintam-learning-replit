@@ -471,7 +471,11 @@ export default function LiveClassroom() {
   // camera/mic/audio down with it, and vice versa. It starts as soon as we have a real
   // authenticated identity and a valid (non-demo) session id — never tied to `connected`.
   const hasValidSession = Boolean(sessionId) && sessionId !== "demo" && Number.isFinite(Number(sessionId));
-  const livekit = useLiveKit({ sessionId, enabled: hasValidSession && Boolean(userId) });
+  const livekit = useLiveKit({
+    sessionId,
+    enabled: hasValidSession && Boolean(userId),
+    playTeacherAudio: !isStaff,
+  });
 
   // Only show diagnostics when explicitly opted in — Replit preview is DEV but used by real testers
   const showDiagnostics = import.meta.env.DEV &&
@@ -1149,6 +1153,34 @@ export default function LiveClassroom() {
       setTimeout(() => { window.location.href = target; }, 3500);
     });
 
+    // ── Same account opened this live class on another device ──
+    socket.on("student:session-replaced", async (data: {
+      reason?: string;
+      message?: string;
+    }) => {
+      // Stop any local camera/microphone immediately.
+      // This also handles a student who was currently on stage.
+      try {
+        await livekit.setMic(false);
+      } catch { /* already stopped or disconnected */ }
+
+      try {
+        await livekit.setCamera(false);
+      } catch { /* already stopped or disconnected */ }
+
+      const target = isStaff ? "/teacher" : "/dashboard";
+
+      alert(
+        isStaff
+          ? "Live class opened on another device. This teacher session will now close."
+          : "Class opened on another device. This live class will now close on this device."
+      );
+
+      // Close only this classroom connection. Do not log the account out.
+      socket.disconnect();
+      window.location.href = target;
+    });
+
     // ── Pause / Resume class ──────────────────────────────────
     socket.on("class:paused",  () => { if (!isStaff) setClassPausedActive(true); });
     socket.on("class:resumed", () => { if (!isStaff) setClassPausedActive(false); });
@@ -1185,10 +1217,11 @@ export default function LiveClassroom() {
       socket.off("teacher:studentSuggested");
       socket.off("staffChat:message");
       socket.off("classroom:joined");
+      socket.off("student:session-replaced");
       socket.off("class:paused"); socket.off("class:resumed");
       socket.off("chat:muted"); socket.off("chat:unmuted");
     };
-  }, [socket, upsert]);
+  }, [socket, upsert, isStaff, livekit]);
 
   // ── Actions ────────────────────────────────────────────────
   const sendChat = () => {

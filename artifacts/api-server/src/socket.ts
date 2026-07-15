@@ -560,6 +560,11 @@ export function setupSocketIO(httpServer: HttpServer) {
     }
   }, 5000);
 
+  // One active live-class socket per student account.
+  // Key: sessionId:userId, Value: active Socket.IO socket ID.
+  // The newest student connection replaces the previous connection.
+  const activeStudentClassSockets = new Map<string, string>();
+
   io.on("connection", (socket) => {
     const ctx = (socket as any).ctx as {
       sessionId: string; userId: string; role: string;
@@ -568,6 +573,56 @@ export function setupSocketIO(httpServer: HttpServer) {
     const { sessionId, userId, role, groupId, name, phone } = ctx;
     const isStaff  = role === "teacher" || role === "admin";
     const isMentor = role === "mentor";
+    const isStudent = !isStaff && !isMentor;
+
+    // Restrict students and the assigned teacher to one active live-class
+    // connection. Mentors remain unrestricted.
+    const isSingleSessionRole = isStudent || role === "teacher";
+    const singleSessionKey = `${sessionId}:${role}:${userId}`;
+
+    // ── Single active live-class device ──────────────────────
+    // The newest connection wins. The previous device is informed and closed.
+    if (isSingleSessionRole) {
+      const previousSocketId = activeStudentClassSockets.get(singleSessionKey);
+
+      console.log("[single-session] connection check", {
+        sessionId,
+        userId,
+        role,
+        socketId: socket.id,
+        singleSessionKey,
+        previousSocketId: previousSocketId ?? "NONE",
+        activeMapSize: activeStudentClassSockets.size,
+      });
+
+      if (previousSocketId && previousSocketId !== socket.id) {
+        const previousSocket = io.sockets.sockets.get(previousSocketId);
+
+        if (previousSocket?.connected) {
+          console.log(
+            `[single-session] replacing previous live-class session ${singleSessionKey}`
+          );
+
+          previousSocket.emit("student:session-replaced", {
+            reason: "another_device_joined",
+            message: "Your class has been opened on another device.",
+          });
+
+          // Allow the replacement message to reach the old browser first.
+          setTimeout(() => {
+            if (previousSocket.connected) {
+              previousSocket.disconnect(true);
+            }
+          }, 1200);
+        }
+      }
+
+      activeStudentClassSockets.set(singleSessionKey, socket.id);
+
+      console.log(
+        `[single-session] active live-class socket updated ${singleSessionKey}`
+      );
+    }
 
     // ── Join rooms ────────────────────────────────────────────
     socket.join(globalRoom(sessionId));
@@ -1277,6 +1332,19 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     // ── Disconnect ────────────────────────────────────────────
     socket.on("disconnect", () => {
+      // Delete the active-session entry only when this disconnecting socket is
+      // still the newest active socket. An older replaced socket must never
+      // delete the newer device's entry.
+      if (
+        isSingleSessionRole &&
+        activeStudentClassSockets.get(singleSessionKey) === socket.id
+      ) {
+        activeStudentClassSockets.delete(singleSessionKey);
+        console.log(
+          `[single-session] active live-class socket removed ${singleSessionKey}`
+        );
+      }
+
       if (isStaff) {
         room.teacher = null;
         io.to(globalRoom(sessionId)).emit("teacher:left", { name, userId });

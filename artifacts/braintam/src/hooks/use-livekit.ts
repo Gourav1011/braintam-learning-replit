@@ -28,6 +28,7 @@ function apiFetch(path: string, opts?: RequestInit) {
 interface UseLiveKitOpts {
   sessionId: string;
   enabled: boolean;
+  playTeacherAudio?: boolean;
 }
 
 export type LiveKitConnectionState = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
@@ -45,7 +46,11 @@ export type LiveKitConnectionState = "idle" | "connecting" | "connected" | "reco
 // Module-level so it's stable across renders and accessible in cleanup closures.
 const TEACHER_AUDIO_ATTR = "data-teacher-audio";
 
-export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
+export function useLiveKit({
+  sessionId,
+  enabled,
+  playTeacherAudio = true,
+}: UseLiveKitOpts) {
   const roomRef = useRef<Room | null>(null);
   const teacherVideoRef = useRef<HTMLVideoElement>(null);
   // Tracks auto-created <audio> elements for non-teacher stage participants.
@@ -76,22 +81,56 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
   const TEACHER_AUDIO_ATTR = "data-teacher-audio";
 
   const attachTeacherTrack = useCallback((track: RemoteTrack) => {
-    if (track.kind === Track.Kind.Video && teacherVideoRef.current) {
+  if (track.kind === Track.Kind.Video) {
+    if (teacherVideoRef.current) {
       track.attach(teacherVideoRef.current);
       setTeacherVideoSubscribed(true);
-    } else if (track.kind === Track.Kind.Audio) {
-      // Use the same auto-create pattern as stage audio: track.attach() with no
-      // argument lets LiveKit create its own <audio> element and call .play() on it
-      // via the LiveKit SDK's internal autoplay handling — this bypasses the browser's
-      // autoplay block that silently mutes React-managed <audio autoPlay> elements.
-      // Remove any stale teacher audio element first (e.g. after track restart).
-      document.querySelector(`[${TEACHER_AUDIO_ATTR}]`)?.remove();
-      const audioEl = track.attach() as HTMLAudioElement;
-      audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
-      document.body.appendChild(audioEl);
-      setTeacherAudioSubscribed(true);
     }
-  }, []);
+    return;
+  }
+
+  if (track.kind === Track.Kind.Audio) {
+    console.log("[teacher-audio] received", {
+      sid: track.sid,
+      kind: track.kind,
+      source: track.source,
+      muted: track.isMuted,
+    });
+
+    let audioEl = document.querySelector(
+      `[${TEACHER_AUDIO_ATTR}]`
+    ) as HTMLAudioElement | null;
+
+    if (!audioEl) {
+      audioEl = document.createElement("audio");
+      audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
+      audioEl.autoplay = true;
+      audioEl.muted = false;
+      audioEl.volume = 1;
+      audioEl.style.display = "none";
+      document.body.appendChild(audioEl);
+
+      console.log("[teacher-audio] stable element created");
+    }
+
+    track.attach(audioEl);
+
+    audioEl.muted = false;
+    audioEl.volume = 1;
+
+    void audioEl.play()
+      .then(() => {
+        console.log("[teacher-audio] play succeeded");
+        setAudioBlocked(false);
+      })
+      .catch((err) => {
+        console.warn("[teacher-audio] play blocked", err);
+        setAudioBlocked(true);
+      });
+
+    setTeacherAudioSubscribed(true);
+  }
+}, []);
 
   const detachTeacherTrack = useCallback((track: RemoteTrack) => {
     if (track.kind === Track.Kind.Video) {
@@ -167,7 +206,13 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
           if (isTeacher) {
             setTeacherPresent(true);
-            attachTeacherTrack(track);
+
+            if (
+              track.kind === Track.Kind.Video ||
+              playTeacherAudio
+            ) {
+              attachTeacherTrack(track);
+            }
           } else if (track.kind === Track.Kind.Audio) {
             // Stage participant audio — auto-create a hidden <audio> element so
             // the teacher and all listeners can hear the on-stage student.
@@ -275,8 +320,17 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
           const isTeacher = isTeacherRole(safeParseRole(participant.metadata));
           if (isTeacher) {
             setTeacherPresent(true);
+
             participant.trackPublications.forEach((pub) => {
-              if (pub.track) attachTeacherTrack(pub.track);
+              if (
+                pub.track &&
+                (
+                  pub.track.kind === Track.Kind.Video ||
+                  playTeacherAudio
+                )
+              ) {
+                attachTeacherTrack(pub.track);
+              }
             });
           } else {
             // Seed stage publishers for non-teacher participants already streaming.
@@ -331,7 +385,13 @@ export function useLiveKit({ sessionId, enabled }: UseLiveKitOpts) {
       setTeacherVideoSubscribed(false);
       setTeacherAudioSubscribed(false);
     };
-  }, [enabled, sessionId, attachTeacherTrack, detachTeacherTrack]);
+  }, [
+    enabled,
+    sessionId,
+    playTeacherAudio,
+    attachTeacherTrack,
+    detachTeacherTrack,
+  ]);
 
   /**
    * Attach the LiveKit local camera track to a video element.

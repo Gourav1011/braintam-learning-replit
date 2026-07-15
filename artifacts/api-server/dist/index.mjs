@@ -109221,9 +109221,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-14-1136" : "dev",
-    commit: true ? "2eb766f" : "unknown",
-    buildTime: true ? "2026-07-14T11:36:10.454Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-15-0744" : "dev",
+    commit: true ? "1fde2d9" : "unknown",
+    buildTime: true ? "2026-07-15T07:44:37.427Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133191,11 +133191,48 @@ function setupSocketIO(httpServer2) {
       }
     }
   }, 5e3);
+  const activeStudentClassSockets = /* @__PURE__ */ new Map();
   io2.on("connection", (socket) => {
     const ctx = socket.ctx;
     const { sessionId, userId, role, groupId, name, phone } = ctx;
     const isStaff = role === "teacher" || role === "admin";
     const isMentor = role === "mentor";
+    const isStudent = !isStaff && !isMentor;
+    const isSingleSessionRole = isStudent || role === "teacher";
+    const singleSessionKey = `${sessionId}:${role}:${userId}`;
+    if (isSingleSessionRole) {
+      const previousSocketId = activeStudentClassSockets.get(singleSessionKey);
+      console.log("[single-session] connection check", {
+        sessionId,
+        userId,
+        role,
+        socketId: socket.id,
+        singleSessionKey,
+        previousSocketId: previousSocketId ?? "NONE",
+        activeMapSize: activeStudentClassSockets.size
+      });
+      if (previousSocketId && previousSocketId !== socket.id) {
+        const previousSocket = io2.sockets.sockets.get(previousSocketId);
+        if (previousSocket?.connected) {
+          console.log(
+            `[single-session] replacing previous live-class session ${singleSessionKey}`
+          );
+          previousSocket.emit("student:session-replaced", {
+            reason: "another_device_joined",
+            message: "Your class has been opened on another device."
+          });
+          setTimeout(() => {
+            if (previousSocket.connected) {
+              previousSocket.disconnect(true);
+            }
+          }, 1200);
+        }
+      }
+      activeStudentClassSockets.set(singleSessionKey, socket.id);
+      console.log(
+        `[single-session] active live-class socket updated ${singleSessionKey}`
+      );
+    }
     socket.join(globalRoom(sessionId));
     if (isStaff) {
       socket.join(teacherRoom(sessionId));
@@ -133767,6 +133804,12 @@ function setupSocketIO(httpServer2) {
       socket.emit("attendance:snapshot", { students: snap });
     });
     socket.on("disconnect", () => {
+      if (isSingleSessionRole && activeStudentClassSockets.get(singleSessionKey) === socket.id) {
+        activeStudentClassSockets.delete(singleSessionKey);
+        console.log(
+          `[single-session] active live-class socket removed ${singleSessionKey}`
+        );
+      }
       if (isStaff) {
         room.teacher = null;
         io2.to(globalRoom(sessionId)).emit("teacher:left", { name, userId });
