@@ -109221,9 +109221,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-15-0744" : "dev",
-    commit: true ? "1fde2d9" : "unknown",
-    buildTime: true ? "2026-07-15T07:44:37.427Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-15-0804" : "dev",
+    commit: true ? "4114a8b" : "unknown",
+    buildTime: true ? "2026-07-15T08:04:44.861Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -133353,7 +133353,10 @@ function setupSocketIO(httpServer2) {
       socket.to(globalRoom(sessionId)).emit("teacher:joined", { name, userId });
     }
     socket.on("heartbeat:ping", () => {
-      if (isStaff) return;
+      if (isStaff || isMentor) {
+        socket.emit("heartbeat:ack");
+        return;
+      }
       const now = /* @__PURE__ */ new Date();
       const cacheKey = `${sessionId}-${userId}`;
       const prev = liveStateCache.get(cacheKey);
@@ -133791,7 +133794,9 @@ function setupSocketIO(httpServer2) {
       io2.to(teacherRoom(sessionId)).emit("staffChat:message", msg);
     });
     socket.on("request:attendance", () => {
-      const snap = Array.from(liveStateCache.entries()).filter(([k]) => k.startsWith(`${sessionId}-`)).map(([, v]) => ({
+      const snap = Array.from(liveStateCache.entries()).filter(
+        ([k, v]) => k.startsWith(`${sessionId}-`) && v.role !== "teacher" && v.role !== "admin" && v.role !== "super_admin" && v.role !== "mentor"
+      ).map(([, v]) => ({
         userId: v.userId,
         name: v.name,
         phone: v.phone ?? null,

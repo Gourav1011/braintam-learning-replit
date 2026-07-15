@@ -782,9 +782,13 @@ export function setupSocketIO(httpServer: HttpServer) {
       socket.to(globalRoom(sessionId)).emit("teacher:joined", { name, userId });
     }
 
-    // ── Heartbeat (students & mentors, every 15s) ─────────────
+    // ── Heartbeat attendance (students only, every 15s) ──────
     socket.on("heartbeat:ping", () => {
-      if (isStaff) return;
+      // Teachers and mentors are viewers/staff, not student attendance records.
+      if (isStaff || isMentor) {
+        socket.emit("heartbeat:ack");
+        return;
+      }
       const now = new Date();
       const cacheKey = `${sessionId}-${userId}`;
       const prev = liveStateCache.get(cacheKey);
@@ -1317,7 +1321,14 @@ export function setupSocketIO(httpServer: HttpServer) {
     // we must map here or the client always sees every student as "ABSENT".
     socket.on("request:attendance", () => {
       const snap = Array.from(liveStateCache.entries())
-        .filter(([k]) => k.startsWith(`${sessionId}-`))
+        .filter(
+          ([k, v]) =>
+            k.startsWith(`${sessionId}-`) &&
+            v.role !== "teacher" &&
+            v.role !== "admin" &&
+            v.role !== "super_admin" &&
+            v.role !== "mentor"
+        )
         .map(([, v]) => ({
           userId: v.userId,
           name: v.name,
