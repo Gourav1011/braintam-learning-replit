@@ -1,11 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import {
-  liveClassesTable,
-  subjectsTable,
-  enrollmentsTable,
-  masteryStudentsTable,
-} from "@workspace/db";
+import { liveClassesTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
 import { eq, and, inArray, isNull, or } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
@@ -28,44 +23,14 @@ router.get("/live-classes", attachUser, async (req, res) => {
   // Teachers/Admins/Mentors: see all classes (no courseId filter)
   let studentFilter: ReturnType<typeof or> | undefined;
   if (user.role === "student") {
-    // A student may receive course access from either:
-    // 1. the normal enrollments table, or
-    // 2. the Mastery deployment record.
-    //
-    // The Learn page already recognises Mastery course assignments, so the
-    // Live Classes page must use the same access source.
-    const [enrolled, masteryRecord] = await Promise.all([
-      db
-        .select({ courseId: enrollmentsTable.courseId })
-        .from(enrollmentsTable)
-        .where(eq(enrollmentsTable.studentId, user.id)),
+    const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
+    const enrolledIds = enrolled.map(e => e.courseId);
 
-      db
-        .select({
-          assignedCourseId: masteryStudentsTable.assignedCourseId,
-        })
-        .from(masteryStudentsTable)
-        .where(eq(masteryStudentsTable.studentId, user.id))
-        .limit(1),
-    ]);
-
-    const enrolledIds = [
-      ...new Set([
-        ...enrolled.map(e => e.courseId),
-        ...masteryRecord
-          .map(m => m.assignedCourseId)
-          .filter((id): id is number => id != null),
-      ]),
-    ];
-
-    // Grade-level classes without a course remain visible.
+    // grade-level classes (courseId IS NULL) are visible to any student of that grade
     const gradeOpenFilter = isNull(liveClassesTable.courseId);
-
     studentFilter = enrolledIds.length > 0
-      ? or(
-          inArray(liveClassesTable.courseId, enrolledIds),
-          gradeOpenFilter
-        )
+      ? or(inArray(liveClassesTable.courseId, enrolledIds), gradeOpenFilter)
       : gradeOpenFilter;
   }
 
