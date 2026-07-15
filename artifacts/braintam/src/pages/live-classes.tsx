@@ -435,8 +435,13 @@ function AuthLiveClassesView() {
   }, []);
 
   const effectiveGrade = student?.effectiveGrade ?? student?.grade;
+
+  // Do not send the profile grade to the live-class API.
+  // The backend already restricts students to classes belonging to their
+  // enrolled courses. Course enrollment is the source of truth for Mastery.
+  // Sending grade here could hide a valid enrolled-course class when the
+  // student's profile grade is missing, stale, or different.
   const params = {
-    grade: effectiveGrade,
     subjectId: subject !== "all" ? Number(subject) : undefined,
   };
 
