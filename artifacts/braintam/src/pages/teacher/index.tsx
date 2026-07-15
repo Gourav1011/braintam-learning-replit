@@ -27,7 +27,24 @@ const ORANGE = "#FF6B1A";
 type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "assignments" | "notes" | "profile";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
-interface Session { id: number; topic: string; title: string; dayNumber: number; scheduledAt: string; status: string; duration: number; joinUrl: string | null; recordingUrl: string | null; batchId: number; batchTitle: string; batchGrade: number | null; batchSubject: string | null; grade: number; }
+interface Session {
+  id: number;
+  topic: string;
+  title: string;
+  dayNumber: number;
+  scheduledAt: string;
+  status: string;
+  duration: number;
+  startedAt: string | null;
+  endedAt: string | null;
+  slideUrl: string | null;
+  recordingUrl: string | null;
+  batchId: number;
+  batchTitle: string;
+  batchGrade: number | null;
+  batchSubject: string | null;
+  grade: number;
+}
 interface Homework { id: number; title: string; subjectId: number; subjectName: string; grade: number; courseId: number | null; liveClassId: number | null; chapterId: number | null; topicId: number | null; dueDate: string; maxMarks: number; description: string | null; questionsJson: string | null; homeworkType: string | null; driveLink: string | null; }
 interface Assignment { id: number; title: string; subjectName: string; grade: number; dueDate: string; description: string | null; maxMarks: number; attachmentUrl: string | null; }
 interface HwSubmission { id: number; homeworkId: number; homeworkTitle: string; homeworkType: string; maxMarks: number; questionsJson: string | null; studentId: number; studentName: string; answer: string; status: string; marks: number | null; feedback: string | null; submittedAt: string; }
@@ -83,8 +100,16 @@ export default function TeacherPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [liveClasses, setLiveClasses] = useState<Session[]>([]);
   const [editSession, setEditSession] = useState<Session | null>(null);
-  const [editForm, setEditForm] = useState({ topic: "", joinUrl: "", recordingUrl: "" });
+  const [editForm, setEditForm] = useState({
+    topic: "",
+    scheduledAt: "",
+    duration: "60",
+    slideUrl: "",
+    recordingUrl: "",
+  });
   const [editBusy, setEditBusy] = useState(false);
+  const [editSlideUploading, setEditSlideUploading] = useState(false);
+  const editSlideFileRef = useRef<HTMLInputElement>(null);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [hwSubmissions, setHwSubmissions] = useState<HwSubmission[]>([]);
@@ -151,7 +176,18 @@ export default function TeacherPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lcFilter, setLcFilter] = useState<"all" | "upcoming" | "live" | "completed">("all");
   const [showCreateSession, setShowCreateSession] = useState(false);
-  const [batches, setBatches] = useState<{ id: number; title: string; grade: number | null; subject: string | null }[]>([]);
+  const [batches, setBatches] = useState<{
+    id: number;
+    title: string;
+    grade: number | null;
+    subject: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    status: string;
+    isActive: boolean;
+    weekNumber: number | null;
+    academicYear: string | null;
+  }[]>([]);
   const [createSessionForm, setCreateSessionForm] = useState({ batchId: "", title: "", scheduledAt: "", duration: "60", joinUrl: "" });
   const [createSessionBusy, setCreateSessionBusy] = useState(false);
 
@@ -159,7 +195,7 @@ export default function TeacherPage() {
   interface MasteryLiveClass { id: number; title: string; subjectId: number; grade: number; courseId: number | null; courseSubjectId: number | null; chapterId: number | null; topicId: number | null; scheduledAt: string; duration: number; status: string; }
   const [masteryLiveClasses, setMasteryLiveClasses] = useState<MasteryLiveClass[]>([]);
   const [showMasteryLcForm, setShowMasteryLcForm] = useState(false);
-  const [masteryLcForm, setMasteryLcForm] = useState({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60", slideUrl: "" });
+  const [masteryLcForm, setMasteryLcForm] = useState({ batchId: "", title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60", slideUrl: "" });
   const [masteryLcSlideUploading, setMasteryLcSlideUploading] = useState(false);
   const masteryLcFileRef = useRef<HTMLInputElement>(null);
   const [masteryLcCourseSubjects, setMasteryLcCourseSubjects] = useState<{ id: number; name: string }[]>([]);
@@ -234,7 +270,19 @@ export default function TeacherPage() {
   }
 
   function selectMasteryLcCourse(courseId: string) {
-    setMasteryLcForm(p => ({ ...p, courseId, courseSubjectId: "", chapterId: "", topicId: "" }));
+    setMasteryLcForm(p => ({
+      ...p,
+
+      // The selected Ignite course is the batch shown to the teacher.
+      // Keep its ID internally so the class appears in that batch.
+      courseId,
+      batchId: courseId,
+
+      courseSubjectId: "",
+      chapterId: "",
+      topicId: "",
+    }));
+
     void loadMasteryLcCourseSubjects(courseId);
     void loadMasteryLcChapters(courseId);
   }
@@ -245,7 +293,7 @@ export default function TeacherPage() {
       const fd = new FormData();
       fd.append("file", file);
       const token = localStorage.getItem("braintam_staff_token");
-      const r = await fetch(`${BASE}/slides/upload`, {
+      const r = await fetch(`${BASE}/api/slides/upload`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
@@ -264,8 +312,8 @@ export default function TeacherPage() {
   }
 
   async function createMasteryLiveClass() {
-    if (!masteryLcForm.title.trim() || !masteryLcForm.courseId || !masteryLcForm.scheduledAt) {
-      flash("Title, course and date/time are required", false);
+    if (!masteryLcForm.batchId || !masteryLcForm.title.trim() || !masteryLcForm.courseId || !masteryLcForm.scheduledAt) {
+      flash("Batch name, class title and date/time are required", false);
       return;
     }
     setMasteryLcBusy(true);
@@ -273,6 +321,7 @@ export default function TeacherPage() {
       method: "POST",
       body: JSON.stringify({
         title: masteryLcForm.title,
+        batchId: Number(masteryLcForm.batchId),
         courseId: Number(masteryLcForm.courseId),
         courseSubjectId: masteryLcForm.courseSubjectId ? Number(masteryLcForm.courseSubjectId) : null,
         chapterId: masteryLcForm.chapterId ? Number(masteryLcForm.chapterId) : null,
@@ -285,7 +334,7 @@ export default function TeacherPage() {
     if (r.ok) {
       flash("Live class scheduled!");
       setShowMasteryLcForm(false);
-      setMasteryLcForm({ title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60", slideUrl: "" });
+      setMasteryLcForm({ batchId: "", title: "", courseId: "", courseSubjectId: "", chapterId: "", topicId: "", scheduledAt: "", duration: "60", slideUrl: "" });
       setMasteryLcCourseSubjects([]); setMasteryLcChapters([]); setMasteryLcTopics([]);
       await loadMasteryLiveClasses();
     } else {
@@ -464,6 +513,33 @@ export default function TeacherPage() {
     if (r.ok) setBatches(await r.json());
   }
 
+  // Only assigned Ignite batches active on today's date are shown
+  // in the temporary teacher scheduler.
+  const currentIgniteBatches = batches.filter(batch => {
+    if (!batch.isActive) return false;
+
+    const now = new Date();
+    const start = batch.startDate
+      ? new Date(batch.startDate)
+      : null;
+    const end = batch.endDate
+      ? new Date(batch.endDate)
+      : null;
+
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+
+    const status = String(
+      batch.status ?? ""
+    ).toLowerCase();
+
+    return ![
+      "completed",
+      "cancelled",
+      "archived"
+    ].includes(status);
+  });
+
   async function createSession() {
     if (!createSessionForm.batchId || !createSessionForm.title || !createSessionForm.scheduledAt) return;
     setCreateSessionBusy(true);
@@ -496,12 +572,58 @@ export default function TeacherPage() {
     else flash("Failed to update status", false);
   }
 
+  async function uploadEditSessionSlide(file: File) {
+    if (file.type !== "application/pdf") {
+      flash("Please select a PDF file", false);
+      return;
+    }
+
+    setEditSlideUploading(true);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const token = localStorage.getItem("braintam_staff_token");
+
+      const r = await fetch(`${BASE}/api/slides/upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+
+      if (r.ok) {
+        const d = await r.json();
+
+        setEditForm(prev => ({
+          ...prev,
+          slideUrl: d.fileUrl,
+        }));
+
+        flash("PDF uploaded!");
+      } else {
+        const d = await r.json().catch(() => ({}));
+        flash(d.error ?? "Failed to upload PDF", false);
+      }
+    } catch {
+      flash("PDF upload error", false);
+    } finally {
+      setEditSlideUploading(false);
+    }
+  }
+
   async function saveSessionEdit() {
     if (!editSession) return;
     setEditBusy(true);
     const r = await apiFetch(`/teacher/sessions/${editSession.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ title: editForm.topic, joinUrl: editForm.joinUrl, recordingUrl: editForm.recordingUrl }),
+      body: JSON.stringify({
+        title: editForm.topic,
+        scheduledAt: new Date(editForm.scheduledAt + ":00+05:30").toISOString(),
+        duration: Number(editForm.duration) || 60,
+        slideUrl: editForm.slideUrl || null,
+        recordingUrl: editForm.recordingUrl || null,
+      }),
     });
     if (r.ok) { flash("Session updated!"); setEditSession(null); loadAll(); }
     else flash("Failed to save", false);
@@ -1218,30 +1340,343 @@ export default function TeacherPage() {
             {/* Edit session modal */}
             {editSession && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-base" style={{ color: NAVY }}>Edit Session</h3>
-                    <button onClick={() => setEditSession(null)}><X className="w-5 h-5 text-gray-400" /></button>
-                  </div>
-                  <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
-                    <span className="font-semibold">{editSession.batchTitle}</span> · Day {editSession.dayNumber} · Grade {editSession.batchGrade}
-                  </div>
-                  <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Topic</label>
-                      <Input value={editForm.topic} onChange={e => setEditForm(p => ({ ...p, topic: e.target.value }))} placeholder="Session topic / title" />
+                      <h3 className="font-bold text-base" style={{ color: NAVY }}>
+                        {editSession.status === "completed"
+                          ? "Class Details"
+                          : "Edit Session"}
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {editSession.status === "completed"
+                          ? "View completed class details and add the recording link"
+                          : "Update the class details and learning material"}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2">🎥 This class runs in an in-app live room — no external meeting link needed.</p>
+
+                    <button
+                      onClick={() => setEditSession(null)}
+                      className="p-1.5 rounded-lg hover:bg-gray-100"
+                      aria-label="Close"
+                    >
+                      <X className="w-5 h-5 text-gray-400" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2.5">
+                    <span className="font-semibold" style={{ color: NAVY }}>
+                      {editSession.batchTitle}
+                    </span>
+                    {" · "}Day {editSession.dayNumber}
+                    {" · "}Grade {editSession.batchGrade ?? editSession.grade}
+                    {editSession.batchSubject
+                      ? ` · ${editSession.batchSubject}`
+                      : ""}
+                  </div>
+
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">🎬 Recording Link (optional)</label>
-                      <Input value={editForm.recordingUrl} onChange={e => setEditForm(p => ({ ...p, recordingUrl: e.target.value }))} placeholder="https://..." />
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                        Class Title *
+                      </label>
+
+                      {editSession.status === "completed" ? (
+                        <div className="min-h-10 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5 text-sm font-medium text-gray-700">
+                          {editForm.topic}
+                        </div>
+                      ) : (
+                        <Input
+                          value={editForm.topic}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              topic: e.target.value,
+                            }))
+                          }
+                          placeholder="e.g. Fractions — Introduction"
+                        />
+                      )}
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                          Date & Time *
+                        </label>
+
+                        <Input
+                          type="datetime-local"
+                          value={editForm.scheduledAt}
+                          disabled={editSession.status === "completed"}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              scheduledAt: e.target.value,
+                            }))
+                          }
+                          className={
+                            editSession.status === "completed"
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : ""
+                          }
+                        />
+
+                        {editSession.status === "completed" && (
+                          <p className="text-[10px] text-amber-600 mt-1">
+                            🔒 The schedule of a completed class cannot be changed.
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                          Planned Duration
+                        </label>
+
+                        <select
+                          value={editForm.duration}
+                          disabled={editSession.status === "completed"}
+                          onChange={e =>
+                            setEditForm(prev => ({
+                              ...prev,
+                              duration: e.target.value,
+                            }))
+                          }
+                          className={`w-full h-10 rounded-md border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 ${
+                            editSession.status === "completed"
+                              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "bg-white"
+                          }`}
+                        >
+                          <option value="30">30 minutes</option>
+                          <option value="45">45 minutes</option>
+                          <option value="60">60 minutes</option>
+                          <option value="75">75 minutes</option>
+                          <option value="90">90 minutes</option>
+                          <option value="120">120 minutes</option>
+                        </select>
+
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          The class continues until the teacher ends it.
+                        </p>
+                      </div>
+                    </div>
+
+                    {editSession.status === "completed" && (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                        <p className="text-[11px] font-semibold text-blue-600">
+                          Actual Class Duration
+                        </p>
+
+                        <p className="mt-1 text-base font-bold" style={{ color: NAVY }}>
+                          {editSession.startedAt && editSession.endedAt
+                            ? (() => {
+                                const start = new Date(editSession.startedAt).getTime();
+                                const end = new Date(editSession.endedAt).getTime();
+                                const totalMinutes = Math.max(
+                                  0,
+                                  Math.round((end - start) / 60000)
+                                );
+
+                                const hours = Math.floor(totalMinutes / 60);
+                                const minutes = totalMinutes % 60;
+
+                                if (hours > 0 && minutes > 0) {
+                                  return `${hours} hr ${minutes} min`;
+                                }
+
+                                if (hours > 0) {
+                                  return `${hours} hr`;
+                                }
+
+                                return `${totalMinutes} min`;
+                              })()
+                            : "Not recorded"}
+                        </p>
+
+                        <p className="mt-0.5 text-[10px] text-blue-500">
+                          Calculated automatically from the actual class start and end time.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="border border-dashed border-gray-200 rounded-xl p-3 space-y-2">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-600">
+                          Pre-upload Slides (optional)
+                        </p>
+
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Students will see this PDF automatically in the classroom.
+                        </p>
+                      </div>
+
+                      <input
+                        ref={editSlideFileRef}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+
+                          if (file) {
+                            void uploadEditSessionSlide(file);
+                          }
+
+                          e.target.value = "";
+                        }}
+                      />
+
+                      {editSession.status === "completed" ? (
+                        editForm.slideUrl ? (
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-blue-700">
+                                📄 Class PDF available
+                              </p>
+                              <p className="text-[10px] text-blue-600 truncate max-w-[250px]">
+                                {editForm.slideUrl.split("/").pop()}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={editForm.slideUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="h-8 inline-flex items-center rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                              >
+                                View PDF
+                              </a>
+
+                              <a
+                                href={editForm.slideUrl}
+                                download
+                                className="h-8 inline-flex items-center rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                              >
+                                Download
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-3">
+                            <p className="text-xs text-gray-400">
+                              No PDF was uploaded for this class.
+                            </p>
+                          </div>
+                        )
+                      ) : editForm.slideUrl ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-green-50 border border-green-100 px-3 py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-green-700">
+                              ✓ PDF uploaded
+                            </p>
+
+                            <p className="text-[10px] text-green-600 truncate max-w-[260px]">
+                              {editForm.slideUrl.split("/").pop()}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={editSlideUploading}
+                              onClick={() => editSlideFileRef.current?.click()}
+                              className="h-8 text-xs bg-white"
+                            >
+                              {editSlideUploading ? "Uploading…" : "Replace"}
+                            </Button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  slideUrl: "",
+                                }))
+                              }
+                              className="text-xs font-semibold text-red-500 hover:text-red-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={editSlideUploading}
+                          onClick={() => editSlideFileRef.current?.click()}
+                          className="h-9 text-xs"
+                        >
+                          {editSlideUploading
+                            ? "Uploading PDF…"
+                            : "📎 Upload PDF"}
+                        </Button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                        🎬 Recording Link (optional)
+                      </label>
+
+                      <Input
+                        value={editForm.recordingUrl}
+                        onChange={e =>
+                          setEditForm(prev => ({
+                            ...prev,
+                            recordingUrl: e.target.value,
+                          }))
+                        }
+                        placeholder="Paste the recording URL after the class"
+                      />
+                    </div>
+
+                    <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-blue-700">
+                        🧠 Braintam Live Classroom
+                      </p>
+
+                      <p className="text-[10px] text-blue-600 mt-0.5">
+                        This session uses Braintam's in-app LiveKit classroom.
+                        No external meeting link is required.
+                      </p>
                     </div>
                   </div>
+
                   <div className="flex gap-2 pt-1">
-                    <Button size="sm" onClick={saveSessionEdit} disabled={editBusy} className="text-white flex-1" style={{ background: NAVY }}>
-                      {editBusy ? "Saving…" : "Save Changes"}
+                    <Button
+                      size="sm"
+                      onClick={saveSessionEdit}
+                      disabled={
+                        editBusy ||
+                        editSlideUploading ||
+                        !editForm.topic.trim() ||
+                        !editForm.scheduledAt
+                      }
+                      className="text-white flex-1"
+                      style={{ background: NAVY }}
+                    >
+                      {editBusy
+                        ? "Saving…"
+                        : editSession.status === "completed"
+                          ? "Save Recording Link"
+                          : "Save Changes"}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditSession(null)}>Cancel</Button>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditSession(null)}
+                      disabled={editBusy}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1264,15 +1699,15 @@ export default function TeacherPage() {
               {showMasteryLcForm && (
                 <div className="mt-3 border-t border-gray-100 pt-3 space-y-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Course *</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Batch Name *</label>
                     <Select value={masteryLcForm.courseId || "__none__"} onValueChange={v => selectMasteryLcCourse(v === "__none__" ? "" : v)}>
-                      <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select your assigned course…" /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select your assigned batch…" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Select course</SelectItem>
+                        <SelectItem value="__none__">Select batch</SelectItem>
                         {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.title} · {c.subjectName} · Grade {c.grade}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {courses.length === 0 && <p className="text-xs text-amber-600 mt-1">No courses assigned to you yet — ask your admin.</p>}
+                    {courses.length === 0 && <p className="text-xs text-amber-600 mt-1">No Ignite batch is assigned to you yet — ask your admin.</p>}
                   </div>
                   {masteryLcForm.courseId && (
                     <div className="flex flex-wrap gap-1.5">
@@ -1339,7 +1774,7 @@ export default function TeacherPage() {
                   </div>
                   <p className="text-xs text-gray-400">A live class room is created automatically — no meeting link needed.</p>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={createMasteryLiveClass} disabled={masteryLcBusy || !masteryLcForm.title || !masteryLcForm.courseId || !masteryLcForm.scheduledAt}
+                    <Button size="sm" onClick={createMasteryLiveClass} disabled={masteryLcBusy || !masteryLcForm.batchId || !masteryLcForm.title || !masteryLcForm.courseId || !masteryLcForm.scheduledAt}
                       className="text-white" style={{ background: "#7C3AED" }}>{masteryLcBusy ? "Scheduling…" : "Schedule"}</Button>
                     <Button size="sm" variant="ghost" onClick={() => setShowMasteryLcForm(false)}>Cancel</Button>
                   </div>
@@ -1513,7 +1948,18 @@ export default function TeacherPage() {
                       <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
                         {isScheduled && (
                           <>
-                            <button onClick={() => { setEditSession(s); setEditForm({ topic: s.topic, joinUrl: s.joinUrl ?? "", recordingUrl: s.recordingUrl ?? "" }); }}
+                            <button onClick={() => { setEditSession(s); setEditForm({
+                                topic: s.topic,
+                                scheduledAt: (() => {
+                                  const d = new Date(s.scheduledAt);
+                                  const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+                                  const pad = (n: number) => String(n).padStart(2, "0");
+                                  return `${ist.getUTCFullYear()}-${pad(ist.getUTCMonth() + 1)}-${pad(ist.getUTCDate())}T${pad(ist.getUTCHours())}:${pad(ist.getUTCMinutes())}`;
+                                })(),
+                                duration: String(s.duration ?? 60),
+                                slideUrl: s.slideUrl ?? "",
+                                recordingUrl: s.recordingUrl ?? "",
+                              }); }}
                               className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 flex items-center gap-1">
                               <Pencil className="w-3 h-3" /> Edit
                             </button>
@@ -1525,7 +1971,7 @@ export default function TeacherPage() {
                         )}
                         {isLive && (
                           <>
-                            <a href={`/live/${s.id}?role=teacher${s.joinUrl ? `&meetLink=${encodeURIComponent(s.joinUrl)}` : ""}`}
+                            <a href={`/live/${s.id}?role=teacher&type=ignite`}
                               className="text-xs px-3 py-1.5 rounded-xl text-white font-semibold flex items-center gap-1" style={{ background: NAVY }}>
                               <Monitor className="w-3 h-3" /> Enter Classroom
                             </a>
@@ -1543,7 +1989,18 @@ export default function TeacherPage() {
                                 <Play className="w-3 h-3" /> Recording
                               </a>
                             )}
-                            <button onClick={() => { setEditSession(s); setEditForm({ topic: s.topic, joinUrl: s.joinUrl ?? "", recordingUrl: s.recordingUrl ?? "" }); }}
+                            <button onClick={() => { setEditSession(s); setEditForm({
+                                topic: s.topic,
+                                scheduledAt: (() => {
+                                  const d = new Date(s.scheduledAt);
+                                  const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+                                  const pad = (n: number) => String(n).padStart(2, "0");
+                                  return `${ist.getUTCFullYear()}-${pad(ist.getUTCMonth() + 1)}-${pad(ist.getUTCDate())}T${pad(ist.getUTCHours())}:${pad(ist.getUTCMinutes())}`;
+                                })(),
+                                duration: String(s.duration ?? 60),
+                                slideUrl: s.slideUrl ?? "",
+                                recordingUrl: s.recordingUrl ?? "",
+                              }); }}
                               className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-500 flex items-center gap-1">
                               <Pencil className="w-3 h-3" /> Edit
                             </button>

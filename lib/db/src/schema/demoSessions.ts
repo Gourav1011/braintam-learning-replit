@@ -14,11 +14,23 @@ export const demoSessionsTable = pgTable("demo_sessions", {
   scheduledAt: timestamp("scheduled_at").notNull(),
   duration: integer("duration").notNull().default(60),
   joinUrl: text("join_url"),
+
+  // PDF/presentation uploaded for this auto-generated Ignite session.
+  // The classroom loads this file automatically for teacher and students.
+  slideUrl: text("slide_url"),
+
   recordingUrl: text("recording_url"),
   homeworkText: text("homework_text"),
   homeworkLink: text("homework_link"),
   bannerUrl: text("banner_url"),
   status: text("status").notNull().default("scheduled"),
+
+  // Actual classroom timing.
+  // startedAt is saved when the teacher starts the class.
+  // endedAt is saved when the teacher ends the class.
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+
   isPublished: boolean("is_published").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

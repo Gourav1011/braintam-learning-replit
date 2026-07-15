@@ -156,7 +156,7 @@ router.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
 router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser!.id;
   const isAdmin = req.authUser!.role === "admin" || req.authUser!.role === "super_admin";
-  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration, slideUrl } = req.body;
+  const { title, subjectId, grade, courseId, batchId, courseSubjectId, chapterId, topicId, scheduledAt, duration, slideUrl } = req.body;
   if (!title || !scheduledAt) {
     res.status(400).json({ error: "title and scheduledAt are required" });
     return;
@@ -195,6 +195,12 @@ router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const [lc] = await db.insert(liveClassesTable).values({
     title, subjectId: resolvedSubjectId, grade: resolvedGrade,
     courseId: courseId ? Number(courseId) : null,
+
+    // Optional Ignite batch relationship.
+    // This keeps the existing working LiveKit course class while
+    // also linking it to the selected Ignite batch.
+    batchId: batchId ? Number(batchId) : null,
+
     courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null,
     chapterId: chapterId ? Number(chapterId) : null,
     topicId: topicId ? Number(topicId) : null,
@@ -789,7 +795,18 @@ router.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
   const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
   if (isAdmin) {
     const batches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
-    res.json(batches.map(b => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
+    res.json(batches.map(b => ({
+      id: b.id,
+      title: b.title,
+      grade: b.grade,
+      subject: b.subject,
+      startDate: b.startDate?.toISOString() ?? null,
+      endDate: b.endDate?.toISOString() ?? null,
+      status: b.status,
+      isActive: b.isActive,
+      weekNumber: b.weekNumber,
+      academicYear: b.academicYear,
+    })));
     return;
   }
   // Find batches where teacher is assigned via session.teacher_id (primary)
@@ -809,7 +826,18 @@ router.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
         : eq(demoBatchesTable.teacherId, teacher.id)
     )
     .orderBy(desc(demoBatchesTable.id));
-  res.json(batches.map(b => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
+  res.json(batches.map(b => ({
+      id: b.id,
+      title: b.title,
+      grade: b.grade,
+      subject: b.subject,
+      startDate: b.startDate?.toISOString() ?? null,
+      endDate: b.endDate?.toISOString() ?? null,
+      status: b.status,
+      isActive: b.isActive,
+      weekNumber: b.weekNumber,
+      academicYear: b.academicYear,
+    })));
 });
 
 // ── Create standalone session ─────────────────────────────────────
@@ -830,6 +858,12 @@ router.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
     joinUrl: joinUrl || null,
     dayNumber: nextDay,
     status: "scheduled",
+
+    // Store the teacher directly on every newly created Ignite session.
+    // Without these fields, the class appears in the batch but LiveKit
+    // cannot reliably identify and authorize the assigned teacher.
+    teacherId: req.authUser!.id,
+    teacherName: req.authUser!.name,
   }).returning();
   res.json({ ok: true, session });
 });
@@ -873,7 +907,9 @@ router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
       scheduledAt: s.scheduledAt.toISOString(),
       duration: s.duration,
       status: s.status,
-      joinUrl: s.joinUrl ?? null,
+      startedAt: s.startedAt?.toISOString() ?? null,
+      endedAt: s.endedAt?.toISOString() ?? null,
+      slideUrl: s.slideUrl ?? null,
       recordingUrl: s.recordingUrl ?? null,
       batchId: s.batchId,
       batchTitle: batch?.title ?? "",
@@ -886,34 +922,153 @@ router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
   }));
 });
 
-// ── Edit session (topic / meet link / recording) ───────────────────
+// ── Edit Ignite session ────────────────────────────────────────────
 router.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
-  if (isNaN(id)) { res.status(400).json({ error: "invalid id" }); return; }
-  const { title, joinUrl, recordingUrl } = req.body;
-  const [updated] = await db.update(demoSessionsTable)
-    .set({
-      ...(title !== undefined ? { title } : {}),
-      ...(joinUrl !== undefined ? { joinUrl: joinUrl || null } : {}),
-      ...(recordingUrl !== undefined ? { recordingUrl: recordingUrl || null } : {}),
-    })
+
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid session ID" });
+    return;
+  }
+
+  const {
+    title,
+    scheduledAt,
+    duration,
+    slideUrl,
+    recordingUrl,
+  } = req.body;
+
+  const changes: Record<string, unknown> = {};
+
+  if (title !== undefined) {
+    const cleanTitle = String(title).trim();
+
+    if (!cleanTitle) {
+      res.status(400).json({ error: "Class title is required" });
+      return;
+    }
+
+    changes.title = cleanTitle;
+  }
+
+  if (scheduledAt !== undefined) {
+    const parsedDate = new Date(scheduledAt);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      res.status(400).json({ error: "Invalid class date or time" });
+      return;
+    }
+
+    changes.scheduledAt = parsedDate;
+  }
+
+  if (duration !== undefined) {
+    const parsedDuration = Number(duration);
+
+    if (
+      !Number.isInteger(parsedDuration) ||
+      parsedDuration < 15 ||
+      parsedDuration > 480
+    ) {
+      res.status(400).json({
+        error: "Duration must be between 15 and 480 minutes",
+      });
+      return;
+    }
+
+    changes.duration = parsedDuration;
+  }
+
+  if (slideUrl !== undefined) {
+    changes.slideUrl = slideUrl ? String(slideUrl) : null;
+  }
+
+  if (recordingUrl !== undefined) {
+    changes.recordingUrl = recordingUrl
+      ? String(recordingUrl).trim()
+      : null;
+  }
+
+  const [updated] = await db
+    .update(demoSessionsTable)
+    .set(changes)
     .where(eq(demoSessionsTable.id, id))
     .returning();
-  if (!updated) { res.status(404).json({ error: "Session not found" }); return; }
+
+  if (!updated) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
   res.json({ ok: true, session: updated });
 });
 
-// ── Session status (scheduled → live → completed) ─────────────────
+// ── Session status and actual classroom timing ────────────────────
 router.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { status } = req.body;
-  if (isNaN(id) || !status) { res.status(400).json({ error: "status required" }); return; }
-  const [updated] = await db.update(demoSessionsTable)
-    .set({ status })
+
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid session ID" });
+    return;
+  }
+
+  if (!["scheduled", "live", "completed"].includes(status)) {
+    res.status(400).json({ error: "Invalid session status" });
+    return;
+  }
+
+  const [current] = await db
+    .select()
+    .from(demoSessionsTable)
+    .where(eq(demoSessionsTable.id, id))
+    .limit(1);
+
+  if (!current) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  const now = new Date();
+  const changes: Record<string, unknown> = { status };
+
+  if (status === "live") {
+    // Save the original start time only once.
+    if (!current.startedAt) {
+      changes.startedAt = now;
+    }
+
+    // Clear an old end time only when a class is intentionally restarted.
+    if (current.status === "completed") {
+      changes.endedAt = null;
+    }
+  }
+
+  if (status === "completed") {
+    // If start time was missed, use now so the record remains valid.
+    if (!current.startedAt) {
+      changes.startedAt = now;
+    }
+
+    // Save end time only once.
+    if (!current.endedAt) {
+      changes.endedAt = now;
+    }
+  }
+
+  const [updated] = await db
+    .update(demoSessionsTable)
+    .set(changes)
     .where(eq(demoSessionsTable.id, id))
     .returning();
-  if (!updated) { res.status(404).json({ error: "Session not found" }); return; }
-  res.json({ ok: true, status: updated.status });
+
+  res.json({
+    ok: true,
+    status: updated.status,
+    startedAt: updated.startedAt?.toISOString() ?? null,
+    endedAt: updated.endedAt?.toISOString() ?? null,
+  });
 });
 
 export default router;
