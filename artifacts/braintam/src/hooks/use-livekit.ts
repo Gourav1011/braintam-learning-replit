@@ -216,14 +216,22 @@ export function useLiveKit({
               track.kind === Track.Kind.Video ||
               playTeacherAudio
             ) {
-              attachTeacherTrack(track);
+              console.log("[LiveKit] Teacher audio attached");
+        attachTeacherTrack(track);
             }
           } else if (track.kind === Track.Kind.Audio) {
             // Stage participant audio — auto-create a hidden <audio> element so
             // the teacher and all listeners can hear the on-stage student.
             // LiveKit never delivers a participant's own tracks back to them,
             // so there is no self-echo risk from this code path.
+            console.log("[LiveKit] Stage audio attached", participant.identity);
+
             const audioEl = track.attach() as HTMLAudioElement;
+            audioEl.autoplay = true;
+
+            void audioEl.play().catch(err=>{
+              console.warn("[LiveKit] Stage autoplay blocked",err);
+            });
             audioEl.setAttribute("data-stage-audio", participant.identity);
             document.body.appendChild(audioEl);
             stageAudioEls.current.set(participant.identity, audioEl);
@@ -451,7 +459,60 @@ export function useLiveKit({
     }
   }, []);
 
+  // Automatically recover when headset/microphone/speaker changes.
+  useEffect(() => {
+    if (!navigator.mediaDevices?.addEventListener) return;
+
+    const onDeviceChange = async () => {
+      const room = roomRef.current;
+      if (!room) return;
+
+      try {
+        console.log("[LiveKit] Audio device changed, refreshing microphone...");
+
+        if (room.localParticipant.isMicrophoneEnabled) {
+          await room.localParticipant.setMicrophoneEnabled(false);
+
+          setTimeout(async () => {
+            try {
+              await room.localParticipant.setMicrophoneEnabled(true);
+              console.log("[LiveKit] Microphone recovered.");
+            } catch (e) {
+              console.error(e);
+            }
+          }, 400);
+        }
+
+        await room.startAudio();
+      } catch (e) {
+        console.error("[LiveKit] Device recovery failed", e);
+      }
+    };
+
+    navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange);
+    };
+  }, []);
+
+  const media = {
+    micEnabled: micPublishing,
+    cameraEnabled: cameraPublishing,
+    publishingAudio: micPublishing,
+    publishingVideo: cameraPublishing,
+    connected,
+    connectionState,
+  };
+
+  const isReady =
+    connected &&
+    connectionState === "connected";
+
   return {
+    media,
+    isReady,
+
     connected,
     connectionState,
     cameraPublishing,
