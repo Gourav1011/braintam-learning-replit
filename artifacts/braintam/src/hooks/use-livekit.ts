@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  attachLocalCamera,
+  setCameraEnabled,
+  setMicrophoneEnabled,
+  resumeAudio,
+} from "./livekit/local-media";
+
+import {
   Room,
   RoomEvent,
   Track,
@@ -410,51 +417,67 @@ export function useLiveKit({
    * without a separate getUserMedia stream competing for the camera device.
    */
   const attachLocalCameraTo = useCallback((el: HTMLVideoElement | null) => {
-    const room = roomRef.current;
-    if (!el || !room) return;
-    const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
-    if (pub?.track) pub.track.attach(el);
-  }, []);
+  const room = roomRef.current;
+  if (!room) return;
+  attachLocalCamera(room, el);
+}, []);
 
   /** Enable/disable local camera publish. Server enforces whether this is actually allowed. */
   const setCamera = useCallback(async (on: boolean) => {
-    const room = roomRef.current;
-    if (!room) return;
-    setCameraError(null);
-    try {
-      await room.localParticipant.setCameraEnabled(on);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Camera permission was denied.";
-      setCameraError(message);
-      setError(message);
-    }
-  }, []);
+  const room = roomRef.current;
+  if (!room) return;
+
+  setCameraError(null);
+
+  try {
+    await setCameraEnabled(room, on);
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Camera permission was denied.";
+
+    setCameraError(message);
+    setError(message);
+  }
+}, []);
 
   /** Enable/disable local microphone publish. Server enforces whether this is actually allowed. */
   const setMic = useCallback(async (on: boolean) => {
-    const room = roomRef.current;
-    if (!room) return;
-    setMicrophoneError(null);
-    try {
-      await room.localParticipant.setMicrophoneEnabled(on);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Microphone permission was denied.";
-      setMicrophoneError(message);
-      setError(message);
-    }
-  }, []);
+  const room = roomRef.current;
+  if (!room) return;
+
+  setMicrophoneError(null);
+
+  try {
+    await setMicrophoneEnabled(room, on);
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Microphone permission was denied.";
+
+    setMicrophoneError(message);
+    setError(message);
+  }
+}, []);
 
   /** Unlocks browser-blocked autoplay audio for all subscribed remote audio tracks. */
   const startAudio = useCallback(async () => {
-    const room = roomRef.current;
-    if (!room) return;
-    try {
-      await room.startAudio();
-      setAudioBlocked(!room.canPlaybackAudio);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Class audio was blocked by the browser.");
-    }
-  }, []);
+  const room = roomRef.current;
+  if (!room) return;
+
+  try {
+    await resumeAudio(room);
+    setAudioBlocked(!room.canPlaybackAudio);
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Class audio was blocked by the browser."
+    );
+  }
+}, []);
 
   // Automatically recover when headset/microphone/speaker changes.
   useEffect(() => {
