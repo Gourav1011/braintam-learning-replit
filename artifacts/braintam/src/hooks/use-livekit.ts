@@ -5,6 +5,10 @@ import {
   setMicrophoneEnabled,
   resumeAudio,
 } from "./livekit/local-media";
+import {
+  attachRemoteAudio,
+  detachRemoteAudio,
+} from "./livekit/remote-audio";
 
 import {
   Room,
@@ -119,12 +123,7 @@ export function useLiveKit({
       console.log("[teacher-audio] stable element created");
     }
 
-    track.attach(audioEl);
-
-    audioEl.muted = false;
-    audioEl.volume = 1;
-
-    void audioEl.play()
+    attachRemoteAudio(track, audioEl)
       .then(() => {
         console.log("[teacher-audio] play succeeded");
         setAudioBlocked(false);
@@ -144,7 +143,10 @@ export function useLiveKit({
       setTeacherVideoSubscribed(false);
     } else if (track.kind === Track.Kind.Audio) {
       const el = document.querySelector(`[${TEACHER_AUDIO_ATTR}]`);
-      if (el) { track.detach(el as HTMLAudioElement); el.remove(); }
+      if (el) {
+        detachRemoteAudio(track, el as HTMLAudioElement);
+        el.remove();
+      }
       setTeacherAudioSubscribed(false);
     }
   }, []);
