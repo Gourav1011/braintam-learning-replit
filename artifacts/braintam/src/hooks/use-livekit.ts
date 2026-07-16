@@ -232,15 +232,16 @@ export function useLiveKit({
             // so there is no self-echo risk from this code path.
             console.log("[LiveKit] Stage audio attached", participant.identity);
 
-            const audioEl = track.attach() as HTMLAudioElement;
-            audioEl.autoplay = true;
-
-            void audioEl.play().catch(err=>{
-              console.warn("[LiveKit] Stage autoplay blocked",err);
-            });
+            const audioEl = document.createElement("audio");
             audioEl.setAttribute("data-stage-audio", participant.identity);
+            audioEl.style.display = "none";
+
             document.body.appendChild(audioEl);
             stageAudioEls.current.set(participant.identity, audioEl);
+
+            attachRemoteAudio(track, audioEl).catch(err=>{
+              console.warn("[LiveKit] Stage autoplay blocked",err);
+            });
           }
         });
         room.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant: RemoteParticipant) => {
