@@ -313,12 +313,24 @@ export function useLiveKit({
           });
           setTrackVersion(v => v + 1);
         });
-        room.on(RoomEvent.LocalTrackPublished, () => {
+        room.on(RoomEvent.LocalTrackPublished, (pub) => {
+          console.log("[DEBUG][LOCAL TRACK PUBLISHED]", {
+            kind: pub.kind,
+            source: pub.source,
+            sid: pub.trackSid,
+          });
+
           const lp: LocalParticipant = room!.localParticipant;
           setCameraPublishing(lp.isCameraEnabled);
           setMicPublishing(lp.isMicrophoneEnabled);
         });
-        room.on(RoomEvent.LocalTrackUnpublished, () => {
+        room.on(RoomEvent.LocalTrackUnpublished, (pub) => {
+          console.log("[DEBUG][LOCAL TRACK UNPUBLISHED]", {
+            kind: pub.kind,
+            source: pub.source,
+            sid: pub.trackSid,
+          });
+
           const lp: LocalParticipant = room!.localParticipant;
           setCameraPublishing(lp.isCameraEnabled);
           setMicPublishing(lp.isMicrophoneEnabled);
@@ -466,7 +478,18 @@ export function useLiveKit({
   setMicrophoneError(null);
 
   try {
+    console.log("[DEBUG] setMic called", {
+      requested: on,
+      before: room.localParticipant.isMicrophoneEnabled,
+    });
+
     await setMicrophoneEnabled(room, on);
+
+    console.log("[DEBUG] setMic finished", {
+      requested: on,
+      after: room.localParticipant.isMicrophoneEnabled,
+    });
+
   } catch (err) {
     const message =
       err instanceof Error
@@ -499,18 +522,24 @@ export function useLiveKit({
   useEffect(() => {
     if (!navigator.mediaDevices?.addEventListener) return;
 
+    let lastDeviceChange = 0;
+
     const onDeviceChange = async () => {
+      const now = Date.now();
+
+      if (now - lastDeviceChange < 3000) {
+        console.log("[LiveKit] Ignoring duplicate devicechange");
+        return;
+      }
+
+      lastDeviceChange = now;
+
       const room = roomRef.current;
       if (!room) return;
 
       try {
-        console.log("[LiveKit] Audio device changed, refreshing microphone...");
+        console.log("[LiveKit] Device changed (debounced)");
 
-        console.log("[LiveKit] Audio device changed.");
-
-        // Temporary diagnostic:
-        // Don't recreate the microphone track.
-        // Just ask the browser to resume audio playback.
         await room.startAudio();
       } catch (e) {
         console.error("[LiveKit] Device recovery failed", e);
