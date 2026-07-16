@@ -1838,6 +1838,22 @@ export default function LiveClassroom() {
                 )}
                 {/* ── Pause / Resume + Demo controls ── */}
                 <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5">
+
+                  {/* ===== Developer Media Controls (Temporary) ===== */}
+                  <button
+                    onClick={() => void livekit.setMic(!livekit.media.micEnabled)}
+                    className="rounded-lg px-3 py-2 bg-slate-800 text-white border border-slate-600 hover:bg-slate-700"
+                  >
+                    {livekit.media.micEnabled ? "🎤 Mic Off" : "🎤 Mic On"}
+                  </button>
+
+                  <button
+                    onClick={() => void livekit.setCamera(!livekit.media.cameraEnabled)}
+                    className="rounded-lg px-3 py-2 bg-slate-800 text-white border border-slate-600 hover:bg-slate-700"
+                  >
+                    {livekit.media.cameraEnabled ? "📷 Camera Off" : "📷 Camera On"}
+                  </button>
+
                   {/* Pause / Resume class */}
                   <button
                     onClick={() => void togglePause()}
