@@ -770,7 +770,7 @@ export default function LiveClassroom() {
   }, [socket]);
 
   // ── Camera ─────────────────────────────────────────────────
-  const [cameraOn, setCameraOn] = useState(false);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // ── Auto-start teacher camera + mic the moment LiveKit connects ──
@@ -779,13 +779,13 @@ export default function LiveClassroom() {
   // livekit.connected briefly flickers during reconnects.
   const teacherMediaStarted = useRef(false);
   useEffect(() => {
-    if (!livekit.connected || !isStaff || teacherMediaStarted.current) return;
+    if (!livekit.isReady || !isStaff || teacherMediaStarted.current) return;
     teacherMediaStarted.current = true;
     void (async () => {
       try {
         await livekit.setCamera(true);
         livekit.attachLocalCameraTo(videoRef.current);
-        setCameraOn(true);
+        
       } catch { /* camera permission denied — teacher can still teach with mic */ }
       try {
         await livekit.setMic(true);
@@ -803,13 +803,13 @@ export default function LiveClassroom() {
         await livekit.setMic(false);
         await livekit.setCamera(false);
         if (videoRef.current) videoRef.current.srcObject = null;
-        setCameraOn(false);
+        
         setClassPaused(true);
         socket?.emit("class:pause");
       } else {
         await livekit.setCamera(true);
         livekit.attachLocalCameraTo(videoRef.current);
-        setCameraOn(true);
+        
         await livekit.setMic(true);
         setClassPaused(false);
         socket?.emit("class:resume");
@@ -1821,8 +1821,8 @@ export default function LiveClassroom() {
             {isStaff ? (
               /* ── Teacher sees their own camera ── */
               <>
-                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none", transform: "scaleX(-1)" }} />
-                {!cameraOn && !demoMode && (
+                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: livekit.media.cameraEnabled ? "block" : "none", transform: "scaleX(-1)" }} />
+                {!livekit.media.cameraEnabled && !demoMode && (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
                     <p className="text-[10px] text-gray-500">Teacher</p>
@@ -1869,7 +1869,7 @@ export default function LiveClassroom() {
                     }}
                   >👁</button>
                 </div>
-                {!livekit.connected && (
+                {!livekit.isReady && (
                   <span className="absolute top-2 right-2 text-[8px] text-yellow-400 font-bold">connecting…</span>
                 )}
               </>
