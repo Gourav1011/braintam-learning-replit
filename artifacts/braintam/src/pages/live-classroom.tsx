@@ -455,6 +455,7 @@ export default function LiveClassroom() {
   const groupId       = search.get("groupId") ?? "";
   const phone         = search.get("phone") ?? "";
   const title         = search.get("title") ?? `Live Class · ${sessionId}`;
+  const sessionType   = search.get("type") === "ignite" ? "ignite" : "mastery";
   const meetLink      = search.get("meetLink") ?? "";      // Sprint 2 — Join Meet button
   const recordingUrl  = search.get("recordingUrl") ?? "";  // Sprint 2 — View Recording button
 
@@ -475,6 +476,7 @@ export default function LiveClassroom() {
     sessionId,
     enabled: hasValidSession && Boolean(userId),
     playTeacherAudio: !isStaff,
+    sessionType,
   });
 
   // Only show diagnostics when explicitly opted in — Replit preview is DEV but used by real testers
@@ -979,8 +981,9 @@ export default function LiveClassroom() {
         // Server explicitly cleared the presentation
         if (!isStaff) setPresentationUrl("");
       }
-      // Auto-load pre-uploaded slide (teacher set it in scheduling form)
-      if (!s.activePresentation?.url && (s as any).slideUrl && !isStaff) {
+      // Auto-load pre-uploaded slide for EVERYONE.
+      // Teachers should also see the scheduled PDF when joining the class.
+      if (!s.activePresentation?.url && (s as any).slideUrl) {
         setPresentationUrl((s as any).slideUrl);
       }
       if ((s as any).demoMode) {
