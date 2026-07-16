@@ -7,7 +7,17 @@ export const liveClassesTable = pgTable("live_classes", {
   title: text("title").notNull(),
   subjectId: integer("subject_id"),
   grade: integer("grade").notNull(),
+
+  // Links the live class to the selected course/batch.
+  // Required by Teacher Portal and existing production data.
+  batchId: integer("batch_id"),
+
   courseId: integer("course_id"),
+
+  // Optional Ignite batch relationship.
+  // When present, this working LiveKit class also appears inside
+  // the selected Ignite batch alongside its normal sessions.
+
   courseSubjectId: integer("course_subject_id"),
   chapterId: integer("chapter_id"),
   topicId: integer("topic_id"),
