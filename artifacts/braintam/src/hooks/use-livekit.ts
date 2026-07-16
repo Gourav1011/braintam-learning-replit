@@ -79,9 +79,6 @@ export function useLiveKit({
   const tracksByIdentity = useRef<Map<string, { video?: RemoteTrack; audio?: RemoteTrack }>>(new Map());
   const [trackVersion, setTrackVersion] = useState(0);
 
-  // Key used to find the auto-created teacher audio element in the DOM.
-  const TEACHER_AUDIO_ATTR = "data-teacher-audio";
-
   const attachTeacherTrack = useCallback((track: RemoteTrack) => {
   if (track.kind === Track.Kind.Video) {
     if (teacherVideoRef.current) {
@@ -470,19 +467,11 @@ export function useLiveKit({
       try {
         console.log("[LiveKit] Audio device changed, refreshing microphone...");
 
-        if (room.localParticipant.isMicrophoneEnabled) {
-          await room.localParticipant.setMicrophoneEnabled(false);
+        console.log("[LiveKit] Audio device changed.");
 
-          setTimeout(async () => {
-            try {
-              await room.localParticipant.setMicrophoneEnabled(true);
-              console.log("[LiveKit] Microphone recovered.");
-            } catch (e) {
-              console.error(e);
-            }
-          }, 400);
-        }
-
+        // Temporary diagnostic:
+        // Don't recreate the microphone track.
+        // Just ask the browser to resume audio playback.
         await room.startAudio();
       } catch (e) {
         console.error("[LiveKit] Device recovery failed", e);
