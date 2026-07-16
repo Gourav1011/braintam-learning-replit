@@ -9,6 +9,7 @@ import {
   attachRemoteAudio,
   detachRemoteAudio,
 } from "./livekit/remote-audio";
+import { registerRoomEvents } from "./livekit/event-manager";
 
 import {
   Room,
@@ -205,6 +206,12 @@ export function useLiveKit({
           },
         });
         roomRef.current = room;
+        const handleTrackSubscribed = (
+          track: RemoteTrack,
+          participant: RemoteParticipant
+        ) => {
+
+        };
 
         room.on(RoomEvent.TrackSubscribed, (track, _pub, participant: RemoteParticipant) => {
           const entry = tracksByIdentity.current.get(participant.identity) ?? {};
@@ -370,10 +377,16 @@ export function useLiveKit({
               setTrackVersion(v => v + 1);
               // Auto-attach audio for late joiners just like we do in TrackSubscribed.
               if (entry.audio && !stageAudioEls.current.has(participant.identity)) {
-                const audioEl = entry.audio.attach() as HTMLAudioElement;
+                const audioEl = document.createElement("audio");
                 audioEl.setAttribute("data-stage-audio", participant.identity);
+                audioEl.style.display = "none";
+
                 document.body.appendChild(audioEl);
                 stageAudioEls.current.set(participant.identity, audioEl);
+
+                attachRemoteAudio(entry.audio, audioEl).catch((err) => {
+                  console.warn("[LiveKit] Late join autoplay blocked", err);
+                });
               }
             }
           }
