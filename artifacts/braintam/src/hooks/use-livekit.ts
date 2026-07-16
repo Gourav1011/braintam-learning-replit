@@ -29,6 +29,7 @@ interface UseLiveKitOpts {
   sessionId: string;
   enabled: boolean;
   playTeacherAudio?: boolean;
+  sessionType?: "ignite" | "mastery";
 }
 
 export type LiveKitConnectionState = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
@@ -50,6 +51,7 @@ export function useLiveKit({
   sessionId,
   enabled,
   playTeacherAudio = true,
+  sessionType = "mastery",
 }: UseLiveKitOpts) {
   const roomRef = useRef<Room | null>(null);
   const teacherVideoRef = useRef<HTMLVideoElement>(null);
@@ -163,7 +165,10 @@ export function useLiveKit({
 
     (async () => {
       try {
-        const res = await apiFetch(`/live/${sessionId}/livekit-token`, { method: "POST" });
+        const res = await apiFetch(
+          `/live/${sessionId}/livekit-token?type=${encodeURIComponent(sessionType)}`,
+          { method: "POST" }
+        );
         if (!res.ok) {
           let message = `LiveKit auth failed (${res.status})`;
           try {
@@ -388,6 +393,7 @@ export function useLiveKit({
   }, [
     enabled,
     sessionId,
+    sessionType,
     playTeacherAudio,
     attachTeacherTrack,
     detachTeacherTrack,
