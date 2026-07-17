@@ -1,0 +1,1366 @@
+import { Server } from "socket.io";
+import type { Server as HttpServer } from "http";
+import { db } from "@workspace/db";
+import {
+  sessionAttendanceTable,
+  pollAnalyticsTable,
+  leaderboardAnalyticsTable,
+  chatMessagesTable,
+  stageSlotsTable,
+  blockedWordsTable,
+  chatViolationsTable,
+  chatModerationTable,
+  liveClassesTable,
+} from "@workspace/db";
+import { eq, and, sql, gt, desc } from "drizzle-orm";
+import { updateParticipantPublishPermission, isLiveKitConfigured } from "./lib/livekit.js";
+
+const STAGE_DURATION_MS = 60_000;
+// timers keyed by `${sessionId}:${studentId}`
+const stageTimers = new Map<string, NodeJS.Timeout>();
+const roomNameCache = new Map<string, string | null>();
+
+async function getLiveKitRoomName(sessionId: string): Promise<string | null> {
+  if (roomNameCache.has(sessionId)) return roomNameCache.get(sessionId)!;
+  try {
+    const numericId = Number(sessionId);
+    if (!Number.isFinite(numericId)) return null;
+    const [row] = await db
+      .select({ liveKitRoomName: liveClassesTable.liveKitRoomName })
+      .from(liveClassesTable)
+      .where(eq(liveClassesTable.id, numericId))
+      .limit(1);
+    const roomName = row?.liveKitRoomName ?? null;
+    if (roomName) roomNameCache.set(sessionId, roomName); // only cache once known (may be set later by the token endpoint)
+    return roomName;
+  } catch {
+    return null;
+  }
+}
+
+// ── Room naming ────────────────────────────────────────────────
+const globalRoom  = (sid: string) => `session-${sid}`;
+const teacherRoom = (sid: string) => `session-${sid}-teachers`;
+const groupRoom   = (sid: string, gid: string | number) => `session-${sid}-grp-${gid}`;
+
+// ── Types ──────────────────────────────────────────────────────
+interface CacheEntry {
+  lastSeenAt: Date;
+  currentStatus: "LIVE" | "BACKSTAGE" | "ABSENT";
+  name: string;
+  mentorGroupId: string | null;
+  phone: string | null;
+  sessionId: string;
+  userId: string;
+  role: string;
+}
+
+interface PollOpt { id: string; text: string; }
+
+interface Poll {
+  id: string;
+  question: string;
+  options: PollOpt[];
+  startedAt: number;
+  correctOptionId: string | null;   // teacher-set correct answer; never sent to students
+}
+
+interface PollAnswer {
+  optionId: string;
+  optionText: string;
+  name: string;
+  userId: string;
+  mentorGroupId: string | null;
+  isCorrect: boolean;
+  responseTimeMs: number;
+  ts: number;
+}
+
+interface ChatMsg {
+  id: string;
+  name: string;
+  role: string;
+  text: string;
+  isAnnouncement: boolean;
+  ts: number;
+}
+
+interface PresentationState {
+  url: string;
+  updatedAt: number;
+  updatedBy: string;
+}
+
+interface SessionRoom {
+  raisedHands: Map<string, { name: string; mentorGroupId: string | null }>;
+  raiseHandEnabled: boolean;
+  activePoll: Poll | null;
+  pollAnswers: Map<string, PollAnswer>;
+  stageSlots: Map<string, StageSlotEntry>;  // key = studentId
+  teacher: { name: string; userId: string } | null;
+  activePresentation: PresentationState | null;
+  currentSlide: number;
+  demoMode: boolean;
+  chatMuted: boolean;
+}
+
+interface StageSlotEntry {
+  studentId: string;
+  studentName: string;
+  slotNumber: number;
+  isMuted: boolean;
+  mentorGroupId: string | null;
+  stageExpiresAt: number; // epoch ms — backend-authoritative 60s stage timer
+}
+
+// ── In-memory caches ───────────────────────────────────────────
+const liveStateCache = new Map<string, CacheEntry>();
+const sessionRooms   = new Map<string, SessionRoom>();
+
+// ── Chat Moderation caches ──────────────────────────────────────
+// blockedWordSet: lowercased active blocked words, refreshed every 60s
+let blockedWordSet: Set<string> = new Set();
+async function refreshBlockedWords(): Promise<void> {
+  try {
+    const rows = await db
+      .select({ word: blockedWordsTable.word })
+      .from(blockedWordsTable)
+      .where(eq(blockedWordsTable.isActive, true));
+    blockedWordSet = new Set(rows.map(r => r.word.toLowerCase()));
+  } catch { /* keep old set on error */ }
+}
+
+// chatModerationCache: per-student status loaded on join, invalidated on strike
+interface ChatModerationEntry {
+  chatStatus: string;  // 'active' | 'blocked'
+  chatViolationCount: number;
+}
+const chatModerationCache = new Map<string, ChatModerationEntry>();
+
+async function loadChatStatus(studentId: string): Promise<ChatModerationEntry> {
+  try {
+    const [row] = await db
+      .select({
+        chatStatus: chatModerationTable.chatStatus,
+        chatViolationCount: chatModerationTable.chatViolationCount,
+      })
+      .from(chatModerationTable)
+      .where(eq(chatModerationTable.studentId, studentId));
+    const entry: ChatModerationEntry = row
+      ? { chatStatus: row.chatStatus, chatViolationCount: row.chatViolationCount }
+      : { chatStatus: "active", chatViolationCount: 0 };
+    chatModerationCache.set(studentId, entry);
+    return entry;
+  } catch {
+    return { chatStatus: "active", chatViolationCount: 0 };
+  }
+}
+
+// Filter message text — replace blocked words with ---
+function filterMessage(text: string): { filtered: string; matchedWord: string | null } {
+  if (blockedWordSet.size === 0) return { filtered: text, matchedWord: null };
+  let filtered = text;
+  let matchedWord: string | null = null;
+  for (const word of blockedWordSet) {
+    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
+    if (re.test(filtered)) {
+      matchedWord = matchedWord ?? word;
+      filtered = filtered.replace(re, "---");
+    }
+  }
+  return { filtered, matchedWord };
+}
+
+async function applyStrike(
+  studentId: string,
+  studentName: string,
+  phone: string | null,
+  sessionId: string,
+  mentorGroupId: string | null,
+  originalMessage: string,
+  matchedWord: string,
+): Promise<{ newCount: number; nowBlocked: boolean }> {
+  // Persist violation
+  await db.insert(chatViolationsTable).values({
+    studentId,
+    studentName,
+    sessionId: Number(sessionId) || null,
+    mentorGroupId: mentorGroupId ? Number(mentorGroupId) : null,
+    message: originalMessage,
+    matchedWord,
+  }).catch(() => {});
+
+  // Upsert moderation row and increment count
+  const existing = chatModerationCache.get(studentId) ?? { chatStatus: "active", chatViolationCount: 0 };
+  const newCount = existing.chatViolationCount + 1;
+  const nowBlocked = newCount >= 3;
+
+  await db
+    .insert(chatModerationTable)
+    .values({
+      studentId,
+      studentName,
+      phone: phone ?? undefined,
+      chatStatus: nowBlocked ? "blocked" : "active",
+      chatViolationCount: newCount,
+      chatBlockedAt: nowBlocked ? new Date() : undefined,
+      chatBlockReason: nowBlocked ? "Inappropriate Language" : undefined,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: chatModerationTable.studentId,
+      set: {
+        chatViolationCount: sql`${chatModerationTable.chatViolationCount} + 1`,
+        chatStatus: nowBlocked ? "blocked" : sql`${chatModerationTable.chatStatus}`,
+        chatBlockedAt: nowBlocked ? new Date() : sql`${chatModerationTable.chatBlockedAt}`,
+        chatBlockReason: nowBlocked
+          ? "Inappropriate Language"
+          : sql`${chatModerationTable.chatBlockReason}`,
+        phone: phone ? phone : sql`${chatModerationTable.phone}`,
+        updatedAt: new Date(),
+      },
+    })
+    .catch(() => {});
+
+  // Update local cache
+  chatModerationCache.set(studentId, {
+    chatStatus: nowBlocked ? "blocked" : "active",
+    chatViolationCount: newCount,
+  });
+
+  return { newCount, nowBlocked };
+}
+
+function getSessionRoom(sid: string): SessionRoom {
+  if (!sessionRooms.has(sid)) {
+    sessionRooms.set(sid, {
+      raisedHands: new Map(),
+      raiseHandEnabled: false,
+      activePoll: null,
+      pollAnswers: new Map(),
+      stageSlots: new Map(),
+      teacher: null,
+      activePresentation: null,
+      currentSlide: 1,
+      demoMode: false,
+      chatMuted: false,
+    });
+  }
+  return sessionRooms.get(sid)!;
+}
+
+// ── Sprint 3: Load active stage slots from DB for a session ────
+async function loadStageSlots(sessionId: string): Promise<StageSlotEntry[]> {
+  try {
+    const rows = await db
+      .select()
+      .from(stageSlotsTable)
+      .where(and(
+        eq(stageSlotsTable.sessionId, sessionId),
+        eq(stageSlotsTable.status, "active"),
+      ));
+    return rows.map(r => ({
+      studentId: r.studentId,
+      studentName: r.studentName,
+      slotNumber: r.slotNumber,
+      isMuted: r.isMuted,
+      mentorGroupId: r.mentorGroupId ?? null,
+      stageExpiresAt: r.stageExpiresAt ? r.stageExpiresAt.getTime() : Date.now() + STAGE_DURATION_MS,
+    }));
+  } catch { return []; }
+}
+
+/** Ends a student's stage turn: revokes LiveKit publish permission, persists to DB, clears timer, notifies room. */
+async function endStageSlot(
+  io: Server,
+  sessionId: string,
+  studentId: string,
+  reason: "teacher_removed" | "timer_expired" | "student_left" | "class_ended",
+): Promise<void> {
+  const room = sessionRooms.get(sessionId);
+  // Idempotency guard — if slot already removed, do nothing
+  if (!room?.stageSlots.has(studentId)) return;
+  room.stageSlots.delete(studentId);
+
+  const timerKey = `${sessionId}:${studentId}`;
+  const timer = stageTimers.get(timerKey);
+  if (timer) { clearTimeout(timer); stageTimers.delete(timerKey); }
+
+  if (isLiveKitConfigured()) {
+    const roomName = await getLiveKitRoomName(sessionId);
+    if (roomName) await updateParticipantPublishPermission(roomName, studentId, false);
+  }
+
+  db.update(stageSlotsTable)
+    .set({ status: "ended", stageEndedAt: new Date(), endReason: reason })
+    .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, studentId)))
+    .catch(() => {});
+
+  io.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId, reason });
+}
+
+/** Schedules the backend-authoritative 60s auto-expiry for a student's stage turn. */
+function scheduleStageExpiry(io: Server, sessionId: string, studentId: string): void {
+  const timerKey = `${sessionId}:${studentId}`;
+  const existing = stageTimers.get(timerKey);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    endStageSlot(io, sessionId, studentId, "timer_expired").catch(() => {});
+  }, STAGE_DURATION_MS);
+  stageTimers.set(timerKey, timer);
+}
+
+// ── Sprint 2: Seed liveStateCache from DB on startup ──────────
+async function seedCacheFromDB(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - 30_000);
+    const rows = await db
+      .select()
+      .from(sessionAttendanceTable)
+      .where(gt(sessionAttendanceTable.lastSeenAt, cutoff));
+
+    for (const row of rows) {
+      const key = `${row.sessionId}-${row.studentId}`;
+      liveStateCache.set(key, {
+        lastSeenAt: row.lastSeenAt ?? new Date(),
+        currentStatus: "LIVE",
+        name: row.studentName,
+        mentorGroupId: row.mentorGroupId != null ? String(row.mentorGroupId) : null,
+        phone: null,
+        sessionId: String(row.sessionId),
+        userId: row.studentId,
+        role: row.role,
+      });
+    }
+    if (rows.length > 0) {
+      console.log(`[socket] Restored ${rows.length} LIVE student(s) from DB after restart`);
+    }
+  } catch (err) {
+    console.error("[socket] liveStateCache seed failed:", err);
+  }
+}
+
+// ── Sprint 2: Chat persistence helpers ────────────────────────
+// groupId filtering: students only see teacher messages + their own group's messages
+async function loadRecentChat(
+  sessionId: string,
+  groupId: string | null,
+  isStaff: boolean,
+): Promise<ChatMsg[]> {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return [];
+  const gid = groupId ? Number(groupId) : null;
+  const showAll = isStaff || gid === null || Number.isNaN(gid ?? NaN);
+  try {
+    const rows = await db
+      .select()
+      .from(chatMessagesTable)
+      .where(
+        showAll
+          ? eq(chatMessagesTable.sessionId, sid)
+          : and(
+              eq(chatMessagesTable.sessionId, sid),
+              sql`(${chatMessagesTable.mentorGroupId} IS NULL OR ${chatMessagesTable.mentorGroupId} = ${gid})`,
+            ),
+      )
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(100);
+    return rows.reverse().map(r => ({
+      id: String(r.id),
+      name: r.senderName,
+      role: r.senderRole,
+      text: r.message,
+      isAnnouncement: r.isAnnouncement,
+      ts: r.createdAt.getTime(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function persistChat(
+  sessionId: string,
+  senderId: string,
+  msg: ChatMsg,
+  mentorGroupId: string | null,
+): void {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return;
+  db.insert(chatMessagesTable)
+    .values({
+      sessionId: sid,
+      mentorGroupId: mentorGroupId ? Number(mentorGroupId) : undefined,
+      senderId,
+      senderName: msg.name,
+      senderRole: msg.role,
+      message: msg.text,
+      isAnnouncement: msg.isAnnouncement,
+    })
+    .catch(() => {});
+}
+
+// ── DB helpers (fire-and-forget) ───────────────────────────────
+function upsertAttendanceHeartbeat(
+  sessionId: string, userId: string, name: string,
+  mentorGroupId: string | null, role: string,
+) {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return;
+  const now = new Date();
+  db.insert(sessionAttendanceTable)
+    .values({
+      sessionId: sid, studentId: userId, studentName: name,
+      mentorGroupId: mentorGroupId ? Number(mentorGroupId) : undefined,
+      role, joinedAt: now, lastSeenAt: now, totalDurationSeconds: 0,
+    })
+    .onConflictDoUpdate({
+      target: [sessionAttendanceTable.sessionId, sessionAttendanceTable.studentId],
+      set: {
+        lastSeenAt: now,
+        totalDurationSeconds: sql`${sessionAttendanceTable.totalDurationSeconds} + 15`,
+      },
+    })
+    .catch(() => {});
+}
+
+function markLeft(sessionId: string, userId: string) {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return;
+  db.update(sessionAttendanceTable)
+    .set({ leftAt: new Date() })
+    .where(and(eq(sessionAttendanceTable.sessionId, sid), eq(sessionAttendanceTable.studentId, userId)))
+    .catch(() => {});
+}
+
+// ── Sprint 1: Poll analytics with mentor_group_id + is_correct ─
+function persistPollAnswer(sessionId: string, poll: Poll, answer: PollAnswer) {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid)) return;
+  db.insert(pollAnalyticsTable)
+    .values({
+      sessionId: sid,
+      pollId: poll.id,
+      pollQuestion: poll.question,
+      correctOptionId: poll.correctOptionId,
+      studentId: answer.userId,
+      studentName: answer.name,
+      mentorGroupId: answer.mentorGroupId ? Number(answer.mentorGroupId) : undefined,
+      optionId: answer.optionId,
+      optionText: answer.optionText,
+      isCorrect: answer.isCorrect,
+      responseTimeMs: answer.responseTimeMs,
+      answeredAt: new Date(),
+    })
+    .catch(() => {});
+}
+
+const LEADERBOARD_TOP_N = 20;
+
+type LeaderboardEntry = {
+  name: string; rank: number; userId: string;
+  optionId: string; responseTimeMs: number; isCorrect: boolean;
+  mentorGroupId: string | null;
+};
+
+// ── Leaderboard ranks by is_correct DESC, response_time ASC, group-scoped Top 20 ──
+function computeTopLeaderboard(room: SessionRoom, mentorGroupId: string | null): LeaderboardEntry[] {
+  if (!room.activePoll || room.pollAnswers.size === 0) return [];
+
+  const answers = Array.from(room.pollAnswers.values())
+    .filter(a => mentorGroupId == null || a.mentorGroupId === mentorGroupId);
+  const sorted = answers.sort((a, b) => {
+    // Correct answers first
+    if (b.isCorrect !== a.isCorrect) return (b.isCorrect ? 1 : 0) - (a.isCorrect ? 1 : 0);
+    // Then fastest response
+    return a.responseTimeMs - b.responseTimeMs;
+  });
+
+  return sorted.slice(0, LEADERBOARD_TOP_N).map((a, i) => ({
+    name: a.name,
+    rank: i + 1,
+    userId: a.userId,
+    optionId: a.optionId,
+    responseTimeMs: a.responseTimeMs,
+    isCorrect: a.isCorrect,
+    mentorGroupId: a.mentorGroupId,
+  }));
+}
+
+function persistLeaderboard(
+  sessionId: string,
+  pollId: string,
+  entries: LeaderboardEntry[],
+) {
+  const sid = Number(sessionId);
+  if (Number.isNaN(sid) || entries.length === 0) return;
+  db.insert(leaderboardAnalyticsTable)
+    .values(entries.map(e => ({
+      sessionId: sid,
+      pollId,
+      rank: e.rank,
+      studentId: e.userId,
+      studentName: e.name,
+      mentorGroupId: e.mentorGroupId ? Number(e.mentorGroupId) : undefined,
+      optionId: e.optionId,
+      isCorrect: e.isCorrect,
+      responseTimeMs: e.responseTimeMs,
+      recordedAt: new Date(),
+    })))
+    .catch(() => {});
+}
+
+// ── Setup ──────────────────────────────────────────────────────
+export function setupSocketIO(httpServer: HttpServer) {
+  const io = new Server(httpServer, {
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    path: "/api/socket.io",
+  });
+
+  // Seed liveStateCache immediately from DB (Sprint 2)
+  seedCacheFromDB().catch(() => {});
+
+  // Load blocked words on startup + refresh every 60s
+  refreshBlockedWords().catch(() => {});
+  setInterval(() => refreshBlockedWords().catch(() => {}), 60_000);
+
+  // ── Auth middleware — context from handshake query ──────────
+  io.use((socket, next) => {
+    const q = socket.handshake.query;
+    (socket as any).ctx = {
+      sessionId:  String(q["sessionId"] ?? ""),
+      userId:     String(q["userId"] ?? `anon-${Math.random().toString(36).slice(2)}`),
+      role:       String(q["role"] ?? "student").toLowerCase(),
+      groupId:    q["groupId"] ? String(q["groupId"]) : null,
+      name:       String(q["name"] ?? "Student").slice(0, 50),
+      phone:      q["phone"] ? String(q["phone"]) : null,
+    };
+    next();
+  });
+
+  // ── 5-second backstage sweeper ─────────────────────────────
+  setInterval(() => {
+    const now = Date.now();
+    for (const entry of liveStateCache.values()) {
+      if (entry.currentStatus === "LIVE") {
+        const delta = (now - entry.lastSeenAt.getTime()) / 1000;
+        if (delta > 15) {
+          entry.currentStatus = "BACKSTAGE";
+          io.to(teacherRoom(entry.sessionId))
+            .to(entry.mentorGroupId
+              ? groupRoom(entry.sessionId, entry.mentorGroupId)
+              : teacherRoom(entry.sessionId))
+            .emit("studentBackstage", {
+              userId: entry.userId,
+              name: entry.name,
+              mentorGroupId: entry.mentorGroupId,
+              timestamp: new Date(),
+            });
+        }
+      }
+    }
+  }, 5000);
+
+  // One active live-class socket per student account.
+  // Key: sessionId:userId, Value: active Socket.IO socket ID.
+  // The newest student connection replaces the previous connection.
+  const activeStudentClassSockets = new Map<string, string>();
+
+  io.on("connection", (socket) => {
+    const ctx = (socket as any).ctx as {
+      sessionId: string; userId: string; role: string;
+      groupId: string | null; name: string; phone: string | null;
+    };
+    const { sessionId, userId, role, groupId, name, phone } = ctx;
+    const isStaff  = role === "teacher" || role === "admin";
+    const isMentor = role === "mentor";
+    const isStudent = !isStaff && !isMentor;
+
+    // Restrict students and the assigned teacher to one active live-class
+    // connection. Mentors remain unrestricted.
+    const isSingleSessionRole = isStudent || role === "teacher";
+    const singleSessionKey = `${sessionId}:${role}:${userId}`;
+
+    // ── Single active live-class device ──────────────────────
+    // The newest connection wins. The previous device is informed and closed.
+    if (isSingleSessionRole) {
+      const previousSocketId = activeStudentClassSockets.get(singleSessionKey);
+
+      console.log("[single-session] connection check", {
+        sessionId,
+        userId,
+        role,
+        socketId: socket.id,
+        singleSessionKey,
+        previousSocketId: previousSocketId ?? "NONE",
+        activeMapSize: activeStudentClassSockets.size,
+      });
+
+      if (previousSocketId && previousSocketId !== socket.id) {
+        const previousSocket = io.sockets.sockets.get(previousSocketId);
+
+        if (previousSocket?.connected) {
+          console.log(
+            `[single-session] replacing previous live-class session ${singleSessionKey}`
+          );
+
+          previousSocket.emit("student:session-replaced", {
+            reason: "another_device_joined",
+            message: "Your class has been opened on another device.",
+          });
+
+          // Allow the replacement message to reach the old browser first.
+          setTimeout(() => {
+            if (previousSocket.connected) {
+              previousSocket.disconnect(true);
+            }
+          }, 1200);
+        }
+      }
+
+      activeStudentClassSockets.set(singleSessionKey, socket.id);
+
+      console.log(
+        `[single-session] active live-class socket updated ${singleSessionKey}`
+      );
+    }
+
+    // ── Join rooms ────────────────────────────────────────────
+    socket.join(globalRoom(sessionId));
+    if (isStaff) {
+      socket.join(teacherRoom(sessionId));
+    } else if (isMentor) {
+      // Mentors always see the teacher room (for staff chat, suggestions, etc.),
+      // even sales/non-group mentors who observe via direct student assignments
+      // rather than a mentor group (groupId may be empty for them).
+      if (groupId) socket.join(groupRoom(sessionId, groupId));
+      socket.join(teacherRoom(sessionId));
+    } else if (groupId) {
+      socket.join(groupRoom(sessionId, groupId));
+    }
+
+    const room = getSessionRoom(sessionId);
+
+    // ── Block EVERYONE from joining a completed live class ────────────────
+    // DB is the source of truth: once status = "completed", no one can re-enter.
+    if (Number.isFinite(Number(sessionId))) {
+      db.select({ status: liveClassesTable.status })
+        .from(liveClassesTable)
+        .where(eq(liveClassesTable.id, Number(sessionId)))
+        .limit(1)
+        .then(([row]) => {
+          if (row?.status === "completed") {
+            socket.emit("class:ended");
+            // Force-disconnect after giving the event time to arrive
+            setTimeout(() => socket.disconnect(true), 1500);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // ── Immediate student presence: mark LIVE on connect, don't wait for heartbeat ──
+    // The heartbeat fires up to 15s after connect. Marking immediately means the teacher
+    // sees PRESENT(n) the moment the student's socket joins the room.
+    if (!isStaff && !isMentor && sessionId) {
+      const cacheKey = `${sessionId}-${userId}`;
+      const prev = liveStateCache.get(cacheKey);
+      const prevStatus = prev?.currentStatus ?? "ABSENT";
+      const now = new Date();
+      liveStateCache.set(cacheKey, {
+        lastSeenAt: now,
+        currentStatus: "LIVE",
+        name, mentorGroupId: groupId, phone, sessionId, userId, role,
+      });
+      if (prevStatus !== "LIVE") {
+        const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
+        const payload = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
+        io.to(teacherRoom(sessionId))
+          .to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId))
+          .emit(eventType, payload);
+      }
+    }
+
+    // ── Teacher presence: record room state and broadcast immediately ─────────
+    if (isStaff) {
+      room.teacher = { name, userId };
+    }
+
+    // ── Send initial room state (async — loads chat + stage from DB) ──
+    (async () => {
+      const [recentChat, dbStageSlots] = await Promise.all([
+        loadRecentChat(sessionId, groupId, isStaff),
+        loadStageSlots(sessionId),
+      ]);
+
+      // Seed in-memory stageSlots if empty (handles server restart).
+      // Use remaining time from DB so 60s is not restarted fresh on each reconnect.
+      if (room.stageSlots.size === 0 && dbStageSlots.length > 0) {
+        for (const s of dbStageSlots) {
+          const remainingMs = s.stageExpiresAt - Date.now();
+          if (remainingMs <= 0) {
+            // Already expired — clean up without re-adding to memory
+            endStageSlot(io, sessionId, s.studentId, "timer_expired").catch(() => {});
+            continue;
+          }
+          room.stageSlots.set(s.studentId, s);
+          // Only start timer if not already running (idempotent on multiple connects)
+          const timerKey = `${sessionId}:${s.studentId}`;
+          if (!stageTimers.has(timerKey)) {
+            const timer = setTimeout(() => {
+              endStageSlot(io, sessionId, s.studentId, "timer_expired").catch(() => {});
+            }, remainingMs);
+            stageTimers.set(timerKey, timer);
+          }
+        }
+      }
+
+      // Fetch pre-uploaded slide URL for this class (set during scheduling)
+      let classSlideUrl: string | null = null;
+      try {
+        const numericId = Number(sessionId);
+        if (Number.isFinite(numericId)) {
+          const [lcRow] = await db
+            .select({ slideUrl: liveClassesTable.slideUrl })
+            .from(liveClassesTable)
+            .where(eq(liveClassesTable.id, numericId))
+            .limit(1);
+          classSlideUrl = lcRow?.slideUrl ?? null;
+        }
+      } catch { /* ignore */ }
+
+      socket.emit("roomState", {
+        chat: recentChat,
+        raisedHands: Array.from(room.raisedHands.entries())
+          .map(([uid, h]) => ({ uid, ...h })),
+        raiseHandEnabled: room.raiseHandEnabled,
+        activePoll: room.activePoll
+          ? { ...room.activePoll, correctOptionId: undefined }
+          : null,
+        stage: Array.from(room.stageSlots.values()),
+        teacher: room.teacher,
+        activePresentation: room.activePresentation,
+        currentSlide: room.currentSlide,
+        demoMode: room.demoMode,
+        chatMuted: room.chatMuted,
+        slideUrl: classSlideUrl,
+      });
+
+      // Diagnostic acknowledgement — sends socket ID, canonical room name and
+      // current member count back to the connecting socket so the client dev panel
+      // can confirm the socket joined the right room.
+      const socketsInGlobal = await io.in(globalRoom(sessionId)).fetchSockets();
+      socket.emit("classroom:joined", {
+        sessionId,
+        socketId: socket.id,
+        roomName: globalRoom(sessionId),
+        memberCount: socketsInGlobal.length,
+        role,
+      });
+    })().catch(() => {
+      socket.emit("roomState", {
+        chat: [],
+        raisedHands: [],
+        raiseHandEnabled: room.raiseHandEnabled,
+        activePoll: null,
+        stage: [],
+      });
+    });
+
+    // ── Load chat moderation status for students ───────────────
+    if (!isStaff && !isMentor) {
+      loadChatStatus(userId).then(status => {
+        if (status.chatStatus === "blocked") {
+          socket.emit("chat:blocked", {
+            message: "🚫 Chat access has been temporarily disabled. Please contact your mentor.",
+          });
+        }
+      }).catch(() => {});
+    }
+
+    // ── Teacher presence broadcast ─────────────────────────────
+    // room.teacher is set above on connect. Now broadcast to existing sockets.
+    if (isStaff) {
+      socket.to(globalRoom(sessionId)).emit("teacher:joined", { name, userId });
+    }
+
+    // ── Heartbeat (students & mentors, every 15s) ─────────────
+    socket.on("heartbeat:ping", () => {
+      if (isStaff) return;
+      const now = new Date();
+      const cacheKey = `${sessionId}-${userId}`;
+      const prev = liveStateCache.get(cacheKey);
+      const prevStatus = prev?.currentStatus ?? "ABSENT";
+
+      liveStateCache.set(cacheKey, {
+        lastSeenAt: now,
+        currentStatus: "LIVE",
+        name, mentorGroupId: groupId, phone, sessionId, userId, role,
+      });
+
+      upsertAttendanceHeartbeat(sessionId, userId, name, groupId, role);
+
+      if (prevStatus !== "LIVE") {
+        const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
+        const payload   = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
+        io.to(teacherRoom(sessionId))
+          .to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId))
+          .emit(eventType, payload);
+      }
+      socket.emit("heartbeat:ack");
+    });
+
+    // ── Chat (Sprint 2 — DB-persisted + moderation) ─────────────
+    socket.on("chat:send", (rawText: string) => {
+      const rawSanitized = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
+      if (!rawSanitized) return;
+
+      // Block messages when teacher has muted the chat (staff can still send)
+      if (!isStaff && room.chatMuted) {
+        socket.emit("chat:muted", { message: "💬 Chat is muted by the teacher." });
+        return;
+      }
+
+      // Staff bypass all moderation
+      if (isStaff) {
+        const msg: ChatMsg = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name, role, text: rawSanitized,
+          isAnnouncement: true,
+          ts: Date.now(),
+        };
+        persistChat(sessionId, userId, msg, null);
+        io.to(globalRoom(sessionId)).emit("chat:message", msg);
+        return;
+      }
+
+      // ── Check blocked status ────────────────────────────────
+      const modEntry = chatModerationCache.get(userId) ?? { chatStatus: "active", chatViolationCount: 0 };
+      if (modEntry.chatStatus === "blocked") {
+        socket.emit("chat:blocked", {
+          message: "🚫 Chat access has been temporarily disabled. Please contact your mentor.",
+        });
+        return;
+      }
+
+      // ── Filter against blocked words ────────────────────────
+      const { filtered, matchedWord } = filterMessage(rawSanitized);
+
+      if (matchedWord) {
+        // Apply strike asynchronously then emit filtered message + warning
+        applyStrike(userId, name, phone, sessionId, groupId, rawSanitized, matchedWord)
+          .then(({ newCount, nowBlocked }) => {
+            if (nowBlocked) {
+              socket.emit("chat:blocked", {
+                message: "🚫 Chat access has been temporarily disabled. Please contact your mentor.",
+              });
+              // Don't broadcast the message
+            } else {
+              // Broadcast filtered message to group
+              const msg: ChatMsg = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                name, role, text: filtered,
+                isAnnouncement: false,
+                ts: Date.now(),
+              };
+              if (groupId) {
+                persistChat(sessionId, userId, msg, groupId);
+                io.to(groupRoom(sessionId, groupId))
+                  .to(teacherRoom(sessionId))
+                  .emit("chat:message", msg);
+              } else {
+                // Course-based classes have no groupId — broadcast to the whole session,
+                // not just back to the sender (previously only echoed to sender, so nobody
+                // else ever saw the message).
+                persistChat(sessionId, userId, msg, null);
+                io.to(globalRoom(sessionId)).emit("chat:message", msg);
+              }
+
+              // Strike warning to sender only
+              const strikeMsg = newCount === 1
+                ? "⚠️ Warning (Strike 1/3): Your message contained inappropriate language and was filtered."
+                : "🚨 Final Warning (Strike 2/3): One more violation will permanently block your chat.";
+              socket.emit("chat:warning", { message: strikeMsg, strikeCount: newCount });
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+
+      // ── Clean message — broadcast normally ─────────────────
+      const msg: ChatMsg = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name, role, text: rawSanitized,
+        isAnnouncement: false,
+        ts: Date.now(),
+      };
+      if (groupId) {
+        persistChat(sessionId, userId, msg, groupId);
+        io.to(groupRoom(sessionId, groupId))
+          .to(teacherRoom(sessionId))
+          .emit("chat:message", msg);
+      } else {
+        // Course-based classes have no groupId — broadcast to the whole session,
+        // not just back to the sender (previously only echoed to sender, so nobody
+        // else ever saw the message).
+        persistChat(sessionId, userId, msg, null);
+        io.to(globalRoom(sessionId)).emit("chat:message", msg);
+      }
+    });
+
+    // ── Raise hand ─────────────────────────────────────────────
+    socket.on("student:raiseHand", () => {
+      if (!room.raiseHandEnabled) return;
+      const raised = room.raisedHands.has(userId);
+      if (raised) room.raisedHands.delete(userId);
+      else room.raisedHands.set(userId, { name, mentorGroupId: groupId });
+      const payload = { uid: userId, name, mentorGroupId: groupId, raised: !raised, ts: new Date() };
+      io.to(groupId ? groupRoom(sessionId, groupId) : globalRoom(sessionId))
+        .to(teacherRoom(sessionId))
+        .emit("classroom:handRaised", payload);
+    });
+
+    socket.on("toggleRaiseHand", (data: { enabled: boolean }) => {
+      if (!isStaff) return;
+      room.raiseHandEnabled = !!data.enabled;
+      if (!room.raiseHandEnabled) room.raisedHands.clear();
+      io.to(globalRoom(sessionId)).emit("raiseHandToggled", { enabled: room.raiseHandEnabled, hands: [] });
+    });
+
+    // ── Sprint 1: Poll with correct answer support ─────────────
+    socket.on("startPoll", (data: {
+      question: string;
+      options: string[];
+      correctOptionId?: string;   // teacher marks correct answer at creation
+    }) => {
+      if (!isStaff) return;
+      const opts = (data.options ?? []).filter(Boolean).slice(0, 6);
+      if (!data.question?.trim() || opts.length < 2) return;
+
+      const pollOptions: PollOpt[] = opts.map((t, i) => ({
+        id: String.fromCharCode(65 + i),
+        text: String(t).slice(0, 100),
+      }));
+
+      room.activePoll = {
+        id: `poll-${Date.now()}`,
+        question: String(data.question).trim().slice(0, 200),
+        options: pollOptions,
+        startedAt: Date.now(),
+        correctOptionId: data.correctOptionId ?? null,
+      };
+      room.pollAnswers = new Map();
+
+      // Send poll to all — but strip correctOptionId for everyone except teacher's own socket
+      const studentPayload = { ...room.activePoll, correctOptionId: undefined };
+      io.to(teacherRoom(sessionId)).emit("pollStarted", room.activePoll); // teacher sees answer
+      socket.broadcast.to(globalRoom(sessionId)).emit("pollStarted", studentPayload);
+    });
+
+    // ── Poll submit — score is_correct server-side ─────────────
+    socket.on("submitPoll", (data: { optionId: string }) => {
+      if (!room.activePoll || room.pollAnswers.has(userId)) return;
+      const responseTimeMs = Date.now() - room.activePoll.startedAt;
+      const optId    = String(data.optionId);
+      const isCorrect = room.activePoll.correctOptionId != null
+        ? optId === room.activePoll.correctOptionId
+        : true; // No correct answer set → everyone is "correct" for ranking
+
+      const answer: PollAnswer = {
+        optionId: optId,
+        optionText: room.activePoll.options.find(o => o.id === optId)?.text ?? "",
+        name, userId,
+        mentorGroupId: groupId,
+        isCorrect,
+        responseTimeMs,
+        ts: Date.now(),
+      };
+      room.pollAnswers.set(userId, answer);
+      persistPollAnswer(sessionId, room.activePoll, answer);
+
+      // Live counts to teacher
+      const counts: Record<string, number> = {};
+      for (const a of room.pollAnswers.values()) counts[a.optionId] = (counts[a.optionId] ?? 0) + 1;
+      io.to(teacherRoom(sessionId)).emit("pollUpdate", { counts, total: room.pollAnswers.size });
+
+      socket.emit("pollSubmitted", { optionId: optId, isCorrect });
+    });
+
+    // ── Sprint 3: Stage orchestration ─────────────────────────
+    socket.on("stage:approveStudent", async (payload: {
+      studentId: string; studentName: string; studentGroupId: string;
+    }) => {
+      if (!isStaff) return;
+      const occupied = new Set(Array.from(room.stageSlots.values()).map(s => s.slotNumber));
+      let openSlot: number | null = null;
+      for (let i = 1; i <= 5; i++) { if (!occupied.has(i)) { openSlot = i; break; } }
+
+      if (!openSlot) {
+        socket.emit("stage:error", { message: "Stage full — max 5 students." });
+        return;
+      }
+      if (room.stageSlots.has(payload.studentId)) {
+        socket.emit("stage:error", { message: "Student is already on stage." });
+        return;
+      }
+
+      const expiresAt = Date.now() + STAGE_DURATION_MS;
+      const entry: StageSlotEntry = {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        slotNumber: openSlot,
+        isMuted: false,
+        mentorGroupId: payload.studentGroupId || null,
+        stageExpiresAt: expiresAt,
+      };
+      room.stageSlots.set(payload.studentId, entry);
+
+      // Persist to DB (non-blocking)
+      db.insert(stageSlotsTable).values({
+        sessionId,
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        mentorGroupId: payload.studentGroupId || null,
+        slotNumber: openSlot,
+        isMuted: false,
+        status: "active",
+        invitedByTeacherId: Number(userId) || null,
+        stageStartedAt: new Date(),
+        stageExpiresAt: new Date(expiresAt),
+      }).onConflictDoNothing().catch(() => {});
+
+      scheduleStageExpiry(io, sessionId, payload.studentId);
+
+      // Grant LiveKit publish permission BEFORE emitting stage:studentInvited so the
+      // student's setMic(true) call doesn't race against the permission not yet applied.
+      if (isLiveKitConfigured()) {
+        try {
+          const roomName = await getLiveKitRoomName(sessionId);
+          if (roomName) await updateParticipantPublishPermission(roomName, payload.studentId, true);
+        } catch { /* non-fatal — student can retry via mute/unmute */ }
+      }
+
+      // Clear hand from raise-hand queue
+      room.raisedHands.delete(payload.studentId);
+      io.to(globalRoom(sessionId)).emit("classroom:handRaised", {
+        uid: payload.studentId, name: payload.studentName,
+        mentorGroupId: payload.studentGroupId || null, raised: false, ts: new Date(),
+      });
+
+      io.to(globalRoom(sessionId)).emit("stage:studentInvited", {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        slotNumber: openSlot,
+        isMuted: false,
+        mentorGroupId: payload.studentGroupId || null,
+        stageExpiresAt: expiresAt,
+      });
+    });
+
+    // ── Teacher directly invites student to stage (Give Mic) ──
+    socket.on("stage:inviteStudent", (payload: { studentId: string; studentName: string; studentGroupId: string }) => {
+      if (!isStaff) return;
+      if (room.stageSlots.size >= 5) {
+        socket.emit("stage:error", { message: "Stage full — max 5 students." });
+        return;
+      }
+      if (room.stageSlots.has(payload.studentId)) {
+        socket.emit("stage:error", { message: "Student is already on stage." });
+        return;
+      }
+      // Broadcast to whole room; student side checks if invite is for them
+      io.to(globalRoom(sessionId)).emit("stage:micInvite", {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+        fromTeacher: name,
+      });
+    });
+
+    // ── Student accepts mic invite → gets put on stage ────────
+    socket.on("stage:acceptInvite", async () => {
+      if (isStaff || isMentor) return;
+      if (room.stageSlots.size >= 5 || room.stageSlots.has(userId)) return;
+
+      const occupied = new Set(Array.from(room.stageSlots.values()).map(s => s.slotNumber));
+      let openSlot: number | null = null;
+      for (let i = 1; i <= 5; i++) { if (!occupied.has(i)) { openSlot = i; break; } }
+      if (!openSlot) return;
+
+      const acceptExpiresAt = Date.now() + STAGE_DURATION_MS;
+      const entry: StageSlotEntry = {
+        studentId: userId, studentName: name,
+        slotNumber: openSlot, isMuted: false, mentorGroupId: groupId || null,
+        stageExpiresAt: acceptExpiresAt,
+      };
+      room.stageSlots.set(userId, entry);
+
+      db.insert(stageSlotsTable).values({
+        sessionId, studentId: userId, studentName: name,
+        mentorGroupId: groupId || null, slotNumber: openSlot, isMuted: false,
+        status: "active",
+        stageStartedAt: new Date(),
+        stageExpiresAt: new Date(acceptExpiresAt),
+      }).onConflictDoNothing().catch(() => {});
+
+      scheduleStageExpiry(io, sessionId, userId);
+
+      // Grant LiveKit publish permission BEFORE emitting stage:studentInvited so the
+      // student's setMic(true) call doesn't race against the permission not yet applied.
+      if (isLiveKitConfigured()) {
+        try {
+          const roomName = await getLiveKitRoomName(sessionId);
+          if (roomName) await updateParticipantPublishPermission(roomName, userId, true);
+        } catch { /* non-fatal */ }
+      }
+
+      room.raisedHands.delete(userId);
+      io.to(globalRoom(sessionId)).emit("classroom:handRaised", {
+        uid: userId, name, mentorGroupId: groupId || null, raised: false, ts: new Date(),
+      });
+      io.to(globalRoom(sessionId)).emit("stage:studentInvited", {
+        studentId: userId, studentName: name,
+        slotNumber: openSlot, isMuted: false, mentorGroupId: groupId || null,
+        stageExpiresAt: acceptExpiresAt,
+      });
+    });
+
+    socket.on("stage:toggleMute", (payload: { studentId: string; isMuted: boolean }) => {
+      if (!isStaff) return;
+      const entry = room.stageSlots.get(payload.studentId);
+      if (!entry) return;
+      entry.isMuted = payload.isMuted;
+
+      db.update(stageSlotsTable)
+        .set({ isMuted: payload.isMuted })
+        .where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, payload.studentId)))
+        .catch(() => {});
+
+      io.to(globalRoom(sessionId)).emit("stage:muteStateChanged", {
+        studentId: payload.studentId, isMuted: payload.isMuted,
+      });
+    });
+
+    // Only the teacher/staff can force-remove; students leaving triggers this on disconnect (see below).
+    socket.on("stage:removeStudent", (payload: { studentId: string }) => {
+      if (!isStaff) return;
+      endStageSlot(io, sessionId, payload.studentId, "teacher_removed").catch(() => {});
+    });
+
+    // ── Leaderboard — group-scoped Top 20, ranked by correctness then speed, shown 5s ──
+    socket.on("showLeaderboard", () => {
+      if (!isStaff || !room.activePoll) return;
+      const pollId = room.activePoll.id;
+
+      // Aggregate for the teacher/mentor view (all groups)
+      const overall = computeTopLeaderboard(room, null);
+      persistLeaderboard(sessionId, pollId, overall);
+      io.to(teacherRoom(sessionId)).emit("showLeaderboard", { top3: overall.slice(0, 3), leaderboard: overall });
+
+      // Per-group Top 20 broadcast to each mentor group's own room
+      const groupIds = new Set(
+        Array.from(room.pollAnswers.values()).map(a => a.mentorGroupId).filter((g): g is string => !!g),
+      );
+      for (const gid of groupIds) {
+        const groupTop20 = computeTopLeaderboard(room, gid);
+        io.to(groupRoom(sessionId, gid)).emit("showLeaderboard", {
+          top3: groupTop20.slice(0, 3), leaderboard: groupTop20,
+        });
+      }
+
+      room.activePoll = null;
+      setTimeout(() => io.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
+    });
+
+    // ── End Class (teacher only) ──────────────────────────────
+    socket.on("class:end", () => {
+      if (!isStaff) return;
+
+      const sid = Number(sessionId);
+
+      // ── Persist "completed" status to DB immediately ──────────
+      // This is the critical step that prevents anyone from re-joining.
+      // All subsequent connection attempts (any role) will be rejected.
+      if (!Number.isNaN(sid)) {
+        db.update(liveClassesTable)
+          .set({ status: "completed" })
+          .where(eq(liveClassesTable.id, sid))
+          .catch(() => {});
+      }
+
+      // Mark all still-live students as left
+      for (const [key, entry] of liveStateCache.entries()) {
+        if (!key.startsWith(`${sessionId}-`)) continue;
+        if (entry.currentStatus !== "ABSENT") {
+          entry.currentStatus = "ABSENT";
+          if (!Number.isNaN(sid)) {
+            db.update(sessionAttendanceTable)
+              .set({ leftAt: new Date() })
+              .where(
+                and(
+                  eq(sessionAttendanceTable.sessionId, sid),
+                  eq(sessionAttendanceTable.studentId, entry.userId)
+                )
+              )
+              .catch(() => {});
+          }
+        }
+      }
+
+      // End all active stage slots (revokes LiveKit publish + persists endReason)
+      for (const studentId of Array.from(room.stageSlots.keys())) {
+        endStageSlot(io, sessionId, studentId, "class_ended").catch(() => {});
+      }
+
+      // Remove room from in-memory Map → frees memory
+      sessionRooms.delete(sessionId);
+
+      // Notify all connected sockets then disconnect them after 4s
+      io.to(globalRoom(sessionId)).emit("class:ended", { sessionId });
+      setTimeout(() => {
+        io.in(globalRoom(sessionId)).disconnectSockets(true);
+      }, 4000);
+    });
+
+    // ── Presentation sync (teacher broadcasts URL to all viewers) ──
+    socket.on("presentation:start", (payload: { url: string }) => {
+      if (!isStaff) return;
+      const url = String(payload?.url ?? "").trim().slice(0, 2048);
+      if (!url) return;
+      room.activePresentation = { url, updatedAt: Date.now(), updatedBy: name };
+      room.currentSlide = 1;
+      io.to(globalRoom(sessionId)).emit("presentation:started", { url });
+    });
+
+    socket.on("presentation:stop", () => {
+      if (!isStaff) return;
+      room.activePresentation = null;
+      room.currentSlide = 1;
+      io.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+    });
+
+    // ── Demo Mode — teacher shows their own camera full-screen ──
+    socket.on("demo:start", () => {
+      if (!isStaff) return;
+      room.demoMode = true;
+      io.to(globalRoom(sessionId)).emit("demo:started");
+    });
+
+    socket.on("demo:stop", () => {
+      if (!isStaff) return;
+      room.demoMode = false;
+      io.to(globalRoom(sessionId)).emit("demo:stopped");
+    });
+
+    // ── Pause / Resume class (teacher mutes camera+mic; students see banner) ──
+    socket.on("class:pause", () => {
+      if (!isStaff) return;
+      io.to(globalRoom(sessionId)).emit("class:paused");
+    });
+
+    socket.on("class:resume", () => {
+      if (!isStaff) return;
+      io.to(globalRoom(sessionId)).emit("class:resumed");
+    });
+
+    // ── Mute / Unmute chat (teacher only) ────────────────────
+    socket.on("chat:mute", () => {
+      if (!isStaff) return;
+      room.chatMuted = true;
+      io.to(globalRoom(sessionId)).emit("chat:muted", { message: "💬 Chat has been muted by the teacher." });
+    });
+    socket.on("chat:unmute", () => {
+      if (!isStaff) return;
+      room.chatMuted = false;
+      io.to(globalRoom(sessionId)).emit("chat:unmuted");
+    });
+
+    socket.on("annotation:draw", (seg: unknown) => {
+      if (!isStaff) return;
+      // broadcast to everyone EXCEPT the teacher (who already drew locally)
+      socket.to(globalRoom(sessionId)).emit("annotation:draw", seg);
+    });
+    socket.on("annotation:clear", () => {
+      if (!isStaff) return;
+      socket.to(globalRoom(sessionId)).emit("annotation:clear");
+    });
+
+    socket.on("presentation:navigate", (payload: { dir: "prev" | "next"; page: number }) => {
+      if (!isStaff) return;
+      const page = Math.max(1, Math.round(Number(payload?.page ?? 1)));
+      room.currentSlide = page;
+      // Broadcast to everyone in the room (including teacher so their iframe also reloads)
+      io.to(globalRoom(sessionId)).emit("presentation:navigated", { page });
+    });
+
+    // ── Mentor silently suggests a student to the teacher ─────
+    socket.on("mentor:suggestStudent", (payload: { studentId: string; studentName: string }) => {
+      if (!isMentor) return;
+      // No popup — just highlight the student at top of teacher's list
+      io.to(teacherRoom(sessionId)).emit("teacher:studentSuggested", {
+        studentId: payload.studentId,
+        studentName: payload.studentName,
+      });
+    });
+
+    // ── Staff Chat (teacher + mentor private channel) ──────────
+    socket.on("staffChat:send", (rawText: string) => {
+      if (!isStaff && !isMentor) return;
+      const text = String(rawText ?? "").replace(/[<>]/g, "").trim().slice(0, 300);
+      if (!text) return;
+      const msg = {
+        id: `sc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name, role, text, ts: Date.now(),
+      };
+      io.to(teacherRoom(sessionId)).emit("staffChat:message", msg);
+    });
+
+    // ── Attendance snapshot on demand (5-second client heartbeat) ────
+    // NOTE: CacheEntry uses `currentStatus`; client's AttendanceRecord expects `status` —
+    // we must map here or the client always sees every student as "ABSENT".
+    socket.on("request:attendance", () => {
+      const snap = Array.from(liveStateCache.entries())
+        .filter(([k]) => k.startsWith(`${sessionId}-`))
+        .map(([, v]) => ({
+          userId: v.userId,
+          name: v.name,
+          phone: v.phone ?? null,
+          mentorGroupId: v.mentorGroupId,
+          status: v.currentStatus, // <── critical: currentStatus → status
+          totalDurationSeconds: 0,
+          joinedAt: null,
+        }));
+      socket.emit("attendance:snapshot", { students: snap });
+    });
+
+    // ── Disconnect ────────────────────────────────────────────
+    socket.on("disconnect", () => {
+      // Delete the active-session entry only when this disconnecting socket is
+      // still the newest active socket. An older replaced socket must never
+      // delete the newer device's entry.
+      if (
+        isSingleSessionRole &&
+        activeStudentClassSockets.get(singleSessionKey) === socket.id
+      ) {
+        activeStudentClassSockets.delete(singleSessionKey);
+        console.log(
+          `[single-session] active live-class socket removed ${singleSessionKey}`
+        );
+      }
+
+      if (isStaff) {
+        room.teacher = null;
+        io.to(globalRoom(sessionId)).emit("teacher:left", { name, userId });
+      } else {
+        markLeft(sessionId, userId);
+        const entry = liveStateCache.get(`${sessionId}-${userId}`);
+        if (entry) entry.currentStatus = "ABSENT";
+
+        // Sprint 3: auto-remove from stage if present (also revokes LiveKit publish permission)
+        if (room.stageSlots.has(userId)) {
+          endStageSlot(io, sessionId, userId, "student_left").catch(() => {});
+        }
+      }
+      room.raisedHands.delete(userId);
+    });
+  });
+
+  return io;
+}

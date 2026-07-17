@@ -1,17 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  attachLocalCamera,
-  setCameraEnabled,
-  setMicrophoneEnabled,
-  resumeAudio,
-} from "./livekit/local-media";
-import {
-  attachRemoteAudio,
-  detachRemoteAudio,
-} from "./livekit/remote-audio";
-import { registerRoomEvents } from "./livekit/event-manager";
-
-import {
   Room,
   RoomEvent,
   Track,
@@ -108,18 +96,26 @@ export function useLiveKit({
       muted: track.isMuted,
     });
 
-    // Restore the original LiveKit-managed audio attachment.
-    document.querySelector(`[${TEACHER_AUDIO_ATTR}]`)?.remove();
+    let audioEl = document.querySelector(
+      `[${TEACHER_AUDIO_ATTR}]`
+    ) as HTMLAudioElement | null;
 
-    const audioEl = track.attach() as HTMLAudioElement;
+    if (!audioEl) {
+      audioEl = document.createElement("audio");
+      audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
+      audioEl.autoplay = true;
+      audioEl.muted = false;
+      audioEl.volume = 1;
+      audioEl.style.display = "none";
+      document.body.appendChild(audioEl);
 
-    audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
-    audioEl.autoplay = true;
+      console.log("[teacher-audio] stable element created");
+    }
+
+    track.attach(audioEl);
+
     audioEl.muted = false;
     audioEl.volume = 1;
-    audioEl.style.display = "none";
-
-    document.body.appendChild(audioEl);
 
     void audioEl.play()
       .then(() => {
@@ -141,10 +137,7 @@ export function useLiveKit({
       setTeacherVideoSubscribed(false);
     } else if (track.kind === Track.Kind.Audio) {
       const el = document.querySelector(`[${TEACHER_AUDIO_ATTR}]`);
-      if (el) {
-        detachRemoteAudio(track, el as HTMLAudioElement);
-        el.remove();
-      }
+      if (el) { track.detach(el as HTMLAudioElement); el.remove(); }
       setTeacherAudioSubscribed(false);
     }
   }, []);
@@ -203,12 +196,6 @@ export function useLiveKit({
           },
         });
         roomRef.current = room;
-        const handleTrackSubscribed = (
-          track: RemoteTrack,
-          participant: RemoteParticipant
-        ) => {
-
-        };
 
         room.on(RoomEvent.TrackSubscribed, (track, _pub, participant: RemoteParticipant) => {
           const entry = tracksByIdentity.current.get(participant.identity) ?? {};
@@ -236,16 +223,15 @@ export function useLiveKit({
             // so there is no self-echo risk from this code path.
             console.log("[LiveKit] Stage audio attached", participant.identity);
 
-            const audioEl = document.createElement("audio");
-            audioEl.setAttribute("data-stage-audio", participant.identity);
-            audioEl.style.display = "none";
+            const audioEl = track.attach() as HTMLAudioElement;
+            audioEl.autoplay = true;
 
-            document.body.appendChild(audioEl);
-            stageAudioEls.current.set(participant.identity, audioEl);
-
-            attachRemoteAudio(track, audioEl).catch(err=>{
+            void audioEl.play().catch(err=>{
               console.warn("[LiveKit] Stage autoplay blocked",err);
             });
+            audioEl.setAttribute("data-stage-audio", participant.identity);
+            document.body.appendChild(audioEl);
+            stageAudioEls.current.set(participant.identity, audioEl);
           }
         });
         room.on(RoomEvent.TrackUnsubscribed, (track, _pub, participant: RemoteParticipant) => {
@@ -310,24 +296,12 @@ export function useLiveKit({
           });
           setTrackVersion(v => v + 1);
         });
-        room.on(RoomEvent.LocalTrackPublished, (pub) => {
-          console.log("[DEBUG][LOCAL TRACK PUBLISHED]", {
-            kind: pub.kind,
-            source: pub.source,
-            sid: pub.trackSid,
-          });
-
+        room.on(RoomEvent.LocalTrackPublished, () => {
           const lp: LocalParticipant = room!.localParticipant;
           setCameraPublishing(lp.isCameraEnabled);
           setMicPublishing(lp.isMicrophoneEnabled);
         });
-        room.on(RoomEvent.LocalTrackUnpublished, (pub) => {
-          console.log("[DEBUG][LOCAL TRACK UNPUBLISHED]", {
-            kind: pub.kind,
-            source: pub.source,
-            sid: pub.trackSid,
-          });
-
+        room.on(RoomEvent.LocalTrackUnpublished, () => {
           const lp: LocalParticipant = room!.localParticipant;
           setCameraPublishing(lp.isCameraEnabled);
           setMicPublishing(lp.isMicrophoneEnabled);
@@ -386,16 +360,10 @@ export function useLiveKit({
               setTrackVersion(v => v + 1);
               // Auto-attach audio for late joiners just like we do in TrackSubscribed.
               if (entry.audio && !stageAudioEls.current.has(participant.identity)) {
-                const audioEl = document.createElement("audio");
+                const audioEl = entry.audio.attach() as HTMLAudioElement;
                 audioEl.setAttribute("data-stage-audio", participant.identity);
-                audioEl.style.display = "none";
-
                 document.body.appendChild(audioEl);
                 stageAudioEls.current.set(participant.identity, audioEl);
-
-                attachRemoteAudio(entry.audio, audioEl).catch((err) => {
-                  console.warn("[LiveKit] Late join autoplay blocked", err);
-                });
               }
             }
           }
@@ -442,101 +410,68 @@ export function useLiveKit({
    * without a separate getUserMedia stream competing for the camera device.
    */
   const attachLocalCameraTo = useCallback((el: HTMLVideoElement | null) => {
-  const room = roomRef.current;
-  if (!room) return;
-  attachLocalCamera(room, el);
-}, []);
+    const room = roomRef.current;
+    if (!el || !room) return;
+    const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+    if (pub?.track) pub.track.attach(el);
+  }, []);
 
   /** Enable/disable local camera publish. Server enforces whether this is actually allowed. */
   const setCamera = useCallback(async (on: boolean) => {
-  const room = roomRef.current;
-  if (!room) return;
-
-  setCameraError(null);
-
-  try {
-    await setCameraEnabled(room, on);
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Camera permission was denied.";
-
-    setCameraError(message);
-    setError(message);
-  }
-}, []);
+    const room = roomRef.current;
+    if (!room) return;
+    setCameraError(null);
+    try {
+      await room.localParticipant.setCameraEnabled(on);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Camera permission was denied.";
+      setCameraError(message);
+      setError(message);
+    }
+  }, []);
 
   /** Enable/disable local microphone publish. Server enforces whether this is actually allowed. */
   const setMic = useCallback(async (on: boolean) => {
-  const room = roomRef.current;
-  if (!room) return;
-
-  setMicrophoneError(null);
-
-  try {
-    console.log("[DEBUG] setMic called", {
-      requested: on,
-      before: room.localParticipant.isMicrophoneEnabled,
-    });
-
-    await setMicrophoneEnabled(room, on);
-
-    console.log("[DEBUG] setMic finished", {
-      requested: on,
-      after: room.localParticipant.isMicrophoneEnabled,
-    });
-
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Microphone permission was denied.";
-
-    setMicrophoneError(message);
-    setError(message);
-  }
-}, []);
+    const room = roomRef.current;
+    if (!room) return;
+    setMicrophoneError(null);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(on);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Microphone permission was denied.";
+      setMicrophoneError(message);
+      setError(message);
+    }
+  }, []);
 
   /** Unlocks browser-blocked autoplay audio for all subscribed remote audio tracks. */
   const startAudio = useCallback(async () => {
-  const room = roomRef.current;
-  if (!room) return;
-
-  try {
-    await resumeAudio(room);
-    setAudioBlocked(!room.canPlaybackAudio);
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Class audio was blocked by the browser."
-    );
-  }
-}, []);
+    const room = roomRef.current;
+    if (!room) return;
+    try {
+      await room.startAudio();
+      setAudioBlocked(!room.canPlaybackAudio);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Class audio was blocked by the browser.");
+    }
+  }, []);
 
   // Automatically recover when headset/microphone/speaker changes.
   useEffect(() => {
     if (!navigator.mediaDevices?.addEventListener) return;
 
-    let lastDeviceChange = 0;
-
     const onDeviceChange = async () => {
-      const now = Date.now();
-
-      if (now - lastDeviceChange < 3000) {
-        console.log("[LiveKit] Ignoring duplicate devicechange");
-        return;
-      }
-
-      lastDeviceChange = now;
-
       const room = roomRef.current;
       if (!room) return;
 
       try {
-        console.log("[LiveKit] Device changed (debounced)");
+        console.log("[LiveKit] Audio device changed, refreshing microphone...");
 
+        console.log("[LiveKit] Audio device changed.");
+
+        // Temporary diagnostic:
+        // Don't recreate the microphone track.
+        // Just ask the browser to resume audio playback.
         await room.startAudio();
       } catch (e) {
         console.error("[LiveKit] Device recovery failed", e);

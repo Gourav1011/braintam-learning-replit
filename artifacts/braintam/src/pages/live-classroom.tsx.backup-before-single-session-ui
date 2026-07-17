@@ -1,0 +1,2603 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import PDFViewer from "@/components/PDFViewer";
+import { useParams } from "wouter";
+import { io, type Socket } from "socket.io-client";
+import { useLiveKit } from "@/hooks/use-livekit";
+import { useAuth } from "@/components/auth-provider";
+import {
+  Users, MessageSquare, BarChart2, Send,
+  Trophy, Monitor, Hand, ChevronLeft, ChevronRight, X, Upload, Mic,
+  Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2, RotateCcw,
+} from "lucide-react";
+
+const ROUND_LOGO = "/braintam-logo-round.png";
+const BRAND_LOGO = "/braintam-logo.png";
+
+const NAVY = "#0B2B6B";
+const ORANGE = "#FF6B1A";
+const GREEN = "#10B981";
+const YELLOW = "#F59E0B";
+
+// ── Types ──────────────────────────────────────────────────────
+interface ChatMsg {
+  id: string; name: string; role: string;
+  text: string; isAnnouncement: boolean; ts: number;
+}
+interface PollOpt { id: string; text: string; }
+interface Poll { id: string; question: string; options: PollOpt[]; startedAt?: number; }
+interface LeaderboardEntry {
+  name: string; rank: number;
+  userId?: string; isCorrect?: boolean; responseTimeMs?: number;
+}
+interface RaisedHand { uid: string; name: string; mentorGroupId: string | null; }
+
+// Sprint 3 — Stage overlay
+interface StageSlot {
+  studentId: string;
+  studentName: string;
+  slotNumber: number;
+  isMuted: boolean;
+  mentorGroupId: string | null;
+  stageExpiresAt?: number | null;
+}
+
+interface AttendanceRecord {
+  userId: string;
+  name: string;
+  phone: string | null;
+  mentorGroupId: string | null;
+  status: "LIVE" | "BACKSTAGE" | "ABSENT";
+  totalDurationSeconds: number;
+  joinedAt: number | null;
+}
+
+// ── Outbound call/WhatsApp routing ─────────────────────────────
+function handleOutbound(phone: string | null, protocol: "TEL" | "WA"): void {
+  if (!phone) { alert("No phone number available"); return; }
+  const num = phone.replace(/\D/g, "");
+  const isTouch = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (protocol === "TEL") {
+    if (isTouch) window.location.href = `tel:${num}`;
+    else { navigator.clipboard.writeText(num).catch(() => {}); alert(`📞 ${num} copied to clipboard`); }
+  } else {
+    window.open(isTouch ? `https://wa.me/${num}` : `https://web.whatsapp.com/send?phone=${num}`, "_blank");
+  }
+}
+
+// ── Socket hook ────────────────────────────────────────────────
+function useClassroomSocket(
+  sessionId: string, userId: string, name: string,
+  role: string, groupId: string, phone: string,
+  enabled: boolean = true
+) {
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    // Wait for auth to resolve before opening the socket.
+    // Without this guard the socket connects with role="student" (before auth loads),
+    // then immediately reconnects with the real role. This double-connect race causes
+    // teacher:joined / chat / poll events to be missed during the reconnect window.
+    if (!enabled) return;
+
+    const s = io({
+      path: "/api/socket.io",
+      transports: ["websocket", "polling"],
+      query: { sessionId, userId, name, role, groupId: groupId || "", phone: phone || "" },
+    });
+    s.on("connect", () => setConnected(true));
+    s.on("disconnect", () => setConnected(false));
+    setSocket(s);
+    return () => {
+      s.disconnect();
+      setSocket(null);
+      setConnected(false);
+    };
+  }, [sessionId, userId, name, role, groupId, phone, enabled]);
+
+  return { socket, connected };
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function fmtDuration(sec: number): string {
+  if (sec < 60) return `${sec}s`;
+  return `${Math.round(sec / 60)}m`;
+}
+
+type DrawSegment = { mode: "pen" | "hl" | "eraser"; color: string; width: number; x1: number; y1: number; x2: number; y2: number; };
+
+/** Replays a flat list of segments onto the canvas from scratch. */
+function replaySegments(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, segs: DrawSegment[]) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const seg of segs) {
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (seg.mode === "eraser") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1)";
+      ctx.lineWidth = seg.width ?? 24;
+    } else if (seg.mode === "pen") {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth = seg.width ?? 3;
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 24;
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function AnnotationOverlay({ segments }: { segments: DrawSegment[] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx || !canvas) return;
+    replaySegments(ctx, canvas, segments);
+  }, [segments]);
+  return <canvas ref={ref} width={1280} height={720} className="absolute inset-0 w-full h-full" style={{ pointerEvents: "none" }} />;
+}
+
+// ── Annotation canvas ──────────────────────────────────────────
+const PEN_COLORS = [
+  { id: "orange", hex: "#FF6B1A", label: "Orange" },
+  { id: "red",    hex: "#EF4444", label: "Red" },
+  { id: "blue",   hex: "#3B82F6", label: "Blue" },
+  { id: "green",  hex: "#22C55E", label: "Green" },
+  { id: "white",  hex: "#FFFFFF", label: "White" },
+  { id: "black",  hex: "#111827", label: "Black" },
+] as const;
+type PenColorId = typeof PEN_COLORS[number]["id"];
+
+function AnnotationCanvas({
+  mode, penColor, penWidth, canvasRef, onSegment, onStrokeComplete,
+}: {
+  mode: "none" | "pen" | "highlighter" | "eraser";
+  penColor: string;
+  penWidth: number;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  onSegment?: (seg: DrawSegment) => void;
+  onStrokeComplete?: () => void;
+}) {
+  const isDrawing = useRef(false);
+  const last = useRef<{ x: number; y: number } | null>(null);
+
+  const getPos = (clientX: number, clientY: number) => {
+    const c = canvasRef.current!;
+    const r = c.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) * (c.width / r.width),
+      y: (clientY - r.top) * (c.height / r.height),
+    };
+  };
+
+  const drawSeg = (seg: DrawSegment) => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (seg.mode === "eraser") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1)";
+      ctx.lineWidth = seg.width;
+    } else if (seg.mode === "pen") {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = seg.color;
+      ctx.lineWidth = seg.width;
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 24;
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const onDown = (clientX: number, clientY: number) => {
+    if (mode === "none") return;
+    isDrawing.current = true;
+    last.current = getPos(clientX, clientY);
+  };
+  const onMove = (clientX: number, clientY: number) => {
+    if (!isDrawing.current || !last.current || mode === "none") return;
+    const p = getPos(clientX, clientY);
+    const seg: DrawSegment = {
+      mode: mode === "pen" ? "pen" : mode === "eraser" ? "eraser" : "hl",
+      color: penColor,
+      width: mode === "eraser" ? penWidth * 6 : mode === "pen" ? penWidth : 24,
+      x1: last.current.x, y1: last.current.y,
+      x2: p.x, y2: p.y,
+    };
+    drawSeg(seg);
+    onSegment?.(seg);
+    last.current = p;
+  };
+  const onUp = () => {
+    if (isDrawing.current) { isDrawing.current = false; last.current = null; onStrokeComplete?.(); }
+  };
+
+  return (
+    <canvas
+      ref={canvasRef} width={1280} height={720}
+      className="absolute inset-0 w-full h-full"
+      style={{
+        pointerEvents: mode !== "none" ? "auto" : "none",
+        cursor: mode === "eraser" ? "cell" : mode === "pen" ? "crosshair" : mode === "highlighter" ? "crosshair" : "default",
+        touchAction: "none",
+      }}
+      onMouseDown={e => onDown(e.clientX, e.clientY)}
+      onMouseMove={e => onMove(e.clientX, e.clientY)}
+      onMouseUp={onUp} onMouseLeave={onUp}
+      onTouchStart={e => { e.preventDefault(); const t = e.touches[0]; onDown(t.clientX, t.clientY); }}
+      onTouchMove={e => { e.preventDefault(); const t = e.touches[0]; onMove(t.clientX, t.clientY); }}
+      onTouchEnd={onUp}
+    />
+  );
+}
+
+// ── Teacher Sidebar — present (LIVE) students only; mentor-suggested → purple top ──
+function TeacherSidebar({
+  registry, suggestedStudents, collapsed, onCollapse, onGiveMic, stageSlots,
+}: {
+  registry: Map<string, AttendanceRecord>;
+  suggestedStudents: Set<string>;
+  collapsed: boolean;
+  onCollapse: () => void;
+  onGiveMic: (s: AttendanceRecord) => void;
+  stageSlots: StageSlot[];
+}) {
+  const [search, setSearch] = useState("");
+  const liveStudents = Array.from(registry.values()).filter(s => s.status === "LIVE");
+  const sorted = [...liveStudents].sort((a, b) => {
+    const as_ = suggestedStudents.has(a.userId) ? 0 : 1;
+    const bs_ = suggestedStudents.has(b.userId) ? 0 : 1;
+    if (as_ !== bs_) return as_ - bs_;
+    return a.name.localeCompare(b.name);
+  });
+  const q = search.trim().toLowerCase();
+  const filtered = q ? sorted.filter(s => s.name.toLowerCase().includes(q)) : sorted;
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center py-3 border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 40 }}>
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300 mb-3">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <div style={{ color: GREEN }} className="text-xs font-bold">{liveStudents.length}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 200 }}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
+        <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wide">
+          Present ({liveStudents.length})
+        </span>
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="px-2 py-1.5 border-b border-gray-800">
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search student…"
+          className="w-full bg-gray-800 text-white text-[10px] rounded-md px-2 py-1 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600"
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {filtered.length === 0 && <p className="text-[10px] text-gray-600 text-center mt-6">No students present</p>}
+        {filtered.map(s => {
+          const isSuggested = suggestedStudents.has(s.userId);
+          const alreadyOnStage = stageSlots.some(sl => sl.studentId === s.userId);
+          const stageFull = stageSlots.length >= 5;
+          return (
+            <div key={s.userId} className={`px-3 py-2 border-b border-gray-800/50 ${isSuggested ? "bg-purple-900/20" : "hover:bg-gray-800/40"}`}>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: isSuggested ? "#A855F7" : GREEN }} />
+                <span className={`text-[11px] font-semibold truncate flex-1 ${isSuggested ? "text-purple-200" : "text-gray-200"}`}>
+                  {s.name}
+                </span>
+                {isSuggested && <span className="text-[8px] text-purple-400 flex-shrink-0 font-bold">★</span>}
+                {alreadyOnStage ? (
+                  <span className="text-[8px] text-green-400 font-bold flex-shrink-0">🎤</span>
+                ) : (
+                  <button
+                    disabled={stageFull}
+                    onClick={() => onGiveMic(s)}
+                    title="Give Mic"
+                    className={`flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded font-bold transition-all flex-shrink-0 ${stageFull ? "text-gray-600 cursor-not-allowed" : "bg-green-800/50 text-green-300 hover:bg-green-700/60"}`}
+                  ><Mic className="w-2.5 h-2.5" /></button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {suggestedStudents.size > 0 && (
+        <div className="px-3 py-1.5 border-t border-gray-800 flex-shrink-0">
+          <span className="text-[9px] text-purple-400">🟣 = Mentor suggested</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Mentor Sidebar — group stats + absent call buttons ─────────
+function MentorSidebar({
+  registry, myGroupId, collapsed, onCollapse,
+}: {
+  registry: Map<string, AttendanceRecord>;
+  myGroupId: string;
+  collapsed: boolean;
+  onCollapse: () => void;
+}) {
+  const myStudents  = Array.from(registry.values()).filter(s => s.mentorGroupId === myGroupId);
+  const live        = myStudents.filter(s => s.status === "LIVE").length;
+  const backstage   = myStudents.filter(s => s.status === "BACKSTAGE").length;
+  const absent      = myStudents.filter(s => s.status === "ABSENT").length;
+  const absentList  = myStudents.filter(s => s.status === "ABSENT");
+  const presentList = myStudents.filter(s => s.status !== "ABSENT");
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center py-3 border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 40 }}>
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300 mb-3">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <div className="space-y-1 text-center">
+          <div style={{ color: GREEN }} className="text-xs font-bold">{live}</div>
+          <div style={{ color: YELLOW }} className="text-xs font-bold">{backstage}</div>
+          <div className="text-xs font-bold text-red-400">{absent}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 200 }}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
+        <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wide">
+          Group {myGroupId || "—"}
+        </span>
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 border-b border-gray-800 flex-shrink-0">
+        <div className="flex flex-col items-center py-2 border-r border-gray-800">
+          <span className="text-base font-black" style={{ color: GREEN }}>{live}</span>
+          <span className="text-[8px] font-semibold" style={{ color: GREEN }}>Live</span>
+        </div>
+        <div className="flex flex-col items-center py-2 border-r border-gray-800">
+          <span className="text-base font-black" style={{ color: YELLOW }}>{backstage}</span>
+          <span className="text-[8px] font-semibold" style={{ color: YELLOW }}>Away</span>
+        </div>
+        <div className="flex flex-col items-center py-2">
+          <span className="text-base font-black text-red-400">{absent}</span>
+          <span className="text-[8px] font-semibold text-red-600">Absent</span>
+        </div>
+      </div>
+      {absentList.length > 0 && (
+        <div className="border-b border-gray-800 flex-shrink-0 max-h-36 overflow-y-auto">
+          <p className="text-[9px] text-red-400 font-bold px-3 pt-1.5 pb-0.5 uppercase tracking-wide">📞 Call Absent</p>
+          {absentList.map(s => (
+            <div key={s.userId} className="flex items-center justify-between px-3 py-1 hover:bg-gray-800/40">
+              <span className="text-[10px] text-gray-300 truncate flex-1">{s.name}</span>
+              <div className="flex gap-1 flex-shrink-0">
+                <button onClick={() => handleOutbound(s.phone, "TEL")} title="Call"
+                  className="text-[8px] bg-blue-900/50 text-blue-300 hover:bg-blue-800 px-1.5 py-0.5 rounded font-bold">📞</button>
+                <button onClick={() => handleOutbound(s.phone, "WA")} title="WhatsApp"
+                  className="text-[8px] bg-green-900/50 text-green-300 hover:bg-green-800 px-1.5 py-0.5 rounded font-bold">WA</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto">
+        {presentList.length === 0 && <p className="text-[10px] text-gray-600 text-center mt-4">No students live</p>}
+        {presentList.map(s => (
+          <div key={s.userId} className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-800/50 hover:bg-gray-800/40">
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: s.status === "LIVE" ? GREEN : YELLOW }} />
+            <span className="text-[10px] text-gray-300 truncate">{s.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Analytics helper ───────────────────────────────────────────
+function trackEvent(
+  event: string,
+  sessionId: string,
+  userId: string,
+  role: string,
+  metadata: Record<string, unknown> = {}
+) {
+  fetch("/api/analytics/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event, sessionId, userId, role, metadata }),
+  }).catch(() => {/* fire-and-forget */});
+}
+
+// ── Main page ──────────────────────────────────────────────────
+export default function LiveClassroom() {
+  const params = useParams<{ sessionId: string }>();
+  const sessionId = params.sessionId ?? "demo";
+  const search = new URLSearchParams(window.location.search);
+
+  // Real authenticated identity — none of the "Join Meet" navigation links across the app
+  // pass `name`/`userId`/`role` query params, so relying on URL alone made every visitor
+  // connect as the literal fallback string "Student"/"u-student"/"student", colliding all
+  // users of a given role into one fake identity (broken chat names, raised hands, staging, etc).
+  // `useAuth()` resolves the real signed-in user (staff token or Clerk-backed student token)
+  // and is the primary source for both identity AND role. URL params are last-resort fallback only.
+  const { student: authIdentity, role: authRole, isLoading: authLoading } = useAuth();
+  const role          = (authRole ?? search.get("role") ?? "student").toLowerCase();
+  const rawName       = authIdentity?.name ?? search.get("name") ?? "Student";
+  // Staff/mentors get their role prefixed for on-screen display (e.g. "teacher priya", "mentor moses");
+  // students are shown by name only (e.g. "devik manhas").
+  const name          = role === "student" ? rawName : `${role} ${rawName}`;
+  const userId        = authIdentity?.id != null
+    ? String(authIdentity.id)
+    : (search.get("userId") ?? `u-${rawName.toLowerCase().replace(/\s+/g, "-")}`);
+  const groupId       = search.get("groupId") ?? "";
+  const phone         = search.get("phone") ?? "";
+  const title         = search.get("title") ?? `Live Class · ${sessionId}`;
+  const meetLink      = search.get("meetLink") ?? "";      // Sprint 2 — Join Meet button
+  const recordingUrl  = search.get("recordingUrl") ?? "";  // Sprint 2 — View Recording button
+
+  // Don't connect until auth resolves — prevents the double-connect race where the socket
+  // first joins as role="student" then immediately reconnects with the real role, during
+  // which teacher:joined / chat / poll events can be permanently missed.
+  const { socket, connected } = useClassroomSocket(sessionId, userId, name, role, groupId, phone, !authLoading);
+  const isStaff  = role === "teacher" || role === "admin" || role === "super_admin";
+  const isMentor = role === "mentor";
+  const canSeeAttendance = isStaff || isMentor;
+
+  // ── LiveKit — teacher/student video, backend-authorized ─────
+  // LiveKit connects independently of Socket.IO: chat/presence dropping out must never take
+  // camera/mic/audio down with it, and vice versa. It starts as soon as we have a real
+  // authenticated identity and a valid (non-demo) session id — never tied to `connected`.
+  const hasValidSession = Boolean(sessionId) && sessionId !== "demo" && Number.isFinite(Number(sessionId));
+  const livekit = useLiveKit({
+    sessionId,
+    enabled: hasValidSession && Boolean(userId),
+    playTeacherAudio: !isStaff,
+  });
+
+  // Only show diagnostics when explicitly opted in — Replit preview is DEV but used by real testers
+  const showDiagnostics = import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get("debug") === "classroom";
+
+  // ── State ──────────────────────────────────────────────────
+  const [presentationUrl, setPresentationUrl] = useState(search.get("url") ?? "");
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(1);
+  const [totalSlides, setTotalSlides] = useState(0);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoModeActive, setDemoModeActive] = useState(false);
+  const demoVideoRef = useRef<HTMLVideoElement>(null);
+  const selfViewRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── Per-slide annotation persistence ───────────────────────
+  const annotsBySlideRef = useRef<Map<number, DrawSegment[]>>(new Map());
+  const undoStackRef    = useRef<Map<number, DrawSegment[][]>>(new Map()); // per slide: stack of committed strokes
+  const redoStackRef    = useRef<Map<number, DrawSegment[][]>>(new Map());
+  const currentStrokeRef = useRef<DrawSegment[]>([]);
+  const prevSlideRef    = useRef(1);
+  // Memoized page-count callback — prevents PDFViewer from reloading PDF on every parent render
+  const handlePageCount = useCallback((n: number) => setTotalSlides(n), []);
+  // Q&A overlay (teacher: center-screen raised-hands panel)
+  const [showQnaOverlay, setShowQnaOverlay] = useState(false);
+  // ── Class pause/resume ──────────────────────────────────────
+  const [classPaused, setClassPaused] = useState(false);
+  const [classPausedActive, setClassPausedActive] = useState(false);
+  const [pauseProcessing, setPauseProcessing] = useState(false);
+  // ── Chat mute (teacher toggles; students/mentors blocked) ───
+  const [chatMuted, setChatMuted] = useState(false);       // teacher: current toggle state
+  const [isChatMuted, setIsChatMuted] = useState(false);   // student/mentor: received from server
+  // ── Fullscreen ─────────────────────────────────────────────
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  // ── JS-driven landscape detection (bypasses unreliable CSS orientation media query on Android) ──
+  const [isLandscapeMobile, setIsLandscapeMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 1200 && window.innerWidth > window.innerHeight;
+  });
+  useEffect(() => {
+    const check = () => {
+      setIsLandscapeMobile(window.innerWidth <= 1200 && window.innerWidth > window.innerHeight);
+    };
+    window.addEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    // also fire after a short delay post-rotation (some Android browsers report stale values immediately)
+    const onOrientationChange = () => { setTimeout(check, 150); };
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+      window.removeEventListener("orientationchange", onOrientationChange);
+    };
+  }, []);
+  const presentationPanelRef = useRef<HTMLDivElement>(null);
+
+  const [panelMode, setPanelMode] = useState<"chat" | "poll" | "staffchat">("chat");
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBlocked, setChatBlocked] = useState(false);
+  const [chatWarning, setChatWarning] = useState<{ message: string; strikeCount: number } | null>(null);
+  const [activePoll, setActivePoll] = useState<Poll | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+  const [raiseHandEnabled, setRaiseHandEnabled] = useState(false);
+  const [myHandRaised, setMyHandRaised] = useState(false);
+  const [raisedHands, setRaisedHands] = useState<RaisedHand[]>([]);
+  const [myPollAnswer, setMyPollAnswer] = useState<string | null>(null);
+  const [pollCounts, setPollCounts] = useState<Record<string, number>>({});
+  const [pollTotal, setPollTotal] = useState(0);
+  const [userCount, setUserCount] = useState(0);
+
+  // Attendance registry
+  const [registry, setRegistry] = useState<Map<string, AttendanceRecord>>(new Map());
+
+  // Mentor-suggested students (purple highlight, sorted to top in teacher sidebar)
+  const [suggestedStudents, setSuggestedStudents] = useState<Set<string>>(new Set());
+
+  // Staff Chat (teacher ↔ mentor private channel)
+  const [staffChat, setStaffChat] = useState<Array<{ id: string; name: string; role: string; text: string; ts: number }>>([]);
+  const [staffChatInput, setStaffChatInput] = useState("");
+
+  // ── Sprint 3: Stage state ─────────────────────────────────
+  const [stageSlots, setStageSlots] = useState<StageSlot[]>([]);
+
+  // ── Diagnostics: classroom:joined ack from server ─────────
+  const [classroomJoined, setClassroomJoined] = useState<{
+    socketId: string; roomName: string; memberCount: number; role: string;
+  } | null>(null);
+  // Track last socket events for diagnostics
+  const lastSocketSent = useRef<string>("—");
+  const lastSocketReceived = useRef<string>("—");
+
+  // ── Teacher presence (shown in camera panel for all roles) ──
+  const [teacherInfo, setTeacherInfo] = useState<{ name: string; userId: string; online: boolean } | null>(
+    isStaff ? { name, userId, online: true } : null
+  );
+
+  // ── Mic invite (Give Mic flow) ────────────────────────────
+  const [micInvite, setMicInvite] = useState<{ studentId: string; studentName: string; fromTeacher: string } | null>(null);
+
+  // ── Payment badge (draggable, student + mentor only) ─────
+  const grade        = search.get("grade") ?? "3";
+  const programName  = search.get("programName") ?? "Mastery Program";
+  const origPrice    = search.get("originalPrice") ?? "24000";
+  const salePrice    = search.get("scholarshipPrice") ?? "12000";
+  const payLink      = search.get("paymentLink") ?? "/enroll";
+  const [showBrochure, setShowBrochure] = useState(false);
+  const [badgeDismissed, setBadgeDismissed] = useState(true); // hidden until payment flow is ready
+  const [badgePos, setBadgePos] = useState({ x: 0, y: 0 });
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  // Initialise position once after first render
+  const badgeInitDone = useRef(false);
+  useEffect(() => {
+    if (!badgeInitDone.current) {
+      setBadgePos({ x: window.innerWidth - 150, y: window.innerHeight / 2 - 30 });
+      badgeInitDone.current = true;
+    }
+  }, []);
+  const onBadgePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    dragOffset.current = { x: e.clientX - badgePos.x, y: e.clientY - badgePos.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [badgePos]);
+  const onBadgePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    setBadgePos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+  }, []);
+  const onBadgePointerUp = useCallback((e: React.PointerEvent) => {
+    if (isDragging.current) {
+      isDragging.current = false;
+      // If barely moved, treat as click → open brochure
+      const dx = Math.abs(e.clientX - (badgePos.x + dragOffset.current.x));
+      const dy = Math.abs(e.clientY - (badgePos.y + dragOffset.current.y));
+      if (dx < 5 && dy < 5) {
+        setShowBrochure(true);
+        trackEvent("popup_opened", sessionId, userId, role, { grade, programName });
+      }
+    }
+  }, [badgePos, sessionId, userId, role, grade, programName]);
+
+  // ── Annotation ─────────────────────────────────────────────
+  const [annotMode, setAnnotMode] = useState<"none" | "pen" | "highlighter" | "eraser">("none");
+  const [penColorId, setPenColorId] = useState<PenColorId>("orange");
+  const penColor = PEN_COLORS.find(c => c.id === penColorId)?.hex ?? ORANGE;
+  const [penWidth, setPenWidth] = useState(3);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [annotSegments, setAnnotSegments] = useState<DrawSegment[]>([]);
+  const [classEnded, setClassEnded] = useState(false);
+
+  const clearAnnotations = useCallback(() => {
+    const c = canvasRef.current;
+    if (c) c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
+    setAnnotSegments([]);
+    annotsBySlideRef.current.set(currentSlide, []);
+    undoStackRef.current.set(currentSlide, []);
+    redoStackRef.current.set(currentSlide, []);
+    socket?.emit("annotation:clear");
+  }, [socket, currentSlide]);
+
+  // ── Per-slide annotation save/restore ─────────────────────
+  // When slide changes: save current segments for the old slide, restore for the new one,
+  // and broadcast the restored state so students stay in sync.
+  useEffect(() => {
+    const prev = prevSlideRef.current;
+    if (prev === currentSlide) return;
+    // Save current in-memory state for the leaving slide
+    const leavingSegs = annotsBySlideRef.current.get(prev) ?? annotSegments;
+    annotsBySlideRef.current.set(prev, leavingSegs);
+    // Restore annotations for the arriving slide
+    const restored = annotsBySlideRef.current.get(currentSlide) ?? [];
+    setAnnotSegments(restored);
+    // Redraw teacher canvas with restored annotations
+    const c = canvasRef.current;
+    const ctx = c?.getContext("2d");
+    if (ctx && c) replaySegments(ctx, c, restored);
+    // Broadcast to students: clear → replay this slide's annotations
+    if (isStaff && socket) {
+      socket.emit("annotation:clear");
+      for (const seg of restored) socket.emit("annotation:draw", seg);
+    }
+    prevSlideRef.current = currentSlide;
+  }, [currentSlide]); // intentionally omit annotSegments — we use the ref as source of truth
+
+  // ── Undo / Redo (stroke-based) ─────────────────────────────
+  const handleStrokeComplete = useCallback(() => {
+    const stroke = [...currentStrokeRef.current];
+    if (!stroke.length) return;
+    currentStrokeRef.current = [];
+    const prevSegs = annotsBySlideRef.current.get(currentSlide) ?? [];
+    const nextSegs = [...prevSegs, ...stroke];
+    annotsBySlideRef.current.set(currentSlide, nextSegs);
+    const stack = undoStackRef.current.get(currentSlide) ?? [];
+    undoStackRef.current.set(currentSlide, [...stack, stroke]);
+    redoStackRef.current.set(currentSlide, []); // clear redo on new stroke
+    setAnnotSegments(nextSegs);
+  }, [currentSlide]);
+
+  const handleUndo = useCallback(() => {
+    const stack = undoStackRef.current.get(currentSlide) ?? [];
+    if (!stack.length) return;
+    const newStack = stack.slice(0, -1);
+    const removed = stack[stack.length - 1];
+    undoStackRef.current.set(currentSlide, newStack);
+    const redoStack = redoStackRef.current.get(currentSlide) ?? [];
+    redoStackRef.current.set(currentSlide, [...redoStack, removed]);
+    // Rebuild segments from undo stack
+    const newSegs = newStack.flat();
+    annotsBySlideRef.current.set(currentSlide, newSegs);
+    setAnnotSegments(newSegs);
+    const c = canvasRef.current; const ctx = c?.getContext("2d");
+    if (ctx && c) replaySegments(ctx, c, newSegs);
+    socket?.emit("annotation:clear");
+    for (const seg of newSegs) socket?.emit("annotation:draw", seg);
+  }, [currentSlide, socket]);
+
+  const handleRedo = useCallback(() => {
+    const redoStack = redoStackRef.current.get(currentSlide) ?? [];
+    if (!redoStack.length) return;
+    const newRedo = redoStack.slice(0, -1);
+    const stroke = redoStack[redoStack.length - 1];
+    redoStackRef.current.set(currentSlide, newRedo);
+    const stack = undoStackRef.current.get(currentSlide) ?? [];
+    undoStackRef.current.set(currentSlide, [...stack, stroke]);
+    const prevSegs = annotsBySlideRef.current.get(currentSlide) ?? [];
+    const newSegs = [...prevSegs, ...stroke];
+    annotsBySlideRef.current.set(currentSlide, newSegs);
+    setAnnotSegments(newSegs);
+    const c = canvasRef.current; const ctx = c?.getContext("2d");
+    if (ctx && c) replaySegments(ctx, c, newSegs);
+    for (const seg of stroke) socket?.emit("annotation:draw", seg);
+  }, [currentSlide, socket]);
+
+  const handleSegment = useCallback((seg: DrawSegment) => {
+    currentStrokeRef.current.push(seg);
+    socket?.emit("annotation:draw", seg);
+  }, [socket]);
+
+  // ── Slide upload ────────────────────────────────────────────
+  const cleanupUploadedSlide = useCallback(async (filename: string) => {
+    try {
+      await fetch(`/api/slides/${filename}`, { method: "DELETE" });
+    } catch { /* best-effort */ }
+  }, []);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "ppt" || ext === "pptx") {
+      alert("PPT/PPTX files must be converted to PDF first.\n\nUse File → Save As → PDF in PowerPoint or Google Slides, then upload the PDF.");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/slides/upload", { method: "POST", body: formData });
+      if (!res.ok) { alert("Upload failed — file may be too large (max 200 MB) or wrong type (PDF only)."); return; }
+      const data = await res.json() as { filename: string; fileUrl: string; isPptx: boolean };
+
+      if (uploadedFilename) void cleanupUploadedSlide(uploadedFilename);
+      setUploadedFilename(data.filename);
+
+      const broadcastUrl = data.fileUrl;
+      setPresentationUrl(broadcastUrl);
+      setCurrentSlide(1);
+      // Clear all per-slide annotations on new file
+      annotsBySlideRef.current.clear();
+      undoStackRef.current.clear();
+      redoStackRef.current.clear();
+      prevSlideRef.current = 1;
+      setAnnotSegments([]);
+      const c = canvasRef.current;
+      if (c) c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+      socket?.emit("presentation:start", { url: broadcastUrl });
+    } finally {
+      setIsUploading(false);
+    }
+  }, [uploadedFilename, cleanupUploadedSlide, socket]);
+
+  // ── Slide navigation (arrow buttons) ───────────────────────
+  const navigateSlide = useCallback((dir: "prev" | "next") => {
+    // Track page + broadcast to all clients via socket
+    setCurrentSlide(prev => {
+      const next = dir === "next" ? prev + 1 : Math.max(1, prev - 1);
+      socket?.emit("presentation:navigate", { dir, page: next });
+      return next;
+    });
+  }, [socket]);
+
+  // ── Camera ─────────────────────────────────────────────────
+  const [cameraOn, setCameraOn] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // ── Auto-start teacher camera + mic the moment LiveKit connects ──
+  // Teachers must publish immediately so students hear them from the start.
+  // We use a one-shot ref so this only fires once per mount even if
+  // livekit.connected briefly flickers during reconnects.
+  const teacherMediaStarted = useRef(false);
+  useEffect(() => {
+    if (!livekit.connected || !isStaff || teacherMediaStarted.current) return;
+    teacherMediaStarted.current = true;
+    void (async () => {
+      try {
+        await livekit.setCamera(true);
+        livekit.attachLocalCameraTo(videoRef.current);
+        setCameraOn(true);
+      } catch { /* camera permission denied — teacher can still teach with mic */ }
+      try {
+        await livekit.setMic(true);
+      } catch { /* mic permission denied */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livekit.connected]);
+
+  // ── Pause / Resume class ────────────────────────────────────
+  const togglePause = useCallback(async () => {
+    if (!isStaff || pauseProcessing) return;
+    setPauseProcessing(true);
+    try {
+      if (!classPaused) {
+        await livekit.setMic(false);
+        await livekit.setCamera(false);
+        if (videoRef.current) videoRef.current.srcObject = null;
+        setCameraOn(false);
+        setClassPaused(true);
+        socket?.emit("class:pause");
+      } else {
+        await livekit.setCamera(true);
+        livekit.attachLocalCameraTo(videoRef.current);
+        setCameraOn(true);
+        await livekit.setMic(true);
+        setClassPaused(false);
+        socket?.emit("class:resume");
+      }
+    } finally {
+      setPauseProcessing(false);
+    }
+  }, [classPaused, pauseProcessing, isStaff, livekit, socket]);
+
+  // ── Demo Mode — sync teacher camera stream into the main content video element ──
+  const isShowingDemo = isStaff ? demoMode : demoModeActive;
+  useEffect(() => {
+    const target = demoVideoRef.current;
+    if (!target || !isShowingDemo) return;
+    if (isStaff) {
+      const srcVideo = document.querySelector<HTMLVideoElement>(".classroom-teacher-video video");
+      if (srcVideo?.srcObject) {
+        target.srcObject = srcVideo.srcObject;
+        void target.play().catch(() => {});
+      }
+    } else {
+      const srcVideo = livekit.teacherVideoRef.current;
+      if (srcVideo?.srcObject) {
+        target.srcObject = srcVideo.srcObject;
+        void target.play().catch(() => {});
+      }
+    }
+  }, [isShowingDemo, isStaff, livekit.teacherVideoRef]);
+
+  const toggleDemoMode = useCallback(() => {
+    const next = !demoMode;
+    setDemoMode(next);
+    socket?.emit(next ? "demo:start" : "demo:stop");
+  }, [demoMode, socket]);
+
+  // ── Poll form (Sprint 1 — includes correct answer) ────────
+  const [showPollForm, setShowPollForm] = useState(false);
+  const [pollQ, setPollQ] = useState("");
+  const [pollOpts, setPollOpts] = useState(["", "", "", ""]);
+  const [pollCorrectIdx, setPollCorrectIdx] = useState<number | null>(null); // index into pollOpts
+  const [myPollCorrect, setMyPollCorrect] = useState<boolean | null>(null);  // feedback after submit
+  const [studentPollVisible, setStudentPollVisible] = useState(false); // inline poll for students
+
+  // ── Sidebar ────────────────────────────────────────────────
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // ── Chat scroll + input ref ────────────────────────────────
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
+
+  // ── Fullscreen + landscape lock for students/mentors on mobile ──────────────
+  // Immediately tries to go fullscreen + lock to landscape.
+  // Also retries on first user interaction (some browsers need a gesture).
+  useEffect(() => {
+    if (isStaff) return;
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobileDevice) return;
+    const lockToLandscape = async () => {
+      try { await document.documentElement.requestFullscreen(); } catch { /* blocked */ }
+      try { await (screen.orientation as any).lock("landscape"); } catch { /* not supported */ }
+    };
+    void lockToLandscape();
+    const onInteract = () => void lockToLandscape();
+    document.addEventListener("click", onInteract, { once: true });
+    document.addEventListener("touchstart", onInteract, { once: true });
+    return () => {
+      document.removeEventListener("click", onInteract);
+      document.removeEventListener("touchstart", onInteract);
+    };
+  }, [isStaff]);
+
+  // ── Orientation + fullscreen toggle helpers (for mobile header buttons) ──
+  const toggleOrientation = useCallback(() => {
+    const type = screen.orientation?.type ?? "";
+    const next = type.startsWith("portrait") ? "landscape" : "portrait";
+    (screen.orientation as any).lock?.(next).catch(() => {});
+  }, []);
+
+  const toggleMobileFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  // ── Heartbeat (15s) ────────────────────────────────────────
+  useEffect(() => {
+    if (!socket || isStaff || isMentor) return;
+    const ping = () => socket.emit("heartbeat:ping");
+    ping(); // ping immediately on connect
+    const t = setInterval(ping, 15_000);
+    return () => clearInterval(t);
+  }, [socket, isStaff, isMentor]);
+
+  // ── postMessage listener — detect built-in Google Slides navigation ──
+  // When teacher uses the iframe's own prev/next controls, Google Slides
+  // broadcasts a "presenter" message with the new slide hash. We catch it
+  // and emit a socket event so all clients follow along automatically.
+  useEffect(() => {
+    if (!isStaff || !socket) return;
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.type === "presenter" && typeof data.hash === "string") {
+          const match = (data.hash as string).match(/id\.p(\d+)/);
+          if (match) {
+            const page = parseInt(match[1], 10);
+            if (Number.isFinite(page) && page >= 1) {
+              setCurrentSlide(prev => {
+                if (prev !== page) {
+                  socket.emit("presentation:navigate", { dir: "next", page });
+                  setAnnotSegments([]);
+                }
+                return page;
+              });
+            }
+          }
+        }
+      } catch { /* not a slide message */ }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isStaff, socket]);
+
+  // ── Helper to upsert registry entry ───────────────────────
+  const upsert = useCallback((rec: Partial<AttendanceRecord> & { userId: string }) => {
+    setRegistry(prev => {
+      const m = new Map(prev);
+      const existing = m.get(rec.userId) ?? {
+        userId: rec.userId, name: rec.name ?? "?",
+        phone: null, mentorGroupId: null,
+        status: "ABSENT", totalDurationSeconds: 0, joinedAt: null,
+      };
+      m.set(rec.userId, { ...existing, ...rec });
+      return m;
+    });
+  }, []);
+
+  // ── Socket events ──────────────────────────────────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("roomState", (s: {
+      chat: ChatMsg[]; raisedHands: RaisedHand[]; raiseHandEnabled: boolean;
+      activePoll: Poll | null; stage?: StageSlot[];
+      teacher?: { name: string; userId: string } | null;
+      activePresentation?: { url: string } | null;
+      currentSlide?: number;
+    }) => {
+      setChat(s.chat);
+      setRaisedHands(s.raisedHands);
+      setRaiseHandEnabled(s.raiseHandEnabled);
+      if (s.activePoll) {
+        setActivePoll(s.activePoll);
+        if (isStaff || isMentor) setPanelMode("poll"); else setStudentPollVisible(true);
+      }
+      if (s.stage) setStageSlots(s.stage);
+      if (s.currentSlide && s.currentSlide > 1) setCurrentSlide(s.currentSlide);
+      // Only update teacherInfo from roomState if we're not the teacher (teacher sets own info at mount)
+      if (!isStaff && s.teacher) {
+        setTeacherInfo({ name: s.teacher.name, userId: s.teacher.userId, online: true });
+      }
+      // Restore ongoing presentation for all roles (catches late joiners and reconnects)
+      if (s.activePresentation?.url) {
+        setPresentationUrl(s.activePresentation.url);
+      } else if (s.activePresentation === null) {
+        // Server explicitly cleared the presentation
+        if (!isStaff) setPresentationUrl("");
+      }
+      // Auto-load pre-uploaded slide (teacher set it in scheduling form)
+      if (!s.activePresentation?.url && (s as any).slideUrl && !isStaff) {
+        setPresentationUrl((s as any).slideUrl);
+      }
+      if ((s as any).demoMode) {
+        if (isStaff) setDemoMode(true);
+        else setDemoModeActive(true);
+      }
+      if ((s as any).chatMuted) {
+        if (isStaff) setChatMuted(true);
+        else setIsChatMuted(true);
+      }
+    });
+
+    // Presentation sync — server broadcasts teacher's presentation to all viewers
+    socket.on("presentation:started", ({ url }: { url: string }) => {
+      setCurrentSlide(1);
+      if (!isStaff) setPresentationUrl(url);
+    });
+    socket.on("presentation:stopped", () => {
+      setCurrentSlide(1);
+      if (!isStaff) setPresentationUrl("");
+    });
+
+    // ── Demo mode — teacher camera goes full-screen ───────────
+    socket.on("demo:started", () => {
+      if (!isStaff) setDemoModeActive(true);
+      else setDemoMode(true);
+    });
+    socket.on("demo:stopped", () => {
+      setDemoModeActive(false);
+      if (isStaff) setDemoMode(false);
+    });
+    socket.on("presentation:navigated", ({ page }: { page: number }) => {
+      setCurrentSlide(page);
+      setAnnotSegments([]);
+    });
+
+    // ── Annotation sync — receive teacher drawings ───────────
+    socket.on("annotation:draw", (seg: unknown) => {
+      if (!seg || typeof seg !== "object") return;
+      const s = seg as DrawSegment;
+      setAnnotSegments(prev => [...prev, s]);
+    });
+    socket.on("annotation:clear", () => setAnnotSegments([]));
+
+    // ── Class ended — non-staff are shown an ended screen ────
+    socket.on("class:ended", () => setClassEnded(true));
+
+    socket.on("chat:message", (msg: ChatMsg) => setChat(p => [...p, msg].slice(-100)));
+    socket.on("chat:blocked", () => {
+      setChatBlocked(true);
+    });
+    socket.on("chat:warning", (data: { message: string; strikeCount: number }) => {
+      setChatWarning(data);
+      setTimeout(() => setChatWarning(null), 6000);
+    });
+
+    socket.on("pollStarted", (poll: Poll) => {
+      setActivePoll(poll); setMyPollAnswer(null); setPollCounts({}); setPollTotal(0);
+      if (isStaff || isMentor) setPanelMode("poll"); else setStudentPollVisible(true);
+    });
+    socket.on("pollEnded", () => {
+      setActivePoll(null); setMyPollAnswer(null); setMyPollCorrect(null);
+      setStudentPollVisible(false);
+      if (isStaff || isMentor) setPanelMode("chat");
+    });
+    socket.on("pollUpdate", ({ counts, total }: { counts: Record<string, number>; total: number }) => {
+      setPollCounts(counts); setPollTotal(total);
+    });
+    socket.on("showLeaderboard", ({ top3, leaderboard: full }: { top3: LeaderboardEntry[]; leaderboard?: LeaderboardEntry[] }) => {
+      // Group-scoped Top 20 when available (student/mentor view), fall back to top3 for older payloads.
+      setLeaderboard(full && full.length > 0 ? full : top3);
+      setTimeout(() => setLeaderboard(null), 5000);
+    });
+
+    // Attendance events
+    socket.on("studentJoined", (d: { userId: string; name: string; mentorGroupId: string | null; phone: string | null }) => {
+      upsert({ userId: d.userId, name: d.name, phone: d.phone, mentorGroupId: d.mentorGroupId, status: "LIVE", joinedAt: Date.now() });
+    });
+    socket.on("studentReturned", (d: { userId: string; name: string; mentorGroupId: string | null }) => {
+      upsert({ userId: d.userId, name: d.name, mentorGroupId: d.mentorGroupId, status: "LIVE" });
+    });
+    socket.on("studentBackstage", (d: { userId: string; name?: string; mentorGroupId?: string | null }) => {
+      upsert({ userId: d.userId, name: d.name, mentorGroupId: d.mentorGroupId ?? null, status: "BACKSTAGE" });
+    });
+
+    // Raise hand
+    socket.on("classroom:handRaised", (d: { uid: string; name: string; mentorGroupId: string | null; raised: boolean }) => {
+      setRaisedHands(prev => {
+        const filtered = prev.filter(h => h.uid !== d.uid);
+        return d.raised ? [...filtered, { uid: d.uid, name: d.name, mentorGroupId: d.mentorGroupId }] : filtered;
+      });
+    });
+    socket.on("raiseHandToggled", ({ enabled }: { enabled: boolean }) => {
+      setRaiseHandEnabled(enabled);
+      if (!enabled) { setMyHandRaised(false); setRaisedHands([]); }
+    });
+
+    socket.on("pollSubmitted", ({ optionId, isCorrect }: { optionId: string; isCorrect: boolean }) => {
+      setMyPollAnswer(optionId);
+      setMyPollCorrect(isCorrect);
+      // Auto-dismiss poll panel for students 3 s after server confirms answer
+      if (!isStaff && !isMentor) {
+        setTimeout(() => setStudentPollVisible(false), 3000);
+      }
+    });
+
+    // ── Sprint 3: Stage events ────────────────────────────────
+    socket.on("stage:studentInvited", (slot: StageSlot) => {
+      setStageSlots(prev => {
+        const filtered = prev.filter(s => s.studentId !== slot.studentId);
+        return [...filtered, slot].sort((a, b) => a.slotNumber - b.slotNumber);
+      });
+      // Backend awaits the LiveKit permission grant before emitting this event, but the grant
+      // still has to propagate from the LiveKit API server to the client SDK. A short delay
+      // gives the SDK time to receive the updated permission before we try to publish.
+      if (slot.studentId === userId && !isStaff) {
+        setTimeout(() => {
+          void livekit.setCamera(true);
+          void livekit.setMic(!slot.isMuted);
+        }, 600);
+      }
+    });
+    socket.on("stage:muteStateChanged", ({ studentId, isMuted }: { studentId: string; isMuted: boolean }) => {
+      setStageSlots(prev => prev.map(s => s.studentId === studentId ? { ...s, isMuted } : s));
+      if (studentId === userId && !isStaff) void livekit.setMic(!isMuted);
+    });
+    socket.on("stage:studentRemoved", ({ studentId }: { studentId: string }) => {
+      setStageSlots(prev => prev.filter(s => s.studentId !== studentId));
+      if (studentId === userId && !isStaff) {
+        void livekit.setCamera(false);
+        void livekit.setMic(false);
+      }
+    });
+    socket.on("stage:error", ({ message }: { message: string }) => alert(message));
+
+    // ── Teacher presence ──────────────────────────────────────
+    socket.on("teacher:joined", (d: { name: string; userId: string }) => {
+      setTeacherInfo({ name: d.name, userId: d.userId, online: true });
+    });
+    socket.on("teacher:left", (d: { name: string; userId: string }) => {
+      setTeacherInfo(prev => prev ? { ...prev, online: false } : { name: d.name, userId: d.userId, online: false });
+    });
+
+    // ── Give Mic invite (student sees accept dialog) ──────────
+    socket.on("stage:micInvite", (d: { studentId: string; studentName: string; fromTeacher: string }) => {
+      if (d.studentId === userId && !isStaff && !isMentor) {
+        setMicInvite(d);
+      }
+    });
+
+    // ── Attendance snapshot — handle server response ──────────
+    socket.on("attendance:snapshot", ({ students }: { students: AttendanceRecord[] }) => {
+      students.forEach(s => upsert(s));
+    });
+
+    // ── Mentor suggests student → silent purple highlight in teacher's list ──
+    socket.on("teacher:studentSuggested", ({ studentId }: { studentId: string }) => {
+      setSuggestedStudents(prev => new Set([...prev, studentId]));
+    });
+
+    // ── Staff Chat (teacher ↔ mentor private) ─────────────────
+    socket.on("staffChat:message", (msg: { id: string; name: string; role: string; text: string; ts: number }) => {
+      setStaffChat(prev => [...prev, msg].slice(-150));
+    });
+
+    // ── Class ended — show ended screen + redirect everyone out ──
+    socket.on("class:ended", () => {
+      setClassEnded(true);
+      const target = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
+      setTimeout(() => { window.location.href = target; }, 3500);
+    });
+
+    // ── Pause / Resume class ──────────────────────────────────
+    socket.on("class:paused",  () => { if (!isStaff) setClassPausedActive(true); });
+    socket.on("class:resumed", () => { if (!isStaff) setClassPausedActive(false); });
+    // ── Chat mute/unmute ────────────────────────────────────
+    socket.on("chat:muted",   () => { if (!isStaff) setIsChatMuted(true); else setChatMuted(true); });
+    socket.on("chat:unmuted", () => { if (!isStaff) setIsChatMuted(false); else setChatMuted(false); });
+
+    // ── Diagnostics: server-ack confirming room join ──────────
+    socket.on("classroom:joined", (d: { sessionId: string; socketId: string; roomName: string; memberCount: number; role: string }) => {
+      lastSocketReceived.current = `classroom:joined (room: ${d.roomName}, members: ${d.memberCount})`;
+      setClassroomJoined({ socketId: d.socketId, roomName: d.roomName, memberCount: d.memberCount, role: d.role });
+    });
+
+    // ── Attendance 5-second heartbeat ─────────────────────────
+    const attendanceTick = setInterval(() => {
+      if (canSeeAttendance) socket.emit("request:attendance");
+    }, 5000);
+
+    return () => {
+      clearInterval(attendanceTick);
+      socket.off("roomState"); socket.off("chat:message");
+      socket.off("pollStarted"); socket.off("pollEnded"); socket.off("pollUpdate");
+      socket.off("showLeaderboard"); socket.off("studentJoined"); socket.off("studentReturned");
+      socket.off("studentBackstage"); socket.off("classroom:handRaised");
+      socket.off("raiseHandToggled"); socket.off("pollSubmitted");
+      socket.off("stage:studentInvited"); socket.off("stage:muteStateChanged");
+      socket.off("stage:studentRemoved"); socket.off("stage:error");
+      socket.off("teacher:joined"); socket.off("teacher:left");
+      socket.off("stage:micInvite");
+      socket.off("presentation:started"); socket.off("presentation:stopped");
+      socket.off("attendance:snapshot");
+      socket.off("class:ended");
+      socket.off("annotation:draw"); socket.off("annotation:clear");
+      socket.off("teacher:studentSuggested");
+      socket.off("staffChat:message");
+      socket.off("classroom:joined");
+      socket.off("class:paused"); socket.off("class:resumed");
+      socket.off("chat:muted"); socket.off("chat:unmuted");
+    };
+  }, [socket, upsert]);
+
+  // ── Actions ────────────────────────────────────────────────
+  const sendChat = () => {
+    if (!socket || !chatInput.trim()) return;
+    lastSocketSent.current = `chat:send "${chatInput.trim().slice(0, 30)}"`;
+    socket.emit("chat:send", chatInput.trim());
+    setChatInput("");
+    // Dismiss the mobile keyboard and scroll the latest message into view.
+    chatInputRef.current?.blur();
+    requestAnimationFrame(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); });
+  };
+
+  const submitPoll = (optionId: string) => {
+    if (!socket || myPollAnswer) return;
+    lastSocketSent.current = `submitPoll { optionId: "${optionId}" }`;
+    socket.emit("submitPoll", { optionId });
+    // Auto-dismiss is handled by the pollSubmitted socket event (3 s after server confirms).
+  };
+
+  const launchPoll = () => {
+    if (!socket) return;
+    const opts = pollOpts.filter(o => o.trim());
+    if (!pollQ.trim() || opts.length < 2) { alert("Add a question and at least 2 options"); return; }
+    // correctOptionId is the letter (A, B, C…) of the correct option
+    const correctOptionId = pollCorrectIdx !== null
+      ? String.fromCharCode(65 + pollCorrectIdx)
+      : undefined;
+    socket.emit("startPoll", { question: pollQ, options: opts, correctOptionId });
+    setShowPollForm(false); setPollQ(""); setPollOpts(["", "", "", ""]); setPollCorrectIdx(null);
+  };
+
+  const toggleHand = () => {
+    socket?.emit("student:raiseHand");
+    setMyHandRaised(p => !p);
+  };
+
+  const toggleRaiseHandFeature = (enabled: boolean) => socket?.emit("toggleRaiseHand", { enabled });
+
+  const sendStaffChat = () => {
+    if (!socket || !staffChatInput.trim()) return;
+    socket.emit("staffChat:send", staffChatInput.trim());
+    setStaffChatInput("");
+  };
+
+  const suggestToTeacher = (h: RaisedHand) => {
+    socket?.emit("mentor:suggestStudent", { studentId: h.uid, studentName: h.name });
+  };
+
+  // ── Sprint 3: Stage actions ───────────────────────────────
+  const approveToStage = (hand: RaisedHand) => {
+    socket?.emit("stage:approveStudent", {
+      studentId: hand.uid,
+      studentName: hand.name,
+      studentGroupId: hand.mentorGroupId ?? "",
+    });
+  };
+  const inviteToStage = (s: AttendanceRecord) => {
+    socket?.emit("stage:inviteStudent", {
+      studentId: s.userId,
+      studentName: s.name,
+      studentGroupId: s.mentorGroupId ?? "",
+    });
+  };
+  const acceptMicInvite = () => {
+    socket?.emit("stage:acceptInvite");
+    setMicInvite(null);
+  };
+  const toggleStageMute = (studentId: string, isMuted: boolean) => {
+    socket?.emit("stage:toggleMute", { studentId, isMuted });
+  };
+  const removeFromStage = (studentId: string) => {
+    socket?.emit("stage:removeStudent", { studentId });
+  };
+
+  // Visible hands (mentor: only their group; staff: all)
+  const visibleHands = raisedHands.filter(h => {
+    if (isStaff) return true;
+    if (isMentor) return h.mentorGroupId === groupId;
+    return false;
+  });
+
+  // ── Sprint 3: derived stage helpers ──────────────────────
+  const mySlot = stageSlots.find(s => s.studentId === userId);
+  const myOnStage = !!mySlot;
+
+  // Backend-authoritative 60s stage countdown (stageExpiresAt is set by the server; we only render the tick).
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (stageSlots.length === 0) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [stageSlots.length]);
+  const secondsLeft = (slot: StageSlot | undefined): number | null => {
+    if (!slot?.stageExpiresAt) return null;
+    const ms = slot.stageExpiresAt - nowTick;
+    return ms > 0 ? Math.ceil(ms / 1000) : 0;
+  };
+
+  // ── Student self-view — attach local camera when on stage ──────
+  useEffect(() => {
+    if (myOnStage && !isStaff && selfViewRef.current) {
+      livekit.attachLocalCameraTo(selfViewRef.current);
+    }
+  }, [myOnStage, isStaff, livekit]);
+
+  // All presentations are native PDFs served from /api/slides/ — no iframe viewers.
+
+  if (classEnded) {
+    const redirectTarget = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-gray-950 text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <div className="text-6xl">🔚</div>
+        <h2 className="text-2xl font-bold">This class has ended</h2>
+        <p className="text-gray-400 text-sm">The session is permanently closed and cannot be re-entered. Redirecting you…</p>
+        <a href={redirectTarget} className="mt-2 px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+          {isStaff ? "Back to Teacher Portal" : isMentor ? "Back to Mentor Portal" : "Go to Dashboard"}
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Shown only on phones in portrait for teachers (see CSS in index.css).
+          Students and mentors get a proper portrait layout instead — the rotate prompt
+          is hidden for role-student and role-mentor via CSS. */}
+      <div className={`live-classroom-rotate-prompt classroom-role-${role}`}>
+        <span style={{ fontSize: 40 }}>📱↻</span>
+        <p className="font-bold text-lg">Rotate your phone</p>
+        <p className="text-sm text-gray-400">Turn your device to landscape mode to join the live class</p>
+      </div>
+      <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-gray-950${isLandscapeMobile ? " is-landscape-mobile" : ""}`} style={{ fontFamily: "Poppins, sans-serif" }}>
+
+      {/* ── Top bar ──────────────────────────────────────────── */}
+      <div className="classroom-topbar flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <img src={BRAND_LOGO} alt="Braintam" className="h-7 opacity-90 flex-shrink-0" />
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-600"}`}>
+              {connected ? "LIVE" : "Connecting…"}
+            </span>
+          </div>
+          <span className="text-white font-bold text-sm truncate max-w-xs">{title}</span>
+          <span className="text-gray-600 text-xs">#{sessionId}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Sprint 2 — Meet + Recording quick-access */}
+          {meetLink && (
+            <a href={meetLink} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#1A73E8" }}>
+              📹 Join Meet
+            </a>
+          )}
+          {recordingUrl && (
+            <a href={recordingUrl} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#7C3AED" }}>
+              🎬 Recording
+            </a>
+          )}
+          {/* End Class — teacher only */}
+          {isStaff && (
+            <button
+              onClick={() => {
+                if (window.confirm("End class for everyone? This will disconnect all students and mentors.")) {
+                  if (uploadedFilename) void cleanupUploadedSlide(uploadedFilename);
+                  socket?.emit("class:end");
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "#DC2626" }}
+            >
+              ⏹ End Class
+            </button>
+          )}
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isStaff ? "bg-blue-900/60 text-blue-300" : isMentor ? "bg-purple-900/60 text-purple-300" : "bg-gray-800 text-gray-400"}`}>
+            {isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"} · {name}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Main layout ── */}
+      <div className="classroom-main flex flex-1 overflow-hidden">
+
+        {/* Sidebar — teacher sees present-only list; mentor sees group stats */}
+        <div className="classroom-left-sidebar" style={{ display: "contents" }}>
+        {isStaff && (
+          <TeacherSidebar
+            registry={registry}
+            suggestedStudents={suggestedStudents}
+            collapsed={sidebarCollapsed}
+            onCollapse={() => setSidebarCollapsed(p => !p)}
+            onGiveMic={inviteToStage}
+            stageSlots={stageSlots}
+          />
+        )}
+        {isMentor && (
+          <MentorSidebar
+            registry={registry}
+            myGroupId={groupId}
+            collapsed={sidebarCollapsed}
+            onCollapse={() => setSidebarCollapsed(p => !p)}
+          />
+        )}
+        </div>{/* /classroom-left-sidebar */}
+
+        {/* ═══════════════════════════════════════════════════
+            PRESENTATION PANEL (left, ~80%)
+        ═══════════════════════════════════════════════════ */}
+        <div className="classroom-content flex flex-col relative bg-gray-950 flex-1 min-w-0">
+
+          {/* Upload bar (teacher only, no presentation yet) */}
+          {isStaff && !presentationUrl && !demoMode && (
+            <div className="flex items-center gap-3 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); e.target.value = ""; }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-all hover:opacity-90"
+                style={{ background: "#059669" }}
+              >
+                {isUploading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Upload className="w-4 h-4" />}
+                <span>{isUploading ? "Uploading…" : "Upload PDF"}</span>
+              </button>
+              <span className="text-xs text-gray-500">PDF only · max 200 MB · PPT/PPTX: export as PDF first</span>
+              {presentationUrl && (
+                <button
+                  onClick={() => { setPresentationUrl(""); setUploadedFilename(null); socket?.emit("presentation:stop"); }}
+                  className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400"
+                >✕ Clear</button>
+              )}
+            </div>
+          )}
+          {/* Demo mode active banner — teacher can exit */}
+          {isStaff && demoMode && (
+            <div className="flex items-center justify-between px-4 py-2 bg-purple-950 border-b border-purple-800 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                <span className="text-sm font-bold text-purple-300">Demonstration Mode — your camera is the main screen</span>
+              </div>
+              <button
+                onClick={toggleDemoMode}
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-900 hover:bg-purple-800 text-purple-200 font-semibold transition-all"
+              >✕ Exit Demo</button>
+            </div>
+          )}
+
+          {/* Slides / PDF / Demo */}
+          <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden">
+            {/* Braintam logo — permanent top-right watermark on the presentation window */}
+            <img
+              src={BRAND_LOGO}
+              alt="Braintam"
+              className="absolute top-3 right-3 z-10 pointer-events-none"
+              style={{ height: 44, opacity: 0.82 }}
+            />
+
+            {/* Class Paused banner — non-staff only */}
+            {classPausedActive && !isStaff && (
+              <div className="absolute inset-0 z-50 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                <div className="flex items-center gap-3 bg-gray-900 border border-yellow-600 text-yellow-300 text-base font-bold px-6 py-4 rounded-2xl shadow-2xl">
+                  <Pause className="w-5 h-5" />
+                  Class is temporarily paused
+                </div>
+                <p className="text-gray-400 text-sm">The teacher will be back shortly…</p>
+              </div>
+            )}
+
+            {/* PDFViewer — always mounted when url exists so demo-mode exit never triggers a reload */}
+            {presentationUrl ? (
+              <div
+                className="absolute inset-0 w-full h-full"
+                style={{ visibility: isShowingDemo ? "hidden" : "visible" }}
+              >
+                <PDFViewer
+                  url={presentationUrl}
+                  page={currentSlide}
+                  onPageCount={handlePageCount}
+                  className="w-full h-full"
+                />
+              </div>
+            ) : !isShowingDemo ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
+                <Monitor className="w-20 h-20 opacity-10" />
+                <p className="text-sm text-gray-500">
+                  {isStaff ? "Upload a PDF above to start presenting" : "Waiting for teacher to share slides…"}
+                </p>
+              </div>
+            ) : null}
+
+            {/* ── Demo Mode: overlays on top so PDFViewer stays mounted beneath ── */}
+            {isShowingDemo && (
+              <div className="absolute inset-0 z-20 w-full h-full bg-black flex items-center justify-center">
+                <video ref={demoVideoRef} autoPlay playsInline muted={isStaff} className="w-full h-full object-cover" style={{ transform: "scaleX(-1)" }} />
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-purple-900/80 border border-purple-700 text-purple-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg backdrop-blur-sm pointer-events-none">
+                  Demonstration Mode
+                </div>
+                {!isStaff && teacherInfo && (
+                  <div className="absolute bottom-4 left-4 text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
+                    👨‍🏫 {teacherInfo.name}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Annotation canvas — teacher draws; AnnotationOverlay replays segments for students/mentors */}
+            {isStaff && (
+              <AnnotationCanvas
+                mode={annotMode}
+                penColor={penColor}
+                penWidth={penWidth}
+                canvasRef={canvasRef}
+                onSegment={handleSegment}
+                onStrokeComplete={handleStrokeComplete}
+              />
+            )}
+            {!isStaff && <AnnotationOverlay segments={annotSegments} />}
+
+            {/* Fullscreen toggle (teacher + student, bottom-right corner) */}
+            <button
+              onClick={() => {
+                if (!isFullscreen) {
+                  presentationPanelRef.current?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+                } else {
+                  document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+                }
+              }}
+              className="absolute bottom-3 right-3 z-30 w-8 h-8 rounded-lg bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all"
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+
+            {/* Sprint 3 — "You're on stage" banner for invited students */}
+            {myOnStage && !isStaff && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-green-700/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2">
+                🎤 You're on stage
+                <span className="text-green-200 font-normal">{mySlot?.isMuted ? "— muted" : "— mic on"}</span>
+                {secondsLeft(mySlot) !== null && (
+                  <span className="text-white font-black bg-green-900/60 px-2 py-0.5 rounded-full">{secondsLeft(mySlot)}s</span>
+                )}
+              </div>
+            )}
+
+            {/* ── Student self-view — bottom-left floating tile when on stage ── */}
+            {myOnStage && !isStaff && (
+              <div className="absolute bottom-4 left-4 z-50 w-32 rounded-xl overflow-hidden shadow-2xl border-2 border-green-500/70" style={{ background: "#0f172a" }}>
+                <div className="relative" style={{ aspectRatio: "4/3" }}>
+                  <video
+                    ref={selfViewRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="px-2 py-1 bg-black/80 flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                  <span className="text-[9px] text-white font-semibold truncate flex-1">{rawName}</span>
+                  <span className="text-[9px]">{mySlot?.isMuted ? "🔇" : "🔊"}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Sprint 3 — Dynamic 5-slot stage strip */}
+            {stageSlots.length > 0 && (
+              <div
+                data-testid="stage-overlay"
+                className="absolute bottom-4 flex gap-2 z-40 pointer-events-none"
+                style={{
+                  left: myOnStage && !isStaff ? 160 : 16,
+                  right: 16,
+                  justifyContent: "flex-start",
+                }}>
+                {stageSlots
+                  .filter(slot => !(slot.studentId === userId && !isStaff)) /* hide self — shown in self-view tile */
+                  .map(slot => (
+                  <div
+                    key={slot.studentId}
+                    data-testid="stage-slot"
+                    data-student-id={slot.studentId}
+                    className="rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative flex-shrink-0"
+                    style={{
+                      width: 120,
+                      background: "#0f172a",
+                      borderColor: slot.studentId === userId ? "#10B981" : "#1E40AF",
+                    }}>
+                    {/* Video area — 4:3 aspect */}
+                    <div className="relative flex items-center justify-center bg-gray-900" style={{ aspectRatio: "4/3" }}>
+                      <video
+                        key={`${slot.studentId}-${livekit.trackVersion}`}
+                        ref={(el) => livekit.attachParticipantVideo(slot.studentId, el)}
+                        autoPlay
+                        playsInline
+                        muted={slot.studentId === userId}
+                        className="w-full h-full object-cover absolute inset-0"
+                        style={{ display: livekit.stagePublishers.has(slot.studentId) ? "block" : "none" }}
+                      />
+                      {!livekit.stagePublishers.has(slot.studentId) && (
+                        <div className="text-2xl select-none">👤</div>
+                      )}
+                      {/* Countdown badge */}
+                      {secondsLeft(slot) !== null && (
+                        <div className="absolute top-1 right-1 text-[8px] font-black text-white bg-black/70 px-1.5 py-0.5 rounded-full">
+                          {secondsLeft(slot)}s
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Name + mute row */}
+                    <div className="px-2 py-1 bg-black/80 flex items-center justify-between gap-1">
+                      <span className="text-[9px] text-white font-semibold truncate flex-1">{slot.studentName}</span>
+                      <span className="text-[10px]">{slot.isMuted ? "🔇" : "🔊"}</span>
+                    </div>
+
+                    {/* Teacher controls */}
+                    {isStaff && (
+                      <div className="flex justify-center gap-1 bg-gray-900/95 px-1.5 py-1">
+                        <button
+                          data-testid={`stage-mute-${slot.studentId}`}
+                          onClick={() => toggleStageMute(slot.studentId, !slot.isMuted)}
+                          className="text-[8px] bg-gray-700 hover:bg-gray-500 text-white px-2 py-0.5 rounded font-bold">
+                          {slot.isMuted ? "Unmute" : "Mute"}
+                        </button>
+                        <button
+                          data-testid={`stage-remove-${slot.studentId}`}
+                          onClick={() => removeFromStage(slot.studentId)}
+                          className="text-[8px] bg-red-700 hover:bg-red-500 text-white px-1.5 py-0.5 rounded font-bold">
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Student floating raise-hand button (when Q&A is open) ── */}
+          {!isStaff && !isMentor && raiseHandEnabled && (
+            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+              <button
+                onClick={toggleHand}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl transition-all active:scale-95 ${myHandRaised ? "text-white border-2 border-yellow-400" : "text-white"}`}
+                style={{ background: myHandRaised ? "#B45309" : ORANGE }}
+              >
+                <Hand className="w-4 h-4" />
+                {myHandRaised ? "Lower Hand" : "Raise Hand for Q&A"}
+              </button>
+            </div>
+          )}
+
+          {/* Annotation toolbar (teacher only) */}
+          {isStaff && (
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0 flex-wrap">
+              {/* Mode buttons */}
+              <button onClick={() => setAnnotMode("none")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all text-xs font-bold ${annotMode === "none" ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"}`}
+                title="Off">✕</button>
+              <button onClick={() => setAnnotMode("pen")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "pen" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                title="Pen"><Pencil className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setAnnotMode("highlighter")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "highlighter" ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                title="Highlight"><Highlighter className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setAnnotMode("eraser")}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "eraser" ? "bg-red-700 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                title="Eraser"><Eraser className="w-3.5 h-3.5" /></button>
+
+              {/* Pen color swatches (pen mode) */}
+              {(annotMode === "pen") && (
+                <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
+                  {PEN_COLORS.map(c => (
+                    <button key={c.id} title={c.label} onClick={() => setPenColorId(c.id)}
+                      className={`w-5 h-5 rounded-full border-2 transition-all ${penColorId === c.id ? "border-white scale-110" : "border-transparent hover:border-gray-400"}`}
+                      style={{ background: c.hex }} />
+                  ))}
+                </div>
+              )}
+
+              {/* Thickness slider (pen + eraser) */}
+              {(annotMode === "pen" || annotMode === "eraser") && (
+                <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2">
+                  <span className="text-[9px] text-gray-500 uppercase tracking-wide">Size</span>
+                  <input type="range" min={1} max={12} value={penWidth} onChange={e => setPenWidth(Number(e.target.value))}
+                    className="w-16 h-1.5 accent-orange-500 cursor-pointer" />
+                  <span className="text-[10px] text-gray-400 w-4 text-right">{penWidth}</span>
+                </div>
+              )}
+
+              {/* Undo / Redo */}
+              <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
+                <button onClick={handleUndo} title="Undo (Ctrl+Z)"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all active:scale-95">
+                  <Undo2 className="w-3.5 h-3.5" /></button>
+                <button onClick={handleRedo} title="Redo"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all active:scale-95">
+                  <Redo2 className="w-3.5 h-3.5" /></button>
+                <button onClick={clearAnnotations} title="Clear all"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-red-400 hover:bg-red-900 transition-all active:scale-95">
+                  <Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+
+              {/* Q&A toggle button (teacher toolbar) */}
+              <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
+                <button
+                  onClick={() => toggleRaiseHandFeature(!raiseHandEnabled)}
+                  className={`flex items-center gap-1.5 px-3 h-8 rounded-lg font-semibold text-[11px] transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                  title="Open/Close Q&A"
+                >
+                  <Hand className="w-3.5 h-3.5" />
+                  {raiseHandEnabled ? "Close Q&A" : "Open Q&A"}
+                </button>
+                {raiseHandEnabled && visibleHands.length > 0 && (
+                  <button
+                    onClick={() => setShowQnaOverlay(true)}
+                    className="flex items-center gap-1 px-3 h-8 rounded-lg font-bold text-[11px] bg-yellow-500 hover:bg-yellow-400 text-black transition-all animate-pulse"
+                    title="View raised hands"
+                  >
+                    ✋ {visibleHands.length}
+                  </button>
+                )}
+              </div>
+
+              {/* Slide navigation */}
+              {presentationUrl && (
+                <div className="flex items-center gap-1 ml-auto border-l border-gray-700 pl-2">
+                  <button onClick={() => navigateSlide("prev")}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                    title="Previous"><ChevronLeft className="w-4 h-4" /></button>
+                  <span className="text-[10px] text-gray-400 px-1">{currentSlide}{totalSlides > 0 ? ` / ${totalSlides}` : ""}</span>
+                  <button onClick={() => navigateSlide("next")}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
+                    title="Next"><ChevronRight className="w-4 h-4" /></button>
+                  <button
+                    onClick={() => { setPresentationUrl(""); setUploadedFilename(null); socket?.emit("presentation:stop"); }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-400 transition-all ml-1"
+                    title="Stop presentation"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ═══════════════════════════════════════════════════
+            RIGHT PANEL (20% fixed)
+        ═══════════════════════════════════════════════════ */}
+        <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: "20%", minWidth: 190, maxWidth: 280 }}>
+
+          {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
+          {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
+          <div className="classroom-teacher-video relative bg-black flex-shrink-0"
+            style={isStaff
+              ? { height: 190 }
+              : isLandscapeMobile
+                ? { width: "100%", height: "40dvh", overflow: "hidden" }
+                : { width: "100%", aspectRatio: "4/3" }}>
+            {/* Label */}
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
+            </div>
+
+            {/* Always mounted for students so refs are valid the instant LiveKit fires TrackSubscribed —
+                if the video element only renders inside teacherInfo?.online, the attach call happens
+                when teacherVideoRef.current is still null (race between socket roomState and LiveKit).
+                Video is hidden during demo mode — the demo full-screen already shows the teacher,
+                so displaying it here too creates a distracting duplicate. */}
+            {!isStaff && (
+              <video
+                ref={livekit.teacherVideoRef}
+                autoPlay
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ display: livekit.teacherPresent && teacherInfo?.online && !isShowingDemo ? "block" : "none", transform: "scaleX(-1)" }}
+              />
+            )}
+
+            {/* Round Braintam logo — top-right corner of teacher camera panel */}
+            <img
+              src={ROUND_LOGO}
+              alt="Braintam"
+              className="absolute top-2 right-2 z-10 rounded-full pointer-events-none"
+              style={{ width: 38, height: 38, opacity: 0.88 }}
+            />
+
+            {isStaff ? (
+              /* ── Teacher sees their own camera ── */
+              <>
+                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" style={{ display: cameraOn ? "block" : "none", transform: "scaleX(-1)" }} />
+                {!cameraOn && !demoMode && (
+                  <div className="flex flex-col items-center justify-center h-full gap-2">
+                    <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
+                    <p className="text-[10px] text-gray-500">Teacher</p>
+                  </div>
+                )}
+                {/* Demo mode active — show a purple overlay so teacher knows demo is on */}
+                {demoMode && (
+                  <div className="absolute inset-0 bg-purple-950/80 flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+                    <span className="text-2xl">👁</span>
+                    <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">Demo Mode</span>
+                    <span className="text-[9px] text-purple-400">Camera on main screen</span>
+                  </div>
+                )}
+                {/* ── Pause / Resume + Demo controls ── */}
+                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5">
+                  {/* Pause / Resume class */}
+                  <button
+                    onClick={() => void togglePause()}
+                    disabled={pauseProcessing}
+                    title={classPaused ? "Resume class" : "Pause class (mutes mic & camera)"}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                    style={{
+                      background: classPaused ? "rgba(245,158,11,0.25)" : "rgba(17,24,39,0.85)",
+                      border: `1.5px solid ${classPaused ? "#F59E0B" : "#374151"}`,
+                      color: classPaused ? "#FCD34D" : "#9CA3AF",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    {pauseProcessing
+                      ? <span className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      : classPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                    {classPaused ? "Resume" : "Pause"}
+                  </button>
+                  {/* Demo Mode */}
+                  <button
+                    onClick={toggleDemoMode}
+                    title={demoMode ? "Exit Demonstration Mode" : "Demo — show camera full-screen"}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 text-xs font-bold"
+                    style={{
+                      background: demoMode ? "rgba(124,58,237,0.35)" : "rgba(17,24,39,0.85)",
+                      border: `1.5px solid ${demoMode ? "#7C3AED" : "#374151"}`,
+                      color: demoMode ? "#A78BFA" : "#9CA3AF",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >👁</button>
+                </div>
+                {!livekit.connected && (
+                  <span className="absolute top-2 right-2 text-[8px] text-yellow-400 font-bold">connecting…</span>
+                )}
+              </>
+            ) : teacherInfo ? (
+              teacherInfo.online ? (
+                /* ── Teacher is live — video/audio elements mounted above; show overlays here ── */
+                <>
+                  {/* When teacher is in demo mode, show a purple indicator in the sidebar panel
+                      so students know the small panel is intentionally blank (camera is on main screen) */}
+                  {isShowingDemo && (
+                    <div className="absolute inset-0 bg-purple-950/70 flex flex-col items-center justify-center gap-1.5 pointer-events-none z-10">
+                      <span className="text-xl">👁</span>
+                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">Demo Mode</span>
+                      <span className="text-[9px] text-purple-400 text-center px-2">Teacher camera shown on main screen</span>
+                    </div>
+                  )}
+                  {livekit.audioBlocked && (
+                    <button
+                      onClick={() => { void livekit.startAudio(); }}
+                      className="absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1.5 text-[10px] font-bold text-white rounded-md py-1.5 shadow-lg"
+                      style={{ background: ORANGE }}
+                    >
+                      🔊 Enable Class Audio
+                    </button>
+                  )}
+                  {!livekit.teacherPresent && !isShowingDemo && (
+                    <div className="flex flex-col items-center justify-center h-full gap-2">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">👤</div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
+                      </div>
+                      <p className="text-[11px] text-white font-semibold">Teacher</p>
+                      <p className="text-[9px] text-gray-500">Camera off</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* ── Teacher disconnected — reconnecting placeholder ── */
+                <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
+                  <div className="relative">
+                    {/* Pulsing ring */}
+                    <span className="absolute inset-0 rounded-full animate-ping bg-yellow-500/30" />
+                    <div className="relative w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl opacity-60">👤</div>
+                  </div>
+                  <p className="text-[10px] text-gray-300 font-semibold">Teacher</p>
+                  <p className="text-[9px] text-yellow-400 leading-tight font-bold">📡 Teacher is reconnecting…</p>
+                  <p className="text-[8px] text-gray-500 leading-tight">Stream will restore automatically</p>
+                </div>
+              )
+            ) : (
+              /* ── Teacher hasn't joined yet ── */
+              <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-gray-800/60 flex items-center justify-center text-2xl opacity-40">👤</div>
+                <p className="text-[10px] text-gray-500 leading-tight">Waiting for teacher to join…</p>
+              </div>
+            )}
+          </div>
+
+          <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
+          {!isStaff && (
+            <div className="classroom-mobile-info flex items-center justify-between px-2 flex-shrink-0 gap-1" style={{ height: 28, background: "transparent", borderBottom: "1px solid rgba(255,107,26,0.35)" }}>
+              {/* Left: subject | LIVE */}
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                <span className="text-[9px] text-gray-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
+                <span className="text-gray-700 text-[9px] flex-shrink-0">|</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
+                  <span className={`text-[9px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-500"}`}>
+                    {connected ? "LIVE" : "…"}
+                  </span>
+                </div>
+                {livekit.connectionState === "reconnecting" && (
+                  <span className="text-[8px] text-yellow-400 font-bold flex-shrink-0">📡</span>
+                )}
+              </div>
+              {/* Right: rotate + fullscreen buttons */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={toggleOrientation}
+                  title="Switch orientation"
+                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={toggleMobileFullscreen}
+                  title="Toggle fullscreen"
+                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Raised hands queue (teacher/mentor) — Sprint 3: approve to stage */}
+          {canSeeAttendance && visibleHands.length > 0 && (
+            <div className="border-b border-yellow-800/30 flex-shrink-0 max-h-32 overflow-y-auto">
+              <p className="text-[9px] text-yellow-400 font-bold px-3 pt-1.5 pb-0.5 uppercase tracking-wide">
+                ✋ Q&A Queue ({visibleHands.length})
+              </p>
+              {visibleHands.map(h => {
+                const alreadyOnStage = stageSlots.some(s => s.studentId === h.uid);
+                const stageFull = stageSlots.length >= 5;
+                const isSuggested = suggestedStudents.has(h.uid);
+                return (
+                  <div key={h.uid} className={`flex items-center justify-between px-3 py-1 ${isSuggested ? "bg-purple-900/20" : "hover:bg-yellow-900/10"}`}>
+                    <span className="text-[10px] text-yellow-300 truncate max-w-[90px]">{h.name}</span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {isStaff && !alreadyOnStage && !stageFull && (
+                        <button
+                          onClick={() => approveToStage(h)}
+                          className="text-[9px] bg-green-700 hover:bg-green-600 text-white px-1.5 py-0.5 rounded font-bold"
+                          title="Approve to stage">
+                          → Stage
+                        </button>
+                      )}
+                      {isMentor && !isSuggested && (
+                        <button
+                          onClick={() => suggestToTeacher(h)}
+                          className="text-[9px] bg-purple-800 hover:bg-purple-700 text-purple-200 px-1.5 py-0.5 rounded font-bold"
+                          title="Suggest to teacher">
+                          ★ Suggest
+                        </button>
+                      )}
+                      {isMentor && isSuggested && (
+                        <span className="text-[9px] text-purple-400 font-bold">★ Sent</span>
+                      )}
+                      {alreadyOnStage && (
+                        <span className="text-[9px] text-green-400">On stage</span>
+                      )}
+                      {isStaff && stageFull && !alreadyOnStage && (
+                        <span className="text-[9px] text-gray-500">Full</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Panel area: students get always-visible chat + inline poll; staff/mentor get tabs */}
+          {(!isStaff && !isMentor) ? (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              {/* Inline poll — auto-shows on teacher launch, auto-hides 3 s after answer */}
+              {studentPollVisible && activePoll && (
+                <div className="flex-shrink-0 border-b border-orange-800/40 bg-orange-950/20 px-3 py-2.5 space-y-2">
+                  <p className="text-[11px] font-bold text-orange-300 leading-snug">{activePoll.question}</p>
+                  {activePoll.options.map(opt => {
+                    const chosen = myPollAnswer === opt.id;
+                    return (
+                      <button key={opt.id} onClick={() => submitPoll(opt.id)} disabled={!!myPollAnswer}
+                        className={`w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-gray-700 disabled:hover:bg-gray-800"}`}
+                        style={chosen ? { background: NAVY } : {}}>
+                        {opt.id}. {opt.text}
+                      </button>
+                    );
+                  })}
+                  {myPollAnswer && (
+                    <p className={`text-[11px] text-center font-black py-0.5 rounded-lg ${myPollCorrect === true ? "text-green-400 bg-green-950/40" : myPollCorrect === false ? "text-red-400 bg-red-950/40" : "text-blue-400"}`}>
+                      {myPollCorrect === true ? "✅ Correct!" : myPollCorrect === false ? "❌ Wrong answer" : "✓ Submitted!"}
+                    </p>
+                  )}
+                </div>
+              )}
+              {/* Chat messages */}
+              <div className="classroom-messages flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-2" style={{ minHeight: 0 }}>
+                {chat.length === 0 && <p className="text-[11px] text-gray-600 text-center mt-6">No messages yet</p>}
+                {chat
+                  .filter(msg => {
+                    if (msg.role === "teacher" || msg.role === "admin") return true;
+                    if (msg.role === "mentor" && (msg as any).mentorGroupId != null && (msg as any).mentorGroupId !== groupId) return false;
+                    return true;
+                  })
+                  .map(msg => (
+                    <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
+                        {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
+                        {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
+                        {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
+                      </div>
+                      <p className="text-xs text-gray-200 leading-snug break-words">{msg.text}</p>
+                    </div>
+                  ))}
+                <div ref={chatEndRef} />
+              </div>
+              {chatWarning && (
+                <div className={`mx-2 mb-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border flex-shrink-0 ${chatWarning.strikeCount >= 2 ? "bg-red-900/40 border-red-700 text-red-300" : "bg-yellow-900/40 border-yellow-700 text-yellow-300"}`}>
+                  {chatWarning.message}
+                </div>
+              )}
+              {raiseHandEnabled && (
+                <div className="px-2 pt-1 flex-shrink-0">
+                  <button onClick={toggleHand}
+                    className={`w-full py-1.5 text-xs font-bold rounded-xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
+                    <Hand className="w-3 h-3 inline mr-1" />{myHandRaised ? "Lower Hand" : "Raise Hand"}
+                  </button>
+                </div>
+              )}
+              {chatBlocked ? (
+                <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-red-900/50 border border-red-700 text-red-300 text-xs font-medium flex-shrink-0 text-center">
+                  🚫 Your chat access is temporarily disabled.
+                </div>
+              ) : isChatMuted ? (
+                <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
+                  💬 Chat is muted by the teacher.
+                </div>
+              ) : (
+                <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                  <input
+                    ref={chatInputRef}
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ fontSize: 13 }}
+                    placeholder="Say something…"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
+                    maxLength={300}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                  />
+                  <button onClick={sendChat} disabled={!chatInput.trim() || chatBlocked}
+                    className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: NAVY }}>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (<>
+          {/* Panel tabs (staff / mentor only) */}
+          <div className="flex border-b border-gray-800 flex-shrink-0">
+            <button onClick={() => setPanelMode("chat")}
+              className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "chat" ? "border-blue-500 text-blue-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
+              <MessageSquare className="w-3 h-3" /> Chat
+            </button>
+            <button onClick={() => setPanelMode("poll")}
+              className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "poll" ? "border-orange-500 text-orange-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
+              <BarChart2 className="w-3 h-3" /> Poll {activePoll && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 ml-0.5" />}
+            </button>
+            {(isStaff || isMentor) && (
+              <button onClick={() => setPanelMode("staffchat")}
+                className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "staffchat" ? "border-purple-500 text-purple-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
+                🔒 Staff
+              </button>
+            )}
+          </div>
+
+          {/* ── CHAT ─────────────────────────────────────────── */}
+          {panelMode === "chat" && (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              {/* Teacher controls */}
+              {isStaff && (
+                <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0 flex items-center gap-2">
+                  <button
+                    onClick={() => toggleRaiseHandFeature(!raiseHandEnabled)}
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/30" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
+                    ✋ {raiseHandEnabled ? "Close Q&A" : "Open Q&A"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (chatMuted) { socket?.emit("chat:unmute"); setChatMuted(false); }
+                      else { socket?.emit("chat:mute"); setChatMuted(true); }
+                    }}
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all flex items-center gap-1 ${chatMuted ? "bg-red-700/30 text-red-300 border border-red-700/40" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
+                    💬 {chatMuted ? "Unmute Chat" : "Mute Chat"}
+                  </button>
+                </div>
+              )}
+
+              {/* Messages — students only see own mentor + teacher */}
+              <div className="classroom-messages flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-2" style={{ minHeight: 0 }}>
+                {chat.length === 0 && <p className="text-[11px] text-gray-600 text-center mt-6">No messages yet</p>}
+                {chat
+                  .filter(msg => {
+                    // Teacher/mentor see everything
+                    if (isStaff || isMentor) return true;
+                    // Students: always see teacher/admin messages
+                    if (msg.role === "teacher" || msg.role === "admin") return true;
+                    // Students: hide other mentors' messages (server already routes,
+                    // but filter here for safety on initial load)
+                    if (msg.role === "mentor" && (msg as any).mentorGroupId != null && (msg as any).mentorGroupId !== groupId) return false;
+                    return true;
+                  })
+                  .map(msg => (
+                    <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
+                        {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
+                        {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
+                        {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
+                      </div>
+                      <p className="text-xs text-gray-200 leading-snug break-words">{msg.text}</p>
+                    </div>
+                  ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat warning toast */}
+              {chatWarning && (
+                <div className={`mx-2 mb-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border flex-shrink-0 ${chatWarning.strikeCount >= 2 ? "bg-red-900/40 border-red-700 text-red-300" : "bg-yellow-900/40 border-yellow-700 text-yellow-300"}`}>
+                  {chatWarning.message}
+                </div>
+              )}
+
+              {/* Blocked / muted banner or chat input */}
+              {!isStaff && chatBlocked ? (
+                <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-red-900/50 border border-red-700 text-red-300 text-xs font-medium flex-shrink-0 text-center">
+                  🚫 Your chat access is temporarily disabled. Please contact your mentor.
+                </div>
+              ) : !isStaff && isChatMuted ? (
+                <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
+                  💬 Chat is muted by the teacher.
+                </div>
+              ) : (
+                <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                  <input
+                    ref={chatInputRef}
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ fontSize: isStaff ? 16 : 13 }}
+                    placeholder={isStaff ? "Announce to all…" : "Say something…"}
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && sendChat()}
+                    maxLength={300}
+                    disabled={!isStaff && chatBlocked}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                  />
+                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Raise hand for students */}
+              {!isStaff && !isMentor && raiseHandEnabled && (
+                <div className="p-2 border-t border-gray-800 flex-shrink-0">
+                  <button onClick={toggleHand}
+                    className={`w-full py-2 text-xs font-bold rounded-xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
+                    <Hand className="w-3 h-3 inline mr-1" />{myHandRaised ? "Lower Hand" : "Raise Hand"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── POLL ─────────────────────────────────────────── */}
+          {panelMode === "poll" && (
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {isStaff && !activePoll && (
+                !showPollForm ? (
+                  <button onClick={() => setShowPollForm(true)} className="w-full py-2.5 text-sm font-bold text-white rounded-xl" style={{ background: ORANGE }}>
+                    + Create Poll
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <input className="w-full bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border border-gray-700 outline-none placeholder-gray-600"
+                      placeholder="Question…" value={pollQ} onChange={e => setPollQ(e.target.value)} />
+                    {/* Sprint 1 — options with correct-answer radio */}
+                    <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide">Options · tap ✓ to mark correct</p>
+                    {pollOpts.map((opt, i) => {
+                      const letter = String.fromCharCode(65 + i);
+                      const isCorrect = pollCorrectIdx === i;
+                      return (
+                        <div key={i} className="flex gap-1.5 items-center">
+                          <button
+                            onClick={() => setPollCorrectIdx(isCorrect ? null : i)}
+                            className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-black border transition-all ${isCorrect ? "bg-green-500 border-green-400 text-white" : "border-gray-600 text-gray-500 hover:border-green-600"}`}
+                            title="Mark as correct answer"
+                          >✓</button>
+                          <input
+                            className={`flex-1 bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border outline-none placeholder-gray-600 ${isCorrect ? "border-green-600" : "border-gray-700"}`}
+                            placeholder={`Option ${letter}`} value={opt}
+                            onChange={e => { const n = [...pollOpts]; n[i] = e.target.value; setPollOpts(n); }}
+                          />
+                        </div>
+                      );
+                    })}
+                    {pollCorrectIdx === null && (
+                      <p className="text-[9px] text-yellow-600">No correct answer marked — all responses score equally</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={launchPoll} className="flex-1 py-2 text-xs font-bold text-white rounded-xl" style={{ background: ORANGE }}>🚀 Launch</button>
+                      <button onClick={() => { setShowPollForm(false); setPollCorrectIdx(null); }} className="px-3 py-2 text-xs text-gray-400 bg-gray-800 rounded-xl hover:bg-gray-700">Cancel</button>
+                    </div>
+                  </div>
+                )
+              )}
+
+              {activePoll && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-white leading-snug">{activePoll.question}</p>
+                  {activePoll.options.map(opt => {
+                    const count = pollCounts[opt.id] ?? 0;
+                    const pct = pollTotal > 0 ? Math.round((count / pollTotal) * 100) : 0;
+                    const chosen = myPollAnswer === opt.id;
+                    return (
+                      <button key={opt.id} onClick={() => submitPoll(opt.id)} disabled={!!myPollAnswer && !isStaff}
+                        className={`w-full text-left rounded-xl px-3 py-2.5 text-xs font-semibold relative overflow-hidden transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-gray-700 disabled:hover:bg-gray-800"}`}
+                        style={chosen ? { background: NAVY } : {}}>
+                        {isStaff && pollTotal > 0 && <div className="absolute inset-y-0 left-0 bg-blue-500/20 rounded-xl" style={{ width: `${pct}%` }} />}
+                        <span className="relative flex justify-between">
+                          <span>{opt.id}. {opt.text}</span>
+                          {isStaff && pollTotal > 0 && <span className="text-gray-400 ml-2">{pct}%</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {isStaff && (
+                    <button onClick={() => socket?.emit("showLeaderboard")}
+                      className="w-full py-2 text-xs font-bold text-white rounded-xl flex items-center justify-center gap-1.5" style={{ background: "#7C3AED" }}>
+                      <Trophy className="w-3.5 h-3.5" /> Show Top 3
+                    </button>
+                  )}
+                  {!isStaff && (
+                    <p className={`text-xs text-center font-semibold ${
+                      myPollAnswer
+                        ? myPollCorrect === true
+                          ? "text-green-400"
+                          : myPollCorrect === false
+                          ? "text-red-400"
+                          : "text-blue-400"
+                        : "text-gray-500"
+                    }`}>
+                      {myPollAnswer
+                        ? myPollCorrect === true
+                          ? "✓ Correct!"
+                          : myPollCorrect === false
+                          ? "✗ Wrong answer"
+                          : "✓ Submitted!"
+                        : "Tap to answer"}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {!activePoll && !showPollForm && !isStaff && (
+                <p className="text-xs text-gray-600 text-center mt-8">No active poll</p>
+              )}
+            </div>
+          )}
+
+          {/* ── STAFF CHAT (teacher ↔ mentor private) ──────────── */}
+          {panelMode === "staffchat" && (isStaff || isMentor) && (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-3 py-1.5 border-b border-gray-800 flex-shrink-0">
+                <p className="text-[9px] text-purple-400 font-semibold uppercase tracking-wide">
+                  🔒 Private staff channel — not visible to students
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+                {staffChat.length === 0 && (
+                  <p className="text-[11px] text-gray-600 text-center mt-6">No messages yet</p>
+                )}
+                {staffChat.map(msg => (
+                  <div key={msg.id}>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[10px] font-bold text-purple-400">{msg.name}</span>
+                      <span className={`text-[8px] rounded px-1 font-bold ${msg.role === "mentor" ? "bg-purple-900/60 text-purple-400" : "bg-blue-900/60 text-blue-400"}`}>
+                        {msg.role === "mentor" ? "M" : "T"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-200 leading-snug break-words">{msg.text}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-1.5 px-2 py-2 border-t border-gray-800 flex-shrink-0">
+                <input
+                  value={staffChatInput}
+                  onChange={e => setStaffChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendStaffChat()}
+                  placeholder="Message staff…"
+                  className="flex-1 bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-gray-700 focus:border-purple-600 outline-none placeholder-gray-600"
+                />
+                <button onClick={sendStaffChat} disabled={!staffChatInput.trim()}
+                  className="p-1.5 rounded-lg bg-purple-700 hover:bg-purple-600 text-white disabled:opacity-40 transition-all flex-shrink-0">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+          </>)}
+          </div>{/* /classroom-sidebar-bottom */}
+        </div>
+      </div>
+
+      {/* ── Leaderboard overlay (5s auto-close, group-scoped Top 20) ── */}
+      {leaderboard && leaderboard.length > 0 && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
+          <div className="rounded-3xl p-8 text-center shadow-2xl" style={{ background: NAVY, minWidth: 320, maxHeight: "80vh" }}>
+            <div className="text-4xl mb-3">🏆</div>
+            <h2 className="text-white font-black text-xl mb-1">Top Responders!</h2>
+            <p className="text-blue-300 text-xs mb-5">Fastest correct answers · Top {leaderboard.length}</p>
+            <div className="space-y-1.5 overflow-y-auto pr-1" style={{ maxHeight: "50vh" }}>
+              {leaderboard.map(e => (
+                <div key={e.rank} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-1.5">
+                  <span className="text-lg w-6 text-center">
+                    {e.rank === 1 ? "🥇" : e.rank === 2 ? "🥈" : e.rank === 3 ? "🥉" : e.rank}
+                  </span>
+                  <span className="text-white font-bold flex-1 text-left text-sm">{e.name}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-blue-400 text-xs mt-4 opacity-70">Auto-closes in 5s</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mic Invite Dialog (student: teacher gave mic) ── */}
+      {micInvite && (
+        <div className="fixed inset-0 flex items-end justify-center pb-24 z-50 pointer-events-none">
+          <div className="pointer-events-auto animate-bounce-once rounded-2xl shadow-2xl border border-green-700/50 px-5 py-4 flex flex-col items-center gap-3 max-w-xs w-full mx-4"
+            style={{ background: "linear-gradient(135deg,#0d2247,#0B2B6B)" }}>
+            <div className="text-3xl">🎤</div>
+            <p className="text-white font-bold text-sm text-center">
+              {micInvite.fromTeacher} invited you on stage!
+            </p>
+            <p className="text-blue-300 text-[11px] text-center">You'll be muted by default. Accept to join the stage.</p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={acceptMicInvite}
+                className="flex-1 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90"
+                style={{ background: GREEN }}
+              >
+                ✓ Accept
+              </button>
+              <button
+                onClick={() => setMicInvite(null)}
+                className="flex-1 py-2 text-sm font-bold text-gray-300 rounded-xl bg-gray-700 hover:bg-gray-600 transition-all"
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Draggable Payment Badge (student + mentor only) ── */}
+      {!isStaff && !badgeDismissed && (
+        <div
+          ref={badgeRef}
+          data-testid="payment-badge"
+          className="fixed z-40 select-none"
+          style={{ left: badgePos.x, top: badgePos.y, touchAction: "none" }}
+          onPointerDown={onBadgePointerDown}
+          onPointerMove={onBadgePointerMove}
+          onPointerUp={onBadgePointerUp}
+        >
+          <div className="rounded-full shadow-2xl border border-orange-500/60 px-3 py-2 flex items-center gap-2 text-white text-[10px] font-bold whitespace-nowrap cursor-grab active:cursor-grabbing"
+            style={{ background: "linear-gradient(135deg,#FF6B1A,#c84b00)" }}>
+            <span className="text-base">🚀</span>
+            <span>Grade {grade} {programName}</span>
+            {/* Dismiss — stops propagation so it doesn't trigger brochure open */}
+            <button
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); setBadgeDismissed(true); }}
+              className="ml-1 w-4 h-4 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-[9px] text-white/80 hover:text-white transition-all flex-shrink-0"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Brochure Popup ── */}
+      {showBrochure && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl w-full max-w-sm"
+            style={{ background: "linear-gradient(160deg,#0a1f44 0%,#0B2B6B 60%,#1a0533 100%)" }}>
+            {/* Close */}
+            <button onClick={() => { setShowBrochure(false); trackEvent("popup_closed", sessionId, userId, role, { grade }); }}
+              className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+              <X className="w-4 h-4 text-white" />
+            </button>
+
+            {/* Top graphic strip */}
+            <div className="h-2 w-full" style={{ background: "linear-gradient(90deg,#FF6B1A,#ffd700,#FF6B1A)" }} />
+
+            {/* Header */}
+            <div className="px-6 pt-5 pb-3 text-center">
+              <div className="inline-flex items-center gap-1.5 bg-orange-500/20 border border-orange-500/40 rounded-full px-3 py-1 mb-3">
+                <span className="text-[10px] text-orange-300 font-bold uppercase tracking-wide">🌟 Scholarship Offer · Grade {grade}</span>
+              </div>
+              <h2 className="text-white font-black text-xl leading-tight">
+                {programName}
+              </h2>
+              <p className="text-blue-300 text-xs mt-1">Full Academic Year · Expert Teachers · 1-on-1 Mentorship</p>
+            </div>
+
+            {/* Price block */}
+            <div className="mx-6 rounded-2xl p-4 mb-4 text-center"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,107,26,0.3)" }}>
+              <p className="text-gray-400 text-[11px] mb-1">Original Price</p>
+              <p className="text-gray-500 text-sm line-through">₹{Number(origPrice).toLocaleString("en-IN")}</p>
+              <div className="my-2 flex items-center justify-center gap-2">
+                <span className="text-[10px] bg-green-600 text-white px-2 py-0.5 rounded-full font-bold">50% OFF</span>
+              </div>
+              <p className="text-white font-black text-3xl">₹{Number(salePrice).toLocaleString("en-IN")}</p>
+              <p className="text-orange-300 text-[10px] mt-1 font-semibold">🔥 Limited seats · Scholarship valid now</p>
+            </div>
+
+            {/* Features */}
+            <div className="mx-6 mb-5 space-y-2">
+              {[
+                { icon: "🧑‍🏫", text: "Best teachers from across India" },
+                { icon: "🤝", text: "1-on-1 mentor support throughout the year" },
+                { icon: "📅", text: "Full academic year coverage" },
+                { icon: "📊", text: "Weekly tests & personalised reports" },
+                { icon: "🎯", text: "Grade " + grade + " aligned curriculum" },
+                { icon: "💻", text: "Live + recorded classes, accessible anytime" },
+              ].map(f => (
+                <div key={f.text} className="flex items-center gap-2.5">
+                  <span className="text-base flex-shrink-0">{f.icon}</span>
+                  <span className="text-gray-200 text-[11px]">{f.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="px-6 pb-6">
+              <a
+                href={payLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  trackEvent("cta_clicked", sessionId, userId, role, { grade, programName, salePrice });
+                  trackEvent("payment_started", sessionId, userId, role, { grade, programName, salePrice, payLink });
+                }}
+                className="block w-full py-3 text-center text-white font-black text-sm rounded-2xl shadow-lg transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "linear-gradient(90deg,#FF6B1A,#e05500)" }}>
+                🎓 Grab My Seat Now
+              </a>
+              <p className="text-gray-500 text-[10px] text-center mt-2">No hidden charges · Secure payment</p>
+            </div>
+
+            {/* Bottom graphic */}
+            <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg,#FF6B1A,#ffd700,#FF6B1A)" }} />
+          </div>
+        </div>
+      )}
+
+      {showDiagnostics && (
+        <div className="fixed bottom-2 left-2 z-[9999] w-72 rounded-lg bg-black/90 border border-gray-700 text-[9px] font-mono text-gray-300 p-2 space-y-0.5 pointer-events-none select-none">
+          <p className="text-orange-400 font-bold text-[10px]">⚡ Live Classroom Diagnostics (debug mode)</p>
+
+          <p className="text-gray-500 font-semibold pt-0.5">─ Identity</p>
+          <p>Auth loading: <span className={authLoading ? "text-yellow-400" : "text-green-400"}>{authLoading ? "yes" : "no"}</span></p>
+          <p>Session ID: <span className="text-white">{sessionId}</span></p>
+          <p>User ID: <span className="text-white">{userId}</span></p>
+          <p>Role: <span className="text-white">{role}</span></p>
+
+          <p className="text-gray-500 font-semibold pt-0.5">─ Socket.IO</p>
+          <p>Status: <span className={connected ? "text-green-400" : "text-yellow-400"}>{connected ? "Connected" : authLoading ? "Waiting for auth…" : "Connecting…"}</span></p>
+          <p>Socket ID: <span className="text-white">{classroomJoined?.socketId ?? (connected ? "pending ack…" : "—")}</span></p>
+          <p>Server room: <span className="text-white">{classroomJoined?.roomName ?? (connected ? "pending ack…" : "—")}</span></p>
+          <p>Expected room: <span className="text-blue-300">session-{sessionId}</span></p>
+          <p>Room match: <span className={classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "text-green-400" : "text-red-400") : "text-gray-500"}>{classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "✓ yes" : "✗ MISMATCH") : "—"}</span></p>
+          <p>Members: <span className="text-white">{classroomJoined?.memberCount ?? "—"}</span></p>
+          <p>Last sent: <span className="text-cyan-400">{lastSocketSent.current}</span></p>
+          <p>Last recv: <span className="text-cyan-400">{lastSocketReceived.current}</span></p>
+
+          <p className="text-gray-500 font-semibold pt-0.5">─ LiveKit</p>
+          <p>Status: <span className="text-white">{livekit.connectionState}</span></p>
+          <p>Room: <span className="text-white">{livekit.roomName ?? "—"}</span></p>
+          <p>Identity: <span className="text-white">{livekit.identity ?? userId}</span></p>
+          {isStaff ? (
+            <>
+              <p>Local Teacher Camera: <span className="text-white">{livekit.cameraError ? "Error" : livekit.cameraPublishing ? "Publishing" : "Off"}</span></p>
+              <p>Local Teacher Mic: <span className="text-white">{livekit.microphoneError ? "Error" : livekit.micPublishing ? "Publishing" : "Off"}</span></p>
+            </>
+          ) : (
+            <>
+              <p>Local Camera: <span className="text-gray-500">Not permitted</span></p>
+              <p>Local Microphone: <span className="text-gray-500">Not permitted</span></p>
+              <p>Remote Teacher Video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
+              <p>Remote Teacher Audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
+            </>
+          )}
+
+          {(livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError) && (
+            <p className="text-red-400 pt-0.5">
+              ERR: {livekit.tokenError || livekit.connectionError || livekit.cameraError || livekit.microphoneError}
+            </p>
+          )}
+        </div>
+      )}
+
+      </div>
+
+      {/* ── Q&A Center-Screen Overlay (teacher: shows who raised hands) ─── */}
+      {isStaff && showQnaOverlay && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowQnaOverlay(false); }}
+        >
+          <div className="bg-gray-900 border border-yellow-700/40 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <Hand className="w-5 h-5 text-yellow-400" />
+                <h3 className="text-white font-bold text-base">Q&A — Raised Hands</h3>
+                <span className="bg-yellow-500 text-black text-xs font-black px-2 py-0.5 rounded-full">{visibleHands.length}</span>
+              </div>
+              <button onClick={() => setShowQnaOverlay(false)} className="text-gray-500 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* List */}
+            <div className="max-h-80 overflow-y-auto divide-y divide-gray-800">
+              {visibleHands.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-8">No students have raised their hand yet.</p>
+              ) : visibleHands.map(h => {
+                const alreadyOnStage = stageSlots.some(s => s.studentId === h.uid);
+                const stageFull = stageSlots.length >= 5;
+                const isSuggested = suggestedStudents.has(h.uid);
+                return (
+                  <div key={h.uid} className={`flex items-center justify-between px-5 py-3 ${isSuggested ? "bg-purple-900/20" : "hover:bg-gray-800/50"}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-400 flex-shrink-0">✋</div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-white font-semibold truncate">{h.name}</p>
+                        {isSuggested && <p className="text-[10px] text-purple-400">★ Suggested by mentor</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {!alreadyOnStage && !stageFull && (
+                        <button
+                          onClick={() => { approveToStage(h); setShowQnaOverlay(false); }}
+                          className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold transition-all"
+                        >
+                          → Stage
+                        </button>
+                      )}
+                      {alreadyOnStage && <span className="text-xs text-green-400 font-semibold">On stage</span>}
+                      {stageFull && !alreadyOnStage && <span className="text-xs text-gray-500">Stage full</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-gray-800 flex items-center justify-between">
+              <button
+                onClick={() => toggleRaiseHandFeature(false)}
+                className="text-xs text-red-400 hover:text-red-300 font-semibold"
+              >Close Q&A</button>
+              <button
+                onClick={() => setShowQnaOverlay(false)}
+                className="text-xs px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold"
+              >Dismiss</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

@@ -107778,7 +107778,13 @@ var liveClassesTable = pgTable("live_classes", {
   title: text("title").notNull(),
   subjectId: integer("subject_id"),
   grade: integer("grade").notNull(),
+  // Links the live class to the selected course/batch.
+  // Required by Teacher Portal and existing production data.
+  batchId: integer("batch_id"),
   courseId: integer("course_id"),
+  // Optional Ignite batch relationship.
+  // When present, this working LiveKit class also appears inside
+  // the selected Ignite batch alongside its normal sessions.
   courseSubjectId: integer("course_subject_id"),
   chapterId: integer("chapter_id"),
   topicId: integer("topic_id"),
@@ -108130,11 +108136,19 @@ var demoSessionsTable = pgTable("demo_sessions", {
   scheduledAt: timestamp("scheduled_at").notNull(),
   duration: integer("duration").notNull().default(60),
   joinUrl: text("join_url"),
+  // PDF/presentation uploaded for this auto-generated Ignite session.
+  // The classroom loads this file automatically for teacher and students.
+  slideUrl: text("slide_url"),
   recordingUrl: text("recording_url"),
   homeworkText: text("homework_text"),
   homeworkLink: text("homework_link"),
   bannerUrl: text("banner_url"),
   status: text("status").notNull().default("scheduled"),
+  // Actual classroom timing.
+  // startedAt is saved when the teacher starts the class.
+  // endedAt is saved when the teacher ends the class.
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
   isPublished: boolean("is_published").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
@@ -109221,9 +109235,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-15-0912" : "dev",
-    commit: true ? "b635786" : "unknown",
-    buildTime: true ? "2026-07-15T09:12:41.571Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-17-0901" : "dev",
+    commit: true ? "c071249" : "unknown",
+    buildTime: true ? "2026-07-17T09:01:54.670Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -119404,7 +119418,7 @@ router14.get("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
 router14.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
   const teacherId = req.authUser.id;
   const isAdmin = req.authUser.role === "admin" || req.authUser.role === "super_admin";
-  const { title, subjectId, grade, courseId, courseSubjectId, chapterId, topicId, scheduledAt, duration: duration3, slideUrl } = req.body;
+  const { title, subjectId, grade, courseId, batchId, courseSubjectId, chapterId, topicId, scheduledAt, duration: duration3, slideUrl } = req.body;
   if (!title || !scheduledAt) {
     res.status(400).json({ error: "title and scheduledAt are required" });
     return;
@@ -119438,6 +119452,10 @@ router14.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     subjectId: resolvedSubjectId,
     grade: resolvedGrade,
     courseId: courseId ? Number(courseId) : null,
+    // Optional Ignite batch relationship.
+    // This keeps the existing working LiveKit course class while
+    // also linking it to the selected Ignite batch.
+    batchId: batchId ? Number(batchId) : null,
     courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null,
     chapterId: chapterId ? Number(chapterId) : null,
     topicId: topicId ? Number(topicId) : null,
@@ -120006,7 +120024,18 @@ router14.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
   const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
   if (isAdmin) {
     const batches2 = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
-    res.json(batches2.map((b) => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
+    res.json(batches2.map((b) => ({
+      id: b.id,
+      title: b.title,
+      grade: b.grade,
+      subject: b.subject,
+      startDate: b.startDate?.toISOString() ?? null,
+      endDate: b.endDate?.toISOString() ?? null,
+      status: b.status,
+      isActive: b.isActive,
+      weekNumber: b.weekNumber,
+      academicYear: b.academicYear
+    })));
     return;
   }
   const sessionBatches = await db.selectDistinct({ batchId: demoSessionsTable.batchId }).from(demoSessionsTable).where(or(
@@ -120017,7 +120046,18 @@ router14.get("/teacher/my-batches", teacherOrAdmin, async (req, res) => {
   const batches = await db.select().from(demoBatchesTable).where(
     sessionBatchIds.length > 0 ? or(eq(demoBatchesTable.teacherId, teacher.id), inArray(demoBatchesTable.id, sessionBatchIds)) : eq(demoBatchesTable.teacherId, teacher.id)
   ).orderBy(desc(demoBatchesTable.id));
-  res.json(batches.map((b) => ({ id: b.id, title: b.title, grade: b.grade, subject: b.subject })));
+  res.json(batches.map((b) => ({
+    id: b.id,
+    title: b.title,
+    grade: b.grade,
+    subject: b.subject,
+    startDate: b.startDate?.toISOString() ?? null,
+    endDate: b.endDate?.toISOString() ?? null,
+    status: b.status,
+    isActive: b.isActive,
+    weekNumber: b.weekNumber,
+    academicYear: b.academicYear
+  })));
 });
 router14.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
   const { batchId, title, scheduledAt, duration: duration3, joinUrl } = req.body;
@@ -120034,7 +120074,12 @@ router14.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
     duration: duration3 ? Number(duration3) : 60,
     joinUrl: joinUrl || null,
     dayNumber: nextDay,
-    status: "scheduled"
+    status: "scheduled",
+    // Store the teacher directly on every newly created Ignite session.
+    // Without these fields, the class appears in the batch but LiveKit
+    // cannot reliably identify and authorize the assigned teacher.
+    teacherId: req.authUser.id,
+    teacherName: req.authUser.name
   }).returning();
   res.json({ ok: true, session });
 });
@@ -120064,7 +120109,9 @@ router14.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
       scheduledAt: s2.scheduledAt.toISOString(),
       duration: s2.duration,
       status: s2.status,
-      joinUrl: s2.joinUrl ?? null,
+      startedAt: s2.startedAt?.toISOString() ?? null,
+      endedAt: s2.endedAt?.toISOString() ?? null,
+      slideUrl: s2.slideUrl ?? null,
       recordingUrl: s2.recordingUrl ?? null,
       batchId: s2.batchId,
       batchTitle: batch?.title ?? "",
@@ -120079,15 +120126,50 @@ router14.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
 router14.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
-    res.status(400).json({ error: "invalid id" });
+    res.status(400).json({ error: "Invalid session ID" });
     return;
   }
-  const { title, joinUrl, recordingUrl } = req.body;
-  const [updated] = await db.update(demoSessionsTable).set({
-    ...title !== void 0 ? { title } : {},
-    ...joinUrl !== void 0 ? { joinUrl: joinUrl || null } : {},
-    ...recordingUrl !== void 0 ? { recordingUrl: recordingUrl || null } : {}
-  }).where(eq(demoSessionsTable.id, id)).returning();
+  const {
+    title,
+    scheduledAt,
+    duration: duration3,
+    slideUrl,
+    recordingUrl
+  } = req.body;
+  const changes = {};
+  if (title !== void 0) {
+    const cleanTitle = String(title).trim();
+    if (!cleanTitle) {
+      res.status(400).json({ error: "Class title is required" });
+      return;
+    }
+    changes.title = cleanTitle;
+  }
+  if (scheduledAt !== void 0) {
+    const parsedDate = new Date(scheduledAt);
+    if (Number.isNaN(parsedDate.getTime())) {
+      res.status(400).json({ error: "Invalid class date or time" });
+      return;
+    }
+    changes.scheduledAt = parsedDate;
+  }
+  if (duration3 !== void 0) {
+    const parsedDuration = Number(duration3);
+    if (!Number.isInteger(parsedDuration) || parsedDuration < 15 || parsedDuration > 480) {
+      res.status(400).json({
+        error: "Duration must be between 15 and 480 minutes"
+      });
+      return;
+    }
+    changes.duration = parsedDuration;
+  }
+  if (slideUrl !== void 0) {
+    changes.slideUrl = slideUrl ? String(slideUrl) : null;
+  }
+  if (recordingUrl !== void 0) {
+    changes.recordingUrl = recordingUrl ? String(recordingUrl).trim() : null;
+  }
+  const [updated] = await db.update(demoSessionsTable).set(changes).where(eq(demoSessionsTable.id, id)).returning();
   if (!updated) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -120097,16 +120179,44 @@ router14.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
 router14.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
   const { status } = req.body;
-  if (isNaN(id) || !status) {
-    res.status(400).json({ error: "status required" });
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid session ID" });
     return;
   }
-  const [updated] = await db.update(demoSessionsTable).set({ status }).where(eq(demoSessionsTable.id, id)).returning();
-  if (!updated) {
+  if (!["scheduled", "live", "completed"].includes(status)) {
+    res.status(400).json({ error: "Invalid session status" });
+    return;
+  }
+  const [current] = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.id, id)).limit(1);
+  if (!current) {
     res.status(404).json({ error: "Session not found" });
     return;
   }
-  res.json({ ok: true, status: updated.status });
+  const now = /* @__PURE__ */ new Date();
+  const changes = { status };
+  if (status === "live") {
+    if (!current.startedAt) {
+      changes.startedAt = now;
+    }
+    if (current.status === "completed") {
+      changes.endedAt = null;
+    }
+  }
+  if (status === "completed") {
+    if (!current.startedAt) {
+      changes.startedAt = now;
+    }
+    if (!current.endedAt) {
+      changes.endedAt = now;
+    }
+  }
+  const [updated] = await db.update(demoSessionsTable).set(changes).where(eq(demoSessionsTable.id, id)).returning();
+  res.json({
+    ok: true,
+    status: updated.status,
+    startedAt: updated.startedAt?.toISOString() ?? null,
+    endedAt: updated.endedAt?.toISOString() ?? null
+  });
 });
 var teacher_default = router14;
 
@@ -120737,7 +120847,57 @@ router19.get("/demo-batches/:id", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const sessions = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, id)).orderBy(demoSessionsTable.dayNumber);
+  const demoSessions = await db.select().from(demoSessionsTable).where(
+    and(
+      eq(demoSessionsTable.batchId, id),
+      eq(demoSessionsTable.isPublished, true)
+    )
+  );
+  const advancedLiveClasses = await db.select().from(liveClassesTable).where(
+    and(
+      eq(liveClassesTable.batchId, id),
+      eq(liveClassesTable.isPublished, true),
+      eq(liveClassesTable.isArchived, false)
+    )
+  );
+  const normalSessions = demoSessions.map((session) => ({
+    ...session,
+    sessionType: "demo_session",
+    slideUrl: null
+  }));
+  const nextDayNumber = demoSessions.length > 0 ? Math.max(
+    ...demoSessions.map((session) => session.dayNumber)
+  ) + 1 : 1;
+  const blueSessions = advancedLiveClasses.map(
+    (liveClass, index2) => ({
+      id: liveClass.id,
+      batchId: id,
+      title: liveClass.title,
+      description: null,
+      dayNumber: nextDayNumber + index2,
+      subject: null,
+      teacherId: liveClass.teacherId,
+      teacherName: liveClass.teacher,
+      scheduledAt: liveClass.scheduledAt,
+      duration: liveClass.duration,
+      joinUrl: `/live/${liveClass.id}?role=student&type=ignite`,
+      recordingUrl: null,
+      homeworkText: null,
+      homeworkLink: null,
+      bannerUrl: liveClass.thumbnailUrl,
+      status: liveClass.status,
+      isPublished: liveClass.isPublished,
+      createdAt: liveClass.createdAt,
+      sessionType: "live_class",
+      slideUrl: liveClass.slideUrl
+    })
+  );
+  const sessions = [
+    ...normalSessions,
+    ...blueSessions
+  ].sort(
+    (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime()
+  );
   res.json({ batch, sessions });
 });
 router19.get("/admin/demo-batches", adminOnly4, async (_req, res) => {

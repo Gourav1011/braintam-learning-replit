@@ -1,12 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import {
-  demoBatchesTable,
-  demoSessionsTable,
-  demoBatchEnrollmentsTable,
-  liveClassesTable,
-  usersTable,
-} from "@workspace/db";
+import { demoBatchesTable, demoSessionsTable, demoBatchEnrollmentsTable, usersTable } from "@workspace/db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
 import { requireRole, requireAuth } from "../middlewares/auth.js";
 import crypto from "crypto";
@@ -35,79 +29,11 @@ router.get("/demo-batches/:id", async (req, res) => {
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
   const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, id));
   if (!batch) { res.status(404).json({ error: "Not found" }); return; }
-  const demoSessions = await db
+  const sessions = await db
     .select()
     .from(demoSessionsTable)
-    .where(
-      and(
-        eq(demoSessionsTable.batchId, id),
-        eq(demoSessionsTable.isPublished, true)
-      )
-    );
-
-  // Advanced blue classes remain in live_classes.
-  // They are included in this batch response without creating
-  // duplicate demo_sessions records.
-  const advancedLiveClasses = await db
-    .select()
-    .from(liveClassesTable)
-    .where(
-      and(
-        eq(liveClassesTable.batchId, id),
-        eq(liveClassesTable.isPublished, true),
-        eq(liveClassesTable.isArchived, false)
-      )
-    );
-
-  const normalSessions = demoSessions.map(session => ({
-    ...session,
-    sessionType: "demo_session" as const,
-    slideUrl: null,
-  }));
-
-  const nextDayNumber =
-    demoSessions.length > 0
-      ? Math.max(
-          ...demoSessions.map(session => session.dayNumber)
-        ) + 1
-      : 1;
-
-  const blueSessions = advancedLiveClasses.map(
-    (liveClass, index) => ({
-      id: liveClass.id,
-      batchId: id,
-      title: liveClass.title,
-      description: null,
-      dayNumber: nextDayNumber + index,
-      subject: null,
-      teacherId: liveClass.teacherId,
-      teacherName: liveClass.teacher,
-      scheduledAt: liveClass.scheduledAt,
-      duration: liveClass.duration,
-      joinUrl:
-        `/live/${liveClass.id}` +
-        `?role=student&type=ignite`,
-      recordingUrl: null,
-      homeworkText: null,
-      homeworkLink: null,
-      bannerUrl: liveClass.thumbnailUrl,
-      status: liveClass.status,
-      isPublished: liveClass.isPublished,
-      createdAt: liveClass.createdAt,
-      sessionType: "live_class" as const,
-      slideUrl: liveClass.slideUrl,
-    })
-  );
-
-  const sessions = [
-    ...normalSessions,
-    ...blueSessions,
-  ].sort(
-    (a, b) =>
-      a.scheduledAt.getTime() -
-      b.scheduledAt.getTime()
-  );
-
+    .where(eq(demoSessionsTable.batchId, id))
+    .orderBy(demoSessionsTable.dayNumber);
   res.json({ batch, sessions });
 });
 

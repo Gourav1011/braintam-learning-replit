@@ -108,20 +108,23 @@ export function useLiveKit({
       muted: track.isMuted,
     });
 
-    // Restore the original LiveKit-managed audio attachment.
-    document.querySelector(`[${TEACHER_AUDIO_ATTR}]`)?.remove();
+    let audioEl = document.querySelector(
+      `[${TEACHER_AUDIO_ATTR}]`
+    ) as HTMLAudioElement | null;
 
-    const audioEl = track.attach() as HTMLAudioElement;
+    if (!audioEl) {
+      audioEl = document.createElement("audio");
+      audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
+      audioEl.autoplay = true;
+      audioEl.muted = false;
+      audioEl.volume = 1;
+      audioEl.style.display = "none";
+      document.body.appendChild(audioEl);
 
-    audioEl.setAttribute(TEACHER_AUDIO_ATTR, "1");
-    audioEl.autoplay = true;
-    audioEl.muted = false;
-    audioEl.volume = 1;
-    audioEl.style.display = "none";
+      console.log("[teacher-audio] stable element created");
+    }
 
-    document.body.appendChild(audioEl);
-
-    void audioEl.play()
+    attachRemoteAudio(track, audioEl)
       .then(() => {
         console.log("[teacher-audio] play succeeded");
         setAudioBlocked(false);
