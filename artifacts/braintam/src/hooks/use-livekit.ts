@@ -226,7 +226,12 @@ export function useLiveKit({
               track.kind === Track.Kind.Video ||
               playTeacherAudio
             ) {
-              console.log("[LiveKit] Teacher audio attached");
+              console.log("[DEBUG TEACHER TRACK]", {
+  participantIdentity: participant.identity,
+  localIdentity: roomRef.current?.localParticipant?.identity ?? "NO_ROOM",
+  kind: track.kind,
+  isTeacher,
+});
         attachTeacherTrack(track);
             }
           } else if (track.kind === Track.Kind.Audio) {
