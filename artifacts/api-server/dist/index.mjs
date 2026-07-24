@@ -107782,9 +107782,6 @@ var liveClassesTable = pgTable("live_classes", {
   // Required by Teacher Portal and existing production data.
   batchId: integer("batch_id"),
   courseId: integer("course_id"),
-  // Optional Ignite batch relationship.
-  // When present, this working LiveKit class also appears inside
-  // the selected Ignite batch alongside its normal sessions.
   courseSubjectId: integer("course_subject_id"),
   chapterId: integer("chapter_id"),
   topicId: integer("topic_id"),
@@ -107803,7 +107800,25 @@ var liveClassesTable = pgTable("live_classes", {
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at"),
   archivedBy: integer("archived_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  // ── Unified classroom engine (Approach B migration) ──────────────────────────
+  //
+  // classType distinguishes the business program this classroom belongs to.
+  // All existing rows default to 'mastery'. New Ignite sessions are written
+  // here directly instead of demo_sessions, with classType = 'ignite'.
+  // Future types: 'revision' | 'competition' | 'ptm' etc.
+  classType: text("class_type").notNull().default("mastery"),
+  // For Ignite sessions: FK back to demo_batches so the scheduling container
+  // (grade, subject, week, mentor, batch code) is still accessible.
+  // Null for all Mastery / non-Ignite sessions.
+  igniteBatchId: integer("ignite_batch_id"),
+  // Day number within an Ignite batch (1–5). Null for Mastery sessions.
+  dayNumber: integer("day_number"),
+  // Ignite-specific post-class content. Stored as columns (same pattern as
+  // demo_sessions) so no schema join is needed to display them in the portal.
+  homeworkText: text("homework_text"),
+  homeworkLink: text("homework_link"),
+  recordingUrl: text("recording_url")
 });
 var insertLiveClassSchema = createInsertSchema(liveClassesTable).omit({ id: true, createdAt: true });
 
@@ -109235,9 +109250,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-24-0834" : "dev",
-    commit: true ? "ff800a3" : "unknown",
-    buildTime: true ? "2026-07-24T08:34:32.554Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-24-1806" : "dev",
+    commit: true ? "671aa50" : "unknown",
+    buildTime: true ? "2026-07-24T18:06:06.658Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -120832,6 +120847,36 @@ function hashPassword3(pw) {
 var router19 = (0, import_express19.Router)();
 var adminOnly4 = requireRole("admin");
 var staffAuth = requireRole("teacher");
+async function countIgniteSessions(batchId) {
+  const [lcRow] = await db.select({ cnt: sql`count(*)::int` }).from(liveClassesTable).where(and(eq(liveClassesTable.igniteBatchId, batchId), eq(liveClassesTable.classType, "ignite")));
+  const [dsRow] = await db.select({ cnt: sql`count(*)::int` }).from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
+  return Number(lcRow?.cnt ?? 0) + Number(dsRow?.cnt ?? 0);
+}
+function lcToSessionShape(lc, batchId) {
+  return {
+    id: lc.id,
+    batchId,
+    title: lc.title,
+    description: null,
+    dayNumber: lc.dayNumber ?? 1,
+    subject: null,
+    teacherId: lc.teacherId ?? null,
+    teacherName: lc.teacher ?? null,
+    scheduledAt: lc.scheduledAt,
+    duration: lc.duration,
+    joinUrl: lc.joinUrl ?? `/live/${lc.id}?role=student&type=ignite`,
+    recordingUrl: lc.recordingUrl ?? null,
+    homeworkText: lc.homeworkText ?? null,
+    homeworkLink: lc.homeworkLink ?? null,
+    bannerUrl: lc.thumbnailUrl ?? null,
+    status: lc.status === "upcoming" ? "scheduled" : lc.status,
+    // normalize for admin UI compat
+    slideUrl: lc.slideUrl ?? null,
+    isPublished: lc.isPublished,
+    createdAt: lc.createdAt,
+    sessionType: "live_class"
+  };
+}
 router19.get("/demo-batches", async (_req, res) => {
   const batches = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.isPublic, true)).orderBy(desc(demoBatchesTable.createdAt));
   res.json(batches);
@@ -120955,16 +121000,19 @@ router19.post("/admin/demo-batches", adminOnly4, async (req, res) => {
   if (parsedStart) {
     for (let i = 0; i < DEFAULT_SESSION_TEMPLATE.length; i++) {
       const tpl = DEFAULT_SESSION_TEMPLATE[i];
-      const [s2] = await db.insert(demoSessionsTable).values({
-        batchId: row.id,
+      const [s2] = await db.insert(liveClassesTable).values({
+        classType: "ignite",
+        igniteBatchId: row.id,
         title: `Day ${i + 1} \u2013 ${tpl.subject}`,
-        subject: tpl.subject,
         dayNumber: i + 1,
+        grade: row.grade ?? 0,
+        teacher: row.teacherName ?? "",
+        teacherId: row.teacherId ?? void 0,
         scheduledAt: sessionDateForDay(parsedStart, i),
         duration: 60,
-        status: "scheduled"
+        status: "upcoming"
       }).returning();
-      sessions.push(s2);
+      sessions.push(lcToSessionShape(s2, row.id));
     }
   }
   res.json({ ...row, sessions });
@@ -121001,10 +121049,10 @@ router19.put("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
     const newStart = new Date(String(startDate)).getTime();
     const offsetMs = newStart - oldStart;
     if (offsetMs !== 0) {
-      const sessions = await db.select({ id: demoSessionsTable.id, scheduledAt: demoSessionsTable.scheduledAt }).from(demoSessionsTable).where(eq(demoSessionsTable.batchId, id));
-      for (const s2 of sessions) {
+      const lcSessions = await db.select({ id: liveClassesTable.id, scheduledAt: liveClassesTable.scheduledAt }).from(liveClassesTable).where(and(eq(liveClassesTable.igniteBatchId, id), eq(liveClassesTable.classType, "ignite")));
+      for (const s2 of lcSessions) {
         const newScheduledAt = new Date(s2.scheduledAt.getTime() + offsetMs);
-        await db.update(demoSessionsTable).set({ scheduledAt: newScheduledAt }).where(eq(demoSessionsTable.id, s2.id));
+        await db.update(liveClassesTable).set({ scheduledAt: newScheduledAt }).where(eq(liveClassesTable.id, s2.id));
       }
     }
   }
@@ -121016,6 +121064,9 @@ router19.delete("/admin/demo-batches/:id", adminOnly4, async (req, res) => {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
+  await db.delete(liveClassesTable).where(
+    and(eq(liveClassesTable.igniteBatchId, id), eq(liveClassesTable.classType, "ignite"))
+  );
   await db.delete(demoSessionsTable).where(eq(demoSessionsTable.batchId, id));
   await db.delete(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.batchId, id));
   await db.delete(demoBatchesTable).where(eq(demoBatchesTable.id, id));
@@ -121246,8 +121297,13 @@ router19.get("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, re
     res.status(400).json({ error: "Invalid batchId" });
     return;
   }
-  const sessions = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId)).orderBy(demoSessionsTable.dayNumber);
-  res.json(sessions);
+  const newSessions = await db.select().from(liveClassesTable).where(and(eq(liveClassesTable.igniteBatchId, batchId), eq(liveClassesTable.classType, "ignite"))).orderBy(liveClassesTable.dayNumber);
+  const historicalSessions = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId)).orderBy(demoSessionsTable.dayNumber);
+  const combined = [
+    ...newSessions.map((s2) => lcToSessionShape(s2, batchId)),
+    ...historicalSessions.map((s2) => ({ ...s2, sessionType: "demo_session" }))
+  ].sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+  res.json(combined);
 });
 router19.post("/admin/demo-batches/:batchId/generate-sessions", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
@@ -121264,22 +121320,28 @@ router19.post("/admin/demo-batches/:batchId/generate-sessions", adminOnly4, asyn
     res.status(400).json({ error: "Batch has no start date \u2014 set one in settings first" });
     return;
   }
-  await db.delete(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
+  await db.delete(liveClassesTable).where(
+    and(eq(liveClassesTable.igniteBatchId, batchId), eq(liveClassesTable.classType, "ignite"))
+  );
   const sessions = [];
   for (let i = 0; i < DEFAULT_SESSION_TEMPLATE.length; i++) {
     const tpl = DEFAULT_SESSION_TEMPLATE[i];
-    const [s2] = await db.insert(demoSessionsTable).values({
-      batchId,
+    const [s2] = await db.insert(liveClassesTable).values({
+      classType: "ignite",
+      igniteBatchId: batchId,
       title: `Day ${i + 1} \u2013 ${tpl.subject}`,
-      subject: tpl.subject,
       dayNumber: i + 1,
+      grade: batch.grade ?? 0,
+      teacher: batch.teacherName ?? "",
+      teacherId: batch.teacherId ?? void 0,
       scheduledAt: sessionDateForDay(batch.startDate, i),
       duration: 60,
-      status: "scheduled"
+      status: "upcoming"
     }).returning();
-    sessions.push(s2);
+    sessions.push(lcToSessionShape(s2, batchId));
   }
-  await db.update(demoBatchesTable).set({ totalDays: sessions.length }).where(eq(demoBatchesTable.id, batchId));
+  const total = await countIgniteSessions(batchId);
+  await db.update(demoBatchesTable).set({ totalDays: total }).where(eq(demoBatchesTable.id, batchId));
   res.json(sessions);
 });
 router19.post("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, res) => {
@@ -121288,7 +121350,7 @@ router19.post("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, r
     res.status(400).json({ error: "Invalid batchId" });
     return;
   }
-  const { title, description, subject, teacherName, dayNumber, scheduledAt, duration: duration3, joinUrl, recordingUrl, homeworkText, homeworkLink, bannerUrl, status } = req.body;
+  const { title, description: _desc, subject, teacherName, dayNumber, scheduledAt, duration: duration3, joinUrl, recordingUrl, homeworkText, homeworkLink, bannerUrl, status } = req.body;
   if (!title?.trim()) {
     res.status(400).json({ error: "Title required" });
     return;
@@ -121297,47 +121359,62 @@ router19.post("/admin/demo-batches/:batchId/sessions", adminOnly4, async (req, r
     res.status(400).json({ error: "Scheduled time required" });
     return;
   }
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
   let resolvedTeacherId = null;
+  let resolvedTeacherName = teacherName?.trim() ?? "";
   if (teacherName?.trim()) {
-    const [tUser] = await db.select({ id: usersTable.id }).from(usersTable).where(sql`lower(${usersTable.name}) = lower(${teacherName.trim()})`);
+    const [tUser] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(sql`lower(${usersTable.name}) = lower(${teacherName.trim()})`);
     if (tUser) {
       resolvedTeacherId = tUser.id;
+      resolvedTeacherName = tUser.name;
       await db.update(demoBatchesTable).set({ teacherId: resolvedTeacherId }).where(eq(demoBatchesTable.id, batchId));
     }
   }
-  const [row] = await db.insert(demoSessionsTable).values({
-    batchId,
-    title: title.trim(),
-    description: description?.trim(),
-    subject: subject?.trim(),
-    teacherId: resolvedTeacherId,
-    teacherName: teacherName?.trim(),
+  const finalTitle = subject?.trim() && !title.trim().toLowerCase().includes(subject.trim().toLowerCase()) ? `${title.trim()} \u2013 ${subject.trim()}` : title.trim();
+  const [row] = await db.insert(liveClassesTable).values({
+    classType: "ignite",
+    igniteBatchId: batchId,
+    title: finalTitle,
     dayNumber: dayNumber ?? 1,
+    grade: batch.grade ?? 0,
+    teacher: resolvedTeacherName,
+    teacherId: resolvedTeacherId ?? void 0,
     scheduledAt: new Date(scheduledAt),
     duration: duration3 ?? 60,
-    joinUrl: joinUrl?.trim(),
-    recordingUrl: recordingUrl?.trim(),
-    homeworkText: homeworkText?.trim(),
-    homeworkLink: homeworkLink?.trim(),
-    bannerUrl: bannerUrl?.trim(),
-    status: status ?? "scheduled"
+    status: status === "live" ? "live" : status === "completed" ? "completed" : "upcoming",
+    joinUrl: joinUrl?.trim() ?? null,
+    recordingUrl: recordingUrl?.trim() ?? null,
+    homeworkText: homeworkText?.trim() ?? null,
+    homeworkLink: homeworkLink?.trim() ?? null,
+    thumbnailUrl: bannerUrl?.trim() ?? null
   }).returning();
-  const [{ cnt }] = await db.select({ cnt: sql`count(*)::int` }).from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
-  await db.update(demoBatchesTable).set({ totalDays: cnt }).where(eq(demoBatchesTable.id, batchId));
-  res.json(row);
+  const total = await countIgniteSessions(batchId);
+  await db.update(demoBatchesTable).set({ totalDays: total }).where(eq(demoBatchesTable.id, batchId));
+  res.json(lcToSessionShape(row, batchId));
 });
 router19.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, async (req, res) => {
+  const batchId = Number(req.params.batchId);
   const sessionId = Number(req.params.sessionId);
   if (!sessionId) {
     res.status(400).json({ error: "Invalid sessionId" });
     return;
   }
-  const { title, description, subject, teacherName, dayNumber, scheduledAt, duration: duration3, joinUrl, recordingUrl, homeworkText, homeworkLink, bannerUrl, status, isPublished } = req.body;
+  const [existing] = await db.select({ id: liveClassesTable.id }).from(liveClassesTable).where(and(
+    eq(liveClassesTable.id, sessionId),
+    eq(liveClassesTable.igniteBatchId, batchId),
+    eq(liveClassesTable.classType, "ignite")
+  )).limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "Session not found (historical sessions from demo_sessions are read-only)" });
+    return;
+  }
+  const { title, subject, teacherName, dayNumber, scheduledAt, duration: duration3, joinUrl, recordingUrl, homeworkText, homeworkLink, bannerUrl, status, isPublished } = req.body;
   const updates = {};
   if (title !== void 0) updates.title = String(title).trim();
-  if (description !== void 0) updates.description = String(description).trim();
-  if (subject !== void 0) updates.subject = String(subject).trim();
-  if (teacherName !== void 0) updates.teacherName = String(teacherName).trim();
   if (dayNumber !== void 0) updates.dayNumber = Number(dayNumber);
   if (scheduledAt !== void 0) updates.scheduledAt = new Date(String(scheduledAt));
   if (duration3 !== void 0) updates.duration = Number(duration3);
@@ -121345,28 +121422,41 @@ router19.put("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, asy
   if (recordingUrl !== void 0) updates.recordingUrl = String(recordingUrl).trim();
   if (homeworkText !== void 0) updates.homeworkText = String(homeworkText).trim();
   if (homeworkLink !== void 0) updates.homeworkLink = String(homeworkLink).trim();
-  if (bannerUrl !== void 0) updates.bannerUrl = String(bannerUrl).trim();
-  if (status !== void 0) updates.status = String(status);
+  if (bannerUrl !== void 0) updates.thumbnailUrl = String(bannerUrl).trim();
   if (isPublished !== void 0) updates.isPublished = Boolean(isPublished);
+  if (status !== void 0) {
+    const s2 = String(status);
+    updates.status = s2 === "scheduled" ? "upcoming" : s2;
+  }
+  if (subject !== void 0) {
+    const subj = String(subject).trim();
+    const currentTitle = updates.title ?? "";
+    if (subj && currentTitle && !currentTitle.toLowerCase().includes(subj.toLowerCase())) {
+      updates.title = `${currentTitle} \u2013 ${subj}`;
+    }
+  }
   if (teacherName !== void 0) {
     const tName = String(teacherName).trim();
     if (tName) {
-      const [tUser] = await db.select({ id: usersTable.id }).from(usersTable).where(sql`lower(${usersTable.name}) = lower(${tName})`);
+      const [tUser] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(sql`lower(${usersTable.name}) = lower(${tName})`);
       if (tUser) {
         updates.teacherId = tUser.id;
-        const batchId = Number(req.params.batchId);
+        updates.teacher = tUser.name;
         await db.update(demoBatchesTable).set({ teacherId: tUser.id }).where(eq(demoBatchesTable.id, batchId));
+      } else {
+        updates.teacher = tName;
       }
     } else {
       updates.teacherId = null;
+      updates.teacher = "";
     }
   }
-  const [row] = await db.update(demoSessionsTable).set(updates).where(eq(demoSessionsTable.id, sessionId)).returning();
+  const [row] = await db.update(liveClassesTable).set(updates).where(eq(liveClassesTable.id, sessionId)).returning();
   if (!row) {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(row);
+  res.json(lcToSessionShape(row, batchId));
 });
 router19.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, async (req, res) => {
   const batchId = Number(req.params.batchId);
@@ -121375,10 +121465,19 @@ router19.delete("/admin/demo-batches/:batchId/sessions/:sessionId", adminOnly4, 
     res.status(400).json({ error: "Invalid sessionId" });
     return;
   }
-  await db.delete(demoSessionsTable).where(eq(demoSessionsTable.id, sessionId));
+  const [lcSession] = await db.select({ id: liveClassesTable.id }).from(liveClassesTable).where(and(
+    eq(liveClassesTable.id, sessionId),
+    eq(liveClassesTable.igniteBatchId, batchId),
+    eq(liveClassesTable.classType, "ignite")
+  )).limit(1);
+  if (lcSession) {
+    await db.delete(liveClassesTable).where(eq(liveClassesTable.id, sessionId));
+  } else {
+    await db.delete(demoSessionsTable).where(eq(demoSessionsTable.id, sessionId));
+  }
   if (batchId) {
-    const [{ cnt }] = await db.select({ cnt: sql`count(*)::int` }).from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId));
-    await db.update(demoBatchesTable).set({ totalDays: cnt }).where(eq(demoBatchesTable.id, batchId));
+    const total = await countIgniteSessions(batchId);
+    await db.update(demoBatchesTable).set({ totalDays: total }).where(eq(demoBatchesTable.id, batchId));
   }
   res.json({ success: true });
 });
