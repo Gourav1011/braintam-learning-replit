@@ -1,0 +1,311 @@
+Before making ANY code changes, analyze the complete Braintam project.
+
+This is a major architecture refactor, not a bug fix.
+
+=========================
+BACKGROUND
+=========================
+
+Over the last several days we debugged the production LiveKit system after migrating from Neon PostgreSQL to local PostgreSQL on Hostinger VPS.
+
+Deployment:
+
+Replit
+→ GitHub
+→ Hostinger VPS
+
+Backend:
+- Node
+- Express
+- Drizzle ORM
+- PostgreSQL
+- PM2
+
+Database is now local PostgreSQL.
+
+=========================
+WHAT WE VERIFIED
+=========================
+
+1. The route
+
+POST /api/live/:sessionId/livekit-token
+
+exists and is working.
+
+2. Curl testing proved this is NOT a routing issue.
+
+3. Authentication works.
+
+4. Database connection works.
+
+5. The problem is architectural.
+
+=========================
+WHAT WE DISCOVERED
+=========================
+
+livekit.ts searches ONLY:
+
+live_classes
+
+using
+
+sessionId
+
+If no record exists it returns
+
+404
+"Live class not found"
+
+However Ignite classrooms are stored inside
+
+demo_sessions
+
+NOT
+
+live_classes.
+
+Therefore:
+
+Ignite Teacher
+↓
+
+Starts Class
+
+↓
+
+Requests LiveKit Token
+
+↓
+
+Searches live_classes
+
+↓
+
+Nothing found
+
+↓
+
+404
+
+=========================
+ANOTHER IMPORTANT DISCOVERY
+=========================
+
+live.ts already supports BOTH
+
+- live_classes
+- demo_sessions
+
+However
+
+livekit.ts
+
+supports ONLY
+
+live_classes.
+
+This means the classroom architecture became split over time.
+
+=========================
+PROJECT ANALYSIS
+=========================
+
+We searched the entire project.
+
+demoSessionsTable is currently used by:
+
+- demoBatches.ts
+- ignite.ts
+- mentor.ts
+- mentorExtended.ts
+- teacher.ts
+- live.ts
+- liveClassStatusSync.ts
+
+Teacher-created classes already use
+
+live_classes
+
+and work correctly.
+
+=========================
+CURRENT ARCHITECTURE
+=========================
+
+Ignite
+
+↓
+
+demo_batches
+
+↓
+
+demo_sessions
+
+↓
+
+LiveKit
+
+Mastery
+
+↓
+
+live_classes
+
+↓
+
+LiveKit
+
+This duplicates:
+
+- LiveKit
+- Attendance
+- Chat
+- Polls
+- Homework
+- Recording
+- Whiteboard
+
+=========================
+BUSINESS REQUIREMENT
+=========================
+
+Ignite and Mastery are DIFFERENT programs.
+
+Ignite is a short demo program.
+
+Mastery is the paid long-term program.
+
+Students move from Ignite to Mastery after successful payment.
+
+Example:
+
+Lead
+
+↓
+
+Ignite Enrollment
+
+↓
+
+5-day Ignite Program
+
+↓
+
+Payment Success
+
+↓
+
+Mastery Enrollment
+
+↓
+
+Mastery Batch
+
+Student changes enrollment.
+
+NOT classroom technology.
+
+=========================
+MULTIPLE CLASSROOMS
+=========================
+
+We will have many simultaneous classrooms.
+
+Example:
+
+Grade 4
+
+Group A
+Mentor A
+
+Group B
+Mentor B
+
+Group C
+Mentor C
+
+Group D
+Mentor D
+
+All can run at the same time.
+
+Each classroom must have:
+
+- its own LiveKit room
+- attendance
+- chat
+- homework
+- recording
+- polls
+
+=========================
+OUR PROPOSED ARCHITECTURE
+=========================
+
+We believe the platform should have ONE classroom engine.
+
+Keep separate business programs.
+
+Every classroom should exist inside
+
+live_classes
+
+using a field like
+
+classType
+
+Examples:
+
+ignite
+mastery
+revision
+competition
+ptm
+
+demo_batches should become scheduling/planning only.
+
+Students and teachers should always join through
+
+live_classes.
+
+=========================
+DO NOT DO
+=========================
+
+Do NOT delete demo_sessions immediately.
+
+Do NOT break existing production APIs.
+
+Do NOT perform one massive refactor.
+
+Maintain backward compatibility during migration.
+
+=========================
+YOUR TASK
+=========================
+
+1. Analyze the ENTIRE codebase.
+
+2. Verify whether our architectural conclusion is correct.
+
+3. If you think there is a better architecture, explain WHY with technical reasons.
+
+4. Produce a complete migration document containing:
+
+- Current architecture
+- Problems
+- Recommended architecture
+- Database changes
+- API changes
+- Frontend changes
+- Files to modify
+- Risks
+- Rollback plan
+- Migration phases
+
+5. DO NOT change any code until the migration plan is complete and approved.
+
+Think like a Senior Software Architect reviewing a production EdTech platform that must support thousands of students and hundreds of simultaneous LiveKit classrooms.
