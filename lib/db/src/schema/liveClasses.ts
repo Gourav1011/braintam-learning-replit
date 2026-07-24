@@ -14,10 +14,6 @@ export const liveClassesTable = pgTable("live_classes", {
 
   courseId: integer("course_id"),
 
-  // Optional Ignite batch relationship.
-  // When present, this working LiveKit class also appears inside
-  // the selected Ignite batch alongside its normal sessions.
-
   courseSubjectId: integer("course_subject_id"),
   chapterId: integer("chapter_id"),
   topicId: integer("topic_id"),
@@ -37,6 +33,28 @@ export const liveClassesTable = pgTable("live_classes", {
   archivedAt: timestamp("archived_at"),
   archivedBy: integer("archived_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // ── Unified classroom engine (Approach B migration) ──────────────────────────
+  //
+  // classType distinguishes the business program this classroom belongs to.
+  // All existing rows default to 'mastery'. New Ignite sessions are written
+  // here directly instead of demo_sessions, with classType = 'ignite'.
+  // Future types: 'revision' | 'competition' | 'ptm' etc.
+  classType: text("class_type").notNull().default("mastery"),
+
+  // For Ignite sessions: FK back to demo_batches so the scheduling container
+  // (grade, subject, week, mentor, batch code) is still accessible.
+  // Null for all Mastery / non-Ignite sessions.
+  igniteBatchId: integer("ignite_batch_id"),
+
+  // Day number within an Ignite batch (1–5). Null for Mastery sessions.
+  dayNumber: integer("day_number"),
+
+  // Ignite-specific post-class content. Stored as columns (same pattern as
+  // demo_sessions) so no schema join is needed to display them in the portal.
+  homeworkText: text("homework_text"),
+  homeworkLink: text("homework_link"),
+  recordingUrl: text("recording_url"),
 });
 
 export const insertLiveClassSchema = createInsertSchema(liveClassesTable).omit({ id: true, createdAt: true });
