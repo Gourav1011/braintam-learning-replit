@@ -75,19 +75,27 @@ router.get("/demo-batches/:id", async (req, res) => {
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
   const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, id));
   if (!batch) { res.status(404).json({ error: "Not found" }); return; }
+
+  // 1. Historical sessions — pre-migration, stored in demo_sessions (read-only)
   const demoSessions = await db
     .select()
     .from(demoSessionsTable)
+    .where(and(eq(demoSessionsTable.batchId, id), eq(demoSessionsTable.isPublished, true)));
+
+  // 2. New Ignite sessions — post-migration, written to live_classes with igniteBatchId
+  const igniteLiveClasses = await db
+    .select()
+    .from(liveClassesTable)
     .where(
       and(
-        eq(demoSessionsTable.batchId, id),
-        eq(demoSessionsTable.isPublished, true)
+        eq(liveClassesTable.igniteBatchId, id),
+        eq(liveClassesTable.classType, "ignite"),
+        eq(liveClassesTable.isPublished, true),
+        eq(liveClassesTable.isArchived, false),
       )
     );
 
-  // Advanced blue classes remain in live_classes.
-  // They are included in this batch response without creating
-  // duplicate demo_sessions records.
+  // 3. Legacy "advanced blue classes" — mastery sessions linked via batchId FK (backward compat)
   const advancedLiveClasses = await db
     .select()
     .from(liveClassesTable)
@@ -95,7 +103,7 @@ router.get("/demo-batches/:id", async (req, res) => {
       and(
         eq(liveClassesTable.batchId, id),
         eq(liveClassesTable.isPublished, true),
-        eq(liveClassesTable.isArchived, false)
+        eq(liveClassesTable.isArchived, false),
       )
     );
 
@@ -105,48 +113,39 @@ router.get("/demo-batches/:id", async (req, res) => {
     slideUrl: null,
   }));
 
-  const nextDayNumber =
-    demoSessions.length > 0
-      ? Math.max(
-          ...demoSessions.map(session => session.dayNumber)
-        ) + 1
-      : 1;
+  const igniteSessions = igniteLiveClasses.map(lc => lcToSessionShape(lc, id));
 
-  const blueSessions = advancedLiveClasses.map(
-    (liveClass, index) => ({
-      id: liveClass.id,
-      batchId: id,
-      title: liveClass.title,
-      description: null,
-      dayNumber: nextDayNumber + index,
-      subject: null,
-      teacherId: liveClass.teacherId,
-      teacherName: liveClass.teacher,
-      scheduledAt: liveClass.scheduledAt,
-      duration: liveClass.duration,
-      joinUrl:
-        `/live/${liveClass.id}` +
-        `?role=student&type=ignite`,
-      recordingUrl: null,
-      homeworkText: null,
-      homeworkLink: null,
-      bannerUrl: liveClass.thumbnailUrl,
-      status: liveClass.status,
-      isPublished: liveClass.isPublished,
-      createdAt: liveClass.createdAt,
-      sessionType: "live_class" as const,
-      slideUrl: liveClass.slideUrl,
-    })
+  // For legacy blue classes, append after all proper day-numbered sessions
+  const maxDayNumber = Math.max(
+    0,
+    ...demoSessions.map(s => s.dayNumber ?? 0),
+    ...igniteLiveClasses.map(s => s.dayNumber ?? 0),
   );
+  const blueSessions = advancedLiveClasses.map((liveClass, index) => ({
+    id: liveClass.id,
+    batchId: id,
+    title: liveClass.title,
+    description: null as string | null,
+    dayNumber: maxDayNumber + 1 + index,
+    subject: null as string | null,
+    teacherId: liveClass.teacherId,
+    teacherName: liveClass.teacher,
+    scheduledAt: liveClass.scheduledAt,
+    duration: liveClass.duration,
+    joinUrl: `/live/${liveClass.id}?role=student&type=ignite`,
+    recordingUrl: liveClass.recordingUrl ?? null,
+    homeworkText: liveClass.homeworkText ?? null,
+    homeworkLink: liveClass.homeworkLink ?? null,
+    bannerUrl: liveClass.thumbnailUrl ?? null,
+    status: liveClass.status,
+    isPublished: liveClass.isPublished,
+    createdAt: liveClass.createdAt,
+    sessionType: "live_class" as const,
+    slideUrl: liveClass.slideUrl ?? null,
+  }));
 
-  const sessions = [
-    ...normalSessions,
-    ...blueSessions,
-  ].sort(
-    (a, b) =>
-      a.scheduledAt.getTime() -
-      b.scheduledAt.getTime()
-  );
+  const sessions = [...normalSessions, ...igniteSessions, ...blueSessions]
+    .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 
   res.json({ batch, sessions });
 });
@@ -922,15 +921,33 @@ router.get("/student/my-demo-batches", requireAuth, async (req, res) => {
   if (enrollments.length === 0) { res.json([]); return; }
 
   const batchIds = enrollments.map(e => e.batchId);
-  const result: { batch: typeof demoBatchesTable.$inferSelect; sessions: typeof demoSessionsTable.$inferSelect[] }[] = [];
+  const result: { batch: typeof demoBatchesTable.$inferSelect; sessions: unknown[] }[] = [];
 
   for (const batchId of batchIds) {
     const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
     if (!batch) continue;
-    const sessions = await db.select().from(demoSessionsTable)
+
+    // Historical sessions (pre-migration, stored in demo_sessions)
+    const historicalSessions = await db.select().from(demoSessionsTable)
       .where(and(eq(demoSessionsTable.batchId, batchId), eq(demoSessionsTable.isPublished, true)))
       .orderBy(demoSessionsTable.dayNumber);
-    result.push({ batch, sessions });
+
+    // New Ignite sessions (post-migration, stored in live_classes with igniteBatchId)
+    const igniteSessions = await db.select().from(liveClassesTable)
+      .where(and(
+        eq(liveClassesTable.igniteBatchId, batchId),
+        eq(liveClassesTable.classType, "ignite"),
+        eq(liveClassesTable.isPublished, true),
+        eq(liveClassesTable.isArchived, false),
+      ))
+      .orderBy(liveClassesTable.dayNumber);
+
+    const combined = [
+      ...historicalSessions.map(s => ({ ...s, sessionType: "demo_session" as const, slideUrl: null })),
+      ...igniteSessions.map(s => lcToSessionShape(s, batchId)),
+    ].sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+
+    result.push({ batch, sessions: combined });
   }
   res.json(result);
 });

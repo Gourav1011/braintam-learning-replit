@@ -109250,9 +109250,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-24-1806" : "dev",
-    commit: true ? "671aa50" : "unknown",
-    buildTime: true ? "2026-07-24T18:06:06.658Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-25-2051" : "dev",
+    commit: true ? "74f91ce" : "unknown",
+    buildTime: true ? "2026-07-25T20:51:24.992Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -115866,7 +115866,21 @@ router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => 
       )).limit(1);
       hasCourseAccess = Boolean(assignedStudent || gradeAssignment);
     }
-    if (!group && !hasCourseAccess) {
+    let hasIgniteAccess = false;
+    if (!group && !hasCourseAccess && liveClass.classType === "ignite" && liveClass.igniteBatchId) {
+      const [batchRow] = await db.select({ mentorId: demoBatchesTable.mentorId }).from(demoBatchesTable).where(eq(demoBatchesTable.id, liveClass.igniteBatchId)).limit(1);
+      if (batchRow?.mentorId === user.id) {
+        hasIgniteAccess = true;
+      } else {
+        const [gradeAssign] = await db.select({ id: gradeMentorAssignmentsTable.id }).from(gradeMentorAssignmentsTable).where(and(
+          eq(gradeMentorAssignmentsTable.mentorId, user.id),
+          eq(gradeMentorAssignmentsTable.isActive, true),
+          eq(gradeMentorAssignmentsTable.grade, liveClass.grade)
+        )).limit(1);
+        hasIgniteAccess = Boolean(gradeAssign);
+      }
+    }
+    if (!group && !hasCourseAccess && !hasIgniteAccess) {
       res.status(403).json({ error: "You are not assigned to a mentor group in this session" });
       return;
     }
@@ -115884,7 +115898,15 @@ router6.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => 
       const [enrollment] = await db.select({ id: enrollmentsTable.id }).from(enrollmentsTable).where(and(eq(enrollmentsTable.studentId, user.id), eq(enrollmentsTable.courseId, liveClass.courseId))).limit(1);
       isCourseEnrolled = Boolean(enrollment);
     }
-    if (!isGroupMember && !isCourseEnrolled) {
+    let isIgniteEnrolled = false;
+    if (!isGroupMember && !isCourseEnrolled && liveClass.classType === "ignite" && liveClass.igniteBatchId) {
+      const [batchEnrollment] = await db.select({ studentId: demoBatchEnrollmentsTable.studentId }).from(demoBatchEnrollmentsTable).where(and(
+        eq(demoBatchEnrollmentsTable.batchId, liveClass.igniteBatchId),
+        eq(demoBatchEnrollmentsTable.studentId, user.id)
+      )).limit(1);
+      isIgniteEnrolled = Boolean(batchEnrollment);
+    }
+    if (!isGroupMember && !isCourseEnrolled && !isIgniteEnrolled) {
       res.status(403).json({ error: "You are not enrolled in this session's group or course" });
       return;
     }
@@ -120080,21 +120102,30 @@ router14.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
     res.status(400).json({ error: "batchId, title, scheduledAt required" });
     return;
   }
-  const existing = await db.select({ dayNumber: demoSessionsTable.dayNumber }).from(demoSessionsTable).where(eq(demoSessionsTable.batchId, Number(batchId)));
-  const nextDay = existing.length > 0 ? Math.max(...existing.map((e) => e.dayNumber)) + 1 : 1;
-  const [session] = await db.insert(demoSessionsTable).values({
-    batchId: Number(batchId),
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, Number(batchId))).limit(1);
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+  const existing = await db.select({ dayNumber: liveClassesTable.dayNumber }).from(liveClassesTable).where(and(
+    eq(liveClassesTable.igniteBatchId, Number(batchId)),
+    eq(liveClassesTable.classType, "ignite")
+  ));
+  const nextDay = existing.length > 0 ? Math.max(...existing.map((e) => e.dayNumber ?? 0)) + 1 : 1;
+  const [session] = await db.insert(liveClassesTable).values({
+    classType: "ignite",
+    igniteBatchId: Number(batchId),
     title: String(title),
     scheduledAt: new Date(scheduledAt),
     duration: duration3 ? Number(duration3) : 60,
     joinUrl: joinUrl || null,
     dayNumber: nextDay,
-    status: "scheduled",
-    // Store the teacher directly on every newly created Ignite session.
-    // Without these fields, the class appears in the batch but LiveKit
-    // cannot reliably identify and authorize the assigned teacher.
-    teacherId: req.authUser.id,
-    teacherName: req.authUser.name
+    grade: batch.grade ?? 0,
+    status: "upcoming",
+    // Store the teacher on every newly created Ignite session.
+    // LiveKit uses these to identify and authorize the assigned teacher.
+    teacher: req.authUser.name,
+    teacherId: req.authUser.id
   }).returning();
   res.json({ ok: true, session });
 });
@@ -120103,19 +120134,53 @@ router14.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
   const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
   const allBatches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
   const batchMap = Object.fromEntries(allBatches.map((b) => [b.id, b]));
-  let sessions;
+  const assignedBatchIds = allBatches.filter((b) => b.teacherId === teacher.id).map((b) => b.id);
+  let lcSessions = [];
   if (isAdmin) {
-    sessions = await db.select().from(demoSessionsTable).orderBy(desc(demoSessionsTable.scheduledAt));
+    lcSessions = await db.select().from(liveClassesTable).where(eq(liveClassesTable.classType, "ignite")).orderBy(desc(liveClassesTable.scheduledAt));
   } else {
-    const assignedBatchIds = allBatches.filter((b) => b.teacherId === teacher.id).map((b) => b.id);
-    const conditions = [
+    const lcConds = [
+      eq(liveClassesTable.teacherId, teacher.id),
+      ...assignedBatchIds.length > 0 ? [inArray(liveClassesTable.igniteBatchId, assignedBatchIds)] : []
+    ];
+    lcSessions = await db.select().from(liveClassesTable).where(and(eq(liveClassesTable.classType, "ignite"), or(...lcConds))).orderBy(desc(liveClassesTable.scheduledAt));
+  }
+  let dsSessions = [];
+  if (isAdmin) {
+    dsSessions = await db.select().from(demoSessionsTable).orderBy(desc(demoSessionsTable.scheduledAt));
+  } else {
+    const dsConds = [
       eq(demoSessionsTable.teacherId, teacher.id),
       sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`,
       ...assignedBatchIds.length > 0 ? [inArray(demoSessionsTable.batchId, assignedBatchIds)] : []
     ];
-    sessions = await db.select().from(demoSessionsTable).where(or(...conditions)).orderBy(desc(demoSessionsTable.scheduledAt));
+    dsSessions = await db.select().from(demoSessionsTable).where(or(...dsConds)).orderBy(desc(demoSessionsTable.scheduledAt));
   }
-  res.json(sessions.map((s2) => {
+  const normalizedLc = lcSessions.map((s2) => {
+    const batchId = s2.igniteBatchId ?? 0;
+    const batch = batchMap[batchId];
+    return {
+      id: s2.id,
+      topic: s2.title,
+      dayNumber: s2.dayNumber ?? 1,
+      scheduledAt: s2.scheduledAt.toISOString(),
+      duration: s2.duration,
+      status: s2.status === "upcoming" ? "scheduled" : s2.status,
+      // normalize for teacher UI compat
+      startedAt: null,
+      endedAt: null,
+      slideUrl: s2.slideUrl ?? null,
+      recordingUrl: s2.recordingUrl ?? null,
+      batchId,
+      batchTitle: batch?.title ?? "",
+      batchGrade: batch?.grade ?? null,
+      batchSubject: batch?.subject ?? null,
+      grade: batch?.grade ?? 0,
+      title: s2.title,
+      sessionType: "live_class"
+    };
+  });
+  const normalizedDs = dsSessions.map((s2) => {
     const batch = batchMap[s2.batchId];
     return {
       id: s2.id,
@@ -120132,11 +120197,15 @@ router14.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
       batchTitle: batch?.title ?? "",
       batchGrade: batch?.grade ?? null,
       batchSubject: batch?.subject ?? null,
-      // backward-compat fields for hw/test selectors
       grade: batch?.grade ?? 0,
-      title: s2.title
+      title: s2.title,
+      sessionType: "demo_session"
     };
-  }));
+  });
+  const merged = [...normalizedLc, ...normalizedDs].sort(
+    (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+  );
+  res.json(merged);
 });
 router14.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
@@ -120144,13 +120213,44 @@ router14.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
     res.status(400).json({ error: "Invalid session ID" });
     return;
   }
-  const {
-    title,
-    scheduledAt,
-    duration: duration3,
-    slideUrl,
-    recordingUrl
-  } = req.body;
+  const { title, scheduledAt, duration: duration3, slideUrl, recordingUrl } = req.body;
+  const [lcSession] = await db.select({ id: liveClassesTable.id }).from(liveClassesTable).where(and(eq(liveClassesTable.id, id), eq(liveClassesTable.classType, "ignite"))).limit(1);
+  if (lcSession) {
+    const changes2 = {};
+    if (title !== void 0) {
+      const cleanTitle = String(title).trim();
+      if (!cleanTitle) {
+        res.status(400).json({ error: "Class title is required" });
+        return;
+      }
+      changes2.title = cleanTitle;
+    }
+    if (scheduledAt !== void 0) {
+      const parsedDate = new Date(scheduledAt);
+      if (Number.isNaN(parsedDate.getTime())) {
+        res.status(400).json({ error: "Invalid class date or time" });
+        return;
+      }
+      changes2.scheduledAt = parsedDate;
+    }
+    if (duration3 !== void 0) {
+      const parsedDuration = Number(duration3);
+      if (!Number.isInteger(parsedDuration) || parsedDuration < 15 || parsedDuration > 480) {
+        res.status(400).json({ error: "Duration must be between 15 and 480 minutes" });
+        return;
+      }
+      changes2.duration = parsedDuration;
+    }
+    if (slideUrl !== void 0) changes2.slideUrl = slideUrl ? String(slideUrl) : null;
+    if (recordingUrl !== void 0) changes2.recordingUrl = recordingUrl ? String(recordingUrl).trim() : null;
+    const [updated2] = await db.update(liveClassesTable).set(changes2).where(eq(liveClassesTable.id, id)).returning();
+    if (!updated2) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    res.json({ ok: true, session: updated2 });
+    return;
+  }
   const changes = {};
   if (title !== void 0) {
     const cleanTitle = String(title).trim();
@@ -120171,19 +120271,13 @@ router14.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   if (duration3 !== void 0) {
     const parsedDuration = Number(duration3);
     if (!Number.isInteger(parsedDuration) || parsedDuration < 15 || parsedDuration > 480) {
-      res.status(400).json({
-        error: "Duration must be between 15 and 480 minutes"
-      });
+      res.status(400).json({ error: "Duration must be between 15 and 480 minutes" });
       return;
     }
     changes.duration = parsedDuration;
   }
-  if (slideUrl !== void 0) {
-    changes.slideUrl = slideUrl ? String(slideUrl) : null;
-  }
-  if (recordingUrl !== void 0) {
-    changes.recordingUrl = recordingUrl ? String(recordingUrl).trim() : null;
-  }
+  if (slideUrl !== void 0) changes.slideUrl = slideUrl ? String(slideUrl) : null;
+  if (recordingUrl !== void 0) changes.recordingUrl = recordingUrl ? String(recordingUrl).trim() : null;
   const [updated] = await db.update(demoSessionsTable).set(changes).where(eq(demoSessionsTable.id, id)).returning();
   if (!updated) {
     res.status(404).json({ error: "Session not found" });
@@ -120198,8 +120292,15 @@ router14.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) 
     res.status(400).json({ error: "Invalid session ID" });
     return;
   }
-  if (!["scheduled", "live", "completed"].includes(status)) {
+  if (!["scheduled", "upcoming", "live", "completed"].includes(status)) {
     res.status(400).json({ error: "Invalid session status" });
+    return;
+  }
+  const [lcSession] = await db.select({ id: liveClassesTable.id, status: liveClassesTable.status }).from(liveClassesTable).where(and(eq(liveClassesTable.id, id), eq(liveClassesTable.classType, "ignite"))).limit(1);
+  if (lcSession) {
+    const normalizedStatus = status === "scheduled" ? "upcoming" : status;
+    const [updated2] = await db.update(liveClassesTable).set({ status: normalizedStatus }).where(eq(liveClassesTable.id, id)).returning();
+    res.json({ ok: true, status: updated2.status, startedAt: null, endedAt: null });
     return;
   }
   const [current] = await db.select().from(demoSessionsTable).where(eq(demoSessionsTable.id, id)).limit(1);
@@ -120210,20 +120311,12 @@ router14.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) 
   const now = /* @__PURE__ */ new Date();
   const changes = { status };
   if (status === "live") {
-    if (!current.startedAt) {
-      changes.startedAt = now;
-    }
-    if (current.status === "completed") {
-      changes.endedAt = null;
-    }
+    if (!current.startedAt) changes.startedAt = now;
+    if (current.status === "completed") changes.endedAt = null;
   }
   if (status === "completed") {
-    if (!current.startedAt) {
-      changes.startedAt = now;
-    }
-    if (!current.endedAt) {
-      changes.endedAt = now;
-    }
+    if (!current.startedAt) changes.startedAt = now;
+    if (!current.endedAt) changes.endedAt = now;
   }
   const [updated] = await db.update(demoSessionsTable).set(changes).where(eq(demoSessionsTable.id, id)).returning();
   res.json({
@@ -120892,10 +120985,13 @@ router19.get("/demo-batches/:id", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const demoSessions = await db.select().from(demoSessionsTable).where(
+  const demoSessions = await db.select().from(demoSessionsTable).where(and(eq(demoSessionsTable.batchId, id), eq(demoSessionsTable.isPublished, true)));
+  const igniteLiveClasses = await db.select().from(liveClassesTable).where(
     and(
-      eq(demoSessionsTable.batchId, id),
-      eq(demoSessionsTable.isPublished, true)
+      eq(liveClassesTable.igniteBatchId, id),
+      eq(liveClassesTable.classType, "ignite"),
+      eq(liveClassesTable.isPublished, true),
+      eq(liveClassesTable.isArchived, false)
     )
   );
   const advancedLiveClasses = await db.select().from(liveClassesTable).where(
@@ -120910,39 +121006,35 @@ router19.get("/demo-batches/:id", async (req, res) => {
     sessionType: "demo_session",
     slideUrl: null
   }));
-  const nextDayNumber = demoSessions.length > 0 ? Math.max(
-    ...demoSessions.map((session) => session.dayNumber)
-  ) + 1 : 1;
-  const blueSessions = advancedLiveClasses.map(
-    (liveClass, index2) => ({
-      id: liveClass.id,
-      batchId: id,
-      title: liveClass.title,
-      description: null,
-      dayNumber: nextDayNumber + index2,
-      subject: null,
-      teacherId: liveClass.teacherId,
-      teacherName: liveClass.teacher,
-      scheduledAt: liveClass.scheduledAt,
-      duration: liveClass.duration,
-      joinUrl: `/live/${liveClass.id}?role=student&type=ignite`,
-      recordingUrl: null,
-      homeworkText: null,
-      homeworkLink: null,
-      bannerUrl: liveClass.thumbnailUrl,
-      status: liveClass.status,
-      isPublished: liveClass.isPublished,
-      createdAt: liveClass.createdAt,
-      sessionType: "live_class",
-      slideUrl: liveClass.slideUrl
-    })
+  const igniteSessions = igniteLiveClasses.map((lc) => lcToSessionShape(lc, id));
+  const maxDayNumber = Math.max(
+    0,
+    ...demoSessions.map((s2) => s2.dayNumber ?? 0),
+    ...igniteLiveClasses.map((s2) => s2.dayNumber ?? 0)
   );
-  const sessions = [
-    ...normalSessions,
-    ...blueSessions
-  ].sort(
-    (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime()
-  );
+  const blueSessions = advancedLiveClasses.map((liveClass, index2) => ({
+    id: liveClass.id,
+    batchId: id,
+    title: liveClass.title,
+    description: null,
+    dayNumber: maxDayNumber + 1 + index2,
+    subject: null,
+    teacherId: liveClass.teacherId,
+    teacherName: liveClass.teacher,
+    scheduledAt: liveClass.scheduledAt,
+    duration: liveClass.duration,
+    joinUrl: `/live/${liveClass.id}?role=student&type=ignite`,
+    recordingUrl: liveClass.recordingUrl ?? null,
+    homeworkText: liveClass.homeworkText ?? null,
+    homeworkLink: liveClass.homeworkLink ?? null,
+    bannerUrl: liveClass.thumbnailUrl ?? null,
+    status: liveClass.status,
+    isPublished: liveClass.isPublished,
+    createdAt: liveClass.createdAt,
+    sessionType: "live_class",
+    slideUrl: liveClass.slideUrl ?? null
+  }));
+  const sessions = [...normalSessions, ...igniteSessions, ...blueSessions].sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
   res.json({ batch, sessions });
 });
 router19.get("/admin/demo-batches", adminOnly4, async (_req, res) => {
@@ -121611,8 +121703,18 @@ router19.get("/student/my-demo-batches", requireAuth, async (req, res) => {
   for (const batchId of batchIds) {
     const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
     if (!batch) continue;
-    const sessions = await db.select().from(demoSessionsTable).where(and(eq(demoSessionsTable.batchId, batchId), eq(demoSessionsTable.isPublished, true))).orderBy(demoSessionsTable.dayNumber);
-    result.push({ batch, sessions });
+    const historicalSessions = await db.select().from(demoSessionsTable).where(and(eq(demoSessionsTable.batchId, batchId), eq(demoSessionsTable.isPublished, true))).orderBy(demoSessionsTable.dayNumber);
+    const igniteSessions = await db.select().from(liveClassesTable).where(and(
+      eq(liveClassesTable.igniteBatchId, batchId),
+      eq(liveClassesTable.classType, "ignite"),
+      eq(liveClassesTable.isPublished, true),
+      eq(liveClassesTable.isArchived, false)
+    )).orderBy(liveClassesTable.dayNumber);
+    const combined = [
+      ...historicalSessions.map((s2) => ({ ...s2, sessionType: "demo_session", slideUrl: null })),
+      ...igniteSessions.map((s2) => lcToSessionShape(s2, batchId))
+    ].sort((a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0));
+    result.push({ batch, sessions: combined });
   }
   res.json(result);
 });
@@ -122365,6 +122467,52 @@ router20.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
       )).orderBy(desc(demoSessionsTable.scheduledAt)).limit(30);
     }
   }
+  const igniteSelect = {
+    id: liveClassesTable.id,
+    topic: liveClassesTable.title,
+    dayNumber: liveClassesTable.dayNumber,
+    scheduledAt: liveClassesTable.scheduledAt,
+    duration: liveClassesTable.duration,
+    status: liveClassesTable.status,
+    joinUrl: liveClassesTable.joinUrl,
+    recordingUrl: liveClassesTable.recordingUrl,
+    igniteBatchId: liveClassesTable.igniteBatchId,
+    batchTitle: demoBatchesTable.title,
+    batchGrade: demoBatchesTable.grade,
+    batchSubject: demoBatchesTable.subject
+  };
+  let rawIgniteSessions = [];
+  if (allBatchIds.length > 0) {
+    const igniteBase = and(
+      inArray(liveClassesTable.igniteBatchId, allBatchIds),
+      eq(liveClassesTable.classType, "ignite")
+    );
+    if (mode === "live") {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId)).where(and(igniteBase, eq(liveClassesTable.status, "live"))).orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "today") {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId)).where(and(igniteBase, gte(liveClassesTable.scheduledAt, todayIst), lte(liveClassesTable.scheduledAt, tomorrowIst))).orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "upcoming") {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId)).where(and(igniteBase, eq(liveClassesTable.status, "upcoming"), gte(liveClassesTable.scheduledAt, nowUtc))).orderBy(liveClassesTable.scheduledAt).limit(30);
+    } else {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId)).where(and(igniteBase, eq(liveClassesTable.status, "completed"))).orderBy(desc(liveClassesTable.scheduledAt)).limit(30);
+    }
+  }
+  const igniteSessions = rawIgniteSessions.map((s2) => ({
+    id: s2.id,
+    topic: s2.topic,
+    dayNumber: s2.dayNumber ?? 1,
+    scheduledAt: s2.scheduledAt,
+    duration: s2.duration,
+    // Normalize "upcoming" → "scheduled" so mentor UI sees a consistent status vocabulary
+    status: s2.status === "upcoming" ? "scheduled" : s2.status,
+    joinUrl: s2.joinUrl,
+    recordingUrl: s2.recordingUrl,
+    batchId: s2.igniteBatchId,
+    batchTitle: s2.batchTitle,
+    batchGrade: s2.batchGrade,
+    batchSubject: s2.batchSubject,
+    sessionType: "live_class"
+  }));
   const courseSelect = {
     id: liveClassesTable.id,
     topic: liveClassesTable.title,
@@ -122413,7 +122561,7 @@ router20.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
     batchSubject: c.subjectName,
     isCourseClass: true
   }));
-  const merged = [...demoSessions, ...courseClasses].sort((a, b) => {
+  const merged = [...igniteSessions, ...demoSessions, ...courseClasses].sort((a, b) => {
     const at = new Date(a.scheduledAt).getTime();
     const bt = new Date(b.scheduledAt).getTime();
     return mode === "completed" ? bt - at : at - bt;
@@ -123714,25 +123862,65 @@ router21.get("/mentor/live-sessions", mentorAuth2, async (req, res) => {
   todayStart4.setHours(0, 0, 0, 0);
   const todayEnd2 = new Date(now);
   todayEnd2.setHours(23, 59, 59, 999);
-  let sessions;
+  let igniteSessions = [];
   if (mode === "today") {
-    sessions = await db.select().from(demoSessionsTable).where(and(
+    igniteSessions = await db.select().from(liveClassesTable).where(and(
+      inArray(liveClassesTable.igniteBatchId, batchIds),
+      eq(liveClassesTable.classType, "ignite"),
+      gte(liveClassesTable.scheduledAt, todayStart4),
+      lte(liveClassesTable.scheduledAt, todayEnd2)
+    )).orderBy(liveClassesTable.scheduledAt);
+  } else if (mode === "completed") {
+    igniteSessions = await db.select().from(liveClassesTable).where(and(
+      inArray(liveClassesTable.igniteBatchId, batchIds),
+      eq(liveClassesTable.classType, "ignite"),
+      eq(liveClassesTable.status, "completed")
+    )).orderBy(desc(liveClassesTable.scheduledAt)).limit(60);
+  } else {
+    igniteSessions = await db.select().from(liveClassesTable).where(and(
+      inArray(liveClassesTable.igniteBatchId, batchIds),
+      eq(liveClassesTable.classType, "ignite"),
+      gte(liveClassesTable.scheduledAt, now)
+    )).orderBy(liveClassesTable.scheduledAt).limit(60);
+  }
+  let historicalSessions = [];
+  if (mode === "today") {
+    historicalSessions = await db.select().from(demoSessionsTable).where(and(
       inArray(demoSessionsTable.batchId, batchIds),
       gte(demoSessionsTable.scheduledAt, todayStart4),
       lte(demoSessionsTable.scheduledAt, todayEnd2)
     )).orderBy(demoSessionsTable.scheduledAt);
   } else if (mode === "completed") {
-    sessions = await db.select().from(demoSessionsTable).where(and(
+    historicalSessions = await db.select().from(demoSessionsTable).where(and(
       inArray(demoSessionsTable.batchId, batchIds),
       lte(demoSessionsTable.scheduledAt, now)
     )).orderBy(desc(demoSessionsTable.scheduledAt)).limit(60);
   } else {
-    sessions = await db.select().from(demoSessionsTable).where(and(
+    historicalSessions = await db.select().from(demoSessionsTable).where(and(
       inArray(demoSessionsTable.batchId, batchIds),
       gte(demoSessionsTable.scheduledAt, now)
     )).orderBy(demoSessionsTable.scheduledAt).limit(60);
   }
-  res.json(sessions.map((s2) => {
+  const normalizedIgnite = igniteSessions.map((s2) => {
+    const batchId = s2.igniteBatchId;
+    const batch = batchMap[batchId];
+    return {
+      id: s2.id,
+      topic: s2.title,
+      dayNumber: s2.dayNumber ?? 1,
+      scheduledAt: s2.scheduledAt.toISOString(),
+      duration: s2.duration,
+      status: s2.status === "upcoming" ? "scheduled" : s2.status,
+      joinUrl: s2.joinUrl ?? null,
+      recordingUrl: s2.recordingUrl ?? null,
+      batchId,
+      batchTitle: batch?.title ?? "",
+      batchGrade: batch?.grade ?? null,
+      batchSubject: batch?.subject ?? null,
+      sessionType: "live_class"
+    };
+  });
+  const normalizedHistorical = historicalSessions.map((s2) => {
     const batch = batchMap[s2.batchId];
     return {
       id: s2.id,
@@ -123746,9 +123934,16 @@ router21.get("/mentor/live-sessions", mentorAuth2, async (req, res) => {
       batchId: s2.batchId,
       batchTitle: batch?.title ?? "",
       batchGrade: batch?.grade ?? null,
-      batchSubject: batch?.subject ?? null
+      batchSubject: batch?.subject ?? null,
+      sessionType: "demo_session"
     };
-  }));
+  });
+  const merged = [...normalizedIgnite, ...normalizedHistorical].sort((a, b) => {
+    const at = new Date(a.scheduledAt).getTime();
+    const bt = new Date(b.scheduledAt).getTime();
+    return mode === "completed" ? bt - at : at - bt;
+  });
+  res.json(merged);
 });
 var mentorExtended_default = router21;
 
@@ -125841,7 +126036,11 @@ router28.get("/admin/ignite/attendance/:batchId", adminOnly7, async (req, res) =
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const [sessions, enrollments] = await Promise.all([
+  const [igniteSessions, historicalSessions, enrollments] = await Promise.all([
+    db.select().from(liveClassesTable).where(and(
+      eq(liveClassesTable.classType, "ignite"),
+      eq(liveClassesTable.igniteBatchId, batchId)
+    )).orderBy(liveClassesTable.dayNumber),
     db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId)).orderBy(demoSessionsTable.dayNumber),
     db.select({
       enrollmentId: demoBatchEnrollmentsTable.id,
@@ -125854,6 +126053,22 @@ router28.get("/admin/ignite/attendance/:batchId", adminOnly7, async (req, res) =
       grade: usersTable.grade
     }).from(demoBatchEnrollmentsTable).innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id)).where(eq(demoBatchEnrollmentsTable.batchId, batchId)).orderBy(usersTable.name)
   ]);
+  const sessions = [
+    ...igniteSessions.map((session) => ({
+      ...session,
+      batchId: session.igniteBatchId,
+      subject: batch.subject ?? null,
+      teacherName: session.teacher,
+      bannerUrl: session.thumbnailUrl ?? null,
+      sessionType: "live_class"
+    })),
+    ...historicalSessions.map((session) => ({
+      ...session,
+      sessionType: "demo_session"
+    }))
+  ].sort(
+    (a, b) => (a.dayNumber ?? 0) - (b.dayNumber ?? 0) || a.scheduledAt.getTime() - b.scheduledAt.getTime()
+  );
   const totalDays = batch.totalDays;
   const grid = enrollments.map((e) => {
     const days = [];
@@ -125866,33 +126081,95 @@ router28.get("/admin/ignite/attendance/:batchId", adminOnly7, async (req, res) =
   res.json({ batch, sessions, grid, kpis: { totalStudents, overallAttPct } });
 });
 router28.get("/admin/ignite/homework", adminOnly7, async (_req, res) => {
-  const sessions = await db.select({
-    id: demoSessionsTable.id,
-    batchId: demoSessionsTable.batchId,
-    title: demoSessionsTable.title,
-    dayNumber: demoSessionsTable.dayNumber,
-    scheduledAt: demoSessionsTable.scheduledAt,
-    homeworkText: demoSessionsTable.homeworkText,
-    status: demoSessionsTable.status,
-    batchTitle: demoBatchesTable.title,
-    batchGrade: demoBatchesTable.grade,
-    batchSubject: demoBatchesTable.subject
-  }).from(demoSessionsTable).innerJoin(demoBatchesTable, eq(demoSessionsTable.batchId, demoBatchesTable.id)).where(isNotNull(demoSessionsTable.homeworkText)).orderBy(desc(demoSessionsTable.scheduledAt));
-  const batchIds = [...new Set(sessions.map((s2) => s2.batchId))];
-  const enrollmentCounts = batchIds.length > 0 ? await db.select({ batchId: demoBatchEnrollmentsTable.batchId, cnt: count() }).from(demoBatchEnrollmentsTable).where(inArray(demoBatchEnrollmentsTable.batchId, batchIds)).groupBy(demoBatchEnrollmentsTable.batchId) : [];
-  const countMap = Object.fromEntries(enrollmentCounts.map((r) => [r.batchId, Number(r.cnt)]));
-  const enriched = sessions.map((s2) => {
-    const totalStudents = countMap[s2.batchId] ?? 0;
-    const submitted = s2.status === "completed" ? Math.floor(totalStudents * 0.85) : Math.floor(totalStudents * 0.5);
+  const [igniteSessions, historicalSessions] = await Promise.all([
+    db.select({
+      id: liveClassesTable.id,
+      batchId: liveClassesTable.igniteBatchId,
+      title: liveClassesTable.title,
+      dayNumber: liveClassesTable.dayNumber,
+      scheduledAt: liveClassesTable.scheduledAt,
+      homeworkText: liveClassesTable.homeworkText,
+      status: liveClassesTable.status,
+      batchTitle: demoBatchesTable.title,
+      batchGrade: demoBatchesTable.grade,
+      batchSubject: demoBatchesTable.subject
+    }).from(liveClassesTable).innerJoin(
+      demoBatchesTable,
+      eq(liveClassesTable.igniteBatchId, demoBatchesTable.id)
+    ).where(and(
+      eq(liveClassesTable.classType, "ignite"),
+      isNotNull(liveClassesTable.homeworkText)
+    )).orderBy(desc(liveClassesTable.scheduledAt)),
+    db.select({
+      id: demoSessionsTable.id,
+      batchId: demoSessionsTable.batchId,
+      title: demoSessionsTable.title,
+      dayNumber: demoSessionsTable.dayNumber,
+      scheduledAt: demoSessionsTable.scheduledAt,
+      homeworkText: demoSessionsTable.homeworkText,
+      status: demoSessionsTable.status,
+      batchTitle: demoBatchesTable.title,
+      batchGrade: demoBatchesTable.grade,
+      batchSubject: demoBatchesTable.subject
+    }).from(demoSessionsTable).innerJoin(
+      demoBatchesTable,
+      eq(demoSessionsTable.batchId, demoBatchesTable.id)
+    ).where(isNotNull(demoSessionsTable.homeworkText)).orderBy(desc(demoSessionsTable.scheduledAt))
+  ]);
+  const sessions = [
+    ...igniteSessions.map((session) => ({
+      ...session,
+      sessionType: "live_class"
+    })),
+    ...historicalSessions.map((session) => ({
+      ...session,
+      sessionType: "demo_session"
+    }))
+  ].sort(
+    (a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime()
+  );
+  const batchIds = [...new Set(
+    sessions.map((session) => session.batchId).filter((batchId) => batchId != null)
+  )];
+  const enrollmentCounts = batchIds.length > 0 ? await db.select({
+    batchId: demoBatchEnrollmentsTable.batchId,
+    cnt: count()
+  }).from(demoBatchEnrollmentsTable).where(inArray(demoBatchEnrollmentsTable.batchId, batchIds)).groupBy(demoBatchEnrollmentsTable.batchId) : [];
+  const countMap = Object.fromEntries(
+    enrollmentCounts.map((row) => [row.batchId, Number(row.cnt)])
+  );
+  const enriched = sessions.map((session) => {
+    const totalStudents = session.batchId == null ? 0 : countMap[session.batchId] ?? 0;
+    const submitted = session.status === "completed" ? Math.floor(totalStudents * 0.85) : Math.floor(totalStudents * 0.5);
     const pending = Math.max(0, totalStudents - submitted);
-    const overdue = s2.status === "completed" ? Math.max(0, totalStudents - submitted) : 0;
-    return { ...s2, totalStudents, submitted, pending, overdue };
+    const overdue = session.status === "completed" ? Math.max(0, totalStudents - submitted) : 0;
+    return {
+      ...session,
+      totalStudents,
+      submitted,
+      pending,
+      overdue
+    };
   });
   const totalHomework = enriched.length;
-  const totalStudentsAll = enriched.reduce((sum3, s2) => sum3 + s2.totalStudents, 0);
-  const totalSubmissions = enriched.reduce((sum3, s2) => sum3 + s2.submitted, 0);
+  const totalStudentsAll = enriched.reduce(
+    (sum3, session) => sum3 + session.totalStudents,
+    0
+  );
+  const totalSubmissions = enriched.reduce(
+    (sum3, session) => sum3 + session.submitted,
+    0
+  );
   const submittedPct = totalStudentsAll > 0 ? Math.round(totalSubmissions / totalStudentsAll * 100) : 0;
-  res.json({ sessions: enriched, kpis: { totalHomework, totalSubmissions, submittedPct, totalStudentsAll } });
+  res.json({
+    sessions: enriched,
+    kpis: {
+      totalHomework,
+      totalSubmissions,
+      submittedPct,
+      totalStudentsAll
+    }
+  });
 });
 router28.get("/admin/ignite/follow-ups", adminOnly7, async (_req, res) => {
   const followUps = await db.select({
@@ -127631,6 +127908,78 @@ router29.post("/payments/webhook", async (req, res) => {
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq(paymentsTable.razorpayOrderId, orderId));
   res.sendStatus(200);
+});
+router29.post("/payments/capture-lead", async (req, res) => {
+  const {
+    phone: rawPhone,
+    grade: rawGrade,
+    utm_source,
+    utm_campaign,
+    utm_adset,
+    utm_ad
+  } = req.body;
+  const phone = normalizePhone2(String(rawPhone ?? ""));
+  if (!phone) {
+    res.status(400).json({ error: "Invalid mobile number." });
+    return;
+  }
+  const grade = Number(rawGrade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Grade must be between 1 and 10." });
+    return;
+  }
+  try {
+    const [existing] = await db.select({
+      id: usersTable.id,
+      accountType: usersTable.accountType,
+      leadStage: usersTable.leadStage
+    }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+    if (existing) {
+      if (existing.accountType === "lead") {
+        const source = ["fb", "facebook"].includes((utm_source ?? "").toLowerCase()) ? "Facebook" : ["ig", "instagram"].includes((utm_source ?? "").toLowerCase()) ? "Instagram" : "Website";
+        await db.update(usersTable).set({
+          grade,
+          leadSource: source,
+          isWebsiteLead: true,
+          utmSource: utm_source ?? void 0,
+          utmCampaign: utm_campaign ?? void 0,
+          utmAdset: utm_adset ?? void 0,
+          utmAd: utm_ad ?? void 0,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(usersTable.id, existing.id));
+      }
+      res.json({ success: true, leadId: existing.id, existing: true });
+      return;
+    }
+    const [lead] = await db.insert(usersTable).values({
+      name: `Website Lead (Grade ${grade})`,
+      phone,
+      grade,
+      role: "student",
+      accountType: "lead",
+      leadStage: "new",
+      leadSource: ["fb", "facebook"].includes((utm_source ?? "").toLowerCase()) ? "Facebook" : ["ig", "instagram"].includes((utm_source ?? "").toLowerCase()) ? "Instagram" : "Website",
+      isWebsiteLead: true,
+      utmSource: utm_source ?? null,
+      utmCampaign: utm_campaign ?? null,
+      utmAdset: utm_adset ?? null,
+      utmAd: utm_ad ?? null,
+      phoneVerified: false,
+      assignmentStatus: "unassigned",
+      isCurrentWeek: false,
+      isDeleted: false,
+      points: 0,
+      streakDays: 0
+    }).returning({ id: usersTable.id });
+    res.status(201).json({
+      success: true,
+      leadId: lead?.id,
+      existing: false
+    });
+  } catch (err) {
+    req.log.error({ err }, "PRE-PAYMENT LEAD CAPTURE ERROR");
+    res.status(500).json({ error: "Failed to capture lead." });
+  }
 });
 router29.post("/payments/create-demo-order", async (req, res) => {
   const {
@@ -132161,6 +132510,12 @@ router43.get("/live/:sessionId", async (req, res) => {
         duration: liveClass.duration ?? 60,
         status: liveClass.status ?? null,
         slideUrl: liveClass.slideUrl ?? null,
+        // Ignite-specific fields (null for Mastery sessions)
+        classType: liveClass.classType ?? "mastery",
+        batchId: liveClass.igniteBatchId ?? null,
+        homeworkText: liveClass.homeworkText ?? null,
+        homeworkLink: liveClass.homeworkLink ?? null,
+        recordingUrl: liveClass.recordingUrl ?? null,
         sessionType: "live_class"
       });
       return;

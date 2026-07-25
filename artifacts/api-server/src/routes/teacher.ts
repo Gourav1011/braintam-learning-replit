@@ -846,29 +846,39 @@ router.post("/teacher/sessions", teacherOrAdmin, async (req, res) => {
   if (!batchId || !title || !scheduledAt) {
     res.status(400).json({ error: "batchId, title, scheduledAt required" }); return;
   }
-  // auto-increment dayNumber for this batch
-  const existing = await db.select({ dayNumber: demoSessionsTable.dayNumber })
-    .from(demoSessionsTable).where(eq(demoSessionsTable.batchId, Number(batchId)));
-  const nextDay = existing.length > 0 ? Math.max(...existing.map(e => e.dayNumber)) + 1 : 1;
-  const [session] = await db.insert(demoSessionsTable).values({
-    batchId: Number(batchId),
+
+  const [batch] = await db.select().from(demoBatchesTable)
+    .where(eq(demoBatchesTable.id, Number(batchId))).limit(1);
+  if (!batch) { res.status(404).json({ error: "Batch not found" }); return; }
+
+  // Auto-increment dayNumber from live_classes (Approach B — new sessions go here)
+  const existing = await db.select({ dayNumber: liveClassesTable.dayNumber })
+    .from(liveClassesTable)
+    .where(and(
+      eq(liveClassesTable.igniteBatchId, Number(batchId)),
+      eq(liveClassesTable.classType, "ignite"),
+    ));
+  const nextDay = existing.length > 0 ? Math.max(...existing.map(e => e.dayNumber ?? 0)) + 1 : 1;
+
+  const [session] = await db.insert(liveClassesTable).values({
+    classType: "ignite",
+    igniteBatchId: Number(batchId),
     title: String(title),
     scheduledAt: new Date(scheduledAt),
     duration: duration ? Number(duration) : 60,
     joinUrl: joinUrl || null,
     dayNumber: nextDay,
-    status: "scheduled",
-
-    // Store the teacher directly on every newly created Ignite session.
-    // Without these fields, the class appears in the batch but LiveKit
-    // cannot reliably identify and authorize the assigned teacher.
+    grade: batch.grade ?? 0,
+    status: "upcoming",
+    // Store the teacher on every newly created Ignite session.
+    // LiveKit uses these to identify and authorize the assigned teacher.
+    teacher: req.authUser!.name,
     teacherId: req.authUser!.id,
-    teacherName: req.authUser!.name,
   }).returning();
   res.json({ ok: true, session });
 });
 
-// ── My Sessions (demo_sessions for teacher's batches) ──────────────
+// ── My Sessions (live_classes + historical demo_sessions for teacher's batches) ─
 router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
   const teacher = req.authUser!;
   const isAdmin = teacher.role === "admin" || teacher.role === "super_admin";
@@ -876,29 +886,65 @@ router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
   // Load ALL batches for the batchMap (needed for session metadata)
   const allBatches = await db.select().from(demoBatchesTable).orderBy(desc(demoBatchesTable.id));
   const batchMap = Object.fromEntries(allBatches.map(b => [b.id, b]));
+  const assignedBatchIds = allBatches.filter(b => b.teacherId === teacher.id).map(b => b.id);
 
-  let sessions;
+  // ── New Ignite sessions from live_classes (Approach B, post-migration) ──
+  let lcSessions: typeof liveClassesTable.$inferSelect[] = [];
   if (isAdmin) {
-    sessions = await db.select().from(demoSessionsTable)
+    lcSessions = await db.select().from(liveClassesTable)
+      .where(eq(liveClassesTable.classType, "ignite"))
+      .orderBy(desc(liveClassesTable.scheduledAt));
+  } else {
+    const lcConds = [
+      eq(liveClassesTable.teacherId, teacher.id),
+      ...(assignedBatchIds.length > 0 ? [inArray(liveClassesTable.igniteBatchId, assignedBatchIds)] : []),
+    ];
+    lcSessions = await db.select().from(liveClassesTable)
+      .where(and(eq(liveClassesTable.classType, "ignite"), or(...lcConds)))
+      .orderBy(desc(liveClassesTable.scheduledAt));
+  }
+
+  // ── Historical sessions from demo_sessions (pre-migration, read-only) ──
+  let dsSessions: typeof demoSessionsTable.$inferSelect[] = [];
+  if (isAdmin) {
+    dsSessions = await db.select().from(demoSessionsTable)
       .orderBy(desc(demoSessionsTable.scheduledAt));
   } else {
-    // Find batches assigned to this teacher by FK
-    const assignedBatchIds = allBatches
-      .filter(b => b.teacherId === teacher.id)
-      .map(b => b.id);
-
-    // Match by teacher_id (primary) OR teacherName (fallback) OR batch assignment
-    const conditions = [
+    const dsConds = [
       eq(demoSessionsTable.teacherId, teacher.id),
       sql`lower(${demoSessionsTable.teacherName}) = lower(${teacher.name})`,
       ...(assignedBatchIds.length > 0 ? [inArray(demoSessionsTable.batchId, assignedBatchIds)] : []),
     ];
-    sessions = await db.select().from(demoSessionsTable)
-      .where(or(...conditions))
+    dsSessions = await db.select().from(demoSessionsTable)
+      .where(or(...dsConds))
       .orderBy(desc(demoSessionsTable.scheduledAt));
   }
 
-  res.json(sessions.map(s => {
+  const normalizedLc = lcSessions.map(s => {
+    const batchId = s.igniteBatchId ?? 0;
+    const batch = batchMap[batchId];
+    return {
+      id: s.id,
+      topic: s.title,
+      dayNumber: s.dayNumber ?? 1,
+      scheduledAt: s.scheduledAt.toISOString(),
+      duration: s.duration,
+      status: s.status === "upcoming" ? "scheduled" : s.status, // normalize for teacher UI compat
+      startedAt: null as string | null,
+      endedAt: null as string | null,
+      slideUrl: s.slideUrl ?? null,
+      recordingUrl: s.recordingUrl ?? null,
+      batchId,
+      batchTitle: batch?.title ?? "",
+      batchGrade: batch?.grade ?? null,
+      batchSubject: batch?.subject ?? null,
+      grade: batch?.grade ?? 0,
+      title: s.title,
+      sessionType: "live_class" as const,
+    };
+  });
+
+  const normalizedDs = dsSessions.map(s => {
     const batch = batchMap[s.batchId];
     return {
       id: s.id,
@@ -915,92 +961,88 @@ router.get("/teacher/my-sessions", teacherOrAdmin, async (req, res) => {
       batchTitle: batch?.title ?? "",
       batchGrade: batch?.grade ?? null,
       batchSubject: batch?.subject ?? null,
-      // backward-compat fields for hw/test selectors
       grade: batch?.grade ?? 0,
       title: s.title,
+      sessionType: "demo_session" as const,
     };
-  }));
+  });
+
+  // Merge and sort by scheduledAt descending (newest first)
+  const merged = [...normalizedLc, ...normalizedDs].sort(
+    (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+  );
+
+  res.json(merged);
 });
 
 // ── Edit Ignite session ────────────────────────────────────────────
 router.patch("/teacher/sessions/:id", teacherOrAdmin, async (req, res) => {
   const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid session ID" }); return; }
 
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid session ID" });
+  const { title, scheduledAt, duration, slideUrl, recordingUrl } = req.body;
+
+  // ── Try live_classes first (new Ignite sessions, post-migration) ──
+  const [lcSession] = await db
+    .select({ id: liveClassesTable.id })
+    .from(liveClassesTable)
+    .where(and(eq(liveClassesTable.id, id), eq(liveClassesTable.classType, "ignite")))
+    .limit(1);
+
+  if (lcSession) {
+    const changes: Partial<typeof liveClassesTable.$inferInsert> = {};
+
+    if (title !== undefined) {
+      const cleanTitle = String(title).trim();
+      if (!cleanTitle) { res.status(400).json({ error: "Class title is required" }); return; }
+      changes.title = cleanTitle;
+    }
+    if (scheduledAt !== undefined) {
+      const parsedDate = new Date(scheduledAt);
+      if (Number.isNaN(parsedDate.getTime())) { res.status(400).json({ error: "Invalid class date or time" }); return; }
+      changes.scheduledAt = parsedDate;
+    }
+    if (duration !== undefined) {
+      const parsedDuration = Number(duration);
+      if (!Number.isInteger(parsedDuration) || parsedDuration < 15 || parsedDuration > 480) {
+        res.status(400).json({ error: "Duration must be between 15 and 480 minutes" }); return;
+      }
+      changes.duration = parsedDuration;
+    }
+    if (slideUrl !== undefined) changes.slideUrl = slideUrl ? String(slideUrl) : null;
+    if (recordingUrl !== undefined) changes.recordingUrl = recordingUrl ? String(recordingUrl).trim() : null;
+
+    const [updated] = await db.update(liveClassesTable).set(changes).where(eq(liveClassesTable.id, id)).returning();
+    if (!updated) { res.status(404).json({ error: "Session not found" }); return; }
+    res.json({ ok: true, session: updated });
     return;
   }
 
-  const {
-    title,
-    scheduledAt,
-    duration,
-    slideUrl,
-    recordingUrl,
-  } = req.body;
-
+  // ── Fall back to historical demo_session (pre-migration, read-only otherwise) ──
   const changes: Record<string, unknown> = {};
 
   if (title !== undefined) {
     const cleanTitle = String(title).trim();
-
-    if (!cleanTitle) {
-      res.status(400).json({ error: "Class title is required" });
-      return;
-    }
-
+    if (!cleanTitle) { res.status(400).json({ error: "Class title is required" }); return; }
     changes.title = cleanTitle;
   }
-
   if (scheduledAt !== undefined) {
     const parsedDate = new Date(scheduledAt);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      res.status(400).json({ error: "Invalid class date or time" });
-      return;
-    }
-
+    if (Number.isNaN(parsedDate.getTime())) { res.status(400).json({ error: "Invalid class date or time" }); return; }
     changes.scheduledAt = parsedDate;
   }
-
   if (duration !== undefined) {
     const parsedDuration = Number(duration);
-
-    if (
-      !Number.isInteger(parsedDuration) ||
-      parsedDuration < 15 ||
-      parsedDuration > 480
-    ) {
-      res.status(400).json({
-        error: "Duration must be between 15 and 480 minutes",
-      });
-      return;
+    if (!Number.isInteger(parsedDuration) || parsedDuration < 15 || parsedDuration > 480) {
+      res.status(400).json({ error: "Duration must be between 15 and 480 minutes" }); return;
     }
-
     changes.duration = parsedDuration;
   }
+  if (slideUrl !== undefined) changes.slideUrl = slideUrl ? String(slideUrl) : null;
+  if (recordingUrl !== undefined) changes.recordingUrl = recordingUrl ? String(recordingUrl).trim() : null;
 
-  if (slideUrl !== undefined) {
-    changes.slideUrl = slideUrl ? String(slideUrl) : null;
-  }
-
-  if (recordingUrl !== undefined) {
-    changes.recordingUrl = recordingUrl
-      ? String(recordingUrl).trim()
-      : null;
-  }
-
-  const [updated] = await db
-    .update(demoSessionsTable)
-    .set(changes)
-    .where(eq(demoSessionsTable.id, id))
-    .returning();
-
-  if (!updated) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
-
+  const [updated] = await db.update(demoSessionsTable).set(changes).where(eq(demoSessionsTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Session not found" }); return; }
   res.json({ ok: true, session: updated });
 });
 
@@ -1009,60 +1051,59 @@ router.patch("/teacher/sessions/:id/status", teacherOrAdmin, async (req, res) =>
   const id = parseInt(String(req.params.id), 10);
   const { status } = req.body;
 
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid session ID" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid session ID" }); return; }
+
+  // Accept both "scheduled" (teacher UI) and "upcoming" (live_classes internal) as valid inputs
+  if (!["scheduled", "upcoming", "live", "completed"].includes(status)) {
+    res.status(400).json({ error: "Invalid session status" }); return;
+  }
+
+  // ── Try live_classes first (new Ignite sessions, post-migration) ──
+  const [lcSession] = await db
+    .select({ id: liveClassesTable.id, status: liveClassesTable.status })
+    .from(liveClassesTable)
+    .where(and(eq(liveClassesTable.id, id), eq(liveClassesTable.classType, "ignite")))
+    .limit(1);
+
+  if (lcSession) {
+    // live_classes uses "upcoming" not "scheduled"
+    const normalizedStatus = status === "scheduled" ? "upcoming" : status;
+    const [updated] = await db.update(liveClassesTable)
+      .set({ status: normalizedStatus })
+      .where(eq(liveClassesTable.id, id))
+      .returning();
+    // live_classes has no startedAt/endedAt — return nulls so the teacher UI stays happy
+    res.json({ ok: true, status: updated.status, startedAt: null, endedAt: null });
     return;
   }
 
-  if (!["scheduled", "live", "completed"].includes(status)) {
-    res.status(400).json({ error: "Invalid session status" });
-    return;
-  }
-
+  // ── Fall back to historical demo_session (pre-migration) ──
   const [current] = await db
     .select()
     .from(demoSessionsTable)
     .where(eq(demoSessionsTable.id, id))
     .limit(1);
 
-  if (!current) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
+  if (!current) { res.status(404).json({ error: "Session not found" }); return; }
 
   const now = new Date();
   const changes: Record<string, unknown> = { status };
 
   if (status === "live") {
     // Save the original start time only once.
-    if (!current.startedAt) {
-      changes.startedAt = now;
-    }
-
+    if (!current.startedAt) changes.startedAt = now;
     // Clear an old end time only when a class is intentionally restarted.
-    if (current.status === "completed") {
-      changes.endedAt = null;
-    }
+    if (current.status === "completed") changes.endedAt = null;
   }
 
   if (status === "completed") {
     // If start time was missed, use now so the record remains valid.
-    if (!current.startedAt) {
-      changes.startedAt = now;
-    }
-
+    if (!current.startedAt) changes.startedAt = now;
     // Save end time only once.
-    if (!current.endedAt) {
-      changes.endedAt = now;
-    }
+    if (!current.endedAt) changes.endedAt = now;
   }
 
-  const [updated] = await db
-    .update(demoSessionsTable)
-    .set(changes)
-    .where(eq(demoSessionsTable.id, id))
-    .returning();
-
+  const [updated] = await db.update(demoSessionsTable).set(changes).where(eq(demoSessionsTable.id, id)).returning();
   res.json({
     ok: true,
     status: updated.status,

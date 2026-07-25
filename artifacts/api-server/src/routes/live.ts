@@ -45,6 +45,12 @@ router.get("/live/:sessionId", async (req, res) => {
         duration: liveClass.duration ?? 60,
         status: liveClass.status ?? null,
         slideUrl: liveClass.slideUrl ?? null,
+        // Ignite-specific fields (null for Mastery sessions)
+        classType: liveClass.classType ?? "mastery",
+        batchId: liveClass.igniteBatchId ?? null,
+        homeworkText: liveClass.homeworkText ?? null,
+        homeworkLink: liveClass.homeworkLink ?? null,
+        recordingUrl: liveClass.recordingUrl ?? null,
         sessionType: "live_class",
       });
 

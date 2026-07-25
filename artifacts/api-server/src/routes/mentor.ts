@@ -533,6 +533,7 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
     batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
   };
 
+  // ── Historical sessions from demo_sessions (pre-migration, read-only) ──
   let demoSessions: Array<Record<string, unknown>> = [];
   if (allBatchIds.length > 0) {
     if (mode === "live") {
@@ -570,6 +571,65 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
         .limit(30);
     }
   }
+
+  // ── New Ignite sessions from live_classes (post-migration, Approach B) ──
+  const igniteSelect = {
+    id: liveClassesTable.id, topic: liveClassesTable.title,
+    dayNumber: liveClassesTable.dayNumber, scheduledAt: liveClassesTable.scheduledAt,
+    duration: liveClassesTable.duration, status: liveClassesTable.status,
+    joinUrl: liveClassesTable.joinUrl, recordingUrl: liveClassesTable.recordingUrl,
+    igniteBatchId: liveClassesTable.igniteBatchId,
+    batchTitle: demoBatchesTable.title,
+    batchGrade: demoBatchesTable.grade, batchSubject: demoBatchesTable.subject,
+  };
+
+  let rawIgniteSessions: Array<Record<string, unknown>> = [];
+  if (allBatchIds.length > 0) {
+    const igniteBase = and(
+      inArray(liveClassesTable.igniteBatchId, allBatchIds),
+      eq(liveClassesTable.classType, "ignite"),
+    );
+    if (mode === "live") {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId))
+        .where(and(igniteBase!, eq(liveClassesTable.status, "live")))
+        .orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "today") {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId))
+        .where(and(igniteBase!, gte(liveClassesTable.scheduledAt, todayIst), lte(liveClassesTable.scheduledAt, tomorrowIst)))
+        .orderBy(liveClassesTable.scheduledAt);
+    } else if (mode === "upcoming") {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId))
+        .where(and(igniteBase!, eq(liveClassesTable.status, "upcoming"), gte(liveClassesTable.scheduledAt, nowUtc)))
+        .orderBy(liveClassesTable.scheduledAt)
+        .limit(30);
+    } else {
+      rawIgniteSessions = await db.select(igniteSelect).from(liveClassesTable)
+        .innerJoin(demoBatchesTable, eq(demoBatchesTable.id, liveClassesTable.igniteBatchId))
+        .where(and(igniteBase!, eq(liveClassesTable.status, "completed")))
+        .orderBy(desc(liveClassesTable.scheduledAt))
+        .limit(30);
+    }
+  }
+
+  const igniteSessions = rawIgniteSessions.map(s => ({
+    id: s.id,
+    topic: s.topic,
+    dayNumber: s.dayNumber ?? 1,
+    scheduledAt: s.scheduledAt,
+    duration: s.duration,
+    // Normalize "upcoming" → "scheduled" so mentor UI sees a consistent status vocabulary
+    status: s.status === "upcoming" ? "scheduled" : s.status,
+    joinUrl: s.joinUrl,
+    recordingUrl: s.recordingUrl,
+    batchId: s.igniteBatchId,
+    batchTitle: s.batchTitle,
+    batchGrade: s.batchGrade,
+    batchSubject: s.batchSubject,
+    sessionType: "live_class" as const,
+  }));
 
   // 3. Course ("mastery") live classes scheduled by teachers — normalized to the same shape
   const courseSelect = {
@@ -628,7 +688,7 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
     isCourseClass: true,
   }));
 
-  const merged = [...demoSessions, ...courseClasses].sort((a, b) => {
+  const merged = [...igniteSessions, ...demoSessions, ...courseClasses].sort((a, b) => {
     const at = new Date(a.scheduledAt as string | Date).getTime();
     const bt = new Date(b.scheduledAt as string | Date).getTime();
     return mode === "completed" ? bt - at : at - bt;

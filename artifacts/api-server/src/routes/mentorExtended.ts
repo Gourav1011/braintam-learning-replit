@@ -409,7 +409,7 @@ router.post("/mentor/eod-reports", mentorAuth, async (req, res) => {
   }
 });
 
-// ── Mentor Live Sessions (demo_sessions from mentor's batches) ────────────────
+// ── Mentor Live Sessions (live_classes ignite + historical demo_sessions) ─────
 router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const mode = String(req.query.mode ?? "upcoming");
@@ -425,29 +425,77 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
   const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999);
 
-  let sessions;
+  // ── New Ignite sessions from live_classes (post-migration, Approach B) ──
+  let igniteSessions: typeof liveClassesTable.$inferSelect[] = [];
   if (mode === "today") {
-    sessions = await db.select().from(demoSessionsTable)
+    igniteSessions = await db.select().from(liveClassesTable)
+      .where(and(
+        inArray(liveClassesTable.igniteBatchId, batchIds),
+        eq(liveClassesTable.classType, "ignite"),
+        gte(liveClassesTable.scheduledAt, todayStart),
+        lte(liveClassesTable.scheduledAt, todayEnd),
+      )).orderBy(liveClassesTable.scheduledAt);
+  } else if (mode === "completed") {
+    igniteSessions = await db.select().from(liveClassesTable)
+      .where(and(
+        inArray(liveClassesTable.igniteBatchId, batchIds),
+        eq(liveClassesTable.classType, "ignite"),
+        eq(liveClassesTable.status, "completed"),
+      )).orderBy(desc(liveClassesTable.scheduledAt)).limit(60);
+  } else {
+    // upcoming (default)
+    igniteSessions = await db.select().from(liveClassesTable)
+      .where(and(
+        inArray(liveClassesTable.igniteBatchId, batchIds),
+        eq(liveClassesTable.classType, "ignite"),
+        gte(liveClassesTable.scheduledAt, now),
+      )).orderBy(liveClassesTable.scheduledAt).limit(60);
+  }
+
+  // ── Historical sessions from demo_sessions (pre-migration, read-only) ──
+  let historicalSessions: typeof demoSessionsTable.$inferSelect[] = [];
+  if (mode === "today") {
+    historicalSessions = await db.select().from(demoSessionsTable)
       .where(and(
         inArray(demoSessionsTable.batchId, batchIds),
         gte(demoSessionsTable.scheduledAt, todayStart),
         lte(demoSessionsTable.scheduledAt, todayEnd),
       )).orderBy(demoSessionsTable.scheduledAt);
   } else if (mode === "completed") {
-    sessions = await db.select().from(demoSessionsTable)
+    historicalSessions = await db.select().from(demoSessionsTable)
       .where(and(
         inArray(demoSessionsTable.batchId, batchIds),
         lte(demoSessionsTable.scheduledAt, now),
       )).orderBy(desc(demoSessionsTable.scheduledAt)).limit(60);
   } else {
-    sessions = await db.select().from(demoSessionsTable)
+    historicalSessions = await db.select().from(demoSessionsTable)
       .where(and(
         inArray(demoSessionsTable.batchId, batchIds),
         gte(demoSessionsTable.scheduledAt, now),
       )).orderBy(demoSessionsTable.scheduledAt).limit(60);
   }
 
-  res.json(sessions.map(s => {
+  const normalizedIgnite = igniteSessions.map(s => {
+    const batchId = s.igniteBatchId!;
+    const batch = batchMap[batchId];
+    return {
+      id: s.id,
+      topic: s.title,
+      dayNumber: s.dayNumber ?? 1,
+      scheduledAt: s.scheduledAt.toISOString(),
+      duration: s.duration,
+      status: s.status === "upcoming" ? "scheduled" : s.status,
+      joinUrl: s.joinUrl ?? null,
+      recordingUrl: s.recordingUrl ?? null,
+      batchId,
+      batchTitle: batch?.title ?? "",
+      batchGrade: batch?.grade ?? null,
+      batchSubject: batch?.subject ?? null,
+      sessionType: "live_class" as const,
+    };
+  });
+
+  const normalizedHistorical = historicalSessions.map(s => {
     const batch = batchMap[s.batchId];
     return {
       id: s.id,
@@ -462,8 +510,17 @@ router.get("/mentor/live-sessions", mentorAuth, async (req, res) => {
       batchTitle: batch?.title ?? "",
       batchGrade: batch?.grade ?? null,
       batchSubject: batch?.subject ?? null,
+      sessionType: "demo_session" as const,
     };
-  }));
+  });
+
+  const merged = [...normalizedIgnite, ...normalizedHistorical].sort((a, b) => {
+    const at = new Date(a.scheduledAt).getTime();
+    const bt = new Date(b.scheduledAt).getTime();
+    return mode === "completed" ? bt - at : at - bt;
+  });
+
+  res.json(merged);
 });
 
 export default router;

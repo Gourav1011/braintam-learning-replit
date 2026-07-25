@@ -4,6 +4,7 @@ import {
   demoBatchesTable,
   demoSessionsTable,
   demoBatchEnrollmentsTable,
+  liveClassesTable,
   usersTable,
   mentorFollowUpsTable,
   ignitePaidStudentsTable,
@@ -404,8 +405,20 @@ router.get("/admin/ignite/attendance/:batchId", adminOnly, async (req, res) => {
   const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId));
   if (!batch) { res.status(404).json({ error: "Not found" }); return; }
 
-  const [sessions, enrollments] = await Promise.all([
-    db.select().from(demoSessionsTable).where(eq(demoSessionsTable.batchId, batchId)).orderBy(demoSessionsTable.dayNumber),
+  // New Ignite classrooms live in live_classes. Historical demo_sessions
+  // remain read-only so old batch attendance screens continue to work.
+  const [igniteSessions, historicalSessions, enrollments] = await Promise.all([
+    db.select()
+      .from(liveClassesTable)
+      .where(and(
+        eq(liveClassesTable.classType, "ignite"),
+        eq(liveClassesTable.igniteBatchId, batchId),
+      ))
+      .orderBy(liveClassesTable.dayNumber),
+    db.select()
+      .from(demoSessionsTable)
+      .where(eq(demoSessionsTable.batchId, batchId))
+      .orderBy(demoSessionsTable.dayNumber),
     db.select({
       enrollmentId: demoBatchEnrollmentsTable.id,
       studentId: demoBatchEnrollmentsTable.studentId,
@@ -421,6 +434,24 @@ router.get("/admin/ignite/attendance/:batchId", adminOnly, async (req, res) => {
     .where(eq(demoBatchEnrollmentsTable.batchId, batchId))
     .orderBy(usersTable.name),
   ]);
+
+  const sessions = [
+    ...igniteSessions.map((session) => ({
+      ...session,
+      batchId: session.igniteBatchId,
+      subject: batch.subject ?? null,
+      teacherName: session.teacher,
+      bannerUrl: session.thumbnailUrl ?? null,
+      sessionType: "live_class" as const,
+    })),
+    ...historicalSessions.map((session) => ({
+      ...session,
+      sessionType: "demo_session" as const,
+    })),
+  ].sort((a, b) =>
+    (a.dayNumber ?? 0) - (b.dayNumber ?? 0) ||
+    a.scheduledAt.getTime() - b.scheduledAt.getTime()
+  );
 
   const totalDays = batch.totalDays;
   const grid = enrollments.map((e) => {
@@ -438,47 +469,134 @@ router.get("/admin/ignite/attendance/:batchId", adminOnly, async (req, res) => {
 });
 
 router.get("/admin/ignite/homework", adminOnly, async (_req, res) => {
-  const sessions = await db
-    .select({
-      id: demoSessionsTable.id,
-      batchId: demoSessionsTable.batchId,
-      title: demoSessionsTable.title,
-      dayNumber: demoSessionsTable.dayNumber,
-      scheduledAt: demoSessionsTable.scheduledAt,
-      homeworkText: demoSessionsTable.homeworkText,
-      status: demoSessionsTable.status,
-      batchTitle: demoBatchesTable.title,
-      batchGrade: demoBatchesTable.grade,
-      batchSubject: demoBatchesTable.subject,
-    })
-    .from(demoSessionsTable)
-    .innerJoin(demoBatchesTable, eq(demoSessionsTable.batchId, demoBatchesTable.id))
-    .where(isNotNull(demoSessionsTable.homeworkText))
-    .orderBy(desc(demoSessionsTable.scheduledAt));
+  const [igniteSessions, historicalSessions] = await Promise.all([
+    db
+      .select({
+        id: liveClassesTable.id,
+        batchId: liveClassesTable.igniteBatchId,
+        title: liveClassesTable.title,
+        dayNumber: liveClassesTable.dayNumber,
+        scheduledAt: liveClassesTable.scheduledAt,
+        homeworkText: liveClassesTable.homeworkText,
+        status: liveClassesTable.status,
+        batchTitle: demoBatchesTable.title,
+        batchGrade: demoBatchesTable.grade,
+        batchSubject: demoBatchesTable.subject,
+      })
+      .from(liveClassesTable)
+      .innerJoin(
+        demoBatchesTable,
+        eq(liveClassesTable.igniteBatchId, demoBatchesTable.id),
+      )
+      .where(and(
+        eq(liveClassesTable.classType, "ignite"),
+        isNotNull(liveClassesTable.homeworkText),
+      ))
+      .orderBy(desc(liveClassesTable.scheduledAt)),
 
-  const batchIds = [...new Set(sessions.map((s) => s.batchId))];
+    db
+      .select({
+        id: demoSessionsTable.id,
+        batchId: demoSessionsTable.batchId,
+        title: demoSessionsTable.title,
+        dayNumber: demoSessionsTable.dayNumber,
+        scheduledAt: demoSessionsTable.scheduledAt,
+        homeworkText: demoSessionsTable.homeworkText,
+        status: demoSessionsTable.status,
+        batchTitle: demoBatchesTable.title,
+        batchGrade: demoBatchesTable.grade,
+        batchSubject: demoBatchesTable.subject,
+      })
+      .from(demoSessionsTable)
+      .innerJoin(
+        demoBatchesTable,
+        eq(demoSessionsTable.batchId, demoBatchesTable.id),
+      )
+      .where(isNotNull(demoSessionsTable.homeworkText))
+      .orderBy(desc(demoSessionsTable.scheduledAt)),
+  ]);
+
+  const sessions = [
+    ...igniteSessions.map((session) => ({
+      ...session,
+      sessionType: "live_class" as const,
+    })),
+    ...historicalSessions.map((session) => ({
+      ...session,
+      sessionType: "demo_session" as const,
+    })),
+  ].sort(
+    (a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime(),
+  );
+
+  const batchIds = [...new Set(
+    sessions
+      .map((session) => session.batchId)
+      .filter((batchId): batchId is number => batchId != null)
+  )];
+
   const enrollmentCounts = batchIds.length > 0
-    ? await db.select({ batchId: demoBatchEnrollmentsTable.batchId, cnt: count() })
+    ? await db
+        .select({
+          batchId: demoBatchEnrollmentsTable.batchId,
+          cnt: count(),
+        })
         .from(demoBatchEnrollmentsTable)
         .where(inArray(demoBatchEnrollmentsTable.batchId, batchIds))
         .groupBy(demoBatchEnrollmentsTable.batchId)
     : [];
-  const countMap = Object.fromEntries(enrollmentCounts.map((r) => [r.batchId, Number(r.cnt)]));
 
-  const enriched = sessions.map((s) => {
-    const totalStudents = countMap[s.batchId] ?? 0;
-    const submitted = s.status === "completed" ? Math.floor(totalStudents * 0.85) : Math.floor(totalStudents * 0.5);
+  const countMap = Object.fromEntries(
+    enrollmentCounts.map((row) => [row.batchId, Number(row.cnt)]),
+  );
+
+  const enriched = sessions.map((session) => {
+    const totalStudents =
+      session.batchId == null ? 0 : countMap[session.batchId] ?? 0;
+
+    const submitted =
+      session.status === "completed"
+        ? Math.floor(totalStudents * 0.85)
+        : Math.floor(totalStudents * 0.5);
+
     const pending = Math.max(0, totalStudents - submitted);
-    const overdue = s.status === "completed" ? Math.max(0, totalStudents - submitted) : 0;
-    return { ...s, totalStudents, submitted, pending, overdue };
+    const overdue =
+      session.status === "completed"
+        ? Math.max(0, totalStudents - submitted)
+        : 0;
+
+    return {
+      ...session,
+      totalStudents,
+      submitted,
+      pending,
+      overdue,
+    };
   });
 
   const totalHomework = enriched.length;
-  const totalStudentsAll = enriched.reduce((sum, s) => sum + s.totalStudents, 0);
-  const totalSubmissions = enriched.reduce((sum, s) => sum + s.submitted, 0);
-  const submittedPct = totalStudentsAll > 0 ? Math.round((totalSubmissions / totalStudentsAll) * 100) : 0;
+  const totalStudentsAll = enriched.reduce(
+    (sum, session) => sum + session.totalStudents,
+    0,
+  );
+  const totalSubmissions = enriched.reduce(
+    (sum, session) => sum + session.submitted,
+    0,
+  );
+  const submittedPct =
+    totalStudentsAll > 0
+      ? Math.round((totalSubmissions / totalStudentsAll) * 100)
+      : 0;
 
-  res.json({ sessions: enriched, kpis: { totalHomework, totalSubmissions, submittedPct, totalStudentsAll } });
+  res.json({
+    sessions: enriched,
+    kpis: {
+      totalHomework,
+      totalSubmissions,
+      submittedPct,
+      totalStudentsAll,
+    },
+  });
 });
 
 router.get("/admin/ignite/follow-ups", adminOnly, async (_req, res) => {

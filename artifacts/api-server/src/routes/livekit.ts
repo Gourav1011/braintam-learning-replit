@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import {
   liveClassesTable, mentorGroupsTable, groupStudentsTable,
   mentorStudentAssignmentsTable, gradeMentorAssignmentsTable, enrollmentsTable,
+  demoBatchesTable, demoBatchEnrollmentsTable,
 } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth.js";
@@ -93,7 +94,33 @@ router.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
       hasCourseAccess = Boolean(assignedStudent || gradeAssignment);
     }
 
-    if (!group && !hasCourseAccess) {
+    // New Ignite sessions (class_type='ignite') use demo_batch_enrollments, not mentor_groups.
+    // A mentor is authorized if the batch is directly assigned to them, or via grade-team.
+    let hasIgniteAccess = false;
+    if (!group && !hasCourseAccess && liveClass.classType === "ignite" && liveClass.igniteBatchId) {
+      const [batchRow] = await db
+        .select({ mentorId: demoBatchesTable.mentorId })
+        .from(demoBatchesTable)
+        .where(eq(demoBatchesTable.id, liveClass.igniteBatchId))
+        .limit(1);
+      if (batchRow?.mentorId === user.id) {
+        hasIgniteAccess = true;
+      } else {
+        // Fall back to grade-team assignment (grade is stored on live_classes)
+        const [gradeAssign] = await db
+          .select({ id: gradeMentorAssignmentsTable.id })
+          .from(gradeMentorAssignmentsTable)
+          .where(and(
+            eq(gradeMentorAssignmentsTable.mentorId, user.id),
+            eq(gradeMentorAssignmentsTable.isActive, true),
+            eq(gradeMentorAssignmentsTable.grade, liveClass.grade),
+          ))
+          .limit(1);
+        hasIgniteAccess = Boolean(gradeAssign);
+      }
+    }
+
+    if (!group && !hasCourseAccess && !hasIgniteAccess) {
       res.status(403).json({ error: "You are not assigned to a mentor group in this session" });
       return;
     }
@@ -129,7 +156,22 @@ router.post("/live/:sessionId/livekit-token", requireAuth, async (req, res) => {
       isCourseEnrolled = Boolean(enrollment);
     }
 
-    if (!isGroupMember && !isCourseEnrolled) {
+    // New Ignite sessions (class_type='ignite') use demo_batch_enrollments — authorize
+    // students who are enrolled in the batch that owns this live class.
+    let isIgniteEnrolled = false;
+    if (!isGroupMember && !isCourseEnrolled && liveClass.classType === "ignite" && liveClass.igniteBatchId) {
+      const [batchEnrollment] = await db
+        .select({ studentId: demoBatchEnrollmentsTable.studentId })
+        .from(demoBatchEnrollmentsTable)
+        .where(and(
+          eq(demoBatchEnrollmentsTable.batchId, liveClass.igniteBatchId),
+          eq(demoBatchEnrollmentsTable.studentId, user.id),
+        ))
+        .limit(1);
+      isIgniteEnrolled = Boolean(batchEnrollment);
+    }
+
+    if (!isGroupMember && !isCourseEnrolled && !isIgniteEnrolled) {
       res.status(403).json({ error: "You are not enrolled in this session's group or course" });
       return;
     }
