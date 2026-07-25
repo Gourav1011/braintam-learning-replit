@@ -443,6 +443,103 @@ router.post("/payments/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
+
+// ── POST /api/payments/capture-lead ──────────────────────────
+// Public Meta Ads lead capture. Saves a valid phone before Razorpay/order creation.
+router.post("/payments/capture-lead", async (req, res) => {
+  const {
+    phone: rawPhone,
+    grade: rawGrade,
+    utm_source,
+    utm_campaign,
+    utm_adset,
+    utm_ad,
+  } = req.body as {
+    phone?: string;
+    grade?: unknown;
+    utm_source?: string;
+    utm_campaign?: string;
+    utm_adset?: string;
+    utm_ad?: string;
+  };
+
+  const phone = normalizePhone(String(rawPhone ?? ""));
+  if (!phone) {
+    res.status(400).json({ error: "Invalid mobile number." });
+    return;
+  }
+
+  const grade = Number(rawGrade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "Grade must be between 1 and 10." });
+    return;
+  }
+
+  try {
+    const [existing] = await db
+      .select({
+        id: usersTable.id,
+        accountType: usersTable.accountType,
+        leadStage: usersTable.leadStage,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.phone, phone))
+      .limit(1);
+
+    if (existing) {
+      // Never downgrade an existing/paid lead. Only refresh attribution.
+      await db
+        .update(usersTable)
+        .set({
+          grade,
+          isWebsiteLead: true,
+          utmSource: utm_source ?? undefined,
+          utmCampaign: utm_campaign ?? undefined,
+          utmAdset: utm_adset ?? undefined,
+          utmAd: utm_ad ?? undefined,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, existing.id));
+
+      res.json({ success: true, leadId: existing.id, existing: true });
+      return;
+    }
+
+    const [lead] = await db
+      .insert(usersTable)
+      .values({
+        name: `Website Lead (Grade ${grade})`,
+        phone,
+        grade,
+        role: "student",
+        accountType: "lead",
+        leadStage: "new",
+        leadSource: "Meta Ads",
+        isWebsiteLead: true,
+        utmSource: utm_source ?? null,
+        utmCampaign: utm_campaign ?? null,
+        utmAdset: utm_adset ?? null,
+        utmAd: utm_ad ?? null,
+        phoneVerified: false,
+        assignmentStatus: "unassigned",
+        isCurrentWeek: false,
+        isDeleted: false,
+        points: 0,
+        streakDays: 0,
+      })
+      .returning({ id: usersTable.id });
+
+    res.status(201).json({
+      success: true,
+      leadId: lead?.id,
+      existing: false,
+    });
+  } catch (err) {
+    req.log.error({ err }, "PRE-PAYMENT LEAD CAPTURE ERROR");
+    res.status(500).json({ error: "Failed to capture lead." });
+  }
+});
+
 // ── POST /api/payments/create-demo-order ─────────────────────
 // Phase 5A: Meta Ads → Website Enrollment flow.
 // Accepts phone, grade + optional UTM params. Creates Razorpay order and stores UTMs.

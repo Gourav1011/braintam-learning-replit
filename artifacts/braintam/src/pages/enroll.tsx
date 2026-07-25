@@ -93,6 +93,31 @@ function BookingModal({ grade, onConfirm, onClose, timer: modalTimer }: {
     if (phase === "phone") inputRef.current?.focus();
   }, [phase]);
 
+  // Capture the lead as soon as a valid phone number has remained entered
+  // for 800ms. Payment/Razorpay is not required for this capture.
+  useEffect(() => {
+    if (phase !== "phone" || !isValidPhone(phone)) return;
+
+    const id = window.setTimeout(() => {
+      void fetch(`${API_BASE}/api/payments/capture-lead`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: normalizePhone(phone),
+          grade,
+          utm_source: new URLSearchParams(window.location.search).get("utm_source") || undefined,
+          utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign") || undefined,
+          utm_adset: new URLSearchParams(window.location.search).get("utm_adset") || undefined,
+          utm_ad: new URLSearchParams(window.location.search).get("utm_ad") || undefined,
+        }),
+      }).catch(() => {
+        // Lead capture must never block the enrolment/payment experience.
+      });
+    }, 800);
+
+    return () => window.clearTimeout(id);
+  }, [phone, grade, phase]);
+
   useEffect(() => {
     if (phase !== "booking") return;
     setProgress(0);
