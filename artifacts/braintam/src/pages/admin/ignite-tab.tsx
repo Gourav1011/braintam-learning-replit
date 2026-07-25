@@ -2081,8 +2081,19 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
                             )}
                           </div>
                           <div className="text-gray-400 text-[10px] whitespace-nowrap">
-                            {l.isWebsiteLead && l.utmCampaign
-                              ? `Meta Ads · ${l.utmCampaign}`
+                            {l.isWebsiteLead
+                              ? [
+                                  l.leadSource ?? "Website",
+                                  l.utmSource
+                                    ? ({
+                                        fb: "Facebook",
+                                        facebook: "Facebook",
+                                        ig: "Instagram",
+                                        instagram: "Instagram",
+                                      } as Record<string, string>)[l.utmSource.toLowerCase()] ?? l.utmSource
+                                    : null,
+                                  l.utmCampaign || null,
+                                ].filter(Boolean).join(" · ")
                               : (l.parentName ?? "–")}
                           </div>
                         </div>
