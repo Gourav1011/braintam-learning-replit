@@ -2076,24 +2076,21 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
                             {l.isWebsiteLead && (
                               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap"
                                 style={{ background: "#E0F2FE", color: "#0891B2" }}>
-                                🌐 Website Lead
+                                {["fb", "facebook"].includes((l.utmSource ?? "").toLowerCase())
+                                  ? "Facebook"
+                                  : ["ig", "instagram"].includes((l.utmSource ?? "").toLowerCase())
+                                    ? "Instagram"
+                                    : l.leadSource === "Facebook"
+                                      ? "Facebook"
+                                      : l.leadSource === "Instagram"
+                                        ? "Instagram"
+                                        : "Website"}
                               </span>
                             )}
                           </div>
                           <div className="text-gray-400 text-[10px] whitespace-nowrap">
                             {l.isWebsiteLead
-                              ? [
-                                  l.leadSource ?? "Website",
-                                  l.utmSource
-                                    ? ({
-                                        fb: "Facebook",
-                                        facebook: "Facebook",
-                                        ig: "Instagram",
-                                        instagram: "Instagram",
-                                      } as Record<string, string>)[l.utmSource.toLowerCase()] ?? l.utmSource
-                                    : null,
-                                  l.utmCampaign || null,
-                                ].filter(Boolean).join(" · ")
+                              ? (l.utmCampaign || "–")
                               : (l.parentName ?? "–")}
                           </div>
                         </div>

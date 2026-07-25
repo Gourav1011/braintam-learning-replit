@@ -487,19 +487,30 @@ router.post("/payments/capture-lead", async (req, res) => {
       .limit(1);
 
     if (existing) {
-      // Never downgrade an existing/paid lead. Only refresh attribution.
-      await db
-        .update(usersTable)
-        .set({
-          grade,
-          isWebsiteLead: true,
-          utmSource: utm_source ?? undefined,
-          utmCampaign: utm_campaign ?? undefined,
-          utmAdset: utm_adset ?? undefined,
-          utmAd: utm_ad ?? undefined,
-          updatedAt: new Date(),
-        })
-        .where(eq(usersTable.id, existing.id));
+      // Only refresh website attribution while the record is still a lead.
+      // Never overwrite attribution/grade of an enrolled student.
+      if (existing.accountType === "lead") {
+        const source =
+          ["fb", "facebook"].includes((utm_source ?? "").toLowerCase())
+            ? "Facebook"
+            : ["ig", "instagram"].includes((utm_source ?? "").toLowerCase())
+              ? "Instagram"
+              : "Website";
+
+        await db
+          .update(usersTable)
+          .set({
+            grade,
+            leadSource: source,
+            isWebsiteLead: true,
+            utmSource: utm_source ?? undefined,
+            utmCampaign: utm_campaign ?? undefined,
+            utmAdset: utm_adset ?? undefined,
+            utmAd: utm_ad ?? undefined,
+            updatedAt: new Date(),
+          })
+          .where(eq(usersTable.id, existing.id));
+      }
 
       res.json({ success: true, leadId: existing.id, existing: true });
       return;
@@ -514,7 +525,12 @@ router.post("/payments/capture-lead", async (req, res) => {
         role: "student",
         accountType: "lead",
         leadStage: "new",
-        leadSource: "Meta Ads",
+        leadSource:
+          ["fb", "facebook"].includes((utm_source ?? "").toLowerCase())
+            ? "Facebook"
+            : ["ig", "instagram"].includes((utm_source ?? "").toLowerCase())
+              ? "Instagram"
+              : "Website",
         isWebsiteLead: true,
         utmSource: utm_source ?? null,
         utmCampaign: utm_campaign ?? null,
