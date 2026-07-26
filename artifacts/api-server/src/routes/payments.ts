@@ -12,7 +12,7 @@ import {
   masteryStudentsTable,
   coursesTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
 import { assignIgniteBatchAndCourse } from "../lib/assignIgniteBatch.js";
 import { generatePasswordSetupToken } from "../lib/auth-token.js";
@@ -362,6 +362,7 @@ router.post("/payments/webhook", async (req, res) => {
 
     if (!student) throw new Error("Student not found after insert");
     studentId = student.id;
+    await ensureStudentCode(studentId);
 
     // Ensure demo_student status on re-engaging accounts (e.g. lead → demo_student)
     await db
@@ -444,6 +445,25 @@ router.post("/payments/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
+
+// Assign a permanent BTL code to student records that do not have one.
+// The actual name remains untouched; UI decides whether to show name or code.
+async function ensureStudentCode(userId: number): Promise<string> {
+  const studentCode = `BTL${String(userId).padStart(4, "0")}`;
+
+  await db
+    .update(usersTable)
+    .set({
+      studentCode,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(usersTable.id, userId),
+      isNull(usersTable.studentCode),
+    ));
+
+  return studentCode;
+}
 
 // ── POST /api/payments/capture-lead ──────────────────────────
 // Public Meta Ads lead capture. Saves a valid phone before Razorpay/order creation.
@@ -553,15 +573,7 @@ router.post("/payments/capture-lead", async (req, res) => {
 
     // Website capture has no name yet. Give this lead a permanent,
     // unique Braintam lead code based on its database user ID.
-    const studentCode = `BTL${String(lead.id).padStart(4, "0")}`;
-
-    await db
-      .update(usersTable)
-      .set({
-        studentCode,
-        updatedAt: new Date(),
-      })
-      .where(eq(usersTable.id, lead.id));
+    const studentCode = await ensureStudentCode(lead.id);
 
     res.status(201).json({
       success: true,
@@ -791,6 +803,8 @@ router.post("/payments/verify-demo-payment", async (req, res) => {
       if (!inserted) throw new Error("Failed to create user");
       studentId = inserted.id;
     }
+
+    await ensureStudentCode(studentId);
   } catch (err: unknown) {
     await logEnrolmentError({
       errorType: "verify_user_create_fail",
@@ -1071,6 +1085,10 @@ router.post("/payments/verify-full-payment", async (req, res) => {
       .returning();
 
     user = updated ?? user;
+  }
+
+  if (user) {
+    await ensureStudentCode(user.id);
   }
 
   if (!user) {
