@@ -6,6 +6,7 @@ import {
   demoBatchEnrollmentsTable,
   liveClassesTable,
   usersTable,
+  enrollmentsTable,
 } from "@workspace/db";
 import { eq, desc, and, sql, count, inArray, or } from "drizzle-orm";
 import { requireRole, requireAuth } from "../middlewares/auth.js";
@@ -910,18 +911,55 @@ router.delete("/admin/demo-batches/:batchId/enrollments/:enrollmentId", adminOnl
 router.get("/student/my-demo-batches", requireAuth, async (req, res) => {
   const studentId = req.authUser!.id;
   const enrollments = await db
-    .select({ batchId: demoBatchEnrollmentsTable.batchId })
+    .select({
+      id: demoBatchEnrollmentsTable.id,
+      batchId: demoBatchEnrollmentsTable.batchId,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+    })
     .from(demoBatchEnrollmentsTable)
     .where(eq(demoBatchEnrollmentsTable.studentId, studentId));
 
   if (enrollments.length === 0) { res.json([]); return; }
 
-  const batchIds = enrollments.map(e => e.batchId);
   const result: { batch: typeof demoBatchesTable.$inferSelect; sessions: unknown[] }[] = [];
 
-  for (const batchId of batchIds) {
+  for (const enrollment of enrollments) {
+    const batchId = enrollment.batchId;
     const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
     if (!batch) continue;
+
+    const batchEnded =
+      batch.status === "completed" ||
+      (batch.endDate !== null && new Date(batch.endDate).getTime() < Date.now());
+
+    if (batchEnded) {
+      // Preserve the student's Ignite history, but remove it from Current Courses.
+      if (enrollment.enrollmentStatus !== "completed") {
+        await db
+          .update(demoBatchEnrollmentsTable)
+          .set({ enrollmentStatus: "completed" })
+          .where(eq(demoBatchEnrollmentsTable.id, enrollment.id));
+      }
+
+      await db
+        .update(enrollmentsTable)
+        .set({
+          status: "completed",
+          completedAt: new Date(),
+          completionNote: "Ignite batch completed",
+        })
+        .where(and(
+          eq(enrollmentsTable.studentId, studentId),
+          eq(enrollmentsTable.batchId, batchId),
+          eq(enrollmentsTable.enrollmentType, "ignite"),
+          eq(enrollmentsTable.status, "active"),
+        ));
+
+      continue;
+    }
+
+    // Only an active enrollment in an active/current batch belongs here.
+    if (enrollment.enrollmentStatus !== "active") continue;
 
     // Historical sessions (pre-migration, stored in demo_sessions)
     const historicalSessions = await db.select().from(demoSessionsTable)

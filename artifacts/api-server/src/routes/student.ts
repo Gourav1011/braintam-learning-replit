@@ -599,6 +599,7 @@ router.get("/student/my-courses/completed", requireAuth, async (req, res) => {
     .select({
       enrollmentId: enrollmentsTable.id,
       courseId: enrollmentsTable.courseId,
+      enrollmentType: enrollmentsTable.enrollmentType,
       courseTitle: coursesTable.title,
       courseGrade: coursesTable.grade,
       totalLessons: coursesTable.totalLessons,
@@ -626,7 +627,9 @@ router.get("/student/my-courses/completed", requireAuth, async (req, res) => {
     ))
     .orderBy(desc(enrollmentsTable.completedAt));
 
-  res.json(rows.map(r => ({
+  const completedCourses = rows
+    .filter(r => r.enrollmentType !== "ignite")
+    .map(r => ({
     enrollmentId: r.enrollmentId,
     courseId: r.courseId,
     courseTitle: r.courseTitle,
@@ -639,7 +642,65 @@ router.get("/student/my-courses/completed", requireAuth, async (req, res) => {
     enrolledAt: r.enrolledAt,
     completedAt: r.completedAt ?? null,
     completionNote: r.completionNote ?? null,
-  })));
+  }));
+
+  // Keep every completed Ignite/demo attempt as its own historical course.
+  // A student may attend multiple Ignite batches before converting to Mastery.
+  const demoRows = await db
+    .select({
+      enrollmentId: demoBatchEnrollmentsTable.id,
+      enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+      batchId: demoBatchesTable.id,
+      title: demoBatchesTable.title,
+      grade: demoBatchesTable.grade,
+      totalDays: demoBatchesTable.totalDays,
+      endDate: demoBatchesTable.endDate,
+      batchStatus: demoBatchesTable.status,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(
+      demoBatchesTable,
+      eq(demoBatchEnrollmentsTable.batchId, demoBatchesTable.id),
+    )
+    .where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+
+  const now = Date.now();
+
+  const completedDemoCourses = demoRows
+    .filter(d => {
+      const endedByDate =
+        d.endDate !== null &&
+        new Date(d.endDate).getTime() < now;
+
+      return (
+        d.enrollmentStatus === "completed" ||
+        d.batchStatus === "completed" ||
+        endedByDate
+      );
+    })
+    .map(d => ({
+      // Negative ID prevents collision with normal course-enrollment IDs
+      // while keeping the existing frontend response shape.
+      enrollmentId: -d.enrollmentId,
+      courseId: -d.batchId,
+      courseTitle: d.title,
+      grade: d.grade,
+      totalLessons: d.totalDays ?? 0,
+      subjectCount: 0,
+      recordingCount: 0,
+      chapterCount: 0,
+      academicYear: null,
+      enrolledAt: d.enrolledAt,
+      completedAt: d.endDate ?? null,
+      completionNote: "Ignite batch completed",
+    }));
+
+  res.json([...completedCourses, ...completedDemoCourses].sort((a, b) => {
+    const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+    const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+    return bTime - aTime;
+  }));
 });
 
 router.get("/student/my-mentor", requireAuth, async (req, res) => {
