@@ -832,7 +832,7 @@ function leadDisplayName(lead: LeadRow): string {
 
   const isPlaceholder =
     !name ||
-    /^Website Lead(?: \(Grade \d+\))?$/i.test(name);
+    /^(?:Website Lead|Student)(?: \(Grade \d+\))?$/i.test(name);
 
   if (isPlaceholder && lead.studentCode) {
     return lead.studentCode;
