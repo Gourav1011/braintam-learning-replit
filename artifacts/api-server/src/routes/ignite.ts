@@ -185,6 +185,7 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
   const leads = await db
     .select({
       id: usersTable.id,
+      studentCode: usersTable.studentCode,
       name: usersTable.name,
       email: usersTable.email,
       phone: usersTable.phone,

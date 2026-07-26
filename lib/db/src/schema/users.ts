@@ -10,6 +10,7 @@ export type AccountType = (typeof accountTypes)[number];
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
+  studentCode: text("student_code").unique(),
   name: text("name").notNull(),
   email: text("email").unique(),
   phone: text("phone").unique(),

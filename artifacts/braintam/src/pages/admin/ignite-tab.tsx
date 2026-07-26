@@ -811,7 +811,7 @@ function LeadProfileModal({
 
 // ── Lead Row ──────────────────────────────────────────────────────────────────
 interface LeadRow {
-  id: number; name: string; email: string | null; phone: string | null;
+  id: number; studentCode: string | null; name: string; email: string | null; phone: string | null;
   altPhone: string | null; grade: number | null; school: string | null;
   board: string | null; city: string | null; parentName: string | null;
   parentPhone: string | null; leadStage: string | null; leadSource: string | null;
@@ -825,6 +825,20 @@ interface LeadRow {
   isWebsiteLead: boolean;
   utmSource: string | null; utmCampaign: string | null;
   utmAdset: string | null; utmAd: string | null;
+}
+
+function leadDisplayName(lead: LeadRow): string {
+  const name = lead.name?.trim();
+
+  const isPlaceholder =
+    !name ||
+    /^Website Lead(?: \(Grade \d+\))?$/i.test(name);
+
+  if (isPlaceholder && lead.studentCode) {
+    return lead.studentCode;
+  }
+
+  return name || lead.studentCode || `Lead ${lead.id}`;
 }
 
 const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -1248,7 +1262,7 @@ function LeadHistoryModal({ lead, onClose }: { lead: LeadRow; onClose: () => voi
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" style={{ fontFamily: "Poppins, sans-serif" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <div className="font-black text-sm" style={{ color: NAVY }}>Lead History — {lead.name}</div>
+            <div className="font-black text-sm" style={{ color: NAVY }}>Lead History — {leadDisplayName(lead)}</div>
             <div className="text-[10px] text-gray-400 mt-0.5">LDN-{String(lead.id).padStart(6, "0")}</div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
@@ -1786,8 +1800,11 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
     else { if (l.leadStage === "Lost" || !l.isActive) return false; }
 
     const q = search.toLowerCase();
-    if (q && !l.name.toLowerCase().includes(q) && !(l.phone ?? "").includes(q) &&
-        !(l.school ?? "").toLowerCase().includes(q) && !(l.city ?? "").toLowerCase().includes(q)) return false;
+    if (q && !leadDisplayName(l).toLowerCase().includes(q) &&
+        !(l.studentCode ?? "").toLowerCase().includes(q) &&
+        !(l.phone ?? "").includes(q) &&
+        !(l.school ?? "").toLowerCase().includes(q) &&
+        !(l.city ?? "").toLowerCase().includes(q)) return false;
     if (statusF !== "All Status" && (l.leadStage ?? "new") !== statusF) return false;
     if (gradeF !== "All Grades" && String(l.grade) !== gradeF.replace("Grade ", "")) return false;
     if (sourceF !== "All Sources" && (l.leadSource ?? "") !== sourceF) return false;
@@ -1813,7 +1830,7 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
     const rangeLabel = dateRange === "all" ? "all" : dateRange === "7" ? "7d" : dateRange === "30" ? "30d" : dateRange === "this-month" ? "thismonth" : customDate || "custom";
     const csv = makeCSV(
       ["Name","Parent Name","Phone","Alt Phone","Email","Grade","Board","School","City","Lead Source","Status","Assigned Mentor","Assignment Status","Created"],
-      filtered.map(l => [l.name, l.parentName, l.phone, l.altPhone, l.email, l.grade, l.board, l.school, l.city, l.leadSource, l.leadStage, l.assignedMentorName, l.assignmentStatus, new Date(l.createdAt).toLocaleDateString("en-IN")])
+      filtered.map(l => [leadDisplayName(l), l.parentName, l.phone, l.altPhone, l.email, l.grade, l.board, l.school, l.city, l.leadSource, l.leadStage, l.assignedMentorName, l.assignmentStatus, new Date(l.createdAt).toLocaleDateString("en-IN")])
     );
     downloadCSVFile(csv, `braintam_leads_${rangeLabel}_${new Date().toISOString().slice(0,10)}.csv`);
   };
@@ -2069,10 +2086,10 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
-                          style={{ background: NAVY }}>{(l.name?.[0] ?? "?").toUpperCase()}</div>
+                          style={{ background: NAVY }}>{(leadDisplayName(l)[0] ?? "?").toUpperCase()}</div>
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-gray-800 text-xs whitespace-nowrap">{l.name}</span>
+                            <span className="font-semibold text-gray-800 text-xs whitespace-nowrap">{leadDisplayName(l)}</span>
                             {l.isWebsiteLead && (
                               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap"
                                 style={{ background: "#E0F2FE", color: "#0891B2" }}>

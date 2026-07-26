@@ -546,9 +546,27 @@ router.post("/payments/capture-lead", async (req, res) => {
       })
       .returning({ id: usersTable.id });
 
+    if (!lead) {
+      res.status(500).json({ error: "Unable to create lead." });
+      return;
+    }
+
+    // Website capture has no name yet. Give this lead a permanent,
+    // unique Braintam lead code based on its database user ID.
+    const studentCode = `BTL${String(lead.id).padStart(4, "0")}`;
+
+    await db
+      .update(usersTable)
+      .set({
+        studentCode,
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.id, lead.id));
+
     res.status(201).json({
       success: true,
-      leadId: lead?.id,
+      leadId: lead.id,
+      studentCode,
       existing: false,
     });
   } catch (err) {
