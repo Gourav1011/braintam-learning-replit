@@ -1009,6 +1009,7 @@ router.get("/admin/live-classes", adminOnly, async (req, res) => {
     })
     .from(liveClassesTable)
     .leftJoin(subjectsTable, eq(liveClassesTable.subjectId, subjectsTable.id))
+    .where(eq(liveClassesTable.classType, "mastery"))
     .orderBy(desc(liveClassesTable.scheduledAt));
 
   res.json(rows.map(r => ({
