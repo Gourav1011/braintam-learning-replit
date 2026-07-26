@@ -21,7 +21,7 @@ export const HealthCheckResponse = zod.object({
  */
 export const RegisterBody = zod.object({
   "name": zod.string().trim().min(2).max(100),
-  "phone": zod.string().regex(/^[6-9]\\d{9}$/),
+  "phone": zod.string().regex(/^[6-9]\d{9}$/),
   "grade": zod.number().int().min(1).max(10),
   "password": zod.string().min(6).max(128)
 })
