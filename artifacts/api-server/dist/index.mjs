@@ -19035,14 +19035,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash = crypto10.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash = crypto6.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash + '"';
     }
@@ -22517,17 +22517,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto10.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto6.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto10.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto6.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -33166,7 +33166,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.21.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto10 = require_utils7();
+    var crypto6 = require_utils7();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function saslprep(password) {
       const nonAsciiSpace = /[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g;
@@ -33184,7 +33184,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto10.randomBytes(18).toString("base64");
+      const clientNonce = crypto6.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -33226,20 +33226,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto10.hashByName(hashName, peerCert);
+        const certHash = await crypto6.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto10.deriveKey(saslprep(password), saltBytes, sv.iteration);
-      const clientKey = await crypto10.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto10.sha256(clientKey);
-      const clientSignature = await crypto10.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto6.deriveKey(saslprep(password), saltBytes, sv.iteration);
+      const clientKey = await crypto6.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto6.sha256(clientKey);
+      const clientSignature = await crypto6.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto10.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto10.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto6.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto6.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -35412,7 +35412,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto10 = require_utils7();
+    var crypto6 = require_utils7();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -35659,7 +35659,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto10.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto6.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -37246,14 +37246,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "../../node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js"(exports, module) {
     var Buffer3 = require_safe_buffer().Buffer;
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util4 = __require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto10.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto6.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -37343,17 +37343,17 @@ var require_jwa = __commonJS({
       return function sign3(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto10.createHmac("sha" + bits, secret);
+        var hmac = crypto6.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto10 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto6 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto10.timingSafeEqual(a, b);
+      return crypto6.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -37370,7 +37370,7 @@ var require_jwa = __commonJS({
       return function sign3(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto10.createSign("RSA-SHA" + bits);
+        var signer = crypto6.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -37380,7 +37380,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto10.createVerify("RSA-SHA" + bits);
+        var verifier = crypto6.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -37389,11 +37389,11 @@ var require_jwa = __commonJS({
       return function sign3(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto10.createSign("RSA-SHA" + bits);
+        var signer = crypto6.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto10.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto10.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -37403,12 +37403,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto10.createVerify("RSA-SHA" + bits);
+        var verifier = crypto6.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto10.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto10.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -49903,7 +49903,7 @@ var require_form_data = __commonJS({
     var parseUrl = __require("url").parse;
     var fs5 = __require("fs");
     var Stream = __require("stream").Stream;
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     var mime = require_mime_types2();
     var asynckit = require_asynckit();
     var setToStringTag = require_es_set_tostringtag();
@@ -50112,7 +50112,7 @@ var require_form_data = __commonJS({
       return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
     };
     FormData2.prototype._generateBoundary = function() {
-      this._boundary = "--------------------------" + crypto10.randomBytes(12).toString("hex");
+      this._boundary = "--------------------------" + crypto6.randomBytes(12).toString("hex");
     };
     FormData2.prototype.getLengthSync = function() {
       var knownLength = this._overheadLength + this._valueLength;
@@ -51199,7 +51199,7 @@ var require_axios = __commonJS({
   "../../node_modules/.pnpm/axios@1.18.1/node_modules/axios/dist/node/axios.cjs"(exports, module) {
     "use strict";
     var FormData$1 = require_form_data();
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     var url2 = __require("url");
     var HttpsProxyAgent = require_dist5();
     var http3 = __require("http");
@@ -52419,7 +52419,7 @@ var require_axios = __commonJS({
         length
       } = alphabet;
       const randomValues = new Uint32Array(size);
-      crypto10.randomFillSync(randomValues);
+      crypto6.randomFillSync(randomValues);
       for (let i = 0; i < size; i++) {
         str += alphabet[randomValues[i] % length];
       }
@@ -55745,7 +55745,7 @@ var require_razorpay_utils = __commonJS({
     } : function(obj) {
       return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
     };
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     function getDateInSecs(date6) {
       return +new Date(date6) / 1e3;
     }
@@ -55782,12 +55782,12 @@ var require_razorpay_utils = __commonJS({
       return new Error("\n" + summary + "\n" + ("Expected(" + (typeof expectedVal === "undefined" ? "undefined" : _typeof(expectedVal)) + ")\n" + prettify(expectedVal) + "\n\n") + ("Got(" + (typeof gotVal === "undefined" ? "undefined" : _typeof(gotVal)) + ")\n" + prettify(gotVal)));
     }
     function validateWebhookSignature(body, signature, secret) {
-      var crypto11 = __require("crypto");
+      var crypto7 = __require("crypto");
       if (!isDefined(body) || !isDefined(signature) || !isDefined(secret)) {
         throw Error("Invalid Parameters: Please give request body,signature sent in X-Razorpay-Signature header and webhook secret from dashboard as parameters");
       }
       body = body.toString();
-      var expectedSignature = crypto11.createHmac("sha256", secret).update(body).digest("hex");
+      var expectedSignature = crypto7.createHmac("sha256", secret).update(body).digest("hex");
       return expectedSignature === signature;
     }
     function validatePaymentVerification() {
@@ -55825,7 +55825,7 @@ var require_razorpay_utils = __commonJS({
         var keyBytes = Buffer.from(secret.slice(0, 16), "utf8");
         var iv = Buffer.alloc(12);
         keyBytes.copy(iv, 0, 0, 12);
-        var cipher = crypto10.createCipheriv("aes-128-gcm", keyBytes, iv);
+        var cipher = crypto6.createCipheriv("aes-128-gcm", keyBytes, iv);
         var encryptedData = cipher.update(dataToEncrypt, "utf8");
         encryptedData = Buffer.concat([encryptedData, cipher.final()]);
         var authTag = cipher.getAuthTag();
@@ -62608,9 +62608,9 @@ var require_disk = __commonJS({
     var fs5 = __require("fs");
     var os = __require("os");
     var path5 = __require("path");
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     function getFilename(req, file2, cb) {
-      crypto10.randomBytes(16, function(err, raw) {
+      crypto6.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -66696,7 +66696,7 @@ var require_accepts2 = __commonJS({
 // ../../node_modules/.pnpm/base64id@2.0.0/node_modules/base64id/lib/base64id.js
 var require_base64id = __commonJS({
   "../../node_modules/.pnpm/base64id@2.0.0/node_modules/base64id/lib/base64id.js"(exports, module) {
-    var crypto10 = __require("crypto");
+    var crypto6 = __require("crypto");
     var Base64Id = function() {
     };
     Base64Id.prototype.getRandomBytes = function(bytes) {
@@ -66704,12 +66704,12 @@ var require_base64id = __commonJS({
       var self2 = this;
       bytes = bytes || 12;
       if (bytes > BUFFER_SIZE) {
-        return crypto10.randomBytes(bytes);
+        return crypto6.randomBytes(bytes);
       }
       var bytesInBuffer = parseInt(BUFFER_SIZE / bytes);
       var threshold = parseInt(bytesInBuffer * 0.85);
       if (!threshold) {
-        return crypto10.randomBytes(bytes);
+        return crypto6.randomBytes(bytes);
       }
       if (this.bytesBufferIndex == null) {
         this.bytesBufferIndex = -1;
@@ -66721,14 +66721,14 @@ var require_base64id = __commonJS({
       if (this.bytesBufferIndex == -1 || this.bytesBufferIndex > threshold) {
         if (!this.isGeneratingBytes) {
           this.isGeneratingBytes = true;
-          crypto10.randomBytes(BUFFER_SIZE, function(err, bytes2) {
+          crypto6.randomBytes(BUFFER_SIZE, function(err, bytes2) {
             self2.bytesBuffer = bytes2;
             self2.bytesBufferIndex = 0;
             self2.isGeneratingBytes = false;
           });
         }
         if (this.bytesBufferIndex == -1) {
-          return crypto10.randomBytes(bytes);
+          return crypto6.randomBytes(bytes);
         }
       }
       var result = this.bytesBuffer.slice(bytes * this.bytesBufferIndex, bytes * (this.bytesBufferIndex + 1));
@@ -66742,7 +66742,7 @@ var require_base64id = __commonJS({
       }
       this.sequenceNumber = this.sequenceNumber + 1 | 0;
       rand.writeInt32BE(this.sequenceNumber, 11);
-      if (crypto10.randomBytes) {
+      if (crypto6.randomBytes) {
         this.getRandomBytes(12).copy(rand);
       } else {
         [0, 4, 8].forEach(function(i) {
@@ -92217,11 +92217,10 @@ var HealthCheckResponse = objectType({
   "status": stringType()
 });
 var RegisterBody = objectType({
-  "name": stringType(),
-  "email": stringType().nullish(),
-  "phone": stringType().nullish(),
-  "grade": numberType(),
-  "password": stringType()
+  "name": stringType().trim().min(2).max(100),
+  "phone": stringType().regex(/^[6-9]\d{9}$/),
+  "grade": numberType().int().min(1).max(10),
+  "password": stringType().min(6).max(128)
 });
 var LoginBody = objectType({
   "email": stringType().nullish(),
@@ -111348,6 +111347,7 @@ var userRoles = ["super_admin", "admin", "teacher", "mentor", "sales_mentor", "s
 var accountTypes = ["lead", "demo_student", "paid_student", "teacher", "admin"];
 var usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
+  studentCode: text("student_code").unique(),
   name: text("name").notNull(),
   email: text("email").unique(),
   phone: text("phone").unique(),
@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-26-0915" : "dev",
-    commit: true ? "2607329" : "unknown",
-    buildTime: true ? "2026-07-26T09:15:06.920Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-26-1914" : "dev",
+    commit: true ? "719bae2" : "unknown",
+    buildTime: true ? "2026-07-26T19:14:44.178Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -113072,9 +113072,37 @@ function verifyAuthToken(token) {
     return null;
   }
 }
-
-// src/routes/auth.ts
-import crypto2 from "crypto";
+var PASSWORD_SETUP_EXPIRY = "15m";
+function generatePasswordSetupToken(userId, paymentId) {
+  return import_jsonwebtoken.default.sign(
+    {
+      userId,
+      paymentId,
+      purpose: "password_setup"
+    },
+    getSecret(),
+    {
+      algorithm: "HS256",
+      expiresIn: PASSWORD_SETUP_EXPIRY
+    }
+  );
+}
+function verifyPasswordSetupToken(token) {
+  try {
+    const payload = import_jsonwebtoken.default.verify(token, getSecret(), {
+      algorithms: ["HS256"]
+    });
+    if (typeof payload === "string" || payload.purpose !== "password_setup" || typeof payload.userId !== "number" || !Number.isInteger(payload.userId) || payload.userId <= 0 || typeof payload.paymentId !== "number" || !Number.isInteger(payload.paymentId) || payload.paymentId <= 0) {
+      return null;
+    }
+    return {
+      userId: payload.userId,
+      paymentId: payload.paymentId
+    };
+  } catch {
+    return null;
+  }
+}
 
 // src/services/pointsService.ts
 var DAILY_LOGIN_POINTS = 5;
@@ -113232,11 +113260,22 @@ async function logAction(opts) {
   }
 }
 
+// src/lib/password.ts
+import crypto2 from "crypto";
+function hashPassword(password) {
+  return crypto2.createHash("sha256").update(password + "braintam_salt").digest("hex");
+}
+function verifyPassword(password, storedHash) {
+  if (!storedHash) return false;
+  const candidate = hashPassword(password);
+  const stored = Buffer.from(storedHash, "utf8");
+  const supplied = Buffer.from(candidate, "utf8");
+  if (stored.length !== supplied.length) return false;
+  return crypto2.timingSafeEqual(stored, supplied);
+}
+
 // src/routes/auth.ts
 var router2 = (0, import_express2.Router)();
-function hashPassword(pw) {
-  return crypto2.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 function generateToken(userId) {
   return generateAuthToken(userId);
 }
@@ -113257,37 +113296,51 @@ function userToProfile(u) {
 router2.post("/auth/register", async (req, res) => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
+    res.status(400).json({
+      error: "Enter your name, 10-digit phone number, grade, and password."
+    });
     return;
   }
-  const { name, email: email3, grade, password } = parsed.data;
-  if (!email3) {
-    res.status(400).json({ error: "Email is required" });
+  const { name, grade, password } = parsed.data;
+  const phone = parsed.data.phone;
+  if (!phone) {
+    res.status(400).json({ error: "Phone number is required" });
     return;
   }
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email3)).limit(1);
+  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
   if (existing.length > 0) {
-    res.status(400).json({ error: "An account with this email already exists" });
+    res.status(409).json({
+      error: "An account with this phone number already exists. Please sign in."
+    });
     return;
   }
   const [user] = await db.insert(usersTable).values({
-    name,
-    email: email3,
-    phone: null,
-    grade: grade ?? 0,
+    name: name.trim(),
+    email: null,
+    phone,
+    grade,
     role: "student",
-    // Email/password sign-ups are also website leads — visible in CRM immediately.
     accountType: "lead",
     leadStage: "new",
     leadSource: "Website",
     isWebsiteLead: true,
     assignmentStatus: "unassigned",
     isCurrentWeek: false,
-    passwordHash: password ? hashPassword(password) : null,
+    // We have the phone number, but ownership has not yet been
+    // verified by OTP.
+    phoneVerified: false,
+    passwordHash: hashPassword(password),
     points: 0,
     streakDays: 1
   }).returning();
-  res.status(201).json({ token: generateToken(user.id), student: userToProfile(user) });
+  if (!user) {
+    res.status(500).json({ error: "Unable to create account" });
+    return;
+  }
+  res.status(201).json({
+    token: generateToken(user.id),
+    student: userToProfile(user)
+  });
 });
 router2.post("/auth/login", async (req, res) => {
   const parsed = LoginBody.safeParse(req.body);
@@ -113297,18 +113350,18 @@ router2.post("/auth/login", async (req, res) => {
   }
   const { email: email3, phone, password } = parsed.data;
   if (!email3 && !phone) {
-    res.status(400).json({ error: "Email is required" });
+    res.status(400).json({ error: "Phone number is required" });
     return;
   }
   const users = await db.select().from(usersTable).where(
-    email3 ? eq(usersTable.email, email3) : eq(usersTable.phone, phone)
+    phone ? eq(usersTable.phone, phone) : eq(usersTable.email, email3)
   ).limit(1);
   if (users.length === 0) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
   const user = users[0];
-  if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
+  if (!verifyPassword(password, user.passwordHash)) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
@@ -113366,22 +113419,81 @@ router2.post("/auth/clerk-sync", async (req, res) => {
   });
   res.status(201).json({ token: generateToken(user.id), student: userToProfile(user) });
 });
-router2.post("/auth/reset-password-email", async (req, res) => {
-  const { email: email3, phone, newPassword } = req.body;
-  if (!email3 && !phone || !newPassword || newPassword.length < 6) {
-    res.status(400).json({ error: "Email or phone and new password (min 6 chars) required" });
+router2.post("/auth/setup-password", async (req, res) => {
+  const setupToken = typeof req.body?.setupToken === "string" ? req.body.setupToken : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!setupToken) {
+    res.status(400).json({ error: "Password setup token is required" });
     return;
   }
-  const users = await db.select().from(usersTable).where(
-    email3 ? eq(usersTable.email, email3) : eq(usersTable.phone, phone)
+  if (password.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
+    return;
+  }
+  const setup = verifyPasswordSetupToken(setupToken);
+  if (!setup) {
+    res.status(401).json({
+      error: "This password setup link is invalid or has expired."
+    });
+    return;
+  }
+  const [payment] = await db.select({
+    id: paymentsTable.id,
+    studentId: paymentsTable.studentId,
+    status: paymentsTable.status
+  }).from(paymentsTable).where(
+    and(
+      eq(paymentsTable.id, setup.paymentId),
+      eq(paymentsTable.studentId, setup.userId),
+      eq(paymentsTable.status, "captured")
+    )
   ).limit(1);
-  if (users.length === 0) {
-    res.status(404).json({ error: "No account found. Please check and try again." });
+  if (!payment) {
+    res.status(403).json({ error: "Payment verification failed" });
     return;
   }
-  const user = users[0];
-  await db.update(usersTable).set({ passwordHash: hashPassword(newPassword) }).where(eq(usersTable.id, user.id));
-  res.json({ token: generateToken(user.id), student: userToProfile(user) });
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, setup.userId)).limit(1);
+  if (!user || user.role !== "student") {
+    res.status(404).json({ error: "Student account not found" });
+    return;
+  }
+  if (user.isActive === false) {
+    res.status(403).json({ error: "This account has been disabled" });
+    return;
+  }
+  if (user.passwordHash) {
+    res.status(409).json({
+      error: "Password has already been created. Please sign in."
+    });
+    return;
+  }
+  const [updated] = await db.update(usersTable).set({
+    passwordHash: hashPassword(password),
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(
+    and(
+      eq(usersTable.id, user.id),
+      isNull(usersTable.passwordHash)
+    )
+  ).returning();
+  if (!updated) {
+    res.status(409).json({
+      error: "Password has already been created. Please sign in."
+    });
+    return;
+  }
+  checkDailyLogin(updated.id).catch(() => {
+  });
+  res.json({
+    success: true,
+    token: generateToken(updated.id),
+    student: userToProfile(updated)
+  });
+});
+router2.post("/auth/reset-password-email", (_req, res) => {
+  res.status(410).json({
+    error: "Self-service password reset is temporarily unavailable. Please contact support."
+  });
 });
 var auth_default = router2;
 
@@ -113559,10 +113671,15 @@ router4.get("/courses/:id", attachUser, async (req, res) => {
         res.status(403).json({ error: "You do not have access to this course" });
         return;
       }
-    } else if (user.grade) {
-      const [course2] = await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, parsed.data.id));
-      if (course2 && course2.grade !== user.grade) {
-        res.status(403).json({ error: "This course is not available for your grade" });
+    } else {
+      const [enrollment] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+        and(
+          eq(enrollmentsTable.studentId, user.id),
+          eq(enrollmentsTable.courseId, parsed.data.id)
+        )
+      ).limit(1);
+      if (!enrollment) {
+        res.status(403).json({ error: "You do not have access to this course" });
         return;
       }
     }
@@ -113616,8 +113733,11 @@ router5.get("/live-classes", attachUser, async (req, res) => {
   if (user.role === "student") {
     const enrolled = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map((e) => e.courseId);
-    const gradeOpenFilter = isNull(liveClassesTable.courseId);
-    studentFilter = enrolledIds.length > 0 ? or(inArray(liveClassesTable.courseId, enrolledIds), gradeOpenFilter) : gradeOpenFilter;
+    if (enrolledIds.length === 0) {
+      res.json([]);
+      return;
+    }
+    studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
   }
   const classes = await db.select({
     id: liveClassesTable.id,
@@ -113625,6 +113745,7 @@ router5.get("/live-classes", attachUser, async (req, res) => {
     subjectId: liveClassesTable.subjectId,
     subjectName: subjectsTable.name,
     grade: liveClassesTable.grade,
+    courseId: liveClassesTable.courseId,
     scheduledAt: liveClassesTable.scheduledAt,
     duration: liveClassesTable.duration,
     teacher: liveClassesTable.teacher,
@@ -113647,7 +113768,7 @@ router5.get("/live-classes", attachUser, async (req, res) => {
     studentsJoined: c.studentsJoined ?? 0
   })));
 });
-router5.get("/live-classes/:id", async (req, res) => {
+router5.get("/live-classes/:id", attachUser, async (req, res) => {
   const parsed = GetLiveClassParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -113659,6 +113780,7 @@ router5.get("/live-classes/:id", async (req, res) => {
     subjectId: liveClassesTable.subjectId,
     subjectName: subjectsTable.name,
     grade: liveClassesTable.grade,
+    courseId: liveClassesTable.courseId,
     scheduledAt: liveClassesTable.scheduledAt,
     duration: liveClassesTable.duration,
     teacher: liveClassesTable.teacher,
@@ -113671,9 +113793,31 @@ router5.get("/live-classes/:id", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (user.role === "student") {
+    const courseId = cls.courseId;
+    if (!courseId) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+      and(
+        eq(enrollmentsTable.studentId, user.id),
+        eq(enrollmentsTable.courseId, courseId)
+      )
+    ).limit(1);
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+  }
   res.json({ ...cls, scheduledAt: cls.scheduledAt.toISOString(), teacherAvatar: cls.teacherAvatar ?? null, thumbnailUrl: cls.thumbnailUrl ?? null, studentsJoined: cls.studentsJoined ?? 0 });
 });
-router5.post("/live-classes/:id/join", async (req, res) => {
+router5.post("/live-classes/:id/join", attachUser, async (req, res) => {
   const parsed = JoinLiveClassParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -113683,6 +113827,27 @@ router5.post("/live-classes/:id/join", async (req, res) => {
   if (!cls) {
     res.status(404).json({ error: "Not found" });
     return;
+  }
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (user.role === "student") {
+    if (!cls.courseId) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+      and(
+        eq(enrollmentsTable.studentId, user.id),
+        eq(enrollmentsTable.courseId, cls.courseId)
+      )
+    ).limit(1);
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
   }
   res.json({ joinUrl: cls.joinUrl ?? "https://meet.google.com/braintam-live" });
 });
@@ -119720,14 +119885,11 @@ router7.get("/recordings", attachUser, async (req, res) => {
   if (user && user.role === "student") {
     const enrolled = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map((e) => e.courseId);
-    if (enrolledIds.length > 0) {
-      studentFilter = inArray(recordingsTable.courseId, enrolledIds);
-    } else if (user.grade) {
-      studentFilter = eq(recordingsTable.grade, user.grade);
-    } else {
+    if (enrolledIds.length === 0) {
       res.json([]);
       return;
     }
+    studentFilter = inArray(recordingsTable.courseId, enrolledIds);
   }
   const recs = await db.select({
     id: recordingsTable.id,
@@ -119735,6 +119897,7 @@ router7.get("/recordings", attachUser, async (req, res) => {
     subjectId: recordingsTable.subjectId,
     subjectName: subjectsTable.name,
     grade: recordingsTable.grade,
+    courseId: recordingsTable.courseId,
     recordedAt: recordingsTable.recordedAt,
     teacher: recordingsTable.teacher,
     videoUrl: recordingsTable.videoUrl,
@@ -119750,7 +119913,7 @@ router7.get("/recordings", attachUser, async (req, res) => {
   );
   res.json(recs.map((r) => ({ ...r, recordedAt: r.recordedAt.toISOString(), thumbnailUrl: r.thumbnailUrl ?? null, views: r.views ?? 0 })));
 });
-router7.get("/recordings/:id", async (req, res) => {
+router7.get("/recordings/:id", attachUser, async (req, res) => {
   const parsed = GetRecordingParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -119762,6 +119925,7 @@ router7.get("/recordings/:id", async (req, res) => {
     subjectId: recordingsTable.subjectId,
     subjectName: subjectsTable.name,
     grade: recordingsTable.grade,
+    courseId: recordingsTable.courseId,
     recordedAt: recordingsTable.recordedAt,
     teacher: recordingsTable.teacher,
     videoUrl: recordingsTable.videoUrl,
@@ -119772,6 +119936,27 @@ router7.get("/recordings/:id", async (req, res) => {
   if (!rec) {
     res.status(404).json({ error: "Not found" });
     return;
+  }
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (user.role === "student") {
+    if (!rec.courseId) {
+      res.status(403).json({ error: "You do not have access to this recording" });
+      return;
+    }
+    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+      and(
+        eq(enrollmentsTable.studentId, user.id),
+        eq(enrollmentsTable.courseId, rec.courseId)
+      )
+    ).limit(1);
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this recording" });
+      return;
+    }
   }
   res.json({ ...rec, recordedAt: rec.recordedAt.toISOString(), thumbnailUrl: rec.thumbnailUrl ?? null, views: rec.views ?? 0 });
 });
@@ -120030,11 +120215,11 @@ router10.get("/assignments", attachUser, async (req, res) => {
   if (user && user.role === "student") {
     const enrolled = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
     const enrolledIds = enrolled.map((e) => e.courseId);
-    if (enrolledIds.length > 0) {
-      studentFilter = or(inArray(assignmentsTable.courseId, enrolledIds), isNull(assignmentsTable.courseId));
-    } else {
-      studentFilter = isNull(assignmentsTable.courseId);
+    if (enrolledIds.length === 0) {
+      res.json([]);
+      return;
     }
+    studentFilter = inArray(assignmentsTable.courseId, enrolledIds);
   }
   const asgn = await db.select({
     id: assignmentsTable.id,
@@ -120092,6 +120277,27 @@ router10.get("/assignments/:id", attachUser, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (user.role === "student") {
+    if (!asgn.courseId) {
+      res.status(403).json({ error: "You do not have access to this assignment" });
+      return;
+    }
+    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+      and(
+        eq(enrollmentsTable.studentId, user.id),
+        eq(enrollmentsTable.courseId, asgn.courseId)
+      )
+    ).limit(1);
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this assignment" });
+      return;
+    }
+  }
   let submission = { status: "pending", marks: null, feedback: null };
   if (req.authUser) {
     const [sub] = await db.select({ status: assignmentSubmissionsTable.status, marks: assignmentSubmissionsTable.marks, feedback: assignmentSubmissionsTable.feedback }).from(assignmentSubmissionsTable).where(and(eq(assignmentSubmissionsTable.assignmentId, parsed.data.id), eq(assignmentSubmissionsTable.studentId, req.authUser.id)));
@@ -120107,6 +120313,28 @@ router10.post("/assignments/:id/submit", requireAuth, async (req, res) => {
     return;
   }
   const studentId = req.authUser.id;
+  const [assignment] = await db.select({
+    id: assignmentsTable.id,
+    courseId: assignmentsTable.courseId
+  }).from(assignmentsTable).where(eq(assignmentsTable.id, idParsed.data.id)).limit(1);
+  if (!assignment) {
+    res.status(404).json({ error: "Assignment not found" });
+    return;
+  }
+  if (!assignment.courseId) {
+    res.status(403).json({ error: "You do not have access to this assignment" });
+    return;
+  }
+  const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+    and(
+      eq(enrollmentsTable.studentId, studentId),
+      eq(enrollmentsTable.courseId, assignment.courseId)
+    )
+  ).limit(1);
+  if (!access) {
+    res.status(403).json({ error: "You do not have access to this assignment" });
+    return;
+  }
   const [existing] = await db.select({ id: assignmentSubmissionsTable.id }).from(assignmentSubmissionsTable).where(and(eq(assignmentSubmissionsTable.assignmentId, idParsed.data.id), eq(assignmentSubmissionsTable.studentId, studentId)));
   if (existing) {
     res.status(409).json({ error: "Already submitted" });
@@ -120168,7 +120396,7 @@ router11.get("/tests", attachUser, async (req, res) => {
   );
   res.json(tests.map((t) => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), courseId: t.courseId ?? null, testType: t.testType ?? "mcq", driveLink: t.driveLink ?? null, score: null, maxScore: null })));
 });
-router11.get("/tests/:id", async (req, res) => {
+router11.get("/tests/:id", attachUser, async (req, res) => {
   const parsed = GetTestParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -120178,6 +120406,28 @@ router11.get("/tests/:id", async (req, res) => {
   if (!test) {
     res.status(404).json({ error: "Not found" });
     return;
+  }
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (user.role === "student") {
+    const courseId = test.courseId;
+    if (!courseId) {
+      res.status(403).json({ error: "You do not have access to this test" });
+      return;
+    }
+    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+      and(
+        eq(enrollmentsTable.studentId, user.id),
+        eq(enrollmentsTable.courseId, courseId)
+      )
+    ).limit(1);
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this test" });
+      return;
+    }
   }
   const questions = await db.select().from(questionsTable).where(eq(questionsTable.testId, parsed.data.id)).orderBy(questionsTable.order);
   res.json({
@@ -120203,6 +120453,29 @@ router11.post("/tests/:id/submit", requireAuth, async (req, res) => {
     return;
   }
   const studentId = req.authUser.id;
+  const [test] = await db.select({
+    id: testsTable.id,
+    courseId: testsTable.courseId
+  }).from(testsTable).where(eq(testsTable.id, idParsed.data.id)).limit(1);
+  if (!test) {
+    res.status(404).json({ error: "Test not found" });
+    return;
+  }
+  const courseId = test.courseId;
+  if (!courseId) {
+    res.status(403).json({ error: "You do not have access to this test" });
+    return;
+  }
+  const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
+    and(
+      eq(enrollmentsTable.studentId, studentId),
+      eq(enrollmentsTable.courseId, courseId)
+    )
+  ).limit(1);
+  if (!access) {
+    res.status(403).json({ error: "You do not have access to this test" });
+    return;
+  }
   const questions = await db.select().from(questionsTable).where(eq(questionsTable.testId, idParsed.data.id));
   const maxScore = questions.length;
   let correct = 0;
@@ -120234,6 +120507,14 @@ var tests_default = router11;
 // src/routes/student.ts
 var import_express12 = __toESM(require_express2(), 1);
 var router12 = (0, import_express12.Router)();
+function studentDisplayName(student) {
+  const name = student.name?.trim();
+  const isPlaceholder = !name || /^(?:Website Lead|Student)(?: \(Grade \d+\))?$/i.test(name);
+  if (isPlaceholder && student.studentCode) {
+    return student.studentCode;
+  }
+  return name || student.studentCode || `Student ${student.id}`;
+}
 router12.get("/student/dashboard", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
   checkDailyLogin(studentId).catch(() => {
@@ -120259,7 +120540,7 @@ router12.get("/student/dashboard", requireAuth, async (req, res) => {
     ...recentTests.map((t) => ({ id: t.id, type: "test", title: t.title, subjectName: "", createdAt: t.submittedAt.toISOString(), score: t.maxScore && t.maxScore > 0 ? Math.round(t.score / t.maxScore * 100) : null }))
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 7);
   res.json({
-    studentName: student?.name ?? "Student",
+    studentName: student ? studentDisplayName(student) : "Student",
     grade: student?.grade ?? 6,
     points: student?.points ?? 0,
     rank: student?.rank ?? null,
@@ -120320,7 +120601,7 @@ router12.get("/student/profile", requireAuth, async (req, res) => {
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
   res.json({
     id: student.id,
-    name: student.name,
+    name: studentDisplayName(student),
     email: student.email ?? null,
     phone: student.phone ?? null,
     grade: student.grade,
@@ -120360,7 +120641,7 @@ router12.patch("/student/profile", requireAuth, async (req, res) => {
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning();
   res.json({
     id: updated.id,
-    name: updated.name,
+    name: studentDisplayName(updated),
     email: updated.email ?? null,
     phone: updated.phone ?? null,
     grade: updated.grade,
@@ -120453,6 +120734,7 @@ router12.get("/student/leaderboard", async (req, res) => {
   const students = await db.select({
     id: usersTable.id,
     studentName: usersTable.name,
+    studentCode: usersTable.studentCode,
     points: usersTable.points,
     grade: usersTable.grade,
     avatarUrl: usersTable.avatarUrl,
@@ -120462,7 +120744,11 @@ router12.get("/student/leaderboard", async (req, res) => {
   ).orderBy(desc(usersTable.points)).limit(20);
   const ranked = students.map((s2, i) => ({
     rank: i + 1,
-    studentName: s2.studentName,
+    studentName: studentDisplayName({
+      id: s2.id,
+      name: s2.studentName,
+      studentCode: s2.studentCode
+    }),
     points: s2.points,
     grade: s2.grade,
     avatarUrl: s2.avatarUrl ?? null,
@@ -120658,7 +120944,6 @@ var student_default = router12;
 
 // src/routes/admin.ts
 var import_express13 = __toESM(require_express2(), 1);
-import crypto5 from "crypto";
 function computeCrmHealth(s2) {
   const daysSinceLogin = s2.lastLoginDate ? Math.floor((Date.now() - new Date(s2.lastLoginDate).getTime()) / 864e5) : 999;
   const loginScore = daysSinceLogin <= 1 ? 100 : daysSinceLogin <= 3 ? 80 : daysSinceLogin <= 7 ? 60 : 30;
@@ -120677,9 +120962,6 @@ function computeCrmFuStatus(nextFollowUpDate, callStatus) {
 var router13 = (0, import_express13.Router)();
 var adminOnly = requireRole("admin");
 var allStaffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
-function hashPassword2(pw) {
-  return crypto5.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 function generateToken2(userId) {
   return generateAuthToken(userId);
 }
@@ -120838,7 +121120,7 @@ router13.post("/admin/users", adminOnly, async (req, res) => {
     name,
     email: email3 ?? null,
     phone: phone ?? null,
-    passwordHash: password ? hashPassword2(password) : null,
+    passwordHash: password ? hashPassword(password) : null,
     role,
     accountType: accountType ?? defaultAccountType,
     leadStage: leadStage ?? null,
@@ -120876,7 +121158,7 @@ router13.patch("/admin/users/:id", adminOnly, async (req, res) => {
   if (grade !== void 0) updates.grade = grade;
   if (school !== void 0) updates.school = school;
   if (isActive !== void 0) updates.isActive = isActive;
-  if (password !== void 0) updates.passwordHash = hashPassword2(password);
+  if (password !== void 0) updates.passwordHash = hashPassword(password);
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
   if (!updated) {
     res.status(404).json({ error: "User not found" });
@@ -120906,7 +121188,7 @@ router13.post("/admin/users/:id/reset-password", adminOnly, async (req, res) => 
     res.status(400).json({ error: "Password must be at least 6 characters" });
     return;
   }
-  const [updated] = await db.update(usersTable).set({ passwordHash: hashPassword2(String(password)) }).where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name });
+  const [updated] = await db.update(usersTable).set({ passwordHash: hashPassword(String(password)) }).where(eq(usersTable.id, id)).returning({ id: usersTable.id, name: usersTable.name });
   if (!updated) {
     res.status(404).json({ error: "User not found" });
     return;
@@ -122400,11 +122682,11 @@ router13.patch("/admin/me/password", adminOnly, async (req, res) => {
     res.status(404).json({ error: "User not found" });
     return;
   }
-  if (user.passwordHash && user.passwordHash !== hashPassword2(currentPassword)) {
+  if (!verifyPassword(currentPassword, user.passwordHash)) {
     res.status(401).json({ error: "Current password is incorrect" });
     return;
   }
-  await db.update(usersTable).set({ passwordHash: hashPassword2(newPassword) }).where(eq(usersTable.id, adminId));
+  await db.update(usersTable).set({ passwordHash: hashPassword(newPassword) }).where(eq(usersTable.id, adminId));
   await logAudit(
     adminId,
     user.name,
@@ -124701,10 +124983,6 @@ var syllabus_default = router18;
 
 // src/routes/demoBatches.ts
 var import_express19 = __toESM(require_express2(), 1);
-import crypto6 from "crypto";
-function hashPassword3(pw) {
-  return crypto6.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 var router19 = (0, import_express19.Router)();
 var adminOnly4 = requireRole("admin");
 var staffAuth = requireRole("teacher");
@@ -125406,7 +125684,7 @@ router19.post("/admin/demo-batches/:batchId/enrollments/bulk", adminOnly4, async
           name: row.name.trim(),
           email: row.email?.trim() || null,
           phone: row.phone?.trim() || null,
-          passwordHash: hashPassword3(pwd),
+          passwordHash: hashPassword(pwd),
           role: "student",
           accountType: "demo_student",
           grade: row.grade ?? 0
@@ -125577,9 +125855,6 @@ function scheduleDailyQueueReset() {
   setInterval(tick, CHECK_INTERVAL_MS);
   logger.info("Daily 5 AM queue reset job scheduled (checks every minute)");
 }
-
-// src/routes/mentor.ts
-import crypto7 from "crypto";
 
 // src/services/sms.ts
 var FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY;
@@ -125755,9 +126030,6 @@ async function runOverdueFollowUpReminders() {
 }
 
 // src/routes/mentor.ts
-function hashPassword4(pw) {
-  return crypto7.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 var router20 = (0, import_express20.Router)();
 var mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");
 async function getMentorStudentIds(mentorId) {
@@ -126534,7 +126806,7 @@ router20.post("/admin/mentors", adminOnly5, async (req, res) => {
     res.status(400).json({ error: "Email already in use" });
     return;
   }
-  const [mentor] = await db.insert(usersTable).values({ name, email: email3, phone: phone ?? null, role: "mentor", grade: 0, passwordHash: hashPassword4(password), points: 0, streakDays: 0, mentorType: mentorType ?? "academic" }).returning();
+  const [mentor] = await db.insert(usersTable).values({ name, email: email3, phone: phone ?? null, role: "mentor", grade: 0, passwordHash: hashPassword(password), points: 0, streakDays: 0, mentorType: mentorType ?? "academic" }).returning();
   res.status(201).json({ id: mentor.id, name: mentor.name, email: mentor.email, phone: mentor.phone, isActive: mentor.isActive, mentorType: mentor.mentorType, createdAt: mentor.createdAt, studentCount: 0 });
 });
 router20.patch("/admin/mentors/:id", adminOnly5, async (req, res) => {
@@ -126543,7 +126815,7 @@ router20.patch("/admin/mentors/:id", adminOnly5, async (req, res) => {
   const updates = {};
   if (typeof isActive === "boolean") updates.isActive = isActive;
   if (name) updates.name = name;
-  if (password) updates.passwordHash = hashPassword4(password);
+  if (password) updates.passwordHash = hashPassword(password);
   if (phone !== void 0) updates.phone = phone || null;
   let delinkCount = 0;
   if (mentorType) {
@@ -128106,7 +128378,6 @@ var operationsDashboard_default = router24;
 
 // src/routes/superAdmin.ts
 var import_express25 = __toESM(require_express2(), 1);
-import crypto8 from "crypto";
 import fs2 from "fs";
 import path2 from "path";
 var router25 = (0, import_express25.Router)();
@@ -128114,9 +128385,6 @@ var superAdminOnly = requireRole("super_admin");
 var BACKUP_DIR = "/tmp/braintam_backups";
 function ensureBackupDir() {
   if (!fs2.existsSync(BACKUP_DIR)) fs2.mkdirSync(BACKUP_DIR, { recursive: true });
-}
-function hashPassword5(pw) {
-  return crypto8.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 function generateToken3(userId) {
   return generateAuthToken(userId);
@@ -128135,7 +128403,7 @@ router25.post("/superadmin/admins", superAdminOnly, async (req, res) => {
   const [created] = await db.insert(usersTable).values({
     name,
     email: email3,
-    passwordHash: hashPassword5(password),
+    passwordHash: hashPassword(password),
     role: "admin",
     accountType: "admin",
     isActive: true
@@ -128263,7 +128531,7 @@ router25.post("/superadmin/admins/:id/reset-password", superAdminOnly, async (re
     res.status(403).json({ error: "Cannot reset super admin password" });
     return;
   }
-  await db.update(usersTable).set({ passwordHash: hashPassword5(newPassword) }).where(eq(usersTable.id, id));
+  await db.update(usersTable).set({ passwordHash: hashPassword(newPassword) }).where(eq(usersTable.id, id));
   await logFromReq({ req, action: "password_reset", actionLabel: `Reset password for ${target.name}`, category: "system", module: "Users", targetType: "user", targetId: id, targetName: target.name });
   res.json({ ok: true });
 });
@@ -129559,6 +129827,7 @@ async function logLeadAudit(req, action, targetId, targetName, meta) {
 router28.get("/admin/ignite/leads", adminOnly7, async (_req, res) => {
   const leads = await db.select({
     id: usersTable.id,
+    studentCode: usersTable.studentCode,
     name: usersTable.name,
     email: usersTable.email,
     phone: usersTable.phone,
@@ -131333,7 +131602,7 @@ var ignite_default = router28;
 // src/routes/payments.ts
 var import_express29 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
-import crypto9 from "crypto";
+import crypto5 from "crypto";
 
 // src/lib/masteryPaymentComplete.ts
 async function onMasteryPaymentComplete(opts) {
@@ -131503,7 +131772,7 @@ router29.post("/payments/webhook", async (req, res) => {
     res.sendStatus(200);
     return;
   }
-  const expectedSignature = crypto9.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+  const expectedSignature = crypto5.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
   if (expectedSignature !== receivedSignature) {
     await logEnrolmentError({
       errorType: "signature_mismatch",
@@ -131624,6 +131893,7 @@ router29.post("/payments/webhook", async (req, res) => {
     const [student] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
     if (!student) throw new Error("Student not found after insert");
     studentId = student.id;
+    await ensureStudentCode(studentId);
     await db.update(usersTable).set({ accountType: "demo_student", phoneVerified: true }).where(and(eq(usersTable.id, studentId), eq(usersTable.accountType, "lead")));
   } catch (err) {
     await logEnrolmentError({
@@ -131677,6 +131947,17 @@ router29.post("/payments/webhook", async (req, res) => {
   }).where(eq(paymentsTable.razorpayOrderId, orderId));
   res.sendStatus(200);
 });
+async function ensureStudentCode(userId) {
+  const studentCode = `BTL${String(userId).padStart(4, "0")}`;
+  await db.update(usersTable).set({
+    studentCode,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(and(
+    eq(usersTable.id, userId),
+    isNull(usersTable.studentCode)
+  ));
+  return studentCode;
+}
 router29.post("/payments/capture-lead", async (req, res) => {
   const {
     phone: rawPhone,
@@ -131739,9 +132020,15 @@ router29.post("/payments/capture-lead", async (req, res) => {
       points: 0,
       streakDays: 0
     }).returning({ id: usersTable.id });
+    if (!lead) {
+      res.status(500).json({ error: "Unable to create lead." });
+      return;
+    }
+    const studentCode = await ensureStudentCode(lead.id);
     res.status(201).json({
       success: true,
-      leadId: lead?.id,
+      leadId: lead.id,
+      studentCode,
       existing: false
     });
   } catch (err) {
@@ -131845,7 +132132,7 @@ router29.post("/payments/verify-demo-payment", async (req, res) => {
     res.status(503).json({ error: "Payment service misconfigured." });
     return;
   }
-  const expectedSig = crypto9.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+  const expectedSig = crypto5.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
   if (expectedSig !== razorpay_signature) {
     await logEnrolmentError({
       errorType: "verify_signature_mismatch",
@@ -131860,7 +132147,16 @@ router29.post("/payments/verify-demo-payment", async (req, res) => {
   if (existingPayment?.status === "captured") {
     const [existIgnite] = await db.select({ id: ignitePaidStudentsTable.id, studentId: ignitePaidStudentsTable.studentId }).from(ignitePaidStudentsTable).where(eq(ignitePaidStudentsTable.paymentId, existingPayment.id)).limit(1);
     if (existIgnite) {
-      res.json({ success: true, leadId: existIgnite.studentId, paymentId: razorpay_payment_id, grade });
+      const [existingStudent] = await db.select({ passwordHash: usersTable.passwordHash }).from(usersTable).where(eq(usersTable.id, existIgnite.studentId)).limit(1);
+      const needsPasswordSetup2 = !existingStudent?.passwordHash;
+      res.json({
+        success: true,
+        leadId: existIgnite.studentId,
+        paymentId: razorpay_payment_id,
+        grade,
+        needsPasswordSetup: needsPasswordSetup2,
+        setupToken: needsPasswordSetup2 ? generatePasswordSetupToken(existIgnite.studentId, existingPayment.id) : void 0
+      });
       return;
     }
   }
@@ -131902,6 +132198,7 @@ router29.post("/payments/verify-demo-payment", async (req, res) => {
       if (!inserted) throw new Error("Failed to create user");
       studentId = inserted.id;
     }
+    await ensureStudentCode(studentId);
   } catch (err) {
     await logEnrolmentError({
       errorType: "verify_user_create_fail",
@@ -131981,7 +132278,175 @@ router29.post("/payments/verify-demo-payment", async (req, res) => {
     });
   } catch {
   }
-  res.json({ success: true, leadId: studentId, paymentId: razorpay_payment_id, grade });
+  const [setupStudent] = await db.select({ passwordHash: usersTable.passwordHash }).from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+  const needsPasswordSetup = !setupStudent?.passwordHash;
+  res.json({
+    success: true,
+    leadId: studentId,
+    paymentId: razorpay_payment_id,
+    grade,
+    needsPasswordSetup,
+    setupToken: needsPasswordSetup ? generatePasswordSetupToken(studentId, paymentRowId) : void 0
+  });
+});
+router29.post("/payments/verify-full-payment", async (req, res) => {
+  const {
+    razorpay_payment_id,
+    razorpay_order_id,
+    razorpay_signature
+  } = req.body;
+  if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+    res.status(400).json({ error: "Missing payment verification details." });
+    return;
+  }
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "Payment service is not configured." });
+    return;
+  }
+  const expectedSignature = crypto5.createHmac("sha256", secret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+  const expected = Buffer.from(expectedSignature, "utf8");
+  const supplied = Buffer.from(razorpay_signature, "utf8");
+  if (expected.length !== supplied.length || !crypto5.timingSafeEqual(expected, supplied)) {
+    res.status(400).json({ error: "Payment verification failed." });
+    return;
+  }
+  const [payment] = await db.select().from(paymentsTable).where(
+    and(
+      eq(paymentsTable.razorpayOrderId, razorpay_order_id),
+      eq(paymentsTable.paymentType, "full_enrollment")
+    )
+  ).limit(1);
+  if (!payment) {
+    res.status(404).json({ error: "Enrollment payment order not found." });
+    return;
+  }
+  if (payment.status === "captured" && payment.studentId) {
+    const [existingMastery] = await db.select({ id: masteryStudentsTable.id }).from(masteryStudentsTable).where(eq(masteryStudentsTable.studentId, payment.studentId)).limit(1);
+    res.json({
+      success: true,
+      studentId: payment.studentId,
+      masteryStudentId: existingMastery?.id ?? null,
+      alreadyProcessed: true
+    });
+    return;
+  }
+  let razorpay;
+  try {
+    razorpay = getRazorpay();
+  } catch {
+    res.status(503).json({ error: "Payment service is not configured." });
+    return;
+  }
+  try {
+    const rpPayment = await razorpay.payments.fetch(razorpay_payment_id);
+    if (rpPayment.order_id !== razorpay_order_id || rpPayment.status !== "captured") {
+      res.status(409).json({
+        error: "Payment has not been captured yet. Please try again shortly."
+      });
+      return;
+    }
+    if (Number(rpPayment.amount) !== payment.amount) {
+      res.status(409).json({ error: "Payment amount verification failed." });
+      return;
+    }
+  } catch (err) {
+    req.log.error({ err }, "RAZORPAY FULL PAYMENT FETCH ERROR");
+    res.status(502).json({ error: "Unable to confirm payment with Razorpay." });
+    return;
+  }
+  const phone = payment.phone;
+  const grade = payment.grade;
+  if (!phone || !grade) {
+    res.status(500).json({ error: "Enrollment payment details are incomplete." });
+    return;
+  }
+  let [user] = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+  if (!user) {
+    const [created] = await db.insert(usersTable).values({
+      name: `Student (Grade ${grade})`,
+      phone,
+      grade,
+      role: "student",
+      accountType: "paid_student",
+      leadStage: "converted",
+      leadSource: "Website",
+      isWebsiteLead: true,
+      assignmentStatus: "converted",
+      isCurrentWeek: false,
+      points: 0,
+      streakDays: 1
+    }).returning();
+    user = created;
+  } else {
+    const [updated] = await db.update(usersTable).set({
+      grade,
+      accountType: "paid_student",
+      leadStage: "converted",
+      assignmentStatus: "converted",
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(usersTable.id, user.id)).returning();
+    user = updated ?? user;
+  }
+  if (user) {
+    await ensureStudentCode(user.id);
+  }
+  if (!user) {
+    res.status(500).json({ error: "Unable to create student account." });
+    return;
+  }
+  let [masteryStudent] = await db.select().from(masteryStudentsTable).where(eq(masteryStudentsTable.studentId, user.id)).limit(1);
+  const amountRupees = Math.round(payment.amount / 100);
+  if (!masteryStudent) {
+    const year2 = (/* @__PURE__ */ new Date()).getFullYear();
+    [masteryStudent] = await db.insert(masteryStudentsTable).values({
+      studentId: user.id,
+      studentName: user.name,
+      phone,
+      email: user.email ?? null,
+      grade,
+      coursePlan: "Mastery Program",
+      courseDuration: "Full Year",
+      amountPaid: amountRupees,
+      amountPending: 0,
+      paymentStatus: "paid",
+      academicYear: `${year2}-${String(year2 + 1).slice(2)}`,
+      admissionDate: /* @__PURE__ */ new Date(),
+      source: "Website Full Enrollment",
+      masteryStatus: "Pending",
+      isNewAdmission: true
+    }).returning();
+  } else {
+    [masteryStudent] = await db.update(masteryStudentsTable).set({
+      grade,
+      amountPaid: amountRupees,
+      amountPending: 0,
+      paymentStatus: "paid",
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(masteryStudentsTable.id, masteryStudent.id)).returning();
+  }
+  if (!masteryStudent) {
+    res.status(500).json({ error: "Unable to create Mastery enrollment." });
+    return;
+  }
+  await onMasteryPaymentComplete({
+    masteryStudentId: masteryStudent.id,
+    actorId: user.id,
+    actorName: "Website Checkout",
+    amount: amountRupees,
+    eventSource: "payment_link"
+  });
+  await db.update(paymentsTable).set({
+    studentId: user.id,
+    razorpayPaymentId: razorpay_payment_id,
+    razorpaySignature: razorpay_signature,
+    status: "captured"
+  }).where(eq(paymentsTable.id, payment.id));
+  res.json({
+    success: true,
+    studentId: user.id,
+    masteryStudentId: masteryStudent.id
+  });
 });
 var FULL_PROGRAM_NAMES = {
   foundation: "Foundation Program",
@@ -133088,8 +133553,7 @@ router32.post("/admin/cc/teachers", adminOnly10, async (req, res) => {
       return;
     }
     const employeeId = await generateEmployeeId();
-    const { createHash } = await import("crypto");
-    const passwordHash = createHash("sha256").update(password.trim() + "braintam_salt").digest("hex");
+    const passwordHash = hashPassword(password.trim());
     const [teacher] = await db.insert(usersTable).values({
       name: name.trim(),
       email: email3.trim().toLowerCase(),

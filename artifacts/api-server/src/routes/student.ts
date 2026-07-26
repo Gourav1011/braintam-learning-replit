@@ -16,6 +16,24 @@ import { checkDailyLogin } from "../services/pointsService.js";
 
 const router = Router();
 
+function studentDisplayName(student: {
+  id: number;
+  name: string | null;
+  studentCode: string | null;
+}): string {
+  const name = student.name?.trim();
+
+  const isPlaceholder =
+    !name ||
+    /^(?:Website Lead|Student)(?: \(Grade \d+\))?$/i.test(name);
+
+  if (isPlaceholder && student.studentCode) {
+    return student.studentCode;
+  }
+
+  return name || student.studentCode || `Student ${student.id}`;
+}
+
 router.get("/student/dashboard", requireAuth, async (req, res) => {
   const studentId = req.authUser!.id;
   // Fire-and-forget — updates lastLoginDate + streak every unique calendar day.
@@ -89,7 +107,7 @@ router.get("/student/dashboard", requireAuth, async (req, res) => {
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 7);
 
   res.json({
-    studentName: student?.name ?? "Student",
+    studentName: student ? studentDisplayName(student) : "Student",
     grade: student?.grade ?? 6,
     points: student?.points ?? 0,
     rank: student?.rank ?? null,
@@ -172,7 +190,7 @@ router.get("/student/profile", requireAuth, async (req, res) => {
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
   res.json({
     id: student.id,
-    name: student.name,
+    name: studentDisplayName(student),
     email: student.email ?? null,
     phone: student.phone ?? null,
     grade: student.grade,
@@ -213,7 +231,7 @@ router.patch("/student/profile", requireAuth, async (req, res) => {
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId)).returning();
   res.json({
     id: updated.id,
-    name: updated.name,
+    name: studentDisplayName(updated),
     email: updated.email ?? null,
     phone: updated.phone ?? null,
     grade: updated.grade,
@@ -355,6 +373,7 @@ router.get("/student/leaderboard", async (req, res) => {
     .select({
       id: usersTable.id,
       studentName: usersTable.name,
+      studentCode: usersTable.studentCode,
       points: usersTable.points,
       grade: usersTable.grade,
       avatarUrl: usersTable.avatarUrl,
@@ -371,7 +390,11 @@ router.get("/student/leaderboard", async (req, res) => {
 
   const ranked = students.map((s, i) => ({
     rank: i + 1,
-    studentName: s.studentName,
+    studentName: studentDisplayName({
+      id: s.id,
+      name: s.studentName,
+      studentCode: s.studentCode,
+    }),
     points: s.points,
     grade: s.grade,
     avatarUrl: s.avatarUrl ?? null,
