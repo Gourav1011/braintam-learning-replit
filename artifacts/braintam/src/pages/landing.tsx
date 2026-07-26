@@ -469,7 +469,7 @@ function JoinModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                 ))}
               </select>
             </div>
-            <Link href="/sign-up" onClick={handleJoin}>
+            <Link href="/register" onClick={handleJoin}>
               <button className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #e05500)`, boxShadow: `0 0 30px rgba(255,107,26,0.25)` }}>
                 Create Account — Join Free
@@ -679,7 +679,7 @@ export default function LandingPage() {
                 onMouseEnter={e => (e.currentTarget.style.color = TEXT)}
                 onMouseLeave={e => (e.currentTarget.style.color = MUTED)}>Sign in</span>
             </Link>
-            <Link href="/sign-up">
+            <Link href="/register">
               <button className="px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 20px rgba(255,107,26,0.35)` }}>
                 Join Free
@@ -718,7 +718,7 @@ export default function LandingPage() {
               AI-powered live classes, adaptive testing, and curated content for Grades 1–10. Built for results.
             </motion.p>
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3} className="flex flex-wrap gap-3">
-              <Link href="/sign-up">
+              <Link href="/register">
                 <button className="group flex items-center gap-2 px-6 py-3 md:px-7 md:py-3.5 rounded-full font-semibold text-white text-sm transition-all hover:scale-105"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: `0 0 40px rgba(255,107,26,0.35)` }}>
                   Start for free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

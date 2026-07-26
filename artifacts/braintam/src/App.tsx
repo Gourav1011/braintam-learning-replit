@@ -50,6 +50,8 @@ import AdminLoginPage from "@/pages/admin-login";
 import MentorPage from "@/pages/mentor";
 import MentorLoginPage from "@/pages/mentor-login";
 import LoginPage from "@/pages/login";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import RegisterPage from "@/pages/register";
 import EnrollPage from "@/pages/enroll";
 import EnrollFullPage from "@/pages/enroll-full";
 import DownloadAppPage from "@/pages/download-app";
@@ -420,7 +422,8 @@ function Router() {
 
       {/* Custom login page with email/password + forgot password */}
       <Route path="/login" component={LoginPage} />
-      <Route path="/register"><Redirect to="/sign-up" /></Route>
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/register" component={RegisterPage} />
 
       {/* Post-signup onboarding */}
       <Route path="/onboarding" component={OnboardingPage} />

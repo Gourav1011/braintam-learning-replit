@@ -193,7 +193,7 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{" "}
-            <Link href="/sign-up" className="font-semibold hover:underline" style={{ color: ORANGE }}>
+            <Link href="/register" className="font-semibold hover:underline" style={{ color: ORANGE }}>
               Sign up free
             </Link>
           </p>

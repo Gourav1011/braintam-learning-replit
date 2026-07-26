@@ -34,38 +34,72 @@ function userToProfile(u: typeof usersTable.$inferSelect) {
 
 router.post("/auth/register", async (req, res) => {
   const parsed = RegisterBody.safeParse(req.body);
+
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
+    res.status(400).json({
+      error: "Enter your name, 10-digit phone number, grade, and password."
+    });
     return;
   }
-  const { name, email, grade, password } = parsed.data;
-  if (!email) {
-    res.status(400).json({ error: "Email is required" });
+
+  const { name, grade, password } = parsed.data;
+  const phone = parsed.data.phone;
+
+  // RegisterBody validates this as a 10-digit Indian mobile number.
+  // Keep the runtime guard because the workspace package's generated
+  // declaration may still expose phone as nullable until regenerated.
+  if (!phone) {
+    res.status(400).json({ error: "Phone number is required" });
     return;
   }
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.phone, phone))
+    .limit(1);
+
   if (existing.length > 0) {
-    res.status(400).json({ error: "An account with this email already exists" });
+    res.status(409).json({
+      error: "An account with this phone number already exists. Please sign in."
+    });
     return;
   }
-  const [user] = await db.insert(usersTable).values({
-    name,
-    email,
-    phone: null,
-    grade: grade ?? 0,
-    role: "student",
-    // Email/password sign-ups are also website leads — visible in CRM immediately.
-    accountType: "lead",
-    leadStage: "new",
-    leadSource: "Website",
-    isWebsiteLead: true,
-    assignmentStatus: "unassigned",
-    isCurrentWeek: false,
-    passwordHash: password ? hashPassword(password) : null,
-    points: 0,
-    streakDays: 1,
-  }).returning();
-  res.status(201).json({ token: generateToken(user.id), student: userToProfile(user) });
+
+  const [user] = await db
+    .insert(usersTable)
+    .values({
+      name: name.trim(),
+      email: null,
+      phone,
+      grade,
+      role: "student",
+      accountType: "lead",
+      leadStage: "new",
+      leadSource: "Website",
+      isWebsiteLead: true,
+      assignmentStatus: "unassigned",
+      isCurrentWeek: false,
+
+      // We have the phone number, but ownership has not yet been
+      // verified by OTP.
+      phoneVerified: false,
+
+      passwordHash: hashPassword(password),
+      points: 0,
+      streakDays: 1,
+    })
+    .returning();
+
+  if (!user) {
+    res.status(500).json({ error: "Unable to create account" });
+    return;
+  }
+
+  res.status(201).json({
+    token: generateToken(user.id),
+    student: userToProfile(user),
+  });
 });
 
 router.post("/auth/login", async (req, res) => {
