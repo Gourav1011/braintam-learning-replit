@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { testsTable, questionsTable, testSubmissionsTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListTestsQueryParams, GetTestParams, SubmitTestParams, SubmitTestBody } from "@workspace/api-zod";
-import { eq, and, inArray, or, isNull } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { recomputeAndSavePoints } from "../points";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
 
@@ -13,7 +13,7 @@ router.get("/tests", attachUser, async (req, res) => {
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
 
-  let studentFilter: ReturnType<typeof or> | ReturnType<typeof isNull> | undefined;
+  let studentFilter: ReturnType<typeof inArray> | undefined;
   if (user && user.role === "student") {
     const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
       .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
@@ -57,12 +57,43 @@ router.get("/tests", attachUser, async (req, res) => {
   res.json(tests.map(t => ({ ...t, scheduledAt: t.scheduledAt.toISOString(), courseId: t.courseId ?? null, testType: t.testType ?? "mcq", driveLink: t.driveLink ?? null, score: null, maxScore: null })));
 });
 
-router.get("/tests/:id", async (req, res) => {
+router.get("/tests/:id", attachUser, async (req, res) => {
   const parsed = GetTestParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [test] = await db.select().from(testsTable).where(eq(testsTable.id, parsed.data.id));
   if (!test) { res.status(404).json({ error: "Not found" }); return; }
+
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  if (user.role === "student") {
+    const courseId = test.courseId;
+
+    if (!courseId) {
+      res.status(403).json({ error: "You do not have access to this test" });
+      return;
+    }
+
+    const [access] = await db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(
+        and(
+          eq(enrollmentsTable.studentId, user.id),
+          eq(enrollmentsTable.courseId, courseId),
+        )
+      )
+      .limit(1);
+
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this test" });
+      return;
+    }
+  }
 
   const questions = await db.select().from(questionsTable)
     .where(eq(questionsTable.testId, parsed.data.id))
@@ -90,6 +121,43 @@ router.post("/tests/:id/submit", requireAuth, async (req, res) => {
   if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
   const studentId = req.authUser!.id;
+
+  const [test] = await db
+    .select({
+      id: testsTable.id,
+      courseId: testsTable.courseId,
+    })
+    .from(testsTable)
+    .where(eq(testsTable.id, idParsed.data.id))
+    .limit(1);
+
+  if (!test) {
+    res.status(404).json({ error: "Test not found" });
+    return;
+  }
+
+  const courseId = test.courseId;
+
+  if (!courseId) {
+    res.status(403).json({ error: "You do not have access to this test" });
+    return;
+  }
+
+  const [access] = await db
+    .select({ courseId: enrollmentsTable.courseId })
+    .from(enrollmentsTable)
+    .where(
+      and(
+        eq(enrollmentsTable.studentId, studentId),
+        eq(enrollmentsTable.courseId, courseId),
+      )
+    )
+    .limit(1);
+
+  if (!access) {
+    res.status(403).json({ error: "You do not have access to this test" });
+    return;
+  }
 
   const questions = await db.select().from(questionsTable).where(eq(questionsTable.testId, idParsed.data.id));
   const maxScore = questions.length;

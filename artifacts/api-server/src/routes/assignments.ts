@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { assignmentsTable, assignmentSubmissionsTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListAssignmentsQueryParams, GetAssignmentParams, SubmitAssignmentParams, SubmitAssignmentBody } from "@workspace/api-zod";
-import { eq, and, inArray, or, isNull } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { recomputeAndSavePoints } from "../points";
 import { attachUser, requireAuth } from "../middlewares/auth.js";
 
@@ -13,18 +13,22 @@ router.get("/assignments", attachUser, async (req, res) => {
   const params = parsed.success ? parsed.data : {};
   const user = req.authUser;
 
-  let studentFilter: ReturnType<typeof or> | ReturnType<typeof isNull> | undefined;
+  let studentFilter: ReturnType<typeof inArray> | undefined;
   if (user && user.role === "student") {
-    const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
-      .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
+    const enrolled = await db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(eq(enrollmentsTable.studentId, user.id));
+
     const enrolledIds = enrolled.map(e => e.courseId);
-    if (enrolledIds.length > 0) {
-      // Show assignments linked to enrolled courses OR grade-level assignments (no course)
-      studentFilter = or(inArray(assignmentsTable.courseId, enrolledIds), isNull(assignmentsTable.courseId));
-    } else {
-      // Not enrolled in any course — show only grade-level assignments (no course assigned)
-      studentFilter = isNull(assignmentsTable.courseId);
+
+    // Grade alone and course-less assignments never grant student access.
+    if (enrolledIds.length === 0) {
+      res.json([]);
+      return;
     }
+
+    studentFilter = inArray(assignmentsTable.courseId, enrolledIds);
   }
 
   const asgn = await db.select({
@@ -92,6 +96,35 @@ router.get("/assignments/:id", attachUser, async (req, res) => {
 
   if (!asgn) { res.status(404).json({ error: "Not found" }); return; }
 
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  if (user.role === "student") {
+    if (!asgn.courseId) {
+      res.status(403).json({ error: "You do not have access to this assignment" });
+      return;
+    }
+
+    const [access] = await db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(
+        and(
+          eq(enrollmentsTable.studentId, user.id),
+          eq(enrollmentsTable.courseId, asgn.courseId),
+        )
+      )
+      .limit(1);
+
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this assignment" });
+      return;
+    }
+  }
+
   let submission: { status: string; marks: number | null; feedback: string | null } = { status: "pending", marks: null, feedback: null };
   if (req.authUser) {
     const [sub] = await db.select({ status: assignmentSubmissionsTable.status, marks: assignmentSubmissionsTable.marks, feedback: assignmentSubmissionsTable.feedback })
@@ -109,6 +142,41 @@ router.post("/assignments/:id/submit", requireAuth, async (req, res) => {
   if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
   const studentId = req.authUser!.id;
+
+  const [assignment] = await db
+    .select({
+      id: assignmentsTable.id,
+      courseId: assignmentsTable.courseId,
+    })
+    .from(assignmentsTable)
+    .where(eq(assignmentsTable.id, idParsed.data.id))
+    .limit(1);
+
+  if (!assignment) {
+    res.status(404).json({ error: "Assignment not found" });
+    return;
+  }
+
+  if (!assignment.courseId) {
+    res.status(403).json({ error: "You do not have access to this assignment" });
+    return;
+  }
+
+  const [access] = await db
+    .select({ courseId: enrollmentsTable.courseId })
+    .from(enrollmentsTable)
+    .where(
+      and(
+        eq(enrollmentsTable.studentId, studentId),
+        eq(enrollmentsTable.courseId, assignment.courseId),
+      )
+    )
+    .limit(1);
+
+  if (!access) {
+    res.status(403).json({ error: "You do not have access to this assignment" });
+    return;
+  }
 
   const [existing] = await db.select({ id: assignmentSubmissionsTable.id })
     .from(assignmentSubmissionsTable)

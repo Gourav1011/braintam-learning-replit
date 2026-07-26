@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { liveClassesTable, subjectsTable, enrollmentsTable } from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
-import { eq, and, inArray, isNull, or } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
@@ -18,20 +18,24 @@ router.get("/live-classes", attachUser, async (req, res) => {
     return;
   }
 
-  // Students: see (a) classes linked to their enrolled courses, OR
-  //           (b) grade-level classes with no specific course (courseId IS NULL)
-  // Teachers/Admins/Mentors: see all classes (no courseId filter)
-  let studentFilter: ReturnType<typeof or> | undefined;
+  // Students only see live classes belonging to courses in which
+  // they are explicitly enrolled. Grade alone grants no access.
+  // Teachers/Admins/Mentors continue to see all classes.
+  let studentFilter: ReturnType<typeof inArray> | undefined;
   if (user.role === "student") {
-    const enrolled = await db.select({ courseId: enrollmentsTable.courseId })
-      .from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
+    const enrolled = await db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(eq(enrollmentsTable.studentId, user.id));
+
     const enrolledIds = enrolled.map(e => e.courseId);
 
-    // grade-level classes (courseId IS NULL) are visible to any student of that grade
-    const gradeOpenFilter = isNull(liveClassesTable.courseId);
-    studentFilter = enrolledIds.length > 0
-      ? or(inArray(liveClassesTable.courseId, enrolledIds), gradeOpenFilter)
-      : gradeOpenFilter;
+    if (enrolledIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
   }
 
   const classes = await db.select({
@@ -40,6 +44,7 @@ router.get("/live-classes", attachUser, async (req, res) => {
     subjectId: liveClassesTable.subjectId,
     subjectName: subjectsTable.name,
     grade: liveClassesTable.grade,
+    courseId: liveClassesTable.courseId,
     scheduledAt: liveClassesTable.scheduledAt,
     duration: liveClassesTable.duration,
     teacher: liveClassesTable.teacher,
@@ -67,7 +72,7 @@ router.get("/live-classes", attachUser, async (req, res) => {
   })));
 });
 
-router.get("/live-classes/:id", async (req, res) => {
+router.get("/live-classes/:id", attachUser, async (req, res) => {
   const parsed = GetLiveClassParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -77,6 +82,7 @@ router.get("/live-classes/:id", async (req, res) => {
     subjectId: liveClassesTable.subjectId,
     subjectName: subjectsTable.name,
     grade: liveClassesTable.grade,
+    courseId: liveClassesTable.courseId,
     scheduledAt: liveClassesTable.scheduledAt,
     duration: liveClassesTable.duration,
     teacher: liveClassesTable.teacher,
@@ -90,15 +96,76 @@ router.get("/live-classes/:id", async (req, res) => {
     .where(eq(liveClassesTable.id, parsed.data.id));
 
   if (!cls) { res.status(404).json({ error: "Not found" }); return; }
+
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  if (user.role === "student") {
+    const courseId = cls.courseId;
+
+    if (!courseId) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+
+    const [access] = await db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(
+        and(
+          eq(enrollmentsTable.studentId, user.id),
+          eq(enrollmentsTable.courseId, courseId),
+        )
+      )
+      .limit(1);
+
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+  }
+
   res.json({ ...cls, scheduledAt: cls.scheduledAt.toISOString(), teacherAvatar: cls.teacherAvatar ?? null, thumbnailUrl: cls.thumbnailUrl ?? null, studentsJoined: cls.studentsJoined ?? 0 });
 });
 
-router.post("/live-classes/:id/join", async (req, res) => {
+router.post("/live-classes/:id/join", attachUser, async (req, res) => {
   const parsed = JoinLiveClassParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [cls] = await db.select().from(liveClassesTable).where(eq(liveClassesTable.id, parsed.data.id));
   if (!cls) { res.status(404).json({ error: "Not found" }); return; }
+
+  const user = req.authUser;
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  if (user.role === "student") {
+    if (!cls.courseId) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+
+    const [access] = await db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(
+        and(
+          eq(enrollmentsTable.studentId, user.id),
+          eq(enrollmentsTable.courseId, cls.courseId),
+        )
+      )
+      .limit(1);
+
+    if (!access) {
+      res.status(403).json({ error: "You do not have access to this live class" });
+      return;
+    }
+  }
 
   res.json({ joinUrl: cls.joinUrl ?? "https://meet.google.com/braintam-live" });
 });

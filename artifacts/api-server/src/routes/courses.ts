@@ -106,16 +106,27 @@ router.get("/courses/:id", attachUser, async (req, res) => {
       .limit(1);
 
     if (masteryRecord) {
-      // Mastery student — must access their assigned course only
+      // Mastery student — only the specifically assigned Mastery course.
       if (masteryRecord.assignedCourseId !== parsed.data.id) {
         res.status(403).json({ error: "You do not have access to this course" });
         return;
       }
-    } else if (user.grade) {
-      // Non-mastery student — fall back to grade-level check
-      const [course] = await db.select({ grade: coursesTable.grade }).from(coursesTable).where(eq(coursesTable.id, parsed.data.id));
-      if (course && course.grade !== user.grade) {
-        res.status(403).json({ error: "This course is not available for your grade" });
+    } else {
+      // All other students must have an explicit enrollment.
+      // Grade alone never grants course access.
+      const [enrollment] = await db
+        .select({ courseId: enrollmentsTable.courseId })
+        .from(enrollmentsTable)
+        .where(
+          and(
+            eq(enrollmentsTable.studentId, user.id),
+            eq(enrollmentsTable.courseId, parsed.data.id),
+          )
+        )
+        .limit(1);
+
+      if (!enrollment) {
+        res.status(403).json({ error: "You do not have access to this course" });
         return;
       }
     }
