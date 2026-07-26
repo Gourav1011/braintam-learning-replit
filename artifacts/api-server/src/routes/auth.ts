@@ -1,18 +1,17 @@
 import { Router } from "express";
-import { generateAuthToken } from "../lib/auth-token.js";
+import {
+  generateAuthToken,
+  verifyPasswordSetupToken,
+} from "../lib/auth-token.js";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { usersTable, paymentsTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
-import crypto from "crypto";
 import { checkDailyLogin } from "../services/pointsService.js";
 import { logAction } from "../utils/audit.js";
+import { hashPassword, verifyPassword } from "../lib/password.js";
 
 const router = Router();
-
-function hashPassword(pw: string): string {
-  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 
 function generateToken(userId: number): string {
   return generateAuthToken(userId);
@@ -77,18 +76,24 @@ router.post("/auth/login", async (req, res) => {
   }
   const { email, phone, password } = parsed.data;
   if (!email && !phone) {
-    res.status(400).json({ error: "Email is required" });
+    res.status(400).json({ error: "Phone number is required" });
     return;
   }
+
   const users = await db.select().from(usersTable).where(
-    email ? eq(usersTable.email, email) : eq(usersTable.phone, phone!)
+    phone ? eq(usersTable.phone, phone) : eq(usersTable.email, email!)
   ).limit(1);
+
   if (users.length === 0) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
+
   const user = users[0];
-  if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
+
+  // Accounts without a password must never authenticate by supplying
+  // an arbitrary password. An admin must set/reset the password first.
+  if (!verifyPassword(password, user.passwordHash)) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
@@ -152,24 +157,113 @@ router.post("/auth/clerk-sync", async (req, res) => {
   res.status(201).json({ token: generateToken(user.id), student: userToProfile(user) });
 });
 
-router.post("/auth/reset-password-email", async (req, res) => {
-  const { email, phone, newPassword } = req.body;
-  if ((!email && !phone) || !newPassword || newPassword.length < 6) {
-    res.status(400).json({ error: "Email or phone and new password (min 6 chars) required" });
+router.post("/auth/setup-password", async (req, res) => {
+  const setupToken =
+    typeof req.body?.setupToken === "string" ? req.body.setupToken : "";
+  const password =
+    typeof req.body?.password === "string" ? req.body.password : "";
+
+  if (!setupToken) {
+    res.status(400).json({ error: "Password setup token is required" });
     return;
   }
-  const users = await db.select().from(usersTable).where(
-    email ? eq(usersTable.email, email) : eq(usersTable.phone, phone)
-  ).limit(1);
-  if (users.length === 0) {
-    res.status(404).json({ error: "No account found. Please check and try again." });
+
+  if (password.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
     return;
   }
-  const user = users[0];
-  await db.update(usersTable)
-    .set({ passwordHash: hashPassword(newPassword) })
-    .where(eq(usersTable.id, user.id));
-  res.json({ token: generateToken(user.id), student: userToProfile(user) });
+
+  const setup = verifyPasswordSetupToken(setupToken);
+  if (!setup) {
+    res.status(401).json({
+      error: "This password setup link is invalid or has expired."
+    });
+    return;
+  }
+
+  // The setup token is only valid when its captured payment belongs
+  // to the same student encoded in the token.
+  const [payment] = await db
+    .select({
+      id: paymentsTable.id,
+      studentId: paymentsTable.studentId,
+      status: paymentsTable.status,
+    })
+    .from(paymentsTable)
+    .where(
+      and(
+        eq(paymentsTable.id, setup.paymentId),
+        eq(paymentsTable.studentId, setup.userId),
+        eq(paymentsTable.status, "captured"),
+      ),
+    )
+    .limit(1);
+
+  if (!payment) {
+    res.status(403).json({ error: "Payment verification failed" });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, setup.userId))
+    .limit(1);
+
+  if (!user || user.role !== "student") {
+    res.status(404).json({ error: "Student account not found" });
+    return;
+  }
+
+  if (user.isActive === false) {
+    res.status(403).json({ error: "This account has been disabled" });
+    return;
+  }
+
+  // Initial setup only. Never use this endpoint to replace a password.
+  if (user.passwordHash) {
+    res.status(409).json({
+      error: "Password has already been created. Please sign in."
+    });
+    return;
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({
+      passwordHash: hashPassword(password),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(usersTable.id, user.id),
+        isNull(usersTable.passwordHash),
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    res.status(409).json({
+      error: "Password has already been created. Please sign in."
+    });
+    return;
+  }
+
+  checkDailyLogin(updated.id).catch(() => {});
+
+  res.json({
+    success: true,
+    token: generateToken(updated.id),
+    student: userToProfile(updated),
+  });
+});
+
+router.post("/auth/reset-password-email", (_req, res) => {
+  // Public password reset is disabled until an ownership-verification
+  // mechanism (OTP/recovery flow) is implemented.
+  res.status(410).json({
+    error: "Self-service password reset is temporarily unavailable. Please contact support."
+  });
 });
 
 export default router;

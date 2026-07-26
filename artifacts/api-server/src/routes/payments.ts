@@ -15,6 +15,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { onMasteryPaymentComplete } from "../lib/masteryPaymentComplete.js";
 import { assignIgniteBatchAndCourse } from "../lib/assignIgniteBatch.js";
+import { generatePasswordSetupToken } from "../lib/auth-token.js";
 
 const router = Router();
 
@@ -696,7 +697,24 @@ router.post("/payments/verify-demo-payment", async (req, res) => {
       .where(eq(ignitePaidStudentsTable.paymentId, existingPayment.id))
       .limit(1);
     if (existIgnite) {
-      res.json({ success: true, leadId: existIgnite.studentId, paymentId: razorpay_payment_id, grade });
+      const [existingStudent] = await db
+        .select({ passwordHash: usersTable.passwordHash })
+        .from(usersTable)
+        .where(eq(usersTable.id, existIgnite.studentId))
+        .limit(1);
+
+      const needsPasswordSetup = !existingStudent?.passwordHash;
+
+      res.json({
+        success: true,
+        leadId: existIgnite.studentId,
+        paymentId: razorpay_payment_id,
+        grade,
+        needsPasswordSetup,
+        setupToken: needsPasswordSetup
+          ? generatePasswordSetupToken(existIgnite.studentId, existingPayment.id)
+          : undefined,
+      });
       return;
     }
   }
@@ -860,7 +878,24 @@ router.post("/payments/verify-demo-payment", async (req, res) => {
     // Timeline failure is non-fatal
   }
 
-  res.json({ success: true, leadId: studentId, paymentId: razorpay_payment_id, grade });
+  const [setupStudent] = await db
+    .select({ passwordHash: usersTable.passwordHash })
+    .from(usersTable)
+    .where(eq(usersTable.id, studentId))
+    .limit(1);
+
+  const needsPasswordSetup = !setupStudent?.passwordHash;
+
+  res.json({
+    success: true,
+    leadId: studentId,
+    paymentId: razorpay_payment_id,
+    grade,
+    needsPasswordSetup,
+    setupToken: needsPasswordSetup
+      ? generatePasswordSetupToken(studentId, paymentRowId)
+      : undefined,
+  });
 });
 
 // ── POST /api/payments/create-full-order ─────────────────────

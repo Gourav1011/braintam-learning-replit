@@ -9,6 +9,7 @@ import {
   courseSubjectsTable,
 } from "@workspace/db";
 import { requireRole } from "../middlewares/auth.js";
+import { hashPassword } from "../lib/password.js";
 import {
   eq, and, desc, ilike, or, asc, count, isNotNull, gte, lte, inArray,
 } from "drizzle-orm";
@@ -463,8 +464,7 @@ router.post("/admin/cc/teachers", adminOnly, async (req, res) => {
     // Employee ID is system-generated and permanent — never accepted from the client.
     const employeeId = await generateEmployeeId();
 
-    const { createHash } = await import("crypto");
-    const passwordHash = createHash("sha256").update(password.trim() + "braintam_salt").digest("hex");
+    const passwordHash = hashPassword(password.trim());
 
     const [teacher] = await db.insert(usersTable).values({
       name:         name.trim(),

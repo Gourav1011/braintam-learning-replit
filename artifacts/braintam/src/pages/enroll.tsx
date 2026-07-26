@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE } from "@/lib/api-base";
+import { STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 import { CheckCircle2, Shield, Star, ChevronRight, X } from "lucide-react";
 
 import braintamLogoImg from "@assets/logo_transparent-Photoroom_1782323218278.png";
@@ -298,8 +299,75 @@ function BookingModal({ grade, onConfirm, onClose, timer: modalTimer }: {
 const WA_SUPPORT = "918492944473";
 
 // ── Success Screen ───────────────────────────────────────────
-function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
+function SuccessScreen({
+  grade,
+  phone,
+  needsPasswordSetup,
+  setupToken,
+}: {
+  grade: number;
+  phone: string;
+  needsPasswordSetup: boolean;
+  setupToken: string;
+}) {
   const cleanPhone = normalizePhone(phone);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [creatingPassword, setCreatingPassword] = useState(false);
+
+  async function handleCreatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (!setupToken || !needsPasswordSetup) {
+      setPasswordError("Password setup is unavailable. Please contact support.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setCreatingPassword(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/setup-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          setupToken,
+          password,
+        }),
+      });
+
+      const data = await res.json() as {
+        success?: boolean;
+        token?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.success || !data.token) {
+        setPasswordError(data.error ?? "Unable to create password. Please try again.");
+        return;
+      }
+
+      localStorage.setItem(STUDENT_TOKEN_KEY, data.token);
+      window.dispatchEvent(new CustomEvent("braintam:auth_change"));
+      window.location.href = "/dashboard";
+    } catch {
+      setPasswordError("Network error. Please try again.");
+    } finally {
+      setCreatingPassword(false);
+    }
+  }
+
   const waMsg = encodeURIComponent(
     `Hi, I have successfully enrolled in the Braintam Ignite Program and completed my payment.\n\nPhone: ${cleanPhone}\nClass: Class ${grade}\n\nPlease guide me with the class schedule and next steps.`
   );
@@ -327,6 +395,72 @@ function SuccessScreen({ grade, phone }: { grade: number; phone: string }) {
           <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Class: Class {grade}</p>
           <p className="text-sm font-bold flex items-center gap-2 text-green-700">✔ Demo Classes Starting Soon</p>
         </div>
+        {needsPasswordSetup && setupToken ? (
+          <form
+            onSubmit={handleCreatePassword}
+            className="mb-6 rounded-xl border border-gray-200 p-4 text-left"
+          >
+            <h2 className="font-extrabold text-base mb-1" style={{ color: NAVY }}>
+              Create your student login
+            </h2>
+
+            <p className="text-xs text-gray-500 mb-4">
+              Your login ID is <strong>{cleanPhone}</strong>. Create a password to access your classes and dashboard.
+            </p>
+
+            <label className="block text-xs font-bold mb-1" style={{ color: NAVY }}>
+              Create password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              minLength={6}
+              autoComplete="new-password"
+              required
+              placeholder="Minimum 6 characters"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2"
+            />
+
+            <label className="block text-xs font-bold mb-1" style={{ color: NAVY }}>
+              Confirm password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              minLength={6}
+              autoComplete="new-password"
+              required
+              placeholder="Enter password again"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
+            />
+
+            {passwordError && (
+              <p className="text-red-600 text-xs mt-2">{passwordError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={creatingPassword}
+              className="w-full mt-4 py-3 rounded-xl font-extrabold text-white disabled:opacity-60"
+              style={{ background: ORANGE }}
+            >
+              {creatingPassword ? "Creating Account..." : "Create Password & Start Learning"}
+            </button>
+          </form>
+        ) : (
+          <div
+            className="rounded-xl p-4 mb-5 text-sm"
+            style={{ background: "#fff7ed", color: NAVY }}
+          >
+            <strong>Student Login ID: {cleanPhone}</strong>
+            <p className="text-xs mt-1 text-gray-500">
+              Your enrollment is confirmed. If you already created a password, use your phone number to sign in.
+            </p>
+          </div>
+        )}
+
         <p className="text-gray-500 mb-5 text-sm">
           Tap below to receive your class details and next steps.
         </p>
@@ -355,6 +489,8 @@ export default function EnrollPage() {
   const [showModal, setModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmedPhone, setConfirmedPhone] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const razorpayReady         = useRazorpay();
@@ -434,16 +570,28 @@ export default function EnrollPage() {
                 utm_ad: utms.utm_ad || undefined,
               }),
             });
-            const vData = await vRes.json() as { success?: boolean; error?: string };
+            const vData = await vRes.json() as {
+              success?: boolean;
+              error?: string;
+              needsPasswordSetup?: boolean;
+              setupToken?: string;
+            };
             if (vData.success) {
-              setConfirmedPhone(phone); setSuccess(true);
+              setConfirmedPhone(phone);
+              setNeedsPasswordSetup(vData.needsPasswordSetup === true);
+              setSetupToken(vData.setupToken ?? "");
+              setSuccess(true);
             } else {
               setError(vData.error ?? "Payment verification failed. Please contact support.");
               setLoading(false);
             }
           } catch {
-            // Network error during verify — payment was captured; show success anyway
-            setConfirmedPhone(phone); setSuccess(true);
+            // Razorpay may have captured the payment, but without a successful
+            // backend verification response we must not allow password setup.
+            setConfirmedPhone(phone);
+            setNeedsPasswordSetup(false);
+            setSetupToken("");
+            setSuccess(true);
           }
         },
         modal: { ondismiss() { setLoading(false); } },
@@ -455,7 +603,14 @@ export default function EnrollPage() {
     }
   }, [grade, razorpayReady, utms]);
 
-  if (success) return <SuccessScreen grade={grade ?? 0} phone={confirmedPhone} />;
+  if (success) return (
+    <SuccessScreen
+      grade={grade ?? 0}
+      phone={confirmedPhone}
+      needsPasswordSetup={needsPasswordSetup}
+      setupToken={setupToken}
+    />
+  );
 
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: "#f5f7ff" }}>

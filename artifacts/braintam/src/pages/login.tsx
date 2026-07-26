@@ -16,7 +16,7 @@ const perks = [
 ];
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function LoginPage() {
       const res = await fetch(`${BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phone: phone.trim(), password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -123,41 +123,20 @@ export default function LoginPage() {
             <p className="text-gray-500 text-sm">Access your dashboard, classes, and homework.</p>
           </div>
 
-          {/* Google / Clerk sign-in shortcut */}
-          <Link href="/sign-in">
-            <button
-              type="button"
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-xl py-3 px-4 mb-4 text-sm font-semibold hover:bg-gray-50 transition-colors"
-              style={{ color: NAVY }}
-            >
-              <svg width="18" height="18" viewBox="0 0 48 48">
-                <path fill="#4285F4" d="M47.53 24.5c0-1.6-.14-3.14-.4-4.62H24v8.74h13.2a11.3 11.3 0 0 1-4.9 7.4v6.15h7.93c4.64-4.27 7.3-10.57 7.3-17.67z"/>
-                <path fill="#34A853" d="M24 48c6.63 0 12.2-2.2 16.27-5.97l-7.94-6.15c-2.2 1.47-5.02 2.34-8.33 2.34-6.4 0-11.82-4.32-13.76-10.13H2.04v6.35A24 24 0 0 0 24 48z"/>
-                <path fill="#FBBC05" d="M10.24 28.09A14.4 14.4 0 0 1 9.5 24c0-1.42.24-2.8.74-4.09v-6.35H2.04A24 24 0 0 0 0 24c0 3.87.92 7.53 2.04 10.44l8.2-6.35z"/>
-                <path fill="#EA4335" d="M24 9.54c3.6 0 6.83 1.24 9.37 3.67l7.03-7.03C36.2 2.19 30.62 0 24 0A24 24 0 0 0 2.04 13.56l8.2 6.35C12.18 13.86 17.6 9.54 24 9.54z"/>
-              </svg>
-              Continue with Google
-            </button>
-          </Link>
-
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">or sign in with email</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: NAVY }}>
-                Email address
+                Phone number
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                type="tel"
+                inputMode="numeric"
+                value={phone}
+                onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="Enter your 10-digit phone number"
                 required
-                autoComplete="email"
+                pattern="[0-9]{10}"
+                autoComplete="tel"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
                 style={{ color: NAVY, background: "#F8FAFC" }}
                 onFocus={e => (e.currentTarget.style.borderColor = ORANGE)}

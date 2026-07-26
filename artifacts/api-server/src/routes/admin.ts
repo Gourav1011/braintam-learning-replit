@@ -31,15 +31,11 @@ function computeCrmFuStatus(nextFollowUpDate: string | null, callStatus: string 
 }
 import { requireRole } from "../middlewares/auth.js";
 import { logAction, logFromReq } from "../utils/audit.js";
-import crypto from "crypto";
+import { hashPassword, verifyPassword } from "../lib/password.js";
 
 const router = Router();
 const adminOnly = requireRole("admin");
 const allStaffAuth = requireRole("admin", "teacher", "mentor", "sales_mentor", "academic_mentor");
-
-function hashPassword(pw: string): string {
-  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 
 function generateToken(userId: number): string {
   return generateAuthToken(userId);
@@ -1823,7 +1819,7 @@ router.patch("/admin/me/password", adminOnly, async (req, res) => {
   const adminId = req.authUser!.id;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, adminId)).limit(1);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  if (user.passwordHash && user.passwordHash !== hashPassword(currentPassword)) {
+  if (!verifyPassword(currentPassword, user.passwordHash)) {
     res.status(401).json({ error: "Current password is incorrect" });
     return;
   }

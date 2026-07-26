@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { generateAuthToken } from "../lib/auth-token.js";
+import { hashPassword } from "../lib/password.js";
 import { db } from "@workspace/db";
 import {
   usersTable, auditLogsTable, adminPermissionsTable,
@@ -9,7 +10,6 @@ import {
 import { eq, desc, and, gte, lte, or, ilike, sql, inArray, ne } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import { logFromReq } from "../utils/audit.js";
-import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 
@@ -20,10 +20,6 @@ const BACKUP_DIR = "/tmp/braintam_backups";
 
 function ensureBackupDir() {
   if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
-}
-
-function hashPassword(pw: string): string {
-  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
 }
 
 function generateToken(userId: number): string {

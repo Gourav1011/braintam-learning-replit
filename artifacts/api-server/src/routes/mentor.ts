@@ -26,12 +26,8 @@ import {
 import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNull, isNotNull } from "drizzle-orm";
 import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
 import { requireRole } from "../middlewares/auth.js";
-import crypto from "crypto";
+import { hashPassword } from "../lib/password.js";
 import { runOverdueFollowUpReminders } from "../jobs/overdueFollowUpReminders.js";
-
-function hashPassword(pw: string): string {
-  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
 
 const router = Router();
 const mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");

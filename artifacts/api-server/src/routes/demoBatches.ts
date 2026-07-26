@@ -9,11 +9,7 @@ import {
 } from "@workspace/db";
 import { eq, desc, and, sql, count, inArray, or } from "drizzle-orm";
 import { requireRole, requireAuth } from "../middlewares/auth.js";
-import crypto from "crypto";
-
-function hashPassword(pw: string): string {
-  return crypto.createHash("sha256").update(pw + "braintam_salt").digest("hex");
-}
+import { hashPassword } from "../lib/password.js";
 
 const router = Router();
 const adminOnly = requireRole("admin");
