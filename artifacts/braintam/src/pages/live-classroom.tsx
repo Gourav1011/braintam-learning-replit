@@ -3,7 +3,7 @@ import PDFViewer from "@/components/PDFViewer";
 import { useParams } from "wouter";
 import { io, type Socket } from "socket.io-client";
 import { useLiveKit } from "@/hooks/use-livekit";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth, STAFF_TOKEN_KEY, STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 import {
   Users, MessageSquare, BarChart2, Send,
   Trophy, Monitor, Hand, ChevronLeft, ChevronRight, X, Upload, Mic,
@@ -80,10 +80,15 @@ function useClassroomSocket(
     // teacher:joined / chat / poll events to be missed during the reconnect window.
     if (!enabled) return;
 
+    const token =
+      localStorage.getItem(STAFF_TOKEN_KEY) ??
+      localStorage.getItem(STUDENT_TOKEN_KEY);
+
     const s = io({
       path: "/api/socket.io",
       transports: ["websocket", "polling"],
-      query: { sessionId, userId, name, role, groupId: groupId || "", phone: phone || "" },
+      auth: { token },
+      query: { sessionId },
     });
     s.on("connect", () => setConnected(true));
     s.on("disconnect", () => setConnected(false));
@@ -444,16 +449,15 @@ export default function LiveClassroom() {
   // `useAuth()` resolves the real signed-in user (staff token or Clerk-backed student token)
   // and is the primary source for both identity AND role. URL params are last-resort fallback only.
   const { student: authIdentity, role: authRole, isLoading: authLoading } = useAuth();
-  const role          = (authRole ?? search.get("role") ?? "student").toLowerCase();
-  const rawName       = authIdentity?.name ?? search.get("name") ?? "Student";
-  // Staff/mentors get their role prefixed for on-screen display (e.g. "teacher priya", "mentor moses");
-  // students are shown by name only (e.g. "devik manhas").
+
+  // Identity and privileges come only from the authenticated account.
+  // URL parameters must never grant a role or impersonate another user.
+  const role          = (authRole ?? "student").toLowerCase();
+  const rawName       = authIdentity?.name ?? "Student";
   const name          = role === "student" ? rawName : `${role} ${rawName}`;
-  const userId        = authIdentity?.id != null
-    ? String(authIdentity.id)
-    : (search.get("userId") ?? `u-${rawName.toLowerCase().replace(/\s+/g, "-")}`);
+  const userId        = authIdentity?.id != null ? String(authIdentity.id) : "";
   const groupId       = search.get("groupId") ?? "";
-  const phone         = search.get("phone") ?? "";
+  const phone         = authIdentity?.phone ?? "";
   const title         = search.get("title") ?? `Live Class · ${sessionId}`;
   const sessionType   = search.get("type") === "ignite" ? "ignite" : "mastery";
   const meetLink      = search.get("meetLink") ?? "";      // Sprint 2 — Join Meet button
@@ -1331,6 +1335,30 @@ export default function LiveClassroom() {
   }, [myOnStage, isStaff, livekit]);
 
   // All presentations are native PDFs served from /api/slides/ — no iframe viewers.
+
+  // Never render the classroom for an unauthenticated visitor.
+  // A live-class URL identifies the session only; it does not grant access.
+  if (authLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-950 text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <p className="text-gray-400 text-sm">Checking class access…</p>
+      </div>
+    );
+  }
+
+  if (!authIdentity) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-4 bg-gray-950 text-white px-6 text-center" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <h2 className="text-2xl font-bold">Sign in required</h2>
+        <p className="text-gray-400 text-sm max-w-md">
+          Please sign in with your authorised Braintam account to access this live class.
+        </p>
+        <a href="/sign-in" className="px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+          Sign In
+        </a>
+      </div>
+    );
+  }
 
   if (classEnded) {
     const redirectTarget = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";

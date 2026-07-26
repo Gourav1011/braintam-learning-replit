@@ -14,6 +14,8 @@ import {
 } from "@workspace/db";
 import { eq, and, sql, gt, desc } from "drizzle-orm";
 import { updateParticipantPublishPermission, isLiveKitConfigured } from "./lib/livekit.js";
+import { resolveUserFromToken } from "./middlewares/auth.js";
+import { canAccessLiveClass, getAuthorizedGroupId } from "./lib/live-class-access.js";
 
 const STAGE_DURATION_MS = 60_000;
 // timers keyed by `${sessionId}:${studentId}`
@@ -523,18 +525,53 @@ export function setupSocketIO(httpServer: HttpServer) {
   refreshBlockedWords().catch(() => {});
   setInterval(() => refreshBlockedWords().catch(() => {}), 60_000);
 
-  // ── Auth middleware — context from handshake query ──────────
-  io.use((socket, next) => {
-    const q = socket.handshake.query;
-    (socket as any).ctx = {
-      sessionId:  String(q["sessionId"] ?? ""),
-      userId:     String(q["userId"] ?? `anon-${Math.random().toString(36).slice(2)}`),
-      role:       String(q["role"] ?? "student").toLowerCase(),
-      groupId:    q["groupId"] ? String(q["groupId"]) : null,
-      name:       String(q["name"] ?? "Student").slice(0, 50),
-      phone:      q["phone"] ? String(q["phone"]) : null,
-    };
-    next();
+  // ── Auth middleware — identity comes from verified login token ──────────
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+
+      if (typeof token !== "string" || !token) {
+        next(new Error("Unauthorized"));
+        return;
+      }
+
+      const user = await resolveUserFromToken(token);
+
+      if (!user) {
+        next(new Error("Unauthorized"));
+        return;
+      }
+
+      const q = socket.handshake.query;
+      const sessionId = Number(q["sessionId"]);
+
+      if (!Number.isFinite(sessionId)) {
+        next(new Error("Invalid session"));
+        return;
+      }
+
+      const allowed = await canAccessLiveClass(sessionId, user);
+
+      if (!allowed) {
+        next(new Error("Forbidden"));
+        return;
+      }
+
+      const groupId = await getAuthorizedGroupId(sessionId, user);
+
+      (socket as any).ctx = {
+        sessionId: String(sessionId),
+        userId: String(user.id),
+        role: user.role,
+        groupId,
+        name: user.name.slice(0, 50),
+        phone: user.phone,
+      };
+
+      next();
+    } catch {
+      next(new Error("Unauthorized"));
+    }
   });
 
   // ── 5-second backstage sweeper ─────────────────────────────

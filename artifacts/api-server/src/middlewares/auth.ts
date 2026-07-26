@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { verifyAuthToken } from "../lib/auth-token.js";
 
 export type UserRole = "super_admin" | "admin" | "teacher" | "mentor" | "sales_mentor" | "academic_mentor" | "student";
 
@@ -24,20 +25,10 @@ declare global {
 }
 
 function parseToken(token: string): number | null {
-  try {
-    const decoded = Buffer.from(token, "base64").toString("utf-8");
-    const parts = decoded.split(":");
-    const userId = parseInt(parts[0], 10);
-    return isNaN(userId) ? null : userId;
-  } catch {
-    return null;
-  }
+  return verifyAuthToken(token);
 }
 
-async function resolveUser(req: Request): Promise<AuthUser | null> {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return null;
-  const token = header.slice(7);
+export async function resolveUserFromToken(token: string): Promise<AuthUser | null> {
   const userId = parseToken(token);
   if (!userId) return null;
 
@@ -62,6 +53,13 @@ async function resolveUser(req: Request): Promise<AuthUser | null> {
     email: user.email ?? null,
     phone: user.phone ?? null,
   };
+}
+
+export async function resolveUser(req: Request): Promise<AuthUser | null> {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return null;
+
+  return resolveUserFromToken(header.slice(7));
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {

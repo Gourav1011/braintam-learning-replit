@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { generateAuthToken } from "../lib/auth-token.js";
 import { db } from "@workspace/db";
 import {
   usersTable, auditLogsTable, adminPermissionsTable,
@@ -26,7 +27,7 @@ function hashPassword(pw: string): string {
 }
 
 function generateToken(userId: number): string {
-  return Buffer.from(`${userId}:${Date.now()}:braintam`).toString("base64");
+  return generateAuthToken(userId);
 }
 
 // ── Create Admin ────────────────────────────────────────────────────────────
