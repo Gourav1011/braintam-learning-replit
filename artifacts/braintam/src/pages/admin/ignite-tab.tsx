@@ -2131,7 +2131,15 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
                           </span>}
                     </td>
                     {/* Created */}
-                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(l.createdAt)}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(l.createdAt).toLocaleString("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Kolkata",
+})}</td>
                     {/* Actions */}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1">
