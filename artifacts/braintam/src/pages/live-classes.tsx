@@ -214,11 +214,11 @@ function PublicLiveClassesView() {
               Learn live with India's best teachers — ask questions, get instant answers, and watch your scores soar.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href="/sign-up">
+              <Link href="/enroll">
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                   className="px-7 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2"
                   style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 4px 24px rgba(255,107,26,0.45)" }}>
-                  Book FREE Demo Class <ArrowRight className="w-4 h-4" />
+                  Book Ignite Booster Course ₹39 Only <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
               <Link href="/login">
@@ -291,9 +291,9 @@ function PublicLiveClassesView() {
             <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-3"
               style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }}>
               <div className="bt-pulse-scale w-2 h-2 rounded-full bg-red-500" />
-              Upcoming Demo Classes — Open to all
+              Ignite Booster Classes — Open to all
             </span>
-            <h2 className="text-2xl font-black" style={{ color: NAVY }}>Join a FREE Demo Class Today</h2>
+            <h2 className="text-2xl font-black" style={{ color: NAVY }}>Join the Ignite Booster Course</h2>
           </motion.div>
           <div className="space-y-3">
             {DEMO_CLASSES.map((cls, i) => (
@@ -314,11 +314,11 @@ function PublicLiveClassesView() {
                     <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(11,43,107,0.07)", color: NAVY }}>{cls.subject}</span>
                   </div>
                 </div>
-                <Link href="/sign-up">
+                <Link href="/enroll">
                   <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                     className="px-4 py-2 rounded-full text-white text-xs font-bold flex-shrink-0"
                     style={{ background: ORANGE }}>
-                    Book Free Seat
+                    Book Ignite Booster Course ₹39 Only
                   </motion.button>
                 </Link>
               </motion.div>
@@ -392,15 +392,15 @@ function PublicLiveClassesView() {
       <section className="py-16 px-6 text-center" style={{ background: NAVY }}>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <div className="bt-sway text-5xl mb-6">🎓</div>
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Your first class is FREE</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Start with the Ignite Booster Course</h2>
           <p className="text-white/60 mb-8 text-lg max-w-xl mx-auto">
-            430+ structured sessions per grade, every year. No risk, no payment needed.
+            Start your learning journey with Braintam's Ignite Booster Course.
           </p>
-          <Link href="/sign-up">
+          <Link href="/enroll">
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
               className="px-10 py-4 rounded-full font-black text-white text-lg flex items-center gap-2 mx-auto"
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 8px 32px rgba(255,107,26,0.5)" }}>
-              Book My FREE Demo Class <ArrowRight className="w-5 h-5" />
+              Book Ignite Booster Course ₹39 Only <ArrowRight className="w-5 h-5" />
             </motion.button>
           </Link>
         </motion.div>

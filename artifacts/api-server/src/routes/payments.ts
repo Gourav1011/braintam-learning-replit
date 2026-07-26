@@ -898,6 +898,244 @@ router.post("/payments/verify-demo-payment", async (req, res) => {
   });
 });
 
+// ── POST /api/payments/verify-full-payment ──────────────────
+// Verify Razorpay checkout before activating Mastery enrollment.
+router.post("/payments/verify-full-payment", async (req, res) => {
+  const {
+    razorpay_payment_id,
+    razorpay_order_id,
+    razorpay_signature,
+  } = req.body as {
+    razorpay_payment_id?: string;
+    razorpay_order_id?: string;
+    razorpay_signature?: string;
+  };
+
+  if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+    res.status(400).json({ error: "Missing payment verification details." });
+    return;
+  }
+
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "Payment service is not configured." });
+    return;
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+
+  const expected = Buffer.from(expectedSignature, "utf8");
+  const supplied = Buffer.from(razorpay_signature, "utf8");
+
+  if (
+    expected.length !== supplied.length ||
+    !crypto.timingSafeEqual(expected, supplied)
+  ) {
+    res.status(400).json({ error: "Payment verification failed." });
+    return;
+  }
+
+  // The order must have been created by our Full Year checkout.
+  const [payment] = await db
+    .select()
+    .from(paymentsTable)
+    .where(
+      and(
+        eq(paymentsTable.razorpayOrderId, razorpay_order_id),
+        eq(paymentsTable.paymentType, "full_enrollment"),
+      ),
+    )
+    .limit(1);
+
+  if (!payment) {
+    res.status(404).json({ error: "Enrollment payment order not found." });
+    return;
+  }
+
+  // Idempotency: a verified retry must not create another Mastery student.
+  if (payment.status === "captured" && payment.studentId) {
+    const [existingMastery] = await db
+      .select({ id: masteryStudentsTable.id })
+      .from(masteryStudentsTable)
+      .where(eq(masteryStudentsTable.studentId, payment.studentId))
+      .limit(1);
+
+    res.json({
+      success: true,
+      studentId: payment.studentId,
+      masteryStudentId: existingMastery?.id ?? null,
+      alreadyProcessed: true,
+    });
+    return;
+  }
+
+  // Confirm Razorpay itself reports this payment as captured.
+  let razorpay: Razorpay;
+  try {
+    razorpay = getRazorpay();
+  } catch {
+    res.status(503).json({ error: "Payment service is not configured." });
+    return;
+  }
+
+  try {
+    const rpPayment = await razorpay.payments.fetch(razorpay_payment_id);
+
+    if (
+      rpPayment.order_id !== razorpay_order_id ||
+      rpPayment.status !== "captured"
+    ) {
+      res.status(409).json({
+        error: "Payment has not been captured yet. Please try again shortly.",
+      });
+      return;
+    }
+
+    if (Number(rpPayment.amount) !== payment.amount) {
+      res.status(409).json({ error: "Payment amount verification failed." });
+      return;
+    }
+  } catch (err) {
+    req.log.error({ err }, "RAZORPAY FULL PAYMENT FETCH ERROR");
+    res.status(502).json({ error: "Unable to confirm payment with Razorpay." });
+    return;
+  }
+
+  const phone = payment.phone;
+  const grade = payment.grade;
+
+  if (!phone || !grade) {
+    res.status(500).json({ error: "Enrollment payment details are incomplete." });
+    return;
+  }
+
+  // Find the student account created earlier, or create one for this purchase.
+  let [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.phone, phone))
+    .limit(1);
+
+  if (!user) {
+    const [created] = await db
+      .insert(usersTable)
+      .values({
+        name: `Student (Grade ${grade})`,
+        phone,
+        grade,
+        role: "student",
+        accountType: "paid_student",
+        leadStage: "converted",
+        leadSource: "Website",
+        isWebsiteLead: true,
+        assignmentStatus: "converted",
+        isCurrentWeek: false,
+        points: 0,
+        streakDays: 1,
+      })
+      .returning();
+
+    user = created;
+  } else {
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        grade,
+        accountType: "paid_student",
+        leadStage: "converted",
+        assignmentStatus: "converted",
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.id, user.id))
+      .returning();
+
+    user = updated ?? user;
+  }
+
+  if (!user) {
+    res.status(500).json({ error: "Unable to create student account." });
+    return;
+  }
+
+  // Find or create the Mastery CRM student.
+  let [masteryStudent] = await db
+    .select()
+    .from(masteryStudentsTable)
+    .where(eq(masteryStudentsTable.studentId, user.id))
+    .limit(1);
+
+  const amountRupees = Math.round(payment.amount / 100);
+
+  if (!masteryStudent) {
+    const year = new Date().getFullYear();
+
+    [masteryStudent] = await db
+      .insert(masteryStudentsTable)
+      .values({
+        studentId: user.id,
+        studentName: user.name,
+        phone,
+        email: user.email ?? null,
+        grade,
+        coursePlan: "Mastery Program",
+        courseDuration: "Full Year",
+        amountPaid: amountRupees,
+        amountPending: 0,
+        paymentStatus: "paid",
+        academicYear: `${year}-${String(year + 1).slice(2)}`,
+        admissionDate: new Date(),
+        source: "Website Full Enrollment",
+        masteryStatus: "Pending",
+        isNewAdmission: true,
+      })
+      .returning();
+  } else {
+    [masteryStudent] = await db
+      .update(masteryStudentsTable)
+      .set({
+        grade,
+        amountPaid: amountRupees,
+        amountPending: 0,
+        paymentStatus: "paid",
+        updatedAt: new Date(),
+      })
+      .where(eq(masteryStudentsTable.id, masteryStudent.id))
+      .returning();
+  }
+
+  if (!masteryStudent) {
+    res.status(500).json({ error: "Unable to create Mastery enrollment." });
+    return;
+  }
+
+  await onMasteryPaymentComplete({
+    masteryStudentId: masteryStudent.id,
+    actorId: user.id,
+    actorName: "Website Checkout",
+    amount: amountRupees,
+    eventSource: "payment_link",
+  });
+
+  await db
+    .update(paymentsTable)
+    .set({
+      studentId: user.id,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      status: "captured",
+    })
+    .where(eq(paymentsTable.id, payment.id));
+
+  res.json({
+    success: true,
+    studentId: user.id,
+    masteryStudentId: masteryStudent.id,
+  });
+});
+
 // ── POST /api/payments/create-full-order ─────────────────────
 // Self-service full-year course enrollment checkout.
 // program: "foundation" | "mastery" | "elite"

@@ -193,7 +193,50 @@ export default function EnrollFullPage() {
         description: `${data.programName ?? program.name} — Grade ${grade}`,
         prefill: { contact: `91${normalizePhone(phone)}`, name: name.trim() },
         theme: { color: ORANGE },
-        handler() { setConfirmedPhone(normalizePhone(phone)); setSuccess(true); },
+        async handler(response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) {
+          try {
+            const verifyRes = await fetch(
+              `${API_BASE}/api/payments/verify-full-payment`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
+              },
+            );
+
+            const verifyData = await verifyRes.json() as {
+              success?: boolean;
+              studentId?: number;
+              masteryStudentId?: number | null;
+              error?: string;
+            };
+
+            if (!verifyRes.ok || !verifyData.success) {
+              setError(
+                verifyData.error ??
+                  "Payment verification failed. Please contact support.",
+              );
+              setLoading(false);
+              return;
+            }
+
+            setConfirmedPhone(normalizePhone(phone));
+            setSuccess(true);
+          } catch {
+            setError(
+              "Your payment may have succeeded, but enrollment verification could not be completed. Please contact support before making another payment.",
+            );
+            setLoading(false);
+          }
+        },
         modal: { ondismiss() { setLoading(false); } },
       });
       rzp.open();

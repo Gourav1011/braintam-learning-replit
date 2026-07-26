@@ -334,7 +334,7 @@ function FullYearCard({ grade, data, specialty, specialtyIcon, bubbleColor }: {
       </div>
 
       <div className="flex items-center gap-3 relative z-10">
-        <Link href="/sign-up" className="flex-1">
+        <Link href={`/enroll-full?grade=${grade}`} className="flex-1">
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             className="w-full py-3 rounded-xl font-black text-sm border-2 transition-all"
             style={{ borderColor: NAVY, color: NAVY, background: "white" }}>
