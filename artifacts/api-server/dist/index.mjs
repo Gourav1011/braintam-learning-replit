@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-27-1200" : "dev",
-    commit: true ? "e127102" : "unknown",
-    buildTime: true ? "2026-07-27T12:00:10.828Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-27-1222" : "dev",
+    commit: true ? "538067b" : "unknown",
+    buildTime: true ? "2026-07-27T12:22:54.545Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -130050,12 +130050,259 @@ router28.get("/admin/ignite/active-students", adminOnly7, async (_req, res) => {
       gradeCounts[key] = (gradeCounts[key] ?? 0) + 1;
     }
   }
+  const availableBatches = await db.select({
+    id: demoBatchesTable.id,
+    title: demoBatchesTable.title,
+    batchCode: demoBatchesTable.batchCode,
+    grade: demoBatchesTable.grade,
+    status: demoBatchesTable.status,
+    startDate: demoBatchesTable.startDate,
+    endDate: demoBatchesTable.endDate
+  }).from(demoBatchesTable).where(and(
+    eq(demoBatchesTable.isActive, true),
+    or(
+      isNull(demoBatchesTable.startDate),
+      lt(demoBatchesTable.startDate, weekEnd)
+    ),
+    or(
+      isNull(demoBatchesTable.endDate),
+      gte(demoBatchesTable.endDate, weekStart)
+    )
+  )).orderBy(demoBatchesTable.grade, demoBatchesTable.startDate);
   res.json({
     weekStart: weekStart.toISOString(),
     weekEnd: weekEnd.toISOString(),
     total: students.length,
     gradeCounts,
-    students
+    students,
+    availableBatches
+  });
+});
+router28.post("/admin/ignite/active-students/:enrollmentId/change-course", adminOnly7, async (req, res) => {
+  const enrollmentId = Number(req.params.enrollmentId);
+  const destinationBatchId = Number(req.body?.destinationBatchId);
+  if (!Number.isInteger(enrollmentId) || !Number.isInteger(destinationBatchId)) {
+    res.status(400).json({ error: "Valid enrollmentId and destinationBatchId are required" });
+    return;
+  }
+  const [current] = await db.select({
+    enrollmentId: demoBatchEnrollmentsTable.id,
+    studentId: demoBatchEnrollmentsTable.studentId,
+    batchId: demoBatchEnrollmentsTable.batchId,
+    enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+    studentName: usersTable.name,
+    studentGrade: usersTable.grade,
+    sourceTitle: demoBatchesTable.title,
+    sourceGrade: demoBatchesTable.grade
+  }).from(demoBatchEnrollmentsTable).innerJoin(usersTable, eq(usersTable.id, demoBatchEnrollmentsTable.studentId)).innerJoin(demoBatchesTable, eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId)).where(eq(demoBatchEnrollmentsTable.id, enrollmentId)).limit(1);
+  if (!current) {
+    res.status(404).json({ error: "Ignite enrollment not found" });
+    return;
+  }
+  if (current.enrollmentStatus !== "active") {
+    res.status(409).json({ error: "Only active Ignite enrollments can be moved" });
+    return;
+  }
+  if (current.batchId === destinationBatchId) {
+    res.status(400).json({ error: "Student is already attending this batch" });
+    return;
+  }
+  const [destination] = await db.select({
+    id: demoBatchesTable.id,
+    title: demoBatchesTable.title,
+    grade: demoBatchesTable.grade,
+    batchCode: demoBatchesTable.batchCode,
+    isActive: demoBatchesTable.isActive
+  }).from(demoBatchesTable).where(eq(demoBatchesTable.id, destinationBatchId)).limit(1);
+  if (!destination || !destination.isActive) {
+    res.status(404).json({ error: "Destination Ignite batch is not active" });
+    return;
+  }
+  const [existingDestination] = await db.select({ id: demoBatchEnrollmentsTable.id }).from(demoBatchEnrollmentsTable).where(and(
+    eq(demoBatchEnrollmentsTable.studentId, current.studentId),
+    eq(demoBatchEnrollmentsTable.batchId, destinationBatchId)
+  )).limit(1);
+  if (existingDestination) {
+    res.status(409).json({
+      error: "Student already has an enrollment record for the destination batch"
+    });
+    return;
+  }
+  await db.update(demoBatchEnrollmentsTable).set({
+    batchId: destinationBatchId,
+    assignedMentorId: null,
+    assignedMentorName: null
+  }).where(eq(demoBatchEnrollmentsTable.id, enrollmentId));
+  const oldGroups = await db.select({ id: mentorGroupsTable.id }).from(mentorGroupsTable).where(eq(mentorGroupsTable.batchId, current.batchId));
+  if (oldGroups.length > 0) {
+    await db.delete(groupStudentsTable).where(and(
+      inArray(groupStudentsTable.mentorGroupId, oldGroups.map((g) => g.id)),
+      eq(groupStudentsTable.studentId, String(current.studentId))
+    ));
+  }
+  const actor = {
+    id: null,
+    name: "Admin",
+    role: "admin"
+  };
+  await db.insert(studentTimelineTable).values({
+    studentId: current.studentId,
+    createdById: actor.id ?? null,
+    createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin",
+    noteType: "ignite_course_change",
+    actionTaken: "change_course",
+    remark: `Ignite class changed from ${current.sourceTitle}${current.sourceGrade ? ` (Grade ${current.sourceGrade})` : ""} to ${destination.title}${destination.grade ? ` (Grade ${destination.grade})` : ""}. Student profile grade remains ${current.studentGrade ?? "unchanged"}.`
+  });
+  await db.insert(auditLogsTable).values({
+    actorId: actor.id ?? null,
+    actorName: actor.name ?? "Admin",
+    actorRole: actor.role ?? "admin",
+    action: "ignite_change_course",
+    actionLabel: "Change Ignite Course",
+    category: "academic",
+    module: "ignite",
+    targetType: "student",
+    targetId: current.studentId,
+    targetName: current.studentName ?? `Student ${current.studentId}`,
+    beforeValue: {
+      batchId: current.batchId,
+      batchTitle: current.sourceTitle,
+      batchGrade: current.sourceGrade
+    },
+    afterValue: {
+      batchId: destination.id,
+      batchTitle: destination.title,
+      batchGrade: destination.grade
+    }
+  });
+  res.json({
+    ok: true,
+    studentId: current.studentId,
+    enrollmentId,
+    destinationBatchId
+  });
+});
+router28.post("/admin/ignite/active-students/merge", adminOnly7, async (req, res) => {
+  const sourceBatchId = Number(req.body?.sourceBatchId);
+  const destinationBatchId = Number(req.body?.destinationBatchId);
+  const requestedStudentIds = Array.isArray(req.body?.studentIds) ? req.body.studentIds.map(Number).filter(Number.isInteger) : [];
+  if (!Number.isInteger(sourceBatchId) || !Number.isInteger(destinationBatchId)) {
+    res.status(400).json({ error: "sourceBatchId and destinationBatchId are required" });
+    return;
+  }
+  if (sourceBatchId === destinationBatchId) {
+    res.status(400).json({ error: "Source and destination batches must be different" });
+    return;
+  }
+  const batches = await db.select({
+    id: demoBatchesTable.id,
+    title: demoBatchesTable.title,
+    grade: demoBatchesTable.grade,
+    isActive: demoBatchesTable.isActive
+  }).from(demoBatchesTable).where(inArray(demoBatchesTable.id, [sourceBatchId, destinationBatchId]));
+  const source = batches.find((b) => b.id === sourceBatchId);
+  const destination = batches.find((b) => b.id === destinationBatchId);
+  if (!source || !destination) {
+    res.status(404).json({ error: "Source or destination batch not found" });
+    return;
+  }
+  if (!destination.isActive) {
+    res.status(409).json({ error: "Destination batch is not active" });
+    return;
+  }
+  const sourceEnrollments = await db.select({
+    id: demoBatchEnrollmentsTable.id,
+    studentId: demoBatchEnrollmentsTable.studentId,
+    studentName: usersTable.name,
+    studentGrade: usersTable.grade
+  }).from(demoBatchEnrollmentsTable).innerJoin(usersTable, eq(usersTable.id, demoBatchEnrollmentsTable.studentId)).where(and(
+    eq(demoBatchEnrollmentsTable.batchId, sourceBatchId),
+    eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+    ...requestedStudentIds.length ? [inArray(demoBatchEnrollmentsTable.studentId, requestedStudentIds)] : []
+  ));
+  if (sourceEnrollments.length === 0) {
+    res.status(404).json({ error: "No matching active students found in source batch" });
+    return;
+  }
+  const studentIds = sourceEnrollments.map((e) => e.studentId);
+  const existingDestination = await db.select({ studentId: demoBatchEnrollmentsTable.studentId }).from(demoBatchEnrollmentsTable).where(and(
+    eq(demoBatchEnrollmentsTable.batchId, destinationBatchId),
+    inArray(demoBatchEnrollmentsTable.studentId, studentIds)
+  ));
+  const blocked = new Set(existingDestination.map((e) => e.studentId));
+  const movable = sourceEnrollments.filter((e) => !blocked.has(e.studentId));
+  if (movable.length === 0) {
+    res.status(409).json({
+      error: "All selected students already have enrollment history in the destination batch"
+    });
+    return;
+  }
+  const movableIds = movable.map((e) => e.studentId);
+  await db.update(demoBatchEnrollmentsTable).set({
+    batchId: destinationBatchId,
+    assignedMentorId: null,
+    assignedMentorName: null
+  }).where(and(
+    eq(demoBatchEnrollmentsTable.batchId, sourceBatchId),
+    eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+    inArray(demoBatchEnrollmentsTable.studentId, movableIds)
+  ));
+  const sourceGroups = await db.select({ id: mentorGroupsTable.id }).from(mentorGroupsTable).where(eq(mentorGroupsTable.batchId, sourceBatchId));
+  if (sourceGroups.length > 0) {
+    await db.delete(groupStudentsTable).where(and(
+      inArray(groupStudentsTable.mentorGroupId, sourceGroups.map((g) => g.id)),
+      inArray(groupStudentsTable.studentId, movableIds.map(String))
+    ));
+  }
+  const actor = {
+    id: null,
+    name: "Admin",
+    role: "admin"
+  };
+  const timelineRows = movable.map((student) => ({
+    studentId: student.studentId,
+    createdById: actor.id ?? null,
+    createdByName: actor.name ?? "Admin",
+    createdByRole: actor.role ?? "admin",
+    noteType: "ignite_course_merge",
+    actionTaken: "merge_class",
+    remark: `Ignite class moved from ${source.title}${source.grade ? ` (Grade ${source.grade})` : ""} to ${destination.title}${destination.grade ? ` (Grade ${destination.grade})` : ""}. Student profile grade remains ${student.studentGrade ?? "unchanged"}.`
+  }));
+  await db.insert(studentTimelineTable).values(timelineRows);
+  await db.insert(auditLogsTable).values({
+    actorId: actor.id ?? null,
+    actorName: actor.name ?? "Admin",
+    actorRole: actor.role ?? "admin",
+    action: "ignite_merge_class",
+    actionLabel: "Merge Ignite Class",
+    category: "academic",
+    module: "ignite",
+    targetType: "batch",
+    targetId: sourceBatchId,
+    targetName: source.title,
+    beforeValue: {
+      batchId: sourceBatchId,
+      batchTitle: source.title,
+      batchGrade: source.grade
+    },
+    afterValue: {
+      batchId: destinationBatchId,
+      batchTitle: destination.title,
+      batchGrade: destination.grade,
+      movedStudents: movable.length
+    },
+    metadata: JSON.stringify({
+      movedStudentIds: movableIds,
+      skippedStudentIds: [...blocked]
+    })
+  });
+  res.json({
+    ok: true,
+    moved: movable.length,
+    skipped: blocked.size,
+    movedStudentIds: movableIds,
+    skippedStudentIds: [...blocked]
   });
 });
 router28.get("/admin/ignite/demo-students", adminOnly7, async (_req, res) => {

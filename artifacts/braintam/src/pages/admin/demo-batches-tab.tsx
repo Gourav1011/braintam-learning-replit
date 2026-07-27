@@ -69,6 +69,8 @@ interface ActiveIgniteStudent {
   phone: string | null;
   email: string | null;
   grade: number | null;
+  studentGrade: number | null;
+  batchGrade: number | null;
 
   batchId: number;
   batchTitle: string;
@@ -82,12 +84,23 @@ interface ActiveIgniteStudent {
   mentorGroupName: string | null;
 }
 
+interface ActiveIgniteBatchOption {
+  id: number;
+  title: string;
+  batchCode: string | null;
+  grade: number | null;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
 interface ActiveIgniteData {
   weekStart: string;
   weekEnd: string;
   total: number;
   gradeCounts: Record<string, number>;
   students: ActiveIgniteStudent[];
+  availableBatches: ActiveIgniteBatchOption[];
 }
 
 interface MentorTrackingRow {
@@ -164,6 +177,89 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   const [showActiveStudents, setShowActiveStudents] = useState(false);
   const [activeGrade, setActiveGrade] = useState<number | null>(null);
   const [activeStudentSearch, setActiveStudentSearch] = useState("");
+
+  // Active-student class management.
+  const [selectedActiveStudents, setSelectedActiveStudents] = useState<Set<number>>(new Set());
+  const [changeCourseStudent, setChangeCourseStudent] = useState<ActiveIgniteStudent | null>(null);
+  const [destinationBatchId, setDestinationBatchId] = useState("");
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [showMergeClass, setShowMergeClass] = useState(false);
+  const [mergeSourceBatchId, setMergeSourceBatchId] = useState("");
+  const [mergeDestinationBatchId, setMergeDestinationBatchId] = useState("");
+
+  async function changeStudentCourse() {
+    if (!changeCourseStudent || !destinationBatchId) return;
+
+    setTransferBusy(true);
+    try {
+      const response = await apiFetch(
+        `/admin/ignite/active-students/${changeCourseStudent.enrollmentId}/change-course`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destinationBatchId: Number(destinationBatchId),
+          }),
+        },
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        flash(data.error ?? "Unable to change Ignite class", false);
+        return;
+      }
+
+      flash("Student moved to the new Ignite class.");
+      setChangeCourseStudent(null);
+      setDestinationBatchId("");
+      setSelectedActiveStudents(new Set());
+      await loadActiveStudents();
+      await loadBatches();
+    } finally {
+      setTransferBusy(false);
+    }
+  }
+
+  async function mergeIgniteClass() {
+    if (!mergeSourceBatchId || !mergeDestinationBatchId) return;
+
+    const selectedIds = [...selectedActiveStudents];
+
+    setTransferBusy(true);
+    try {
+      const response = await apiFetch("/admin/ignite/active-students/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceBatchId: Number(mergeSourceBatchId),
+          destinationBatchId: Number(mergeDestinationBatchId),
+          studentIds: selectedIds.length > 0 ? selectedIds : undefined,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        flash(data.error ?? "Unable to merge Ignite class", false);
+        return;
+      }
+
+      flash(
+        `Moved ${data.moved ?? 0} student${data.moved === 1 ? "" : "s"}` +
+        `${data.skipped ? ` · ${data.skipped} skipped` : ""}.`,
+      );
+
+      setShowMergeClass(false);
+      setMergeSourceBatchId("");
+      setMergeDestinationBatchId("");
+      setSelectedActiveStudents(new Set());
+      await loadActiveStudents();
+      await loadBatches();
+    } finally {
+      setTransferBusy(false);
+    }
+  }
 
   const loadActiveStudents = useCallback(async () => {
     setActiveStudentsLoading(true);
@@ -787,32 +883,73 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
         </div>
       )}
 
-      {/* Current-week Active Students panel */}
+      {/* Current-week Active Students management panel */}
       {showActiveStudents && (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm mb-4 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
-            <div>
-              <div className="font-bold text-gray-900">Active Students — Current Week</div>
-              <div className="text-[10px] text-gray-400 mt-0.5">
-                Students currently enrolled in Ignite batches running this week
+          <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center"
+                    style={{ background: `${NAVY}12` }}
+                  >
+                    <Users className="w-4 h-4" style={{ color: NAVY }} />
+                  </div>
+                  <div>
+                    <div className="font-black text-gray-900">
+                      Active Students
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      Current week · manage class attendance without changing student grade
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedActiveStudents.size > 0 && (
+                  <span className="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">
+                    {selectedActiveStudents.size} selected
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMergeClass(true);
+                    setMergeSourceBatchId("");
+                    setMergeDestinationBatchId("");
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-bold text-white shadow-sm"
+                  style={{ background: ORANGE }}
+                >
+                  Merge Class
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActiveStudents(false);
+                    setSelectedActiveStudents(new Set());
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setShowActiveStudents(false)}
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
-            >
-              <X className="w-4 h-4 text-gray-500" />
-            </button>
           </div>
 
           <div className="p-4">
-            {/* Grade drill-down */}
+            {/* Grade chips */}
             <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3">
               <button
                 type="button"
-                onClick={() => setActiveGrade(null)}
+                onClick={() => {
+                  setActiveGrade(null);
+                  setSelectedActiveStudents(new Set());
+                }}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${
                   activeGrade === null
                     ? "text-white border-transparent"
@@ -833,7 +970,10 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                   <button
                     type="button"
                     key={grade}
-                    onClick={() => setActiveGrade(selected ? null : grade)}
+                    onClick={() => {
+                      setActiveGrade(selected ? null : grade);
+                      setSelectedActiveStudents(new Set());
+                    }}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${
                       selected
                         ? "text-white border-transparent"
@@ -841,21 +981,27 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                     }`}
                     style={selected ? { background: ORANGE } : {}}
                   >
-                    G{grade} {count}
+                    G{grade} · {count}
                   </button>
                 );
               })}
             </div>
 
-            {/* Student search */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                value={activeStudentSearch}
-                onChange={(e) => setActiveStudentSearch(e.target.value)}
-                placeholder="Search student name, phone, batch, mentor or mentor group..."
-                className="pl-9"
-              />
+            {/* Search + context */}
+            <div className="flex flex-col md:flex-row gap-2 mb-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  value={activeStudentSearch}
+                  onChange={(e) => setActiveStudentSearch(e.target.value)}
+                  placeholder="Search name, phone, batch, mentor or group..."
+                  className="pl-9"
+                />
+              </div>
+
+              <div className="px-3 py-2 rounded-lg bg-gray-50 text-[10px] text-gray-500 flex items-center">
+                Profile grade never changes when moving classes.
+              </div>
             </div>
 
             {activeStudentsLoading ? (
@@ -879,9 +1025,16 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                   student.batchCode,
                   student.mentorName,
                   student.mentorGroupName,
-                  student.grade != null ? String(student.grade) : null,
+                  student.studentGrade != null ? String(student.studentGrade) : null,
+                  student.batchGrade != null ? String(student.batchGrade) : null,
                 ].some((value) => value?.toLowerCase().includes(query));
               });
+
+              const allVisibleSelected =
+                visibleStudents.length > 0 &&
+                visibleStudents.every((student) =>
+                  selectedActiveStudents.has(student.studentId)
+                );
 
               return visibleStudents.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-400">
@@ -890,9 +1043,37 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
               ) : (
                 <div className="border border-gray-100 rounded-xl overflow-x-auto">
                   <table className="w-full text-left">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        {["Student", "Phone", "Grade", "Batch", "Mentor", "Mentor Group"].map((heading) => (
+                        <th className="px-3 py-2 w-8">
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            onChange={(e) => {
+                              setSelectedActiveStudents((previous) => {
+                                const next = new Set(previous);
+
+                                for (const student of visibleStudents) {
+                                  if (e.target.checked) next.add(student.studentId);
+                                  else next.delete(student.studentId);
+                                }
+
+                                return next;
+                              });
+                            }}
+                            className="w-3.5 h-3.5 accent-blue-600"
+                          />
+                        </th>
+
+                        {[
+                          "Student",
+                          "Phone",
+                          "Student Grade",
+                          "Attending Class",
+                          "Mentor",
+                          "Mentor Group",
+                          "Actions",
+                        ].map((heading) => (
                           <th
                             key={heading}
                             className="px-3 py-2 text-[10px] uppercase tracking-wide font-bold text-gray-500 whitespace-nowrap"
@@ -904,60 +1085,334 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
                     </thead>
 
                     <tbody>
-                      {visibleStudents.map((student) => (
-                        <tr
-                          key={student.enrollmentId}
-                          className="border-t border-gray-50 hover:bg-gray-50"
-                        >
-                          <td className="px-3 py-2">
-                            <div className="text-xs font-bold text-gray-800 whitespace-nowrap">
-                              {student.name}
-                            </div>
-                            {student.email && (
-                              <div className="text-[10px] text-gray-400">
-                                {student.email}
+                      {visibleStudents.map((student) => {
+                        const selected = selectedActiveStudents.has(student.studentId);
+                        const crossGrade =
+                          student.studentGrade != null &&
+                          student.batchGrade != null &&
+                          student.studentGrade !== student.batchGrade;
+
+                        return (
+                          <tr
+                            key={student.enrollmentId}
+                            className={`border-t border-gray-50 transition-colors ${
+                              selected ? "bg-blue-50/60" : "hover:bg-gray-50"
+                            }`}
+                          >
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={(e) => {
+                                  setSelectedActiveStudents((previous) => {
+                                    const next = new Set(previous);
+                                    if (e.target.checked) next.add(student.studentId);
+                                    else next.delete(student.studentId);
+                                    return next;
+                                  });
+                                }}
+                                className="w-3.5 h-3.5 accent-blue-600"
+                              />
+                            </td>
+
+                            <td className="px-3 py-2">
+                              <div className="text-xs font-bold text-gray-800 whitespace-nowrap">
+                                {student.name}
                               </div>
-                            )}
-                          </td>
+                              {student.email && (
+                                <div className="text-[10px] text-gray-400 max-w-[180px] truncate">
+                                  {student.email}
+                                </div>
+                              )}
+                            </td>
 
-                          <td className="px-3 py-2 text-xs font-mono text-gray-700 whitespace-nowrap">
-                            {student.phone ?? "–"}
-                          </td>
+                            <td className="px-3 py-2 text-xs font-mono text-gray-700 whitespace-nowrap">
+                              {student.phone ?? "–"}
+                            </td>
 
-                          <td className="px-3 py-2">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
-                              style={{ background: "#EEF2FF", color: NAVY }}
-                            >
-                              {student.grade != null ? `G${student.grade}` : "–"}
-                            </span>
-                          </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className="px-2 py-1 rounded-lg text-[10px] font-black whitespace-nowrap"
+                                style={{ background: "#EEF2FF", color: NAVY }}
+                              >
+                                {student.studentGrade != null
+                                  ? `Grade ${student.studentGrade}`
+                                  : "–"}
+                              </span>
+                            </td>
 
-                          <td className="px-3 py-2">
-                            <div className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                              {student.batchTitle}
-                            </div>
-                            {student.batchCode && (
-                              <div className="text-[10px] font-mono text-gray-400">
-                                {student.batchCode}
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1.5">
+                                <div>
+                                  <div className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                                    {student.batchTitle}
+                                  </div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    {student.batchGrade != null && (
+                                      <span
+                                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                          crossGrade
+                                            ? "bg-amber-100 text-amber-800"
+                                            : "bg-gray-100 text-gray-500"
+                                        }`}
+                                      >
+                                        G{student.batchGrade}
+                                      </span>
+                                    )}
+
+                                    {crossGrade && (
+                                      <span className="text-[9px] font-bold text-amber-700">
+                                        Cross-grade
+                                      </span>
+                                    )}
+
+                                    {student.batchCode && (
+                                      <span className="text-[9px] font-mono text-gray-400">
+                                        {student.batchCode}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                          </td>
+                            </td>
 
-                          <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
-                            {student.mentorName ?? "Unassigned"}
-                          </td>
+                            <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                              {student.mentorName ?? (
+                                <span className="text-amber-600 font-semibold">
+                                  Unassigned
+                                </span>
+                              )}
+                            </td>
 
-                          <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
-                            {student.mentorGroupName ?? "–"}
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                              {student.mentorGroupName ?? "–"}
+                            </td>
+
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setChangeCourseStudent(student);
+                                  setDestinationBatchId("");
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-700 hover:border-blue-300 hover:text-blue-700 whitespace-nowrap"
+                              >
+                                Change Course
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Individual Change Course dialog */}
+      {changeCourseStudent && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <div className="font-black text-gray-900">Change Course</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {changeCourseStudent.name} · Profile Grade {changeCourseStudent.studentGrade ?? "–"}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setChangeCourseStudent(null);
+                  setDestinationBatchId("");
+                }}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 mb-4">
+                <div className="text-[10px] uppercase font-bold text-gray-400">
+                  Currently attending
+                </div>
+                <div className="text-sm font-bold text-gray-800 mt-1">
+                  {changeCourseStudent.batchTitle}
+                  {changeCourseStudent.batchGrade != null
+                    ? ` · Grade ${changeCourseStudent.batchGrade}`
+                    : ""}
+                </div>
+                <div className="text-[10px] text-gray-500 mt-1">
+                  Moving this student will not change their profile grade.
+                </div>
+              </div>
+
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                Destination Ignite Class
+              </label>
+
+              <select
+                value={destinationBatchId}
+                onChange={(e) => setDestinationBatchId(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white"
+              >
+                <option value="">Select destination class</option>
+
+                {(activeStudents?.availableBatches ?? [])
+                  .filter((batch) => batch.id !== changeCourseStudent.batchId)
+                  .map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.grade != null ? `Grade ${batch.grade} · ` : ""}
+                      {batch.title}
+                      {batch.batchCode ? ` · ${batch.batchCode}` : ""}
+                    </option>
+                  ))}
+              </select>
+
+              <div className="flex justify-end gap-2 mt-5">
+                <button
+                  type="button"
+                  disabled={transferBusy}
+                  onClick={() => {
+                    setChangeCourseStudent(null);
+                    setDestinationBatchId("");
+                  }}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!destinationBatchId || transferBusy}
+                  onClick={() => void changeStudentCourse()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+                  style={{ background: NAVY }}
+                >
+                  {transferBusy ? "Moving..." : "Move Student"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Merge Class dialog */}
+      {showMergeClass && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <div className="font-black text-gray-900">Merge Class</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  Move a full class or selected students into another Ignite class
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowMergeClass(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {selectedActiveStudents.size > 0 && (
+                <div className="rounded-xl bg-blue-50 text-blue-800 px-3 py-2 text-xs font-semibold">
+                  {selectedActiveStudents.size} selected student
+                  {selectedActiveStudents.size === 1 ? "" : "s"} will be moved.
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Source Class
+                </label>
+
+                <select
+                  value={mergeSourceBatchId}
+                  onChange={(e) => setMergeSourceBatchId(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white"
+                >
+                  <option value="">Select source class</option>
+
+                  {(activeStudents?.availableBatches ?? []).map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.grade != null ? `Grade ${batch.grade} · ` : ""}
+                      {batch.title}
+                      {batch.batchCode ? ` · ${batch.batchCode}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Destination Class
+                </label>
+
+                <select
+                  value={mergeDestinationBatchId}
+                  onChange={(e) => setMergeDestinationBatchId(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white"
+                >
+                  <option value="">Select destination class</option>
+
+                  {(activeStudents?.availableBatches ?? [])
+                    .filter((batch) => String(batch.id) !== mergeSourceBatchId)
+                    .map((batch) => (
+                      <option key={batch.id} value={batch.id}>
+                        {batch.grade != null ? `Grade ${batch.grade} · ` : ""}
+                        {batch.title}
+                        {batch.batchCode ? ` · ${batch.batchCode}` : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-[11px] text-amber-800">
+                {selectedActiveStudents.size > 0
+                  ? "Only the selected students from the source class will move."
+                  : "No students are selected, so every active student in the source class will move."}
+                {" "}Student profile grades remain unchanged.
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={transferBusy}
+                  onClick={() => setShowMergeClass(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    !mergeSourceBatchId ||
+                    !mergeDestinationBatchId ||
+                    transferBusy
+                  }
+                  onClick={() => void mergeIgniteClass()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+                  style={{ background: ORANGE }}
+                >
+                  {transferBusy
+                    ? "Moving..."
+                    : selectedActiveStudents.size > 0
+                      ? `Move ${selectedActiveStudents.size} Students`
+                      : "Merge Entire Class"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
