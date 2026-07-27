@@ -38495,8 +38495,8 @@ var require_lt = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/lt.js"(exports, module) {
     "use strict";
     var compare = require_compare();
-    var lt5 = (a, b, loose) => compare(a, b, loose) < 0;
-    module.exports = lt5;
+    var lt4 = (a, b, loose) => compare(a, b, loose) < 0;
+    module.exports = lt4;
   }
 });
 
@@ -38525,8 +38525,8 @@ var require_gte = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/gte.js"(exports, module) {
     "use strict";
     var compare = require_compare();
-    var gte8 = (a, b, loose) => compare(a, b, loose) >= 0;
-    module.exports = gte8;
+    var gte7 = (a, b, loose) => compare(a, b, loose) >= 0;
+    module.exports = gte7;
   }
 });
 
@@ -38547,8 +38547,8 @@ var require_cmp = __commonJS({
     var eq2 = require_eq();
     var neq = require_neq();
     var gt2 = require_gt();
-    var gte8 = require_gte();
-    var lt5 = require_lt();
+    var gte7 = require_gte();
+    var lt4 = require_lt();
     var lte4 = require_lte();
     var cmp = (a, op, b, loose) => {
       switch (op) {
@@ -38577,9 +38577,9 @@ var require_cmp = __commonJS({
         case ">":
           return gt2(a, b, loose);
         case ">=":
-          return gte8(a, b, loose);
+          return gte7(a, b, loose);
         case "<":
-          return lt5(a, b, loose);
+          return lt4(a, b, loose);
         case "<=":
           return lte4(a, b, loose);
         default:
@@ -39378,9 +39378,9 @@ var require_outside = __commonJS({
     var Range = require_range2();
     var satisfies = require_satisfies();
     var gt2 = require_gt();
-    var lt5 = require_lt();
+    var lt4 = require_lt();
     var lte4 = require_lte();
-    var gte8 = require_gte();
+    var gte7 = require_gte();
     var outside = (version3, range, hilo, options) => {
       version3 = new SemVer(version3, options);
       range = new Range(range, options);
@@ -39389,13 +39389,13 @@ var require_outside = __commonJS({
         case ">":
           gtfn = gt2;
           ltefn = lte4;
-          ltfn = lt5;
+          ltfn = lt4;
           comp = ">";
           ecomp = ">=";
           break;
         case "<":
-          gtfn = lt5;
-          ltefn = gte8;
+          gtfn = lt4;
+          ltefn = gte7;
           ltfn = gt2;
           comp = "<";
           ecomp = "<=";
@@ -39574,12 +39574,12 @@ var require_subset = __commonJS({
         }
       }
       const eqSet = /* @__PURE__ */ new Set();
-      let gt2, lt5;
+      let gt2, lt4;
       for (const c of sub) {
         if (c.operator === ">" || c.operator === ">=") {
           gt2 = higherGT(gt2, c, options);
         } else if (c.operator === "<" || c.operator === "<=") {
-          lt5 = lowerLT(lt5, c, options);
+          lt4 = lowerLT(lt4, c, options);
         } else {
           eqSet.add(c.semver);
         }
@@ -39588,11 +39588,11 @@ var require_subset = __commonJS({
         return null;
       }
       let gtltComp;
-      if (gt2 && lt5) {
-        gtltComp = compare(gt2.semver, lt5.semver, options);
+      if (gt2 && lt4) {
+        gtltComp = compare(gt2.semver, lt4.semver, options);
         if (gtltComp > 0) {
           return null;
-        } else if (gtltComp === 0 && (gt2.operator !== ">=" || lt5.operator !== "<=")) {
+        } else if (gtltComp === 0 && (gt2.operator !== ">=" || lt4.operator !== "<=")) {
           return null;
         }
       }
@@ -39600,7 +39600,7 @@ var require_subset = __commonJS({
         if (gt2 && !satisfies(eq2, String(gt2), options)) {
           return null;
         }
-        if (lt5 && !satisfies(eq2, String(lt5), options)) {
+        if (lt4 && !satisfies(eq2, String(lt4), options)) {
           return null;
         }
         for (const c of dom) {
@@ -39612,9 +39612,9 @@ var require_subset = __commonJS({
       }
       let higher, lower;
       let hasDomLT, hasDomGT;
-      let needDomLTPre = lt5 && !options.includePrerelease && lt5.semver.prerelease.length ? lt5.semver : false;
+      let needDomLTPre = lt4 && !options.includePrerelease && lt4.semver.prerelease.length ? lt4.semver : false;
       let needDomGTPre = gt2 && !options.includePrerelease && gt2.semver.prerelease.length ? gt2.semver : false;
-      if (needDomLTPre && needDomLTPre.prerelease.length === 1 && lt5.operator === "<" && needDomLTPre.prerelease[0] === 0) {
+      if (needDomLTPre && needDomLTPre.prerelease.length === 1 && lt4.operator === "<" && needDomLTPre.prerelease[0] === 0) {
         needDomLTPre = false;
       }
       for (const c of dom) {
@@ -39635,29 +39635,29 @@ var require_subset = __commonJS({
             return false;
           }
         }
-        if (lt5) {
+        if (lt4) {
           if (needDomLTPre) {
             if (c.semver.prerelease && c.semver.prerelease.length && c.semver.major === needDomLTPre.major && c.semver.minor === needDomLTPre.minor && c.semver.patch === needDomLTPre.patch) {
               needDomLTPre = false;
             }
           }
           if (c.operator === "<" || c.operator === "<=") {
-            lower = lowerLT(lt5, c, options);
-            if (lower === c && lower !== lt5) {
+            lower = lowerLT(lt4, c, options);
+            if (lower === c && lower !== lt4) {
               return false;
             }
-          } else if (lt5.operator === "<=" && !c.test(lt5.semver)) {
+          } else if (lt4.operator === "<=" && !c.test(lt4.semver)) {
             return false;
           }
         }
-        if (!c.operator && (lt5 || gt2) && gtltComp !== 0) {
+        if (!c.operator && (lt4 || gt2) && gtltComp !== 0) {
           return false;
         }
       }
-      if (gt2 && hasDomLT && !lt5 && gtltComp !== 0) {
+      if (gt2 && hasDomLT && !lt4 && gtltComp !== 0) {
         return false;
       }
-      if (lt5 && hasDomGT && !gt2 && gtltComp !== 0) {
+      if (lt4 && hasDomGT && !gt2 && gtltComp !== 0) {
         return false;
       }
       if (needDomGTPre || needDomLTPre) {
@@ -39707,10 +39707,10 @@ var require_semver2 = __commonJS({
     var sort = require_sort();
     var rsort = require_rsort();
     var gt2 = require_gt();
-    var lt5 = require_lt();
+    var lt4 = require_lt();
     var eq2 = require_eq();
     var neq = require_neq();
-    var gte8 = require_gte();
+    var gte7 = require_gte();
     var lte4 = require_lte();
     var cmp = require_cmp();
     var coerce2 = require_coerce();
@@ -39746,10 +39746,10 @@ var require_semver2 = __commonJS({
       sort,
       rsort,
       gt: gt2,
-      lt: lt5,
+      lt: lt4,
       eq: eq2,
       neq,
-      gte: gte8,
+      gte: gte7,
       lte: lte4,
       cmp,
       coerce: coerce2,
@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-27-1138" : "dev",
-    commit: true ? "385206c" : "unknown",
-    buildTime: true ? "2026-07-27T11:38:21.670Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-27-1200" : "dev",
+    commit: true ? "e127102" : "unknown",
+    buildTime: true ? "2026-07-27T12:00:10.828Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -129961,6 +129961,101 @@ router28.get("/admin/ignite/dashboard", adminOnly7, async (_req, res) => {
       overallConversionPct
     },
     topBatches
+  });
+});
+router28.get("/admin/ignite/active-students", adminOnly7, async (_req, res) => {
+  const now = /* @__PURE__ */ new Date();
+  const weekStart = new Date(now);
+  const day2 = weekStart.getDay();
+  const diffToMonday = day2 === 0 ? -6 : 1 - day2;
+  weekStart.setDate(weekStart.getDate() + diffToMonday);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  weekEnd.setMilliseconds(-1);
+  const rows = await db.select({
+    enrollmentId: demoBatchEnrollmentsTable.id,
+    studentId: demoBatchEnrollmentsTable.studentId,
+    enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+    enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+    name: usersTable.name,
+    phone: usersTable.phone,
+    email: usersTable.email,
+    studentGrade: usersTable.grade,
+    batchId: demoBatchesTable.id,
+    batchTitle: demoBatchesTable.title,
+    batchCode: demoBatchesTable.batchCode,
+    batchGrade: demoBatchesTable.grade,
+    batchStatus: demoBatchesTable.status,
+    batchStartDate: demoBatchesTable.startDate,
+    batchEndDate: demoBatchesTable.endDate,
+    assignedMentorId: demoBatchEnrollmentsTable.assignedMentorId,
+    assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName
+  }).from(demoBatchEnrollmentsTable).innerJoin(
+    usersTable,
+    eq(usersTable.id, demoBatchEnrollmentsTable.studentId)
+  ).innerJoin(
+    demoBatchesTable,
+    eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId)
+  ).where(and(
+    eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+    eq(demoBatchesTable.isActive, true),
+    or(
+      isNull(demoBatchesTable.startDate),
+      lt(demoBatchesTable.startDate, weekEnd)
+    ),
+    or(
+      isNull(demoBatchesTable.endDate),
+      gte(demoBatchesTable.endDate, weekStart)
+    )
+  )).orderBy(usersTable.grade, usersTable.name);
+  const batchIds = [...new Set(rows.map((r) => r.batchId))];
+  const mentorGroups = batchIds.length ? await db.select({
+    id: mentorGroupsTable.id,
+    batchId: mentorGroupsTable.batchId,
+    mentorId: mentorGroupsTable.mentorId,
+    mentorName: mentorGroupsTable.mentorName,
+    groupName: mentorGroupsTable.groupName
+  }).from(mentorGroupsTable).where(inArray(mentorGroupsTable.batchId, batchIds)) : [];
+  const groupIds = mentorGroups.map((g) => g.id);
+  const groupStudents = groupIds.length ? await db.select({
+    mentorGroupId: groupStudentsTable.mentorGroupId,
+    studentId: groupStudentsTable.studentId,
+    phone: groupStudentsTable.phone
+  }).from(groupStudentsTable).where(inArray(groupStudentsTable.mentorGroupId, groupIds)) : [];
+  const groupsById = new Map(mentorGroups.map((g) => [g.id, g]));
+  const groupByStudentBatch = /* @__PURE__ */ new Map();
+  for (const gs of groupStudents) {
+    const group = groupsById.get(gs.mentorGroupId);
+    if (!group?.batchId) continue;
+    groupByStudentBatch.set(`${String(gs.studentId)}:${group.batchId}`, group);
+    if (gs.phone) {
+      groupByStudentBatch.set(`phone:${gs.phone}:${group.batchId}`, group);
+    }
+  }
+  const students = rows.map((r) => {
+    const group = groupByStudentBatch.get(`${String(r.studentId)}:${r.batchId}`) ?? (r.phone ? groupByStudentBatch.get(`phone:${r.phone}:${r.batchId}`) : void 0);
+    return {
+      ...r,
+      grade: r.batchGrade ?? r.studentGrade,
+      mentorName: r.assignedMentorName ?? group?.mentorName ?? null,
+      mentorGroupId: group?.id ?? null,
+      mentorGroupName: group?.groupName ?? null
+    };
+  });
+  const gradeCounts = {};
+  for (const student of students) {
+    if (student.grade != null) {
+      const key = String(student.grade);
+      gradeCounts[key] = (gradeCounts[key] ?? 0) + 1;
+    }
+  }
+  res.json({
+    weekStart: weekStart.toISOString(),
+    weekEnd: weekEnd.toISOString(),
+    total: students.length,
+    gradeCounts,
+    students
   });
 });
 router28.get("/admin/ignite/demo-students", adminOnly7, async (_req, res) => {

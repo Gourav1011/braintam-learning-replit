@@ -118,6 +118,148 @@ router.get("/admin/ignite/dashboard", adminOnly, async (_req, res) => {
   });
 });
 
+
+// ── Active Ignite students for the current week ──────────────────────────────
+router.get("/admin/ignite/active-students", adminOnly, async (_req, res) => {
+  const now = new Date();
+
+  // Monday 00:00 -> Sunday 23:59:59.999
+  const weekStart = new Date(now);
+  const day = weekStart.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  weekStart.setDate(weekStart.getDate() + diffToMonday);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  weekEnd.setMilliseconds(-1);
+
+  const rows = await db
+    .select({
+      enrollmentId: demoBatchEnrollmentsTable.id,
+      studentId: demoBatchEnrollmentsTable.studentId,
+      enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+
+      name: usersTable.name,
+      phone: usersTable.phone,
+      email: usersTable.email,
+      studentGrade: usersTable.grade,
+
+      batchId: demoBatchesTable.id,
+      batchTitle: demoBatchesTable.title,
+      batchCode: demoBatchesTable.batchCode,
+      batchGrade: demoBatchesTable.grade,
+      batchStatus: demoBatchesTable.status,
+      batchStartDate: demoBatchesTable.startDate,
+      batchEndDate: demoBatchesTable.endDate,
+
+      assignedMentorId: demoBatchEnrollmentsTable.assignedMentorId,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(
+      usersTable,
+      eq(usersTable.id, demoBatchEnrollmentsTable.studentId),
+    )
+    .innerJoin(
+      demoBatchesTable,
+      eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId),
+    )
+    .where(and(
+      eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+      eq(demoBatchesTable.isActive, true),
+      or(
+        isNull(demoBatchesTable.startDate),
+        lt(demoBatchesTable.startDate, weekEnd),
+      ),
+      or(
+        isNull(demoBatchesTable.endDate),
+        gte(demoBatchesTable.endDate, weekStart),
+      ),
+    ))
+    .orderBy(usersTable.grade, usersTable.name);
+
+  const batchIds = [...new Set(rows.map((r) => r.batchId))];
+
+  const mentorGroups = batchIds.length
+    ? await db
+        .select({
+          id: mentorGroupsTable.id,
+          batchId: mentorGroupsTable.batchId,
+          mentorId: mentorGroupsTable.mentorId,
+          mentorName: mentorGroupsTable.mentorName,
+          groupName: mentorGroupsTable.groupName,
+        })
+        .from(mentorGroupsTable)
+        .where(inArray(mentorGroupsTable.batchId, batchIds))
+    : [];
+
+  const groupIds = mentorGroups.map((g) => g.id);
+
+  const groupStudents = groupIds.length
+    ? await db
+        .select({
+          mentorGroupId: groupStudentsTable.mentorGroupId,
+          studentId: groupStudentsTable.studentId,
+          phone: groupStudentsTable.phone,
+        })
+        .from(groupStudentsTable)
+        .where(inArray(groupStudentsTable.mentorGroupId, groupIds))
+    : [];
+
+  const groupsById = new Map(mentorGroups.map((g) => [g.id, g]));
+
+  const groupByStudentBatch = new Map<string, typeof mentorGroups[number]>();
+
+  for (const gs of groupStudents) {
+    const group = groupsById.get(gs.mentorGroupId);
+    if (!group?.batchId) continue;
+
+    groupByStudentBatch.set(`${String(gs.studentId)}:${group.batchId}`, group);
+
+    if (gs.phone) {
+      groupByStudentBatch.set(`phone:${gs.phone}:${group.batchId}`, group);
+    }
+  }
+
+  const students = rows.map((r) => {
+    const group =
+      groupByStudentBatch.get(`${String(r.studentId)}:${r.batchId}`) ??
+      (r.phone
+        ? groupByStudentBatch.get(`phone:${r.phone}:${r.batchId}`)
+        : undefined);
+
+    return {
+      ...r,
+      grade: r.batchGrade ?? r.studentGrade,
+      mentorName:
+        r.assignedMentorName ??
+        group?.mentorName ??
+        null,
+      mentorGroupId: group?.id ?? null,
+      mentorGroupName: group?.groupName ?? null,
+    };
+  });
+
+  const gradeCounts: Record<string, number> = {};
+
+  for (const student of students) {
+    if (student.grade != null) {
+      const key = String(student.grade);
+      gradeCounts[key] = (gradeCounts[key] ?? 0) + 1;
+    }
+  }
+
+  res.json({
+    weekStart: weekStart.toISOString(),
+    weekEnd: weekEnd.toISOString(),
+    total: students.length,
+    gradeCounts,
+    students,
+  });
+});
+
 router.get("/admin/ignite/demo-students", adminOnly, async (_req, res) => {
   const rows = await db
     .select({

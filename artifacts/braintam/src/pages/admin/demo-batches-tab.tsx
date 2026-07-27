@@ -62,6 +62,34 @@ interface AdminUser {
   role: string; grade: number | null; school: string | null;
 }
 
+interface ActiveIgniteStudent {
+  enrollmentId: number;
+  studentId: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  grade: number | null;
+
+  batchId: number;
+  batchTitle: string;
+  batchCode: string | null;
+  batchStatus: string;
+  batchStartDate: string | null;
+  batchEndDate: string | null;
+
+  mentorName: string | null;
+  mentorGroupId: number | null;
+  mentorGroupName: string | null;
+}
+
+interface ActiveIgniteData {
+  weekStart: string;
+  weekEnd: string;
+  total: number;
+  gradeCounts: Record<string, number>;
+  students: ActiveIgniteStudent[];
+}
+
 interface MentorTrackingRow {
   enrollmentId: number; studentId: number; name: string; grade: number | null;
   school: string | null; city: string | null; phone: string | null;
@@ -129,6 +157,31 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
   const [showAddBatch, setShowAddBatch] = useState(false);
   const [batchForm, setBatchForm] = useState(emptyBatch);
   const [searchQ, setSearchQ] = useState("");
+
+  // Current-week active Ignite students
+  const [activeStudents, setActiveStudents] = useState<ActiveIgniteData | null>(null);
+  const [activeStudentsLoading, setActiveStudentsLoading] = useState(false);
+  const [showActiveStudents, setShowActiveStudents] = useState(false);
+  const [activeGrade, setActiveGrade] = useState<number | null>(null);
+  const [activeStudentSearch, setActiveStudentSearch] = useState("");
+
+  const loadActiveStudents = useCallback(async () => {
+    setActiveStudentsLoading(true);
+    try {
+      const response = await apiFetch("/admin/ignite/active-students");
+      if (!response.ok) throw new Error("Failed to load active students");
+      const data = await response.json() as ActiveIgniteData;
+      setActiveStudents(data);
+    } catch {
+      setActiveStudents(null);
+    } finally {
+      setActiveStudentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadActiveStudents();
+  }, [loadActiveStudents]);
 
   // Detail panel
   const [selectedBatch, setSelectedBatch] = useState<DemoBatch | null>(null);
@@ -687,22 +740,225 @@ export function DemoBatchesTab({ flash }: { flash: (msg: string, ok?: boolean) =
         })}
       </div>
 
-      {/* Summary stats */}
+      {/* Compact summary stats */}
       {batches.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 mb-3">
           {[
             { label: "Total Batches", value: batches.length, icon: "📦", color: NAVY },
             { label: "Total Enrolled", value: batches.reduce((s, b) => s + (b.enrolledCount ?? 0), 0), icon: "👥", color: "#0284C7" },
-            { label: "Active (In Progress)", value: batches.filter(b => b.status === "active" || b.status === "in progress").length, icon: "🔴", color: GREEN },
+            { label: "Active Batches", value: batches.filter(b => b.status === "active" || b.status === "in progress").length, icon: "🔴", color: GREEN },
             { label: "Converted", value: batches.reduce((s, b) => s + (b.convertedCount ?? 0), 0), icon: "🎯", color: GREEN },
             { label: "Dropped", value: batches.reduce((s, b) => s + (b.droppedCount ?? 0), 0), icon: "📉", color: "#DC2626" },
           ].map(c => (
-            <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
-              <div className="text-lg mb-0.5">{c.icon}</div>
-              <div className="text-2xl font-black" style={{ color: c.color }}>{c.value}</div>
-              <div className="text-[10px] text-gray-400 font-medium mt-0.5">{c.label}</div>
+            <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-xl font-black leading-none" style={{ color: c.color }}>{c.value}</div>
+                  <div className="text-[9px] text-gray-400 font-semibold mt-1">{c.label}</div>
+                </div>
+                <div className="text-base">{c.icon}</div>
+              </div>
             </div>
           ))}
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowActiveStudents(true);
+              setActiveGrade(null);
+              setActiveStudentSearch("");
+              void loadActiveStudents();
+            }}
+            className="bg-white rounded-xl border shadow-sm px-3 py-2 text-left hover:shadow-md hover:border-blue-300 transition-all"
+            style={{ borderColor: `${NAVY}30` }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-xl font-black leading-none" style={{ color: NAVY }}>
+                  {activeStudentsLoading ? "…" : activeStudents?.total ?? 0}
+                </div>
+                <div className="text-[9px] font-bold mt-1" style={{ color: NAVY }}>
+                  Active Students
+                </div>
+              </div>
+              <Users className="w-5 h-5" style={{ color: NAVY }} />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Current-week Active Students panel */}
+      {showActiveStudents && (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm mb-4 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+            <div>
+              <div className="font-bold text-gray-900">Active Students — Current Week</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">
+                Students currently enrolled in Ignite batches running this week
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowActiveStudents(false)}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+
+          <div className="p-4">
+            {/* Grade drill-down */}
+            <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setActiveGrade(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${
+                  activeGrade === null
+                    ? "text-white border-transparent"
+                    : "bg-white border-gray-200 text-gray-600"
+                }`}
+                style={activeGrade === null ? { background: NAVY } : {}}
+              >
+                All {activeStudents?.total ?? 0}
+              </button>
+
+              {GRADES.map((grade) => {
+                const count = activeStudents?.gradeCounts[String(grade)] ?? 0;
+                if (!count) return null;
+
+                const selected = activeGrade === grade;
+
+                return (
+                  <button
+                    type="button"
+                    key={grade}
+                    onClick={() => setActiveGrade(selected ? null : grade)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${
+                      selected
+                        ? "text-white border-transparent"
+                        : "bg-white border-gray-200 text-gray-600"
+                    }`}
+                    style={selected ? { background: ORANGE } : {}}
+                  >
+                    G{grade} {count}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Student search */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                value={activeStudentSearch}
+                onChange={(e) => setActiveStudentSearch(e.target.value)}
+                placeholder="Search student name, phone, batch, mentor or mentor group..."
+                className="pl-9"
+              />
+            </div>
+
+            {activeStudentsLoading ? (
+              <div className="py-10 flex items-center justify-center text-sm text-gray-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Loading active students...
+              </div>
+            ) : (() => {
+              const query = activeStudentSearch.trim().toLowerCase();
+
+              const visibleStudents = (activeStudents?.students ?? []).filter((student) => {
+                if (activeGrade !== null && student.grade !== activeGrade) return false;
+
+                if (!query) return true;
+
+                return [
+                  student.name,
+                  student.phone,
+                  student.email,
+                  student.batchTitle,
+                  student.batchCode,
+                  student.mentorName,
+                  student.mentorGroupName,
+                  student.grade != null ? String(student.grade) : null,
+                ].some((value) => value?.toLowerCase().includes(query));
+              });
+
+              return visibleStudents.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-400">
+                  No active Ignite students match this grade/search.
+                </div>
+              ) : (
+                <div className="border border-gray-100 rounded-xl overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {["Student", "Phone", "Grade", "Batch", "Mentor", "Mentor Group"].map((heading) => (
+                          <th
+                            key={heading}
+                            className="px-3 py-2 text-[10px] uppercase tracking-wide font-bold text-gray-500 whitespace-nowrap"
+                          >
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {visibleStudents.map((student) => (
+                        <tr
+                          key={student.enrollmentId}
+                          className="border-t border-gray-50 hover:bg-gray-50"
+                        >
+                          <td className="px-3 py-2">
+                            <div className="text-xs font-bold text-gray-800 whitespace-nowrap">
+                              {student.name}
+                            </div>
+                            {student.email && (
+                              <div className="text-[10px] text-gray-400">
+                                {student.email}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-2 text-xs font-mono text-gray-700 whitespace-nowrap">
+                            {student.phone ?? "–"}
+                          </td>
+
+                          <td className="px-3 py-2">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                              style={{ background: "#EEF2FF", color: NAVY }}
+                            >
+                              {student.grade != null ? `G${student.grade}` : "–"}
+                            </span>
+                          </td>
+
+                          <td className="px-3 py-2">
+                            <div className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                              {student.batchTitle}
+                            </div>
+                            {student.batchCode && (
+                              <div className="text-[10px] font-mono text-gray-400">
+                                {student.batchCode}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                            {student.mentorName ?? "Unassigned"}
+                          </td>
+
+                          <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">
+                            {student.mentorGroupName ?? "–"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
