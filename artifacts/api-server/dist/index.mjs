@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-27-0700" : "dev",
-    commit: true ? "8816c58" : "unknown",
-    buildTime: true ? "2026-07-27T07:00:46.659Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-27-1138" : "dev",
+    commit: true ? "385206c" : "unknown",
+    buildTime: true ? "2026-07-27T11:38:21.670Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -120595,8 +120595,78 @@ router12.get("/student/profile", requireAuth, async (req, res) => {
   }
   const enrolled = await db.select({ grade: coursesTable.grade, courseId: coursesTable.id, courseTitle: coursesTable.title }).from(enrollmentsTable).innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id)).where(eq(enrollmentsTable.studentId, studentId)).limit(6);
   const effectiveGrade = enrolled[0]?.grade ?? student.grade ?? 6;
-  const [demoEnrollRow] = await db.select({ id: demoBatchEnrollmentsTable.id }).from(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.studentId, studentId)).limit(1);
-  const isDemoStudent = !!demoEnrollRow && enrolled.length === 0;
+  const igniteEnrollments = await db.select({
+    batchId: demoBatchEnrollmentsTable.batchId,
+    enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus
+  }).from(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+  const hasMastery = enrolled.length > 0;
+  const now = Date.now();
+  let hasActiveIgnite = false;
+  let hasCompletedIgnite = false;
+  let igniteDay2Reached = false;
+  let activeIgniteBatchId = null;
+  let latestIgniteBatchId = null;
+  let latestIgniteBatchTime = -Infinity;
+  for (const igniteEnrollment of igniteEnrollments) {
+    const [batch] = await db.select({
+      status: demoBatchesTable.status,
+      endDate: demoBatchesTable.endDate
+    }).from(demoBatchesTable).where(eq(demoBatchesTable.id, igniteEnrollment.batchId)).limit(1);
+    if (!batch) continue;
+    const batchEndTime = batch.endDate !== null ? new Date(batch.endDate).getTime() : Number.POSITIVE_INFINITY;
+    const orderingTime = Number.isFinite(batchEndTime) ? batchEndTime : -Infinity;
+    if (latestIgniteBatchId === null || orderingTime > latestIgniteBatchTime) {
+      latestIgniteBatchId = igniteEnrollment.batchId;
+      latestIgniteBatchTime = orderingTime;
+    }
+    const batchEnded = batch.status === "completed" || batch.endDate !== null && new Date(batch.endDate).getTime() < now;
+    const isActive = igniteEnrollment.enrollmentStatus === "active" && !batchEnded;
+    if (isActive) {
+      hasActiveIgnite = true;
+      activeIgniteBatchId ??= igniteEnrollment.batchId;
+      const historicalDay2 = await db.select({ scheduledAt: demoSessionsTable.scheduledAt }).from(demoSessionsTable).where(and(
+        eq(demoSessionsTable.batchId, igniteEnrollment.batchId),
+        eq(demoSessionsTable.dayNumber, 2),
+        eq(demoSessionsTable.isPublished, true)
+      )).limit(1);
+      const liveDay2 = await db.select({ scheduledAt: liveClassesTable.scheduledAt }).from(liveClassesTable).where(and(
+        eq(liveClassesTable.igniteBatchId, igniteEnrollment.batchId),
+        eq(liveClassesTable.classType, "ignite"),
+        eq(liveClassesTable.dayNumber, 2),
+        eq(liveClassesTable.isPublished, true),
+        eq(liveClassesTable.isArchived, false)
+      )).limit(1);
+      const day2Times = [...historicalDay2, ...liveDay2].map((row) => new Date(row.scheduledAt).getTime()).filter(Number.isFinite);
+      if (day2Times.length > 0 && now >= Math.min(...day2Times)) {
+        igniteDay2Reached = true;
+      }
+    } else {
+      hasCompletedIgnite = true;
+    }
+  }
+  const studentPortalState = hasMastery ? "mastery" : hasActiveIgnite ? igniteDay2Reached ? "ignite_day2_plus" : "ignite_before_day2" : hasCompletedIgnite ? "completed_ignite" : "none";
+  const isDemoStudent = studentPortalState === "ignite_before_day2" || studentPortalState === "ignite_day2_plus";
+  let igniteMentor = null;
+  const mentorSourceBatchId = activeIgniteBatchId ?? (studentPortalState === "completed_ignite" ? latestIgniteBatchId : null);
+  if (mentorSourceBatchId !== null) {
+    const [assignment] = await db.select({
+      assignedMentorId: demoBatchEnrollmentsTable.assignedMentorId,
+      assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName
+    }).from(demoBatchEnrollmentsTable).where(and(
+      eq(demoBatchEnrollmentsTable.studentId, studentId),
+      eq(demoBatchEnrollmentsTable.batchId, mentorSourceBatchId)
+    )).limit(1);
+    if (assignment?.assignedMentorId) {
+      const [mentor] = await db.select({
+        name: usersTable.name,
+        phone: usersTable.phone
+      }).from(usersTable).where(eq(usersTable.id, assignment.assignedMentorId)).limit(1);
+      igniteMentor = {
+        name: mentor?.name ?? assignment.assignedMentorName ?? null,
+        phone: mentor?.phone ?? null
+      };
+    }
+  }
   const todayUTC = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
   res.json({
@@ -120617,8 +120687,66 @@ router12.get("/student/profile", requireAuth, async (req, res) => {
     streak: student.streakDays ?? 0,
     dailyLoginClaimed: lastLoginUTC === todayUTC,
     enrolledCourses: enrolled.map((e) => ({ id: e.courseId, title: e.courseTitle })),
-    isDemoStudent
+    isDemoStudent,
+    studentPortalState,
+    igniteMentor
   });
+});
+router12.post("/student/request-mastery-opportunity", requireAuth, async (req, res) => {
+  const studentId = req.authUser.id;
+  const requestType = req.body?.requestType === "enroll" ? "enroll" : "scholarship";
+  const activeEnrollmentRows = await db.select({
+    batchId: demoBatchEnrollmentsTable.batchId,
+    mentorId: demoBatchEnrollmentsTable.assignedMentorId,
+    batchStatus: demoBatchesTable.status,
+    batchEndDate: demoBatchesTable.endDate
+  }).from(demoBatchEnrollmentsTable).innerJoin(
+    demoBatchesTable,
+    eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId)
+  ).where(and(
+    eq(demoBatchEnrollmentsTable.studentId, studentId),
+    eq(demoBatchEnrollmentsTable.enrollmentStatus, "active")
+  ));
+  const requestNow = Date.now();
+  const currentIgniteEnrollment = activeEnrollmentRows.find(
+    (row) => row.batchStatus !== "completed" && (row.batchEndDate === null || new Date(row.batchEndDate).getTime() >= requestNow)
+  );
+  let igniteEnrollment = currentIgniteEnrollment;
+  if (!igniteEnrollment) {
+    const allIgniteRows = await db.select({
+      batchId: demoBatchEnrollmentsTable.batchId,
+      mentorId: demoBatchEnrollmentsTable.assignedMentorId,
+      batchStatus: demoBatchesTable.status,
+      batchEndDate: demoBatchesTable.endDate
+    }).from(demoBatchEnrollmentsTable).innerJoin(
+      demoBatchesTable,
+      eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId)
+    ).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+    const completedRows = allIgniteRows.filter(
+      (row) => row.batchStatus === "completed" || row.batchEndDate !== null && new Date(row.batchEndDate).getTime() < requestNow
+    ).sort((a, b) => {
+      const aTime = a.batchEndDate ? new Date(a.batchEndDate).getTime() : -Infinity;
+      const bTime = b.batchEndDate ? new Date(b.batchEndDate).getTime() : -Infinity;
+      return bTime - aTime;
+    });
+    igniteEnrollment = completedRows[0];
+  }
+  if (!igniteEnrollment) {
+    res.status(409).json({ error: "No Ignite enrollment found for this opportunity." });
+    return;
+  }
+  if (!igniteEnrollment.mentorId) {
+    res.status(409).json({ error: "Mentor not assigned yet. Contact Support." });
+    return;
+  }
+  const [followUp] = await db.insert(mentorFollowUpsTable).values({
+    mentorId: igniteEnrollment.mentorId,
+    studentId,
+    noteType: requestType === "enroll" ? "mastery_enrollment" : "mastery_opportunity",
+    note: requestType === "enroll" ? "Student requested to enroll in Mastery and receive the payment link." : "Student requested to check their Mastery scholarship price.",
+    leadStatus: "Interested"
+  }).returning();
+  res.status(201).json({ ok: true, followUpId: followUp.id });
 });
 router12.patch("/student/profile", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
@@ -129927,6 +130055,33 @@ router28.get("/admin/ignite/leads", adminOnly7, async (_req, res) => {
     inArray(usersTable.accountType, ["lead", "demo_student"]),
     eq(usersTable.isDeleted, false)
   )).orderBy(desc(usersTable.createdAt));
+  const leadIds = leads.map((l) => l.id);
+  const igniteHistory = leadIds.length > 0 ? await db.select({
+    studentId: demoBatchEnrollmentsTable.studentId,
+    batchId: demoBatchEnrollmentsTable.batchId,
+    enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+    enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+    batchStatus: demoBatchesTable.status,
+    batchEndDate: demoBatchesTable.endDate
+  }).from(demoBatchEnrollmentsTable).innerJoin(
+    demoBatchesTable,
+    eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId)
+  ).where(inArray(demoBatchEnrollmentsTable.studentId, leadIds)).orderBy(desc(demoBatchEnrollmentsTable.enrolledAt)) : [];
+  const igniteHistoryMap = /* @__PURE__ */ new Map();
+  for (const enrollment of igniteHistory) {
+    const existing = igniteHistoryMap.get(enrollment.studentId);
+    if (!existing) {
+      igniteHistoryMap.set(enrollment.studentId, {
+        count: 1,
+        latestEnrolledAt: enrollment.enrolledAt,
+        latestEnrollmentStatus: enrollment.enrollmentStatus,
+        latestBatchStatus: enrollment.batchStatus,
+        latestBatchEndDate: enrollment.batchEndDate
+      });
+    } else {
+      existing.count += 1;
+    }
+  }
   const mentorIds = [...new Set(leads.map((l) => l.assignedMentorId).filter(Boolean))];
   const mentorMap = {};
   if (mentorIds.length > 0) {
@@ -129940,11 +130095,21 @@ router28.get("/admin/ignite/leads", adminOnly7, async (_req, res) => {
   notesCounts.forEach((r) => {
     notesMap[r.studentId] = r.cnt;
   });
-  res.json(leads.map((l) => ({
-    ...l,
-    assignedMentorName: l.assignedMentorId ? mentorMap[l.assignedMentorId] ?? null : null,
-    notesCount: notesMap[l.id] ?? 0
-  })));
+  res.json(leads.map((l) => {
+    const history = igniteHistoryMap.get(l.id);
+    const now = Date.now();
+    const latestIgniteCompleted = !!history && (history.latestEnrollmentStatus === "completed" || history.latestEnrollmentStatus === "converted" || history.latestEnrollmentStatus === "dropped" || history.latestBatchStatus === "completed" || history.latestBatchEndDate != null && history.latestBatchEndDate.getTime() < now);
+    return {
+      ...l,
+      assignedMentorName: l.assignedMentorId ? mentorMap[l.assignedMentorId] ?? null : null,
+      notesCount: notesMap[l.id] ?? 0,
+      // Ignite lifecycle metadata used by Admin/Mentor CRM.
+      igniteEnrollmentCount: history?.count ?? 0,
+      igniteRepeated: (history?.count ?? 0) >= 2,
+      latestIgniteEnrolledAt: history?.latestEnrolledAt ?? null,
+      latestIgniteCompleted
+    };
+  }));
 });
 router28.post("/admin/ignite/leads", adminOnly7, async (req, res) => {
   const { name, phone, altPhone, email: email3, parentName, parentPhone, grade, board, school, city, leadSource, notes } = req.body;

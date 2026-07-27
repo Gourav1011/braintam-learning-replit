@@ -227,6 +227,56 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
     ))
     .orderBy(desc(usersTable.createdAt));
 
+  // Load Ignite enrollment history for lead lifecycle classification.
+  // Enrollment count >= 2 permanently marks the student as Repeated.
+  const leadIds = leads.map((l) => l.id);
+
+  const igniteHistory = leadIds.length > 0
+    ? await db
+        .select({
+          studentId: demoBatchEnrollmentsTable.studentId,
+          batchId: demoBatchEnrollmentsTable.batchId,
+          enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+          enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+          batchStatus: demoBatchesTable.status,
+          batchEndDate: demoBatchesTable.endDate,
+        })
+        .from(demoBatchEnrollmentsTable)
+        .innerJoin(
+          demoBatchesTable,
+          eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId),
+        )
+        .where(inArray(demoBatchEnrollmentsTable.studentId, leadIds))
+        .orderBy(desc(demoBatchEnrollmentsTable.enrolledAt))
+    : [];
+
+  type IgniteLeadHistory = {
+    count: number;
+    latestEnrolledAt: Date | null;
+    latestEnrollmentStatus: string | null;
+    latestBatchStatus: string | null;
+    latestBatchEndDate: Date | null;
+  };
+
+  const igniteHistoryMap = new Map<number, IgniteLeadHistory>();
+
+  for (const enrollment of igniteHistory) {
+    const existing = igniteHistoryMap.get(enrollment.studentId);
+
+    if (!existing) {
+      // Query is newest first, so the first row is the latest Ignite attempt.
+      igniteHistoryMap.set(enrollment.studentId, {
+        count: 1,
+        latestEnrolledAt: enrollment.enrolledAt,
+        latestEnrollmentStatus: enrollment.enrollmentStatus,
+        latestBatchStatus: enrollment.batchStatus,
+        latestBatchEndDate: enrollment.batchEndDate,
+      });
+    } else {
+      existing.count += 1;
+    }
+  }
+
   // Bulk-load mentor names
   const mentorIds = [...new Set(leads.map((l) => l.assignedMentorId).filter(Boolean))] as number[];
   const mentorMap: Record<number, string> = {};
@@ -244,11 +294,33 @@ router.get("/admin/ignite/leads", adminOnly, async (_req, res) => {
   const notesMap: Record<number, number> = {};
   notesCounts.forEach((r) => { notesMap[r.studentId] = r.cnt; });
 
-  res.json(leads.map((l) => ({
-    ...l,
-    assignedMentorName: l.assignedMentorId ? (mentorMap[l.assignedMentorId] ?? null) : null,
-    notesCount: notesMap[l.id] ?? 0,
-  })));
+  res.json(leads.map((l) => {
+    const history = igniteHistoryMap.get(l.id);
+    const now = Date.now();
+
+    const latestIgniteCompleted = !!history && (
+      history.latestEnrollmentStatus === "completed" ||
+      history.latestEnrollmentStatus === "converted" ||
+      history.latestEnrollmentStatus === "dropped" ||
+      history.latestBatchStatus === "completed" ||
+      (
+        history.latestBatchEndDate != null &&
+        history.latestBatchEndDate.getTime() < now
+      )
+    );
+
+    return {
+      ...l,
+      assignedMentorName: l.assignedMentorId ? (mentorMap[l.assignedMentorId] ?? null) : null,
+      notesCount: notesMap[l.id] ?? 0,
+
+      // Ignite lifecycle metadata used by Admin/Mentor CRM.
+      igniteEnrollmentCount: history?.count ?? 0,
+      igniteRepeated: (history?.count ?? 0) >= 2,
+      latestIgniteEnrolledAt: history?.latestEnrolledAt ?? null,
+      latestIgniteCompleted,
+    };
+  }));
 });
 
 // ── POST /admin/ignite/leads — create ─────────────────────────────────────────

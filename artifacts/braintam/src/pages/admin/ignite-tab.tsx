@@ -825,6 +825,12 @@ interface LeadRow {
   isWebsiteLead: boolean;
   utmSource: string | null; utmCampaign: string | null;
   utmAdset: string | null; utmAd: string | null;
+
+  // Ignite lifecycle.
+  igniteEnrollmentCount: number;
+  igniteRepeated: boolean;
+  latestIgniteEnrolledAt: string | null;
+  latestIgniteCompleted: boolean;
 }
 
 function leadDisplayName(lead: LeadRow): string {
@@ -854,6 +860,20 @@ const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   converted:         { bg: "#DCFCE7", text: "#15803D" },
   dropped:           { bg: "#F3F4F6", text: "#6B7280" },
 };
+
+function RepeatedBadge({ repeated }: { repeated: boolean }) {
+  if (!repeated) return null;
+
+  return (
+    <span
+      className="px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap"
+      style={{ background: "#FFF7ED", color: "#C2410C", border: "1px solid #FED7AA" }}
+      title="This student has enrolled in Ignite two or more times"
+    >
+      Repeated
+    </span>
+  );
+}
 
 function LeadStatusBadge({ status }: { status: string | null }) {
   if (!status) return <span className="text-gray-400 text-xs">–</span>;
@@ -1779,13 +1799,41 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
   leads.forEach((l) => { const s = l.leadStage ?? "new"; statusCounts[s] = (statusCounts[s] ?? 0) + 1; });
 
   const OLD_DAYS = 30;
+
   const isOldLead = (l: LeadRow) => {
+    // Explicit CRM states always win.
+    if (l.leadStage === "Converted" || l.leadStage === "Lost" || !l.isActive) {
+      return false;
+    }
+
+    // Once a student has entered Ignite, lifecycle follows the latest
+    // Ignite enrollment instead of the age of the original lead.
+    //
+    // Re-enrollment therefore makes an old student current again because
+    // latestIgniteCompleted belongs to the newest Ignite attempt.
+    if (l.igniteEnrollmentCount > 0) {
+      return l.latestIgniteCompleted;
+    }
+
+    // Preserve the existing behaviour for leads that have never enrolled
+    // into Ignite.
     const ageMs = Date.now() - new Date(l.createdAt).getTime();
-    return ageMs > OLD_DAYS * 86400000 && l.leadStage !== "Converted" && l.leadStage !== "Lost";
+    return ageMs > OLD_DAYS * 86400000;
   };
 
+  const isCurrentIgniteLead = (l: LeadRow) =>
+    l.igniteEnrollmentCount > 0 &&
+    !l.latestIgniteCompleted &&
+    l.leadStage !== "Lost" &&
+    l.leadStage !== "Converted" &&
+    l.isActive;
+
   const isPending = (l: LeadRow) =>
-    l.isActive && !l.assignedMentorId && l.leadStage !== "Lost" && l.leadStage !== "Converted";
+    l.isActive &&
+    !l.assignedMentorId &&
+    !isOldLead(l) &&
+    l.leadStage !== "Lost" &&
+    l.leadStage !== "Converted";
 
   const dateCutoff = dateRangeCutoff(dateRange, customDate);
   const dateLeads = filterByDateField(leads, "createdAt", dateCutoff);
@@ -1797,7 +1845,14 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
     else if (viewMode === "disabled")  { if (l.isActive !== false) return false; }
     else if (viewMode === "pending")   { if (!isPending(l)) return false; }
     else if (viewMode === "website")   { if (!l.isWebsiteLead) return false; }
-    else { if (l.leadStage === "Lost" || !l.isActive) return false; }
+    else {
+      if (
+        l.leadStage === "Lost" ||
+        l.leadStage === "Converted" ||
+        !l.isActive ||
+        isOldLead(l)
+      ) return false;
+    }
 
     const q = search.toLowerCase();
     if (q && !leadDisplayName(l).toLowerCase().includes(q) &&
@@ -1910,7 +1965,7 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
       {/* View Mode Tabs */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {([
-          { key: "all",       label: "All Leads",          count: dateLeads.filter(l => l.leadStage !== "Lost" && l.isActive).length, color: NAVY,      bg: "#EEF2FF" },
+          { key: "all",       label: "All Leads",          count: dateLeads.filter(l => l.leadStage !== "Lost" && l.leadStage !== "Converted" && l.isActive && !isOldLead(l)).length, color: NAVY,      bg: "#EEF2FF" },
           { key: "website",   label: "Website Leads",       count: leads.filter(l => l.isWebsiteLead).length, color: "#0891B2", bg: "#E0F2FE" },
           { key: "pending",   label: "Pending Deployment",  count: pendingCount,   color: "#D97706",  bg: "#FEF3C7" },
           { key: "old",       label: "Old Leads",           count: oldCount,       color: "#7C3AED",  bg: "#EDE9FE" },
@@ -1936,7 +1991,7 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-xs text-gray-500 font-semibold">
           <span style={{ color: NAVY }} className="font-black">{filtered.length}</span> leads
-          <span className="ml-1">{{ all: "in pipeline", pending: "awaiting assignment", converted: "converted", old: "inactive 30+ days", lost: "marked lost", disabled: "disabled", website: "from website / Meta Ads" }[viewMode]}</span>
+          <span className="ml-1">{{ all: "in pipeline", pending: "awaiting assignment", converted: "converted", old: "completed Ignite / inactive 30+ days", lost: "marked lost", disabled: "disabled", website: "from website / Meta Ads" }[viewMode]}</span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <button onClick={exportCSV}
@@ -2090,6 +2145,18 @@ function LeadsView({ flash, role = "admin" }: { flash: (m: string, ok?: boolean)
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-semibold text-gray-800 text-xs whitespace-nowrap">{leadDisplayName(l)}</span>
+
+                            {/* Permanent badge after the student's second Ignite enrollment. */}
+                            {l.igniteRepeated && (
+                              <span
+                                className="px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap"
+                                style={{ background: "#FEF3C7", color: "#92400E" }}
+                                title={`${l.igniteEnrollmentCount} Ignite enrollments`}
+                              >
+                                Repeated
+                              </span>
+                            )}
+
                             {l.isWebsiteLead && (
                               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap"
                                 style={{ background: "#E0F2FE", color: "#0891B2" }}>
