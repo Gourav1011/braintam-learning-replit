@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Users, GraduationCap, BookOpen, Video, FileText, CheckSquare,
-  Zap, TrendingUp, UserCheck, RefreshCw, UserCheck2, Shield, ChevronDown,
+  Zap, TrendingUp, UserCheck, RefreshCw, UserCheck2, ChevronDown,
 } from "lucide-react";
 import { API_BASE } from "@/lib/api-base";
 
@@ -26,7 +26,7 @@ interface TeacherRow { id: number; name: string; email: string | null; isActive:
 interface MentorRow  { id: number; name: string; email: string | null; isActive: boolean; studentCount: number; }
 
 interface DashboardKPIs {
-  totalStudents: number; totalTeachers: number; totalMentors: number; totalAdmins: number;
+  totalStudents: number; totalTeachers: number; totalMentors: number;
   activeCourses: number; liveClassesThisWeek: number; hwSubmittedThisWeek: number;
   testsCompletedThisWeek: number; activeStudentsToday: number; studentsEarningXPToday: number;
   totalEnrollments: number; gradeBreakdown: GradeRow[]; teacherBreakdown: TeacherRow[]; mentorBreakdown: MentorRow[];
@@ -39,13 +39,20 @@ function Stat({ label, value, icon: Icon, color, bg }: {
   icon: React.ElementType; color: string; bg: string;
 }) {
   return (
-    <div className="bg-white rounded-xl px-3 py-2.5 border border-gray-100 shadow-sm flex items-center gap-2.5 min-w-0">
-      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-        <Icon className="w-3.5 h-3.5" style={{ color }} />
+    <div className="group bg-white rounded-2xl px-3.5 py-3 border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-3 min-w-0">
+      <div
+        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: bg }}
+      >
+        <Icon className="w-4 h-4" style={{ color }} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-base font-black leading-none" style={{ color }}>{value}</div>
-        <div className="text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{label}</div>
+        <div className="text-xl font-black leading-none tracking-tight" style={{ color }}>
+          {value}
+        </div>
+        <div className="text-[10px] font-semibold text-slate-500 mt-1 leading-tight truncate">
+          {label}
+        </div>
       </div>
     </div>
   );
@@ -78,19 +85,37 @@ export function DashboardTab() {
 
   const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
-    { value: "overview", label: "Platform Overview" },
+    { value: "overview", label: "Mastery Overview" },
     { value: "grades",   label: "Class / Grade Wise" },
     { value: "teachers", label: "Teacher Wise" },
     { value: "mentors",  label: "Mentor Wise" },
   ];
 
   return (
-    <div className="space-y-4" style={{ fontFamily: "Poppins, sans-serif" }}>
+    <div
+      className="space-y-5 rounded-[24px] border border-slate-100 bg-slate-50/70 p-3 sm:p-5"
+      style={{ fontFamily: "Poppins, sans-serif" }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-base font-black" style={{ color: NAVY }}>Admin Dashboard</h2>
-          <p className="text-[10px] text-gray-400">{today}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-[0.14em]"
+              style={{ background: "#FFF3E8", color: ORANGE }}
+            >
+              Mastery
+            </span>
+            <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-[0.12em]">
+              Academic Operations
+            </span>
+          </div>
+          <h2 className="text-xl font-black tracking-tight" style={{ color: NAVY }}>
+            Mastery Command Dashboard
+          </h2>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Live academic operations and learner performance · {today}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -110,7 +135,7 @@ export function DashboardTab() {
       </div>
 
       {loading && !kpis ? (
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="bg-white rounded-xl px-3 py-2.5 border border-gray-100 h-12 animate-pulse" />
           ))}
@@ -120,29 +145,39 @@ export function DashboardTab() {
           {viewMode === "overview" && (
             <div className="space-y-3">
               {/* Row 1: Team headcount */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2"><Tag label="Team & Learners" /></div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <Stat label="Students"   value={kpis.totalStudents}  icon={Users}       color="#22C55E"  bg="#F0FDF4" />
-                  <Stat label="Teachers"   value={kpis.totalTeachers}  icon={GraduationCap} color="#3B82F6" bg="#EFF6FF" />
-                  <Stat label="Mentors"    value={kpis.totalMentors}   icon={UserCheck2}  color={GREEN}    bg="#ECFDF5" />
-                  <Stat label="Admins"     value={kpis.totalAdmins}    icon={Shield}      color="#8B5CF6"  bg="#F5F3FF" />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Tag label="Mastery Overview" />
+                  <span className="text-[9px] text-gray-400">
+                    Verified Mastery programme data
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <Stat label="Mastery Students" value={kpis.totalStudents} icon={Users}
+                    color={NAVY} bg="#EEF2FF" />
+                  <Stat label="Active Courses" value={kpis.activeCourses} icon={BookOpen}
+                    color={ORANGE} bg="#FFF7ED" />
+                  <Stat label="Active Enrollments" value={kpis.totalEnrollments} icon={TrendingUp}
+                    color={GREEN} bg="#ECFDF5" />
+                  <Stat label="Active Today" value={kpis.activeStudentsToday} icon={UserCheck}
+                    color="#0284C7" bg="#F0F9FF" />
                 </div>
               </div>
 
-              {/* Row 2: Platform stats */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2"><Tag label="Platform" /></div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <Stat label="Active Courses"      value={kpis.activeCourses}       icon={BookOpen}   color={NAVY}     bg="#EEF2FF" />
-                  <Stat label="Total Enrollments"   value={kpis.totalEnrollments}    icon={TrendingUp} color="#10B981"  bg="#ECFDF5" />
-                  <Stat label="Active Today"        value={kpis.activeStudentsToday} icon={UserCheck}  color="#06B6D4"  bg="#ECFEFF" />
+              <div className="space-y-2">
+                <Tag label="Academic Team" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Stat label="Mastery Teachers" value={kpis.totalTeachers}
+                    icon={GraduationCap} color="#4F46E5" bg="#EEF2FF" />
+                  <Stat label="Mastery Mentors" value={kpis.totalMentors}
+                    icon={UserCheck2} color={GREEN} bg="#ECFDF5" />
                 </div>
               </div>
 
               {/* Row 3: This week + pulse in one row */}
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2"><Tag label="This Week" /></div>
+                <div className="flex items-center gap-2"><Tag label="Mastery Activity · This Week" /></div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Stat label="Live Classes"   value={kpis.liveClassesThisWeek}   icon={Video}       color="#8B5CF6"  bg="#F5F3FF" />
                   <Stat label="HW Submitted"   value={kpis.hwSubmittedThisWeek}   icon={FileText}    color={ORANGE}   bg="#FFF7ED" />
@@ -162,7 +197,7 @@ export function DashboardTab() {
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   <div className="grid grid-cols-3 px-4 py-2 border-b border-gray-100 bg-gray-50">
                     <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Grade</div>
-                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide text-center">Students</div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide text-center">Mastery Students</div>
                     <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide text-right">Share</div>
                   </div>
                   {kpis.gradeBreakdown.map(row => {
@@ -242,7 +277,7 @@ export function DashboardTab() {
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   <div className="grid grid-cols-3 px-4 py-2 border-b border-gray-100 bg-gray-50">
                     <div className="col-span-2 text-[10px] font-bold text-gray-500 uppercase tracking-wide">Mentor</div>
-                    <div className="text-[10px] font-bold text-gray-500 text-center uppercase tracking-wide">Students</div>
+                    <div className="text-[10px] font-bold text-gray-500 text-center uppercase tracking-wide">Mastery Students</div>
                   </div>
                   {kpis.mentorBreakdown.map(m => {
                     const pct = kpis.totalStudents > 0 ? Math.round((m.studentCount / kpis.totalStudents) * 100) : 0;

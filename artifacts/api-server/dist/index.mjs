@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-27-1222" : "dev",
-    commit: true ? "538067b" : "unknown",
-    buildTime: true ? "2026-07-27T12:22:54.545Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-27-1250" : "dev",
+    commit: true ? "e1fe71f" : "unknown",
+    buildTime: true ? "2026-07-27T12:50:44.775Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -122583,71 +122583,199 @@ router13.put("/admin/gamification/settings", adminOnly, (req, res) => {
   res.json(gamificationSettings);
 });
 router13.get("/admin/dashboard", adminOnly, async (_req, res) => {
-  const today = /* @__PURE__ */ new Date();
-  today.setHours(0, 0, 0, 0);
-  const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
+  const now = /* @__PURE__ */ new Date();
+  const weekStart = new Date(now);
+  const day2 = weekStart.getDay();
+  weekStart.setDate(weekStart.getDate() - (day2 + 6) % 7);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const todayStart4 = new Date(now);
+  todayStart4.setHours(0, 0, 0, 0);
+  const tomorrowStart2 = new Date(todayStart4);
+  tomorrowStart2.setDate(tomorrowStart2.getDate() + 1);
+  const activeMastery = eq(masteryStudentsTable.masteryStatus, "Active");
   const [
     [students],
-    [teachers],
-    [mentors_],
-    [admins_],
     [courses_],
+    [enrolls],
     [lcWeek],
     [hwWeek],
     [testWeek],
     [activeToday],
     [xpToday],
-    [enrolls],
     gradeRows,
     teacherRows,
     mentorRows
   ] = await Promise.all([
-    db.select({ count: sql`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), eq(usersTable.isActive, true))),
-    db.select({ count: sql`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))),
-    db.select({ count: sql`count(*)` }).from(usersTable).where(and(inArray(usersTable.role, ["mentor", "sales_mentor", "academic_mentor"]), eq(usersTable.isActive, true))),
-    db.select({ count: sql`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "admin"), eq(usersTable.isActive, true))),
-    db.select({ count: sql`count(*)` }).from(coursesTable),
-    db.select({ count: sql`count(*)` }).from(liveClassesTable).where(gte(liveClassesTable.scheduledAt, thisWeek)),
-    db.select({ count: sql`count(*)` }).from(homeworkSubmissionsTable).where(gte(homeworkSubmissionsTable.submittedAt, thisWeek)),
-    db.select({ count: sql`count(*)` }).from(testSubmissionsTable).where(gte(testSubmissionsTable.submittedAt, thisWeek)),
-    db.select({ count: sql`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), gte(usersTable.lastLoginDate, today))),
-    db.select({ count: sql`count(distinct user_id)` }).from(pointsLedgerTable).where(gte(pointsLedgerTable.createdAt, today)),
-    db.select({ count: sql`count(*)` }).from(enrollmentsTable),
-    // Grade-wise student breakdown
-    db.select({ grade: usersTable.grade, count: sql`count(*)` }).from(usersTable).where(and(eq(usersTable.role, "student"), eq(usersTable.isActive, true))).groupBy(usersTable.grade).orderBy(usersTable.grade),
-    // Teacher-wise: name + course count (via teacher_courses) + live class count
+    // Active Mastery students only.
+    db.select({
+      count: sql`count(*)`
+    }).from(masteryStudentsTable).where(activeMastery),
+    // Active Mastery courses only.
+    db.select({
+      count: sql`count(*)`
+    }).from(coursesTable).where(and(
+      eq(coursesTable.courseType, "mastery"),
+      eq(coursesTable.status, "active")
+    )),
+    // Real active enrollments into Mastery courses, restricted to
+    // students that actually belong to the active Mastery population.
+    db.select({
+      count: sql`count(distinct ${enrollmentsTable.id})`
+    }).from(enrollmentsTable).innerJoin(
+      coursesTable,
+      eq(enrollmentsTable.courseId, coursesTable.id)
+    ).innerJoin(
+      masteryStudentsTable,
+      eq(masteryStudentsTable.studentId, enrollmentsTable.studentId)
+    ).where(and(
+      activeMastery,
+      eq(enrollmentsTable.status, "active"),
+      eq(coursesTable.courseType, "mastery")
+    )),
+    // class_type is the explicit Mastery/Ignite discriminator.
+    db.select({
+      count: sql`count(*)`
+    }).from(liveClassesTable).where(and(
+      eq(liveClassesTable.classType, "mastery"),
+      gte(liveClassesTable.scheduledAt, weekStart),
+      lt(liveClassesTable.scheduledAt, weekEnd)
+    )),
+    // Homework submissions made this calendar week by active
+    // Mastery students with linked platform accounts.
+    db.select({
+      count: sql`count(distinct ${homeworkSubmissionsTable.id})`
+    }).from(homeworkSubmissionsTable).innerJoin(
+      masteryStudentsTable,
+      eq(masteryStudentsTable.studentId, homeworkSubmissionsTable.studentId)
+    ).where(and(
+      activeMastery,
+      gte(homeworkSubmissionsTable.submittedAt, weekStart),
+      lt(homeworkSubmissionsTable.submittedAt, weekEnd)
+    )),
+    // Test submissions made this calendar week by active Mastery students.
+    db.select({
+      count: sql`count(distinct ${testSubmissionsTable.id})`
+    }).from(testSubmissionsTable).innerJoin(
+      masteryStudentsTable,
+      eq(masteryStudentsTable.studentId, testSubmissionsTable.studentId)
+    ).where(and(
+      activeMastery,
+      gte(testSubmissionsTable.submittedAt, weekStart),
+      lt(testSubmissionsTable.submittedAt, weekEnd)
+    )),
+    // Distinct Mastery students that logged in today.
+    db.select({
+      count: sql`count(distinct ${usersTable.id})`
+    }).from(masteryStudentsTable).innerJoin(
+      usersTable,
+      eq(usersTable.id, masteryStudentsTable.studentId)
+    ).where(and(
+      activeMastery,
+      gte(usersTable.lastLoginDate, todayStart4),
+      lt(usersTable.lastLoginDate, tomorrowStart2)
+    )),
+    // Distinct Mastery students with positive XP activity today.
+    db.select({
+      count: sql`count(distinct ${pointsLedgerTable.userId})`
+    }).from(pointsLedgerTable).innerJoin(
+      masteryStudentsTable,
+      eq(masteryStudentsTable.studentId, pointsLedgerTable.userId)
+    ).where(and(
+      activeMastery,
+      sql`${pointsLedgerTable.amount} > 0`,
+      gte(pointsLedgerTable.createdAt, todayStart4),
+      lt(pointsLedgerTable.createdAt, tomorrowStart2)
+    )),
+    // Grade distribution comes directly from mastery_students so it
+    // always agrees with the Mastery student population.
+    db.select({
+      grade: masteryStudentsTable.grade,
+      count: sql`count(*)`
+    }).from(masteryStudentsTable).where(activeMastery).groupBy(masteryStudentsTable.grade).orderBy(masteryStudentsTable.grade),
+    // Only teachers assigned to at least one Mastery course.
     db.select({
       id: usersTable.id,
       name: usersTable.name,
       email: usersTable.email,
       isActive: usersTable.isActive,
-      courseCount: sql`(select count(*) from teacher_courses where teacher_id = users.id)`,
-      lcCount: sql`(select count(*) from live_classes where teacher_id = users.id)`
-    }).from(usersTable).where(eq(usersTable.role, "teacher")).orderBy(usersTable.name),
-    // Mentor-wise: name + student count
+      courseCount: sql`
+        count(distinct ${teacherCoursesTable.courseId})
+      `,
+      lcCount: sql`
+        count(distinct ${liveClassesTable.id})
+      `
+    }).from(usersTable).innerJoin(
+      teacherCoursesTable,
+      eq(teacherCoursesTable.teacherId, usersTable.id)
+    ).innerJoin(
+      coursesTable,
+      eq(coursesTable.id, teacherCoursesTable.courseId)
+    ).leftJoin(
+      liveClassesTable,
+      and(
+        eq(liveClassesTable.teacherId, usersTable.id),
+        eq(liveClassesTable.classType, "mastery"),
+        eq(liveClassesTable.courseId, coursesTable.id)
+      )
+    ).where(eq(coursesTable.courseType, "mastery")).groupBy(
+      usersTable.id,
+      usersTable.name,
+      usersTable.email,
+      usersTable.isActive
+    ).orderBy(usersTable.name),
+    // mastery_students.mentor_id is the direct Mastery mentor
+    // relationship. Do not count unrelated Ignite/sales mentors.
     db.select({
       id: usersTable.id,
       name: usersTable.name,
       email: usersTable.email,
       isActive: usersTable.isActive,
-      studentCount: sql`(select count(*) from mentor_student_assignments where mentor_id = users.id and is_active = true)`
-    }).from(usersTable).where(inArray(usersTable.role, ["mentor", "sales_mentor", "academic_mentor"])).orderBy(usersTable.name)
+      studentCount: sql`
+        count(distinct ${masteryStudentsTable.id})
+      `
+    }).from(masteryStudentsTable).innerJoin(
+      usersTable,
+      eq(usersTable.id, masteryStudentsTable.mentorId)
+    ).where(activeMastery).groupBy(
+      usersTable.id,
+      usersTable.name,
+      usersTable.email,
+      usersTable.isActive
+    ).orderBy(usersTable.name)
   ]);
   res.json({
+    scope: "mastery",
     totalStudents: Number(students.count),
-    totalTeachers: Number(teachers.count),
-    totalMentors: Number(mentors_.count),
-    totalAdmins: Number(admins_.count),
+    totalTeachers: teacherRows.length,
+    totalMentors: mentorRows.length,
     activeCourses: Number(courses_.count),
+    totalEnrollments: Number(enrolls.count),
+    activeStudentsToday: Number(activeToday.count),
     liveClassesThisWeek: Number(lcWeek.count),
     hwSubmittedThisWeek: Number(hwWeek.count),
     testsCompletedThisWeek: Number(testWeek.count),
-    activeStudentsToday: Number(activeToday.count),
     studentsEarningXPToday: Number(xpToday.count),
-    totalEnrollments: Number(enrolls.count),
-    gradeBreakdown: gradeRows.map((r) => ({ grade: r.grade, count: Number(r.count) })),
-    teacherBreakdown: teacherRows.map((r) => ({ id: r.id, name: r.name, email: r.email, isActive: r.isActive, courseCount: Number(r.courseCount), lcCount: Number(r.lcCount) })),
-    mentorBreakdown: mentorRows.map((r) => ({ id: r.id, name: r.name, email: r.email, isActive: r.isActive, studentCount: Number(r.studentCount) }))
+    gradeBreakdown: gradeRows.map((r) => ({
+      grade: r.grade,
+      count: Number(r.count)
+    })),
+    teacherBreakdown: teacherRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      isActive: r.isActive,
+      courseCount: Number(r.courseCount),
+      lcCount: Number(r.lcCount)
+    })),
+    mentorBreakdown: mentorRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      isActive: r.isActive,
+      studentCount: Number(r.studentCount)
+    }))
   });
 });
 router13.get("/admin/students/:id/360", allStaffAuth, async (req, res) => {
