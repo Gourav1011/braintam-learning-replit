@@ -6,7 +6,7 @@ import {
   homeworkSubmissionsTable, assignmentSubmissionsTable, dailyCoinClaimsTable,
   coursesTable, announcementsTable, pointsLedgerTable,
   mentorStudentAssignmentsTable, demoBatchEnrollmentsTable, demoBatchesTable,
-  pollAnalyticsTable, courseSubjectsTable, recordingsTable, chaptersTable,
+  demoSessionsTable, mentorFollowUpsTable, pollAnalyticsTable, courseSubjectsTable, recordingsTable, chaptersTable,
   academicYearsTable,
 } from "@workspace/db";
 import { UpdateStudentProfileBody, GetLeaderboardQueryParams } from "@workspace/api-zod";
@@ -179,12 +179,142 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     .limit(6);
   const effectiveGrade: number = enrolled[0]?.grade ?? student.grade ?? 6;
 
-  const [demoEnrollRow] = await db
-    .select({ id: demoBatchEnrollmentsTable.id })
+  const igniteEnrollments = await db
+    .select({
+      batchId: demoBatchEnrollmentsTable.batchId,
+      enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+    })
     .from(demoBatchEnrollmentsTable)
-    .where(eq(demoBatchEnrollmentsTable.studentId, studentId))
-    .limit(1);
-  const isDemoStudent = !!demoEnrollRow && enrolled.length === 0;
+    .where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+
+  const hasMastery = enrolled.length > 0;
+  const now = Date.now();
+
+  let hasActiveIgnite = false;
+  let hasCompletedIgnite = false;
+  let igniteDay2Reached = false;
+  let activeIgniteBatchId: number | null = null;
+  let latestIgniteBatchId: number | null = null;
+  let latestIgniteBatchTime = -Infinity;
+
+  for (const igniteEnrollment of igniteEnrollments) {
+    const [batch] = await db
+      .select({
+        status: demoBatchesTable.status,
+        endDate: demoBatchesTable.endDate,
+      })
+      .from(demoBatchesTable)
+      .where(eq(demoBatchesTable.id, igniteEnrollment.batchId))
+      .limit(1);
+
+    if (!batch) continue;
+
+    const batchEndTime =
+      batch.endDate !== null
+        ? new Date(batch.endDate).getTime()
+        : Number.POSITIVE_INFINITY;
+
+    const orderingTime = Number.isFinite(batchEndTime)
+      ? batchEndTime
+      : -Infinity;
+
+    if (latestIgniteBatchId === null || orderingTime > latestIgniteBatchTime) {
+      latestIgniteBatchId = igniteEnrollment.batchId;
+      latestIgniteBatchTime = orderingTime;
+    }
+
+    const batchEnded =
+      batch.status === "completed" ||
+      (batch.endDate !== null && new Date(batch.endDate).getTime() < now);
+
+    const isActive =
+      igniteEnrollment.enrollmentStatus === "active" && !batchEnded;
+
+    if (isActive) {
+      hasActiveIgnite = true;
+      activeIgniteBatchId ??= igniteEnrollment.batchId;
+
+      const historicalDay2 = await db
+        .select({ scheduledAt: demoSessionsTable.scheduledAt })
+        .from(demoSessionsTable)
+        .where(and(
+          eq(demoSessionsTable.batchId, igniteEnrollment.batchId),
+          eq(demoSessionsTable.dayNumber, 2),
+          eq(demoSessionsTable.isPublished, true),
+        ))
+        .limit(1);
+
+      const liveDay2 = await db
+        .select({ scheduledAt: liveClassesTable.scheduledAt })
+        .from(liveClassesTable)
+        .where(and(
+          eq(liveClassesTable.igniteBatchId, igniteEnrollment.batchId),
+          eq(liveClassesTable.classType, "ignite"),
+          eq(liveClassesTable.dayNumber, 2),
+          eq(liveClassesTable.isPublished, true),
+          eq(liveClassesTable.isArchived, false),
+        ))
+        .limit(1);
+
+      const day2Times = [...historicalDay2, ...liveDay2]
+        .map(row => new Date(row.scheduledAt).getTime())
+        .filter(Number.isFinite);
+
+      if (day2Times.length > 0 && now >= Math.min(...day2Times)) {
+        igniteDay2Reached = true;
+      }
+    } else {
+      hasCompletedIgnite = true;
+    }
+  }
+
+  const studentPortalState =
+    hasMastery ? "mastery" :
+    hasActiveIgnite
+      ? (igniteDay2Reached ? "ignite_day2_plus" : "ignite_before_day2")
+      : hasCompletedIgnite
+        ? "completed_ignite"
+        : "none";
+
+  const isDemoStudent =
+    studentPortalState === "ignite_before_day2" ||
+    studentPortalState === "ignite_day2_plus";
+
+  let igniteMentor: { name: string | null; phone: string | null } | null = null;
+
+  const mentorSourceBatchId =
+    activeIgniteBatchId ??
+    (studentPortalState === "completed_ignite" ? latestIgniteBatchId : null);
+
+  if (mentorSourceBatchId !== null) {
+    const [assignment] = await db
+      .select({
+        assignedMentorId: demoBatchEnrollmentsTable.assignedMentorId,
+        assignedMentorName: demoBatchEnrollmentsTable.assignedMentorName,
+      })
+      .from(demoBatchEnrollmentsTable)
+      .where(and(
+        eq(demoBatchEnrollmentsTable.studentId, studentId),
+        eq(demoBatchEnrollmentsTable.batchId, mentorSourceBatchId),
+      ))
+      .limit(1);
+
+    if (assignment?.assignedMentorId) {
+      const [mentor] = await db
+        .select({
+          name: usersTable.name,
+          phone: usersTable.phone,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, assignment.assignedMentorId))
+        .limit(1);
+
+      igniteMentor = {
+        name: mentor?.name ?? assignment.assignedMentorName ?? null,
+        phone: mentor?.phone ?? null,
+      };
+    }
+  }
 
   const todayUTC = new Date().toISOString().slice(0, 10);
   const lastLoginUTC = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
@@ -207,7 +337,97 @@ router.get("/student/profile", requireAuth, async (req, res) => {
     dailyLoginClaimed: lastLoginUTC === todayUTC,
     enrolledCourses: enrolled.map(e => ({ id: e.courseId, title: e.courseTitle })),
     isDemoStudent,
+    studentPortalState,
+    igniteMentor,
   });
+});
+
+router.post("/student/request-mastery-opportunity", requireAuth, async (req, res) => {
+  const studentId = req.authUser!.id;
+  const requestType = req.body?.requestType === "enroll" ? "enroll" : "scholarship";
+
+  const activeEnrollmentRows = await db
+    .select({
+      batchId: demoBatchEnrollmentsTable.batchId,
+      mentorId: demoBatchEnrollmentsTable.assignedMentorId,
+      batchStatus: demoBatchesTable.status,
+      batchEndDate: demoBatchesTable.endDate,
+    })
+    .from(demoBatchEnrollmentsTable)
+    .innerJoin(
+      demoBatchesTable,
+      eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId),
+    )
+    .where(and(
+      eq(demoBatchEnrollmentsTable.studentId, studentId),
+      eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+    ));
+
+  const requestNow = Date.now();
+
+  const currentIgniteEnrollment = activeEnrollmentRows.find((row) =>
+    row.batchStatus !== "completed" &&
+    (row.batchEndDate === null || new Date(row.batchEndDate).getTime() >= requestNow)
+  );
+
+  let igniteEnrollment = currentIgniteEnrollment;
+
+  if (!igniteEnrollment) {
+    const allIgniteRows = await db
+      .select({
+        batchId: demoBatchEnrollmentsTable.batchId,
+        mentorId: demoBatchEnrollmentsTable.assignedMentorId,
+        batchStatus: demoBatchesTable.status,
+        batchEndDate: demoBatchesTable.endDate,
+      })
+      .from(demoBatchEnrollmentsTable)
+      .innerJoin(
+        demoBatchesTable,
+        eq(demoBatchesTable.id, demoBatchEnrollmentsTable.batchId),
+      )
+      .where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+
+    const completedRows = allIgniteRows
+      .filter((row) =>
+        row.batchStatus === "completed" ||
+        (row.batchEndDate !== null &&
+          new Date(row.batchEndDate).getTime() < requestNow)
+      )
+      .sort((a, b) => {
+        const aTime = a.batchEndDate
+          ? new Date(a.batchEndDate).getTime()
+          : -Infinity;
+        const bTime = b.batchEndDate
+          ? new Date(b.batchEndDate).getTime()
+          : -Infinity;
+
+        return bTime - aTime;
+      });
+
+    igniteEnrollment = completedRows[0];
+  }
+
+  if (!igniteEnrollment) {
+    res.status(409).json({ error: "No Ignite enrollment found for this opportunity." });
+    return;
+  }
+
+  if (!igniteEnrollment.mentorId) {
+    res.status(409).json({ error: "Mentor not assigned yet. Contact Support." });
+    return;
+  }
+
+  const [followUp] = await db.insert(mentorFollowUpsTable).values({
+    mentorId: igniteEnrollment.mentorId,
+    studentId,
+    noteType: requestType === "enroll" ? "mastery_enrollment" : "mastery_opportunity",
+    note: requestType === "enroll"
+      ? "Student requested to enroll in Mastery and receive the payment link."
+      : "Student requested to check their Mastery scholarship price.",
+    leadStatus: "Interested",
+  }).returning();
+
+  res.status(201).json({ ok: true, followUpId: followUp.id });
 });
 
 router.patch("/student/profile", requireAuth, async (req, res) => {

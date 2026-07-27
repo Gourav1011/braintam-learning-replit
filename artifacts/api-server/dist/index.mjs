@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-26-1914" : "dev",
-    commit: true ? "719bae2" : "unknown",
-    buildTime: true ? "2026-07-26T19:14:44.178Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-27-0700" : "dev",
+    commit: true ? "8816c58" : "unknown",
+    buildTime: true ? "2026-07-27T07:00:46.659Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -120889,6 +120889,7 @@ router12.get("/student/my-courses/completed", requireAuth, async (req, res) => {
   const rows = await db.select({
     enrollmentId: enrollmentsTable.id,
     courseId: enrollmentsTable.courseId,
+    enrollmentType: enrollmentsTable.enrollmentType,
     courseTitle: coursesTable.title,
     courseGrade: coursesTable.grade,
     totalLessons: coursesTable.totalLessons,
@@ -120910,7 +120911,7 @@ router12.get("/student/my-courses/completed", requireAuth, async (req, res) => {
     eq(enrollmentsTable.studentId, studentId),
     sql`${enrollmentsTable.status} IN ('completed', 'archived')`
   )).orderBy(desc(enrollmentsTable.completedAt));
-  res.json(rows.map((r) => ({
+  const completedCourses = rows.filter((r) => r.enrollmentType !== "ignite").map((r) => ({
     enrollmentId: r.enrollmentId,
     courseId: r.courseId,
     courseTitle: r.courseTitle,
@@ -120923,7 +120924,46 @@ router12.get("/student/my-courses/completed", requireAuth, async (req, res) => {
     enrolledAt: r.enrolledAt,
     completedAt: r.completedAt ?? null,
     completionNote: r.completionNote ?? null
-  })));
+  }));
+  const demoRows = await db.select({
+    enrollmentId: demoBatchEnrollmentsTable.id,
+    enrolledAt: demoBatchEnrollmentsTable.enrolledAt,
+    enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus,
+    batchId: demoBatchesTable.id,
+    title: demoBatchesTable.title,
+    grade: demoBatchesTable.grade,
+    totalDays: demoBatchesTable.totalDays,
+    endDate: demoBatchesTable.endDate,
+    batchStatus: demoBatchesTable.status
+  }).from(demoBatchEnrollmentsTable).innerJoin(
+    demoBatchesTable,
+    eq(demoBatchEnrollmentsTable.batchId, demoBatchesTable.id)
+  ).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+  const now = Date.now();
+  const completedDemoCourses = demoRows.filter((d) => {
+    const endedByDate = d.endDate !== null && new Date(d.endDate).getTime() < now;
+    return d.enrollmentStatus === "completed" || d.batchStatus === "completed" || endedByDate;
+  }).map((d) => ({
+    // Negative ID prevents collision with normal course-enrollment IDs
+    // while keeping the existing frontend response shape.
+    enrollmentId: -d.enrollmentId,
+    courseId: -d.batchId,
+    courseTitle: d.title,
+    grade: d.grade,
+    totalLessons: d.totalDays ?? 0,
+    subjectCount: 0,
+    recordingCount: 0,
+    chapterCount: 0,
+    academicYear: null,
+    enrolledAt: d.enrolledAt,
+    completedAt: d.endDate ?? null,
+    completionNote: "Ignite batch completed"
+  }));
+  res.json([...completedCourses, ...completedDemoCourses].sort((a, b) => {
+    const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+    const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+    return bTime - aTime;
+  }));
 });
 router12.get("/student/my-mentor", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
@@ -125739,16 +125779,38 @@ router19.delete("/admin/demo-batches/:batchId/enrollments/:enrollmentId", adminO
 });
 router19.get("/student/my-demo-batches", requireAuth, async (req, res) => {
   const studentId = req.authUser.id;
-  const enrollments = await db.select({ batchId: demoBatchEnrollmentsTable.batchId }).from(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+  const enrollments = await db.select({
+    id: demoBatchEnrollmentsTable.id,
+    batchId: demoBatchEnrollmentsTable.batchId,
+    enrollmentStatus: demoBatchEnrollmentsTable.enrollmentStatus
+  }).from(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
   if (enrollments.length === 0) {
     res.json([]);
     return;
   }
-  const batchIds = enrollments.map((e) => e.batchId);
   const result = [];
-  for (const batchId of batchIds) {
+  for (const enrollment of enrollments) {
+    const batchId = enrollment.batchId;
     const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
     if (!batch) continue;
+    const batchEnded = batch.status === "completed" || batch.endDate !== null && new Date(batch.endDate).getTime() < Date.now();
+    if (batchEnded) {
+      if (enrollment.enrollmentStatus !== "completed") {
+        await db.update(demoBatchEnrollmentsTable).set({ enrollmentStatus: "completed" }).where(eq(demoBatchEnrollmentsTable.id, enrollment.id));
+      }
+      await db.update(enrollmentsTable).set({
+        status: "completed",
+        completedAt: /* @__PURE__ */ new Date(),
+        completionNote: "Ignite batch completed"
+      }).where(and(
+        eq(enrollmentsTable.studentId, studentId),
+        eq(enrollmentsTable.batchId, batchId),
+        eq(enrollmentsTable.enrollmentType, "ignite"),
+        eq(enrollmentsTable.status, "active")
+      ));
+      continue;
+    }
+    if (enrollment.enrollmentStatus !== "active") continue;
     const historicalSessions = await db.select().from(demoSessionsTable).where(and(eq(demoSessionsTable.batchId, batchId), eq(demoSessionsTable.isPublished, true))).orderBy(demoSessionsTable.dayNumber);
     const igniteSessions = await db.select().from(liveClassesTable).where(and(
       eq(liveClassesTable.igniteBatchId, batchId),

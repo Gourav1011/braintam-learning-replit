@@ -20,6 +20,11 @@ export interface StudentProfile {
   streak: number;
   avatarUrl: string | null;
   isDemoStudent?: boolean;
+  studentPortalState?: "none" | "ignite_before_day2" | "ignite_day2_plus" | "completed_ignite" | "mastery";
+  igniteMentor?: {
+    name: string | null;
+    phone: string | null;
+  } | null;
 }
 
 interface AuthContextType {
