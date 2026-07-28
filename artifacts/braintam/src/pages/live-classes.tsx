@@ -465,6 +465,7 @@ function AuthLiveClassesView() {
 
   const ClassCard = ({ cls }: { cls: any }) => {
     const [now, setNow] = useState(() => Date.now());
+    const [showNotStarted, setShowNotStarted] = useState(false);
 
     useEffect(() => {
       if (cls.status !== "upcoming") return;
@@ -559,7 +560,7 @@ function AuthLiveClassesView() {
               Join Class will activate automatically at class time.
             </p>
           </div>
-        ) : cls.status === "live" || scheduledStartReached ? (
+        ) : cls.status === "live" ? (
           <Link href={`/live/${cls.id}?role=student&title=${encodeURIComponent(cls.title)}`}>
             <button
               className="w-full py-2.5 rounded-xl text-sm font-black text-white transition-all hover:opacity-90"
@@ -569,6 +570,69 @@ function AuthLiveClassesView() {
               🚀 Join Class
             </button>
           </Link>
+        ) : cls.status === "upcoming" ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowNotStarted(true)}
+              className="w-full py-2.5 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 active:scale-[0.99]"
+              style={{ background: NAVY }}
+              data-testid={`join-class-${cls.id}`}
+            >
+              🚀 Join Class
+            </button>
+
+            <p className="text-[10px] text-gray-400 text-center mt-1.5">
+              Waiting for your teacher to start the class.
+            </p>
+
+            {showNotStarted && (
+              <div
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4"
+                onClick={() => setShowNotStarted(false)}
+              >
+                <div
+                  className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div
+                    className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+                    style={{ background: "#F0F7FF" }}
+                  >
+                    ⏰
+                  </div>
+
+                  <h3 className="text-lg font-black text-gray-900">
+                    Class hasn't started yet
+                  </h3>
+
+                  <p className="mt-2 text-sm text-gray-600">
+                    Your class is scheduled for{" "}
+                    <span className="font-bold text-gray-900">
+                      {new Date(cls.scheduledAt).toLocaleTimeString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>.
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Please wait for your teacher to start the class. 📚
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowNotStarted(false)}
+                    className="mt-4 w-full rounded-xl py-2.5 text-sm font-bold text-white"
+                    style={{ background: NAVY }}
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <button
             type="button"
