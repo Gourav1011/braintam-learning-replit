@@ -1,11 +1,42 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { liveClassesTable, subjectsTable, enrollmentsTable } from "@workspace/db";
+import {
+  liveClassesTable,
+  subjectsTable,
+  enrollmentsTable,
+  masteryStudentsTable,
+} from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
 import { eq, and, inArray } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
+
+async function getStudentAssignedCourseIds(studentId: number): Promise<number[]> {
+  const [enrolled, mastery] = await Promise.all([
+    db
+      .select({ courseId: enrollmentsTable.courseId })
+      .from(enrollmentsTable)
+      .where(eq(enrollmentsTable.studentId, studentId)),
+
+    db
+      .select({ assignedCourseId: masteryStudentsTable.assignedCourseId })
+      .from(masteryStudentsTable)
+      .where(eq(masteryStudentsTable.studentId, studentId)),
+  ]);
+
+  const ids = new Set<number>();
+
+  for (const row of enrolled) {
+    if (row.courseId != null) ids.add(row.courseId);
+  }
+
+  for (const row of mastery) {
+    if (row.assignedCourseId != null) ids.add(row.assignedCourseId);
+  }
+
+  return [...ids];
+}
 
 router.get("/live-classes", attachUser, async (req, res) => {
   const parsed = ListLiveClassesQueryParams.safeParse(req.query);
@@ -23,19 +54,14 @@ router.get("/live-classes", attachUser, async (req, res) => {
   // Teachers/Admins/Mentors continue to see all classes.
   let studentFilter: ReturnType<typeof inArray> | undefined;
   if (user.role === "student") {
-    const enrolled = await db
-      .select({ courseId: enrollmentsTable.courseId })
-      .from(enrollmentsTable)
-      .where(eq(enrollmentsTable.studentId, user.id));
+    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
 
-    const enrolledIds = enrolled.map(e => e.courseId);
-
-    if (enrolledIds.length === 0) {
+    if (assignedCourseIds.length === 0) {
       res.json([]);
       return;
     }
 
-    studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
+    studentFilter = inArray(liveClassesTable.courseId, assignedCourseIds);
   }
 
   const classes = await db.select({
@@ -111,18 +137,9 @@ router.get("/live-classes/:id", attachUser, async (req, res) => {
       return;
     }
 
-    const [access] = await db
-      .select({ courseId: enrollmentsTable.courseId })
-      .from(enrollmentsTable)
-      .where(
-        and(
-          eq(enrollmentsTable.studentId, user.id),
-          eq(enrollmentsTable.courseId, courseId),
-        )
-      )
-      .limit(1);
+    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
 
-    if (!access) {
+    if (!assignedCourseIds.includes(courseId)) {
       res.status(403).json({ error: "You do not have access to this live class" });
       return;
     }
@@ -150,18 +167,9 @@ router.post("/live-classes/:id/join", attachUser, async (req, res) => {
       return;
     }
 
-    const [access] = await db
-      .select({ courseId: enrollmentsTable.courseId })
-      .from(enrollmentsTable)
-      .where(
-        and(
-          eq(enrollmentsTable.studentId, user.id),
-          eq(enrollmentsTable.courseId, cls.courseId),
-        )
-      )
-      .limit(1);
+    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
 
-    if (!access) {
+    if (!assignedCourseIds.includes(cls.courseId)) {
       res.status(403).json({ error: "You do not have access to this live class" });
       return;
     }
