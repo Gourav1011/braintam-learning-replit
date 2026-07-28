@@ -1862,7 +1862,7 @@ export default function LiveClassroom() {
             style={isStaff
               ? { height: 190 }
               : isLandscapeMobile
-                ? { width: "100%", height: "40dvh", overflow: "hidden" }
+                ? { width: "100%", aspectRatio: "16/9", overflow: "hidden" }
                 : { width: "100%", aspectRatio: "4/3" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
