@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-27-1252" : "dev",
-    commit: true ? "cb7d6ee" : "unknown",
-    buildTime: true ? "2026-07-27T12:52:19.577Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-28-1244" : "dev",
+    commit: true ? "0ea5b34" : "unknown",
+    buildTime: true ? "2026-07-28T12:44:42.121Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -113721,6 +113721,20 @@ var courses_default = router4;
 // src/routes/liveClasses.ts
 var import_express5 = __toESM(require_express2(), 1);
 var router5 = (0, import_express5.Router)();
+async function getStudentAssignedCourseIds(studentId) {
+  const [enrolled, mastery] = await Promise.all([
+    db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, studentId)),
+    db.select({ assignedCourseId: masteryStudentsTable.assignedCourseId }).from(masteryStudentsTable).where(eq(masteryStudentsTable.studentId, studentId))
+  ]);
+  const ids = /* @__PURE__ */ new Set();
+  for (const row of enrolled) {
+    if (row.courseId != null) ids.add(row.courseId);
+  }
+  for (const row of mastery) {
+    if (row.assignedCourseId != null) ids.add(row.assignedCourseId);
+  }
+  return [...ids];
+}
 router5.get("/live-classes", attachUser, async (req, res) => {
   const parsed = ListLiveClassesQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
@@ -113731,13 +113745,12 @@ router5.get("/live-classes", attachUser, async (req, res) => {
   }
   let studentFilter;
   if (user.role === "student") {
-    const enrolled = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(eq(enrollmentsTable.studentId, user.id));
-    const enrolledIds = enrolled.map((e) => e.courseId);
-    if (enrolledIds.length === 0) {
+    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
+    if (assignedCourseIds.length === 0) {
       res.json([]);
       return;
     }
-    studentFilter = inArray(liveClassesTable.courseId, enrolledIds);
+    studentFilter = inArray(liveClassesTable.courseId, assignedCourseIds);
   }
   const classes = await db.select({
     id: liveClassesTable.id,
@@ -113804,13 +113817,8 @@ router5.get("/live-classes/:id", attachUser, async (req, res) => {
       res.status(403).json({ error: "You do not have access to this live class" });
       return;
     }
-    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
-      and(
-        eq(enrollmentsTable.studentId, user.id),
-        eq(enrollmentsTable.courseId, courseId)
-      )
-    ).limit(1);
-    if (!access) {
+    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
+    if (!assignedCourseIds.includes(courseId)) {
       res.status(403).json({ error: "You do not have access to this live class" });
       return;
     }
@@ -113838,13 +113846,8 @@ router5.post("/live-classes/:id/join", attachUser, async (req, res) => {
       res.status(403).json({ error: "You do not have access to this live class" });
       return;
     }
-    const [access] = await db.select({ courseId: enrollmentsTable.courseId }).from(enrollmentsTable).where(
-      and(
-        eq(enrollmentsTable.studentId, user.id),
-        eq(enrollmentsTable.courseId, cls.courseId)
-      )
-    ).limit(1);
-    if (!access) {
+    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
+    if (!assignedCourseIds.includes(cls.courseId)) {
       res.status(403).json({ error: "You do not have access to this live class" });
       return;
     }
@@ -123838,7 +123841,7 @@ router14.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     // Optional Ignite batch relationship.
     // This keeps the existing working LiveKit course class while
     // also linking it to the selected Ignite batch.
-    batchId: batchId ? Number(batchId) : null,
+    igniteBatchId: batchId ? Number(batchId) : null,
     courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null,
     chapterId: chapterId ? Number(chapterId) : null,
     topicId: topicId ? Number(topicId) : null,

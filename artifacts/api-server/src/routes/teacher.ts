@@ -199,7 +199,7 @@ router.post("/teacher/live-classes", teacherOrAdmin, async (req, res) => {
     // Optional Ignite batch relationship.
     // This keeps the existing working LiveKit course class while
     // also linking it to the selected Ignite batch.
-    batchId: batchId ? Number(batchId) : null,
+    igniteBatchId: batchId ? Number(batchId) : null,
 
     courseSubjectId: courseSubjectId ? Number(courseSubjectId) : null,
     chapterId: chapterId ? Number(chapterId) : null,
