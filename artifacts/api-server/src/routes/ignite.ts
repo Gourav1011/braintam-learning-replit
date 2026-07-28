@@ -1901,11 +1901,36 @@ router.post("/admin/ignite/leads/:id/reassign", adminOnly, async (req, res) => {
       .set({ isActive: false })
       .where(and(eq(mentorStudentAssignmentsTable.studentId, leadId), eq(mentorStudentAssignmentsTable.isActive, true)));
   }
+  // Preserve the current weekly Ignite deployment cycle during manual
+  // reassignment so the new mentor sees this lead in Assigned Leads.
+  const [activeCycle] = await db
+    .select({ id: mentorDeploymentCyclesTable.id })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
   await db.insert(mentorStudentAssignmentsTable).values({
     mentorId: newMentor.id,
     studentId: leadId,
+    assignedAt: now,
     isActive: true,
+    deploymentCycleId: activeCycle?.id ?? null,
   });
+
+  // Keep the student's CURRENT Ignite enrollment synchronized with the
+  // reassignment. Historical/completed Ignite batches are intentionally
+  // left unchanged.
+  await db
+    .update(demoBatchEnrollmentsTable)
+    .set({
+      assignedMentorId: newMentor.id,
+      assignedMentorName: newMentor.name,
+    })
+    .where(and(
+      eq(demoBatchEnrollmentsTable.studentId, leadId),
+      eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+    ));
 
   await db.insert(mentorReassignmentHistoryTable).values({
     leadId,
@@ -2424,6 +2449,15 @@ router.post("/admin/ignite/redistribute", adminOnly, async (req, res) => {
   const base = Math.floor(n / m);
   const rem = n % m;
   const now = new Date();
+
+  // Redistribution is part of the current weekly Ignite cycle.
+  const [activeCycle] = await db
+    .select({ id: mentorDeploymentCyclesTable.id })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
   let cursor = 0;
 
   for (let i = 0; i < mentors.length; i++) {
@@ -2432,9 +2466,48 @@ router.post("/admin/ignite/redistribute", adminOnly, async (req, res) => {
     const batch = toRedistribute.slice(cursor, cursor + size);
     cursor += size;
     const ids = batch.map(l => l.id);
+
+    // 1. CRM/Admin assignment
     await db.update(usersTable).set({
-      assignedMentorId: mentors[i].id, assignedAt: now, assignmentStatus: "assigned", updatedAt: now,
+      assignedMentorId: mentors[i].id,
+      assignedAt: now,
+      assignmentStatus: "assigned",
+      deploymentStatus: "Assigned",
+      updatedAt: now,
     }).where(inArray(usersTable.id, ids));
+
+    // 2. Remove old active Mentor Portal assignments.
+    await db
+      .update(mentorStudentAssignmentsTable)
+      .set({ isActive: false })
+      .where(and(
+        inArray(mentorStudentAssignmentsTable.studentId, ids),
+        eq(mentorStudentAssignmentsTable.isActive, true),
+      ));
+
+    // 3. Add assignments for the new mentor in the current weekly cycle.
+    await db.insert(mentorStudentAssignmentsTable).values(
+      ids.map(studentId => ({
+        mentorId: mentors[i].id,
+        studentId,
+        assignedAt: now,
+        isActive: true,
+        deploymentCycleId: activeCycle?.id ?? null,
+      }))
+    );
+
+    // 4. Student Portal reads the active Ignite enrollment mentor.
+    // Historical/completed enrollments remain unchanged.
+    await db
+      .update(demoBatchEnrollmentsTable)
+      .set({
+        assignedMentorId: mentors[i].id,
+        assignedMentorName: mentors[i].name,
+      })
+      .where(and(
+        inArray(demoBatchEnrollmentsTable.studentId, ids),
+        eq(demoBatchEnrollmentsTable.enrollmentStatus, "active"),
+      ));
 
     await db.insert(mentorReassignmentHistoryTable).values(ids.map(lid => ({
       leadId: lid, newMentorId: mentors[i].id, newMentorName: mentors[i].name,

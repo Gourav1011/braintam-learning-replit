@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-28-1823" : "dev",
-    commit: true ? "efc332a" : "unknown",
-    buildTime: true ? "2026-07-28T18:23:59.231Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-28-1917" : "dev",
+    commit: true ? "e303783" : "unknown",
+    buildTime: true ? "2026-07-28T19:17:00.827Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -131510,11 +131510,21 @@ router28.post("/admin/ignite/leads/:id/reassign", adminOnly7, async (req, res) =
   if (lead.assignedMentorId) {
     await db.update(mentorStudentAssignmentsTable).set({ isActive: false }).where(and(eq(mentorStudentAssignmentsTable.studentId, leadId), eq(mentorStudentAssignmentsTable.isActive, true)));
   }
+  const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
   await db.insert(mentorStudentAssignmentsTable).values({
     mentorId: newMentor.id,
     studentId: leadId,
-    isActive: true
+    assignedAt: now,
+    isActive: true,
+    deploymentCycleId: activeCycle?.id ?? null
   });
+  await db.update(demoBatchEnrollmentsTable).set({
+    assignedMentorId: newMentor.id,
+    assignedMentorName: newMentor.name
+  }).where(and(
+    eq(demoBatchEnrollmentsTable.studentId, leadId),
+    eq(demoBatchEnrollmentsTable.enrollmentStatus, "active")
+  ));
   await db.insert(mentorReassignmentHistoryTable).values({
     leadId,
     previousMentorId: lead.assignedMentorId ?? null,
@@ -131970,6 +131980,7 @@ router28.post("/admin/ignite/redistribute", adminOnly7, async (req, res) => {
   const base = Math.floor(n / m);
   const rem = n % m;
   const now = /* @__PURE__ */ new Date();
+  const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
   let cursor = 0;
   for (let i = 0; i < mentors.length; i++) {
     const size = base + (i < rem ? 1 : 0);
@@ -131981,8 +131992,29 @@ router28.post("/admin/ignite/redistribute", adminOnly7, async (req, res) => {
       assignedMentorId: mentors[i].id,
       assignedAt: now,
       assignmentStatus: "assigned",
+      deploymentStatus: "Assigned",
       updatedAt: now
     }).where(inArray(usersTable.id, ids));
+    await db.update(mentorStudentAssignmentsTable).set({ isActive: false }).where(and(
+      inArray(mentorStudentAssignmentsTable.studentId, ids),
+      eq(mentorStudentAssignmentsTable.isActive, true)
+    ));
+    await db.insert(mentorStudentAssignmentsTable).values(
+      ids.map((studentId) => ({
+        mentorId: mentors[i].id,
+        studentId,
+        assignedAt: now,
+        isActive: true,
+        deploymentCycleId: activeCycle?.id ?? null
+      }))
+    );
+    await db.update(demoBatchEnrollmentsTable).set({
+      assignedMentorId: mentors[i].id,
+      assignedMentorName: mentors[i].name
+    }).where(and(
+      inArray(demoBatchEnrollmentsTable.studentId, ids),
+      eq(demoBatchEnrollmentsTable.enrollmentStatus, "active")
+    ));
     await db.insert(mentorReassignmentHistoryTable).values(ids.map((lid) => ({
       leadId: lid,
       newMentorId: mentors[i].id,
