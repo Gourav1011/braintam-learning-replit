@@ -463,7 +463,24 @@ function AuthLiveClassesView() {
   };
   const getGrad = (name?: string) => (name && SUBJ_GRAD[name]) ?? `linear-gradient(135deg,${NAVY},#123D7A)`;
 
-  const ClassCard = ({ cls }: { cls: any }) => (
+  const ClassCard = ({ cls }: { cls: any }) => {
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+      if (cls.status !== "upcoming") return;
+
+      const timer = window.setInterval(() => {
+        setNow(Date.now());
+      }, 1000);
+
+      return () => window.clearInterval(timer);
+    }, [cls.status]);
+
+    const scheduledTime = new Date(cls.scheduledAt).getTime();
+    const scheduledStartReached =
+      Number.isFinite(scheduledTime) && now >= scheduledTime;
+
+    return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -507,23 +524,65 @@ function AuthLiveClassesView() {
           )}
         </div>
 
-        {cls.status === "upcoming" ? (
-          <ReminderButton classId={cls.id} title={cls.title} scheduledAt={cls.scheduledAt} />
-        ) : (
-          <Link href={`/live/${cls.id}?role=student&title=${encodeURIComponent(cls.title)}`}>
+        {cls.status === "upcoming" && !scheduledStartReached ? (
+          <div className="space-y-2">
+            <div
+              className="rounded-xl px-3 py-3 text-center"
+              style={{ background: "#F0F7FF", border: "1px solid #DBEAFE" }}
+            >
+              <p className="text-sm font-black" style={{ color: NAVY }}>
+                🚀 Your class is almost ready!
+              </p>
+              <p className="text-xs font-semibold text-gray-600 mt-1">
+                🕒 Class starts at {new Date(cls.scheduledAt).toLocaleTimeString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Get your notebook ready! 📚
+              </p>
+            </div>
+
             <button
-              className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: cls.status === "live" ? "#EF4444" : "#94a3b8" }}
-              disabled={cls.status === "completed"}
+              type="button"
+              disabled
+              className="w-full py-2.5 rounded-xl text-sm font-bold text-white cursor-not-allowed opacity-70"
+              style={{ background: NAVY }}
               data-testid={`join-class-${cls.id}`}
             >
-              {cls.status === "live" ? "🚀 Join Now" : "Class Ended"}
+              ⏱ Join Class • {countdown(cls.scheduledAt)}
+            </button>
+
+            <p className="text-[10px] text-gray-400 text-center">
+              Join Class will activate automatically at class time.
+            </p>
+          </div>
+        ) : cls.status === "live" || scheduledStartReached ? (
+          <Link href={`/live/${cls.id}?role=student&title=${encodeURIComponent(cls.title)}`}>
+            <button
+              className="w-full py-2.5 rounded-xl text-sm font-black text-white transition-all hover:opacity-90"
+              style={{ background: "#EF4444" }}
+              data-testid={`join-class-${cls.id}`}
+            >
+              🚀 Join Class
             </button>
           </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="w-full py-2.5 rounded-xl text-sm font-bold text-white opacity-60 cursor-not-allowed"
+            style={{ background: "#94a3b8" }}
+          >
+            ✓ Class Ended
+          </button>
         )}
       </div>
     </motion.div>
-  );
+    );
+  };
 
   return (
     <AppLayout>

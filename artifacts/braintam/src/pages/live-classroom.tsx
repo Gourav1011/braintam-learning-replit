@@ -1192,8 +1192,14 @@ export default function LiveClassroom() {
     socket.on("class:paused",  () => { if (!isStaff) setClassPausedActive(true); });
     socket.on("class:resumed", () => { if (!isStaff) setClassPausedActive(false); });
     // ── Chat mute/unmute ────────────────────────────────────
-    socket.on("chat:muted",   () => { if (!isStaff) setIsChatMuted(true); else setChatMuted(true); });
-    socket.on("chat:unmuted", () => { if (!isStaff) setIsChatMuted(false); else setChatMuted(false); });
+    socket.on("chat:muted",   () => {
+      if (isStaff) setChatMuted(true);
+      else if (!isMentor) setIsChatMuted(true);
+    });
+    socket.on("chat:unmuted", () => {
+      if (isStaff) setChatMuted(false);
+      else if (!isMentor) setIsChatMuted(false);
+    });
 
     // ── Diagnostics: server-ack confirming room join ──────────
     socket.on("classroom:joined", (d: { sessionId: string; socketId: string; roomName: string; memberCount: number; role: string }) => {
@@ -1231,6 +1237,46 @@ export default function LiveClassroom() {
   }, [socket, upsert, isStaff, livekit]);
 
   // ── Actions ────────────────────────────────────────────────
+  const quickChatMessages =
+    role === "teacher"
+      ? [
+          "👏 Great job! Keep it up!",
+          "🌟 Excellent answer! Well done!",
+          "🧠 Think again, you're almost there!",
+          "🎯 Read the question carefully!",
+          "⚡ Come on, answer quickly!",
+          "✋ Raise your hand if you know!",
+          "📖 Everyone, focus on the screen!",
+          "🏆 Amazing work, superstars!",
+        ]
+      : isMentor
+        ? [
+            "🚀 Come on everyone, you can do it!",
+            "👏 Great effort! Keep going!",
+            "🧠 Think carefully, you know this!",
+            "🎯 Stay focused, you're doing great!",
+            "⚡ Let's see who answers first!",
+            "💪 Don't give up, try once more!",
+            "🌟 Amazing participation, everyone!",
+            "🏆 Come on Braintam Superstars!",
+          ]
+        : [
+            "😎 Easy Peasy! I got this!",
+            "💯 Yes! I know the answer!",
+            "⚡ 123... Done! That was quick!",
+            "🔥 This one was too easy!",
+            "🤩 Wow! That was really fun!",
+            "🏆 Challenge me with another one!",
+            "🚀 Braintam is the Best!",
+            "💙 I Love Learning with Braintam!",
+          ];
+
+  const sendQuickChat = (text: string) => {
+    if (!socket) return;
+    if (!isStaff && !isMentor && (chatBlocked || isChatMuted)) return;
+    socket.emit("chat:send", text);
+  };
+
   const sendChat = () => {
     if (!socket || !chatInput.trim()) return;
     lastSocketSent.current = `chat:send "${chatInput.trim().slice(0, 30)}"`;
@@ -2046,10 +2092,20 @@ export default function LiveClassroom() {
                     return true;
                   })
                   .map(msg => (
-                    <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
+                    <div
+                      key={msg.id}
+                      className={
+                        msg.role === "teacher"
+                          ? "bg-red-950/50 border border-red-700/60 rounded-xl px-2.5 py-2"
+                          : msg.isAnnouncement
+                            ? "bg-blue-900/20 rounded-lg px-2 py-1"
+                            : ""
+                      }
+                    >
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
-                        {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
+                        {msg.role === "teacher" && <span className="text-[8px] bg-red-700 text-white rounded px-1.5 py-0.5 font-black">MASTER TEACHER</span>}
+                        {msg.role === "admin" && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">A</span>}
                         {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
                         {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
                       </div>
@@ -2077,15 +2133,29 @@ export default function LiveClassroom() {
                 </div>
               ) : isChatMuted ? (
                 <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
-                  💬 Chat is muted by the teacher.
+                  🔒 Chat is paused by your teacher. Keep learning — chat will reopen soon.
                 </div>
               ) : (
-                <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                <>
+                <div className="px-2 pt-2 pb-1 border-t border-gray-800 flex gap-1.5 overflow-x-auto flex-shrink-0">
+                  {quickChatMessages.map((text) => (
+                    <button
+                      key={text}
+                      type="button"
+                      onClick={() => sendQuickChat(text)}
+                      disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
+                      className="whitespace-nowrap px-2.5 py-1.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] font-semibold text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+                <div className="classroom-composer border-t border-gray-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
                     className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontSize: 13 }}
-                    placeholder="Say something…"
+                    placeholder="Ask a question or share your answer..."
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
@@ -2095,11 +2165,13 @@ export default function LiveClassroom() {
                     autoCorrect="off"
                   />
                   <button onClick={sendChat} disabled={!chatInput.trim() || chatBlocked}
-                    className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="min-h-[40px] px-4 py-2 rounded-xl text-white flex items-center justify-center gap-1.5 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ background: NAVY }}>
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-4 h-4" />
+                    <span className="text-xs font-bold">Send</span>
                   </button>
                 </div>
+              </>
               )}
             </div>
           ) : (<>
@@ -2158,10 +2230,20 @@ export default function LiveClassroom() {
                     return true;
                   })
                   .map(msg => (
-                    <div key={msg.id} className={msg.isAnnouncement ? "bg-blue-900/20 rounded-lg px-2 py-1" : ""}>
+                    <div
+                      key={msg.id}
+                      className={
+                        msg.role === "teacher"
+                          ? "bg-red-950/50 border border-red-700/60 rounded-xl px-2.5 py-2"
+                          : msg.isAnnouncement
+                            ? "bg-blue-900/20 rounded-lg px-2 py-1"
+                            : ""
+                      }
+                    >
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
-                        {(msg.role === "teacher" || msg.role === "admin") && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">T</span>}
+                        {msg.role === "teacher" && <span className="text-[8px] bg-red-700 text-white rounded px-1.5 py-0.5 font-black">MASTER TEACHER</span>}
+                        {msg.role === "admin" && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">A</span>}
                         {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
                         {msg.isAnnouncement && <span className="text-[8px] bg-yellow-900/60 text-yellow-400 rounded px-1 font-bold">📢</span>}
                       </div>
@@ -2185,15 +2267,29 @@ export default function LiveClassroom() {
                 </div>
               ) : !isStaff && isChatMuted ? (
                 <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
-                  💬 Chat is muted by the teacher.
+                  🔒 Chat is paused by your teacher. Keep learning — chat will reopen soon.
                 </div>
               ) : (
-                <div className="classroom-composer border-t border-gray-800 flex gap-1.5 flex-shrink-0">
+                <>
+                <div className="px-2 pt-2 pb-1 border-t border-gray-800 flex gap-1.5 overflow-x-auto flex-shrink-0">
+                  {quickChatMessages.map((text) => (
+                    <button
+                      key={text}
+                      type="button"
+                      onClick={() => sendQuickChat(text)}
+                      disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
+                      className="whitespace-nowrap px-2.5 py-1.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] font-semibold text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+                <div className="classroom-composer border-t border-gray-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
                     className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontSize: isStaff ? 16 : 13 }}
-                    placeholder={isStaff ? "Announce to all…" : "Say something…"}
+                    placeholder={isStaff ? "Send a message to the class..." : isMentor ? "Encourage your students..." : "Ask a question or share your answer..."}
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && sendChat()}
@@ -2203,10 +2299,12 @@ export default function LiveClassroom() {
                     autoComplete="off"
                     autoCorrect="off"
                   />
-                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="p-1.5 rounded-lg text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
-                    <Send className="w-3.5 h-3.5" />
+                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="min-h-[40px] px-4 py-2 rounded-xl text-white flex items-center justify-center gap-1.5 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
+                    <Send className="w-4 h-4" />
+                    <span className="text-xs font-bold">Send</span>
                   </button>
                 </div>
+              </>
               )}
 
               {/* Raise hand for students */}
