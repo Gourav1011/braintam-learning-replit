@@ -73,6 +73,8 @@ function apiFetch(path: string) {
 }
 
 function ContentCard({ item }: { item: ContentItem }) {
+  const [showNotStarted, setShowNotStarted] = useState(false);
+
   const cfg = CONTENT_CONFIG[item.contentType] ?? { label: item.contentType, bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", icon: FileText };
   const Icon = cfg.icon;
   const isLiveNow = item.contentType === "LIVE_CLASS" && item.status === "live";
@@ -109,15 +111,64 @@ function ContentCard({ item }: { item: ContentItem }) {
           </Link>
         )}
         {!isLiveNow && item.contentType === "LIVE_CLASS" && item.status === "upcoming" && (
-          <Link href={`/live/${item.id}?role=student&title=${encodeURIComponent(item.title)}`}>
-            <Button size="sm" variant="outline" className="text-xs h-7 px-3">Join</Button>
-          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs h-7 px-3"
+            onClick={() => setShowNotStarted(true)}
+          >
+            ⏰ Not Started
+          </Button>
         )}
         {item.contentType === "RECORDING" && item.videoUrl && (
           <Button size="sm" variant="outline" className={`text-xs h-7 px-3 ${cfg.text} ${cfg.border} hover:${cfg.bg}`}
             onClick={() => window.open(item.videoUrl!, "_blank")}>Watch</Button>
         )}
       </div>
+
+      {showNotStarted && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setShowNotStarted(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-2">⏰</div>
+
+            <h3 className="text-lg font-black text-gray-900">
+              Class hasn't started yet
+            </h3>
+
+            {item.scheduledAt && (
+              <p className="mt-2 text-sm text-gray-600">
+                🕒 Class starts at{" "}
+                <span className="font-bold text-gray-900">
+                  {new Date(item.scheduledAt).toLocaleTimeString("en-IN", {
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </p>
+            )}
+
+            <p className="mt-2 text-xs text-gray-500">
+              Get your notebook ready! 📚 We'll see you in class soon.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowNotStarted(false)}
+              className="mt-4 w-full rounded-xl py-2.5 text-sm font-bold text-white"
+              style={{ background: "#0B2D5C" }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

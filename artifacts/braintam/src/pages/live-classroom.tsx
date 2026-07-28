@@ -2142,8 +2142,8 @@ export default function LiveClassroom() {
                 <>
                 <div className="relative px-2 pt-2 border-t border-gray-800 flex-shrink-0">
                   {showQuickChat && (
-                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[300px] max-w-[calc(100vw-32px)] rounded-2xl border border-gray-700 bg-gray-900 shadow-2xl p-2">
-                      <div className="flex items-center justify-between px-2 pb-1.5">
+                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[260px] max-w-[calc(100vw-24px)] max-h-[300px] overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-1.5">
+                      <div className="flex items-center justify-between px-2 pb-1">
                         <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                           Quick Messages
                         </span>
@@ -2163,7 +2163,7 @@ export default function LiveClassroom() {
                             type="button"
                             onClick={() => sendQuickChat(text)}
                             disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-gray-100 hover:bg-gray-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] leading-4 font-semibold text-gray-100 hover:bg-gray-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {text}
                           </button>
@@ -2310,8 +2310,8 @@ export default function LiveClassroom() {
                 <>
                 <div className="relative px-2 pt-2 border-t border-gray-800 flex-shrink-0">
                   {showQuickChat && (
-                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[300px] max-w-[calc(100vw-32px)] rounded-2xl border border-gray-700 bg-gray-900 shadow-2xl p-2">
-                      <div className="flex items-center justify-between px-2 pb-1.5">
+                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[260px] max-w-[calc(100vw-24px)] max-h-[300px] overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-1.5">
+                      <div className="flex items-center justify-between px-2 pb-1">
                         <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                           Quick Messages
                         </span>
@@ -2331,7 +2331,7 @@ export default function LiveClassroom() {
                             type="button"
                             onClick={() => sendQuickChat(text)}
                             disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-gray-100 hover:bg-gray-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] leading-4 font-semibold text-gray-100 hover:bg-gray-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {text}
                           </button>

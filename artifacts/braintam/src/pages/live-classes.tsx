@@ -579,11 +579,11 @@ function AuthLiveClassesView() {
               style={{ background: NAVY }}
               data-testid={`join-class-${cls.id}`}
             >
-              🚀 Join Class
+              ⏰ Waiting for Teacher
             </button>
 
             <p className="text-[10px] text-gray-400 text-center mt-1.5">
-              Waiting for your teacher to start the class.
+              Class will open when your teacher starts the session.
             </p>
 
             {showNotStarted && (
