@@ -6,6 +6,7 @@ import {
   ignitePaidStudentsTable,
   usersTable,
   coursesTable,
+  mentorStudentAssignmentsTable,
 } from "@workspace/db";
 import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
@@ -315,6 +316,39 @@ router.patch("/admin/mastery/students/:id", adminOnly, async (req, res) => {
     .returning();
 
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Keep the canonical student -> mentor assignment used by Student Portal
+  // synchronized whenever a Mastery mentor is changed.
+  if ("mentorId" in req.body && updated.studentId) {
+    const newMentorId =
+      req.body.mentorId === null || req.body.mentorId === ""
+        ? null
+        : Number(req.body.mentorId);
+
+    if (newMentorId !== null && !Number.isInteger(newMentorId)) {
+      res.status(400).json({ error: "Invalid mentorId" });
+      return;
+    }
+
+    // A student must never have an old active mentor after reassignment.
+    await db
+      .update(mentorStudentAssignmentsTable)
+      .set({ isActive: false })
+      .where(and(
+        eq(mentorStudentAssignmentsTable.studentId, updated.studentId),
+        eq(mentorStudentAssignmentsTable.isActive, true),
+      ));
+
+    if (newMentorId !== null) {
+      await db
+        .insert(mentorStudentAssignmentsTable)
+        .values({
+          mentorId: newMentorId,
+          studentId: updated.studentId,
+          isActive: true,
+        });
+    }
+  }
 
   // Timeline: mentor change
   if ("mentorId" in req.body) {

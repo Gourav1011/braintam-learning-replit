@@ -5,9 +5,10 @@ import {
   subjectsTable,
   enrollmentsTable,
   masteryStudentsTable,
+  demoBatchEnrollmentsTable,
 } from "@workspace/db";
 import { ListLiveClassesQueryParams, GetLiveClassParams, JoinLiveClassParams } from "@workspace/api-zod";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import { attachUser } from "../middlewares/auth.js";
 
 const router = Router();
@@ -38,6 +39,15 @@ async function getStudentAssignedCourseIds(studentId: number): Promise<number[]>
   return [...ids];
 }
 
+async function getStudentIgniteBatchIds(studentId: number): Promise<number[]> {
+  const rows = await db
+    .select({ batchId: demoBatchEnrollmentsTable.batchId })
+    .from(demoBatchEnrollmentsTable)
+    .where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+
+  return [...new Set(rows.map(row => row.batchId))];
+}
+
 router.get("/live-classes", attachUser, async (req, res) => {
   const parsed = ListLiveClassesQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
@@ -52,16 +62,39 @@ router.get("/live-classes", attachUser, async (req, res) => {
   // Students only see live classes belonging to courses in which
   // they are explicitly enrolled. Grade alone grants no access.
   // Teachers/Admins/Mentors continue to see all classes.
-  let studentFilter: ReturnType<typeof inArray> | undefined;
+  let studentFilter;
   if (user.role === "student") {
-    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
+    const [assignedCourseIds, igniteBatchIds] = await Promise.all([
+      getStudentAssignedCourseIds(user.id),
+      getStudentIgniteBatchIds(user.id),
+    ]);
 
-    if (assignedCourseIds.length === 0) {
+    const accessFilters = [];
+
+    if (assignedCourseIds.length > 0) {
+      accessFilters.push(
+        inArray(liveClassesTable.courseId, assignedCourseIds)
+      );
+    }
+
+    if (igniteBatchIds.length > 0) {
+      accessFilters.push(
+        and(
+          eq(liveClassesTable.classType, "ignite"),
+          inArray(liveClassesTable.igniteBatchId, igniteBatchIds)
+        )
+      );
+    }
+
+    if (accessFilters.length === 0) {
       res.json([]);
       return;
     }
 
-    studentFilter = inArray(liveClassesTable.courseId, assignedCourseIds);
+    studentFilter =
+      accessFilters.length === 1
+        ? accessFilters[0]
+        : or(...accessFilters);
   }
 
   const classes = await db.select({

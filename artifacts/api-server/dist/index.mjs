@@ -112987,9 +112987,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-28-1244" : "dev",
-    commit: true ? "0ea5b34" : "unknown",
-    buildTime: true ? "2026-07-28T12:44:42.121Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-07-28-1823" : "dev",
+    commit: true ? "efc332a" : "unknown",
+    buildTime: true ? "2026-07-28T18:23:59.231Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -113735,6 +113735,10 @@ async function getStudentAssignedCourseIds(studentId) {
   }
   return [...ids];
 }
+async function getStudentIgniteBatchIds(studentId) {
+  const rows = await db.select({ batchId: demoBatchEnrollmentsTable.batchId }).from(demoBatchEnrollmentsTable).where(eq(demoBatchEnrollmentsTable.studentId, studentId));
+  return [...new Set(rows.map((row) => row.batchId))];
+}
 router5.get("/live-classes", attachUser, async (req, res) => {
   const parsed = ListLiveClassesQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
@@ -113745,12 +113749,29 @@ router5.get("/live-classes", attachUser, async (req, res) => {
   }
   let studentFilter;
   if (user.role === "student") {
-    const assignedCourseIds = await getStudentAssignedCourseIds(user.id);
-    if (assignedCourseIds.length === 0) {
+    const [assignedCourseIds, igniteBatchIds] = await Promise.all([
+      getStudentAssignedCourseIds(user.id),
+      getStudentIgniteBatchIds(user.id)
+    ]);
+    const accessFilters = [];
+    if (assignedCourseIds.length > 0) {
+      accessFilters.push(
+        inArray(liveClassesTable.courseId, assignedCourseIds)
+      );
+    }
+    if (igniteBatchIds.length > 0) {
+      accessFilters.push(
+        and(
+          eq(liveClassesTable.classType, "ignite"),
+          inArray(liveClassesTable.igniteBatchId, igniteBatchIds)
+        )
+      );
+    }
+    if (accessFilters.length === 0) {
       res.json([]);
       return;
     }
-    studentFilter = inArray(liveClassesTable.courseId, assignedCourseIds);
+    studentFilter = accessFilters.length === 1 ? accessFilters[0] : or(...accessFilters);
   }
   const classes = await db.select({
     id: liveClassesTable.id,
@@ -135652,6 +135673,24 @@ router36.patch("/admin/mastery/students/:id", adminOnly14, async (req, res) => {
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
+  }
+  if ("mentorId" in req.body && updated.studentId) {
+    const newMentorId = req.body.mentorId === null || req.body.mentorId === "" ? null : Number(req.body.mentorId);
+    if (newMentorId !== null && !Number.isInteger(newMentorId)) {
+      res.status(400).json({ error: "Invalid mentorId" });
+      return;
+    }
+    await db.update(mentorStudentAssignmentsTable).set({ isActive: false }).where(and(
+      eq(mentorStudentAssignmentsTable.studentId, updated.studentId),
+      eq(mentorStudentAssignmentsTable.isActive, true)
+    ));
+    if (newMentorId !== null) {
+      await db.insert(mentorStudentAssignmentsTable).values({
+        mentorId: newMentorId,
+        studentId: updated.studentId,
+        isActive: true
+      });
+    }
   }
   if ("mentorId" in req.body) {
     await addTimeline(id, "mentor_assigned", `Mentor Updated: ${req.body.mentorName ?? "Unknown"}`, { mentorId: req.body.mentorId }, actor.id, actor.name);
