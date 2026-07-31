@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth, STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
 import { Video, BookOpen, FileText, CheckSquare, Flame, PlayCircle, Bell, X, ChevronRight, Zap, Trophy, Megaphone, Calendar, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
@@ -893,9 +894,16 @@ export default function DashboardPage() {
                 {/* 2nd */}
                 {leaderboard && leaderboard[1] && (
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-lg font-bold text-white shadow">
-                      {leaderboard[1].studentName.charAt(0)}
-                    </div>
+                    <Avatar className="w-10 h-10 shadow">
+                      <AvatarImage
+                        src={leaderboard[1].avatarUrl || ""}
+                        alt={leaderboard[1].studentName}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-slate-300 text-lg font-bold text-white">
+                        {leaderboard[1].studentName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="text-white text-[10px] font-semibold truncate w-16 text-center">{leaderboard[1].studentName.split(" ")[0]}</div>
                     <div className="text-white/60 text-[9px]">{leaderboard[1].points} pts</div>
                     <div className="w-12 h-10 rounded-t-xl flex items-center justify-center text-base font-bold" style={{ background: "rgba(255,255,255,0.1)", color: "#94a3b8" }}>🥈</div>
@@ -904,9 +912,19 @@ export default function DashboardPage() {
                 {/* 1st */}
                 {leaderboard && leaderboard[0] && (
                   <div className="flex flex-col items-center gap-1 -mb-1">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg" style={{ background: GOLD, color: NAVY }}>
-                      {leaderboard[0].studentName.charAt(0)}
-                    </div>
+                    <Avatar className="w-12 h-12 shadow-lg">
+                      <AvatarImage
+                        src={leaderboard[0].avatarUrl || ""}
+                        alt={leaderboard[0].studentName}
+                        className="object-cover"
+                      />
+                      <AvatarFallback
+                        className="text-xl font-bold"
+                        style={{ background: GOLD, color: NAVY }}
+                      >
+                        {leaderboard[0].studentName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="text-white text-xs font-bold truncate w-20 text-center">{leaderboard[0].studentName.split(" ")[0]}</div>
                     <div className="text-[10px]" style={{ color: GOLD }}>{leaderboard[0].points} pts</div>
                     <div className="w-14 h-14 rounded-t-xl flex items-center justify-center text-xl font-bold" style={{ background: "rgba(255,255,255,0.15)" }}>🥇</div>
@@ -915,9 +933,19 @@ export default function DashboardPage() {
                 {/* 3rd */}
                 {leaderboard && leaderboard[2] && (
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white shadow" style={{ background: "#b45309" }}>
-                      {leaderboard[2].studentName.charAt(0)}
-                    </div>
+                    <Avatar className="w-10 h-10 shadow">
+                      <AvatarImage
+                        src={leaderboard[2].avatarUrl || ""}
+                        alt={leaderboard[2].studentName}
+                        className="object-cover"
+                      />
+                      <AvatarFallback
+                        className="text-lg font-bold text-white"
+                        style={{ background: "#b45309" }}
+                      >
+                        {leaderboard[2].studentName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="text-white text-[10px] font-semibold truncate w-16 text-center">{leaderboard[2].studentName.split(" ")[0]}</div>
                     <div className="text-white/60 text-[9px]">{leaderboard[2].points} pts</div>
                     <div className="w-12 h-8 rounded-t-xl flex items-center justify-center text-base font-bold" style={{ background: "rgba(255,255,255,0.1)", color: "#b45309" }}>🥉</div>
@@ -938,7 +966,19 @@ export default function DashboardPage() {
                   style={{ background: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
                   data-testid={`leaderboard-entry-${entry.rank}`}
                 >
-                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">{entry.rank}</div>
+                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                    {entry.rank}
+                  </div>
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarImage
+                      src={entry.avatarUrl || ""}
+                      alt={entry.studentName}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-600">
+                      {entry.studentName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold truncate">{entry.studentName}</div>
                   </div>

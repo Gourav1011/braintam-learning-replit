@@ -149,12 +149,19 @@ function StudentSidebar() {
           onClick={() => setProfileOpen(o => !o)}
           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-2xl hover:bg-gray-50 transition-all"
         >
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #0B2B6B, #1a4a9b)" }}
-          >
-            {student?.name?.charAt(0)?.toUpperCase() ?? "S"}
-          </div>
+          <Avatar className="w-9 h-9 flex-shrink-0">
+            <AvatarImage
+              src={student?.avatarUrl || ""}
+              alt={student?.name ?? "Student"}
+              className="object-cover"
+            />
+            <AvatarFallback
+              className="text-white font-bold text-sm"
+              style={{ background: "linear-gradient(135deg, #0B2B6B, #1a4a9b)" }}
+            >
+              {student?.name?.charAt(0)?.toUpperCase() ?? "S"}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-bold text-gray-800 truncate">{student?.name?.split(" ")[0] ?? "Student"}</p>
             <p className="text-[10px] text-gray-400 font-medium">
@@ -227,12 +234,19 @@ function StudentMobileHeader() {
           onClick={() => setOpen(o => !o)}
           className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full transition-colors hover:bg-gray-100"
         >
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #0B2B6B, #1a4a9b)" }}
-          >
-            {student?.name?.charAt(0)?.toUpperCase() ?? "S"}
-          </div>
+          <Avatar className="w-7 h-7 flex-shrink-0">
+            <AvatarImage
+              src={student?.avatarUrl || ""}
+              alt={student?.name ?? "Student"}
+              className="object-cover"
+            />
+            <AvatarFallback
+              className="text-white font-black text-xs"
+              style={{ background: "linear-gradient(135deg, #0B2B6B, #1a4a9b)" }}
+            >
+              {student?.name?.charAt(0)?.toUpperCase() ?? "S"}
+            </AvatarFallback>
+          </Avatar>
           <div className="text-left hidden xs:block">
             <p className="text-xs font-bold text-gray-800 leading-none">{student?.name?.split(" ")[0] ?? "Student"}</p>
           </div>
