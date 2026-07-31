@@ -327,8 +327,16 @@ function LeaderboardTab() {
                 <motion.div key={entry.rank} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: pos * 0.1 }}
                   className="flex flex-col items-center gap-2">
                   <div className="text-xl font-black text-white">{medals[pos === 1 ? 0 : pos === 0 ? 1 : 2]}</div>
-                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${podiumColors[pos].bg} flex items-center justify-center text-white font-black text-lg border-2 ${podiumColors[pos].border}`}>
-                    {entry.studentName?.charAt(0) ?? "?"}
+                  <div className={`w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br ${podiumColors[pos].bg} flex items-center justify-center text-white font-black text-lg border-2 ${podiumColors[pos].border}`}>
+                    {entry.avatarUrl ? (
+                      <img
+                        src={entry.avatarUrl}
+                        alt={entry.studentName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      entry.studentName?.charAt(0)?.toUpperCase() ?? "?"
+                    )}
                   </div>
                   <div className="text-center">
                     <p className="text-white text-xs font-bold leading-tight max-w-[72px] truncate">{entry.studentName}</p>
@@ -364,8 +372,16 @@ function LeaderboardTab() {
               }`}>
                 {i < 3 ? medals[i] : entry.rank}
               </div>
-              <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white font-black text-sm flex-shrink-0`}>
-                {entry.studentName?.charAt(0) ?? "?"}
+              <div className={`w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white font-black text-sm flex-shrink-0`}>
+                {entry.avatarUrl ? (
+                  <img
+                    src={entry.avatarUrl}
+                    alt={entry.studentName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  entry.studentName?.charAt(0)?.toUpperCase() ?? "?"
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm text-gray-800 truncate">{entry.studentName}</p>
