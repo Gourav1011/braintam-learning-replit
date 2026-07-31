@@ -24,10 +24,10 @@ import {
   subjectsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray, gte, lte, or, lt, isNull, isNotNull } from "drizzle-orm";
-import { runDailyQueueReset } from "../jobs/dailyQueueReset.js";
 import { requireRole } from "../middlewares/auth.js";
 import { hashPassword } from "../lib/password.js";
 import { runOverdueFollowUpReminders } from "../jobs/overdueFollowUpReminders.js";
+import { runIgniteWeeklyRollover } from "../jobs/igniteWeeklyRollover.js";
 
 const router = Router();
 const mentorAuth = requireRole("mentor", "sales_mentor", "academic_mentor", "admin");
@@ -289,7 +289,6 @@ router.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
   if (weakSubject !== undefined) updates.weakSubject = weakSubject || null;
   if (strongSubject !== undefined) updates.strongSubject = strongSubject || null;
   if (interestLevel !== undefined) updates.interestLevel = interestLevel || null;
-  if (repeatedCustomer !== undefined) updates.repeatedCustomer = Boolean(repeatedCustomer);
   // New mentor-editable fields — displayName/referenceGrade/altPhone/notes only
   if (displayName !== undefined) updates.displayName = displayName || null;
   if (referenceGrade !== undefined) updates.referenceGrade = referenceGrade ? Number(referenceGrade) : null;
@@ -742,8 +741,30 @@ router.post("/mentor/attendance", mentorAuth, async (req, res) => {
 });
 
 // ── Follow-ups ───────────────────────────────────────────────────────────
+async function getActiveIgniteCycle() {
+  const [cycle] = await db
+    .select({
+      id: mentorDeploymentCyclesTable.id,
+      weekLabel: mentorDeploymentCyclesTable.weekLabel,
+      startDate: mentorDeploymentCyclesTable.startDate,
+    })
+    .from(mentorDeploymentCyclesTable)
+    .where(eq(mentorDeploymentCyclesTable.status, "active"))
+    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
+    .limit(1);
+
+  return cycle ?? null;
+}
+
 router.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
+  const activeCycle = await getActiveIgniteCycle();
+
+  if (!activeCycle) {
+    res.json([]);
+    return;
+  }
+
   const rows = await db.select({
     id: mentorFollowUpsTable.id, studentId: mentorFollowUpsTable.studentId, studentName: usersTable.name,
     noteType: mentorFollowUpsTable.noteType, note: mentorFollowUpsTable.note,
@@ -754,7 +775,10 @@ router.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
   })
     .from(mentorFollowUpsTable)
     .leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.studentId))
-    .where(eq(mentorFollowUpsTable.mentorId, mentorId))
+    .where(and(
+      eq(mentorFollowUpsTable.mentorId, mentorId),
+      eq(mentorFollowUpsTable.deploymentCycleId, activeCycle.id),
+    ))
     .orderBy(desc(mentorFollowUpsTable.createdAt))
     .limit(200);
 
@@ -764,10 +788,25 @@ router.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
 
 router.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
+  const activeCycle = await getActiveIgniteCycle();
   const { studentId, noteType, note, callStatus, callTime, calledBy, calledByName, leadStatus, nextFollowUpDate } = req.body;
-  if (!studentId || !note) { res.status(400).json({ error: "studentId and note required" }); return; }
+
+  if (!activeCycle) {
+    res.status(409).json({ error: "No active Ignite deployment cycle" });
+    return;
+  }
+
+  if (!studentId || !note) {
+    res.status(400).json({ error: "studentId and note required" });
+    return;
+  }
+
   const [row] = await db.insert(mentorFollowUpsTable).values({
-    mentorId, studentId: Number(studentId), noteType: noteType ?? "general", note: String(note),
+    mentorId,
+    deploymentCycleId: activeCycle.id,
+    studentId: Number(studentId),
+    noteType: noteType ?? "general",
+    note: String(note),
     callStatus: callStatus ?? null, callTime: callTime ?? null, calledBy: calledBy ?? null,
     calledByName: calledByName ?? null, leadStatus: leadStatus ?? null, nextFollowUpDate: nextFollowUpDate ?? null,
   }).returning();
@@ -1444,7 +1483,31 @@ router.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
 // ── Sales SSM: Dashboard metrics ──────────────────────────────────────────
 router.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
-  const studentIds = await getMentorStudentIds(mentorId);
+  const activeCycle = await getActiveIgniteCycle();
+
+  if (!activeCycle) {
+    res.json({
+      assignedLeads: 0,
+      needToCall: 0,
+      interested: 0,
+      highlyInterested: 0,
+      converted: 0,
+      repeatedCustomers: 0,
+      dropped: 0,
+    });
+    return;
+  }
+
+  const currentAssignments = await db
+    .select({ studentId: mentorStudentAssignmentsTable.studentId })
+    .from(mentorStudentAssignmentsTable)
+    .where(and(
+      eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+      eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+      eq(mentorStudentAssignmentsTable.isActive, true),
+    ));
+
+  const studentIds = [...new Set(currentAssignments.map(a => a.studentId))];
 
   if (studentIds.length === 0) {
     res.json({ assignedLeads: 0, needToCall: 0, interested: 0, highlyInterested: 0, converted: 0, repeatedCustomers: 0, dropped: 0 });
@@ -1473,13 +1536,32 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
   const mentorId = req.authUser!.id;
   const studentId = parseInt(String(req.params.studentId), 10);
 
-  if (req.authUser!.role !== "admin") {
-    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
-      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
-    if (!asgn) { res.status(403).json({ error: "Not your assigned student" }); return; }
+  const activeCycle = await getActiveIgniteCycle();
+
+  if (!activeCycle) {
+    res.status(409).json({ error: "No active Ignite deployment cycle" });
+    return;
   }
 
-  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, repeatedCustomer, whoPicked, contactOutcome } = req.body;
+  if (req.authUser!.role !== "admin") {
+    const [asgn] = await db
+      .select({ id: mentorStudentAssignmentsTable.id })
+      .from(mentorStudentAssignmentsTable)
+      .where(and(
+        eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+        eq(mentorStudentAssignmentsTable.studentId, studentId),
+        eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+        eq(mentorStudentAssignmentsTable.isActive, true),
+      ))
+      .limit(1);
+
+    if (!asgn) {
+      res.status(403).json({ error: "Not your assigned student in the current Ignite cycle" });
+      return;
+    }
+  }
+
+  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, whoPicked, contactOutcome } = req.body;
   if (!remark?.trim()) { res.status(400).json({ error: "Remark is required" }); return; }
   if (!callOutcome) { res.status(400).json({ error: "callOutcome is required" }); return; }
 
@@ -1494,7 +1576,6 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
   if (interestLevel) updates.interestLevel = interestLevel;
   if (nextFollowUpAt) updates.nextFollowUpAt = nextFollowUpAt;
   if (nextFollowUpTime) updates.nextFollowUpTime = nextFollowUpTime;
-  if (repeatedCustomer !== undefined) updates.repeatedCustomer = Boolean(repeatedCustomer);
 
   await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId));
 
@@ -1506,6 +1587,7 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
   const noteText = `[${noteParts.join(" | ")}] ${remark.trim()}`;
   const [fu] = await db.insert(mentorFollowUpsTable).values({
     mentorId,
+    deploymentCycleId: activeCycle.id,
     studentId,
     noteType: "Call Outcome",
     note: noteText,
@@ -1548,15 +1630,36 @@ router.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res
 router.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser!.id;
   const studentId = parseInt(String(req.params.studentId), 10);
+  const activeCycle = await getActiveIgniteCycle();
+
+  if (!activeCycle) {
+    res.json([]);
+    return;
+  }
 
   if (req.authUser!.role !== "admin") {
-    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable)
-      .where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
-    if (!asgn) { res.status(403).json({ error: "Not your assigned student" }); return; }
+    const [asgn] = await db
+      .select({ id: mentorStudentAssignmentsTable.id })
+      .from(mentorStudentAssignmentsTable)
+      .where(and(
+        eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+        eq(mentorStudentAssignmentsTable.studentId, studentId),
+        eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+        eq(mentorStudentAssignmentsTable.isActive, true),
+      ))
+      .limit(1);
+
+    if (!asgn) {
+      res.status(403).json({ error: "Not your assigned student in the current Ignite cycle" });
+      return;
+    }
   }
 
   const rows = await db.select().from(mentorFollowUpsTable)
-    .where(eq(mentorFollowUpsTable.studentId, studentId))
+    .where(and(
+      eq(mentorFollowUpsTable.studentId, studentId),
+      eq(mentorFollowUpsTable.deploymentCycleId, activeCycle.id),
+    ))
     .orderBy(desc(mentorFollowUpsTable.createdAt))
     .limit(50);
   res.json(rows);
@@ -1833,52 +1936,25 @@ router.get("/admin/mentor/cycles", adminOnly, async (_req, res) => {
 // Admin: start a new deployment week — archives current active cycle, creates fresh one
 router.post("/admin/mentor/cycles/start-new-week", adminOnly, async (req, res) => {
   const actor = req.authUser!;
-  const { weekLabel } = req.body as { weekLabel?: string };
 
-  await db.update(mentorDeploymentCyclesTable)
-    .set({ status: "archived", archivedAt: new Date() })
-    .where(eq(mentorDeploymentCyclesTable.status, "active"));
+  try {
+    const result = await runIgniteWeeklyRollover(
+      actor.id,
+      actor.name ?? "Admin",
+    );
 
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-  const weekNum = Math.ceil(new Date().getDate() / 7);
-  const month = new Date().toLocaleDateString("en-IN", { month: "short", timeZone: "Asia/Kolkata" });
-  const label = weekLabel?.trim() || `${month} W${weekNum} – ${today}`;
+    if (!result.ok) {
+      res.status(409).json(result);
+      return;
+    }
 
-  const [newCycle] = await db.insert(mentorDeploymentCyclesTable).values({
-    weekLabel: label,
-    startDate: today,
-    status: "active",
-    createdById: actor.id,
-    createdByName: actor.name,
-  }).returning();
-
-  // Reset callStatus for all currently-active sales leads so the new week starts fresh.
-  const activeRows = await db
-    .select({ studentId: mentorStudentAssignmentsTable.studentId })
-    .from(mentorStudentAssignmentsTable)
-    .innerJoin(
-      usersTable,
-      and(
-        eq(usersTable.id, mentorStudentAssignmentsTable.mentorId),
-        eq(usersTable.mentorType, "sales"),
-      )
-    )
-    .where(eq(mentorStudentAssignmentsTable.isActive, true));
-  const resetIds = [...new Set(activeRows.map(r => r.studentId))];
-  if (resetIds.length > 0) {
-    await db.update(usersTable)
-      .set({ callStatus: "Pending", updatedAt: new Date() })
-      .where(inArray(usersTable.id, resetIds));
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("[Ignite] manual weekly rollover failed", error);
+    res.status(500).json({ error: "Weekly rollover failed" });
   }
-
-  res.status(201).json({ ok: true, cycle: newCycle });
 });
 
-// Admin: manual trigger of 5 AM queue reset (for testing / emergency use)
-router.post("/admin/mentor/cycles/trigger-reset", adminOnly, async (_req, res) => {
-  await runDailyQueueReset();
-  res.json({ ok: true, message: "Queue reset complete: all active sales leads set to Pending" });
-});
 
 // Admin posts a timeline entry on any student
 router.post("/admin/btl-crm/timeline", adminOnly, async (req, res) => {

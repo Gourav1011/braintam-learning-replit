@@ -44,6 +44,17 @@ interface DeployMentor {
   conversionRate:  number;
 }
 
+interface IgniteV2Batch {
+  id: number;
+  title: string | null;
+  grade: number | null;
+  batchCode: string | null;
+  weekNumber: number | null;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
 interface DeploymentGroup {
   mentorName: string | null;
   leadCount:  number;
@@ -264,6 +275,11 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
   const [cycle, setCycle]             = useState<Cycle | null>(null);
   const [cycleLoading, setCycleLoading] = useState(true);
   const [startingNewWeek, setStartingNewWeek] = useState(false);
+  const [v2Batch, setV2Batch] = useState<IgniteV2Batch | null>(null);
+  const [v2DeploymentId, setV2DeploymentId] = useState<number | null>(null);
+  const [creatingBatch, setCreatingBatch] = useState(false);
+  const [undoingDeployment, setUndoingDeployment] = useState(false);
+  const [startingBatch, setStartingBatch] = useState(false);
 
   // Load stats
   const loadStats = useCallback(async () => {
@@ -326,6 +342,152 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
     finally { setStartingNewWeek(false); }
   }
 
+
+  async function createV2Batch() {
+    if (!selectedGrade) {
+      flash("Select one grade first.", false);
+      return;
+    }
+
+    setCreatingBatch(true);
+
+    try {
+      const r = await apiFetch("/admin/ignite/v2/batches/create-next", {
+        method: "POST",
+        body: JSON.stringify({ grade: selectedGrade }),
+      });
+
+      const d = await r.json() as {
+        ok?: boolean;
+        batch?: IgniteV2Batch;
+        error?: string;
+        detail?: string;
+      };
+
+      if (!r.ok || !d.batch) {
+        flash(d.error ?? d.detail ?? "Could not create weekly batch", false);
+        return;
+      }
+
+      setV2Batch(d.batch);
+      setV2DeploymentId(null);
+
+      flash(
+        `✅ ${d.batch.title ?? `Grade ${selectedGrade}`} created (${d.batch.batchCode ?? "new batch"})`,
+        true,
+      );
+    } catch {
+      flash("Network error while creating weekly batch", false);
+    } finally {
+      setCreatingBatch(false);
+    }
+  }
+
+  async function attachV2Deployment(batchId: number, deploymentId: number) {
+    const r = await apiFetch(
+      `/admin/ignite/v2/batches/${batchId}/attach-deployment`,
+      {
+        method: "POST",
+        body: JSON.stringify({ deploymentId }),
+      },
+    );
+
+    const d = await r.json() as {
+      ok?: boolean;
+      status?: string;
+      students?: number;
+      error?: string;
+    };
+
+    if (!r.ok || !d.ok) {
+      throw new Error(d.error ?? "Deployment created but could not attach to weekly batch");
+    }
+
+    setV2Batch(prev => prev ? { ...prev, status: d.status ?? "deployed" } : prev);
+    setV2DeploymentId(deploymentId);
+  }
+
+  async function undoV2Deployment() {
+    if (!v2Batch) return;
+
+    if (!window.confirm(
+      `Undo deployment for ${v2Batch.batchCode ?? v2Batch.title ?? "this batch"}? Leads will return to the undeployed pool.`,
+    )) return;
+
+    setUndoingDeployment(true);
+
+    try {
+      const r = await apiFetch(
+        `/admin/ignite/v2/batches/${v2Batch.id}/undo-deployment`,
+        { method: "POST", body: JSON.stringify({}) },
+      );
+
+      const d = await r.json() as {
+        ok?: boolean;
+        status?: string;
+        releasedStudents?: number;
+        error?: string;
+      };
+
+      if (!r.ok || !d.ok) {
+        flash(d.error ?? "Undo failed", false);
+        return;
+      }
+
+      setV2Batch(prev => prev ? { ...prev, status: d.status ?? "upcoming" } : prev);
+      setV2DeploymentId(null);
+
+      await loadStats();
+
+      flash(`↩️ Deployment undone. ${d.releasedStudents ?? 0} leads released.`, true);
+    } catch {
+      flash("Network error while undoing deployment", false);
+    } finally {
+      setUndoingDeployment(false);
+    }
+  }
+
+  async function startV2Batch() {
+    if (!v2Batch) return;
+
+    if (!window.confirm(
+      `Start ${v2Batch.batchCode ?? v2Batch.title ?? "this batch"}? The previous running batch for Grade ${v2Batch.grade} will close.`,
+    )) return;
+
+    setStartingBatch(true);
+
+    try {
+      const r = await apiFetch(
+        `/admin/ignite/v2/batches/${v2Batch.id}/start`,
+        { method: "POST", body: JSON.stringify({}) },
+      );
+
+      const d = await r.json() as {
+        ok?: boolean;
+        status?: string;
+        nextDraft?: IgniteV2Batch | null;
+        error?: string;
+      };
+
+      if (!r.ok || !d.ok) {
+        flash(d.error ?? "Could not start batch", false);
+        return;
+      }
+
+      setV2Batch(prev => prev ? { ...prev, status: "active" } : prev);
+
+      const next = d.nextDraft?.batchCode
+        ? ` Next draft: ${d.nextDraft.batchCode}.`
+        : "";
+
+      flash(`✅ Batch started.${next}`, true);
+    } catch {
+      flash("Network error while starting batch", false);
+    } finally {
+      setStartingBatch(false);
+    }
+  }
+
   useEffect(() => { loadStats(); }, [loadStats]);
   useEffect(() => { loadMentors(); }, [loadMentors]);
   useEffect(() => { if (subView === "history") loadHistory(); }, [subView, loadHistory]);
@@ -349,31 +511,87 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
 
   // Deploy
   async function doDeploy() {
-    if (selectedIds.size === 0) { flash("Please select at least one mentor.", false); return; }
+    if (!selectedGrade) {
+      flash("Select one grade before deployment.", false);
+      return;
+    }
+
+    if (!v2Batch) {
+      flash("Create the weekly batch first.", false);
+      return;
+    }
+
+    if (v2Batch.status !== "upcoming") {
+      flash(`Batch is already ${v2Batch.status}.`, false);
+      return;
+    }
+
+    if (selectedIds.size === 0) {
+      flash("Please select at least one mentor.", false);
+      return;
+    }
+
     setDeploying(true);
+
     try {
       const r = await apiFetch("/admin/ignite/deploy", {
         method: "POST",
         body: JSON.stringify({
-          grade: selectedGrade ?? undefined,
+          grade: selectedGrade,
           mentorIds: Array.from(selectedIds),
         }),
       });
-      const d = await r.json() as { ok?: boolean; deployed?: number; batchCode?: string; message?: string; error?: string };
-      if (d.ok) {
-        flash(`✅ Deployed ${d.deployed} leads (Batch: ${d.batchCode ?? "–"})`, true);
-        setShowPreview(false);
-        loadStats();
-      } else {
+
+      const d = await r.json() as {
+        ok?: boolean;
+        deployed?: number;
+        deploymentId?: number;
+        batchCode?: string;
+        message?: string;
+        error?: string;
+      };
+
+      if (!r.ok || !d.ok) {
         flash(d.message ?? d.error ?? "Deployment failed", false);
+        return;
       }
-    } catch {
-      flash("Network error during deployment", false);
-    } finally { setDeploying(false); }
+
+      if (!d.deploymentId) {
+        flash(
+          "Leads were deployed, but the server did not return deploymentId. Do not Start this batch yet.",
+          false,
+        );
+        return;
+      }
+
+      await attachV2Deployment(v2Batch.id, d.deploymentId);
+
+      flash(
+        `✅ ${d.deployed ?? 0} leads deployed to ${v2Batch.batchCode ?? v2Batch.title}. Review before Start.`,
+        true,
+      );
+
+      setShowPreview(false);
+      await loadStats();
+      await loadHistory();
+
+    } catch (error) {
+      flash(
+        error instanceof Error ? error.message : "Network error during deployment",
+        false,
+      );
+    } finally {
+      setDeploying(false);
+    }
   }
 
   const selectedMentorList = mentors.filter(m => selectedIds.has(m.id));
-  const canPreview = selectedIds.size > 0 && stats.undeployedLeads > 0;
+  const canPreview =
+    selectedGrade !== null &&
+    v2Batch !== null &&
+    v2Batch.status === "upcoming" &&
+    selectedIds.size > 0 &&
+    stats.undeployedLeads > 0;
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -449,11 +667,15 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
               <div className="relative">
                 <select
                   value={selectedGrade ?? ""}
-                  onChange={e => setSelectedGrade(e.target.value ? Number(e.target.value) : null)}
+                  onChange={e => {
+                    setSelectedGrade(e.target.value ? Number(e.target.value) : null);
+                    setV2Batch(null);
+                    setV2DeploymentId(null);
+                  }}
                   className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold bg-white outline-none focus:border-blue-400 cursor-pointer"
                   style={{ color: NAVY }}>
-                  <option value="">All Grades — deploy everything pending</option>
-                  {Array.from({ length: 8 }, (_, i) => i + 1).map(g => (
+                  <option value="">Select Grade</option>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(g => (
                     <option key={g} value={g}>Grade {g}</option>
                   ))}
                 </select>
@@ -469,6 +691,129 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
                     <span className="text-gray-500">Active Mentors:</span>
                     <span className="font-bold" style={{ color: GREEN }}>{stats.activeMentors}</span>
                   </div>
+                </div>
+              )}
+            </div>
+
+
+            {/* Step 2 — Weekly Ignite Batch */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-3">
+                <div
+                  className="w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center"
+                  style={{ background: NAVY }}
+                >
+                  2
+                </div>
+                <span className="font-extrabold text-sm" style={{ color: NAVY }}>
+                  Ignite Booster Course
+                </span>
+              </div>
+
+              {!selectedGrade ? (
+                <div className="text-xs text-gray-500 rounded-xl p-3 bg-gray-50">
+                  Select a grade to prepare its weekly batch.
+                </div>
+              ) : !v2Batch ? (
+                <>
+                  <div className="text-xs text-gray-500 mb-3">
+                    Prepare the next weekly batch for Grade {selectedGrade}.
+                    Existing running batches are not changed.
+                  </div>
+
+                  <button
+                    onClick={createV2Batch}
+                    disabled={creatingBatch}
+                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+                    style={{ background: NAVY }}
+                  >
+                    {creatingBatch
+                      ? "Creating…"
+                      : `Create Next Week — Grade ${selectedGrade}`}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div
+                    className="rounded-xl p-3"
+                    style={{ background: "#F5F7FF" }}
+                  >
+                    <div className="font-black text-sm" style={{ color: NAVY }}>
+                      {v2Batch.title ?? `Grade ${selectedGrade}`}
+                    </div>
+
+                    <div
+                      className="text-xs font-bold mt-0.5"
+                      style={{ color: ORANGE }}
+                    >
+                      {v2Batch.batchCode}
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-gray-500">Status</span>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                        style={{
+                          background:
+                            v2Batch.status === "active"
+                              ? "#D1FAE5"
+                              : v2Batch.status === "deployed"
+                                ? "#DBEAFE"
+                                : "#FEF3C7",
+                          color:
+                            v2Batch.status === "active"
+                              ? "#065F46"
+                              : v2Batch.status === "deployed"
+                                ? "#1D4ED8"
+                                : "#92400E",
+                        }}
+                      >
+                        {v2Batch.status === "upcoming"
+                          ? "Draft"
+                          : v2Batch.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {v2Batch.status === "deployed" && (
+                    <div className="space-y-2">
+                      <div className="text-[11px] text-gray-500">
+                        Deployment complete. Review mentor assignments before
+                        starting the batch.
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={undoV2Deployment}
+                          disabled={undoingDeployment || startingBatch}
+                          className="py-2.5 rounded-xl border border-red-200 text-xs font-bold text-red-600 disabled:opacity-50"
+                        >
+                          {undoingDeployment ? "Undoing…" : "Undo Deployment"}
+                        </button>
+
+                        <button
+                          onClick={startV2Batch}
+                          disabled={undoingDeployment || startingBatch}
+                          className="py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+                          style={{ background: GREEN }}
+                        >
+                          {startingBatch ? "Starting…" : "Start Batch"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {v2Batch.status === "active" && (
+                    <div className="text-xs font-bold text-green-700 rounded-xl p-3 bg-green-50">
+                      ✓ Batch is running.
+                    </div>
+                  )}
+
+                  {v2DeploymentId && (
+                    <div className="text-[10px] text-gray-400">
+                      Deployment #{v2DeploymentId}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -501,8 +846,11 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
             {/* Preview + Deploy CTA */}
             <button
               onClick={() => {
+                if (!selectedGrade) { flash("Select a grade first.", false); return; }
+                if (!v2Batch) { flash("Create the weekly batch first.", false); return; }
+                if (v2Batch.status !== "upcoming") { flash(`Batch is already ${v2Batch.status}.`, false); return; }
                 if (selectedIds.size === 0) { flash("Please select at least one mentor.", false); return; }
-                if (stats.undeployedLeads === 0) { flash("No undeployed leads for this selection.", false); return; }
+                if (stats.undeployedLeads === 0) { flash("No undeployed leads for this grade.", false); return; }
                 setShowPreview(true);
               }}
               disabled={!canPreview}
@@ -521,7 +869,7 @@ export function LeadDeploymentView({ flash }: { flash: (m: string, ok?: boolean)
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center" style={{ background: NAVY }}>2</div>
+                <div className="w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center" style={{ background: NAVY }}>4</div>
                 <span className="font-extrabold text-sm" style={{ color: NAVY }}>Select Mentors</span>
                 <span className="text-xs text-gray-400 ml-1">({selectedIds.size} selected)</span>
               </div>

@@ -3,9 +3,8 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { setupSocketIO } from "./socket.js";
 import { runOverdueFollowUpReminders } from "./jobs/overdueFollowUpReminders.js";
-import { scheduleDailyQueueReset } from "./jobs/dailyQueueReset.js";
-import { scheduleSundayBatchRotation } from "./jobs/sundayBatchRotation.js";
 import { scheduleLiveClassStatusSync } from "./jobs/liveClassStatusSync.js";
+import { scheduleIgniteWeeklyRollover } from "./jobs/igniteWeeklyRollover.js";
 import { seedCoursePricing } from "./routes/longTermPayments.js";
 
 const rawPort = process.env["PORT"];
@@ -30,8 +29,7 @@ httpServer.listen(port, (err?: Error) => {
 
   logger.info({ port }, "Server listening");
   scheduleReminderJob();
-  scheduleDailyQueueReset();
-  scheduleSundayBatchRotation();
+  scheduleIgniteWeeklyRollover();
   scheduleLiveClassStatusSync();
   seedCoursePricing().catch(e => logger.error({ err: e }, "Course pricing seed failed"));
 });

@@ -25,10 +25,11 @@ import {
 import { eq, and, desc, sql, count, inArray, isNotNull, notInArray, ne, lt, gte, or, isNull } from "drizzle-orm";
 import { requireRole } from "../middlewares/auth.js";
 import {
-  ensureThreeWeekPipeline,
-  checkBatchPipelineHealth,
-  PIPELINE_ACTIVE_TARGET,
-  PIPELINE_UPCOMING_TARGET,
+} from "../lib/assignIgniteBatch.js";
+
+
+import {
+  createNextIgniteDraftBatch,
 } from "../lib/assignIgniteBatch.js";
 
 const router = Router();
@@ -2405,6 +2406,373 @@ router.post("/admin/ignite/deploy", adminOnly, async (req, res) => {
   });
 });
 
+
+// ── Ignite V2 Batch Lifecycle ─────────────────────────────────────────────────
+//
+// Existing legacy/running batches are preserved.
+// These routes operate only when explicitly called by Admin.
+//
+// Lifecycle:
+//
+// upcoming/draft -> deployed -> active -> completed
+//
+// "deployed" is intentionally stored in demo_batches.status so deployment can
+// be reviewed/undone before the batch becomes active.
+
+// Create the next V2 draft batch for one grade.
+router.post("/admin/ignite/v2/batches/create-next", adminOnly, async (req, res) => {
+  const grade = Number(req.body?.grade);
+
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "grade must be between 1 and 10" });
+    return;
+  }
+
+  try {
+    const batch = await createNextIgniteDraftBatch(grade);
+    res.status(201).json({ ok: true, batch });
+  } catch (error) {
+    res.status(500).json({
+      error: "Unable to create next Ignite batch",
+      detail: String(error),
+    });
+  }
+});
+
+// Mark a V2 batch as deployed after the existing deployment engine has run.
+//
+// Body:
+// {
+//   deploymentId: 123
+// }
+//
+// The deployment itself remains authoritative in lead_deployments.
+router.post("/admin/ignite/v2/batches/:batchId/attach-deployment", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  const deploymentId = Number(req.body?.deploymentId);
+
+  if (!Number.isInteger(batchId) || !Number.isInteger(deploymentId)) {
+    res.status(400).json({ error: "Valid batchId and deploymentId are required" });
+    return;
+  }
+
+  const [batch] = await db
+    .select()
+    .from(demoBatchesTable)
+    .where(eq(demoBatchesTable.id, batchId))
+    .limit(1);
+
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+
+  // Protect historical/current legacy batches.
+  if (!batch.batchCode?.startsWith("IGN-G")) {
+    res.status(409).json({
+      error: "Only Ignite V2 batches can use the V2 deployment lifecycle",
+    });
+    return;
+  }
+
+  if (batch.status === "active" || batch.status === "completed" || batch.status === "closed") {
+    res.status(409).json({
+      error: `Cannot attach deployment while batch status is ${batch.status}`,
+    });
+    return;
+  }
+
+  const [deployment] = await db
+    .select()
+    .from(leadDeploymentsTable)
+    .where(eq(leadDeploymentsTable.id, deploymentId))
+    .limit(1);
+
+  if (!deployment) {
+    res.status(404).json({ error: "Deployment not found" });
+    return;
+  }
+
+  if (deployment.grade !== batch.grade) {
+    res.status(409).json({
+      error: "Deployment grade does not match batch grade",
+    });
+    return;
+  }
+
+  // Store the batch association in deployment notes without changing schema.
+  const association = `IGNITE_V2_BATCH_ID=${batch.id}`;
+
+  await db
+    .update(leadDeploymentsTable)
+    .set({
+      status: "deployed",
+      notes: deployment.notes
+        ? `${deployment.notes}\n${association}`
+        : association,
+    })
+    .where(eq(leadDeploymentsTable.id, deployment.id));
+
+  const deployedStudents = await db
+    .select({
+      id: usersTable.id,
+      mentorId: usersTable.assignedMentorId,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.deploymentBatchId, deployment.id));
+
+  if (deployedStudents.length > 0) {
+    await db
+      .insert(demoBatchEnrollmentsTable)
+      .values(
+        deployedStudents.map(student => ({
+          batchId: batch.id,
+          studentId: student.id,
+          enrollmentStatus: "active",
+          assignedMentorId: student.mentorId ?? null,
+        })),
+      )
+      .onConflictDoNothing();
+  }
+
+  await db
+    .update(demoBatchesTable)
+    .set({ status: "deployed" })
+    .where(eq(demoBatchesTable.id, batch.id));
+
+  res.json({
+    ok: true,
+    batchId: batch.id,
+    deploymentId: deployment.id,
+    students: deployedStudents.length,
+    status: "deployed",
+  });
+});
+
+// Undo a deployment before Start.
+//
+// This only works while the V2 batch is in deployed state.
+// It does NOT delete students, the batch, historical timeline, or deployment
+// audit rows.
+router.post("/admin/ignite/v2/batches/:batchId/undo-deployment", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+
+  if (!Number.isInteger(batchId)) {
+    res.status(400).json({ error: "Valid batchId required" });
+    return;
+  }
+
+  const [batch] = await db
+    .select()
+    .from(demoBatchesTable)
+    .where(eq(demoBatchesTable.id, batchId))
+    .limit(1);
+
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+
+  if (!batch.batchCode?.startsWith("IGN-G")) {
+    res.status(409).json({ error: "Cannot undo a legacy batch" });
+    return;
+  }
+
+  if (batch.status !== "deployed") {
+    res.status(409).json({
+      error: `Undo is only allowed before Start. Current status: ${batch.status}`,
+    });
+    return;
+  }
+
+  const association = `IGNITE_V2_BATCH_ID=${batch.id}`;
+
+  const deployments = await db
+    .select()
+    .from(leadDeploymentsTable)
+    .where(eq(leadDeploymentsTable.status, "deployed"))
+    .orderBy(desc(leadDeploymentsTable.createdAt));
+
+  const deployment = deployments.find(d => d.notes?.includes(association));
+
+  if (!deployment) {
+    res.status(404).json({
+      error: "No deployment attached to this batch",
+    });
+    return;
+  }
+
+  const students = await db
+    .select({
+      id: usersTable.id,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.deploymentBatchId, deployment.id));
+
+  const studentIds = students.map(s => s.id);
+
+  if (studentIds.length > 0) {
+    // Deactivate mentor assignment rows created for these currently assigned leads.
+    await db
+      .update(mentorStudentAssignmentsTable)
+      .set({ isActive: false })
+      .where(
+        and(
+          inArray(mentorStudentAssignmentsTable.studentId, studentIds),
+          eq(mentorStudentAssignmentsTable.isActive, true),
+        ),
+      );
+
+    // Return leads to the undeployed pool.
+    await db
+      .update(usersTable)
+      .set({
+        assignedMentorId: null,
+        assignedAt: null,
+        assignmentStatus: null,
+        deploymentStatus: "Undeployed",
+        deploymentBatchId: null,
+        updatedAt: new Date(),
+      })
+      .where(inArray(usersTable.id, studentIds));
+
+    // Remove only enrollments belonging to this not-yet-started V2 batch.
+    await db
+      .delete(demoBatchEnrollmentsTable)
+      .where(
+        and(
+          eq(demoBatchEnrollmentsTable.batchId, batch.id),
+          inArray(demoBatchEnrollmentsTable.studentId, studentIds),
+        ),
+      );
+  }
+
+  await db
+    .update(leadDeploymentsTable)
+    .set({ status: "undone" })
+    .where(eq(leadDeploymentsTable.id, deployment.id));
+
+  await db
+    .update(demoBatchesTable)
+    .set({ status: "upcoming" })
+    .where(eq(demoBatchesTable.id, batch.id));
+
+  res.json({
+    ok: true,
+    batchId: batch.id,
+    deploymentId: deployment.id,
+    releasedStudents: studentIds.length,
+    status: "upcoming",
+  });
+});
+
+// Start a reviewed/deployed V2 batch.
+//
+// Only here do we close the previous active batch of the SAME grade.
+// Current testing batches in other grades are untouched.
+router.post("/admin/ignite/v2/batches/:batchId/start", adminOnly, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+
+  if (!Number.isInteger(batchId)) {
+    res.status(400).json({ error: "Valid batchId required" });
+    return;
+  }
+
+  const [batch] = await db
+    .select()
+    .from(demoBatchesTable)
+    .where(eq(demoBatchesTable.id, batchId))
+    .limit(1);
+
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+
+  if (!batch.batchCode?.startsWith("IGN-G")) {
+    res.status(409).json({
+      error: "Only Ignite V2 batches can use Start Batch",
+    });
+    return;
+  }
+
+  if (!batch.grade) {
+    res.status(409).json({ error: "Batch has no grade" });
+    return;
+  }
+
+  if (batch.status !== "deployed") {
+    res.status(409).json({
+      error: `Batch must be deployed before Start. Current status: ${batch.status}`,
+    });
+    return;
+  }
+
+  // Close only the previous active batch for this grade.
+  await db
+    .update(demoBatchesTable)
+    .set({
+      status: "completed",
+      isActive: false,
+    })
+    .where(
+      and(
+        eq(demoBatchesTable.grade, batch.grade),
+        eq(demoBatchesTable.status, "active"),
+      ),
+    );
+
+  await db
+    .update(demoBatchesTable)
+    .set({
+      status: "active",
+      isActive: true,
+    })
+    .where(eq(demoBatchesTable.id, batch.id));
+
+  // Finalize the deployment audit.
+  const association = `IGNITE_V2_BATCH_ID=${batch.id}`;
+
+  const deployments = await db
+    .select()
+    .from(leadDeploymentsTable)
+    .where(eq(leadDeploymentsTable.status, "deployed"))
+    .orderBy(desc(leadDeploymentsTable.createdAt));
+
+  const deployment = deployments.find(d => d.notes?.includes(association));
+
+  if (deployment) {
+    await db
+      .update(leadDeploymentsTable)
+      .set({ status: "started" })
+      .where(eq(leadDeploymentsTable.id, deployment.id));
+  }
+
+  // Ignite V2: once this week starts, prepare the next week automatically.
+  // This creates only a draft/upcoming batch. It does NOT deploy students,
+  // assign mentors, or affect the newly started batch.
+  let nextDraft = null;
+
+  try {
+    nextDraft = await createNextIgniteDraftBatch(batch.grade);
+  } catch (error) {
+    console.error(
+      `[Ignite V2] Failed to create next draft for Grade ${batch.grade}`,
+      error,
+    );
+  }
+
+  res.json({
+    ok: true,
+    batchId: batch.id,
+    grade: batch.grade,
+    status: "active",
+    deploymentId: deployment?.id ?? null,
+    nextDraft,
+  });
+});
+
+
 // ── GET /admin/ignite/deployments ─────────────────────────────────────────────
 router.get("/admin/ignite/deployments", adminOnly, async (_req, res) => {
   const deps = await db.select().from(leadDeploymentsTable).orderBy(desc(leadDeploymentsTable.createdAt)).limit(50);
@@ -2615,141 +2983,8 @@ router.get("/admin/ignite/deploy/mentors", adminOnly, async (_req, res) => {
 });
 
 // ── Admin: manually top-up the batch pipeline for a grade ────────────────────
-// POST /admin/ignite/ensure-pipeline/:grade
-// Safe to call at any time — idempotent. Returns how many batches now exist.
-// ── GET /admin/ignite/batch-pipeline/:grade — batch rows + health for one grade ─
-router.get("/admin/ignite/batch-pipeline/:grade", adminOnly, async (req, res) => {
-  const grade = parseInt(String(req.params.grade), 10);
-  if (!grade || grade < 1 || grade > 10) {
-    res.status(400).json({ error: "grade must be 1–10" });
-    return;
-  }
 
-  const datedWhere = and(
-    eq(demoBatchesTable.grade, grade),
-    isNotNull(demoBatchesTable.startDate),
-    isNotNull(demoBatchesTable.endDate),
-  );
 
-  const activeBatches = await db
-    .select()
-    .from(demoBatchesTable)
-    .where(and(datedWhere, eq(demoBatchesTable.status, "active")))
-    .orderBy(demoBatchesTable.startDate);
-
-  const upcomingBatches = await db
-    .select()
-    .from(demoBatchesTable)
-    .where(and(datedWhere, eq(demoBatchesTable.status, "upcoming")))
-    .orderBy(demoBatchesTable.startDate)
-    .limit(3);
-
-  const [{ undatedCount }] = await db
-    .select({ undatedCount: sql<number>`count(*)::int` })
-    .from(demoBatchesTable)
-    .where(
-      and(
-        eq(demoBatchesTable.grade, grade),
-        sql`(${demoBatchesTable.startDate} IS NULL OR ${demoBatchesTable.endDate} IS NULL)`,
-      ),
-    );
-
-  const ac = activeBatches.length;
-  const uc = upcomingBatches.length;
-  const issues: string[] = [];
-  if (ac !== PIPELINE_ACTIVE_TARGET)   issues.push(`active=${ac} (need ${PIPELINE_ACTIVE_TARGET})`);
-  if (uc !== PIPELINE_UPCOMING_TARGET) issues.push(`upcoming=${uc} (need ${PIPELINE_UPCOMING_TARGET})`);
-
-  res.json({
-    grade,
-    activeCount:    ac,
-    upcomingCount:  uc,
-    healthy:        issues.length === 0,
-    issues,
-    activeBatch:    activeBatches[0] ?? null,
-    upcomingBatches,
-    undatedCount:   undatedCount ?? 0,
-  });
-});
-
-// ── GET /admin/ignite/batch-health — read-only health for all grades ─────────
-router.get("/admin/ignite/batch-health", adminOnly, async (_req, res) => {
-  const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const results = await Promise.all(
-    grades.map(async (grade) => {
-      const [{ activeCount }] = await db
-        .select({ activeCount: sql<number>`count(*)::int` })
-        .from(demoBatchesTable)
-        .where(
-          and(
-            eq(demoBatchesTable.grade, grade),
-            eq(demoBatchesTable.status, "active"),
-            isNotNull(demoBatchesTable.startDate),
-            isNotNull(demoBatchesTable.endDate),
-          ),
-        );
-      const [{ upcomingCount }] = await db
-        .select({ upcomingCount: sql<number>`count(*)::int` })
-        .from(demoBatchesTable)
-        .where(
-          and(
-            eq(demoBatchesTable.grade, grade),
-            eq(demoBatchesTable.status, "upcoming"),
-            isNotNull(demoBatchesTable.startDate),
-            isNotNull(demoBatchesTable.endDate),
-          ),
-        );
-      const ac = activeCount ?? 0;
-      const uc = upcomingCount ?? 0;
-      const issues: string[] = [];
-      if (ac !== PIPELINE_ACTIVE_TARGET)   issues.push(`active=${ac} (need ${PIPELINE_ACTIVE_TARGET})`);
-      if (uc !== PIPELINE_UPCOMING_TARGET) issues.push(`upcoming=${uc} (need ${PIPELINE_UPCOMING_TARGET})`);
-      return { grade, activeCount: ac, upcomingCount: uc, healthy: issues.length === 0, issues };
-    }),
-  );
-  res.json(results);
-});
-
-// ── POST /admin/ignite/ensure-pipeline/:grade — repair + return state ─────────
-router.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_admin"), async (req, res) => {
-  const grade = parseInt(String(req.params.grade), 10);
-  if (!grade || grade < 1 || grade > 10) {
-    res.status(400).json({ error: "grade must be 1–10" });
-    return;
-  }
-
-  try {
-    await ensureThreeWeekPipeline(grade);
-    const health = await checkBatchPipelineHealth(grade);
-
-    const batches = await db
-      .select({
-        id:        demoBatchesTable.id,
-        title:     demoBatchesTable.title,
-        status:    demoBatchesTable.status,
-        startDate: demoBatchesTable.startDate,
-        endDate:   demoBatchesTable.endDate,
-        batchCode: demoBatchesTable.batchCode,
-      })
-      .from(demoBatchesTable)
-      .where(eq(demoBatchesTable.grade, grade))
-      .orderBy(demoBatchesTable.startDate);
-
-    res.json({
-      grade,
-      total:         batches.length,
-      activeCount:   health.activeCount,
-      upcomingCount: health.upcomingCount,
-      healthy:       health.healthy,
-      issues:        health.issues,
-      activeTarget:  PIPELINE_ACTIVE_TARGET,
-      upcomingTarget: PIPELINE_UPCOMING_TARGET,
-      batches,
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Pipeline repair failed", detail: String(err) });
-  }
-});
 
 // ── Ignite Mentors Management ───────────────────────────────────────────────
 
