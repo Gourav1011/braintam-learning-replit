@@ -877,80 +877,125 @@ export default function DashboardPage() {
         {(leaderboard?.length ?? 0) > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                Top Learners This Week
-              </h2>
-
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Top Learners This Week</h2>
               <Link href="/leaderboard">
-                <span
-                  className="text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  style={{ color: NAVY2 }}
-                >
+                <span className="text-xs font-semibold flex items-center gap-1" style={{ color: NAVY2 }}>
                   View All <ChevronRight className="w-3 h-3" />
                 </span>
               </Link>
             </div>
 
-            <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-              {(leaderboard ?? []).slice(0, 5).map((entry, index) => (
-                <Link key={entry.rank} href="/leaderboard">
-                  <div
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      index !== Math.min((leaderboard?.length ?? 0), 5) - 1
-                        ? "border-b border-gray-100"
-                        : ""
-                    }`}
-                    data-testid={`leaderboard-entry-${entry.rank}`}
-                  >
-                    <div
-                      className="w-7 flex-shrink-0 text-center text-sm font-bold"
-                      style={{ color: entry.rank <= 3 ? NAVY2 : "#94a3b8" }}
-                    >
-                      {entry.rank}
-                    </div>
-
-                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-slate-100">
-                      {entry.avatarUrl ? (
+            {/* Top 3 podium */}
+            <div
+              className="rounded-2xl p-4 mb-3"
+              style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY2} 100%)` }}
+            >
+              <div className="flex items-end justify-center gap-3">
+                {/* 2nd */}
+                {leaderboard && leaderboard[1] && (
+                  <div className="flex flex-col items-center gap-1">
+                    <Avatar className="w-10 h-10 shadow">
+                      {leaderboard[1].avatarUrl ? (
                         <img
-                          src={entry.avatarUrl}
-                          alt={entry.studentName}
+                          src={leaderboard[1].avatarUrl}
+                          alt={leaderboard[1].studentName}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
-                          style={{
-                            background: `linear-gradient(135deg, ${NAVY}, ${NAVY2})`,
-                          }}
-                        >
-                          {entry.studentName?.charAt(0)?.toUpperCase() || "S"}
-                        </div>
+                        <AvatarFallback className="bg-slate-300 text-lg font-bold text-white">
+                          {leaderboard[1].studentName.charAt(0)}
+                        </AvatarFallback>
                       )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-800 truncate">
-                        {entry.studentName}
-                      </div>
-
-                      <div className="text-[11px] text-gray-400">
-                        Grade {entry.grade}
-                      </div>
-                    </div>
-
-                    <div className="text-right flex-shrink-0">
-                      <div
-                        className="text-sm font-bold"
-                        style={{ color: NAVY2 }}
-                      >
-                        {entry.points}
-                      </div>
-                      <div className="text-[10px] text-gray-400">
-                        points
-                      </div>
-                    </div>
+                    </Avatar>
+                    <div className="text-white text-[10px] font-semibold truncate w-16 text-center">{leaderboard[1].studentName.split(" ")[0]}</div>
+                    <div className="text-white/60 text-[9px]">{leaderboard[1].points} pts</div>
+                    <div className="w-12 h-10 rounded-t-xl flex items-center justify-center text-base font-bold" style={{ background: "rgba(255,255,255,0.1)", color: "#94a3b8" }}>🥈</div>
                   </div>
-                </Link>
+                )}
+                {/* 1st */}
+                {leaderboard && leaderboard[0] && (
+                  <div className="flex flex-col items-center gap-1 -mb-1">
+                    <Avatar className="w-12 h-12 shadow-lg">
+                      {leaderboard[0].avatarUrl ? (
+                        <img
+                          src={leaderboard[0].avatarUrl}
+                          alt={leaderboard[0].studentName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback
+                          className="text-xl font-bold"
+                          style={{ background: GOLD, color: NAVY }}
+                        >
+                          {leaderboard[0].studentName.charAt(0)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="text-white text-xs font-bold truncate w-20 text-center">{leaderboard[0].studentName.split(" ")[0]}</div>
+                    <div className="text-[10px]" style={{ color: GOLD }}>{leaderboard[0].points} pts</div>
+                    <div className="w-14 h-14 rounded-t-xl flex items-center justify-center text-xl font-bold" style={{ background: "rgba(255,255,255,0.15)" }}>🥇</div>
+                  </div>
+                )}
+                {/* 3rd */}
+                {leaderboard && leaderboard[2] && (
+                  <div className="flex flex-col items-center gap-1">
+                    <Avatar className="w-10 h-10 shadow">
+                      {leaderboard[2].avatarUrl ? (
+                        <img
+                          src={leaderboard[2].avatarUrl}
+                          alt={leaderboard[2].studentName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback
+                          className="text-lg font-bold text-white"
+                          style={{ background: "#b45309" }}
+                        >
+                          {leaderboard[2].studentName.charAt(0)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="text-white text-[10px] font-semibold truncate w-16 text-center">{leaderboard[2].studentName.split(" ")[0]}</div>
+                    <div className="text-white/60 text-[9px]">{leaderboard[2].points} pts</div>
+                    <div className="w-12 h-8 rounded-t-xl flex items-center justify-center text-base font-bold" style={{ background: "rgba(255,255,255,0.1)", color: "#b45309" }}>🥉</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ranks 4-5 */}
+            <div className="space-y-2">
+              {(leaderboard ?? []).slice(3, 5).map((entry, i) => (
+                <motion.div
+                  key={entry.rank}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
+                  style={{ background: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+                  data-testid={`leaderboard-entry-${entry.rank}`}
+                >
+                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                    {entry.rank}
+                  </div>
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    {entry.avatarUrl ? (
+                      <img
+                        src={entry.avatarUrl}
+                        alt={entry.studentName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-600">
+                        {entry.studentName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold truncate">{entry.studentName}</div>
+                  </div>
+                  <div className="text-xs font-bold" style={{ color: NAVY2 }}>{entry.points} pts</div>
+                </motion.div>
               ))}
             </div>
           </div>
