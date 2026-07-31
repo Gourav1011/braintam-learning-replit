@@ -1,9 +1,11 @@
 import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { mentorDeploymentCyclesTable } from "./mentorDeploymentCycles";
 
 export const mentorFollowUpsTable = pgTable("mentor_follow_ups", {
   id: serial("id").primaryKey(),
   mentorId: integer("mentor_id").notNull().references(() => usersTable.id),
+  deploymentCycleId: integer("deployment_cycle_id").references(() => mentorDeploymentCyclesTable.id),
   studentId: integer("student_id").notNull().references(() => usersTable.id),
   noteType: text("note_type").notNull().default("general"),
   note: text("note").notNull(),
