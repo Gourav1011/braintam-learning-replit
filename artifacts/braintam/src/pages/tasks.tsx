@@ -71,7 +71,8 @@ const TAB_THEMES: Record<string, { color: string; bg: string; label: string; ico
 };
 
 type Tab = "homework" | "assignments" | "tests";
-type StatusFilter = "all" | "pending" | "submitted" | "graded";
+type WorkStatusFilter = "pending" | "submitted" | "graded";
+type TestStatusFilter = "upcoming" | "active" | "completed";
 
 // ── Status pill ───────────────────────────────────────────────────────────
 
@@ -371,7 +372,8 @@ function EmptyState({ tab }: { tab: Tab }) {
 
 export default function TasksPage() {
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>("pending");
+  const [testStatusFilter, setTestStatusFilter] = useState<TestStatusFilter>("upcoming");
 
   // Homework state
   const [submitting, setSubmitting] = useState<ExtendedHw | null>(null);
@@ -473,18 +475,26 @@ export default function TasksPage() {
     submitHwMutation.mutate({ id: submitting.id, data: { answer: answerStr, attachmentUrl: null } });
   }
 
-  // Status filter
-  function applyFilter(items: any[]) {
-    if (statusFilter === "all") return items;
-    return items.filter(i => i.status === statusFilter);
-  }
+  // Status filters
+  const filteredHw = homework.filter(
+    h => h.status === workStatusFilter
+  );
 
-  const filteredHw = applyFilter(homework);
-  const filteredAsgn = applyFilter(assignments);
-  const filteredTests = statusFilter === "all" ? tests
-    : statusFilter === "pending" ? tests.filter((t: any) => t.status === "upcoming" || t.status === "pending" || t.status === "active")
-    : statusFilter === "submitted" || statusFilter === "graded" ? tests.filter((t: any) => t.status === "completed" || t.status === "graded")
-    : tests;
+  const filteredAsgn = assignments.filter(
+    (a: any) => a.status === workStatusFilter
+  );
+
+  const filteredTests = tests.filter((t: any) => {
+    if (testStatusFilter === "upcoming") {
+      return t.status === "upcoming" || t.status === "pending";
+    }
+
+    if (testStatusFilter === "active") {
+      return t.status === "active";
+    }
+
+    return t.status === "completed" || t.status === "graded";
+  });
 
   const isLoading = activeTab === "homework" ? hwLoading : activeTab === "assignments" ? asgnLoading : testLoading;
 
@@ -516,7 +526,14 @@ export default function TasksPage() {
             return (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tab); setStatusFilter("all"); }}
+                onClick={() => {
+                  setActiveTab(tab);
+                  if (tab === "tests") {
+                    setTestStatusFilter("upcoming");
+                  } else {
+                    setWorkStatusFilter("pending");
+                  }
+                }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl text-xs font-bold transition-all"
                 style={{
                   background: isActive ? theme.color : "#f5f5f5",
@@ -538,19 +555,33 @@ export default function TasksPage() {
 
         {/* ── Status filter ── */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {(["all", "pending", "submitted", "graded"] as StatusFilter[]).map(f => (
-            <button
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all capitalize"
-              style={{
-                background: statusFilter === f ? NAVY : "#f5f5f5",
-                color: statusFilter === f ? "white" : "#6B7280",
-              }}
-            >
-              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
+          {activeTab === "tests"
+            ? (["upcoming", "active", "completed"] as TestStatusFilter[]).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setTestStatusFilter(f)}
+                  className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all capitalize"
+                  style={{
+                    background: testStatusFilter === f ? NAVY : "#f5f5f5",
+                    color: testStatusFilter === f ? "white" : "#6B7280",
+                  }}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))
+            : (["pending", "submitted", "graded"] as WorkStatusFilter[]).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setWorkStatusFilter(f)}
+                  className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all capitalize"
+                  style={{
+                    background: workStatusFilter === f ? NAVY : "#f5f5f5",
+                    color: workStatusFilter === f ? "white" : "#6B7280",
+                  }}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
         </div>
 
         {/* ── Content ── */}
