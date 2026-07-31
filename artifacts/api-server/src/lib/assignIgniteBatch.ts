@@ -120,18 +120,35 @@ export async function createNextIgniteDraftBatch(
   let startDate = options?.startDate;
 
   if (!startDate) {
-    const [latest] = await db
-      .select({ startDate: demoBatchesTable.startDate })
-      .from(demoBatchesTable)
-      .where(and(
-        eq(demoBatchesTable.grade, grade),
-        isNotNull(demoBatchesTable.startDate),
-      ))
-      .orderBy(desc(demoBatchesTable.startDate))
-      .limit(1);
+    // V2 dates must be based ONLY on the V2 sequence.
+    //
+    // W1:
+    //   Start from the next Monday relative to now.
+    //   Legacy IGN-GR*-W32/W33/etc. dates are ignored.
+    //
+    // W2+:
+    //   Start on the Monday after the previous V2 batch.
+    const previousV2Code =
+      weekNumber > 1 ? igniteBatchCode(grade, weekNumber - 1) : null;
 
-    startDate = latest?.startDate
-      ? nextMondayAfter(latest.startDate)
+    let previousV2StartDate: Date | null = null;
+
+    if (previousV2Code) {
+      const [previousV2] = await db
+        .select({ startDate: demoBatchesTable.startDate })
+        .from(demoBatchesTable)
+        .where(and(
+          eq(demoBatchesTable.grade, grade),
+          eq(demoBatchesTable.batchCode, previousV2Code),
+          isNotNull(demoBatchesTable.startDate),
+        ))
+        .limit(1);
+
+      previousV2StartDate = previousV2?.startDate ?? null;
+    }
+
+    startDate = previousV2StartDate
+      ? nextMondayAfter(previousV2StartDate)
       : nextMondayAfter(nowIST());
   }
 
