@@ -294,7 +294,7 @@ function TeacherSidebar({
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search student…"
-          className="w-full bg-slate-800/90 text-slate-100 text-[10px] rounded-lg px-2.5 py-1 border border-slate-700/60 outline-none placeholder-slate-500 focus:border-blue-500/80 transition-all"
+          className="w-full bg-gray-800 text-white text-[10px] rounded-md px-2 py-1 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600"
         />
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -1428,7 +1428,7 @@ export default function LiveClassroom() {
       {/* Shown only on phones in portrait for teachers (see CSS in index.css).
           Students and mentors get a proper portrait layout instead — the rotate prompt
           is hidden for role-student and role-mentor via CSS. */}
-      <div className={`live-classroom-rotate-prompt classroom-role-${role} bg-slate-950/95 backdrop-blur-md`}>
+      <div className={`live-classroom-rotate-prompt classroom-role-${role}`}>
         <span style={{ fontSize: 40 }}>📱↻</span>
         <p className="font-bold text-lg">Rotate your phone</p>
         <p className="text-sm text-slate-400">Turn your device to landscape mode to join the live class</p>
@@ -1436,40 +1436,35 @@ export default function LiveClassroom() {
       <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-[#0B1020]${isLandscapeMobile ? " is-landscape-mobile" : ""}`} style={{ fontFamily: "Poppins, sans-serif" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
-      <header className="classroom-topbar relative z-20 flex items-center justify-between px-4 h-14 bg-slate-950/90 border-b border-slate-800/80 backdrop-blur-md flex-shrink-0 select-none shadow-sm">
-        {/* Left Section: Brand & Session Metadata */}
-        <div className="flex items-center gap-3 min-w-0">
-          <img src={BRAND_LOGO} alt="Braintam" className="h-6 object-contain opacity-95 flex-shrink-0" />
-          <div className="h-4 w-[1px] bg-slate-800 flex-shrink-0" />
-          
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800/90 flex-shrink-0">
-            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${connected ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]"}`} />
-            <span className={`text-[10px] font-bold tracking-wider uppercase ${connected ? "text-emerald-400" : "text-rose-400"}`}>
+      <div className="classroom-topbar flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <img src={BRAND_LOGO} alt="Braintam" className="h-7 opacity-90 flex-shrink-0" />
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-600"}`}>
               {connected ? "LIVE" : "Connecting…"}
             </span>
           </div>
-
-          <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-            <span className="text-slate-100 font-semibold text-sm truncate max-w-xs tracking-tight">{title}</span>
-            <span className="text-slate-500 font-mono text-[11px] flex-shrink-0">#{sessionId}</span>
-          </div>
+          <span className="text-white font-bold text-sm truncate max-w-xs">{title}</span>
+          
         </div>
-
-        {/* Right Section: Actions & User Role Badge */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Sprint 2 — Meet + Recording quick-access */}
           {meetLink && (
             <a href={meetLink} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600/90 hover:bg-blue-600 border border-blue-500/40 shadow-sm transition-all active:scale-95">
-              <span>📹</span> Join Meet
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#1A73E8" }}>
+              📹 Join Meet
             </a>
           )}
           {recordingUrl && (
             <a href={recordingUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-purple-600/90 hover:bg-purple-600 border border-purple-500/40 shadow-sm transition-all active:scale-95">
-              <span>🎬</span> Recording
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#7C3AED" }}>
+              🎬 Recording
             </a>
           )}
-          
+          {/* End Class — teacher only */}
           {isStaff && (
             <button
               onClick={() => {
@@ -1478,26 +1473,23 @@ export default function LiveClassroom() {
                   socket?.emit("class:end");
                 }
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/50 shadow-sm transition-all active:scale-95"
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "#DC2626" }}
             >
-              <span>⏹</span> End Class
+              ⏹ End Class
             </button>
           )}
-
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border ${isStaff ? "bg-blue-950/50 text-blue-300 border-blue-800/60" : isMentor ? "bg-purple-950/50 text-purple-300 border-purple-800/60" : "bg-slate-900 text-slate-400 border-slate-800"}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-            <span>{isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"}</span>
-            <span className="text-slate-600">·</span>
-            <span className="font-semibold truncate max-w-[120px]">{name}</span>
-          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isStaff ? "bg-blue-900/60 text-blue-300" : isMentor ? "bg-purple-900/60 text-purple-300" : "bg-gray-800 text-slate-400"}`}>
+            {isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"} · {name}
+          </span>
         </div>
-      </header>
+      </div>
 
-      {/* ── Main layout ── 
-      <div className="classroom-main flex flex-1 overflow-hidden bg-slate-950 border-t border-slate-800/40 select-none">
+      {/* ── Main layout ── */}
+      <div className="classroom-main flex flex-1 overflow-hidden">
 
         {/* Sidebar — teacher sees present-only list; mentor sees group stats */}
-        <div className="classroom-left-sidebar border-r border-slate-800/60 bg-slate-900/60 backdrop-blur-sm" style={{ display: "contents" }}>
+        <div className="classroom-left-sidebar" style={{ display: "contents" }}>
         {isStaff && (
           <TeacherSidebar
             registry={registry}
@@ -1553,7 +1545,7 @@ export default function LiveClassroom() {
           )}
           {/* Demo mode active banner — teacher can exit */}
           {isStaff && demoMode && (
-            <div className="flex items-center justify-between px-4 py-2 bg-purple-950/80 border-b border-purple-800/60 flex-shrink-0 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-4 py-2 bg-purple-950 border-b border-purple-800 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
                 <span className="text-sm font-bold text-purple-300">Demonstration Mode — your camera is the main screen</span>
@@ -1566,18 +1558,18 @@ export default function LiveClassroom() {
           )}
 
           {/* Slides / PDF / Demo */}
-          <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden bg-slate-950">
+          <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden">
             {/* Braintam logo — permanent top-right watermark on the presentation window */}
             <img
               src={BRAND_LOGO}
               alt="Braintam"
-              className="absolute top-3 right-3 z-10 pointer-events-none drop-shadow-lg opacity-85 hover:opacity-100 transition-opacity"
+              className="absolute top-3 right-3 z-10 pointer-events-none"
               style={{ height: 44, opacity: 0.82 }}
             />
 
             {/* Class Paused banner — non-staff only */}
             {classPausedActive && !isStaff && (
-              <div className="absolute inset-0 z-50 bg-slate-950/85 flex flex-col items-center justify-center gap-3 backdrop-blur-md transition-all">
+              <div className="absolute inset-0 z-50 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
                 <div className="flex items-center gap-3 bg-[#111827] border border-yellow-600 text-yellow-300 text-base font-bold px-6 py-4 rounded-2xl shadow-2xl">
                   <Pause className="w-5 h-5" />
                   Class is temporarily paused
@@ -1728,7 +1720,7 @@ export default function LiveClassroom() {
                     </div>
 
                     {/* Name + mute row */}
-                    <div className="px-2 py-1 bg-slate-950/90 flex items-center justify-between gap-1 border-t border-slate-800/80">
+                    <div className="px-2 py-1 bg-black/80 flex items-center justify-between gap-1">
                       <span className="text-[9px] text-white font-semibold truncate flex-1">{slot.studentName}</span>
                       <span className="text-[10px]">{slot.isMuted ? "🔇" : "🔊"}</span>
                     </div>
@@ -1761,7 +1753,7 @@ export default function LiveClassroom() {
             <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
               <button
                 onClick={toggleHand}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl backdrop-blur-md transition-all active:scale-95 ${myHandRaised ? "text-white border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]" : "text-white hover:brightness-110"}`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl transition-all active:scale-95 ${myHandRaised ? "text-white border-2 border-yellow-400" : "text-white"}`}
                 style={{ background: myHandRaised ? "#B45309" : ORANGE }}
               >
                 <Hand className="w-4 h-4" />
@@ -1870,7 +1862,7 @@ export default function LiveClassroom() {
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
           <div
-            className="classroom-teacher-video relative bg-slate-950 flex-shrink-0 overflow-hidden border-b border-slate-800/80 shadow-md group"
+            className="classroom-teacher-video relative bg-black flex-shrink-0 overflow-hidden"
             style={{ width: "100%", aspectRatio: "16 / 9" }}
           >
             {/* Label */}
@@ -1897,7 +1889,7 @@ export default function LiveClassroom() {
             <img
               src={ROUND_LOGO}
               alt="Braintam"
-              className="absolute top-2 right-2 z-10 rounded-full pointer-events-none drop-shadow-md border border-slate-700/50"
+              className="absolute top-2 right-2 z-10 rounded-full pointer-events-none"
               style={{ width: 38, height: 38, opacity: 0.88 }}
             />
 
@@ -1987,7 +1979,7 @@ export default function LiveClassroom() {
           <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
           {!isStaff && (
-            <div className="classroom-mobile-info flex items-center justify-between px-3 flex-shrink-0 gap-1 bg-slate-950/90 border-b border-orange-500/40 backdrop-blur-sm" style={{ height: 32 }}>
+            <div className="classroom-mobile-info flex items-center justify-between px-2 flex-shrink-0 gap-1" style={{ height: 28, background: "transparent", borderBottom: "1px solid rgba(255,107,26,0.35)" }}>
               {/* Left: subject | LIVE */}
               <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                 <span className="text-[9px] text-slate-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
@@ -2192,7 +2184,7 @@ export default function LiveClassroom() {
                 <div className="classroom-composer border-t border-slate-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
-                    className="flex-1 min-w-0 bg-slate-800/90 text-slate-100 rounded-xl px-3 py-1.5 border border-slate-700/60 outline-none placeholder-slate-500 focus:border-blue-500/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontSize: 13 }}
                     placeholder="Ask a question or share your answer..."
                     value={chatInput}
@@ -2360,7 +2352,7 @@ export default function LiveClassroom() {
                 <div className="classroom-composer border-t border-slate-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
-                    className="flex-1 min-w-0 bg-slate-800/90 text-slate-100 rounded-xl px-3 py-1.5 border border-slate-700/60 outline-none placeholder-slate-500 focus:border-blue-500/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontSize: isStaff ? 16 : 13 }}
                     placeholder={isStaff ? "Send a message to the class..." : isMentor ? "Encourage your students..." : "Ask a question or share your answer..."}
                     value={chatInput}
@@ -2540,7 +2532,7 @@ export default function LiveClassroom() {
 
       {/* ── Leaderboard overlay (5s auto-close, group-scoped Top 20) ── */}
       {leaderboard && leaderboard.length > 0 && (
-        <div className="fixed inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-md z-50 transition-all">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
           <div className="rounded-3xl p-8 text-center shadow-2xl" style={{ background: NAVY, minWidth: 320, maxHeight: "80vh" }}>
             <div className="text-4xl mb-3">🏆</div>
             <h2 className="text-white font-black text-xl mb-1">Top Responders!</h2>
@@ -2563,7 +2555,7 @@ export default function LiveClassroom() {
       {/* ── Mic Invite Dialog (student: teacher gave mic) ── */}
       {micInvite && (
         <div className="fixed inset-0 flex items-end justify-center pb-24 z-50 pointer-events-none">
-          <div className="pointer-events-auto animate-bounce-once rounded-2xl shadow-2xl border border-emerald-500/50 px-5 py-4 flex flex-col items-center gap-3 max-w-xs w-full mx-4 backdrop-blur-md bg-slate-900/95"
+          <div className="pointer-events-auto animate-bounce-once rounded-2xl shadow-2xl border border-green-700/50 px-5 py-4 flex flex-col items-center gap-3 max-w-xs w-full mx-4"
             style={{ background: "linear-gradient(135deg,#0d2247,#0B2B6B)" }}>
             <div className="text-3xl">🎤</div>
             <p className="text-white font-bold text-sm text-center">
@@ -2619,7 +2611,7 @@ export default function LiveClassroom() {
 
       {/* ── Payment Brochure Popup ── */}
       {showBrochure && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 transition-all">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="relative rounded-3xl overflow-hidden shadow-2xl w-full max-w-sm"
             style={{ background: "linear-gradient(160deg,#0a1f44 0%,#0B2B6B 60%,#1a0533 100%)" }}>
             {/* Close */}
@@ -2745,7 +2737,7 @@ export default function LiveClassroom() {
       {/* ── Q&A Center-Screen Overlay (teacher: shows who raised hands) ─── */}
       {isStaff && showQnaOverlay && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-md bg-slate-950/80 transition-all"
+          className="fixed inset-0 z-[200] flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setShowQnaOverlay(false); }}
         >

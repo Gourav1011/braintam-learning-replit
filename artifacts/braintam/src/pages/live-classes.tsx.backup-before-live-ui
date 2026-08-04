@@ -1,0 +1,644 @@
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import { useListLiveClasses, useListSubjects, getListLiveClassesQueryKey } from "@workspace/api-client-react";
+import { AppLayout } from "@/components/layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Video, Clock, Users, Calendar, Sparkles, ArrowRight, Wifi, BookOpen, Star, Zap, CheckCircle, Monitor } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/components/auth-provider";
+import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+
+const NAVY = "#0B2B6B";
+const ORANGE = "#FF6B1A";
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+function countdown(iso: string) {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return "Starting now";
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function ReminderButton({ classId, title, scheduledAt }: { classId: number; title: string; scheduledAt: string }) {
+  const [set, setSet] = useState(false);
+  if (set) {
+    return (
+      <div
+        className="w-full py-2.5 rounded-xl text-sm font-bold text-center"
+        style={{ background: "rgba(16,185,129,0.12)", color: "#059669" }}
+      >
+        ✓ Reminder Set
+      </div>
+    );
+  }
+  return (
+    <button
+      className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
+      style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}
+      onClick={() => setSet(true)}
+      data-testid={`set-reminder-${classId}`}
+    >
+      🔔 Set Reminder
+    </button>
+  );
+}
+
+const FEATURES = [
+  { emoji: "🎥", title: "Crystal Clear HD Video", desc: "Zero lag. Full HD streaming. As if the teacher is right there in the room.", color: "#3B82F6" },
+  { emoji: "👨‍🏫", title: "IIT & IIM Alumni Teachers", desc: "India's top educators, handpicked for subject mastery and student engagement.", color: "#10B981" },
+  { emoji: "🙋", title: "Instant Doubt Resolution", desc: "Raise your hand digitally. Get answered live — no confusion left behind.", color: ORANGE },
+  { emoji: "📊", title: "AI Progress Tracking", desc: "Smart analysis of every class. Know exactly what to revise before your next test.", color: "#8B5CF6" },
+];
+
+const DEMO_CLASSES = [
+  { title: "Algebra Made Easy — Grade 6 Maths", teacher: "Dr. Ramesh Kumar (IIT Delhi)", time: "Today, 4:00 PM", subject: "Mathematics", seats: 12, grade: 6, status: "upcoming" },
+  { title: "Cell Division & Life Processes", teacher: "Ms. Anita Singh (AIIMS)", time: "Tomorrow, 5:30 PM", subject: "Science", seats: 8, grade: 7, status: "upcoming" },
+  { title: "Advanced Reading & Comprehension", teacher: "Mr. James D'Souza (St. Xavier's)", time: "Sat, 10:00 AM", subject: "English", seats: 15, grade: 5, status: "upcoming" },
+];
+
+const STATS = [
+  { value: "430+",   label: "Live sessions per grade / year" },
+  { value: "5 days", label: "Classes every week" },
+  { value: "24×7",   label: "Doubt support" },
+  { value: "4.9★",   label: "Parent rating" },
+];
+
+function PublicNav() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", fn);
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+      style={{ background: scrolled ? "rgba(255,255,255,0.97)" : "rgba(11,43,107,0.95)", backdropFilter: "blur(20px)", boxShadow: scrolled ? "0 2px 20px rgba(0,0,0,0.08)" : "none" }}>
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link href="/"><img src={braintamLogo} alt="Braintam" className="h-14 object-contain cursor-pointer" /></Link>
+        <div className="hidden md:flex items-center gap-7 text-sm font-medium">
+          {([["Courses", "/courses"], ["Live Classes", "/live-classes"], ["Leaderboard", "/leaderboard"]] as [string, string][]).map(([l, href]) => (
+            <Link key={l} href={href}>
+              <span className={`cursor-pointer font-semibold transition-colors ${scrolled ? "text-gray-700 hover:text-orange-500" : "text-white/80 hover:text-white"}`}>{l}</span>
+            </Link>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/login"><span className={`text-sm font-semibold cursor-pointer ${scrolled ? "text-gray-700" : "text-white/90"}`}>Sign In</span></Link>
+          <Link href="/sign-up">
+            <button className="px-5 py-2 rounded-full text-sm font-bold text-white transition-all hover:opacity-90"
+              style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>Join Free</button>
+          </Link>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ── Animated student-at-laptop scene ────────────────────────────────────
+function StudentScene() {
+  return (
+    <div className="relative w-full max-w-sm mx-auto h-64 select-none">
+      {/* Floating notification bubbles */}
+      <div className="bt-float-sm absolute top-2 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+        <Wifi className="w-3 h-3" /> Class is LIVE!
+      </div>
+      <div className="bt-float-a absolute top-8 left-0 bg-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-gray-100"
+        style={{ color: NAVY }}>
+        ⭐ 4.9 Rating
+      </div>
+      <div className="bt-float-sm-2 absolute top-1 left-1/3 bg-amber-400 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
+        🎯 98% Score!
+      </div>
+
+      {/* Desk */}
+      <div className="absolute bottom-0 left-4 right-4 h-3 rounded-full bg-gray-300 shadow-md" />
+
+      {/* Laptop body */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-52">
+        {/* Screen */}
+        <div className="w-52 h-32 rounded-t-xl border-4 border-gray-700 bg-gray-900 overflow-hidden relative"
+          style={{ boxShadow: "0 0 0 3px rgba(255,107,26,0.12)" }}>
+          {/* Braintam screen interface */}
+          <div className="h-full flex flex-col" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4a9b 100%)` }}>
+            {/* Top bar */}
+            <div className="px-2 py-1 flex items-center gap-1.5" style={{ background: "rgba(0,0,0,0.3)" }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              <span className="text-white/60 text-[8px] ml-2 font-mono">braintam.com/live</span>
+            </div>
+            {/* Teacher video area */}
+            <div className="flex-1 relative p-1">
+              <div className="w-full h-full rounded-lg bg-blue-800/50 flex flex-col items-center justify-center gap-1">
+                <div className="bt-pulse-scale w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-black">R</div>
+                <span className="text-white/70 text-[7px] font-semibold">Dr. Ramesh Kumar</span>
+                <div className="bt-pulse-op w-16 h-1 rounded-full bg-green-400 mt-0.5" />
+              </div>
+            </div>
+            {/* Bottom toolbar */}
+            <div className="px-2 py-1 flex items-center justify-center gap-2" style={{ background: "rgba(0,0,0,0.3)" }}>
+              <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                <Video className="w-2.5 h-2.5 text-white" />
+              </div>
+              <div className="w-4 h-4 rounded-full bg-gray-600 flex items-center justify-center">
+                <span className="text-[6px] text-white">🎤</span>
+              </div>
+              <div className="text-[7px] text-white/60 ml-1">245 watching</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Laptop base/keyboard */}
+        <div className="w-56 -ml-2 h-4 rounded-b-lg bg-gray-600 shadow-xl" />
+        <div className="w-60 -ml-4 h-2 rounded-b-xl bg-gray-500 shadow-2xl" />
+      </div>
+
+      {/* Student figure */}
+      <div className="bt-sway absolute bottom-5 left-1/2 -translate-x-1/2 ml-16">
+        {/* Head */}
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center text-xl shadow-md border-2 border-amber-200 -mb-1">
+          😊
+        </div>
+        {/* Body */}
+        <div className="w-14 h-10 rounded-t-2xl flex items-center justify-center -ml-2 shadow"
+          style={{ background: `linear-gradient(to bottom, ${NAVY}, #1a4a9b)` }}>
+          <span className="text-[10px] text-white/80 font-bold">STUDENT</span>
+        </div>
+      </div>
+
+      {/* Chair legs (simple) */}
+      <div className="absolute bottom-0 left-1/2 ml-8 flex gap-6">
+        <div className="w-1.5 h-8 bg-gray-400 rounded-full" />
+        <div className="w-1.5 h-8 bg-gray-400 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
+function PublicLiveClassesView() {
+  return (
+    <div className="min-h-screen" style={{ background: "#F8FAFF" }}>
+      <PublicNav />
+
+      {/* ── Hero ── */}
+      <section className="pt-20 pb-0 px-6 relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1a4a9b 60%, #0f3580 100%)` }}>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-10 right-8 w-72 h-72 rounded-full opacity-10 blur-3xl" style={{ background: ORANGE }} />
+          <div className="absolute bottom-0 left-16 w-64 h-64 rounded-full opacity-8 blur-3xl" style={{ background: "#3B82F6" }} />
+        </div>
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8 items-center relative z-10">
+          {/* Left: text */}
+          <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
+            className="pt-8 pb-12">
+            <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-6"
+              style={{ background: "rgba(255,107,26,0.2)", border: "1px solid rgba(255,107,26,0.4)", color: ORANGE }}>
+              <Sparkles className="w-3.5 h-3.5" /> 430+ Live Sessions per Grade, Every Year
+            </span>
+            <h1 className="text-4xl md:text-5xl font-black text-white leading-tight mb-5">
+              Live Classes That <br />
+              <span style={{ background: `linear-gradient(135deg, ${ORANGE}, #FFA040)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Make You Smile
+              </span>
+            </h1>
+            <p className="text-white/70 text-lg mb-8">
+              Learn live with India's best teachers — ask questions, get instant answers, and watch your scores soar.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/enroll">
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                  className="px-7 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2"
+                  style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 4px 24px rgba(255,107,26,0.45)" }}>
+                  Book Ignite Booster Course ₹39 Only <ArrowRight className="w-4 h-4" />
+                </motion.button>
+              </Link>
+              <Link href="/login">
+                <button className="px-7 py-3.5 rounded-full font-bold text-white border border-white/30 hover:bg-white/10 transition-colors text-base">
+                  Student Login
+                </button>
+              </Link>
+            </div>
+            {/* Trust badges */}
+            <div className="flex flex-wrap gap-4 mt-7">
+              {["No credit card", "HD Video quality", "Cancel anytime"].map(t => (
+                <div key={t} className="flex items-center gap-1.5 text-white/60 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-400" />{t}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Right: animation scene */}
+          <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
+            className="flex items-end justify-center pb-0">
+            <StudentScene />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── Stats ── */}
+      <div className="max-w-4xl mx-auto px-6 py-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {STATS.map((s, i) => (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i + 0.4 }}
+              className="bg-white rounded-2xl p-4 shadow-md text-center border border-gray-100">
+              <div className="text-2xl font-black" style={{ color: i % 2 === 0 ? NAVY : ORANGE }}>{s.value}</div>
+              <div className="text-xs text-gray-500 font-medium mt-0.5">{s.label}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Feature cards ── */}
+      <section className="max-w-5xl mx-auto px-6 py-10">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
+          <h2 className="text-3xl font-black" style={{ color: NAVY }}>Why Students Love Our Live Classes</h2>
+          <p className="text-gray-500 mt-2">Everything you need to learn better, live.</p>
+        </motion.div>
+        <div className="grid sm:grid-cols-2 gap-5">
+          {FEATURES.map((f, i) => (
+            <motion.div key={f.title}
+              initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ delay: i * 0.12 }}
+              whileHover={{ y: -5, boxShadow: "0 16px 40px rgba(0,0,0,0.1)" }}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 shadow-inner"
+                style={{ background: `${f.color}18` }}>
+                {f.emoji}
+              </div>
+              <div>
+                <h3 className="font-black text-base mb-1" style={{ color: NAVY }}>{f.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Upcoming demo classes ── */}
+      <section className="py-12 px-6" style={{ background: "white" }}>
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-8">
+            <span className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full mb-3"
+              style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444" }}>
+              <div className="bt-pulse-scale w-2 h-2 rounded-full bg-red-500" />
+              Ignite Booster Classes — Open to all
+            </span>
+            <h2 className="text-2xl font-black" style={{ color: NAVY }}>Join the Ignite Booster Course</h2>
+          </motion.div>
+          <div className="space-y-3">
+            {DEMO_CLASSES.map((cls, i) => (
+              <motion.div key={cls.title}
+                initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className="flex items-center gap-4 p-4 rounded-2xl border-2 border-gray-100 bg-white hover:border-orange-200 hover:shadow-md transition-all">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${NAVY}, #1a4a9b)` }}>
+                  <Video className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm" style={{ color: NAVY }}>{cls.title}</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{cls.teacher}</p>
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{cls.time}</span>
+                    <span className="flex items-center gap-1"><Users className="w-3 h-3" />{cls.seats} seats left</span>
+                    <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(11,43,107,0.07)", color: NAVY }}>{cls.subject}</span>
+                  </div>
+                </div>
+                <Link href="/enroll">
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                    className="px-4 py-2 rounded-full text-white text-xs font-bold flex-shrink-0"
+                    style={{ background: ORANGE }}>
+                    Book Ignite Booster Course ₹39 Only
+                  </motion.button>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How a Live Class Works ── */}
+      <section className="py-14 px-6" style={{ background: "#F8FAFF" }}>
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
+            <div className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: ORANGE }}>The Experience</div>
+            <h2 className="text-3xl font-black" style={{ color: NAVY }}>What happens in a Braintam live class?</h2>
+            <p className="text-gray-500 mt-2 text-sm">Every session is structured, interactive, and purposeful.</p>
+          </motion.div>
+          <div className="grid md:grid-cols-5 gap-2 items-start">
+            {[
+              { step: "1", emoji: "📅", title: "Schedule Shared", desc: "Weekly timetable sent to parents every Sunday night." },
+              { step: "2", emoji: "🔔", title: "Class Reminder", desc: "Push + WhatsApp notification 10 mins before class starts." },
+              { step: "3", emoji: "🎥", title: "Live Teaching", desc: "Expert teacher teaches with slides, board, and real examples." },
+              { step: "4", emoji: "🙋", title: "Doubts Cleared", desc: "Students ask questions live — answered instantly, no confusion left." },
+              { step: "5", emoji: "📊", title: "Progress Update", desc: "Attendance & learning report sent to parents after every class." },
+            ].map((s, i) => (
+              <motion.div key={s.step} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className="flex flex-col items-center text-center gap-2 relative">
+                {i < 4 && (
+                  <div className="hidden md:block absolute top-5 left-[60%] right-0 h-0.5 border-t-2 border-dashed" style={{ borderColor: "rgba(255,107,26,0.3)" }} />
+                )}
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl font-black text-white relative z-10"
+                  style={{ background: `linear-gradient(135deg, ${NAVY}, #1a4a9b)`, boxShadow: "0 4px 14px rgba(11,43,107,0.25)" }}>
+                  {s.step}
+                </div>
+                <div className="text-2xl">{s.emoji}</div>
+                <div className="font-bold text-xs" style={{ color: NAVY }}>{s.title}</div>
+                <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+          {/* Weekly schedule preview */}
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="mt-10 rounded-2xl p-5 border"
+            style={{ background: "white", borderColor: "rgba(11,43,107,0.12)", boxShadow: "0 4px 20px rgba(11,43,107,0.06)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-4 h-4" style={{ color: ORANGE }} />
+              <span className="font-black text-sm" style={{ color: NAVY }}>Sample Weekly Schedule</span>
+              <span className="text-xs px-2 py-0.5 rounded-full ml-auto" style={{ background: "rgba(255,107,26,0.1)", color: ORANGE }}>Grade 6 · Maths & Science</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {[
+                { day: "Mon", sub: "Maths", topic: "Integers", color: "#3B82F6" },
+                { day: "Tue", sub: "Science", topic: "Cell Biology", color: "#10B981" },
+                { day: "Wed", sub: "Maths", topic: "Fractions", color: "#3B82F6" },
+                { day: "Thu", sub: "Science", topic: "Human Body", color: "#10B981" },
+                { day: "Fri", sub: "Doubt", topic: "Q&A + Test", color: ORANGE },
+              ].map(d => (
+                <div key={d.day} className="rounded-xl p-2.5 text-center"
+                  style={{ background: `${d.color}10`, border: `1px solid ${d.color}25` }}>
+                  <div className="text-xs font-black mb-1" style={{ color: d.color }}>{d.day}</div>
+                  <div className="text-[10px] font-semibold" style={{ color: NAVY }}>{d.sub}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{d.topic}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── CTA ── */}
+      <section className="py-16 px-6 text-center" style={{ background: NAVY }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <div className="bt-sway text-5xl mb-6">🎓</div>
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Start with the Ignite Booster Course</h2>
+          <p className="text-white/60 mb-8 text-lg max-w-xl mx-auto">
+            Start your learning journey with Braintam's Ignite Booster Course.
+          </p>
+          <Link href="/enroll">
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+              className="px-10 py-4 rounded-full font-black text-white text-lg flex items-center gap-2 mx-auto"
+              style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 8px 32px rgba(255,107,26,0.5)" }}>
+              Book Ignite Booster Course ₹39 Only <ArrowRight className="w-5 h-5" />
+            </motion.button>
+          </Link>
+        </motion.div>
+      </section>
+
+      <div className="bg-black/90 text-white/40 text-center py-4 text-xs">
+        © 2026 Braintam Learning · India's Premium EdTech Platform
+      </div>
+    </div>
+  );
+}
+
+// ── Authenticated view ──────────────────────────────────────────────────
+function getInitialLiveTab() {
+  const p = new URLSearchParams(window.location.search);
+  const t = p.get("tab");
+  if (t === "completed") return "completed";
+  if (t === "live") return "live";
+  return "upcoming";
+}
+
+function AuthLiveClassesView() {
+  const [subject, setSubject] = useState<string>("all");
+  const [, setTick] = useState(0);
+  const [activeTab, setActiveTab] = useState(getInitialLiveTab);
+  const { student } = useAuth();
+
+  // Re-render every 30s so countdown timers stay fresh
+  useEffect(() => {
+    const t = setInterval(() => setTick(x => x + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const effectiveGrade = student?.effectiveGrade ?? student?.grade;
+
+  // Do not send the profile grade to the live-class API.
+  // The backend already restricts students to classes belonging to their
+  // enrolled courses. Course enrollment is the source of truth for Mastery.
+  // Sending grade here could hide a valid enrolled-course class when the
+  // student's profile grade is missing, stale, or different.
+  const params = {
+    subjectId: subject !== "all" ? Number(subject) : undefined,
+  };
+
+  const { data: classes, isLoading } = useListLiveClasses(params, {
+    query: { queryKey: getListLiveClassesQueryKey(params), refetchInterval: 30000, staleTime: 0 }
+  });
+  const { data: subjects } = useListSubjects();
+
+  const liveNow  = (classes ?? []).filter(c => c.status === "live");
+  const upcoming = (classes ?? []).filter(c => c.status === "upcoming");
+  const ended    = (classes ?? []).filter(c => c.status === "completed");
+
+  const SUBJ_GRAD: Record<string, string> = {
+    Mathematics: "linear-gradient(135deg,#1d4ed8,#1e40af)",
+    Science:     "linear-gradient(135deg,#059669,#047857)",
+    English:     "linear-gradient(135deg,#7c3aed,#6d28d9)",
+    Social:      "linear-gradient(135deg,#b45309,#92400e)",
+    Hindi:       "linear-gradient(135deg,#dc2626,#b91c1c)",
+  };
+  const getGrad = (name?: string) => (name && SUBJ_GRAD[name]) ?? `linear-gradient(135deg,${NAVY},#123D7A)`;
+
+  const ClassCard = ({ cls }: { cls: any }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "white", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
+      data-testid={`live-class-card-${cls.id}`}
+    >
+      <div className="h-1.5" style={{ background: getGrad(cls.subjectName) }} />
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span
+            className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
+            style={{ background: cls.status === "live" ? "#EF4444" : cls.status === "upcoming" ? NAVY : "#94a3b8" }}
+          >
+            {cls.status === "live" ? "🔴 LIVE NOW" : cls.status === "upcoming" ? "⏰ Upcoming" : "✓ Class Ended"}
+          </span>
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{cls.subjectName}</span>
+        </div>
+
+        <h3 className="font-bold text-sm text-gray-900 leading-tight mb-3">{cls.title}</h3>
+
+        <div className="flex items-center gap-2 mb-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+            style={{ background: getGrad(cls.subjectName) }}
+          >
+            {(cls.teacher ?? "T").charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-700">{cls.teacher ?? "Braintam Teacher"}</p>
+            <p className="text-[10px] text-gray-400">{formatDateTime(cls.scheduledAt)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-4">
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{cls.duration} min</span>
+          {cls.status === "upcoming" && (
+            <span className="flex items-center gap-1 font-bold ml-auto" style={{ color: NAVY }}>
+              ⏱ {countdown(cls.scheduledAt)}
+            </span>
+          )}
+        </div>
+
+        {cls.status === "upcoming" ? (
+          <ReminderButton classId={cls.id} title={cls.title} scheduledAt={cls.scheduledAt} />
+        ) : (
+          <Link href={`/live/${cls.id}?role=student&title=${encodeURIComponent(cls.title)}`}>
+            <button
+              className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ background: cls.status === "live" ? "#EF4444" : "#94a3b8" }}
+              disabled={cls.status === "completed"}
+              data-testid={`join-class-${cls.id}`}
+            >
+              {cls.status === "live" ? "🚀 Join Now" : "Class Ended"}
+            </button>
+          </Link>
+        )}
+      </div>
+    </motion.div>
+  );
+
+  return (
+    <AppLayout>
+      {/* Navy header */}
+      <div
+        className="px-4 pt-5 pb-5 relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg,${NAVY} 0%,#123D7A 100%)` }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-5"
+          style={{ backgroundImage: "radial-gradient(circle,white 1px,transparent 1px)", backgroundSize: "24px 24px" }}
+        />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h1 className="text-white text-xl font-extrabold">Live Classes</h1>
+            <p className="text-white/50 text-xs mt-0.5">
+              {effectiveGrade ? `Grade ${effectiveGrade} · ` : ""}Join live sessions with top educators
+            </p>
+          </div>
+          {liveNow.length > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+              style={{ background: "#EF4444" }}
+            >
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              {liveNow.length} LIVE
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4" style={{ background: "#F8FAFC" }}>
+        {/* Tab bar */}
+        <div className="flex gap-2">
+          {[
+            { id: "upcoming",  label: "Upcoming",  emoji: "⏰", count: upcoming.length },
+            { id: "live",      label: "Live Now",   emoji: "🔴", count: liveNow.length  },
+            { id: "completed", label: "Completed",  emoji: "✓",  count: ended.length    },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl text-xs font-bold transition-all"
+              style={{
+                background: activeTab === tab.id ? NAVY : "white",
+                color: activeTab === tab.id ? "white" : "#6B7280",
+                boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+              }}
+            >
+              <span>{tab.emoji}</span>
+              <span>{tab.label}</span>
+              {tab.count > 0 && (
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.id ? "bg-white/20 text-white" : "bg-orange-500 text-white"
+                }`}>{tab.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Subject filter */}
+        <Select value={subject} onValueChange={setSubject}>
+          <SelectTrigger className="w-44 h-9 text-sm rounded-xl" data-testid="subject-filter">
+            <SelectValue placeholder="All Subjects" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Subjects</SelectItem>
+            {(subjects ?? []).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
+          </div>
+        ) : (
+          (() => {
+            const tabClasses = activeTab === "live" ? liveNow : activeTab === "completed" ? ended : upcoming;
+            if (tabClasses.length === 0) return (
+              <div className="flex flex-col items-center text-center py-14 px-4">
+                <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-5" style={{ background: `linear-gradient(135deg,${NAVY},#123D7A)` }}>
+                  <Video className="w-12 h-12 text-white opacity-80" />
+                </div>
+                <h2 className="text-lg font-extrabold text-gray-800">
+                  {activeTab === "live" ? "No Classes Live Right Now" : activeTab === "completed" ? "No Past Classes Yet" : "No Upcoming Classes"}
+                </h2>
+                <p className="text-sm text-gray-400 mt-2 max-w-xs">
+                  {activeTab === "upcoming" ? "Your next live class will appear here. New sessions are added regularly!" : "Check back soon!"}
+                </p>
+              </div>
+            );
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {tabClasses.map(cls => <ClassCard key={cls.id} cls={cls} />)}
+              </div>
+            );
+          })()
+        )}
+        <div className="h-2" />
+      </div>
+    </AppLayout>
+  );
+}
+
+export default function LiveClassesPage() {
+  const { student, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAFF" }}>
+        <div className="bt-spin-fast w-8 h-8 border-4 rounded-full" style={{ borderColor: `${ORANGE} transparent transparent transparent` }} />
+      </div>
+    );
+  }
+
+  if (!student) return <PublicLiveClassesView />;
+  return <AuthLiveClassesView />;
+}

@@ -271,8 +271,8 @@ function TeacherSidebar({
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center py-3 border-r border-slate-800 bg-[#111827] flex-shrink-0" style={{ width: 40 }}>
-        <button onClick={onCollapse} className="text-slate-500 hover:text-gray-300 mb-3">
+      <div className="flex flex-col items-center py-3 border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 40 }}>
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300 mb-3">
           <ChevronRight className="w-4 h-4" />
         </button>
         <div style={{ color: GREEN }} className="text-xs font-bold">{liveStudents.length}</div>
@@ -281,20 +281,20 @@ function TeacherSidebar({
   }
 
   return (
-    <div className="flex flex-col border-r border-slate-800 bg-[#111827] flex-shrink-0" style={{ width: 200 }}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+    <div className="flex flex-col border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 200 }}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
         <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wide">
           Present ({liveStudents.length})
         </span>
-        <button onClick={onCollapse} className="text-slate-500 hover:text-gray-300">
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300">
           <ChevronLeft className="w-4 h-4" />
         </button>
       </div>
-      <div className="px-2 py-1.5 border-b border-slate-800">
+      <div className="px-2 py-1.5 border-b border-gray-800">
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search student…"
-          className="w-full bg-slate-800/90 text-slate-100 text-[10px] rounded-lg px-2.5 py-1 border border-slate-700/60 outline-none placeholder-slate-500 focus:border-blue-500/80 transition-all"
+          className="w-full bg-gray-800 text-white text-[10px] rounded-md px-2 py-1 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600"
         />
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -304,7 +304,7 @@ function TeacherSidebar({
           const alreadyOnStage = stageSlots.some(sl => sl.studentId === s.userId);
           const stageFull = stageSlots.length >= 5;
           return (
-            <div key={s.userId} className={`px-3 py-2 border-b border-slate-800/50 ${isSuggested ? "bg-purple-900/20" : "hover:bg-slate-800/40"}`}>
+            <div key={s.userId} className={`px-3 py-2 border-b border-gray-800/50 ${isSuggested ? "bg-purple-900/20" : "hover:bg-gray-800/40"}`}>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                   style={{ background: isSuggested ? "#A855F7" : GREEN }} />
@@ -328,7 +328,7 @@ function TeacherSidebar({
         })}
       </div>
       {suggestedStudents.size > 0 && (
-        <div className="px-3 py-1.5 border-t border-slate-800 flex-shrink-0">
+        <div className="px-3 py-1.5 border-t border-gray-800 flex-shrink-0">
           <span className="text-[9px] text-purple-400">🟣 = Mentor suggested</span>
         </div>
       )}
@@ -354,8 +354,8 @@ function MentorSidebar({
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center py-3 border-r border-slate-800 bg-[#111827] flex-shrink-0" style={{ width: 40 }}>
-        <button onClick={onCollapse} className="text-slate-500 hover:text-gray-300 mb-3">
+      <div className="flex flex-col items-center py-3 border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 40 }}>
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300 mb-3">
           <ChevronRight className="w-4 h-4" />
         </button>
         <div className="space-y-1 text-center">
@@ -368,21 +368,21 @@ function MentorSidebar({
   }
 
   return (
-    <div className="flex flex-col border-r border-slate-800 bg-[#111827] flex-shrink-0" style={{ width: 200 }}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+    <div className="flex flex-col border-r border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: 200 }}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
         <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wide">
           Group {myGroupId || "—"}
         </span>
-        <button onClick={onCollapse} className="text-slate-500 hover:text-gray-300">
+        <button onClick={onCollapse} className="text-gray-500 hover:text-gray-300">
           <ChevronLeft className="w-4 h-4" />
         </button>
       </div>
-      <div className="grid grid-cols-3 border-b border-slate-800 flex-shrink-0">
-        <div className="flex flex-col items-center py-2 border-r border-slate-800">
+      <div className="grid grid-cols-3 border-b border-gray-800 flex-shrink-0">
+        <div className="flex flex-col items-center py-2 border-r border-gray-800">
           <span className="text-base font-black" style={{ color: GREEN }}>{live}</span>
           <span className="text-[8px] font-semibold" style={{ color: GREEN }}>Live</span>
         </div>
-        <div className="flex flex-col items-center py-2 border-r border-slate-800">
+        <div className="flex flex-col items-center py-2 border-r border-gray-800">
           <span className="text-base font-black" style={{ color: YELLOW }}>{backstage}</span>
           <span className="text-[8px] font-semibold" style={{ color: YELLOW }}>Away</span>
         </div>
@@ -392,10 +392,10 @@ function MentorSidebar({
         </div>
       </div>
       {absentList.length > 0 && (
-        <div className="border-b border-slate-800 flex-shrink-0 max-h-36 overflow-y-auto">
+        <div className="border-b border-gray-800 flex-shrink-0 max-h-36 overflow-y-auto">
           <p className="text-[9px] text-red-400 font-bold px-3 pt-1.5 pb-0.5 uppercase tracking-wide">📞 Call Absent</p>
           {absentList.map(s => (
-            <div key={s.userId} className="flex items-center justify-between px-3 py-1 hover:bg-slate-800/40">
+            <div key={s.userId} className="flex items-center justify-between px-3 py-1 hover:bg-gray-800/40">
               <span className="text-[10px] text-gray-300 truncate flex-1">{s.name}</span>
               <div className="flex gap-1 flex-shrink-0">
                 <button onClick={() => handleOutbound(s.phone, "TEL")} title="Call"
@@ -410,7 +410,7 @@ function MentorSidebar({
       <div className="flex-1 overflow-y-auto">
         {presentList.length === 0 && <p className="text-[10px] text-gray-600 text-center mt-4">No students live</p>}
         {presentList.map(s => (
-          <div key={s.userId} className="flex items-center gap-1.5 px-3 py-1.5 border-b border-slate-800/50 hover:bg-slate-800/40">
+          <div key={s.userId} className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-800/50 hover:bg-gray-800/40">
             <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{ background: s.status === "LIVE" ? GREEN : YELLOW }} />
             <span className="text-[10px] text-gray-300 truncate">{s.name}</span>
@@ -1237,8 +1237,6 @@ export default function LiveClassroom() {
   }, [socket, upsert, isStaff, livekit]);
 
   // ── Actions ────────────────────────────────────────────────
-  const [showQuickChat, setShowQuickChat] = useState(false);
-
   const quickChatMessages =
     role === "teacher"
       ? [
@@ -1277,7 +1275,6 @@ export default function LiveClassroom() {
     if (!socket) return;
     if (!isStaff && !isMentor && (chatBlocked || isChatMuted)) return;
     socket.emit("chat:send", text);
-    setShowQuickChat(false);
   };
 
   const sendChat = () => {
@@ -1389,20 +1386,20 @@ export default function LiveClassroom() {
   // A live-class URL identifies the session only; it does not grant access.
   if (authLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0B1020] text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
-        <p className="text-slate-400 text-sm">Checking class access…</p>
+      <div className="h-screen flex items-center justify-center bg-gray-950 text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
+        <p className="text-gray-400 text-sm">Checking class access…</p>
       </div>
     );
   }
 
   if (!authIdentity) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-4 bg-[#0B1020] text-white px-6 text-center" style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className="h-screen flex flex-col items-center justify-center gap-4 bg-gray-950 text-white px-6 text-center" style={{ fontFamily: "Poppins, sans-serif" }}>
         <h2 className="text-2xl font-bold">Sign in required</h2>
-        <p className="text-slate-400 text-sm max-w-md">
+        <p className="text-gray-400 text-sm max-w-md">
           Please sign in with your authorised Braintam account to access this live class.
         </p>
-        <a href="/sign-in" className="px-6 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+        <a href="/sign-in" className="px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
           Sign In
         </a>
       </div>
@@ -1412,11 +1409,11 @@ export default function LiveClassroom() {
   if (classEnded) {
     const redirectTarget = isStaff ? "/teacher" : isMentor ? "/mentor" : "/dashboard";
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-[#0B1020] text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-gray-950 text-white" style={{ fontFamily: "Poppins, sans-serif" }}>
         <div className="text-6xl">🔚</div>
         <h2 className="text-2xl font-bold">This class has ended</h2>
-        <p className="text-slate-400 text-sm">The session is permanently closed and cannot be re-entered. Redirecting you…</p>
-        <a href={redirectTarget} className="mt-2 px-6 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+        <p className="text-gray-400 text-sm">The session is permanently closed and cannot be re-entered. Redirecting you…</p>
+        <a href={redirectTarget} className="mt-2 px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
           {isStaff ? "Back to Teacher Portal" : isMentor ? "Back to Mentor Portal" : "Go to Dashboard"}
         </a>
       </div>
@@ -1428,48 +1425,43 @@ export default function LiveClassroom() {
       {/* Shown only on phones in portrait for teachers (see CSS in index.css).
           Students and mentors get a proper portrait layout instead — the rotate prompt
           is hidden for role-student and role-mentor via CSS. */}
-      <div className={`live-classroom-rotate-prompt classroom-role-${role} bg-slate-950/95 backdrop-blur-md`}>
+      <div className={`live-classroom-rotate-prompt classroom-role-${role}`}>
         <span style={{ fontSize: 40 }}>📱↻</span>
         <p className="font-bold text-lg">Rotate your phone</p>
-        <p className="text-sm text-slate-400">Turn your device to landscape mode to join the live class</p>
+        <p className="text-sm text-gray-400">Turn your device to landscape mode to join the live class</p>
       </div>
-      <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-[#0B1020]${isLandscapeMobile ? " is-landscape-mobile" : ""}`} style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div className={`live-classroom-root classroom-role-${role} h-screen flex flex-col overflow-hidden bg-gray-950${isLandscapeMobile ? " is-landscape-mobile" : ""}`} style={{ fontFamily: "Poppins, sans-serif" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
-      <header className="classroom-topbar relative z-20 flex items-center justify-between px-4 h-14 bg-slate-950/90 border-b border-slate-800/80 backdrop-blur-md flex-shrink-0 select-none shadow-sm">
-        {/* Left Section: Brand & Session Metadata */}
-        <div className="flex items-center gap-3 min-w-0">
-          <img src={BRAND_LOGO} alt="Braintam" className="h-6 object-contain opacity-95 flex-shrink-0" />
-          <div className="h-4 w-[1px] bg-slate-800 flex-shrink-0" />
-          
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800/90 flex-shrink-0">
-            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${connected ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]"}`} />
-            <span className={`text-[10px] font-bold tracking-wider uppercase ${connected ? "text-emerald-400" : "text-rose-400"}`}>
+      <div className="classroom-topbar flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <img src={BRAND_LOGO} alt="Braintam" className="h-7 opacity-90 flex-shrink-0" />
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-600"}`}>
               {connected ? "LIVE" : "Connecting…"}
             </span>
           </div>
-
-          <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-            <span className="text-slate-100 font-semibold text-sm truncate max-w-xs tracking-tight">{title}</span>
-            <span className="text-slate-500 font-mono text-[11px] flex-shrink-0">#{sessionId}</span>
-          </div>
+          <span className="text-white font-bold text-sm truncate max-w-xs">{title}</span>
+          <span className="text-gray-600 text-xs">#{sessionId}</span>
         </div>
-
-        {/* Right Section: Actions & User Role Badge */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Sprint 2 — Meet + Recording quick-access */}
           {meetLink && (
             <a href={meetLink} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600/90 hover:bg-blue-600 border border-blue-500/40 shadow-sm transition-all active:scale-95">
-              <span>📹</span> Join Meet
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#1A73E8" }}>
+              📹 Join Meet
             </a>
           )}
           {recordingUrl && (
             <a href={recordingUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-purple-600/90 hover:bg-purple-600 border border-purple-500/40 shadow-sm transition-all active:scale-95">
-              <span>🎬</span> Recording
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: "#7C3AED" }}>
+              🎬 Recording
             </a>
           )}
-          
+          {/* End Class — teacher only */}
           {isStaff && (
             <button
               onClick={() => {
@@ -1478,26 +1470,23 @@ export default function LiveClassroom() {
                   socket?.emit("class:end");
                 }
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/50 shadow-sm transition-all active:scale-95"
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "#DC2626" }}
             >
-              <span>⏹</span> End Class
+              ⏹ End Class
             </button>
           )}
-
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border ${isStaff ? "bg-blue-950/50 text-blue-300 border-blue-800/60" : isMentor ? "bg-purple-950/50 text-purple-300 border-purple-800/60" : "bg-slate-900 text-slate-400 border-slate-800"}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-            <span>{isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"}</span>
-            <span className="text-slate-600">·</span>
-            <span className="font-semibold truncate max-w-[120px]">{name}</span>
-          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isStaff ? "bg-blue-900/60 text-blue-300" : isMentor ? "bg-purple-900/60 text-purple-300" : "bg-gray-800 text-gray-400"}`}>
+            {isStaff ? "Teacher" : isMentor ? "Mentor" : "Student"} · {name}
+          </span>
         </div>
-      </header>
+      </div>
 
-      {/* ── Main layout ── 
-      <div className="classroom-main flex flex-1 overflow-hidden bg-slate-950 border-t border-slate-800/40 select-none">
+      {/* ── Main layout ── */}
+      <div className="classroom-main flex flex-1 overflow-hidden">
 
         {/* Sidebar — teacher sees present-only list; mentor sees group stats */}
-        <div className="classroom-left-sidebar border-r border-slate-800/60 bg-slate-900/60 backdrop-blur-sm" style={{ display: "contents" }}>
+        <div className="classroom-left-sidebar" style={{ display: "contents" }}>
         {isStaff && (
           <TeacherSidebar
             registry={registry}
@@ -1521,11 +1510,11 @@ export default function LiveClassroom() {
         {/* ═══════════════════════════════════════════════════
             PRESENTATION PANEL (left, ~80%)
         ═══════════════════════════════════════════════════ */}
-        <div className="classroom-content flex flex-col relative bg-[#0B1020] flex-1 min-w-0">
+        <div className="classroom-content flex flex-col relative bg-gray-950 flex-1 min-w-0">
 
           {/* Upload bar (teacher only, no presentation yet) */}
           {isStaff && !presentationUrl && !demoMode && (
-            <div className="flex items-center gap-3 p-3 bg-[#111827] border-b border-slate-800 flex-shrink-0">
+            <div className="flex items-center gap-3 p-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1536,24 +1525,24 @@ export default function LiveClassroom() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-2xl disabled:opacity-50 transition-all hover:opacity-90"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl disabled:opacity-50 transition-all hover:opacity-90"
                 style={{ background: "#059669" }}
               >
                 {isUploading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Upload className="w-4 h-4" />}
                 <span>{isUploading ? "Uploading…" : "Upload PDF"}</span>
               </button>
-              <span className="text-xs text-slate-500">PDF only · max 200 MB · PPT/PPTX: export as PDF first</span>
+              <span className="text-xs text-gray-500">PDF only · max 200 MB · PPT/PPTX: export as PDF first</span>
               {presentationUrl && (
                 <button
                   onClick={() => { setPresentationUrl(""); setUploadedFilename(null); socket?.emit("presentation:stop"); }}
-                  className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-slate-700 text-slate-400"
+                  className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400"
                 >✕ Clear</button>
               )}
             </div>
           )}
           {/* Demo mode active banner — teacher can exit */}
           {isStaff && demoMode && (
-            <div className="flex items-center justify-between px-4 py-2 bg-purple-950/80 border-b border-purple-800/60 flex-shrink-0 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-4 py-2 bg-purple-950 border-b border-purple-800 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
                 <span className="text-sm font-bold text-purple-300">Demonstration Mode — your camera is the main screen</span>
@@ -1566,23 +1555,23 @@ export default function LiveClassroom() {
           )}
 
           {/* Slides / PDF / Demo */}
-          <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden bg-slate-950">
+          <div ref={presentationPanelRef} className="relative flex-1 overflow-hidden">
             {/* Braintam logo — permanent top-right watermark on the presentation window */}
             <img
               src={BRAND_LOGO}
               alt="Braintam"
-              className="absolute top-3 right-3 z-10 pointer-events-none drop-shadow-lg opacity-85 hover:opacity-100 transition-opacity"
+              className="absolute top-3 right-3 z-10 pointer-events-none"
               style={{ height: 44, opacity: 0.82 }}
             />
 
             {/* Class Paused banner — non-staff only */}
             {classPausedActive && !isStaff && (
-              <div className="absolute inset-0 z-50 bg-slate-950/85 flex flex-col items-center justify-center gap-3 backdrop-blur-md transition-all">
-                <div className="flex items-center gap-3 bg-[#111827] border border-yellow-600 text-yellow-300 text-base font-bold px-6 py-4 rounded-2xl shadow-2xl">
+              <div className="absolute inset-0 z-50 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                <div className="flex items-center gap-3 bg-gray-900 border border-yellow-600 text-yellow-300 text-base font-bold px-6 py-4 rounded-2xl shadow-2xl">
                   <Pause className="w-5 h-5" />
                   Class is temporarily paused
                 </div>
-                <p className="text-slate-400 text-sm">The teacher will be back shortly…</p>
+                <p className="text-gray-400 text-sm">The teacher will be back shortly…</p>
               </div>
             )}
 
@@ -1602,7 +1591,7 @@ export default function LiveClassroom() {
             ) : !isShowingDemo ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-4">
                 <Monitor className="w-20 h-20 opacity-10" />
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-gray-500">
                   {isStaff ? "Upload a PDF above to start presenting" : "Waiting for teacher to share slides…"}
                 </p>
               </div>
@@ -1664,7 +1653,7 @@ export default function LiveClassroom() {
 
             {/* ── Student self-view — bottom-left floating tile when on stage ── */}
             {myOnStage && !isStaff && (
-              <div className="absolute bottom-4 left-4 z-50 w-32 rounded-2xl overflow-hidden shadow-2xl border-2 border-green-500/70" style={{ background: "#0f172a" }}>
+              <div className="absolute bottom-4 left-4 z-50 w-32 rounded-xl overflow-hidden shadow-2xl border-2 border-green-500/70" style={{ background: "#0f172a" }}>
                 <div className="relative" style={{ aspectRatio: "4/3" }}>
                   <video
                     ref={selfViewRef}
@@ -1699,14 +1688,14 @@ export default function LiveClassroom() {
                     key={slot.studentId}
                     data-testid="stage-slot"
                     data-student-id={slot.studentId}
-                    className="rounded-2xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative flex-shrink-0"
+                    className="rounded-xl overflow-hidden shadow-2xl pointer-events-auto flex flex-col border-2 relative flex-shrink-0"
                     style={{
                       width: 120,
                       background: "#0f172a",
                       borderColor: slot.studentId === userId ? "#10B981" : "#1E40AF",
                     }}>
                     {/* Video area — 4:3 aspect */}
-                    <div className="relative flex items-center justify-center bg-[#111827]" style={{ aspectRatio: "4/3" }}>
+                    <div className="relative flex items-center justify-center bg-gray-900" style={{ aspectRatio: "4/3" }}>
                       <video
                         key={`${slot.studentId}-${livekit.trackVersion}`}
                         ref={(el) => livekit.attachParticipantVideo(slot.studentId, el)}
@@ -1728,14 +1717,14 @@ export default function LiveClassroom() {
                     </div>
 
                     {/* Name + mute row */}
-                    <div className="px-2 py-1 bg-slate-950/90 flex items-center justify-between gap-1 border-t border-slate-800/80">
+                    <div className="px-2 py-1 bg-black/80 flex items-center justify-between gap-1">
                       <span className="text-[9px] text-white font-semibold truncate flex-1">{slot.studentName}</span>
                       <span className="text-[10px]">{slot.isMuted ? "🔇" : "🔊"}</span>
                     </div>
 
                     {/* Teacher controls */}
                     {isStaff && (
-                      <div className="flex justify-center gap-1 bg-[#111827]/95 px-1.5 py-1">
+                      <div className="flex justify-center gap-1 bg-gray-900/95 px-1.5 py-1">
                         <button
                           data-testid={`stage-mute-${slot.studentId}`}
                           onClick={() => toggleStageMute(slot.studentId, !slot.isMuted)}
@@ -1761,7 +1750,7 @@ export default function LiveClassroom() {
             <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
               <button
                 onClick={toggleHand}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl backdrop-blur-md transition-all active:scale-95 ${myHandRaised ? "text-white border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]" : "text-white hover:brightness-110"}`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm shadow-2xl transition-all active:scale-95 ${myHandRaised ? "text-white border-2 border-yellow-400" : "text-white"}`}
                 style={{ background: myHandRaised ? "#B45309" : ORANGE }}
               >
                 <Hand className="w-4 h-4" />
@@ -1772,19 +1761,19 @@ export default function LiveClassroom() {
 
           {/* Annotation toolbar (teacher only) */}
           {isStaff && (
-            <div className="flex items-center gap-1.5 px-3 py-2 bg-[#111827] border-t border-slate-800 flex-shrink-0 flex-wrap">
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 border-t border-gray-800 flex-shrink-0 flex-wrap">
               {/* Mode buttons */}
               <button onClick={() => setAnnotMode("none")}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all text-xs font-bold ${annotMode === "none" ? "bg-gray-600 text-white" : "bg-gray-800 text-slate-500 hover:bg-slate-700"}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all text-xs font-bold ${annotMode === "none" ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-500 hover:bg-gray-700"}`}
                 title="Off">✕</button>
               <button onClick={() => setAnnotMode("pen")}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "pen" ? "bg-orange-600 text-white" : "bg-gray-800 text-slate-400 hover:bg-slate-700"}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "pen" ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
                 title="Pen"><Pencil className="w-3.5 h-3.5" /></button>
               <button onClick={() => setAnnotMode("highlighter")}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "highlighter" ? "bg-yellow-500 text-black" : "bg-gray-800 text-slate-400 hover:bg-slate-700"}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "highlighter" ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
                 title="Highlight"><Highlighter className="w-3.5 h-3.5" /></button>
               <button onClick={() => setAnnotMode("eraser")}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "eraser" ? "bg-red-700 text-white" : "bg-gray-800 text-slate-400 hover:bg-slate-700"}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${annotMode === "eraser" ? "bg-red-700 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
                 title="Eraser"><Eraser className="w-3.5 h-3.5" /></button>
 
               {/* Pen color swatches (pen mode) */}
@@ -1801,20 +1790,20 @@ export default function LiveClassroom() {
               {/* Thickness slider (pen + eraser) */}
               {(annotMode === "pen" || annotMode === "eraser") && (
                 <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2">
-                  <span className="text-[9px] text-slate-500 uppercase tracking-wide">Size</span>
+                  <span className="text-[9px] text-gray-500 uppercase tracking-wide">Size</span>
                   <input type="range" min={1} max={12} value={penWidth} onChange={e => setPenWidth(Number(e.target.value))}
                     className="w-16 h-1.5 accent-orange-500 cursor-pointer" />
-                  <span className="text-[10px] text-slate-400 w-4 text-right">{penWidth}</span>
+                  <span className="text-[10px] text-gray-400 w-4 text-right">{penWidth}</span>
                 </div>
               )}
 
               {/* Undo / Redo */}
               <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
                 <button onClick={handleUndo} title="Undo (Ctrl+Z)"
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-slate-400 hover:bg-slate-700 transition-all active:scale-95">
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all active:scale-95">
                   <Undo2 className="w-3.5 h-3.5" /></button>
                 <button onClick={handleRedo} title="Redo"
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-slate-400 hover:bg-slate-700 transition-all active:scale-95">
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all active:scale-95">
                   <Redo2 className="w-3.5 h-3.5" /></button>
                 <button onClick={clearAnnotations} title="Clear all"
                   className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 text-red-400 hover:bg-red-900 transition-all active:scale-95">
@@ -1825,7 +1814,7 @@ export default function LiveClassroom() {
               <div className="flex items-center gap-1 border-l border-gray-700 pl-2">
                 <button
                   onClick={() => toggleRaiseHandFeature(!raiseHandEnabled)}
-                  className={`flex items-center gap-1.5 px-3 h-8 rounded-lg font-semibold text-[11px] transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/50" : "bg-gray-800 text-slate-400 hover:bg-slate-700"}`}
+                  className={`flex items-center gap-1.5 px-3 h-8 rounded-lg font-semibold text-[11px] transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
                   title="Open/Close Q&A"
                 >
                   <Hand className="w-3.5 h-3.5" />
@@ -1848,13 +1837,13 @@ export default function LiveClassroom() {
                   <button onClick={() => navigateSlide("prev")}
                     className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
                     title="Previous"><ChevronLeft className="w-4 h-4" /></button>
-                  <span className="text-[10px] text-slate-400 px-1">{currentSlide}{totalSlides > 0 ? ` / ${totalSlides}` : ""}</span>
+                  <span className="text-[10px] text-gray-400 px-1">{currentSlide}{totalSlides > 0 ? ` / ${totalSlides}` : ""}</span>
                   <button onClick={() => navigateSlide("next")}
                     className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-gray-600 text-white transition-all active:scale-95"
                     title="Next"><ChevronRight className="w-4 h-4" /></button>
                   <button
                     onClick={() => { setPresentationUrl(""); setUploadedFilename(null); socket?.emit("presentation:stop"); }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-red-900 text-slate-400 hover:text-red-400 transition-all ml-1"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-400 transition-all ml-1"
                     title="Stop presentation"><X className="w-3.5 h-3.5" /></button>
                 </div>
               )}
@@ -1865,17 +1854,19 @@ export default function LiveClassroom() {
         {/* ═══════════════════════════════════════════════════
             RIGHT PANEL (20% fixed)
         ═══════════════════════════════════════════════════ */}
-        <div className="classroom-sidebar flex flex-col border-l border-slate-800 bg-[#111827] flex-shrink-0" style={{ width: "20%", minWidth: 190, maxWidth: 280 }}>
+        <div className="classroom-sidebar flex flex-col border-l border-gray-800 bg-gray-900 flex-shrink-0" style={{ width: "20%", minWidth: 190, maxWidth: 280 }}>
 
           {/* ── Teacher Camera Panel (all roles see teacher here) ── */}
           {/* Teacher sees their own camera compact (190 px); students/mentors see it square */}
-          <div
-            className="classroom-teacher-video relative bg-slate-950 flex-shrink-0 overflow-hidden border-b border-slate-800/80 shadow-md group"
-            style={{ width: "100%", aspectRatio: "16 / 9" }}
-          >
+          <div className="classroom-teacher-video relative bg-black flex-shrink-0"
+            style={isStaff
+              ? { height: 190 }
+              : isLandscapeMobile
+                ? { width: "100%", height: "40dvh", overflow: "hidden" }
+                : { width: "100%", aspectRatio: "4/3" }}>
             {/* Label */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
-              <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">Teacher</span>
+              <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Teacher</span>
             </div>
 
             {/* Always mounted for students so refs are valid the instant LiveKit fires TrackSubscribed —
@@ -1897,7 +1888,7 @@ export default function LiveClassroom() {
             <img
               src={ROUND_LOGO}
               alt="Braintam"
-              className="absolute top-2 right-2 z-10 rounded-full pointer-events-none drop-shadow-md border border-slate-700/50"
+              className="absolute top-2 right-2 z-10 rounded-full pointer-events-none"
               style={{ width: 38, height: 38, opacity: 0.88 }}
             />
 
@@ -1908,7 +1899,7 @@ export default function LiveClassroom() {
                 {!livekit.media.cameraEnabled && !demoMode && (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xl">👤</div>
-                    <p className="text-[10px] text-slate-500">Teacher</p>
+                    <p className="text-[10px] text-gray-500">Teacher</p>
                   </div>
                 )}
                 {/* Demo mode active — show a purple overlay so teacher knows demo is on */}
@@ -1958,7 +1949,7 @@ export default function LiveClassroom() {
                         <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
                       </div>
                       <p className="text-[11px] text-white font-semibold">Teacher</p>
-                      <p className="text-[9px] text-slate-500">Camera off</p>
+                      <p className="text-[9px] text-gray-500">Camera off</p>
                     </div>
                   )}
                 </>
@@ -1972,14 +1963,14 @@ export default function LiveClassroom() {
                   </div>
                   <p className="text-[10px] text-gray-300 font-semibold">Teacher</p>
                   <p className="text-[9px] text-yellow-400 leading-tight font-bold">📡 Teacher is reconnecting…</p>
-                  <p className="text-[8px] text-slate-500 leading-tight">Stream will restore automatically</p>
+                  <p className="text-[8px] text-gray-500 leading-tight">Stream will restore automatically</p>
                 </div>
               )
             ) : (
               /* ── Teacher hasn't joined yet ── */
               <div className="flex flex-col items-center justify-center h-full gap-2 px-3 text-center">
                 <div className="w-12 h-12 rounded-full bg-gray-800/60 flex items-center justify-center text-2xl opacity-40">👤</div>
-                <p className="text-[10px] text-slate-500 leading-tight">Waiting for teacher to join…</p>
+                <p className="text-[10px] text-gray-500 leading-tight">Waiting for teacher to join…</p>
               </div>
             )}
           </div>
@@ -1987,14 +1978,14 @@ export default function LiveClassroom() {
           <div className="classroom-sidebar-bottom flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* ── Mobile info strip — sits at top of chat section, just above Chat/Poll tabs ─── */}
           {!isStaff && (
-            <div className="classroom-mobile-info flex items-center justify-between px-3 flex-shrink-0 gap-1 bg-slate-950/90 border-b border-orange-500/40 backdrop-blur-sm" style={{ height: 32 }}>
+            <div className="classroom-mobile-info flex items-center justify-between px-2 flex-shrink-0 gap-1" style={{ height: 28, background: "transparent", borderBottom: "1px solid rgba(255,107,26,0.35)" }}>
               {/* Left: subject | LIVE */}
               <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                <span className="text-[9px] text-slate-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
+                <span className="text-[9px] text-gray-400 truncate max-w-[110px] flex-shrink-0">{title}</span>
                 <span className="text-gray-700 text-[9px] flex-shrink-0">|</span>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-600"}`} />
-                  <span className={`text-[9px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-slate-500"}`}>
+                  <span className={`text-[9px] font-bold uppercase tracking-wide ${connected ? "text-red-400" : "text-gray-500"}`}>
                     {connected ? "LIVE" : "…"}
                   </span>
                 </div>
@@ -2007,14 +1998,14 @@ export default function LiveClassroom() {
                 <button
                   onClick={toggleOrientation}
                   title="Switch orientation"
-                  className="w-7 h-7 rounded-lg bg-gray-800 text-slate-400 flex items-center justify-center active:scale-90 transition-all"
+                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={toggleMobileFullscreen}
                   title="Toggle fullscreen"
-                  className="w-7 h-7 rounded-lg bg-gray-800 text-slate-400 flex items-center justify-center active:scale-90 transition-all"
+                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
                 </button>
@@ -2058,7 +2049,7 @@ export default function LiveClassroom() {
                         <span className="text-[9px] text-green-400">On stage</span>
                       )}
                       {isStaff && stageFull && !alreadyOnStage && (
-                        <span className="text-[9px] text-slate-500">Full</span>
+                        <span className="text-[9px] text-gray-500">Full</span>
                       )}
                     </div>
                   </div>
@@ -2078,7 +2069,7 @@ export default function LiveClassroom() {
                     const chosen = myPollAnswer === opt.id;
                     return (
                       <button key={opt.id} onClick={() => submitPoll(opt.id)} disabled={!!myPollAnswer}
-                        className={`w-full text-left rounded-2xl px-3 py-2 text-xs font-semibold transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-slate-700 disabled:hover:bg-slate-800"}`}
+                        className={`w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-gray-700 disabled:hover:bg-gray-800"}`}
                         style={chosen ? { background: NAVY } : {}}>
                         {opt.id}. {opt.text}
                       </button>
@@ -2105,14 +2096,14 @@ export default function LiveClassroom() {
                       key={msg.id}
                       className={
                         msg.role === "teacher"
-                          ? "bg-red-950/50 border border-red-700/60 rounded-2xl px-2.5 py-2"
+                          ? "bg-red-950/50 border border-red-700/60 rounded-xl px-2.5 py-2"
                           : msg.isAnnouncement
                             ? "bg-blue-900/20 rounded-lg px-2 py-1"
                             : ""
                       }
                     >
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[10px] font-bold text-slate-400">{msg.name}</span>
+                        <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
                         {msg.role === "teacher" && <span className="text-[8px] bg-red-700 text-white rounded px-1.5 py-0.5 font-black">MASTER TEACHER</span>}
                         {msg.role === "admin" && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">A</span>}
                         {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
@@ -2131,7 +2122,7 @@ export default function LiveClassroom() {
               {raiseHandEnabled && (
                 <div className="px-2 pt-1 flex-shrink-0">
                   <button onClick={toggleHand}
-                    className={`w-full py-1.5 text-xs font-bold rounded-2xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-slate-700"}`}>
+                    className={`w-full py-1.5 text-xs font-bold rounded-xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
                     <Hand className="w-3 h-3 inline mr-1" />{myHandRaised ? "Lower Hand" : "Raise Hand"}
                   </button>
                 </div>
@@ -2141,58 +2132,28 @@ export default function LiveClassroom() {
                   🚫 Your chat access is temporarily disabled.
                 </div>
               ) : isChatMuted ? (
-                <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-slate-400 text-xs font-medium flex-shrink-0 text-center">
+                <div className="mx-2 mb-2 mt-1 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
                   🔒 Chat is paused by your teacher. Keep learning — chat will reopen soon.
                 </div>
               ) : (
                 <>
-                <div className="relative px-2 pt-2 border-t border-slate-800 flex-shrink-0">
-                  {showQuickChat && (
-                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[260px] max-w-[calc(100vw-24px)] max-h-[300px] overflow-y-auto rounded-2xl border border-gray-700 bg-[#111827] shadow-2xl p-1.5">
-                      <div className="flex items-center justify-between px-2 pb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                          Quick Messages
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowQuickChat(false)}
-                          className="w-6 h-6 rounded-full text-slate-400 hover:bg-slate-800 hover:text-white"
-                        >
-                          ×
-                        </button>
-                      </div>
-
-                      <div className="grid gap-1">
-                        {quickChatMessages.map((text) => (
-                          <button
-                            key={text}
-                            type="button"
-                            onClick={() => sendQuickChat(text)}
-                            disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] leading-4 font-semibold text-gray-100 hover:bg-slate-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {text}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickChat(open => !open)}
-                    disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                    className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-lg hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Quick messages"
-                    aria-label="Quick messages"
-                  >
-                    💬
-                  </button>
+                <div className="px-2 pt-2 pb-1 border-t border-gray-800 flex gap-1.5 overflow-x-auto flex-shrink-0">
+                  {quickChatMessages.map((text) => (
+                    <button
+                      key={text}
+                      type="button"
+                      onClick={() => sendQuickChat(text)}
+                      disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
+                      className="whitespace-nowrap px-2.5 py-1.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] font-semibold text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {text}
+                    </button>
+                  ))}
                 </div>
-                <div className="classroom-composer border-t border-slate-800 flex gap-2 flex-shrink-0 p-2">
+                <div className="classroom-composer border-t border-gray-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
-                    className="flex-1 min-w-0 bg-slate-800/90 text-slate-100 rounded-xl px-3 py-1.5 border border-slate-700/60 outline-none placeholder-slate-500 focus:border-blue-500/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontSize: 13 }}
                     placeholder="Ask a question or share your answer..."
                     value={chatInput}
@@ -2203,15 +2164,11 @@ export default function LiveClassroom() {
                     autoComplete="off"
                     autoCorrect="off"
                   />
-                  <button
-                    onClick={sendChat}
-                    disabled={!chatInput.trim() || chatBlocked}
-                    className="w-11 h-11 rounded-2xl text-white flex items-center justify-center flex-shrink-0 hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: NAVY }}
-                    title="Send"
-                    aria-label="Send message"
-                  >
-                    <Send className="w-5 h-5" />
+                  <button onClick={sendChat} disabled={!chatInput.trim() || chatBlocked}
+                    className="min-h-[40px] px-4 py-2 rounded-xl text-white flex items-center justify-center gap-1.5 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: NAVY }}>
+                    <Send className="w-4 h-4" />
+                    <span className="text-xs font-bold">Send</span>
                   </button>
                 </div>
               </>
@@ -2219,18 +2176,18 @@ export default function LiveClassroom() {
             </div>
           ) : (<>
           {/* Panel tabs (staff / mentor only) */}
-          <div className="flex border-b border-slate-800 flex-shrink-0">
+          <div className="flex border-b border-gray-800 flex-shrink-0">
             <button onClick={() => setPanelMode("chat")}
-              className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "chat" ? "border-blue-500 text-blue-400" : "border-transparent text-slate-500 hover:text-gray-300"}`}>
+              className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "chat" ? "border-blue-500 text-blue-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
               <MessageSquare className="w-3 h-3" /> Chat
             </button>
             <button onClick={() => setPanelMode("poll")}
-              className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "poll" ? "border-orange-500 text-orange-400" : "border-transparent text-slate-500 hover:text-gray-300"}`}>
+              className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "poll" ? "border-orange-500 text-orange-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
               <BarChart2 className="w-3 h-3" /> Poll {activePoll && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 ml-0.5" />}
             </button>
             {(isStaff || isMentor) && (
               <button onClick={() => setPanelMode("staffchat")}
-                className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "staffchat" ? "border-purple-500 text-purple-400" : "border-transparent text-slate-500 hover:text-gray-300"}`}>
+                className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[11px] font-semibold border-b-2 transition-all ${panelMode === "staffchat" ? "border-purple-500 text-purple-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
                 🔒 Staff
               </button>
             )}
@@ -2241,10 +2198,10 @@ export default function LiveClassroom() {
             <div className="flex flex-col flex-1 overflow-hidden">
               {/* Teacher controls */}
               {isStaff && (
-                <div className="px-3 py-2 border-b border-slate-800 flex-shrink-0 flex items-center gap-2">
+                <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0 flex items-center gap-2">
                   <button
                     onClick={() => toggleRaiseHandFeature(!raiseHandEnabled)}
-                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/30" : "bg-gray-800 text-slate-400 hover:bg-slate-700"}`}>
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all ${raiseHandEnabled ? "bg-yellow-600/30 text-yellow-300 border border-yellow-700/30" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
                     ✋ {raiseHandEnabled ? "Close Q&A" : "Open Q&A"}
                   </button>
                   <button
@@ -2252,7 +2209,7 @@ export default function LiveClassroom() {
                       if (chatMuted) { socket?.emit("chat:unmute"); setChatMuted(false); }
                       else { socket?.emit("chat:mute"); setChatMuted(true); }
                     }}
-                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all flex items-center gap-1 ${chatMuted ? "bg-red-700/30 text-red-300 border border-red-700/40" : "bg-gray-800 text-slate-400 hover:bg-slate-700"}`}>
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all flex items-center gap-1 ${chatMuted ? "bg-red-700/30 text-red-300 border border-red-700/40" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}>
                     💬 {chatMuted ? "Unmute Chat" : "Mute Chat"}
                   </button>
                 </div>
@@ -2277,14 +2234,14 @@ export default function LiveClassroom() {
                       key={msg.id}
                       className={
                         msg.role === "teacher"
-                          ? "bg-red-950/50 border border-red-700/60 rounded-2xl px-2.5 py-2"
+                          ? "bg-red-950/50 border border-red-700/60 rounded-xl px-2.5 py-2"
                           : msg.isAnnouncement
                             ? "bg-blue-900/20 rounded-lg px-2 py-1"
                             : ""
                       }
                     >
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[10px] font-bold text-slate-400">{msg.name}</span>
+                        <span className="text-[10px] font-bold text-gray-400">{msg.name}</span>
                         {msg.role === "teacher" && <span className="text-[8px] bg-red-700 text-white rounded px-1.5 py-0.5 font-black">MASTER TEACHER</span>}
                         {msg.role === "admin" && <span className="text-[8px] bg-blue-900/60 text-blue-400 rounded px-1 font-bold">A</span>}
                         {msg.role === "mentor" && <span className="text-[8px] bg-purple-900/60 text-purple-400 rounded px-1 font-bold">M</span>}
@@ -2309,58 +2266,28 @@ export default function LiveClassroom() {
                   🚫 Your chat access is temporarily disabled. Please contact your mentor.
                 </div>
               ) : !isStaff && isChatMuted ? (
-                <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-slate-400 text-xs font-medium flex-shrink-0 text-center">
+                <div className="mx-2 mb-2 px-3 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-gray-400 text-xs font-medium flex-shrink-0 text-center">
                   🔒 Chat is paused by your teacher. Keep learning — chat will reopen soon.
                 </div>
               ) : (
                 <>
-                <div className="relative px-2 pt-2 border-t border-slate-800 flex-shrink-0">
-                  {showQuickChat && (
-                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[260px] max-w-[calc(100vw-24px)] max-h-[300px] overflow-y-auto rounded-2xl border border-gray-700 bg-[#111827] shadow-2xl p-1.5">
-                      <div className="flex items-center justify-between px-2 pb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                          Quick Messages
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowQuickChat(false)}
-                          className="w-6 h-6 rounded-full text-slate-400 hover:bg-slate-800 hover:text-white"
-                        >
-                          ×
-                        </button>
-                      </div>
-
-                      <div className="grid gap-1">
-                        {quickChatMessages.map((text) => (
-                          <button
-                            key={text}
-                            type="button"
-                            onClick={() => sendQuickChat(text)}
-                            disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] leading-4 font-semibold text-gray-100 hover:bg-slate-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {text}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickChat(open => !open)}
-                    disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                    className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-lg hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Quick messages"
-                    aria-label="Quick messages"
-                  >
-                    💬
-                  </button>
+                <div className="px-2 pt-2 pb-1 border-t border-gray-800 flex gap-1.5 overflow-x-auto flex-shrink-0">
+                  {quickChatMessages.map((text) => (
+                    <button
+                      key={text}
+                      type="button"
+                      onClick={() => sendQuickChat(text)}
+                      disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
+                      className="whitespace-nowrap px-2.5 py-1.5 rounded-full bg-gray-800 border border-gray-700 text-[10px] font-semibold text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {text}
+                    </button>
+                  ))}
                 </div>
-                <div className="classroom-composer border-t border-slate-800 flex gap-2 flex-shrink-0 p-2">
+                <div className="classroom-composer border-t border-gray-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
-                    className="flex-1 min-w-0 bg-slate-800/90 text-slate-100 rounded-xl px-3 py-1.5 border border-slate-700/60 outline-none placeholder-slate-500 focus:border-blue-500/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-w-0 bg-gray-800 text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none placeholder-gray-600 focus:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontSize: isStaff ? 16 : 13 }}
                     placeholder={isStaff ? "Send a message to the class..." : isMentor ? "Encourage your students..." : "Ask a question or share your answer..."}
                     value={chatInput}
@@ -2372,15 +2299,9 @@ export default function LiveClassroom() {
                     autoComplete="off"
                     autoCorrect="off"
                   />
-                  <button
-                    onClick={sendChat}
-                    disabled={!isStaff && chatBlocked}
-                    className="w-11 h-11 rounded-2xl text-white flex items-center justify-center flex-shrink-0 hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: NAVY }}
-                    title="Send"
-                    aria-label="Send message"
-                  >
-                    <Send className="w-5 h-5" />
+                  <button onClick={sendChat} disabled={!isStaff && chatBlocked} className="min-h-[40px] px-4 py-2 rounded-xl text-white flex items-center justify-center gap-1.5 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: NAVY }}>
+                    <Send className="w-4 h-4" />
+                    <span className="text-xs font-bold">Send</span>
                   </button>
                 </div>
               </>
@@ -2388,9 +2309,9 @@ export default function LiveClassroom() {
 
               {/* Raise hand for students */}
               {!isStaff && !isMentor && raiseHandEnabled && (
-                <div className="p-2 border-t border-slate-800 flex-shrink-0">
+                <div className="p-2 border-t border-gray-800 flex-shrink-0">
                   <button onClick={toggleHand}
-                    className={`w-full py-2 text-xs font-bold rounded-2xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-slate-700"}`}>
+                    className={`w-full py-2 text-xs font-bold rounded-xl transition-all ${myHandRaised ? "bg-yellow-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
                     <Hand className="w-3 h-3 inline mr-1" />{myHandRaised ? "Lower Hand" : "Raise Hand"}
                   </button>
                 </div>
@@ -2403,15 +2324,15 @@ export default function LiveClassroom() {
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               {isStaff && !activePoll && (
                 !showPollForm ? (
-                  <button onClick={() => setShowPollForm(true)} className="w-full py-2.5 text-sm font-bold text-white rounded-2xl" style={{ background: ORANGE }}>
+                  <button onClick={() => setShowPollForm(true)} className="w-full py-2.5 text-sm font-bold text-white rounded-xl" style={{ background: ORANGE }}>
                     + Create Poll
                   </button>
                 ) : (
                   <div className="space-y-2">
-                    <input className="w-full bg-gray-800 text-white text-xs rounded-2xl px-3 py-2 border border-gray-700 outline-none placeholder-gray-600"
+                    <input className="w-full bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border border-gray-700 outline-none placeholder-gray-600"
                       placeholder="Question…" value={pollQ} onChange={e => setPollQ(e.target.value)} />
                     {/* Sprint 1 — options with correct-answer radio */}
-                    <p className="text-[9px] text-slate-500 font-semibold uppercase tracking-wide">Options · tap ✓ to mark correct</p>
+                    <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide">Options · tap ✓ to mark correct</p>
                     {pollOpts.map((opt, i) => {
                       const letter = String.fromCharCode(65 + i);
                       const isCorrect = pollCorrectIdx === i;
@@ -2419,11 +2340,11 @@ export default function LiveClassroom() {
                         <div key={i} className="flex gap-1.5 items-center">
                           <button
                             onClick={() => setPollCorrectIdx(isCorrect ? null : i)}
-                            className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-black border transition-all ${isCorrect ? "bg-green-500 border-green-400 text-white" : "border-gray-600 text-slate-500 hover:border-green-600"}`}
+                            className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-black border transition-all ${isCorrect ? "bg-green-500 border-green-400 text-white" : "border-gray-600 text-gray-500 hover:border-green-600"}`}
                             title="Mark as correct answer"
                           >✓</button>
                           <input
-                            className={`flex-1 bg-gray-800 text-white text-xs rounded-2xl px-3 py-2 border outline-none placeholder-gray-600 ${isCorrect ? "border-green-600" : "border-gray-700"}`}
+                            className={`flex-1 bg-gray-800 text-white text-xs rounded-xl px-3 py-2 border outline-none placeholder-gray-600 ${isCorrect ? "border-green-600" : "border-gray-700"}`}
                             placeholder={`Option ${letter}`} value={opt}
                             onChange={e => { const n = [...pollOpts]; n[i] = e.target.value; setPollOpts(n); }}
                           />
@@ -2434,8 +2355,8 @@ export default function LiveClassroom() {
                       <p className="text-[9px] text-yellow-600">No correct answer marked — all responses score equally</p>
                     )}
                     <div className="flex gap-2">
-                      <button onClick={launchPoll} className="flex-1 py-2 text-xs font-bold text-white rounded-2xl" style={{ background: ORANGE }}>🚀 Launch</button>
-                      <button onClick={() => { setShowPollForm(false); setPollCorrectIdx(null); }} className="px-3 py-2 text-xs text-slate-400 bg-gray-800 rounded-2xl hover:bg-slate-700">Cancel</button>
+                      <button onClick={launchPoll} className="flex-1 py-2 text-xs font-bold text-white rounded-xl" style={{ background: ORANGE }}>🚀 Launch</button>
+                      <button onClick={() => { setShowPollForm(false); setPollCorrectIdx(null); }} className="px-3 py-2 text-xs text-gray-400 bg-gray-800 rounded-xl hover:bg-gray-700">Cancel</button>
                     </div>
                   </div>
                 )
@@ -2450,19 +2371,19 @@ export default function LiveClassroom() {
                     const chosen = myPollAnswer === opt.id;
                     return (
                       <button key={opt.id} onClick={() => submitPoll(opt.id)} disabled={!!myPollAnswer && !isStaff}
-                        className={`w-full text-left rounded-2xl px-3 py-2.5 text-xs font-semibold relative overflow-hidden transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-slate-700 disabled:hover:bg-slate-800"}`}
+                        className={`w-full text-left rounded-xl px-3 py-2.5 text-xs font-semibold relative overflow-hidden transition-all ${chosen ? "text-white" : "text-gray-200 bg-gray-800 hover:bg-gray-700 disabled:hover:bg-gray-800"}`}
                         style={chosen ? { background: NAVY } : {}}>
-                        {isStaff && pollTotal > 0 && <div className="absolute inset-y-0 left-0 bg-blue-500/20 rounded-2xl" style={{ width: `${pct}%` }} />}
+                        {isStaff && pollTotal > 0 && <div className="absolute inset-y-0 left-0 bg-blue-500/20 rounded-xl" style={{ width: `${pct}%` }} />}
                         <span className="relative flex justify-between">
                           <span>{opt.id}. {opt.text}</span>
-                          {isStaff && pollTotal > 0 && <span className="text-slate-400 ml-2">{pct}%</span>}
+                          {isStaff && pollTotal > 0 && <span className="text-gray-400 ml-2">{pct}%</span>}
                         </span>
                       </button>
                     );
                   })}
                   {isStaff && (
                     <button onClick={() => socket?.emit("showLeaderboard")}
-                      className="w-full py-2 text-xs font-bold text-white rounded-2xl flex items-center justify-center gap-1.5" style={{ background: "#7C3AED" }}>
+                      className="w-full py-2 text-xs font-bold text-white rounded-xl flex items-center justify-center gap-1.5" style={{ background: "#7C3AED" }}>
                       <Trophy className="w-3.5 h-3.5" /> Show Top 3
                     </button>
                   )}
@@ -2474,7 +2395,7 @@ export default function LiveClassroom() {
                           : myPollCorrect === false
                           ? "text-red-400"
                           : "text-blue-400"
-                        : "text-slate-500"
+                        : "text-gray-500"
                     }`}>
                       {myPollAnswer
                         ? myPollCorrect === true
@@ -2497,7 +2418,7 @@ export default function LiveClassroom() {
           {/* ── STAFF CHAT (teacher ↔ mentor private) ──────────── */}
           {panelMode === "staffchat" && (isStaff || isMentor) && (
             <div className="flex flex-col flex-1 overflow-hidden">
-              <div className="px-3 py-1.5 border-b border-slate-800 flex-shrink-0">
+              <div className="px-3 py-1.5 border-b border-gray-800 flex-shrink-0">
                 <p className="text-[9px] text-purple-400 font-semibold uppercase tracking-wide">
                   🔒 Private staff channel — not visible to students
                 </p>
@@ -2518,7 +2439,7 @@ export default function LiveClassroom() {
                   </div>
                 ))}
               </div>
-              <div className="flex gap-1.5 px-2 py-2 border-t border-slate-800 flex-shrink-0">
+              <div className="flex gap-1.5 px-2 py-2 border-t border-gray-800 flex-shrink-0">
                 <input
                   value={staffChatInput}
                   onChange={e => setStaffChatInput(e.target.value)}
@@ -2540,14 +2461,14 @@ export default function LiveClassroom() {
 
       {/* ── Leaderboard overlay (5s auto-close, group-scoped Top 20) ── */}
       {leaderboard && leaderboard.length > 0 && (
-        <div className="fixed inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-md z-50 transition-all">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
           <div className="rounded-3xl p-8 text-center shadow-2xl" style={{ background: NAVY, minWidth: 320, maxHeight: "80vh" }}>
             <div className="text-4xl mb-3">🏆</div>
             <h2 className="text-white font-black text-xl mb-1">Top Responders!</h2>
             <p className="text-blue-300 text-xs mb-5">Fastest correct answers · Top {leaderboard.length}</p>
             <div className="space-y-1.5 overflow-y-auto pr-1" style={{ maxHeight: "50vh" }}>
               {leaderboard.map(e => (
-                <div key={e.rank} className="flex items-center gap-3 bg-white/10 rounded-2xl px-4 py-1.5">
+                <div key={e.rank} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-1.5">
                   <span className="text-lg w-6 text-center">
                     {e.rank === 1 ? "🥇" : e.rank === 2 ? "🥈" : e.rank === 3 ? "🥉" : e.rank}
                   </span>
@@ -2563,7 +2484,7 @@ export default function LiveClassroom() {
       {/* ── Mic Invite Dialog (student: teacher gave mic) ── */}
       {micInvite && (
         <div className="fixed inset-0 flex items-end justify-center pb-24 z-50 pointer-events-none">
-          <div className="pointer-events-auto animate-bounce-once rounded-2xl shadow-2xl border border-emerald-500/50 px-5 py-4 flex flex-col items-center gap-3 max-w-xs w-full mx-4 backdrop-blur-md bg-slate-900/95"
+          <div className="pointer-events-auto animate-bounce-once rounded-2xl shadow-2xl border border-green-700/50 px-5 py-4 flex flex-col items-center gap-3 max-w-xs w-full mx-4"
             style={{ background: "linear-gradient(135deg,#0d2247,#0B2B6B)" }}>
             <div className="text-3xl">🎤</div>
             <p className="text-white font-bold text-sm text-center">
@@ -2573,14 +2494,14 @@ export default function LiveClassroom() {
             <div className="flex gap-3 w-full">
               <button
                 onClick={acceptMicInvite}
-                className="flex-1 py-2 text-sm font-bold text-white rounded-2xl transition-all hover:opacity-90"
+                className="flex-1 py-2 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90"
                 style={{ background: GREEN }}
               >
                 ✓ Accept
               </button>
               <button
                 onClick={() => setMicInvite(null)}
-                className="flex-1 py-2 text-sm font-bold text-gray-300 rounded-2xl bg-gray-700 hover:bg-gray-600 transition-all"
+                className="flex-1 py-2 text-sm font-bold text-gray-300 rounded-xl bg-gray-700 hover:bg-gray-600 transition-all"
               >
                 Decline
               </button>
@@ -2619,7 +2540,7 @@ export default function LiveClassroom() {
 
       {/* ── Payment Brochure Popup ── */}
       {showBrochure && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 transition-all">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="relative rounded-3xl overflow-hidden shadow-2xl w-full max-w-sm"
             style={{ background: "linear-gradient(160deg,#0a1f44 0%,#0B2B6B 60%,#1a0533 100%)" }}>
             {/* Close */}
@@ -2645,8 +2566,8 @@ export default function LiveClassroom() {
             {/* Price block */}
             <div className="mx-6 rounded-2xl p-4 mb-4 text-center"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,107,26,0.3)" }}>
-              <p className="text-slate-400 text-[11px] mb-1">Original Price</p>
-              <p className="text-slate-500 text-sm line-through">₹{Number(origPrice).toLocaleString("en-IN")}</p>
+              <p className="text-gray-400 text-[11px] mb-1">Original Price</p>
+              <p className="text-gray-500 text-sm line-through">₹{Number(origPrice).toLocaleString("en-IN")}</p>
               <div className="my-2 flex items-center justify-center gap-2">
                 <span className="text-[10px] bg-green-600 text-white px-2 py-0.5 rounded-full font-bold">50% OFF</span>
               </div>
@@ -2685,7 +2606,7 @@ export default function LiveClassroom() {
                 style={{ background: "linear-gradient(90deg,#FF6B1A,#e05500)" }}>
                 🎓 Grab My Seat Now
               </a>
-              <p className="text-slate-500 text-[10px] text-center mt-2">No hidden charges · Secure payment</p>
+              <p className="text-gray-500 text-[10px] text-center mt-2">No hidden charges · Secure payment</p>
             </div>
 
             {/* Bottom graphic */}
@@ -2698,23 +2619,23 @@ export default function LiveClassroom() {
         <div className="fixed bottom-2 left-2 z-[9999] w-72 rounded-lg bg-black/90 border border-gray-700 text-[9px] font-mono text-gray-300 p-2 space-y-0.5 pointer-events-none select-none">
           <p className="text-orange-400 font-bold text-[10px]">⚡ Live Classroom Diagnostics (debug mode)</p>
 
-          <p className="text-slate-500 font-semibold pt-0.5">─ Identity</p>
+          <p className="text-gray-500 font-semibold pt-0.5">─ Identity</p>
           <p>Auth loading: <span className={authLoading ? "text-yellow-400" : "text-green-400"}>{authLoading ? "yes" : "no"}</span></p>
           <p>Session ID: <span className="text-white">{sessionId}</span></p>
           <p>User ID: <span className="text-white">{userId}</span></p>
           <p>Role: <span className="text-white">{role}</span></p>
 
-          <p className="text-slate-500 font-semibold pt-0.5">─ Socket.IO</p>
+          <p className="text-gray-500 font-semibold pt-0.5">─ Socket.IO</p>
           <p>Status: <span className={connected ? "text-green-400" : "text-yellow-400"}>{connected ? "Connected" : authLoading ? "Waiting for auth…" : "Connecting…"}</span></p>
           <p>Socket ID: <span className="text-white">{classroomJoined?.socketId ?? (connected ? "pending ack…" : "—")}</span></p>
           <p>Server room: <span className="text-white">{classroomJoined?.roomName ?? (connected ? "pending ack…" : "—")}</span></p>
           <p>Expected room: <span className="text-blue-300">session-{sessionId}</span></p>
-          <p>Room match: <span className={classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "text-green-400" : "text-red-400") : "text-slate-500"}>{classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "✓ yes" : "✗ MISMATCH") : "—"}</span></p>
+          <p>Room match: <span className={classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "text-green-400" : "text-red-400") : "text-gray-500"}>{classroomJoined ? (classroomJoined.roomName === `session-${sessionId}` ? "✓ yes" : "✗ MISMATCH") : "—"}</span></p>
           <p>Members: <span className="text-white">{classroomJoined?.memberCount ?? "—"}</span></p>
           <p>Last sent: <span className="text-cyan-400">{lastSocketSent.current}</span></p>
           <p>Last recv: <span className="text-cyan-400">{lastSocketReceived.current}</span></p>
 
-          <p className="text-slate-500 font-semibold pt-0.5">─ LiveKit</p>
+          <p className="text-gray-500 font-semibold pt-0.5">─ LiveKit</p>
           <p>Status: <span className="text-white">{livekit.connectionState}</span></p>
           <p>Room: <span className="text-white">{livekit.roomName ?? "—"}</span></p>
           <p>Identity: <span className="text-white">{livekit.identity ?? userId}</span></p>
@@ -2725,8 +2646,8 @@ export default function LiveClassroom() {
             </>
           ) : (
             <>
-              <p>Local Camera: <span className="text-slate-500">Not permitted</span></p>
-              <p>Local Microphone: <span className="text-slate-500">Not permitted</span></p>
+              <p>Local Camera: <span className="text-gray-500">Not permitted</span></p>
+              <p>Local Microphone: <span className="text-gray-500">Not permitted</span></p>
               <p>Remote Teacher Video: <span className="text-white">{livekit.teacherVideoSubscribed ? "Subscribed" : "Waiting"}</span></p>
               <p>Remote Teacher Audio: <span className="text-white">{livekit.audioBlocked ? "Blocked" : livekit.teacherAudioSubscribed ? "Playing" : "Waiting"}</span></p>
             </>
@@ -2745,32 +2666,32 @@ export default function LiveClassroom() {
       {/* ── Q&A Center-Screen Overlay (teacher: shows who raised hands) ─── */}
       {isStaff && showQnaOverlay && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-md bg-slate-950/80 transition-all"
+          className="fixed inset-0 z-[200] flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setShowQnaOverlay(false); }}
         >
-          <div className="bg-[#111827] border border-yellow-700/40 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+          <div className="bg-gray-900 border border-yellow-700/40 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
               <div className="flex items-center gap-2">
                 <Hand className="w-5 h-5 text-yellow-400" />
                 <h3 className="text-white font-bold text-base">Q&A — Raised Hands</h3>
                 <span className="bg-yellow-500 text-black text-xs font-black px-2 py-0.5 rounded-full">{visibleHands.length}</span>
               </div>
-              <button onClick={() => setShowQnaOverlay(false)} className="text-slate-500 hover:text-white transition-colors">
+              <button onClick={() => setShowQnaOverlay(false)} className="text-gray-500 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             {/* List */}
             <div className="max-h-80 overflow-y-auto divide-y divide-gray-800">
               {visibleHands.length === 0 ? (
-                <p className="text-slate-500 text-sm text-center py-8">No students have raised their hand yet.</p>
+                <p className="text-gray-500 text-sm text-center py-8">No students have raised their hand yet.</p>
               ) : visibleHands.map(h => {
                 const alreadyOnStage = stageSlots.some(s => s.studentId === h.uid);
                 const stageFull = stageSlots.length >= 5;
                 const isSuggested = suggestedStudents.has(h.uid);
                 return (
-                  <div key={h.uid} className={`flex items-center justify-between px-5 py-3 ${isSuggested ? "bg-purple-900/20" : "hover:bg-slate-800/50"}`}>
+                  <div key={h.uid} className={`flex items-center justify-between px-5 py-3 ${isSuggested ? "bg-purple-900/20" : "hover:bg-gray-800/50"}`}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-yellow-600/30 flex items-center justify-center text-yellow-400 flex-shrink-0">✋</div>
                       <div className="min-w-0">
@@ -2788,21 +2709,21 @@ export default function LiveClassroom() {
                         </button>
                       )}
                       {alreadyOnStage && <span className="text-xs text-green-400 font-semibold">On stage</span>}
-                      {stageFull && !alreadyOnStage && <span className="text-xs text-slate-500">Stage full</span>}
+                      {stageFull && !alreadyOnStage && <span className="text-xs text-gray-500">Stage full</span>}
                     </div>
                   </div>
                 );
               })}
             </div>
             {/* Footer */}
-            <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">
+            <div className="px-5 py-3 border-t border-gray-800 flex items-center justify-between">
               <button
                 onClick={() => toggleRaiseHandFeature(false)}
                 className="text-xs text-red-400 hover:text-red-300 font-semibold"
               >Close Q&A</button>
               <button
                 onClick={() => setShowQnaOverlay(false)}
-                className="text-xs px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-slate-700 text-gray-300 font-semibold"
+                className="text-xs px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold"
               >Dismiss</button>
             </div>
           </div>
