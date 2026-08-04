@@ -2740,8 +2740,6 @@ export default function LiveClassroom() {
         </div>
       )}
 
-      </div>
-
       {/* ── Q&A Center-Screen Overlay (teacher: shows who raised hands) ─── */}
       {isStaff && showQnaOverlay && (
         <div
