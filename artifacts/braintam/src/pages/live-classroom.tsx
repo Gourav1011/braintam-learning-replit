@@ -2138,49 +2138,6 @@ export default function LiveClassroom() {
                 </div>
               ) : (
                 <>
-                <div className="relative px-2 pt-2 border-t border-gray-800 flex-shrink-0">
-                  {showQuickChat && (
-                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[260px] max-w-[calc(100vw-24px)] max-h-[300px] overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-1.5">
-                      <div className="flex items-center justify-between px-2 pb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
-                          Quick Messages
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowQuickChat(false)}
-                          className="w-6 h-6 rounded-full text-gray-400 hover:bg-gray-800 hover:text-white"
-                        >
-                          ×
-                        </button>
-                      </div>
-
-                      <div className="grid gap-1">
-                        {quickChatMessages.map((text) => (
-                          <button
-                            key={text}
-                            type="button"
-                            onClick={() => sendQuickChat(text)}
-                            disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] leading-4 font-semibold text-gray-100 hover:bg-gray-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {text}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickChat(open => !open)}
-                    disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                    className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-lg hover:bg-gray-700 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Quick messages"
-                    aria-label="Quick messages"
-                  >
-                    💬
-                  </button>
-                </div>
                 <div className="classroom-composer border-t border-gray-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
@@ -2306,49 +2263,6 @@ export default function LiveClassroom() {
                 </div>
               ) : (
                 <>
-                <div className="relative px-2 pt-2 border-t border-gray-800 flex-shrink-0">
-                  {showQuickChat && (
-                    <div className="absolute left-2 bottom-full mb-2 z-50 w-[260px] max-w-[calc(100vw-24px)] max-h-[300px] overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-1.5">
-                      <div className="flex items-center justify-between px-2 pb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
-                          Quick Messages
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowQuickChat(false)}
-                          className="w-6 h-6 rounded-full text-gray-400 hover:bg-gray-800 hover:text-white"
-                        >
-                          ×
-                        </button>
-                      </div>
-
-                      <div className="grid gap-1">
-                        {quickChatMessages.map((text) => (
-                          <button
-                            key={text}
-                            type="button"
-                            onClick={() => sendQuickChat(text)}
-                            disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] leading-4 font-semibold text-gray-100 hover:bg-gray-800 active:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {text}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickChat(open => !open)}
-                    disabled={!isStaff && !isMentor && (chatBlocked || isChatMuted)}
-                    className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-lg hover:bg-gray-700 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Quick messages"
-                    aria-label="Quick messages"
-                  >
-                    💬
-                  </button>
-                </div>
                 <div className="classroom-composer border-t border-gray-800 flex gap-2 flex-shrink-0 p-2">
                   <input
                     ref={chatInputRef}
