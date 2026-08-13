@@ -1628,21 +1628,6 @@ export default function LiveClassroom() {
             )}
             {!isStaff && <AnnotationOverlay segments={annotSegments} />}
 
-            {/* Fullscreen toggle (teacher + student, bottom-right corner) */}
-            <button
-              onClick={() => {
-                if (!isFullscreen) {
-                  presentationPanelRef.current?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
-                } else {
-                  document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
-                }
-              }}
-              className="absolute bottom-3 right-3 z-30 w-8 h-8 rounded-lg bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all"
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-
             {/* Sprint 3 — "You're on stage" banner for invited students */}
             {myOnStage && !isStaff && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-green-700/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2">
@@ -1994,19 +1979,24 @@ export default function LiveClassroom() {
                   <span className="text-[8px] text-yellow-400 font-bold flex-shrink-0">📡</span>
                 )}
               </div>
-              {/* Right: rotate + fullscreen buttons */}
+
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={toggleOrientation}
                   title="Switch orientation"
-                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                  aria-label="Switch orientation"
+                  className="w-7 h-7 rounded-lg bg-gray-800/90 text-gray-300 flex items-center justify-center active:scale-90 transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
+
                 <button
+                  type="button"
                   onClick={toggleMobileFullscreen}
                   title="Toggle fullscreen"
-                  className="w-7 h-7 rounded-lg bg-gray-800 text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                  aria-label="Toggle fullscreen"
+                  className="w-7 h-7 rounded-lg bg-gray-800/90 text-gray-300 flex items-center justify-center active:scale-90 transition-all"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
                 </button>
