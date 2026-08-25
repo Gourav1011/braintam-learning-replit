@@ -218,24 +218,10 @@ router.post("/mentor/long-term/create-payment-link", mentorAuth, async (req, res
     shortUrl = generatedUrl;
   }
 
-  // Ignite mentor payment activity belongs to the current weekly cycle.
-  const [activeCycle] = await db
-    .select({ id: mentorDeploymentCyclesTable.id })
-    .from(mentorDeploymentCyclesTable)
-    .where(eq(mentorDeploymentCyclesTable.status, "active"))
-    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
-    .limit(1);
-
-  if (!activeCycle) {
-    res.status(409).json({ error: "No active Ignite deployment cycle" });
-    return;
-  }
-
   // Store payment link row
   const [row] = await db.insert(paymentLinksTable).values({
     generatedById: mentorId,
     mentorId,
-    deploymentCycleId: activeCycle.id,
     studentId,
     razorpayPaymentLinkId: razorpayPaymentLinkId ?? undefined,
     shortUrl: shortUrl ?? undefined,
@@ -289,19 +275,6 @@ router.get("/mentor/long-term/pricing/:grade", mentorAuth, async (req, res) => {
 // ── GET /api/mentor/long-term/payment-links ───────────────────────────────────
 router.get("/mentor/long-term/payment-links", mentorAuth, async (req, res) => {
   const mentorId: number = (req as any).user?.id;
-
-  const [activeCycle] = await db
-    .select({ id: mentorDeploymentCyclesTable.id })
-    .from(mentorDeploymentCyclesTable)
-    .where(eq(mentorDeploymentCyclesTable.status, "active"))
-    .orderBy(desc(mentorDeploymentCyclesTable.createdAt))
-    .limit(1);
-
-  if (!activeCycle) {
-    res.json([]);
-    return;
-  }
-
   const rows = await db
     .select({
       id: paymentLinksTable.id,
@@ -320,10 +293,7 @@ router.get("/mentor/long-term/payment-links", mentorAuth, async (req, res) => {
     })
     .from(paymentLinksTable)
     .leftJoin(usersTable, eq(paymentLinksTable.studentId, usersTable.id))
-    .where(and(
-      eq(paymentLinksTable.mentorId, mentorId),
-      eq(paymentLinksTable.deploymentCycleId, activeCycle.id),
-    ))
+    .where(or(eq(paymentLinksTable.mentorId, mentorId), isNull(paymentLinksTable.mentorId)))
     .orderBy(desc(paymentLinksTable.createdAt));
 
   res.json(rows.map(r => ({

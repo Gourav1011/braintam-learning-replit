@@ -36,7 +36,7 @@ const router = Router();
 const adminOnly = requireRole("admin", "super_admin");
 
 router.get("/admin/ignite/teachers", adminOnly, async (_req, res) => {
-  const [teachers, recentSessions] = await Promise.all([
+  const [teachers, historicalSessions, igniteSessions] = await Promise.all([
     db
       .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
       .from(usersTable)
@@ -48,7 +48,31 @@ router.get("/admin/ignite/teachers", adminOnly, async (_req, res) => {
       .where(and(isNotNull(demoSessionsTable.teacherName), isNotNull(demoSessionsTable.subject)))
       .orderBy(desc(demoSessionsTable.createdAt))
       .limit(200),
+    db
+      .select({
+        subject: demoBatchesTable.subject,
+        teacherName: liveClassesTable.teacher,
+        createdAt: liveClassesTable.createdAt,
+      })
+      .from(liveClassesTable)
+      .innerJoin(
+        demoBatchesTable,
+        eq(liveClassesTable.igniteBatchId, demoBatchesTable.id),
+      )
+      .where(and(
+        eq(liveClassesTable.classType, "ignite"),
+        isNotNull(demoBatchesTable.subject),
+      ))
+      .orderBy(desc(liveClassesTable.createdAt))
+      .limit(200),
   ]);
+
+  // The teacher/subject suggestion list is informational. Merge new Ignite
+  // live_classes with historical demo_sessions so newly scheduled sessions
+  // immediately contribute suggestions without writing another legacy row.
+  const recentSessions = [...historicalSessions, ...igniteSessions]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 200);
   const suggestions: Record<string, string> = {};
   for (const s of recentSessions) {
     if (s.subject && s.teacherName && !suggestions[s.subject]) {
@@ -1299,7 +1323,7 @@ router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
   const startOfThisWeek = new Date(now); startOfThisWeek.setDate(now.getDate() - 6); startOfThisWeek.setHours(0,0,0,0);
 
-  const [allEnrollments, allSessions, allBatches] = await Promise.all([
+  const [allEnrollments, historicalSessions, igniteSessions, allBatches] = await Promise.all([
     db.select({
       id: demoBatchEnrollmentsTable.id,
       batchId: demoBatchEnrollmentsTable.batchId,
@@ -1319,11 +1343,32 @@ router.get("/admin/ignite/analytics", adminOnly, async (_req, res) => {
     .from(demoBatchEnrollmentsTable)
     .innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id))
     .orderBy(desc(demoBatchEnrollmentsTable.enrolledAt)),
+    // Historical Ignite sessions are retained solely for pre-migration analytics.
     db.select().from(demoSessionsTable).orderBy(desc(demoSessionsTable.scheduledAt)),
+    // New Ignite sessions share the live_classes engine with Mastery.
+    db.select({
+      batchId: liveClassesTable.igniteBatchId,
+      scheduledAt: liveClassesTable.scheduledAt,
+      status: liveClassesTable.status,
+    })
+      .from(liveClassesTable)
+      .where(and(
+        eq(liveClassesTable.classType, "ignite"),
+        isNotNull(liveClassesTable.igniteBatchId),
+      ))
+      .orderBy(desc(liveClassesTable.scheduledAt)),
     db.select().from(demoBatchesTable),
   ]);
 
   const batchMap = Object.fromEntries(allBatches.map(b => [b.id, b]));
+  const allSessions = [
+    ...historicalSessions,
+    ...igniteSessions.map((session) => ({
+      batchId: session.batchId!,
+      scheduledAt: session.scheduledAt,
+      status: session.status,
+    })),
+  ];
 
   const isThisMonth = (d: Date | null) => d && d >= startOfThisMonth && d <= now;
   const isLastMonth = (d: Date | null) => d && d >= startOfLastMonth && d <= endOfLastMonth;

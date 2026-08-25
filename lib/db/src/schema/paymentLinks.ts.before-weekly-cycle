@@ -1,14 +1,12 @@
 import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { mentorDeploymentCyclesTable } from "./mentorDeploymentCycles";
 
 // status values: created | opened | paid | failed | expired | cancelled
 export const paymentLinksTable = pgTable("payment_links", {
   id: serial("id").primaryKey(),
   generatedById: integer("generated_by_id"),
   mentorId: integer("mentor_id"),
-  deploymentCycleId: integer("deployment_cycle_id").references(() => mentorDeploymentCyclesTable.id),
   studentId: integer("student_id"),
   razorpayLinkId: text("razorpay_link_id").unique(),
   razorpayPaymentLinkId: text("razorpay_payment_link_id").unique(),

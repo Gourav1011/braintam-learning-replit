@@ -112098,6 +112098,7 @@ var mentorStudentAssignmentsTable = pgTable("mentor_student_assignments", {
 var mentorFollowUpsTable = pgTable("mentor_follow_ups", {
   id: serial("id").primaryKey(),
   mentorId: integer("mentor_id").notNull().references(() => usersTable.id),
+  deploymentCycleId: integer("deployment_cycle_id").references(() => mentorDeploymentCyclesTable.id),
   studentId: integer("student_id").notNull().references(() => usersTable.id),
   noteType: text("note_type").notNull().default("general"),
   note: text("note").notNull(),
@@ -112306,6 +112307,7 @@ var paymentLinksTable = pgTable("payment_links", {
   id: serial("id").primaryKey(),
   generatedById: integer("generated_by_id"),
   mentorId: integer("mentor_id"),
+  deploymentCycleId: integer("deployment_cycle_id").references(() => mentorDeploymentCyclesTable.id),
   studentId: integer("student_id"),
   razorpayLinkId: text("razorpay_link_id").unique(),
   razorpayPaymentLinkId: text("razorpay_payment_link_id").unique(),
@@ -112987,9 +112989,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-07-28-1917" : "dev",
-    commit: true ? "e303783" : "unknown",
-    buildTime: true ? "2026-07-28T19:17:00.827Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-08-25-1303" : "dev",
+    commit: true ? "db8e0eb" : "unknown",
+    buildTime: true ? "2026-08-25T13:03:49.995Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -123568,9 +123570,9 @@ router13.get("/admin/reports/summary", adminOnly, async (req, res) => {
     fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
     toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   }
-  const todayIST5 = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const todayStart4 = /* @__PURE__ */ new Date(`${todayIST5.getFullYear()}-${String(todayIST5.getMonth() + 1).padStart(2, "0")}-${String(todayIST5.getDate()).padStart(2, "0")}T00:00:00+05:30`);
-  const todayEnd2 = /* @__PURE__ */ new Date(`${todayIST5.getFullYear()}-${String(todayIST5.getMonth() + 1).padStart(2, "0")}-${String(todayIST5.getDate()).padStart(2, "0")}T23:59:59+05:30`);
+  const todayIST4 = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayStart4 = /* @__PURE__ */ new Date(`${todayIST4.getFullYear()}-${String(todayIST4.getMonth() + 1).padStart(2, "0")}-${String(todayIST4.getDate()).padStart(2, "0")}T00:00:00+05:30`);
+  const todayEnd2 = /* @__PURE__ */ new Date(`${todayIST4.getFullYear()}-${String(todayIST4.getMonth() + 1).padStart(2, "0")}-${String(todayIST4.getDate()).padStart(2, "0")}T23:59:59+05:30`);
   const [leadsRows, activeMentorRows, todayConvRows, paymentRows] = await Promise.all([
     db.execute(sql`
       SELECT assignment_status, grade, lead_source,
@@ -126111,93 +126113,6 @@ var demoBatches_default = router19;
 // src/routes/mentor.ts
 var import_express20 = __toESM(require_express2(), 1);
 
-// src/jobs/dailyQueueReset.ts
-function getISTHourMinute() {
-  const now = /* @__PURE__ */ new Date();
-  const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const dateStr = ist.toLocaleDateString("en-CA");
-  return { h: ist.getHours(), m: ist.getMinutes(), dateStr };
-}
-var lastResetDate = "";
-async function runDailyQueueReset() {
-  try {
-    const rows = await db.select({
-      studentId: mentorStudentAssignmentsTable.studentId,
-      assignedAt: mentorStudentAssignmentsTable.assignedAt
-    }).from(mentorStudentAssignmentsTable).innerJoin(
-      usersTable,
-      and(
-        eq(usersTable.id, mentorStudentAssignmentsTable.mentorId),
-        eq(usersTable.role, "mentor"),
-        eq(usersTable.mentorType, "sales"),
-        eq(usersTable.isActive, true)
-      )
-    ).where(eq(mentorStudentAssignmentsTable.isActive, true));
-    const studentIds = [...new Set(rows.map((r) => r.studentId))];
-    if (studentIds.length === 0) {
-      logger.info("Daily queue reset: no active sales leads found");
-      return;
-    }
-    const twoDaysAgo = /* @__PURE__ */ new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    twoDaysAgo.setHours(0, 0, 0, 0);
-    const oldStudentIds = rows.filter((r) => new Date(r.assignedAt) < twoDaysAgo).map((r) => r.studentId);
-    let nonActiveIds = /* @__PURE__ */ new Set();
-    if (oldStudentIds.length > 0) {
-      const neverCalledRows = await db.select({ id: usersTable.id }).from(usersTable).where(and(
-        inArray(usersTable.id, oldStudentIds),
-        isNull(usersTable.lastCallAt)
-      ));
-      nonActiveIds = new Set(neverCalledRows.map((r) => r.id));
-    }
-    const RESET_STATUSES = [
-      "Busy",
-      "Call Back",
-      "Call Back Later",
-      "Call Later",
-      "Call Connected",
-      "Picked",
-      "Interested",
-      "Not Interested"
-    ];
-    const resetIds = nonActiveIds.size > 0 ? studentIds.filter((id) => !nonActiveIds.has(id)) : studentIds;
-    if (resetIds.length === 0) {
-      logger.info("Daily queue reset: nothing to reset (all leads are non-active)");
-      return;
-    }
-    await db.update(usersTable).set({ callStatus: "Pending", updatedAt: /* @__PURE__ */ new Date() }).where(
-      and(
-        inArray(usersTable.id, resetIds),
-        inArray(usersTable.callStatus, RESET_STATUSES)
-      )
-    );
-    logger.info(
-      {
-        totalLeads: studentIds.length,
-        resetCandidates: resetIds.length,
-        nonActiveSkipped: nonActiveIds.size,
-        resetStatuses: RESET_STATUSES
-      },
-      "Daily queue reset complete (5 AM IST)"
-    );
-  } catch (err) {
-    logger.error({ err }, "Daily queue reset job failed");
-  }
-}
-function scheduleDailyQueueReset() {
-  const CHECK_INTERVAL_MS = 6e4;
-  const tick = async () => {
-    const { h, m, dateStr } = getISTHourMinute();
-    if (h === 5 && m === 0 && lastResetDate !== dateStr) {
-      lastResetDate = dateStr;
-      logger.info({ dateStr }, "Running 5 AM daily queue reset\u2026");
-      await runDailyQueueReset();
-    }
-  };
-  setInterval(tick, CHECK_INTERVAL_MS);
-  logger.info("Daily 5 AM queue reset job scheduled (checks every minute)");
-}
-
 // src/services/sms.ts
 var FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY;
 function normalizePhone(phone) {
@@ -126369,6 +126284,134 @@ async function runOverdueFollowUpReminders() {
     if (anySent) notified++;
   }
   logger.info({ mentorsNotified: notified, mentorsChecked: toNotify.length }, "Overdue follow-up reminder job complete");
+}
+
+// src/jobs/igniteWeeklyRollover.ts
+async function runIgniteWeeklyRollover(createdById = null, createdByName = "System") {
+  const [cycle] = await db.select().from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
+  if (!cycle) {
+    return { ok: false, message: "No active Ignite deployment cycle" };
+  }
+  const assignments = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).where(and(
+    eq(mentorStudentAssignmentsTable.deploymentCycleId, cycle.id),
+    eq(mentorStudentAssignmentsTable.isActive, true)
+  ));
+  const studentIds = [...new Set(assignments.map((a) => a.studentId))];
+  if (studentIds.length > 0) {
+    const repeatedRows = await db.select({
+      studentId: demoBatchEnrollmentsTable.studentId,
+      enrollmentCount: sql`count(*)`
+    }).from(demoBatchEnrollmentsTable).where(inArray(demoBatchEnrollmentsTable.studentId, studentIds)).groupBy(demoBatchEnrollmentsTable.studentId).having(sql`count(*) >= 2`);
+    const repeatedIds = repeatedRows.map((r) => r.studentId);
+    if (repeatedIds.length > 0) {
+      await db.update(usersTable).set({
+        repeatedCustomer: true,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(inArray(usersTable.id, repeatedIds));
+    }
+    const contacted = await db.select({ studentId: mentorFollowUpsTable.studentId }).from(mentorFollowUpsTable).where(and(
+      eq(mentorFollowUpsTable.deploymentCycleId, cycle.id),
+      eq(mentorFollowUpsTable.noteType, "Call Outcome"),
+      inArray(mentorFollowUpsTable.studentId, studentIds)
+    ));
+    const contactedIds = new Set(contacted.map((r) => r.studentId));
+    const students = await db.select({
+      id: usersTable.id,
+      leadStage: usersTable.leadStage
+    }).from(usersTable).where(inArray(usersTable.id, studentIds));
+    const oldLeadIds = [];
+    const lostIds = [];
+    for (const student of students) {
+      if (student.leadStage === "Converted") continue;
+      if (contactedIds.has(student.id)) {
+        oldLeadIds.push(student.id);
+      } else {
+        lostIds.push(student.id);
+      }
+    }
+    if (oldLeadIds.length > 0) {
+      await db.update(usersTable).set({
+        leadStage: "Old Lead",
+        assignmentStatus: "unassigned",
+        deploymentStatus: "Undeployed",
+        assignedMentorId: null,
+        callStatus: "Pending",
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(inArray(usersTable.id, oldLeadIds));
+    }
+    if (lostIds.length > 0) {
+      await db.update(usersTable).set({
+        leadStage: "Lost",
+        lostReason: "Not contacted during Ignite deployment week",
+        lostAt: /* @__PURE__ */ new Date(),
+        assignmentStatus: "unassigned",
+        deploymentStatus: "Undeployed",
+        assignedMentorId: null,
+        callStatus: "Pending",
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(inArray(usersTable.id, lostIds));
+    }
+    await db.update(mentorStudentAssignmentsTable).set({ isActive: false }).where(and(
+      eq(mentorStudentAssignmentsTable.deploymentCycleId, cycle.id),
+      eq(mentorStudentAssignmentsTable.isActive, true)
+    ));
+  }
+  await db.update(mentorDeploymentCyclesTable).set({
+    status: "archived",
+    archivedAt: /* @__PURE__ */ new Date()
+  }).where(eq(mentorDeploymentCyclesTable.id, cycle.id));
+  const nowIST2 = new Date(
+    (/* @__PURE__ */ new Date()).toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  const yyyy = nowIST2.getFullYear();
+  const mm = String(nowIST2.getMonth() + 1).padStart(2, "0");
+  const dd = String(nowIST2.getDate()).padStart(2, "0");
+  const startDate = `${yyyy}-${mm}-${dd}`;
+  const month = nowIST2.toLocaleDateString("en-IN", { month: "short" });
+  const weekNum = Math.ceil(nowIST2.getDate() / 7);
+  const [newCycle] = await db.insert(mentorDeploymentCyclesTable).values({
+    weekLabel: `${month} W${weekNum} \u2013 ${startDate}`,
+    startDate,
+    status: "active",
+    createdById,
+    createdByName
+  }).returning();
+  return {
+    ok: true,
+    archivedCycleId: cycle.id,
+    newCycle,
+    processed: studentIds.length
+  };
+}
+function scheduleIgniteWeeklyRollover() {
+  const CHECK_INTERVAL_MS = 60 * 1e3;
+  let lastRunKey = "";
+  const tick = async () => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      weekday: "short",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(/* @__PURE__ */ new Date());
+    const get = (type) => parts.find((p) => p.type === type)?.value ?? "";
+    if (get("weekday") !== "Sun" || get("hour") !== "23" || get("minute") !== "00") return;
+    const runKey = `${get("year")}-${get("month")}-${get("day")}`;
+    if (lastRunKey === runKey) return;
+    lastRunKey = runKey;
+    try {
+      await runIgniteWeeklyRollover(null, "System Weekly Rollover");
+      console.log("[Ignite] Sunday 11 PM IST weekly rollover completed");
+    } catch (error40) {
+      lastRunKey = "";
+      console.error("[Ignite] weekly rollover failed", error40);
+    }
+  };
+  setInterval(() => void tick(), CHECK_INTERVAL_MS);
+  console.log("[Ignite] weekly rollover scheduled for Sunday 11:00 PM IST");
 }
 
 // src/routes/mentor.ts
@@ -126614,7 +126657,6 @@ router20.patch("/mentor/students/:id", mentorAuth, async (req, res) => {
   if (weakSubject !== void 0) updates.weakSubject = weakSubject || null;
   if (strongSubject !== void 0) updates.strongSubject = strongSubject || null;
   if (interestLevel !== void 0) updates.interestLevel = interestLevel || null;
-  if (repeatedCustomer !== void 0) updates.repeatedCustomer = Boolean(repeatedCustomer);
   if (displayName !== void 0) updates.displayName = displayName || null;
   if (referenceGrade !== void 0) updates.referenceGrade = referenceGrade ? Number(referenceGrade) : null;
   if (altPhone !== void 0) updates.altPhone = altPhone || null;
@@ -126994,8 +127036,21 @@ router20.post("/mentor/attendance", mentorAuth, async (req, res) => {
     res.status(201).json(row);
   }
 });
+async function getActiveIgniteCycle() {
+  const [cycle] = await db.select({
+    id: mentorDeploymentCyclesTable.id,
+    weekLabel: mentorDeploymentCyclesTable.weekLabel,
+    startDate: mentorDeploymentCyclesTable.startDate
+  }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
+  return cycle ?? null;
+}
 router20.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
+  const activeCycle = await getActiveIgniteCycle();
+  if (!activeCycle) {
+    res.json([]);
+    return;
+  }
   const rows = await db.select({
     id: mentorFollowUpsTable.id,
     studentId: mentorFollowUpsTable.studentId,
@@ -127009,19 +127064,28 @@ router20.get("/mentor/follow-ups", mentorAuth, async (req, res) => {
     leadStatus: mentorFollowUpsTable.leadStatus,
     nextFollowUpDate: mentorFollowUpsTable.nextFollowUpDate,
     createdAt: mentorFollowUpsTable.createdAt
-  }).from(mentorFollowUpsTable).leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.studentId)).where(eq(mentorFollowUpsTable.mentorId, mentorId)).orderBy(desc(mentorFollowUpsTable.createdAt)).limit(200);
+  }).from(mentorFollowUpsTable).leftJoin(usersTable, eq(usersTable.id, mentorFollowUpsTable.studentId)).where(and(
+    eq(mentorFollowUpsTable.mentorId, mentorId),
+    eq(mentorFollowUpsTable.deploymentCycleId, activeCycle.id)
+  )).orderBy(desc(mentorFollowUpsTable.createdAt)).limit(200);
   const enriched = rows.map((r) => ({ ...r, ...computeFollowUpStatus(r.nextFollowUpDate, r.callStatus) }));
   res.json(enriched);
 });
 router20.post("/mentor/follow-ups", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
+  const activeCycle = await getActiveIgniteCycle();
   const { studentId, noteType, note, callStatus, callTime, calledBy, calledByName, leadStatus, nextFollowUpDate } = req.body;
+  if (!activeCycle) {
+    res.status(409).json({ error: "No active Ignite deployment cycle" });
+    return;
+  }
   if (!studentId || !note) {
     res.status(400).json({ error: "studentId and note required" });
     return;
   }
   const [row] = await db.insert(mentorFollowUpsTable).values({
     mentorId,
+    deploymentCycleId: activeCycle.id,
     studentId: Number(studentId),
     noteType: noteType ?? "general",
     note: String(note),
@@ -127565,7 +127629,25 @@ router20.get("/mentor/sales/leads", mentorAuth, async (req, res) => {
 });
 router20.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
-  const studentIds = await getMentorStudentIds(mentorId);
+  const activeCycle = await getActiveIgniteCycle();
+  if (!activeCycle) {
+    res.json({
+      assignedLeads: 0,
+      needToCall: 0,
+      interested: 0,
+      highlyInterested: 0,
+      converted: 0,
+      repeatedCustomers: 0,
+      dropped: 0
+    });
+    return;
+  }
+  const currentAssignments = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).where(and(
+    eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+    eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+    eq(mentorStudentAssignmentsTable.isActive, true)
+  ));
+  const studentIds = [...new Set(currentAssignments.map((a) => a.studentId))];
   if (studentIds.length === 0) {
     res.json({ assignedLeads: 0, needToCall: 0, interested: 0, highlyInterested: 0, converted: 0, repeatedCustomers: 0, dropped: 0 });
     return;
@@ -127588,14 +127670,24 @@ router20.get("/mentor/sales/dashboard", mentorAuth, async (req, res) => {
 router20.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.studentId), 10);
+  const activeCycle = await getActiveIgniteCycle();
+  if (!activeCycle) {
+    res.status(409).json({ error: "No active Ignite deployment cycle" });
+    return;
+  }
   if (req.authUser.role !== "admin") {
-    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable).where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable).where(and(
+      eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+      eq(mentorStudentAssignmentsTable.studentId, studentId),
+      eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+      eq(mentorStudentAssignmentsTable.isActive, true)
+    )).limit(1);
     if (!asgn) {
-      res.status(403).json({ error: "Not your assigned student" });
+      res.status(403).json({ error: "Not your assigned student in the current Ignite cycle" });
       return;
     }
   }
-  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, repeatedCustomer, whoPicked, contactOutcome } = req.body;
+  const { callOutcome, busyReason, leadStatus, interestLevel, remark, nextFollowUpAt, nextFollowUpTime, whoPicked, contactOutcome } = req.body;
   if (!remark?.trim()) {
     res.status(400).json({ error: "Remark is required" });
     return;
@@ -127613,7 +127705,6 @@ router20.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, r
   if (interestLevel) updates.interestLevel = interestLevel;
   if (nextFollowUpAt) updates.nextFollowUpAt = nextFollowUpAt;
   if (nextFollowUpTime) updates.nextFollowUpTime = nextFollowUpTime;
-  if (repeatedCustomer !== void 0) updates.repeatedCustomer = Boolean(repeatedCustomer);
   await db.update(usersTable).set(updates).where(eq(usersTable.id, studentId));
   const actor = req.authUser;
   const noteParts = [callOutcome];
@@ -127623,6 +127714,7 @@ router20.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, r
   const noteText = `[${noteParts.join(" | ")}] ${remark.trim()}`;
   const [fu] = await db.insert(mentorFollowUpsTable).values({
     mentorId,
+    deploymentCycleId: activeCycle.id,
     studentId,
     noteType: "Call Outcome",
     note: noteText,
@@ -127662,14 +127754,27 @@ router20.post("/mentor/sales/call-outcome/:studentId", mentorAuth, async (req, r
 router20.get("/mentor/sales/history/:studentId", mentorAuth, async (req, res) => {
   const mentorId = req.authUser.id;
   const studentId = parseInt(String(req.params.studentId), 10);
+  const activeCycle = await getActiveIgniteCycle();
+  if (!activeCycle) {
+    res.json([]);
+    return;
+  }
   if (req.authUser.role !== "admin") {
-    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable).where(and(eq(mentorStudentAssignmentsTable.mentorId, mentorId), eq(mentorStudentAssignmentsTable.studentId, studentId), eq(mentorStudentAssignmentsTable.isActive, true))).limit(1);
+    const [asgn] = await db.select({ id: mentorStudentAssignmentsTable.id }).from(mentorStudentAssignmentsTable).where(and(
+      eq(mentorStudentAssignmentsTable.mentorId, mentorId),
+      eq(mentorStudentAssignmentsTable.studentId, studentId),
+      eq(mentorStudentAssignmentsTable.deploymentCycleId, activeCycle.id),
+      eq(mentorStudentAssignmentsTable.isActive, true)
+    )).limit(1);
     if (!asgn) {
-      res.status(403).json({ error: "Not your assigned student" });
+      res.status(403).json({ error: "Not your assigned student in the current Ignite cycle" });
       return;
     }
   }
-  const rows = await db.select().from(mentorFollowUpsTable).where(eq(mentorFollowUpsTable.studentId, studentId)).orderBy(desc(mentorFollowUpsTable.createdAt)).limit(50);
+  const rows = await db.select().from(mentorFollowUpsTable).where(and(
+    eq(mentorFollowUpsTable.studentId, studentId),
+    eq(mentorFollowUpsTable.deploymentCycleId, activeCycle.id)
+  )).orderBy(desc(mentorFollowUpsTable.createdAt)).limit(50);
   res.json(rows);
 });
 router20.get("/mentor/sales/leaderboard", mentorAuth, async (req, res) => {
@@ -127841,35 +127946,20 @@ router20.get("/admin/mentor/cycles", adminOnly5, async (_req, res) => {
 });
 router20.post("/admin/mentor/cycles/start-new-week", adminOnly5, async (req, res) => {
   const actor = req.authUser;
-  const { weekLabel } = req.body;
-  await db.update(mentorDeploymentCyclesTable).set({ status: "archived", archivedAt: /* @__PURE__ */ new Date() }).where(eq(mentorDeploymentCyclesTable.status, "active"));
-  const today = (/* @__PURE__ */ new Date()).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-  const weekNum = Math.ceil((/* @__PURE__ */ new Date()).getDate() / 7);
-  const month = (/* @__PURE__ */ new Date()).toLocaleDateString("en-IN", { month: "short", timeZone: "Asia/Kolkata" });
-  const label = weekLabel?.trim() || `${month} W${weekNum} \u2013 ${today}`;
-  const [newCycle] = await db.insert(mentorDeploymentCyclesTable).values({
-    weekLabel: label,
-    startDate: today,
-    status: "active",
-    createdById: actor.id,
-    createdByName: actor.name
-  }).returning();
-  const activeRows = await db.select({ studentId: mentorStudentAssignmentsTable.studentId }).from(mentorStudentAssignmentsTable).innerJoin(
-    usersTable,
-    and(
-      eq(usersTable.id, mentorStudentAssignmentsTable.mentorId),
-      eq(usersTable.mentorType, "sales")
-    )
-  ).where(eq(mentorStudentAssignmentsTable.isActive, true));
-  const resetIds = [...new Set(activeRows.map((r) => r.studentId))];
-  if (resetIds.length > 0) {
-    await db.update(usersTable).set({ callStatus: "Pending", updatedAt: /* @__PURE__ */ new Date() }).where(inArray(usersTable.id, resetIds));
+  try {
+    const result = await runIgniteWeeklyRollover(
+      actor.id,
+      actor.name ?? "Admin"
+    );
+    if (!result.ok) {
+      res.status(409).json(result);
+      return;
+    }
+    res.status(201).json(result);
+  } catch (error40) {
+    console.error("[Ignite] manual weekly rollover failed", error40);
+    res.status(500).json({ error: "Weekly rollover failed" });
   }
-  res.status(201).json({ ok: true, cycle: newCycle });
-});
-router20.post("/admin/mentor/cycles/trigger-reset", adminOnly5, async (_req, res) => {
-  await runDailyQueueReset();
-  res.json({ ok: true, message: "Queue reset complete: all active sales leads set to Pending" });
 });
 router20.post("/admin/btl-crm/timeline", adminOnly5, async (req, res) => {
   const { studentId, remark, noteType, followUpDate, actionTaken } = req.body;
@@ -129845,27 +129935,13 @@ var mentorAdmin_default = router27;
 var import_express28 = __toESM(require_express2(), 1);
 
 // src/lib/assignIgniteBatch.ts
-var PIPELINE_ACTIVE_TARGET = 1;
-var PIPELINE_UPCOMING_TARGET = 2;
 var IST_OFFSET_MS = 5.5 * 60 * 60 * 1e3;
 function nowIST() {
   return new Date(Date.now() + IST_OFFSET_MS);
 }
-function todayIST4() {
-  const ist = nowIST();
-  ist.setUTCHours(0, 0, 0, 0);
-  return ist;
-}
 function pastMondayCutoffIST() {
   const ist = nowIST();
   return ist.getUTCDay() === 1 && ist.getUTCHours() >= 11;
-}
-function getISOWeek(date6) {
-  const d = new Date(Date.UTC(date6.getUTCFullYear(), date6.getUTCMonth(), date6.getUTCDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 864e5 + 1) / 7);
 }
 function nextMondayAfter(base) {
   const dayOfWeek = base.getUTCDay();
@@ -129875,103 +129951,75 @@ function nextMondayAfter(base) {
   result.setUTCHours(3, 30, 0, 0);
   return result;
 }
-async function ensureThreeWeekPipeline(grade) {
-  const today = todayIST4();
-  const datedBatches = await db.select({
-    id: demoBatchesTable.id,
-    status: demoBatchesTable.status,
-    startDate: demoBatchesTable.startDate,
-    endDate: demoBatchesTable.endDate
-  }).from(demoBatchesTable).where(
-    and(
-      eq(demoBatchesTable.grade, grade),
-      isNotNull(demoBatchesTable.startDate),
-      isNotNull(demoBatchesTable.endDate)
-    )
-  ).orderBy(asc(demoBatchesTable.startDate));
-  let activeBatches = datedBatches.filter((b) => b.status === "active");
-  let upcomingBatches = datedBatches.filter((b) => b.status === "upcoming");
-  if (activeBatches.length === 0) {
-    const toPromote = upcomingBatches.find((b) => b.startDate <= today);
-    if (toPromote) {
-      await db.update(demoBatchesTable).set({ status: "active" }).where(eq(demoBatchesTable.id, toPromote.id));
-      logger.info({ grade, batchId: toPromote.id }, "Auto-promoted upcoming\u2192active batch");
-      activeBatches = [{ ...toPromote, status: "active" }];
-      upcomingBatches = upcomingBatches.filter((b) => b.id !== toPromote.id);
-    }
-  }
-  let upcomingCount = upcomingBatches.length;
-  const neededUpcoming = PIPELINE_UPCOMING_TARGET - upcomingCount;
-  if (neededUpcoming > 0) {
-    const furthest = datedBatches.at(-1);
-    const [{ totalCount }] = await db.select({ totalCount: sql`count(*)::int` }).from(demoBatchesTable).where(eq(demoBatchesTable.grade, grade));
-    const baseStart = furthest?.startDate ? nextMondayAfter(furthest.startDate) : nextMondayAfter(nowIST());
-    let seq = (totalCount ?? 0) + 1;
-    for (let i = 0; i < neededUpcoming; i++) {
-      const startDate = new Date(baseStart.getTime() + i * 7 * 24 * 60 * 60 * 1e3);
-      const endDate = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1e3);
-      const weekNum = getISOWeek(startDate);
-      const seqStr = String(seq + i).padStart(3, "0");
-      await db.insert(demoBatchesTable).values({
-        title: `Braintam Ignite Grade ${grade} \u2014 Batch ${seqStr}`,
-        grade,
-        startDate,
-        endDate,
-        status: "upcoming",
-        totalDays: 5,
-        batchCode: `IGN-GR${grade}-W${weekNum}`,
-        weekNumber: weekNum,
-        academicYear: "2026-27",
-        subject: "All Subjects",
-        isActive: true,
-        isPublic: true
-      }).onConflictDoNothing();
-      upcomingCount++;
-    }
-    logger.info({ grade, generated: neededUpcoming }, "Auto-generated upcoming Ignite batches");
-  }
-  return { activeCount: activeBatches.length, upcomingCount };
+function igniteBatchTitle(grade, weekNumber) {
+  return `Grade ${grade} \u2022 Week ${weekNumber}`;
 }
-async function checkBatchPipelineHealth(grade) {
-  const today = todayIST4();
-  const [{ activeCount }] = await db.select({ activeCount: sql`count(*)::int` }).from(demoBatchesTable).where(
-    and(
-      eq(demoBatchesTable.grade, grade),
-      eq(demoBatchesTable.status, "active"),
-      isNotNull(demoBatchesTable.startDate),
-      isNotNull(demoBatchesTable.endDate)
-    )
-  );
-  const [{ upcomingCount }] = await db.select({ upcomingCount: sql`count(*)::int` }).from(demoBatchesTable).where(
-    and(
-      eq(demoBatchesTable.grade, grade),
-      eq(demoBatchesTable.status, "upcoming"),
-      isNotNull(demoBatchesTable.startDate),
-      isNotNull(demoBatchesTable.endDate)
-    )
-  );
-  const issues = [];
-  if ((activeCount ?? 0) !== PIPELINE_ACTIVE_TARGET) issues.push(`activeCount=${activeCount ?? 0} (expected ${PIPELINE_ACTIVE_TARGET})`);
-  if ((upcomingCount ?? 0) !== PIPELINE_UPCOMING_TARGET) issues.push(`upcomingCount=${upcomingCount ?? 0} (expected ${PIPELINE_UPCOMING_TARGET})`);
-  const healthy = issues.length === 0;
-  if (!healthy) {
-    logger.warn(
-      { grade, activeCount, upcomingCount, issues },
-      `Grade ${grade} batch pipeline unhealthy. Auto-repair attempted.`
-    );
-    await ensureThreeWeekPipeline(grade);
+function igniteBatchCode(grade, weekNumber) {
+  return `IGN-G${grade}-W${weekNumber}`;
+}
+async function getNextIgniteWeekNumber(grade) {
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    throw new Error(`Invalid Ignite grade: ${grade}`);
   }
-  void today;
-  return {
+  const prefix = `IGN-G${grade}-W`;
+  const rows = await db.select({
+    batchCode: demoBatchesTable.batchCode,
+    weekNumber: demoBatchesTable.weekNumber
+  }).from(demoBatchesTable).where(eq(demoBatchesTable.grade, grade));
+  let max = 0;
+  for (const row of rows) {
+    if (!row.batchCode?.startsWith(prefix)) continue;
+    const suffix = row.batchCode.slice(prefix.length);
+    const parsed = Number.parseInt(suffix, 10);
+    if (Number.isInteger(parsed) && parsed > max) {
+      max = parsed;
+    }
+  }
+  return max + 1;
+}
+async function createNextIgniteDraftBatch(grade, options) {
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    throw new Error(`Invalid Ignite grade: ${grade}`);
+  }
+  const weekNumber = await getNextIgniteWeekNumber(grade);
+  let startDate = options?.startDate;
+  if (!startDate) {
+    const previousV2Code = weekNumber > 1 ? igniteBatchCode(grade, weekNumber - 1) : null;
+    let previousV2StartDate = null;
+    if (previousV2Code) {
+      const [previousV2] = await db.select({ startDate: demoBatchesTable.startDate }).from(demoBatchesTable).where(and(
+        eq(demoBatchesTable.grade, grade),
+        eq(demoBatchesTable.batchCode, previousV2Code),
+        isNotNull(demoBatchesTable.startDate)
+      )).limit(1);
+      previousV2StartDate = previousV2?.startDate ?? null;
+    }
+    startDate = previousV2StartDate ? nextMondayAfter(previousV2StartDate) : nextMondayAfter(nowIST());
+  }
+  const endDate = options?.endDate ?? new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1e3);
+  const title = igniteBatchTitle(grade, weekNumber);
+  const batchCode = igniteBatchCode(grade, weekNumber);
+  const [existing] = await db.select({ id: demoBatchesTable.id }).from(demoBatchesTable).where(eq(demoBatchesTable.batchCode, batchCode)).limit(1);
+  if (existing) {
+    return existing;
+  }
+  const [created] = await db.insert(demoBatchesTable).values({
+    title,
     grade,
-    activeCount: activeCount ?? 0,
-    upcomingCount: upcomingCount ?? 0,
-    healthy,
-    issues
-  };
+    startDate,
+    endDate,
+    status: "upcoming",
+    totalDays: 5,
+    batchCode,
+    weekNumber,
+    academicYear: options?.academicYear ?? "2026-27",
+    subject: "All Subjects",
+    isActive: true,
+    isPublic: true
+  }).returning();
+  return created;
 }
 async function assignIgniteBatchAndCourse(studentId, grade, ignitePaidStudentId) {
-  await ensureThreeWeekPipeline(grade);
   const skipActive = pastMondayCutoffIST();
   const datedFilter = and(
     isNotNull(demoBatchesTable.startDate),
@@ -129988,14 +130036,22 @@ async function assignIgniteBatchAndCourse(studentId, grade, ignitePaidStudentId)
     endDate: demoBatchesTable.endDate,
     teacherName: demoBatchesTable.teacherName,
     status: demoBatchesTable.status
-  }).from(demoBatchesTable).where(and(eq(demoBatchesTable.grade, grade), datedFilter, statusFilter)).orderBy(
+  }).from(demoBatchesTable).where(and(
+    eq(demoBatchesTable.grade, grade),
+    datedFilter,
+    statusFilter
+  )).orderBy(
     sql`CASE WHEN ${demoBatchesTable.status} = 'upcoming' THEN 0 ELSE 1 END`,
     asc(demoBatchesTable.startDate)
   ).limit(1);
   let batchId = null;
   if (batch) {
     batchId = batch.id;
-    await db.insert(demoBatchEnrollmentsTable).values({ batchId: batch.id, studentId, enrollmentStatus: "active" }).onConflictDoNothing();
+    await db.insert(demoBatchEnrollmentsTable).values({
+      batchId: batch.id,
+      studentId,
+      enrollmentStatus: "active"
+    }).onConflictDoNothing();
     await db.update(ignitePaidStudentsTable).set({
       assignedBatchId: batch.id,
       batchName: batch.title ?? null,
@@ -130022,9 +130078,6 @@ async function assignIgniteBatchAndCourse(studentId, grade, ignitePaidStudentId)
       enrollmentType: "ignite"
     }).onConflictDoNothing();
   }
-  void checkBatchPipelineHealth(grade).catch(
-    (e) => logger.error({ err: e, grade }, "Post-payment health check failed")
-  );
   return { batchId, courseId };
 }
 
@@ -131939,6 +131992,216 @@ Assigned By: ${actor.name ?? "Admin"}`
     groups: groups.map((g) => ({ mentorId: g.mentor.id, mentorName: g.mentor.name, count: g.leads.length }))
   });
 });
+router28.post("/admin/ignite/v2/batches/create-next", adminOnly7, async (req, res) => {
+  const grade = Number(req.body?.grade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 10) {
+    res.status(400).json({ error: "grade must be between 1 and 10" });
+    return;
+  }
+  try {
+    const batch = await createNextIgniteDraftBatch(grade);
+    res.status(201).json({ ok: true, batch });
+  } catch (error40) {
+    res.status(500).json({
+      error: "Unable to create next Ignite batch",
+      detail: String(error40)
+    });
+  }
+});
+router28.post("/admin/ignite/v2/batches/:batchId/attach-deployment", adminOnly7, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  const deploymentId = Number(req.body?.deploymentId);
+  if (!Number.isInteger(batchId) || !Number.isInteger(deploymentId)) {
+    res.status(400).json({ error: "Valid batchId and deploymentId are required" });
+    return;
+  }
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+  if (!batch.batchCode?.startsWith("IGN-G")) {
+    res.status(409).json({
+      error: "Only Ignite V2 batches can use the V2 deployment lifecycle"
+    });
+    return;
+  }
+  if (batch.status === "active" || batch.status === "completed" || batch.status === "closed") {
+    res.status(409).json({
+      error: `Cannot attach deployment while batch status is ${batch.status}`
+    });
+    return;
+  }
+  const [deployment] = await db.select().from(leadDeploymentsTable).where(eq(leadDeploymentsTable.id, deploymentId)).limit(1);
+  if (!deployment) {
+    res.status(404).json({ error: "Deployment not found" });
+    return;
+  }
+  if (deployment.grade !== batch.grade) {
+    res.status(409).json({
+      error: "Deployment grade does not match batch grade"
+    });
+    return;
+  }
+  const association = `IGNITE_V2_BATCH_ID=${batch.id}`;
+  await db.update(leadDeploymentsTable).set({
+    status: "deployed",
+    notes: deployment.notes ? `${deployment.notes}
+${association}` : association
+  }).where(eq(leadDeploymentsTable.id, deployment.id));
+  const deployedStudents = await db.select({
+    id: usersTable.id,
+    mentorId: usersTable.assignedMentorId
+  }).from(usersTable).where(eq(usersTable.deploymentBatchId, deployment.id));
+  if (deployedStudents.length > 0) {
+    await db.insert(demoBatchEnrollmentsTable).values(
+      deployedStudents.map((student) => ({
+        batchId: batch.id,
+        studentId: student.id,
+        enrollmentStatus: "active",
+        assignedMentorId: student.mentorId ?? null
+      }))
+    ).onConflictDoNothing();
+  }
+  await db.update(demoBatchesTable).set({ status: "deployed" }).where(eq(demoBatchesTable.id, batch.id));
+  res.json({
+    ok: true,
+    batchId: batch.id,
+    deploymentId: deployment.id,
+    students: deployedStudents.length,
+    status: "deployed"
+  });
+});
+router28.post("/admin/ignite/v2/batches/:batchId/undo-deployment", adminOnly7, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!Number.isInteger(batchId)) {
+    res.status(400).json({ error: "Valid batchId required" });
+    return;
+  }
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+  if (!batch.batchCode?.startsWith("IGN-G")) {
+    res.status(409).json({ error: "Cannot undo a legacy batch" });
+    return;
+  }
+  if (batch.status !== "deployed") {
+    res.status(409).json({
+      error: `Undo is only allowed before Start. Current status: ${batch.status}`
+    });
+    return;
+  }
+  const association = `IGNITE_V2_BATCH_ID=${batch.id}`;
+  const deployments = await db.select().from(leadDeploymentsTable).where(eq(leadDeploymentsTable.status, "deployed")).orderBy(desc(leadDeploymentsTable.createdAt));
+  const deployment = deployments.find((d) => d.notes?.includes(association));
+  if (!deployment) {
+    res.status(404).json({
+      error: "No deployment attached to this batch"
+    });
+    return;
+  }
+  const students = await db.select({
+    id: usersTable.id
+  }).from(usersTable).where(eq(usersTable.deploymentBatchId, deployment.id));
+  const studentIds = students.map((s2) => s2.id);
+  if (studentIds.length > 0) {
+    await db.update(mentorStudentAssignmentsTable).set({ isActive: false }).where(
+      and(
+        inArray(mentorStudentAssignmentsTable.studentId, studentIds),
+        eq(mentorStudentAssignmentsTable.isActive, true)
+      )
+    );
+    await db.update(usersTable).set({
+      assignedMentorId: null,
+      assignedAt: null,
+      assignmentStatus: null,
+      deploymentStatus: "Undeployed",
+      deploymentBatchId: null,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(inArray(usersTable.id, studentIds));
+    await db.delete(demoBatchEnrollmentsTable).where(
+      and(
+        eq(demoBatchEnrollmentsTable.batchId, batch.id),
+        inArray(demoBatchEnrollmentsTable.studentId, studentIds)
+      )
+    );
+  }
+  await db.update(leadDeploymentsTable).set({ status: "undone" }).where(eq(leadDeploymentsTable.id, deployment.id));
+  await db.update(demoBatchesTable).set({ status: "upcoming" }).where(eq(demoBatchesTable.id, batch.id));
+  res.json({
+    ok: true,
+    batchId: batch.id,
+    deploymentId: deployment.id,
+    releasedStudents: studentIds.length,
+    status: "upcoming"
+  });
+});
+router28.post("/admin/ignite/v2/batches/:batchId/start", adminOnly7, async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!Number.isInteger(batchId)) {
+    res.status(400).json({ error: "Valid batchId required" });
+    return;
+  }
+  const [batch] = await db.select().from(demoBatchesTable).where(eq(demoBatchesTable.id, batchId)).limit(1);
+  if (!batch) {
+    res.status(404).json({ error: "Batch not found" });
+    return;
+  }
+  if (!batch.batchCode?.startsWith("IGN-G")) {
+    res.status(409).json({
+      error: "Only Ignite V2 batches can use Start Batch"
+    });
+    return;
+  }
+  if (!batch.grade) {
+    res.status(409).json({ error: "Batch has no grade" });
+    return;
+  }
+  if (batch.status !== "deployed") {
+    res.status(409).json({
+      error: `Batch must be deployed before Start. Current status: ${batch.status}`
+    });
+    return;
+  }
+  await db.update(demoBatchesTable).set({
+    status: "completed",
+    isActive: false
+  }).where(
+    and(
+      eq(demoBatchesTable.grade, batch.grade),
+      eq(demoBatchesTable.status, "active")
+    )
+  );
+  await db.update(demoBatchesTable).set({
+    status: "active",
+    isActive: true
+  }).where(eq(demoBatchesTable.id, batch.id));
+  const association = `IGNITE_V2_BATCH_ID=${batch.id}`;
+  const deployments = await db.select().from(leadDeploymentsTable).where(eq(leadDeploymentsTable.status, "deployed")).orderBy(desc(leadDeploymentsTable.createdAt));
+  const deployment = deployments.find((d) => d.notes?.includes(association));
+  if (deployment) {
+    await db.update(leadDeploymentsTable).set({ status: "started" }).where(eq(leadDeploymentsTable.id, deployment.id));
+  }
+  let nextDraft = null;
+  try {
+    nextDraft = await createNextIgniteDraftBatch(batch.grade);
+  } catch (error40) {
+    console.error(
+      `[Ignite V2] Failed to create next draft for Grade ${batch.grade}`,
+      error40
+    );
+  }
+  res.json({
+    ok: true,
+    batchId: batch.id,
+    grade: batch.grade,
+    status: "active",
+    deploymentId: deployment?.id ?? null,
+    nextDraft
+  });
+});
 router28.get("/admin/ignite/deployments", adminOnly7, async (_req, res) => {
   const deps = await db.select().from(leadDeploymentsTable).orderBy(desc(leadDeploymentsTable.createdAt)).limit(50);
   const depIds = deps.map((d) => d.id);
@@ -132109,103 +132372,6 @@ router28.get("/admin/ignite/deploy/mentors", adminOnly7, async (_req, res) => {
     todaysFollowUps: followUpsMap[m.id] ?? 0,
     conversionRate: convMap[m.id] ? Math.round(convMap[m.id].converted / convMap[m.id].total * 100) : 0
   })));
-});
-router28.get("/admin/ignite/batch-pipeline/:grade", adminOnly7, async (req, res) => {
-  const grade = parseInt(String(req.params.grade), 10);
-  if (!grade || grade < 1 || grade > 10) {
-    res.status(400).json({ error: "grade must be 1\u201310" });
-    return;
-  }
-  const datedWhere = and(
-    eq(demoBatchesTable.grade, grade),
-    isNotNull(demoBatchesTable.startDate),
-    isNotNull(demoBatchesTable.endDate)
-  );
-  const activeBatches = await db.select().from(demoBatchesTable).where(and(datedWhere, eq(demoBatchesTable.status, "active"))).orderBy(demoBatchesTable.startDate);
-  const upcomingBatches = await db.select().from(demoBatchesTable).where(and(datedWhere, eq(demoBatchesTable.status, "upcoming"))).orderBy(demoBatchesTable.startDate).limit(3);
-  const [{ undatedCount }] = await db.select({ undatedCount: sql`count(*)::int` }).from(demoBatchesTable).where(
-    and(
-      eq(demoBatchesTable.grade, grade),
-      sql`(${demoBatchesTable.startDate} IS NULL OR ${demoBatchesTable.endDate} IS NULL)`
-    )
-  );
-  const ac = activeBatches.length;
-  const uc = upcomingBatches.length;
-  const issues = [];
-  if (ac !== PIPELINE_ACTIVE_TARGET) issues.push(`active=${ac} (need ${PIPELINE_ACTIVE_TARGET})`);
-  if (uc !== PIPELINE_UPCOMING_TARGET) issues.push(`upcoming=${uc} (need ${PIPELINE_UPCOMING_TARGET})`);
-  res.json({
-    grade,
-    activeCount: ac,
-    upcomingCount: uc,
-    healthy: issues.length === 0,
-    issues,
-    activeBatch: activeBatches[0] ?? null,
-    upcomingBatches,
-    undatedCount: undatedCount ?? 0
-  });
-});
-router28.get("/admin/ignite/batch-health", adminOnly7, async (_req, res) => {
-  const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const results = await Promise.all(
-    grades.map(async (grade) => {
-      const [{ activeCount }] = await db.select({ activeCount: sql`count(*)::int` }).from(demoBatchesTable).where(
-        and(
-          eq(demoBatchesTable.grade, grade),
-          eq(demoBatchesTable.status, "active"),
-          isNotNull(demoBatchesTable.startDate),
-          isNotNull(demoBatchesTable.endDate)
-        )
-      );
-      const [{ upcomingCount }] = await db.select({ upcomingCount: sql`count(*)::int` }).from(demoBatchesTable).where(
-        and(
-          eq(demoBatchesTable.grade, grade),
-          eq(demoBatchesTable.status, "upcoming"),
-          isNotNull(demoBatchesTable.startDate),
-          isNotNull(demoBatchesTable.endDate)
-        )
-      );
-      const ac = activeCount ?? 0;
-      const uc = upcomingCount ?? 0;
-      const issues = [];
-      if (ac !== PIPELINE_ACTIVE_TARGET) issues.push(`active=${ac} (need ${PIPELINE_ACTIVE_TARGET})`);
-      if (uc !== PIPELINE_UPCOMING_TARGET) issues.push(`upcoming=${uc} (need ${PIPELINE_UPCOMING_TARGET})`);
-      return { grade, activeCount: ac, upcomingCount: uc, healthy: issues.length === 0, issues };
-    })
-  );
-  res.json(results);
-});
-router28.post("/admin/ignite/ensure-pipeline/:grade", requireRole("admin", "super_admin"), async (req, res) => {
-  const grade = parseInt(String(req.params.grade), 10);
-  if (!grade || grade < 1 || grade > 10) {
-    res.status(400).json({ error: "grade must be 1\u201310" });
-    return;
-  }
-  try {
-    await ensureThreeWeekPipeline(grade);
-    const health = await checkBatchPipelineHealth(grade);
-    const batches = await db.select({
-      id: demoBatchesTable.id,
-      title: demoBatchesTable.title,
-      status: demoBatchesTable.status,
-      startDate: demoBatchesTable.startDate,
-      endDate: demoBatchesTable.endDate,
-      batchCode: demoBatchesTable.batchCode
-    }).from(demoBatchesTable).where(eq(demoBatchesTable.grade, grade)).orderBy(demoBatchesTable.startDate);
-    res.json({
-      grade,
-      total: batches.length,
-      activeCount: health.activeCount,
-      upcomingCount: health.upcomingCount,
-      healthy: health.healthy,
-      issues: health.issues,
-      activeTarget: PIPELINE_ACTIVE_TARGET,
-      upcomingTarget: PIPELINE_UPCOMING_TARGET,
-      batches
-    });
-  } catch (err) {
-    res.status(500).json({ error: "Pipeline repair failed", detail: String(err) });
-  }
 });
 router28.get("/admin/ignite/ignite-mentors", adminOnly7, async (_req, res) => {
   const mentors = await db.select({
@@ -135114,9 +135280,15 @@ router35.post("/mentor/long-term/create-payment-link", mentorAuth3, async (req, 
     generatedUrl = `https://rzp.io/l/${token}`;
     shortUrl = generatedUrl;
   }
+  const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
+  if (!activeCycle) {
+    res.status(409).json({ error: "No active Ignite deployment cycle" });
+    return;
+  }
   const [row] = await db.insert(paymentLinksTable).values({
     generatedById: mentorId,
     mentorId,
+    deploymentCycleId: activeCycle.id,
     studentId,
     razorpayPaymentLinkId: razorpayPaymentLinkId ?? void 0,
     shortUrl: shortUrl ?? void 0,
@@ -135160,6 +135332,11 @@ router35.get("/mentor/long-term/pricing/:grade", mentorAuth3, async (req, res) =
 });
 router35.get("/mentor/long-term/payment-links", mentorAuth3, async (req, res) => {
   const mentorId = req.user?.id;
+  const [activeCycle] = await db.select({ id: mentorDeploymentCyclesTable.id }).from(mentorDeploymentCyclesTable).where(eq(mentorDeploymentCyclesTable.status, "active")).orderBy(desc(mentorDeploymentCyclesTable.createdAt)).limit(1);
+  if (!activeCycle) {
+    res.json([]);
+    return;
+  }
   const rows = await db.select({
     id: paymentLinksTable.id,
     studentId: paymentLinksTable.studentId,
@@ -135174,7 +135351,10 @@ router35.get("/mentor/long-term/payment-links", mentorAuth3, async (req, res) =>
     createdAt: paymentLinksTable.createdAt,
     studentName: usersTable.name,
     studentPhone: usersTable.phone
-  }).from(paymentLinksTable).leftJoin(usersTable, eq(paymentLinksTable.studentId, usersTable.id)).where(or(eq(paymentLinksTable.mentorId, mentorId), isNull(paymentLinksTable.mentorId))).orderBy(desc(paymentLinksTable.createdAt));
+  }).from(paymentLinksTable).leftJoin(usersTable, eq(paymentLinksTable.studentId, usersTable.id)).where(and(
+    eq(paymentLinksTable.mentorId, mentorId),
+    eq(paymentLinksTable.deploymentCycleId, activeCycle.id)
+  )).orderBy(desc(paymentLinksTable.createdAt));
   res.json(rows.map((r) => ({
     ...r,
     amountRupees: Math.round((r.amount ?? 0) / 100)
@@ -137062,7 +137242,7 @@ var masteryAttendance_default = router41;
 var import_express42 = __toESM(require_express2(), 1);
 var router42 = (0, import_express42.Router)();
 var adminOnly19 = requireRole("admin", "super_admin");
-function getISOWeek2(date6) {
+function getISOWeek(date6) {
   const d = new Date(date6);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
@@ -137107,7 +137287,7 @@ function parsePeriod(periodType, periodKey) {
 }
 function currentPeriodKey(type) {
   const now = /* @__PURE__ */ new Date();
-  if (type === "weekly") return `${now.getFullYear()}-W${String(getISOWeek2(now)).padStart(2, "0")}`;
+  if (type === "weekly") return `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, "0")}`;
   if (type === "monthly") return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   return String(now.getFullYear());
 }
@@ -139592,81 +139772,6 @@ function setupSocketIO(httpServer2) {
   return io2;
 }
 
-// src/jobs/sundayBatchRotation.ts
-var ALL_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-function getISTDateTime() {
-  const now = /* @__PURE__ */ new Date();
-  const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  return {
-    h: ist.getHours(),
-    m: ist.getMinutes(),
-    day: ist.getDay(),
-    // 0=Sun … 1=Mon … 6=Sat
-    dateStr: ist.toLocaleDateString("en-CA")
-    // "YYYY-MM-DD"
-  };
-}
-var lastRotationDate = "";
-async function runSundayBatchRotation() {
-  logger.info("Sunday batch rotation started");
-  for (const grade of ALL_GRADES) {
-    try {
-      await rotateGrade(grade);
-    } catch (err) {
-      logger.error({ err, grade }, "Sunday rotation failed for grade");
-    }
-  }
-  logger.info("Sunday batch rotation complete");
-}
-async function rotateGrade(grade) {
-  const now = /* @__PURE__ */ new Date();
-  const [activeBatch] = await db.select({ id: demoBatchesTable.id, title: demoBatchesTable.title }).from(demoBatchesTable).where(
-    and(
-      eq(demoBatchesTable.grade, grade),
-      eq(demoBatchesTable.status, "active"),
-      isNotNull(demoBatchesTable.startDate),
-      isNotNull(demoBatchesTable.endDate)
-    )
-  ).limit(1);
-  if (activeBatch) {
-    await db.update(demoBatchesTable).set({ status: "completed", isActive: false }).where(eq(demoBatchesTable.id, activeBatch.id));
-    logger.info({ grade, batchId: activeBatch.id, title: activeBatch.title }, "Batch marked completed");
-  }
-  const [nextBatch] = await db.select({ id: demoBatchesTable.id, title: demoBatchesTable.title }).from(demoBatchesTable).where(
-    and(
-      eq(demoBatchesTable.grade, grade),
-      eq(demoBatchesTable.status, "upcoming"),
-      isNotNull(demoBatchesTable.startDate),
-      isNotNull(demoBatchesTable.endDate)
-    )
-  ).orderBy(asc(demoBatchesTable.startDate)).limit(1);
-  if (nextBatch) {
-    await db.update(demoBatchesTable).set({ status: "active", isActive: true }).where(eq(demoBatchesTable.id, nextBatch.id));
-    logger.info({ grade, batchId: nextBatch.id, title: nextBatch.title }, "Batch promoted to active");
-  } else {
-    logger.warn({ grade }, "No upcoming batch found during Sunday rotation \u2014 pipeline may be empty");
-  }
-  await ensureThreeWeekPipeline(grade);
-  await checkBatchPipelineHealth(grade);
-}
-function scheduleSundayBatchRotation() {
-  const CHECK_INTERVAL_MS = 6e4;
-  const tick = async () => {
-    const { h, m, day: day2, dateStr } = getISTDateTime();
-    if (day2 === 1 && h === 0 && m === 0 && lastRotationDate !== dateStr) {
-      lastRotationDate = dateStr;
-      logger.info({ dateStr }, "Running Sunday midnight batch rotation (12:00 AM Monday IST)\u2026");
-      try {
-        await runSundayBatchRotation();
-      } catch (err) {
-        logger.error({ err }, "Sunday batch rotation job failed");
-      }
-    }
-  };
-  setInterval(tick, CHECK_INTERVAL_MS);
-  logger.info("Sunday midnight batch rotation job scheduled (fires 12:00 AM Monday IST)");
-}
-
 // src/jobs/liveClassStatusSync.ts
 async function runLiveClassStatusSync() {
   try {
@@ -139733,8 +139838,7 @@ httpServer.listen(port, (err) => {
   }
   logger.info({ port }, "Server listening");
   scheduleReminderJob();
-  scheduleDailyQueueReset();
-  scheduleSundayBatchRotation();
+  scheduleIgniteWeeklyRollover();
   scheduleLiveClassStatusSync();
   seedCoursePricing().catch((e) => logger.error({ err: e }, "Course pricing seed failed"));
 });
