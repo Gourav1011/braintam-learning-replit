@@ -751,30 +751,30 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="p-2.5 border-b sticky top-0 bg-gray-50/95 backdrop-blur z-10">
+      <div className="p-2 border-b sticky top-0 bg-gray-50/95 backdrop-blur z-10">
         <div className="flex items-center justify-between">
-          <div className="bg-gray-200/50 p-1 rounded-md flex">
+          <div className="bg-gray-200/50 p-0.5 rounded-md flex">
             <button
               onClick={() => setView("mine")}
-              className={`px-3 py-1 rounded text-xs font-semibold transition-all ${view === "mine" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}
+              className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all ${view === "mine" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}
             >
               My Tasks
             </button>
             <button
               onClick={() => setView("assigned")}
-              className={`px-3 py-1 rounded text-xs font-semibold transition-all ${view === "assigned" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}
+              className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all ${view === "assigned" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}
             >
               Assigned by Me
             </button>
-            <button onClick={() => setView("completed")} className={`px-3 py-1 rounded text-xs font-semibold transition-all ${view === "completed" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}>Completed</button>
+            <button onClick={() => setView("completed")} className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all ${view === "completed" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}>Completed</button>
           </div>
-          <Button size="sm" className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-xs font-bold" onClick={() => setShowNewTask(true)}>
+          <Button size="sm" className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-[10px] font-bold" onClick={() => setShowNewTask(true)}>
             <Plus className="w-3.5 h-3.5 mr-1" /> New
           </Button>
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
         {isLoading ? (
           Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
         ) : tasks.length === 0 ? (
@@ -787,14 +787,14 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
             <button
               key={t.id}
               onClick={() => onSelect(String(t.id))}
-              className={`w-full text-left p-2.5 rounded-lg border transition-all ${
+                className={`w-full text-left p-2 rounded-lg border transition-all ${
                 selectedId === String(t.id)
                   ? "bg-blue-50 border-blue-200 shadow-sm" 
                   : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
               }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-semibold text-gray-900 line-clamp-1">{t.title}</span>
+                 <span className="text-xs font-semibold text-gray-900 line-clamp-1">{t.title}</span>
                 <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                   t.status === 'completed' ? 'bg-green-100 text-green-700' :
                   t.status === 'in_progress' ? 'bg-amber-100 text-amber-700' :
@@ -803,7 +803,7 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
                   {t.status.replace('_', ' ')}
                 </span>
               </div>
-              <div className="flex items-center gap-3 mt-1.5">
+               <div className="flex items-center gap-2 mt-1">
                 {t.dueDate && (
                   <span className={`text-[10px] font-medium flex items-center gap-1 ${
                     new Date(t.dueDate) < new Date() && t.status !== 'completed' ? 'text-red-600' : 'text-gray-500'
@@ -877,28 +877,28 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="h-12 border-b flex items-center justify-between px-3 md:px-4 shrink-0">
+      <div className="h-10 border-b border-slate-200 flex items-center justify-between px-3 md:px-4 shrink-0">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden h-8 w-8 text-gray-400 -ml-2">
             <ChevronRight className="w-5 h-5 rotate-180" />
           </Button>
-          <h2 className="text-sm font-bold text-gray-900">Task Details</h2>
+          <h2 className="text-[13px] font-bold text-gray-900">Task Details</h2>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} className="hidden md:flex text-gray-400 hover:text-gray-600 text-xs">
+        <Button variant="ghost" size="sm" onClick={onClose} className="hidden md:flex h-7 text-gray-400 hover:text-gray-600 text-[11px]">
           Close
         </Button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-3 md:p-4 max-w-2xl">
-        <div className="flex items-center gap-2 mb-3">
-          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+      <div className="flex-1 overflow-y-auto p-2.5 md:p-3 max-w-xl">
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
             task.priority === 'high' ? 'bg-red-100 text-red-700' :
             task.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
             'bg-blue-100 text-blue-700'
           }`}>
             {task.priority} Priority
           </span>
-          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
             task.status === 'completed' ? 'bg-green-100 text-green-700' :
             task.status === 'in_progress' ? 'bg-purple-100 text-purple-700' :
             'bg-gray-100 text-gray-700'
@@ -907,22 +907,22 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
           </span>
         </div>
         
-        <h1 className="text-xl font-black text-gray-900 mb-4">{task.title}</h1>
+        <h1 className="text-lg font-black text-gray-900 mb-3">{task.title}</h1>
         
-        <div className="grid grid-cols-2 gap-2 mb-5">
-          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Assignee</span>
-            <div className="text-sm font-semibold text-gray-900">{task.assignee?.name || task.assigneeName}</div>
+        <div className="grid grid-cols-2 gap-1.5 mb-3.5">
+          <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5">Assignee</span>
+            <div className="text-xs font-semibold text-gray-900">{task.assignee?.name || task.assigneeName}</div>
           </div>
-          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Reporter</span>
-            <div className="text-sm font-semibold text-gray-900">{task.assigner?.name || task.assignedByName}</div>
+          <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5">Reporter</span>
+            <div className="text-xs font-semibold text-gray-900">{task.assigner?.name || task.assignedByName}</div>
           </div>
           {task.dueDate && (
-            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100 col-span-2 sm:col-span-1">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Due Date</span>
-              <div className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-gray-400" />
+            <div className="p-2 bg-gray-50 rounded-lg border border-gray-100 col-span-2 sm:col-span-1">
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5">Due Date</span>
+              <div className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-gray-400" />
                 {format(new Date(task.dueDate), "PPP")}
               </div>
             </div>
@@ -930,44 +930,44 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
         </div>
         
         {task.description && (
-          <div className="mb-5">
-            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-gray-400" /> Description
+          <div className="mb-3.5">
+            <h3 className="text-[10px] font-bold text-gray-900 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-gray-400" /> Description
             </h3>
-            <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
+            <div className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed bg-white border border-gray-100 rounded-lg p-2.5 shadow-sm">
               {task.description}
             </div>
           </div>
         )}
-        {canReassign && <div className="mb-5 rounded-lg border border-gray-100 p-3">
-          <div className="flex items-center justify-between"><span className="text-xs font-bold text-gray-800">Assigned to: {task.assignee?.name}</span><Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowReassign(value => !value)}>Reassign</Button></div>
+        {canReassign && <div className="mb-3.5 rounded-lg border border-gray-100 p-2.5">
+          <div className="flex items-center justify-between"><span className="text-[11px] font-bold text-gray-800">Assigned to: {task.assignee?.name}</span><Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setShowReassign(value => !value)}>Reassign</Button></div>
           {showReassign && <div className="mt-2 space-y-1"><Input value={employeeQuery} onChange={e => setEmployeeQuery(e.target.value)} placeholder="Search eligible employee…" className="h-8 text-xs" />
             {isSearchingEmployees && <p className="px-2 text-[10px] text-gray-500">Searching employees...</p>}
             {eligibleEmployees.map((employee: any) => <button key={employee.id} className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100" onClick={() => updateMut.mutate({ id: taskId, assigneeId: String(employee.id) }, { onSuccess: () => { setShowReassign(false); setEmployeeQuery(""); } })}>{employee.name}</button>)}
           </div>}
         </div>}
-        <div className="mb-4">
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-900">Work updates</h3>
-          <div className="space-y-2">
-            {(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-gray-100 p-3 text-xs"><b>{item.authorName}</b><span className="ml-2 text-gray-400">{format(new Date(item.createdAt), "PP p")}</span><p className="mt-1 whitespace-pre-wrap text-gray-600">{item.content}</p></div>)}
+        <div className="mb-3">
+          <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-900">Work updates</h3>
+          <div className="space-y-1.5">
+            {(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-gray-100 p-2.5 text-[11px]"><b>{item.authorName}</b><span className="ml-2 text-gray-400">{format(new Date(item.createdAt), "PP p")}</span><p className="mt-1 whitespace-pre-wrap text-gray-600">{item.content}</p></div>)}
           </div>
           {mentionMembers.length > 0 && <div className="mb-1 max-w-xs rounded border bg-white p-1 shadow-sm">{mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertRemarkMention(member)} className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-100">@{member.name}</button>)}</div>}
-          <p className="mb-1 text-[10px] text-gray-500">@ mentions notify participants only; they never change the assignee.</p>
-          <div className="mt-2 flex gap-2"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[42px] text-xs" /><Button size="sm" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div>
+          <p className="mb-1 text-[9px] text-gray-500">@ mentions notify participants only; they never change the assignee.</p>
+          <div className="mt-1.5 flex gap-1.5"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[38px] text-[11px]" /><Button size="sm" className="h-8 px-2.5 text-[11px]" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div>
         </div>
-        {(detail?.events || []).length > 0 && <div className="mb-4"><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-900">Activity</h3><div className="space-y-1 border-l pl-3 text-xs text-gray-500">{detail.events.map((event: any) => <p key={event.id}>{event.eventType.replace("_", " ")} · {format(new Date(event.createdAt), "PP p")}</p>)}</div></div>}
-        {task.conversationId && <Button variant="outline" size="sm" onClick={() => onViewConversation(String(task.conversationId))}>View conversation</Button>}
+        {(detail?.events || []).length > 0 && <div className="mb-3"><h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-900">Activity</h3><div className="space-y-1 border-l pl-2.5 text-[11px] text-gray-500">{detail.events.map((event: any) => <p key={event.id}>{event.eventType.replace("_", " ")} · {format(new Date(event.createdAt), "PP p")}</p>)}</div></div>}
+        {task.conversationId && <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => onViewConversation(String(task.conversationId))}>View conversation</Button>}
       </div>
       
-      <div className="p-2.5 border-t bg-gray-50/50 flex items-center gap-2">
-        <span className="text-xs font-semibold text-gray-600 mr-auto">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
+      <div className="p-2 border-t bg-gray-50/50 flex items-center gap-1.5">
+        <span className="text-[10px] font-semibold text-gray-600 mr-auto">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
         <Button 
           variant={task.status === "pending" ? "default" : "outline"}
           size="sm"
           disabled
           className={task.status === "pending" ? "bg-gray-900 text-white" : "bg-white"}
         >
-          <Circle className="w-3.5 h-3.5 mr-1.5" /> Pending
+          <Circle className="w-3 h-3 mr-1" /> Pending
         </Button>
         <Button 
           variant={task.status === "in_progress" ? "default" : "outline"}
@@ -976,7 +976,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
           disabled={!canChangeStatus || updateMut.isPending || task.status !== "pending"}
           className={task.status === "in_progress" ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-white"}
         >
-          <Clock className="w-3.5 h-3.5 mr-1.5" /> In Progress
+          <Clock className="w-3 h-3 mr-1" /> In Progress
         </Button>
         <Button 
           variant={task.status === "completed" ? "default" : "outline"}
@@ -985,7 +985,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
           disabled={!canChangeStatus || updateMut.isPending || task.status !== "in_progress"}
           className={task.status === "completed" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-white"}
         >
-          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Completed
+          <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
         </Button>
       </div>
     </div>
@@ -1036,29 +1036,29 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0 bg-white">
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 bg-white">
         <form onSubmit={handleSubmit}>
-          <div className="p-4 border-b bg-gray-50/50">
-            <DialogTitle className="text-base font-bold text-gray-900">Create Task</DialogTitle>
+          <div className="p-3 border-b bg-gray-50/50">
+            <DialogTitle className="text-sm font-bold text-gray-900">Create Task</DialogTitle>
           </div>
           
-          <div className="p-5 space-y-4">
+          <div className="p-4 space-y-3">
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1.5">Task Title *</label>
+              <label className="text-[11px] font-semibold text-gray-700 block mb-1">Task Title *</label>
               <Input 
                 value={title} onChange={e => setTitle(e.target.value)} 
                 placeholder="What needs to be done?" 
-                className="bg-white" autoFocus required
+                className="h-9 bg-white text-xs" autoFocus required
               />
             </div>
             
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1.5">Assignee *</label>
+              <label className="text-[11px] font-semibold text-gray-700 block mb-1">Assignee *</label>
               <Input
                 value={assigneeId ? (selectedAssignee?.name || selectedAssigneeName) : assigneeSearch}
                 onChange={e => { setAssigneeId(""); setSelectedAssigneeName(""); setAssigneeSearch(e.target.value); }}
                 placeholder="Search employee..."
-                className="bg-white"
+                className="h-9 bg-white text-xs"
                 required={!assigneeId}
               />
               {isSearchingAssignees && <p className="mt-1 text-[10px] text-gray-500">Searching employees...</p>}
@@ -1078,13 +1078,13 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
               {assigneeId && <p className="mt-1 text-[10px] text-gray-500">Selected: {selectedAssignee?.name || selectedAssigneeName}</p>}
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1.5">Priority</label>
+                <label className="text-[11px] font-semibold text-gray-700 block mb-1">Priority</label>
                 <select 
                   value={priority} 
                   onChange={e => setPriority(e.target.value as any)}
-                  className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex h-9 w-full rounded-md border border-input bg-white px-2.5 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -1092,28 +1092,28 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1.5">Due Date</label>
+                <label className="text-[11px] font-semibold text-gray-700 block mb-1">Due Date</label>
                 <Input 
                   type="date"
                   value={dueDate} onChange={e => setDueDate(e.target.value)} 
-                  className="bg-white"
+                  className="h-9 bg-white text-xs"
                 />
               </div>
             </div>
             
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1.5">Description</label>
+              <label className="text-[11px] font-semibold text-gray-700 block mb-1">Description</label>
               <Textarea 
                 value={description} onChange={e => setDescription(e.target.value)}
                 placeholder="Add context or instructions..."
-                className="bg-white min-h-[100px] resize-none"
+                className="bg-white min-h-[76px] resize-none text-xs"
               />
             </div>
           </div>
           
-          <div className="p-4 border-t bg-gray-50/50 flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={createMut.isPending || !title || !assigneeId} className="bg-blue-600 hover:bg-blue-700 text-white font-bold">
+          <div className="p-3 border-t bg-gray-50/50 flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>Cancel</Button>
+            <Button type="submit" size="sm" disabled={createMut.isPending || !title || !assigneeId} className="h-8 bg-blue-600 hover:bg-blue-700 text-xs text-white font-bold">
               Create Task
             </Button>
           </div>
