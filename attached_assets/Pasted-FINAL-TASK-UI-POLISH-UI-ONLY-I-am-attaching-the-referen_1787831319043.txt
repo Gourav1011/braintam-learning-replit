@@ -1,0 +1,276 @@
+FINAL TASK UI POLISH — UI ONLY
+
+I am attaching the reference image again.
+
+The current Task Details UI is still not premium and does not match the reference closely enough.
+
+DO NOT change any functionality, backend, API, database, permissions, Socket.IO, task logic, notifications or routing.
+
+ONLY redesign the existing Task Details frontend.
+
+IMPORTANT:
+Do not rebuild Workplace.
+Do not create new architecture.
+Do not change working functionality.
+
+1. FIX THE HUGE EMPTY SPACE
+
+The current task screen leaves a very large blank white area on the right.
+
+The Task Details area should use the available Workplace content width properly.
+
+Do NOT keep the task content squeezed into a narrow column with a huge empty area beside it.
+
+The task detail should expand naturally across the available content area.
+
+2. REMOVE THE NESTED SCROLLBAR PROBLEM
+
+Currently there is a vertical scrollbar inside the Task Details area while the overall page also scrolls.
+
+Fix the layout so there is no awkward nested scrolling.
+
+The task detail should behave as one clean workspace panel.
+
+Use scrolling only where genuinely necessary.
+
+3. MODERN TASK HEADER
+
+Make the top of the task look like a modern premium business application.
+
+Example:
+
+HIGH PRIORITY     IN PROGRESS
+
+testing
+
+Then a clean metadata row:
+
+┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
+│ Assignee   │ │ Reporter   │ │ Due Date   │ │ Priority   │
+│ poonam     │ │ Gourav     │ │ Aug 28     │ │ High       │
+└────────────┘ └────────────┘ └────────────┘ └────────────┘
+
+Use compact cards.
+
+Do NOT make these huge cards.
+
+4. TASK INFORMATION
+
+Keep:
+
+- Task title
+- Priority
+- Status
+- Assignee
+- Reporter / Assigned by
+- Due date
+- Description
+- Days pending
+- Created date
+
+Arrange them cleanly with good hierarchy.
+
+Do not make every field look like a separate large box.
+
+5. ASSIGNMENT AREA
+
+Make this much clearer:
+
+Assigned to: Poonam
+
+[ Reassign ]
+
+The Reassign button should be compact and premium.
+
+Keep the existing reassignment functionality exactly as it works.
+
+6. WORK UPDATES
+
+Make Work Updates look like a proper activity/feed section.
+
+Example:
+
+WORK UPDATES
+
+[ Add a work update...                         @  😊 ] [Add]
+
+Then previous updates should appear as compact activity entries:
+
+Poonam                         2:30 PM
+Called the parent. They requested a callback.
+
+Gourav                         3:10 PM
+Please update the CRM after the callback.
+
+Keep @mention functionality exactly as it currently works.
+
+7. ACTIVITY / HISTORY
+
+Make Activity visually stronger.
+
+Show a compact timeline:
+
+ACTIVITY
+
+● Task created
+  Aug 27, 9:14 PM · Gourav
+
+● Assigned to Poonam
+  Aug 27, 9:15 PM
+
+● Status changed to In Progress
+  Aug 27, 9:20 PM
+
+● Work update added
+  Aug 27, 9:30 PM
+
+Use subtle timeline lines/icons.
+
+This is important because the task is supposed to preserve the history of the work.
+
+8. RELATED CONVERSATION
+
+Keep a compact:
+
+[ 💬 View Conversation ]
+
+button/link near the activity/history area.
+
+It should use the existing linked conversation.
+
+9. STATUS CONTROLS
+
+The current Pending / In Progress / Completed controls at the bottom feel disconnected.
+
+Redesign them as a compact modern status selector.
+
+Example:
+
+Status
+
+[ ○ Pending ] [ ◷ In Progress ] [ ✓ Completed ]
+
+Keep the existing functionality.
+
+Make the selected state obvious but subtle.
+
+10. TASK LIST ON LEFT
+
+The task list is currently too cramped.
+
+Make each task row cleaner:
+
+testing
+High Priority · In Progress
+
+📅 Aug 28     👤 Poonam
+Assigned by Gourav
+
+Use compact spacing.
+
+Do not make task cards large.
+
+11. TOP TABS
+
+Keep:
+
+Chat
+Tasks
+Alerts
+
+but make them visually consistent with the reference image.
+
+Keep unread counts exactly as currently implemented.
+
+12. OVERALL VISUAL STYLE
+
+Match the attached reference image as closely as practical.
+
+The target is:
+
+PREMIUM
+MODERN
+CLEAN
+COMPACT
+LIGHTWEIGHT
+
+Use:
+
+- White surfaces
+- Very light background
+- Braintam blue as primary accent
+- Small subtle shadows
+- Fine borders
+- Medium rounded corners
+- Clean typography
+- Compact spacing
+- Small icons
+- Clear hierarchy
+
+Avoid:
+
+- Old-fashioned form/card appearance
+- Huge cards
+- Excessive rounded boxes
+- Giant empty spaces
+- Heavy shadows
+- Gradients
+- Excessive colors
+- Large headings
+- Huge buttons
+- Nested scrollbars
+- Unnecessary animations
+
+13. IMPORTANT — PRESERVE FUNCTIONALITY
+
+Keep all existing functionality exactly as it is:
+
+- Assign task
+- Reassign
+- Search employee
+- @mention
+- Work updates
+- Remarks
+- Pending
+- In Progress
+- Completed
+- Completed history
+- Activity history
+- View conversation
+- Notifications
+- Task counts
+- Chat counts
+- Alerts
+- Permissions
+
+ONLY change the presentation.
+
+14. DESKTOP PRIORITY
+
+The desktop layout should closely resemble the attached reference.
+
+The task detail should occupy the available Workplace area instead of being squeezed to one side.
+
+Do not introduce horizontal overflow.
+
+Keep the existing responsive/mobile behavior.
+
+15. DO NOT CHANGE THE PORTAL
+
+Do not change:
+
+- Braintam header
+- Existing portal sidebar
+- Portal routing
+- Authentication
+- Workplace backend
+- Database
+- APIs
+- Socket.IO
+- Permissions
+
+ONLY improve the Workplace/task UI.
+
+Before finishing, compare the rendered Task Details screen against the attached reference and make sure there is no large unused blank area and no awkward nested scrollbar.
+
+Run the frontend check after the UI changes.

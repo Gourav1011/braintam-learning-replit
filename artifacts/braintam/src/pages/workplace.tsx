@@ -12,7 +12,7 @@ import {
   Send, MoreVertical, Calendar, Clock, AlertCircle, 
   CheckCircle2, Circle, ArrowRight, UserPlus, FileText,
   Users, ChevronRight, Inbox, Copy, Reply, AtSign, Pencil, Trash2, History,
-  Phone, Video, Paperclip, Smile, PanelRight
+  Phone, Video, Paperclip, Smile, PanelRight, X
 } from "lucide-react";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import { 
@@ -744,14 +744,20 @@ function NewConversationDialog({ onClose, onCreated }: { onClose: () => void; on
 
 function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
   const [view, setView] = useState<"mine" | "assigned" | "completed">("mine");
+  const [taskSearch, setTaskSearch] = useState("");
   const { data, isLoading } = useGetTasks(view);
   const [showNewTask, setShowNewTask] = useState(false);
   
-  const tasks = data?.tasks || [];
+  const tasks = (data?.tasks || []).filter((task: any) => {
+    const query = taskSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [task.title, task.assigneeName, task.assignedByName, task.priority, task.status]
+      .some((value) => String(value || "").toLowerCase().includes(query));
+  });
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="p-2 border-b sticky top-0 bg-gray-50/95 backdrop-blur z-10">
+      <div className="space-y-2 border-b bg-gray-50/95 p-2 sticky top-0 backdrop-blur z-10">
         <div className="flex items-center justify-between">
           <div className="bg-gray-200/50 p-0.5 rounded-md flex">
             <button
@@ -772,6 +778,10 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
             <Plus className="w-3.5 h-3.5 mr-1" /> New
           </Button>
         </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Input value={taskSearch} onChange={(event) => setTaskSearch(event.target.value)} placeholder="Search my tasks..." className="h-8 rounded-lg border-slate-200 bg-white pl-8 text-[10px] shadow-none focus-visible:ring-1 focus-visible:ring-[#2f6fed]" />
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
@@ -780,7 +790,7 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
         ) : tasks.length === 0 ? (
             <div className="py-7 text-center flex flex-col items-center">
              <CheckCircle2 className="w-7 h-7 text-gray-200 mb-1.5" />
-            <p className="text-xs font-semibold text-gray-500">No tasks found</p>
+             <p className="text-xs font-semibold text-gray-500">{taskSearch ? "No matching tasks" : "No tasks found"}</p>
           </div>
         ) : (
           tasks.map((t: any) => (
@@ -875,92 +885,115 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
   const insertRemarkMention = (member: any) => setRemark(value => value.replace(/@([^@\s]*)$/, `@${member.name} `));
   const remarkMentionIds = taskParticipants.filter((member: any) => remark.toLowerCase().includes(`@${String(member.name || "").toLowerCase()}`)).map((member: any) => String(member.id));
 
+  const dueDays = task.dueDate ? Math.ceil((new Date(task.dueDate).getTime() - Date.now()) / 86_400_000) : null;
+  const eventPalette = ["bg-[#2f6fed]", "bg-[#14b8a6]", "bg-[#7c5ce5]", "bg-[#f59e0b]"];
+
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="h-10 border-b border-slate-200 flex items-center justify-between px-3 md:px-4 shrink-0">
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 px-3 md:px-5">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden h-8 w-8 text-gray-400 -ml-2">
-            <ChevronRight className="w-5 h-5 rotate-180" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 -ml-2 text-slate-400 md:hidden">
+            <ChevronRight className="h-5 w-5 rotate-180" />
           </Button>
-          <h2 className="text-[13px] font-bold text-gray-900">Task Details</h2>
+          <h2 className="text-[13px] font-bold text-slate-900">Task Details</h2>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} className="hidden md:flex h-7 text-gray-400 hover:text-gray-600 text-[11px]">
-          Close
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {task.conversationId && (
+            <Button variant="outline" size="sm" onClick={() => onViewConversation(String(task.conversationId))} className="hidden h-8 border-slate-200 px-2.5 text-[10px] font-semibold text-slate-700 sm:flex">
+              <MessageSquare className="mr-1.5 h-3.5 w-3.5 text-[#2f6fed]" /> View Conversation
+            </Button>
+          )}
+          <span className="hidden h-8 w-7 items-center justify-center text-slate-400 sm:inline-flex"><MoreVertical className="h-4 w-4" /></span>
+          <Button variant="ghost" size="sm" onClick={onClose} className="hidden h-8 px-2 text-[10px] font-semibold text-slate-500 hover:text-slate-900 md:flex">
+            Close <X className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
-      
-      <div className="flex-1 overflow-y-auto p-2.5 md:p-3 max-w-xl">
-        <div className="flex items-center gap-1.5 mb-2.5">
-          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
-            task.priority === 'high' ? 'bg-red-100 text-red-700' :
-            task.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
-            'bg-blue-100 text-blue-700'
-          }`}>
-            {task.priority} Priority
-          </span>
-          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
-            task.status === 'completed' ? 'bg-green-100 text-green-700' :
-            task.status === 'in_progress' ? 'bg-purple-100 text-purple-700' :
-            'bg-gray-100 text-gray-700'
-          }`}>
-            {task.status.replace('_', ' ')}
-          </span>
-        </div>
-        
-        <h1 className="text-lg font-black text-gray-900 mb-3">{task.title}</h1>
-        
-        <div className="grid grid-cols-2 gap-1.5 mb-3.5">
-          <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
-            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5">Assignee</span>
-            <div className="text-xs font-semibold text-gray-900">{task.assignee?.name || task.assigneeName}</div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfcfe]">
+        <div className="w-full p-3 md:p-4 lg:p-5">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center gap-1.5">
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                  task.priority === "high" ? "bg-[#fff0ef] text-[#d95852]" :
+                  task.priority === "medium" ? "bg-[#fff7e6] text-[#b56b00]" :
+                  "bg-[#edf4ff] text-[#2f6fed]"
+                }`}>{task.priority} Priority</span>
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                  task.status === "completed" ? "bg-[#e9f8f1] text-[#169968]" :
+                  task.status === "in_progress" ? "bg-[#f2edff] text-[#7255c7]" :
+                  "bg-slate-100 text-slate-600"
+                }`}>{task.status.replace("_", " ")}</span>
+              </div>
+              <h1 className="truncate text-lg font-black tracking-tight text-slate-900">{task.title}</h1>
+            </div>
+            <div className="hidden shrink-0 text-right text-[9px] leading-relaxed text-slate-400 md:block">
+              <p>Task ID: #{task.id}</p>
+              {task.createdAt && <p>Created: {format(new Date(task.createdAt), "MMM d, yyyy · h:mm a")}</p>}
+            </div>
           </div>
-          <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
-            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5">Reporter</span>
-            <div className="text-xs font-semibold text-gray-900">{task.assigner?.name || task.assignedByName}</div>
-          </div>
-          {task.dueDate && (
-            <div className="p-2 bg-gray-50 rounded-lg border border-gray-100 col-span-2 sm:col-span-1">
-              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5">Due Date</span>
-              <div className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                {format(new Date(task.dueDate), "PPP")}
+
+          <div className="mb-3.5 grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)] sm:grid-cols-3 lg:grid-cols-5">
+            <div className="min-w-0 border-b border-r border-slate-100 p-2.5 lg:border-b-0">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-400">Assignee</span>
+              <div className="flex items-center gap-1.5">
+                <Avatar className="h-5 w-5"><AvatarImage src={task.assignee?.avatarUrl || undefined} /><AvatarFallback className="bg-[#153f82] text-[8px] font-bold text-white"><Initials name={task.assignee?.name || task.assigneeName || "U"} /></AvatarFallback></Avatar>
+                <span className="truncate text-[10px] font-semibold text-slate-800">{task.assignee?.name || task.assigneeName}</span>
               </div>
             </div>
-          )}
-        </div>
-        
-        {task.description && (
-          <div className="mb-3.5">
-            <h3 className="text-[10px] font-bold text-gray-900 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-gray-400" /> Description
-            </h3>
-            <div className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed bg-white border border-gray-100 rounded-lg p-2.5 shadow-sm">
-              {task.description}
+            <div className="min-w-0 border-b border-slate-100 p-2.5 sm:border-r lg:border-b-0">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-400">Assigned by</span>
+              <div className="flex items-center gap-1.5">
+                <Avatar className="h-5 w-5"><AvatarImage src={task.assigner?.avatarUrl || undefined} /><AvatarFallback className="bg-[#e8f0ff] text-[8px] font-bold text-[#3266ba]"><Initials name={task.assigner?.name || task.assignedByName || "U"} /></AvatarFallback></Avatar>
+                <span className="truncate text-[10px] font-semibold text-slate-800">{task.assigner?.name || task.assignedByName}</span>
+              </div>
+            </div>
+            <div className="min-w-0 border-b border-r border-slate-100 p-2.5 sm:border-b-0 lg:border-r">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-400">Due date</span>
+              {task.dueDate ? <div><div className="flex items-center gap-1 text-[10px] font-semibold text-slate-800"><Calendar className="h-3 w-3 text-slate-400" />{format(new Date(task.dueDate), "MMM d, yyyy")}</div><p className={`mt-0.5 text-[9px] ${dueDays !== null && dueDays < 0 ? "text-red-500" : "text-slate-400"}`}>{dueDays !== null && dueDays < 0 ? "Overdue" : `${Math.max(1, dueDays || 1)} day${Math.max(1, dueDays || 1) === 1 ? "" : "s"} left`}</p></div> : <span className="text-[10px] text-slate-400">No due date</span>}
+            </div>
+            <div className="min-w-0 border-b border-slate-100 p-2.5 lg:border-b-0 lg:border-r">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-400">Priority</span>
+              <span className={`text-[10px] font-semibold capitalize ${task.priority === "high" ? "text-[#d95852]" : task.priority === "medium" ? "text-[#b56b00]" : "text-[#2f6fed]"}`}>{task.priority}</span>
+            </div>
+            <div className="min-w-0 col-span-2 p-2.5 sm:col-span-1">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-slate-400">Status</span>
+              <span className={`flex items-center gap-1 text-[10px] font-semibold ${task.status === "completed" ? "text-[#169968]" : task.status === "in_progress" ? "text-[#7255c7]" : "text-slate-600"}`}><span className={`h-1.5 w-1.5 rounded-full ${task.status === "completed" ? "bg-[#169968]" : task.status === "in_progress" ? "bg-[#7255c7]" : "bg-slate-400"}`} />{task.status.replace("_", " ")}</span>
             </div>
           </div>
-        )}
-        {canReassign && <div className="mb-3.5 rounded-lg border border-gray-100 p-2.5">
-          <div className="flex items-center justify-between"><span className="text-[11px] font-bold text-gray-800">Assigned to: {task.assignee?.name}</span><Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setShowReassign(value => !value)}>Reassign</Button></div>
-          {showReassign && <div className="mt-2 space-y-1"><Input value={employeeQuery} onChange={e => setEmployeeQuery(e.target.value)} placeholder="Search eligible employee…" className="h-8 text-xs" />
-            {isSearchingEmployees && <p className="px-2 text-[10px] text-gray-500">Searching employees...</p>}
-            {eligibleEmployees.map((employee: any) => <button key={employee.id} className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100" onClick={() => updateMut.mutate({ id: taskId, assigneeId: String(employee.id) }, { onSuccess: () => { setShowReassign(false); setEmployeeQuery(""); } })}>{employee.name}</button>)}
+
+          {task.description && <div className="mb-3.5">
+            <h3 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-800"><FileText className="h-3.5 w-3.5 text-slate-400" /> Description</h3>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[11px] leading-relaxed text-slate-600">{task.description}</div>
           </div>}
-        </div>}
-        <div className="mb-3">
-          <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-900">Work updates</h3>
-          <div className="space-y-1.5">
-            {(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-gray-100 p-2.5 text-[11px]"><b>{item.authorName}</b><span className="ml-2 text-gray-400">{format(new Date(item.createdAt), "PP p")}</span><p className="mt-1 whitespace-pre-wrap text-gray-600">{item.content}</p></div>)}
+
+          <div className="mb-3.5 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3"><span className="text-[11px] font-semibold text-slate-700">Assigned to: <span className="text-slate-900">{task.assignee?.name || task.assigneeName}</span></span>{canReassign && <Button variant="outline" size="sm" className="h-7 border-slate-200 px-2.5 text-[10px] text-[#2f6fed]" onClick={() => setShowReassign(value => !value)}><UserPlus className="mr-1.5 h-3.5 w-3.5" />Reassign</Button>}</div>
+            {showReassign && <div className="mt-2 space-y-1"><Input value={employeeQuery} onChange={e => setEmployeeQuery(e.target.value)} placeholder="Search eligible employee…" className="h-8 text-xs" />
+              {isSearchingEmployees && <p className="px-2 text-[10px] text-gray-500">Searching employees...</p>}
+              {eligibleEmployees.map((employee: any) => <button key={employee.id} className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100" onClick={() => updateMut.mutate({ id: taskId, assigneeId: String(employee.id) }, { onSuccess: () => { setShowReassign(false); setEmployeeQuery(""); } })}>{employee.name}</button>)}
+            </div>}
           </div>
-          {mentionMembers.length > 0 && <div className="mb-1 max-w-xs rounded border bg-white p-1 shadow-sm">{mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertRemarkMention(member)} className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-100">@{member.name}</button>)}</div>}
-          <p className="mb-1 text-[9px] text-gray-500">@ mentions notify participants only; they never change the assignee.</p>
-          <div className="mt-1.5 flex gap-1.5"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[38px] text-[11px]" /><Button size="sm" className="h-8 px-2.5 text-[11px]" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(240px,0.88fr)]">
+            <section className="min-w-0">
+              <div className="mb-2 flex items-baseline gap-2"><h3 className="text-[11px] font-bold text-slate-900">Work Updates</h3><span className="text-[9px] text-slate-400">@mentions notify participants only</span></div>
+              {mentionMembers.length > 0 && <div className="mb-1 max-w-xs rounded border bg-white p-1 shadow-sm">{mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertRemarkMention(member)} className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-100">@{member.name}</button>)}</div>}
+              <div className="flex items-end gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.02)]"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[34px] border-0 bg-transparent px-2 py-1.5 text-[11px] shadow-none focus-visible:ring-0" /><span className="mb-0.5 inline-flex h-7 w-7 items-center justify-center text-slate-400"><AtSign className="h-3.5 w-3.5" /></span><Button size="sm" className="mb-0.5 h-7 bg-[#2f6fed] px-2.5 text-[10px] hover:bg-[#245dcc]" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div>
+              <div className="mt-2 space-y-1.5">{(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-2.5 text-[10px]"><div className="flex items-center justify-between gap-2"><span className="font-bold text-slate-800">{item.authorName}</span><span className="shrink-0 text-[9px] text-slate-400">{format(new Date(item.createdAt), "MMM d · h:mm a")}</span></div><p className="mt-1 whitespace-pre-wrap leading-relaxed text-slate-600">{item.content}</p></div>)}</div>
+            </section>
+            <section className="min-w-0 border-t border-slate-200 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+              <h3 className="mb-3 text-[11px] font-bold text-slate-900">Activity</h3>
+              <div className="space-y-3">{(detail?.events || []).map((event: any, index: number) => <div key={event.id} className="relative flex gap-2.5"><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white ${eventPalette[index % eventPalette.length]}`}><Circle className="h-2 w-2 fill-current" /></span><div className="min-w-0"><p className="text-[10px] font-semibold capitalize text-slate-700">{event.eventType.replace(/_/g, " ")}</p><div className="mt-0.5 flex flex-wrap gap-x-2 text-[9px] text-slate-400"><span>{format(new Date(event.createdAt), "MMM d, yyyy · h:mm a")}</span><span>{event.actorName || event.actor?.name || "System"}</span></div></div></div>)}</div>
+              {(detail?.events || []).length === 0 && <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[10px] text-slate-400">No activity yet</p>}
+            </section>
+          </div>
         </div>
-        {(detail?.events || []).length > 0 && <div className="mb-3"><h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-900">Activity</h3><div className="space-y-1 border-l pl-2.5 text-[11px] text-gray-500">{detail.events.map((event: any) => <p key={event.id}>{event.eventType.replace("_", " ")} · {format(new Date(event.createdAt), "PP p")}</p>)}</div></div>}
-        {task.conversationId && <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => onViewConversation(String(task.conversationId))}>View conversation</Button>}
       </div>
-      
-      <div className="p-2 border-t bg-gray-50/50 flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-600 mr-auto">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
+
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-3 py-2 md:px-5">
+        <span className="mr-auto text-[10px] font-semibold text-slate-600">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
         <Button 
           variant={task.status === "pending" ? "default" : "outline"}
           size="sm"

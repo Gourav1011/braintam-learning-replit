@@ -1,0 +1,502 @@
+IMPORTANT — FINAL WORKPLACE TASK UI REDESIGN
+UI ONLY — DO NOT CHANGE FUNCTIONALITY
+
+I am attaching a reference image.
+
+You MUST use the attached image as the PRIMARY visual and layout reference.
+
+I want the existing Braintam Workplace Task screen to be redesigned to closely follow the STRUCTURE, PROPORTIONS, DENSITY and INFORMATION HIERARCHY shown in the image.
+
+This is NOT a request to rebuild Workplace.
+
+DO NOT touch:
+- Backend
+- Database
+- API
+- Authentication
+- Permissions
+- Socket.IO
+- Notifications
+- Chat logic
+- Task logic
+- Task history
+- Assignment/reassignment logic
+- @mentions
+- Search
+- Routing
+- Existing portal shell
+
+ONLY change the FRONTEND UI/layout/styling.
+
+==================================================
+CRITICAL REQUIREMENT — USE THE FULL SCREEN
+==================================================
+
+The current screen has a major problem:
+
+The Task Details content is squeezed into a narrow area while a huge blank white area remains on the right.
+
+THIS MUST NOT HAPPEN.
+
+The Task Details panel MUST use the available Workplace content width.
+
+There must be NO huge unused white area.
+
+There must be NO unnecessary nested scrollbar.
+
+The final desktop screen must feel like ONE COMPLETE WORKSPACE, similar to the attached reference.
+
+Use the available viewport intelligently.
+
+==================================================
+TARGET DESKTOP STRUCTURE
+==================================================
+
+Follow this structure:
+
+┌──────────────┬────────────────────┬─────────────────────────────────────┐
+│ Braintam     │ Tasks              │ Task Details                        │
+│ Portal       │                    │                                     │
+│ Sidebar      │ My Tasks           │ HIGH PRIORITY    IN PROGRESS        │
+│              │ Assigned by Me     │                                     │
+│ Workplace    │ Completed          │ testing                            │
+│              │                    │                                     │
+│ Conversations│ Task cards         │ Assignee | Assigned By | Due | etc. │
+│ Groups       │                    │                                     │
+│ My Tasks     │                    │ Description                         │
+│ Alerts       │                    │                                     │
+│              │                    │ Assigned to      [Reassign]         │
+│              │                    │                                     │
+│              │                    │ Work Updates     | Activity         │
+│              │                    │                                     │
+│              │                    │ Status controls                    │
+└──────────────┴────────────────────┴─────────────────────────────────────┘
+
+IMPORTANT:
+
+The Task Details section should occupy the LARGE MAIN CONTENT AREA.
+
+Do NOT create a narrow task detail column with empty space beside it.
+
+==================================================
+1. EXISTING BRAINTAM SIDEBAR
+==================================================
+
+Keep the existing portal sidebar exactly as it is.
+
+Workplace should remain:
+
+Workplace
+  Conversations
+  Groups
+  My Tasks
+  Alerts
+
+Do not redesign the entire Braintam portal.
+
+Only improve Workplace's internal UI.
+
+==================================================
+2. WORKPLACE TOP NAVIGATION
+==================================================
+
+Keep:
+
+Chat
+Tasks
+Alerts
+
+with their existing unread counts.
+
+Make them look premium and compact like the reference.
+
+Example:
+
+Chat  2
+Tasks 1
+Alerts 4
+
+Do not make giant tabs.
+
+==================================================
+3. TASK LIST PANEL
+==================================================
+
+The left task-list panel should have:
+
+My Tasks
+Assigned by Me
+Completed
+
+and:
+
++ New
+
+Then:
+
+Search my tasks...
+
+Then compact task cards.
+
+Example:
+
+testing
+IN PROGRESS
+
+📅 Aug 28     👤 poonam
+HIGH PRIORITY
+
+The task cards should be:
+
+- Compact
+- Modern
+- Easy to scan
+- Clearly selected when active
+
+Do NOT make them huge.
+
+==================================================
+4. TASK DETAILS — MAIN FOCUS
+==================================================
+
+This is the most important part.
+
+The Task Details section must use the available width.
+
+Header:
+
+Task Details
+
+[ View Conversation ]   [...]   Close
+
+Then:
+
+HIGH PRIORITY     IN PROGRESS
+
+testing
+
+On the same general horizontal area show useful metadata:
+
+ASSIGNEE
+poonam
+
+ASSIGNED BY
+Gourav Singh Manhas
+
+DUE DATE
+Aug 28, 2026
+1 day left
+
+PRIORITY
+High
+
+STATUS
+In Progress
+
+These should be compact premium cards/fields.
+
+Do NOT stack every field vertically.
+
+Use horizontal layout wherever the screen width allows.
+
+==================================================
+5. TASK ID / CREATED INFORMATION
+==================================================
+
+Where useful, show subtle secondary information:
+
+Task ID
+Created date/time
+
+Keep this small.
+
+Do not allow it to dominate the screen.
+
+==================================================
+6. DESCRIPTION
+==================================================
+
+Use:
+
+DESCRIPTION
+
+checking
+
+The description should be clean and compact.
+
+Do not use an oversized textarea/card.
+
+==================================================
+7. ASSIGNMENT
+==================================================
+
+Show:
+
+Assigned to: poonam
+
+[ Reassign ]
+
+Keep the existing reassignment functionality.
+
+Make the area compact and visually clear.
+
+==================================================
+8. WORK UPDATES + ACTIVITY
+==================================================
+
+THIS SHOULD BE A MAJOR VISUAL IMPROVEMENT.
+
+Instead of stacking everything vertically, use the available width:
+
+┌──────────────────────────────┬──────────────────────────────┐
+│ WORK UPDATES                 │ ACTIVITY                     │
+│                              │                              │
+│ Add a work update...         │ ● Task created               │
+│ @  😊              [Add]     │   Aug 27 · 9:14 PM           │
+│                              │                              │
+│ Poonam                       │ ● Assigned to Poonam         │
+│ Called the parent...         │   Aug 27 · 9:15 PM           │
+│                              │                              │
+│ Gourav                       │ ● Status changed             │
+│ Please update CRM...         │   Aug 27 · 9:20 PM           │
+└──────────────────────────────┴──────────────────────────────┘
+
+Use a clean timeline for Activity.
+
+Use compact update cards for Work Updates.
+
+Do NOT make these giant boxes.
+
+==================================================
+9. WORK UPDATE INPUT
+==================================================
+
+Make the input modern:
+
+Add a work update...
+
+        @   😊        [ Add ]
+
+Keep existing @mention behavior.
+
+Typing @ must still show the searchable permitted employee list.
+
+==================================================
+10. ACTIVITY TIMELINE
+==================================================
+
+Use a proper visual timeline:
+
+● Task created
+  Aug 27 · 9:14 PM       Gourav
+
+● Assigned to Poonam
+  Aug 27 · 9:15 PM       Gourav
+
+● Status changed
+  Aug 27 · 9:20 PM       System
+
+● Work update added
+  Aug 27 · 2:30 PM       Poonam
+
+Make it visually polished.
+
+Do NOT change the existing activity data/logic.
+
+==================================================
+11. STATUS CONTROL
+==================================================
+
+At the bottom of the Task Details area use:
+
+Update Status:
+
+[ ○ Pending ] [ ◉ In Progress ] [ ✓ Completed ]
+
+Make the active state visually obvious.
+
+Keep the existing functionality exactly as it works.
+
+==================================================
+12. RELATED CONVERSATION
+==================================================
+
+Keep:
+
+[ View Conversation ]
+
+in the Task Details header or another logical compact position.
+
+It must continue opening the existing linked conversation.
+
+==================================================
+13. VISUAL STYLE
+==================================================
+
+Take inspiration from the attached image but make it Braintam's own design.
+
+Target:
+
+PREMIUM
+MODERN
+LIGHT
+COMPACT
+PROFESSIONAL
+
+Use:
+
+- White surfaces
+- Very light background
+- Braintam blue accent
+- Subtle blue/purple status accents
+- Fine borders
+- Soft shadows
+- Medium rounded corners
+- Clean typography
+- Compact spacing
+- Small modern icons
+- Clear hierarchy
+
+Avoid:
+
+- Old-fashioned forms
+- Huge cards
+- Huge rounded boxes
+- Excessive whitespace
+- Giant headings
+- Giant buttons
+- Heavy shadows
+- Gradients everywhere
+- Excessive colors
+- Excessive animations
+
+==================================================
+14. SCREEN FIT — ABSOLUTE REQUIREMENT
+==================================================
+
+FOR DESKTOP:
+
+The entire Task Details screen should fit naturally inside the Workplace content area.
+
+Do not leave a giant blank area.
+
+Do not squeeze Task Details into 40–50% of the available width.
+
+The Work Updates and Activity sections should sit side-by-side when enough width exists.
+
+Metadata should use horizontal space efficiently.
+
+The overall page should resemble the attached reference in density and proportions.
+
+==================================================
+15. SCROLLING — ABSOLUTE REQUIREMENT
+==================================================
+
+Remove the current awkward nested-scroll behavior.
+
+Avoid:
+
+- Browser/page scrollbar + unnecessary inner Task Details scrollbar
+- Multiple competing vertical scrollbars
+- Horizontal scrollbar
+
+The Workplace should behave as one clean application workspace.
+
+If scrolling is required because of screen height, use ONE sensible content scroll area.
+
+==================================================
+16. RESPONSIVE
+==================================================
+
+Desktop:
+
+3-column Workplace structure.
+
+Tablet:
+
+Reduce/collapse the right-side content intelligently.
+
+Mobile:
+
+Stack the sections appropriately.
+
+Do NOT create horizontal overflow.
+
+==================================================
+17. PRESERVE EVERYTHING
+==================================================
+
+DO NOT BREAK OR REMOVE:
+
+Chat
+Groups
+New Chat search
+Employee search
+@mentions
+Unread counts
+Read state
+Message edit
+Message delete
+Edit history
+Admin deleted-message visibility
+Tasks
+Task assignment
+Task reassignment
+Task remarks
+Task @mentions
+Completed tasks
+Task history
+Notifications
+Alerts
+Socket.IO
+Permissions
+
+This is a VISUAL redesign only.
+
+==================================================
+18. VERY IMPORTANT — DO NOT JUST MAKE IT "PREMIUM"
+==================================================
+
+Do not interpret "premium" as adding random gradients, animations or decorative cards.
+
+I want the exact DESIGN PRINCIPLES from the attached reference:
+
+- Same overall information density
+- Similar proportions
+- Similar alignment
+- Similar use of horizontal space
+- Similar hierarchy
+- Similar compactness
+- Similar task metadata organization
+- Similar Work Updates / Activity split
+- Similar bottom status controls
+
+But create the styling specifically for Braintam.
+
+==================================================
+19. FINAL VISUAL CHECK
+==================================================
+
+Before finishing, actually inspect the rendered screen.
+
+Compare it against the attached image.
+
+Specifically verify:
+
+✓ No huge blank white area
+✓ No narrow squeezed Task Details
+✓ No unnecessary nested scrollbar
+✓ Metadata uses horizontal space
+✓ Work Updates + Activity are properly aligned
+✓ Task list is compact
+✓ Task title is prominent
+✓ Status and priority are obvious
+✓ Reassign is easy to find
+✓ Completed/Pending/In Progress controls are visible
+✓ View Conversation is visible
+✓ Entire screen feels modern and premium
+✓ Existing Braintam portal remains unchanged
+
+Do NOT modify backend or functionality.
+
+ONLY make the Workplace frontend UI match this design direction.
