@@ -11,7 +11,8 @@ import {
   MessageSquare, CheckSquare, Bell, Search, Plus, 
   Send, MoreVertical, Calendar, Clock, AlertCircle, 
   CheckCircle2, Circle, ArrowRight, UserPlus, FileText,
-  Users, ChevronRight, Inbox, Copy, Reply, AtSign, Pencil, Trash2, History
+  Users, ChevronRight, Inbox, Copy, Reply, AtSign, Pencil, Trash2, History,
+  Phone, Video, Paperclip, Smile, PanelRight
 } from "lucide-react";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import { 
@@ -60,6 +61,10 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<WorkplaceNotification[]>([]);
   const { data: badgeData } = useGetWorkplaceBadges();
+  const { data: conversationData } = useGetConversations();
+  const activeConversation = (conversationData as any)?.conversations?.find(
+    (conversation: any) => String(conversation.id) === String(selectedConversationId),
+  );
   const selectSection = (section: WorkplaceSection) => {
     setActiveSection(section);
     setSelectedConversationId(null);
@@ -94,13 +99,13 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   return (
       <div className="flex min-h-0 h-full bg-white overflow-hidden relative">
         {/* Left Panel */}
-        <div className={`w-full md:w-80 border-r flex flex-col bg-gray-50/30 flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        <div className={`w-full md:w-[258px] lg:w-[274px] border-r border-slate-200 flex flex-col bg-[#fbfcfe] flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           (activeTab === "messages" && selectedConversationId) || (activeTab === "tasks" && selectedTaskId) 
             ? "-translate-x-full" 
             : "translate-x-0"
         }`}>
-          <div className="p-3 border-b bg-white">
-            <div className="flex bg-gray-100/80 p-1 rounded-lg">
+          <div className="p-3 border-b border-slate-200 bg-white">
+            <div className="flex bg-slate-100 p-1 rounded-lg">
               <TabButton active={activeTab === "messages"} onClick={() => selectSection("conversations")} icon={MessageSquare} label="Chat" count={chatUnread} />
               <TabButton active={activeTab === "tasks"} onClick={() => selectSection("tasks")} icon={CheckSquare} label="Tasks" count={taskUnread} />
               <TabButton active={activeTab === "notifications"} onClick={() => selectSection("notifications")} icon={Bell} label="Alerts" count={unreadNotifications} />
@@ -155,6 +160,17 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
             </div>
           )}
         </div>
+        {activeTab === "messages" && selectedConversationId && activeConversation && (
+          <ConversationDetailsPanel
+            conversation={activeConversation}
+            onOpenTask={(taskId) => {
+              setActiveSection("tasks");
+              setSelectedConversationId(null);
+              setSelectedTaskId(taskId);
+              onSectionChange?.("tasks");
+            }}
+          />
+        )}
         <div className="fixed bottom-4 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] space-y-2">
           {toasts.map(notification => <button key={notification.id} onClick={() => openNotification(notification)} className="w-full rounded-lg border bg-white p-3 text-left shadow-lg hover:bg-gray-50">
             <div className="flex gap-2 text-xs font-bold text-gray-900"><Bell className="h-4 w-4 text-blue-600" />{notification.title}</div>
@@ -169,13 +185,13 @@ function TabButton({ active, onClick, icon: Icon, label, count = 0 }: { active: 
   return (
     <button
       onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
-        active ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
+      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-[11px] font-semibold transition-all ${
+        active ? "bg-white text-[#193a72] shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/60"
       }`}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <Icon className="w-3.5 h-3.5" strokeWidth={2.2} />
       {label}
-       {count > 0 && <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] text-white">{count > 99 ? "99+" : count}</span>}
+      {count > 0 && <span className="rounded-full bg-[#e5efff] px-1.5 py-0.5 text-[9px] font-bold text-[#2563c7]">{count > 99 ? "99+" : count}</span>}
     </button>
   );
 }
@@ -206,24 +222,24 @@ function ConversationsList({ selectedId, onSelect, groupsOnly = false }: { selec
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b sticky top-0 bg-gray-50/95 backdrop-blur z-10">
+      <div className="p-3 border-b border-slate-200 sticky top-0 bg-[#fbfcfe]/95 backdrop-blur z-10">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <Input 
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={groupsOnly ? "Search groups..." : "Search chats..."}
-              className="h-8 pl-8 text-xs bg-white border-gray-200 shadow-none focus-visible:ring-1" 
+              className="h-8 pl-8 text-[11px] bg-white border-slate-200 rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-[#2f6fed]"
             />
           </div>
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 bg-white" onClick={() => setShowNewDialog(true)}>
-            <Plus className="w-4 h-4 text-gray-600" />
+          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 bg-[#2f6fed] border-[#2f6fed] hover:bg-[#245dcc] hover:border-[#245dcc]" onClick={() => setShowNewDialog(true)}>
+            <Plus className="w-4 h-4 text-white" strokeWidth={2.5} />
           </Button>
         </div>
       </div>
       
-      <div className="flex-1 p-2 space-y-0.5">
+      <div className="flex-1 p-2 space-y-0.5 overflow-x-hidden">
         {isLoading ? (
           Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)
         ) : filtered.length === 0 ? (
@@ -233,32 +249,33 @@ function ConversationsList({ selectedId, onSelect, groupsOnly = false }: { selec
             <button
               key={c.id}
               onClick={() => onSelect(String(c.id))}
-              className={`w-full flex items-start gap-3 p-2.5 rounded-lg transition-colors text-left ${
-                selectedId === String(c.id) ? "bg-blue-50" : "hover:bg-gray-100/60"
+              className={`w-full flex items-start gap-2.5 p-2.5 rounded-lg transition-colors text-left border ${
+                selectedId === String(c.id) ? "bg-[#edf4ff] border-[#dbe8ff]" : "border-transparent hover:bg-white hover:border-slate-100"
               }`}
             >
               <div className="relative shrink-0 mt-0.5">
-                <Avatar className="w-9 h-9 border border-gray-100">
-                  <AvatarFallback className={`text-xs font-bold ${c.type === 'group' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
+                <Avatar className="w-9 h-9 border border-slate-200">
+                  <AvatarImage src={c.members?.find((member: any) => member.id !== c.createdById)?.avatarUrl || undefined} />
+                  <AvatarFallback className={`text-xs font-bold ${c.type === 'group' ? 'bg-[#e9e3ff] text-[#7050c7]' : 'bg-[#e8f0ff] text-[#3266ba]'}`}>
                     {c.type === 'group' ? <Users className="w-4 h-4" /> : <Initials name={c.displayName} />}
                   </AvatarFallback>
                 </Avatar>
                 {c.unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold">
+                  <div className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-[#2f6fed] text-white rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold">
                     {c.unreadCount > 9 ? '9+' : c.unreadCount}
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-gray-900 truncate">{c.displayName}</span>
+                  <span className="text-[12px] font-semibold text-slate-900 truncate">{c.displayName}</span>
                   {c.lastMessageAt && (
-                    <span className="text-[10px] text-gray-400 shrink-0 font-medium">
+                    <span className="text-[9px] text-slate-400 shrink-0 font-medium">
                       {formatTime(c.lastMessageAt)}
                     </span>
                   )}
                 </div>
-                <p className={`text-xs truncate mt-0.5 ${c.unreadCount > 0 ? "font-semibold text-gray-900" : "text-gray-500"}`}>
+                <p className={`text-[10px] truncate mt-0.5 ${c.unreadCount > 0 ? "font-semibold text-slate-800" : "text-slate-500"}`}>
                   {c.lastMessage ? c.lastMessage.content : "New conversation"}
                 </p>
               </div>
@@ -338,33 +355,44 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
   if (!conversation) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-32 h-4" /></div>;
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc]">
+      <div className="flex flex-col h-full bg-[#f8fafd]">
       {/* Header */}
-      <div className="h-14 border-b bg-white flex items-center justify-between px-2 md:px-4 shrink-0 shadow-sm z-10">
+      <div className="h-[60px] border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-5 shrink-0 z-10">
         <div className="flex items-center gap-2 md:gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden h-8 w-8 text-gray-400">
             <ChevronRight className="w-5 h-5 rotate-180" />
           </Button>
-          <Avatar className="w-8 h-8">
-            <AvatarFallback className={`text-xs font-bold ${conversation.type === 'group' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
+          <div className="relative">
+            <Avatar className="w-9 h-9 border border-slate-200">
+              <AvatarImage src={conversation.members?.find((member: any) => member.id !== student?.id)?.avatarUrl || undefined} />
+              <AvatarFallback className={`text-xs font-bold ${conversation.type === 'group' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
               {conversation.type === 'group' ? <Users className="w-4 h-4" /> : <Initials name={conversation.displayName} />}
-            </AvatarFallback>
-          </Avatar>
+              </AvatarFallback>
+            </Avatar>
+            {conversation.type !== "group" && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />}
+          </div>
           <div>
-            <h2 className="text-sm font-bold text-gray-900 leading-tight">{conversation.displayName}</h2>
-            {conversation.type === 'group' && (
-              <p className="text-[10px] text-gray-500 font-medium">
-                {conversation.members?.length || 0} members
-              </p>
-            )}
+            <h2 className="text-[13px] font-bold text-slate-900 leading-tight">{conversation.displayName}</h2>
+            <p className="mt-0.5 text-[10px] text-slate-500 font-medium">
+              {conversation.type === 'group' ? `${conversation.members?.length || 0} members` : "Online"}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" title="Assign task" onClick={() => setShowTaskDialog(true)} className="h-8 w-8 text-gray-400 hover:text-gray-600">
+        <div className="flex items-center gap-0.5">
+          <button type="button" aria-label="Start voice call" className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+            <Phone className="w-4 h-4" />
+          </button>
+          <button type="button" aria-label="Start video call" className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+            <Video className="w-4 h-4" />
+          </button>
+          <button type="button" aria-label="Search conversation" className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+            <Search className="w-4 h-4" />
+          </button>
+          <Button variant="ghost" size="icon" title="Assign task" onClick={() => setShowTaskDialog(true)} className="h-8 w-8 text-slate-400 hover:bg-slate-50 hover:text-slate-700">
             <CheckSquare className="w-4 h-4" />
           </Button>
           {isGroupAdmin && (
-          <Button variant="ghost" size="icon" title="Manage group members" onClick={() => setShowMembersDialog(true)} className="h-8 w-8 text-gray-400 hover:text-gray-600">
+          <Button variant="ghost" size="icon" title="Manage group members" onClick={() => setShowMembersDialog(true)} className="h-8 w-8 text-slate-400 hover:bg-slate-50 hover:text-slate-700">
             <MoreVertical className="w-4 h-4" />
           </Button>
           )}
@@ -372,7 +400,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       </div>
       
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto bg-[#f8fafd] px-3 py-4 md:px-5 space-y-3" ref={scrollRef}>
         {isLoading ? (
           <div className="flex flex-col gap-4">
             <Skeleton className="h-12 w-2/3 rounded-2xl rounded-tl-sm self-start" />
@@ -408,10 +436,10 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
                   <span className="text-[10px] font-semibold text-gray-500 mb-1 ml-1">{msg.senderName}</span>
                 )}
                 <div 
-                  className={`relative max-w-[75%] px-3.5 py-2 text-sm leading-relaxed ${
+                  className={`relative max-w-[75%] px-3.5 py-2 text-[12px] leading-relaxed ${
                     isMe 
-                      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm' 
-                      : 'bg-white text-gray-900 border border-gray-100 rounded-2xl rounded-tl-sm shadow-sm'
+                      ? 'bg-[#eaf2ff] text-[#183b72] rounded-2xl rounded-tr-sm border border-[#dce9ff]'
+                      : 'bg-white text-slate-800 border border-slate-200 rounded-2xl rounded-tl-sm shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
                   }`}
                 >
                   {editing?.id === msg.id ? (
@@ -419,8 +447,8 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
                       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); editMutation.mutate({ id: String(msg.id), content: editing.content, conversationId }, { onSuccess: () => setEditing(null) }); }
                     }} className="min-h-[36px] bg-white text-gray-900" />
                   ) : msg.content}
-                  <div className={`text-[9px] mt-1 opacity-70 text-right ${isMe ? 'text-white' : 'text-gray-400'}`}>
-                    {format(new Date(msg.createdAt), "h:mm a")}{msg.editedAt && " · Edited"}
+                  <div className={`text-[9px] mt-1 opacity-70 text-right ${isMe ? 'text-[#4774bb]' : 'text-slate-400'}`}>
+                    {format(new Date(msg.createdAt), "h:mm a")}{msg.editedAt && " · Edited"}{isMe && "  ✓✓"}
                   </div>
                 </div>
                 <DropdownMenu>
@@ -441,12 +469,15 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       </div>
       
       {/* Composer */}
-      <div className="p-2.5 bg-white border-t">
+      <div className="p-3 md:px-5 bg-white border-t border-slate-200">
         {mentionMatch && (mentionMembers.length > 0 || isSearchingMentions || isDebouncingMention) && <div className="mb-1 max-w-xs rounded-md border bg-white p-1 shadow-md">
           {(isSearchingMentions || isDebouncingMention) && <div className="px-2 py-1.5 text-xs text-gray-500">Searching employees...</div>}
           {mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertMention(member)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100"><Avatar className="h-5 w-5"><AvatarFallback className="text-[8px]"><Initials name={member.name} /></AvatarFallback></Avatar>@{member.name}</button>)}
         </div>}
-        <form onSubmit={handleSend} className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm">
+        <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white border border-slate-200 rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-[#2f6fed]/30 focus-within:border-[#2f6fed] transition-all shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+          <button type="button" aria-label="Attach a file" className="mb-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+            <Paperclip className="h-4 w-4" />
+          </button>
           <Textarea 
             value={content}
             onChange={e => setContent(e.target.value)}
@@ -456,14 +487,20 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
                 handleSend(e);
               }
             }}
-            placeholder="Type a message..." 
-            className="min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 py-2.5 px-3 text-sm"
+            placeholder="Write a message..."
+            className="min-h-[38px] max-h-[120px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 py-2.5 px-2 text-[12px]"
           />
+          <button type="button" aria-label="Mention an employee" onClick={() => setContent(current => `${current}@`)} className="mb-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+            <AtSign className="h-4 w-4" />
+          </button>
+          <button type="button" aria-label="Add emoji" className="mb-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700 sm:inline-flex">
+            <Smile className="h-4 w-4" />
+          </button>
           <Button 
             type="submit" 
             size="icon" 
             disabled={!content.trim() || sendMutation.isPending}
-            className={`h-9 w-9 shrink-0 rounded-lg mb-0.5 ${content.trim() ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' : 'bg-transparent text-gray-400 hover:bg-transparent'}`}
+            className={`h-8 w-8 shrink-0 rounded-lg mb-0.5 ${content.trim() ? 'bg-[#2f6fed] hover:bg-[#245dcc] text-white shadow-sm' : 'bg-transparent text-slate-400 hover:bg-transparent'}`}
           >
             <Send className="w-4 h-4" />
           </Button>
@@ -485,6 +522,108 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       )}
       {historyId && <MessageHistoryDialog messageId={historyId} onClose={() => setHistoryId(null)} />}
     </div>
+  );
+}
+
+function ConversationDetailsPanel({ conversation, onOpenTask }: {
+  conversation: any;
+  onOpenTask: (taskId: string) => void;
+}) {
+  const { data: mineData } = useGetTasks("mine");
+  const { data: assignedData } = useGetTasks("assigned");
+  const { data: messageData } = useGetMessages(String(conversation.id));
+  const mineTasks = ((mineData as any)?.tasks || []) as any[];
+  const assignedTasks = ((assignedData as any)?.tasks || []) as any[];
+  const tasks = Array.from(new Map(
+    [...mineTasks, ...assignedTasks]
+      .filter((task: any) => String(task.conversationId) === String(conversation.id))
+      .map((task: any) => [String(task.id), task]),
+  ).values());
+  const recentMessages = ((messageData as any)?.pages || [])
+    .slice()
+    .reverse()
+    .flatMap((page: any) => page.messages || [])
+    .slice(-3)
+    .reverse();
+  const members = conversation.members || [];
+  const contact = members.find((member: any) => String(member.id) !== String(conversation.createdById)) || members[0];
+
+  return (
+    <aside className="hidden lg:flex w-[274px] shrink-0 flex-col border-l border-slate-200 bg-white">
+      <div className="flex h-[60px] items-end gap-5 border-b border-slate-200 px-4">
+        <button type="button" className="h-full border-b-2 border-[#2f6fed] text-[11px] font-bold text-[#245dcc]">Details</button>
+        <span className="pb-[19px] text-[11px] font-medium text-slate-400">Files</span>
+        <span className="pb-[19px] text-[11px] font-medium text-slate-400">Pinned</span>
+        <span className="pb-[19px] text-[11px] font-medium text-slate-400">Members ({members.length})</span>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="border-b border-slate-100 px-4 py-4">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="h-11 w-11 border border-slate-200">
+                <AvatarImage src={contact?.avatarUrl || undefined} />
+                <AvatarFallback className="bg-[#e8f0ff] text-xs font-bold text-[#3266ba]">
+                  {conversation.type === "group" ? <Users className="h-5 w-5" /> : <Initials name={contact?.name || conversation.displayName} />}
+                </AvatarFallback>
+              </Avatar>
+              {conversation.type !== "group" && <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-bold text-slate-900">{conversation.displayName}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-emerald-600">{conversation.type === "group" ? `${members.length} members` : "Online"}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button type="button" aria-label="Call contact" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"><Phone className="h-3.5 w-3.5" /></button>
+            <button type="button" aria-label="Video call contact" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"><Video className="h-3.5 w-3.5" /></button>
+            <button type="button" aria-label="Open conversation details" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"><PanelRight className="h-3.5 w-3.5" /></button>
+          </div>
+        </div>
+
+        <div className="border-b border-slate-100 px-4 py-4">
+          <div className="mb-2.5 flex items-center justify-between">
+            <h3 className="text-[12px] font-bold text-slate-900">Tasks ({tasks.length})</h3>
+            <button type="button" className="text-[10px] font-semibold text-[#2f6fed] hover:underline">View all</button>
+          </div>
+          <div className="space-y-2">
+            {tasks.slice(0, 3).map((task: any) => (
+              <button key={task.id} type="button" onClick={() => onOpenTask(String(task.id))} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-left transition hover:border-[#bfd3f7] hover:bg-[#f8fbff]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${
+                    task.priority === "high" ? "bg-[#fff0ef] text-[#d95852]" : task.priority === "medium" ? "bg-[#f2edff] text-[#7255c7]" : "bg-[#eef5ff] text-[#3b6fbd]"
+                  }`}>{task.priority}</span>
+                  <span className={`text-[8px] font-bold uppercase ${
+                    task.status === "completed" ? "text-emerald-600" : task.status === "in_progress" ? "text-amber-600" : "text-slate-500"
+                  }`}>{task.status.replace("_", " ")}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-[11px] font-semibold leading-snug text-slate-800">{task.title}</p>
+                <p className="mt-1.5 text-[9px] text-slate-400">{task.dueDate ? `Due ${format(new Date(task.dueDate), "MMM d, yyyy")}` : "No due date"}</p>
+              </button>
+            ))}
+            {tasks.length === 0 && <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[10px] text-slate-400">No linked tasks</p>}
+          </div>
+        </div>
+
+        <div className="px-4 py-4">
+          <div className="mb-2.5 flex items-center justify-between">
+            <h3 className="text-[12px] font-bold text-slate-900">Recent Activity</h3>
+            <button type="button" className="text-[10px] font-semibold text-[#2f6fed] hover:underline">View all</button>
+          </div>
+          <div className="space-y-2">
+            {recentMessages.map((message: any) => (
+              <div key={message.id} className="rounded-lg border border-slate-100 bg-slate-50/70 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[10px] font-semibold text-slate-700">{message.senderName}</span>
+                  <span className="shrink-0 text-[9px] text-slate-400">{formatTime(message.createdAt)}</span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-500">{message.content}</p>
+              </div>
+            ))}
+            {recentMessages.length === 0 && <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[10px] text-slate-400">No recent activity</p>}
+          </div>
+        </div>
+      </div>
+    </aside>
   );
 }
 
