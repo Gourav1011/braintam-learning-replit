@@ -6,6 +6,7 @@ import { runOverdueFollowUpReminders } from "./jobs/overdueFollowUpReminders.js"
 import { scheduleLiveClassStatusSync } from "./jobs/liveClassStatusSync.js";
 import { scheduleIgniteWeeklyRollover } from "./jobs/igniteWeeklyRollover.js";
 import { seedCoursePricing } from "./routes/longTermPayments.js";
+import { ensureWorkplaceSchema } from "./lib/ensure-workplace-schema.js";
 
 const rawPort = process.env["PORT"];
 
@@ -18,10 +19,11 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const httpServer = createServer(app);
-setupSocketIO(httpServer);
-
-httpServer.listen(port, (err?: Error) => {
+async function startServer(): Promise<void> {
+  await ensureWorkplaceSchema();
+  const httpServer = createServer(app);
+  setupSocketIO(httpServer);
+  httpServer.listen(port, (err?: Error) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -32,6 +34,12 @@ httpServer.listen(port, (err?: Error) => {
   scheduleIgniteWeeklyRollover();
   scheduleLiveClassStatusSync();
   seedCoursePricing().catch(e => logger.error({ err: e }, "Course pricing seed failed"));
+  });
+}
+
+startServer().catch((err) => {
+  logger.error({ err }, "Workplace schema setup failed");
+  process.exit(1);
 });
 
 function scheduleReminderJob(): void {

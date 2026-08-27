@@ -46,6 +46,7 @@ import analyticsRouter from "./analytics";
 import chatModerationRouter from "./chatModeration";
 import revenueAnalyticsRouter from "./revenueAnalytics";
 import slidesRouter from "./slides";
+import workplaceRouter from "./workplace";
 
 const router: IRouter = Router();
 
@@ -96,5 +97,6 @@ router.use(analyticsRouter);
 router.use(chatModerationRouter);
 router.use(revenueAnalyticsRouter);
 router.use(slidesRouter);
+router.use(workplaceRouter);
 
 export default router;

@@ -11,13 +11,20 @@ import {
   chatViolationsTable,
   chatModerationTable,
   liveClassesTable,
+  workplaceMembersTable,
 } from "@workspace/db";
 import { eq, and, sql, gt, desc } from "drizzle-orm";
 import { updateParticipantPublishPermission, isLiveKitConfigured } from "./lib/livekit.js";
 import { resolveUserFromToken } from "./middlewares/auth.js";
 import { canAccessLiveClass, getAuthorizedGroupId } from "./lib/live-class-access.js";
+import {
+  registerWorkplaceRealtime,
+  workplaceConversationRoom,
+  workplaceUserRoom,
+} from "./lib/workplace-realtime.js";
 
 const STAGE_DURATION_MS = 60_000;
+const workplaceRoles = new Set(["admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor"]);
 // timers keyed by `${sessionId}:${studentId}`
 const stageTimers = new Map<string, NodeJS.Timeout>();
 const roomNameCache = new Map<string, string | null>();
@@ -517,6 +524,7 @@ export function setupSocketIO(httpServer: HttpServer) {
     cors: { origin: "*", methods: ["GET", "POST"] },
     path: "/api/socket.io",
   });
+  registerWorkplaceRealtime(io);
 
   // Seed liveStateCache immediately from DB (Sprint 2)
   seedCacheFromDB().catch(() => {});
@@ -543,6 +551,20 @@ export function setupSocketIO(httpServer: HttpServer) {
       }
 
       const q = socket.handshake.query;
+      if (q["workplace"] === "1") {
+        if (!workplaceRoles.has(user.role)) {
+          next(new Error("Forbidden"));
+          return;
+        }
+        (socket as any).ctx = {
+          mode: "workplace",
+          userId: String(user.id),
+          role: user.role,
+          name: user.name.slice(0, 50),
+        };
+        next();
+        return;
+      }
       const sessionId = Number(q["sessionId"]);
 
       if (!Number.isFinite(sessionId)) {
@@ -603,7 +625,37 @@ export function setupSocketIO(httpServer: HttpServer) {
   const activeStudentClassSockets = new Map<string, string>();
 
   io.on("connection", (socket) => {
-    const ctx = (socket as any).ctx as {
+    const rawCtx = (socket as any).ctx as {
+      mode?: string;
+      sessionId?: string;
+      userId: string;
+      role: string;
+      groupId?: string | null;
+      name: string;
+      phone?: string | null;
+    };
+    if (rawCtx.mode === "workplace") {
+      const { userId } = rawCtx;
+      socket.join(workplaceUserRoom(userId));
+      socket.on("workplace:join", async (conversationId: unknown) => {
+        const id = Number(conversationId);
+        if (!Number.isInteger(id) || id <= 0) return;
+        const [member] = await db.select({ id: workplaceMembersTable.id })
+          .from(workplaceMembersTable)
+          .where(and(
+            eq(workplaceMembersTable.conversationId, id),
+            eq(workplaceMembersTable.userId, Number(userId)),
+          ))
+          .limit(1);
+        if (member) socket.join(workplaceConversationRoom(id));
+      });
+      socket.on("workplace:leave", (conversationId: unknown) => {
+        const id = Number(conversationId);
+        if (Number.isInteger(id) && id > 0) socket.leave(workplaceConversationRoom(id));
+      });
+      return;
+    }
+    const ctx = rawCtx as {
       sessionId: string; userId: string; role: string;
       groupId: string | null; name: string; phone: string | null;
     };

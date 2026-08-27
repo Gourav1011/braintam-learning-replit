@@ -8,7 +8,7 @@ setBaseUrl(API_BASE);
 
 setAuthTokenGetter(() => {
   const path = window.location.pathname;
-  const isStaff = path.startsWith("/admin") || path.startsWith("/teacher");
+  const isStaff = path.startsWith("/admin") || path.startsWith("/teacher") || path.startsWith("/mentor") || path.startsWith("/workplace");
   if (isStaff) return localStorage.getItem("braintam_staff_token");
   return localStorage.getItem("braintam_student_token");
 });

@@ -24,3 +24,4 @@
 - [Stage video invisible on late join — remoteParticipants seeding](stage-video-late-join.md) — use-livekit only seeded teacher tracks on connect; non-teacher (stage) publishers already streaming were missing from stagePublishers. Fix: iterate ALL remoteParticipants on connect.
 - [Stage timer restarts on reconnect — seed with remaining time](stage-timer-remaining-time.md) — loadStageSlots loaded ALL slots (including ended); seeding block used fresh 60s timer. Fix: filter status="active", use stageExpiresAt-Date.now() as delay, idempotency guard on endStageSlot.
 - [DEV flag alone hides diagnostics from real testers](diagnostics-dev-flag.md) — import.meta.env.DEV is true on Replit preview which real testers use. Require ?debug=classroom to show diagnostics panel.
+- [Additive schema safeguards](additive-schema-safeguards.md) — protect fresh deployments when full schema push is blocked by unrelated database drift.

@@ -20765,27 +20765,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router49;
+    module.exports = Router50;
     module.exports.Route = Route;
-    function Router49(options) {
-      if (!(this instanceof Router49)) {
-        return new Router49(options);
+    function Router50(options) {
+      if (!(this instanceof Router50)) {
+        return new Router50(options);
       }
       const opts = options || {};
-      function router49(req, res, next) {
-        router49.handle(req, res, next);
+      function router50(req, res, next) {
+        router50.handle(req, res, next);
       }
-      Object.setPrototypeOf(router49, this);
-      router49.caseSensitive = opts.caseSensitive;
-      router49.mergeParams = opts.mergeParams;
-      router49.params = {};
-      router49.strict = opts.strict;
-      router49.stack = [];
-      return router49;
+      Object.setPrototypeOf(router50, this);
+      router50.caseSensitive = opts.caseSensitive;
+      router50.mergeParams = opts.mergeParams;
+      router50.params = {};
+      router50.strict = opts.strict;
+      router50.stack = [];
+      return router50;
     }
-    Router49.prototype = function() {
+    Router50.prototype = function() {
     };
-    Router49.prototype.param = function param(name, fn) {
+    Router50.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20805,7 +20805,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router49.prototype.handle = function handle(req, res, callback) {
+    Router50.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20932,7 +20932,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router49.prototype.use = function use(handler) {
+    Router50.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -20965,7 +20965,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router49.prototype.route = function route(path5) {
+    Router50.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20980,7 +20980,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router49.prototype[method] = function(path5) {
+      Router50.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21163,13 +21163,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router49 = require_router();
+    var Router50 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router49 = null;
+      var router50 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21178,13 +21178,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router49 === null) {
-            router49 = new Router49({
+          if (router50 === null) {
+            router50 = new Router50({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router49;
+          return router50;
         }
       });
     };
@@ -21255,15 +21255,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router49 = this.router;
+      var router50 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router49.use(path5, fn2);
+          return router50.use(path5, fn2);
         }
         debug7(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router49.use(path5, function mounted_app(req, res, next) {
+        router50.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23836,7 +23836,7 @@ var require_express = __commonJS({
     var EventEmitter2 = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router49 = require_router();
+    var Router50 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23858,8 +23858,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router49.Route;
-    exports.Router = Router49;
+    exports.Route = Router50.Route;
+    exports.Router = Router50;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -78875,7 +78875,7 @@ var require_dist7 = __commonJS({
 import { createServer } from "http";
 
 // src/app.ts
-var import_express49 = __toESM(require_express2(), 1);
+var import_express50 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 
@@ -88066,11 +88066,11 @@ function parsePathRewriteRules(rewriteConfig) {
 var debug4 = Debug.extend("router");
 async function getTarget(req, config2) {
   let newTarget;
-  const router49 = config2.router;
-  if (isPlainObject(router49)) {
-    newTarget = getTargetFromProxyTable(req, router49);
-  } else if (typeof router49 === "function") {
-    newTarget = await router49(req);
+  const router50 = config2.router;
+  if (isPlainObject(router50)) {
+    newTarget = getTargetFromProxyTable(req, router50);
+  } else if (typeof router50 === "function") {
+    newTarget = await router50(req);
   }
   return newTarget;
 }
@@ -88321,7 +88321,7 @@ function clerkProxyMiddleware() {
 }
 
 // src/routes/index.ts
-var import_express48 = __toESM(require_express2(), 1);
+var import_express49 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -99953,7 +99953,15 @@ __export(schema_exports, {
   topicNotesTable: () => topicNotesTable,
   topicsTable: () => topicsTable,
   userRoles: () => userRoles,
-  usersTable: () => usersTable
+  usersTable: () => usersTable,
+  workplaceConversationTypes: () => workplaceConversationTypes,
+  workplaceConversationsTable: () => workplaceConversationsTable,
+  workplaceMembersTable: () => workplaceMembersTable,
+  workplaceMessagesTable: () => workplaceMessagesTable,
+  workplaceNotificationsTable: () => workplaceNotificationsTable,
+  workplacePriorities: () => workplacePriorities,
+  workplaceTaskStatuses: () => workplaceTaskStatuses,
+  workplaceTasksTable: () => workplaceTasksTable
 });
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v4/classic/external.js
@@ -112972,6 +112980,75 @@ var mentorGradeAssignmentsTable = pgTable("mentor_grade_assignments", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
 });
 
+// ../../lib/db/src/schema/workplace.ts
+var workplaceConversationTypes = ["direct", "group"];
+var workplacePriorities = ["low", "medium", "high"];
+var workplaceTaskStatuses = ["pending", "in_progress", "completed"];
+var workplaceConversationsTable = pgTable("workplace_conversations", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull().default("direct"),
+  name: text("name"),
+  createdById: integer("created_by_id").notNull().references(() => usersTable.id),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+}, (table) => ({
+  lastMessageIndex: index("workplace_conversations_last_message_idx").on(table.lastMessageAt)
+}));
+var workplaceMembersTable = pgTable("workplace_members", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => workplaceConversationsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  lastReadAt: timestamp("last_read_at"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull()
+}, (table) => ({
+  conversationIndex: index("workplace_members_conversation_idx").on(table.conversationId),
+  userIndex: index("workplace_members_user_idx").on(table.userId)
+}));
+var workplaceMessagesTable = pgTable("workplace_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => workplaceConversationsTable.id, { onDelete: "cascade" }),
+  senderId: integer("sender_id").notNull().references(() => usersTable.id),
+  content: text("content").notNull(),
+  mentionsJson: text("mentions_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => ({
+  conversationChronologyIndex: index("workplace_messages_conversation_created_idx").on(table.conversationId, table.createdAt)
+}));
+var workplaceTasksTable = pgTable("workplace_tasks", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").references(() => workplaceConversationsTable.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  assigneeId: integer("assignee_id").notNull().references(() => usersTable.id),
+  assignedById: integer("assigned_by_id").notNull().references(() => usersTable.id),
+  dueDate: date("due_date", { mode: "string" }),
+  priority: text("priority").notNull().default("medium"),
+  status: text("status").notNull().default("pending"),
+  crmReferenceId: text("crm_reference_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+}, (table) => ({
+  assigneeStatusIndex: index("workplace_tasks_assignee_status_idx").on(table.assigneeId, table.status),
+  assignedByIndex: index("workplace_tasks_assigned_by_idx").on(table.assignedById),
+  dueDateIndex: index("workplace_tasks_due_date_idx").on(table.dueDate)
+}));
+var workplaceNotificationsTable = pgTable("workplace_notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  conversationId: integer("conversation_id").references(() => workplaceConversationsTable.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => workplaceTasksTable.id, { onDelete: "cascade" }),
+  actorId: integer("actor_id").references(() => usersTable.id, { onDelete: "set null" }),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => ({
+  userReadIndex: index("workplace_notifications_user_read_idx").on(table.userId, table.readAt, table.createdAt)
+}));
+
 // ../../lib/db/src/index.ts
 var { Pool: Pool3 } = esm_default;
 var connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
@@ -112989,9 +113066,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-08-27-0726" : "dev",
-    commit: true ? "8598b2d" : "unknown",
-    buildTime: true ? "2026-08-27T07:26:57.200Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-08-27-0812" : "dev",
+    commit: true ? "0cc6c4c" : "unknown",
+    buildTime: true ? "2026-08-27T08:12:14.837Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -138589,61 +138666,554 @@ router47.delete("/slides/:filename", (req, res) => {
 });
 var slides_default = router47;
 
-// src/routes/index.ts
+// src/routes/workplace.ts
+var import_express48 = __toESM(require_express2(), 1);
+
+// src/lib/workplace-realtime.ts
+var io = null;
+var workplaceConversationRoom = (conversationId) => `workplace-conversation-${conversationId}`;
+var workplaceUserRoom = (userId) => `workplace-user-${userId}`;
+function registerWorkplaceRealtime(server) {
+  io = server;
+}
+function emitWorkplaceConversation(conversationId, event, payload) {
+  io?.to(workplaceConversationRoom(conversationId)).emit(event, payload);
+}
+function emitWorkplaceUser(userId, event, payload) {
+  io?.to(workplaceUserRoom(userId)).emit(event, payload);
+}
+function removeWorkplaceUserFromConversation(userId, conversationId) {
+  const userSockets = io?.sockets.adapter.rooms.get(workplaceUserRoom(userId));
+  for (const socketId of userSockets ?? []) {
+    io?.sockets.sockets.get(socketId)?.leave(workplaceConversationRoom(conversationId));
+  }
+}
+
+// src/routes/workplace.ts
 var router48 = (0, import_express48.Router)();
-router48.use(health_default);
-router48.use(auth_default);
-router48.use(admin_default);
-router48.use(teacher_default);
-router48.use(announcements_default);
-router48.use(attendance_default);
-router48.use(curriculum_default);
-router48.use(syllabus_default);
-router48.use(demoBatches_default);
-router48.use(subjects_default);
-router48.use(courses_default);
-router48.use(liveClasses_default);
-router48.use(livekit_default);
-router48.use(recordings_default);
-router48.use(animatedVideos_default);
-router48.use(homework_default);
-router48.use(assignments_default);
-router48.use(tests_default);
-router48.use(student_default);
-router48.use(mentor_default);
-router48.use(mentorExtended_default);
-router48.use(checkins_default);
-router48.use(staff_default);
-router48.use(operationsDashboard_default);
-router48.use(superAdmin_default);
-router48.use(permissions_default);
-router48.use(mentorAdmin_default);
-router48.use(ignite_default);
-router48.use(payments_default);
-router48.use(commandCenter_default);
-router48.use(adminMentors_default);
-router48.use(adminTeachers_default);
-router48.use(adminRoles_default);
-router48.use(adminAuditLogs_default);
-router48.use(longTermPayments_default);
-router48.use(masteryStudents_default);
-router48.use(masteryPayments_default);
-router48.use(masteryDeployment_default);
-router48.use(masteryRetention_default);
-router48.use(masteryNotifications_default);
-router48.use(masteryAttendance_default);
-router48.use(ignitePerformanceRankings_default);
-router48.use(live_default);
-router48.use(analytics_default);
-router48.use(chatModeration_default);
-router48.use(revenueAnalytics_default);
-router48.use(slides_default);
-var routes_default = router48;
+var workplaceAuth = requireRole(
+  "admin",
+  "teacher",
+  "mentor",
+  "sales_mentor",
+  "academic_mentor"
+);
+var employeeRoles = ["admin", "teacher", "mentor", "sales_mentor", "academic_mentor", "super_admin"];
+function parsePositiveId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+function parseId(value) {
+  return parsePositiveId(Array.isArray(value) ? value[0] : value);
+}
+function cleanText(value, maxLength) {
+  return String(value ?? "").replace(/[<>]/g, "").trim().slice(0, maxLength);
+}
+async function isMember(conversationId, userId) {
+  const [member] = await db.select().from(workplaceMembersTable).where(and(
+    eq(workplaceMembersTable.conversationId, conversationId),
+    eq(workplaceMembersTable.userId, userId)
+  )).limit(1);
+  return member ?? null;
+}
+async function getConversation(conversationId) {
+  const [conversation] = await db.select().from(workplaceConversationsTable).where(eq(workplaceConversationsTable.id, conversationId)).limit(1);
+  return conversation ?? null;
+}
+async function employeeById(userId) {
+  const [user] = await db.select({
+    id: usersTable.id,
+    name: usersTable.name,
+    email: usersTable.email,
+    role: usersTable.role,
+    department: usersTable.department,
+    employeeId: usersTable.employeeId,
+    avatarUrl: usersTable.avatarUrl
+  }).from(usersTable).where(and(
+    eq(usersTable.id, userId),
+    eq(usersTable.isActive, true),
+    eq(usersTable.isDeleted, false),
+    or(...employeeRoles.map((role) => eq(usersTable.role, role)))
+  )).limit(1);
+  return user ?? null;
+}
+async function createNotification(userId, type, title, body, actorId, conversationId, taskId) {
+  const [notification] = await db.insert(workplaceNotificationsTable).values({
+    userId,
+    type,
+    title,
+    body,
+    actorId,
+    conversationId,
+    taskId
+  }).returning();
+  emitWorkplaceUser(userId, "workplace:notification", notification);
+  return notification;
+}
+async function conversationSummary(conversationId, userId) {
+  const conversation = await getConversation(conversationId);
+  if (!conversation) return null;
+  const members = await db.select({
+    id: workplaceMembersTable.userId,
+    isAdmin: workplaceMembersTable.isAdmin,
+    lastReadAt: workplaceMembersTable.lastReadAt,
+    name: usersTable.name,
+    email: usersTable.email,
+    role: usersTable.role,
+    avatarUrl: usersTable.avatarUrl
+  }).from(workplaceMembersTable).innerJoin(usersTable, eq(workplaceMembersTable.userId, usersTable.id)).where(eq(workplaceMembersTable.conversationId, conversationId)).orderBy(asc(workplaceMembersTable.joinedAt));
+  const member = members.find((item) => item.id === userId);
+  if (!member) return null;
+  const lastMessage = await db.select({
+    id: workplaceMessagesTable.id,
+    content: workplaceMessagesTable.content,
+    createdAt: workplaceMessagesTable.createdAt,
+    senderId: workplaceMessagesTable.senderId,
+    senderName: usersTable.name
+  }).from(workplaceMessagesTable).innerJoin(usersTable, eq(workplaceMessagesTable.senderId, usersTable.id)).where(eq(workplaceMessagesTable.conversationId, conversationId)).orderBy(desc(workplaceMessagesTable.createdAt)).limit(1);
+  const unread = member.lastReadAt ? await db.select({ count: sql`count(*)` }).from(workplaceMessagesTable).where(and(
+    eq(workplaceMessagesTable.conversationId, conversationId),
+    gt(workplaceMessagesTable.createdAt, member.lastReadAt),
+    sql`${workplaceMessagesTable.senderId} <> ${userId}`
+  )) : await db.select({ count: sql`count(*)` }).from(workplaceMessagesTable).where(and(
+    eq(workplaceMessagesTable.conversationId, conversationId),
+    sql`${workplaceMessagesTable.senderId} <> ${userId}`
+  ));
+  const others = members.filter((item) => item.id !== userId);
+  return {
+    ...conversation,
+    displayName: conversation.type === "group" ? conversation.name || "Untitled group" : others[0]?.name || "Direct conversation",
+    members,
+    unreadCount: Number(unread[0]?.count ?? 0),
+    lastMessage: lastMessage[0] ?? null
+  };
+}
+router48.get("/workplace/employees", workplaceAuth, async (req, res) => {
+  const query = cleanText(req.query.q, 80);
+  const conditions = [
+    eq(usersTable.isActive, true),
+    eq(usersTable.isDeleted, false),
+    or(...employeeRoles.map((role) => eq(usersTable.role, role)))
+  ];
+  if (query) {
+    conditions.push(or(
+      ilike(usersTable.name, `%${query}%`),
+      ilike(usersTable.email, `%${query}%`),
+      ilike(usersTable.department, `%${query}%`)
+    ));
+  }
+  const employees = await db.select({
+    id: usersTable.id,
+    name: usersTable.name,
+    email: usersTable.email,
+    role: usersTable.role,
+    department: usersTable.department,
+    employeeId: usersTable.employeeId,
+    avatarUrl: usersTable.avatarUrl
+  }).from(usersTable).where(and(...conditions)).orderBy(asc(usersTable.name)).limit(30);
+  res.json(employees);
+});
+router48.get("/workplace/conversations", workplaceAuth, async (req, res) => {
+  const userId = req.authUser.id;
+  const members = await db.select({ conversationId: workplaceMembersTable.conversationId }).from(workplaceMembersTable).where(eq(workplaceMembersTable.userId, userId));
+  const summaries = (await Promise.all(
+    members.map(({ conversationId }) => conversationSummary(conversationId, userId))
+  )).filter(Boolean);
+  summaries.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+  res.json({ conversations: summaries });
+});
+router48.post("/workplace/conversations/direct", workplaceAuth, async (req, res) => {
+  const userId = req.authUser.id;
+  const targetId = parsePositiveId(req.body?.userId);
+  if (!targetId || targetId === userId) {
+    res.status(400).json({ error: "Choose another employee." });
+    return;
+  }
+  const target = await employeeById(targetId);
+  if (!target) {
+    res.status(404).json({ error: "Employee not found." });
+    return;
+  }
+  const existing = await db.select({ conversationId: workplaceMembersTable.conversationId }).from(workplaceMembersTable).innerJoin(workplaceConversationsTable, eq(workplaceMembersTable.conversationId, workplaceConversationsTable.id)).where(and(
+    eq(workplaceMembersTable.userId, userId),
+    eq(workplaceConversationsTable.type, "direct")
+  ));
+  for (const row of existing) {
+    const other = await db.select({ userId: workplaceMembersTable.userId }).from(workplaceMembersTable).where(and(
+      eq(workplaceMembersTable.conversationId, row.conversationId),
+      eq(workplaceMembersTable.userId, target.id)
+    )).limit(1);
+    if (other.length) {
+      const summary2 = await conversationSummary(row.conversationId, userId);
+      res.json(summary2);
+      return;
+    }
+  }
+  const [conversation] = await db.insert(workplaceConversationsTable).values({
+    type: "direct",
+    createdById: userId
+  }).returning();
+  await db.insert(workplaceMembersTable).values([
+    { conversationId: conversation.id, userId, isAdmin: true },
+    { conversationId: conversation.id, userId: target.id, isAdmin: false }
+  ]);
+  emitWorkplaceUser(target.id, "workplace:conversation_added", { conversationId: conversation.id });
+  const summary = await conversationSummary(conversation.id, userId);
+  res.status(201).json(summary);
+});
+router48.post("/workplace/conversations/group", workplaceAuth, async (req, res) => {
+  const userId = req.authUser.id;
+  const name = cleanText(req.body?.name, 80);
+  const rawMembers = Array.isArray(req.body?.memberIds) ? req.body.memberIds : [];
+  const memberIds = [.../* @__PURE__ */ new Set([userId, ...rawMembers.map((id) => parsePositiveId(id) ?? 0)])].filter((id) => id > 0);
+  if (!name || memberIds.length < 2) {
+    res.status(400).json({ error: "A group name and at least one other employee are required." });
+    return;
+  }
+  const employees = await db.select({ id: usersTable.id }).from(usersTable).where(and(
+    inArray(usersTable.id, memberIds),
+    eq(usersTable.isActive, true),
+    eq(usersTable.isDeleted, false),
+    or(...employeeRoles.map((role) => eq(usersTable.role, role)))
+  ));
+  if (employees.length !== memberIds.length) {
+    res.status(400).json({ error: "One or more selected employees cannot join this group." });
+    return;
+  }
+  const [conversation] = await db.insert(workplaceConversationsTable).values({
+    type: "group",
+    name,
+    createdById: userId
+  }).returning();
+  await db.insert(workplaceMembersTable).values(memberIds.map((memberId) => ({
+    conversationId: conversation.id,
+    userId: memberId,
+    isAdmin: memberId === userId
+  })));
+  const summary = await conversationSummary(conversation.id, userId);
+  for (const memberId of memberIds) {
+    if (memberId !== userId) {
+      await createNotification(memberId, "group_added", "Added to a group", `${req.authUser.name} added you to ${name}.`, userId, conversation.id);
+      emitWorkplaceUser(memberId, "workplace:conversation_added", { conversationId: conversation.id });
+    }
+  }
+  res.status(201).json(summary);
+});
+router48.get("/workplace/conversations/:id/messages", workplaceAuth, async (req, res) => {
+  const conversationId = parseId(req.params.id);
+  if (!conversationId) {
+    res.status(400).json({ error: "Invalid conversation." });
+    return;
+  }
+  if (!await isMember(conversationId, req.authUser.id)) {
+    res.status(403).json({ error: "Conversation access denied." });
+    return;
+  }
+  const limit = Math.min(Math.max(Number(req.query.limit) || 40, 1), 100);
+  const before = req.query.before ? new Date(String(req.query.before)) : null;
+  const conditions = [eq(workplaceMessagesTable.conversationId, conversationId)];
+  if (before && !Number.isNaN(before.getTime())) conditions.push(lt(workplaceMessagesTable.createdAt, before));
+  const rows = await db.select({
+    id: workplaceMessagesTable.id,
+    conversationId: workplaceMessagesTable.conversationId,
+    content: workplaceMessagesTable.content,
+    mentionsJson: workplaceMessagesTable.mentionsJson,
+    createdAt: workplaceMessagesTable.createdAt,
+    senderId: workplaceMessagesTable.senderId,
+    senderName: usersTable.name,
+    senderRole: usersTable.role,
+    avatarUrl: usersTable.avatarUrl
+  }).from(workplaceMessagesTable).innerJoin(usersTable, eq(workplaceMessagesTable.senderId, usersTable.id)).where(and(...conditions)).orderBy(desc(workplaceMessagesTable.createdAt)).limit(limit);
+  res.json({ messages: rows.reverse(), hasMore: rows.length === limit });
+});
+router48.post("/workplace/conversations/:id/messages", workplaceAuth, async (req, res) => {
+  const conversationId = parseId(req.params.id);
+  if (!conversationId) {
+    res.status(400).json({ error: "Invalid conversation." });
+    return;
+  }
+  if (!await isMember(conversationId, req.authUser.id)) {
+    res.status(403).json({ error: "Conversation access denied." });
+    return;
+  }
+  const content = cleanText(req.body?.content, 1e3);
+  if (!content) {
+    res.status(400).json({ error: "Message cannot be empty." });
+    return;
+  }
+  const mentions = [...content.matchAll(/@([a-zA-Z0-9._-]+)/g)].map((match2) => match2[1].toLowerCase()).slice(0, 10);
+  const [message2] = await db.insert(workplaceMessagesTable).values({
+    conversationId,
+    senderId: req.authUser.id,
+    content,
+    mentionsJson: JSON.stringify(mentions)
+  }).returning();
+  await db.update(workplaceConversationsTable).set({
+    lastMessageAt: message2.createdAt,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(workplaceConversationsTable.id, conversationId));
+  const members = await db.select({ userId: workplaceMembersTable.userId, name: usersTable.name }).from(workplaceMembersTable).innerJoin(usersTable, eq(workplaceMembersTable.userId, usersTable.id)).where(eq(workplaceMembersTable.conversationId, conversationId));
+  const payload = { ...message2, senderName: req.authUser.name, senderRole: req.authUser.role };
+  emitWorkplaceConversation(conversationId, "workplace:message", payload);
+  for (const member of members) {
+    if (member.userId !== req.authUser.id) {
+      const mentionNames = member.name.toLowerCase().split(/\s+/).filter(Boolean).map((part) => part.replace(/[^a-z0-9._-]/g, ""));
+      const isMentioned = mentions.some((mention) => mentionNames.includes(mention));
+      await createNotification(
+        member.userId,
+        isMentioned ? "mention" : "message",
+        isMentioned ? `${req.authUser.name} mentioned you` : "New workplace message",
+        content.slice(0, 140),
+        req.authUser.id,
+        conversationId
+      );
+    }
+  }
+  res.status(201).json(payload);
+});
+router48.post("/workplace/conversations/:id/read", workplaceAuth, async (req, res) => {
+  const conversationId = parseId(req.params.id);
+  if (!conversationId) {
+    res.status(400).json({ error: "Invalid conversation." });
+    return;
+  }
+  if (!await isMember(conversationId, req.authUser.id)) {
+    res.status(403).json({ error: "Conversation access denied." });
+    return;
+  }
+  const now = /* @__PURE__ */ new Date();
+  await db.update(workplaceMembersTable).set({ lastReadAt: now }).where(and(eq(workplaceMembersTable.conversationId, conversationId), eq(workplaceMembersTable.userId, req.authUser.id)));
+  emitWorkplaceConversation(conversationId, "workplace:read", { conversationId, userId: req.authUser.id, readAt: now });
+  res.json({ conversationId, readAt: now });
+});
+router48.post("/workplace/conversations/:id/members", workplaceAuth, async (req, res) => {
+  const conversationId = parseId(req.params.id);
+  const userId = parsePositiveId(req.body?.userId);
+  if (!conversationId || !userId) {
+    res.status(400).json({ error: "Invalid member." });
+    return;
+  }
+  const member = await isMember(conversationId, req.authUser.id);
+  const conversation = await getConversation(conversationId);
+  if (!member || !conversation || conversation.type !== "group" || !member.isAdmin) {
+    res.status(403).json({ error: "Only group admins can add members." });
+    return;
+  }
+  const employee = await employeeById(userId);
+  if (!employee || await isMember(conversationId, employee.id)) {
+    res.status(400).json({ error: "Employee is unavailable or already a member." });
+    return;
+  }
+  await db.insert(workplaceMembersTable).values({ conversationId, userId: employee.id, isAdmin: false });
+  await createNotification(employee.id, "group_added", "Added to a group", `${req.authUser.name} added you to ${conversation.name || "a workplace group"}.`, req.authUser.id, conversationId);
+  emitWorkplaceUser(employee.id, "workplace:conversation_added", { conversationId });
+  emitWorkplaceConversation(conversationId, "workplace:member_added", { conversationId, employee });
+  res.status(201).json(employee);
+});
+router48.delete("/workplace/conversations/:id/members/:userId", workplaceAuth, async (req, res) => {
+  const conversationId = parseId(req.params.id);
+  const targetId = parseId(req.params.userId);
+  if (!conversationId || !targetId) {
+    res.status(400).json({ error: "Invalid member." });
+    return;
+  }
+  const member = await isMember(conversationId, req.authUser.id);
+  const conversation = await getConversation(conversationId);
+  if (!member || !conversation || conversation.type !== "group" || !member.isAdmin) {
+    res.status(403).json({ error: "Only group admins can remove members." });
+    return;
+  }
+  if (targetId === conversation.createdById) {
+    res.status(400).json({ error: "The group creator cannot be removed." });
+    return;
+  }
+  await db.delete(workplaceMembersTable).where(and(
+    eq(workplaceMembersTable.conversationId, conversationId),
+    eq(workplaceMembersTable.userId, targetId)
+  ));
+  removeWorkplaceUserFromConversation(targetId, conversationId);
+  emitWorkplaceConversation(conversationId, "workplace:member_removed", { conversationId, userId: targetId });
+  res.json({ ok: true });
+});
+router48.get("/workplace/tasks", workplaceAuth, async (req, res) => {
+  const userId = req.authUser.id;
+  const view = req.query.view === "assigned" ? "assigned" : "mine";
+  const condition = view === "assigned" ? eq(workplaceTasksTable.assignedById, userId) : eq(workplaceTasksTable.assigneeId, userId);
+  const tasks = await db.select({
+    id: workplaceTasksTable.id,
+    conversationId: workplaceTasksTable.conversationId,
+    title: workplaceTasksTable.title,
+    description: workplaceTasksTable.description,
+    dueDate: workplaceTasksTable.dueDate,
+    priority: workplaceTasksTable.priority,
+    status: workplaceTasksTable.status,
+    crmReferenceId: workplaceTasksTable.crmReferenceId,
+    createdAt: workplaceTasksTable.createdAt,
+    updatedAt: workplaceTasksTable.updatedAt,
+    assigneeId: workplaceTasksTable.assigneeId,
+    assigneeName: sql`assignee.name`,
+    assignedById: workplaceTasksTable.assignedById,
+    assignedByName: sql`assigner.name`
+  }).from(workplaceTasksTable).innerJoin(sql`users assignee`, sql`assignee.id = ${workplaceTasksTable.assigneeId}`).innerJoin(sql`users assigner`, sql`assigner.id = ${workplaceTasksTable.assignedById}`).where(condition).orderBy(asc(workplaceTasksTable.status), asc(workplaceTasksTable.dueDate), desc(workplaceTasksTable.createdAt));
+  res.json({ tasks });
+});
+router48.post("/workplace/tasks", workplaceAuth, async (req, res) => {
+  const conversationId = req.body?.conversationId == null ? null : parsePositiveId(req.body.conversationId);
+  const assigneeId = parsePositiveId(req.body?.assigneeId);
+  const title = cleanText(req.body?.title, 160);
+  if (!assigneeId || !title || req.body?.conversationId != null && !conversationId) {
+    res.status(400).json({ error: "Task title and assignee are required." });
+    return;
+  }
+  const resolvedConversationId = conversationId ?? null;
+  if (resolvedConversationId && !await isMember(resolvedConversationId, req.authUser.id)) {
+    res.status(403).json({ error: "Conversation access denied." });
+    return;
+  }
+  if (!await employeeById(assigneeId)) {
+    res.status(404).json({ error: "Assignee not found." });
+    return;
+  }
+  if (resolvedConversationId && !await isMember(resolvedConversationId, assigneeId)) {
+    res.status(400).json({ error: "Assignee must be a conversation member." });
+    return;
+  }
+  const dueDate = req.body?.dueDate ? String(req.body.dueDate) : null;
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    res.status(400).json({ error: "Invalid due date." });
+    return;
+  }
+  const priority = String(req.body?.priority || "medium");
+  if (!["low", "medium", "high"].includes(priority)) {
+    res.status(400).json({ error: "Invalid priority." });
+    return;
+  }
+  const [task] = await db.insert(workplaceTasksTable).values({
+    conversationId: resolvedConversationId,
+    title,
+    description: cleanText(req.body?.description, 1e3) || null,
+    assigneeId,
+    assignedById: req.authUser.id,
+    dueDate,
+    priority,
+    crmReferenceId: cleanText(req.body?.crmReferenceId, 120) || null
+  }).returning();
+  if (task.assigneeId !== req.authUser.id) {
+    await createNotification(task.assigneeId, "task_assigned", "New task assigned", `${req.authUser.name} assigned you: ${task.title}`, req.authUser.id, resolvedConversationId ?? void 0, task.id);
+  }
+  if (resolvedConversationId) emitWorkplaceConversation(resolvedConversationId, "workplace:task_created", task);
+  res.status(201).json(task);
+});
+router48.patch("/workplace/tasks/:id", workplaceAuth, async (req, res) => {
+  const taskId = parseId(req.params.id);
+  if (!taskId) {
+    res.status(400).json({ error: "Invalid task." });
+    return;
+  }
+  const [task] = await db.select().from(workplaceTasksTable).where(eq(workplaceTasksTable.id, taskId)).limit(1);
+  if (!task) {
+    res.status(404).json({ error: "Task not found." });
+    return;
+  }
+  if (task.assigneeId !== req.authUser.id && task.assignedById !== req.authUser.id) {
+    res.status(403).json({ error: "Task access denied." });
+    return;
+  }
+  const nextStatus = req.body?.status;
+  if (nextStatus !== void 0 && (!["pending", "in_progress", "completed"].includes(String(nextStatus)) || task.assigneeId !== req.authUser.id && nextStatus !== task.status)) {
+    res.status(403).json({ error: "Only the assignee can change task status." });
+    return;
+  }
+  const permittedTransitions = {
+    pending: ["in_progress"],
+    in_progress: ["completed"],
+    completed: []
+  };
+  if (nextStatus !== void 0 && nextStatus !== task.status && !permittedTransitions[task.status]?.includes(String(nextStatus))) {
+    res.status(400).json({ error: "Tasks progress from Pending to In Progress to Completed." });
+    return;
+  }
+  const [updated] = await db.update(workplaceTasksTable).set({
+    ...nextStatus !== void 0 ? { status: nextStatus } : {},
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq(workplaceTasksTable.id, taskId)).returning();
+  if (nextStatus && nextStatus !== task.status) {
+    const recipient = task.assigneeId === req.authUser.id ? task.assignedById : task.assigneeId;
+    await createNotification(recipient, nextStatus === "completed" ? "task_completed" : "task_updated", nextStatus === "completed" ? "Task completed" : "Task status updated", `${req.authUser.name} marked "${task.title}" ${nextStatus.replace("_", " ")}.`, req.authUser.id, task.conversationId ?? void 0, task.id);
+    if (task.conversationId) emitWorkplaceConversation(task.conversationId, "workplace:task_updated", updated);
+  }
+  res.json(updated);
+});
+router48.get("/workplace/notifications", workplaceAuth, async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 100);
+  const notifications = await db.select().from(workplaceNotificationsTable).where(eq(workplaceNotificationsTable.userId, req.authUser.id)).orderBy(desc(workplaceNotificationsTable.createdAt)).limit(limit);
+  const unread = await db.select({ count: sql`count(*)` }).from(workplaceNotificationsTable).where(and(eq(workplaceNotificationsTable.userId, req.authUser.id), sql`${workplaceNotificationsTable.readAt} IS NULL`));
+  res.json({ notifications, unreadCount: Number(unread[0]?.count ?? 0) });
+});
+router48.post("/workplace/notifications/read", workplaceAuth, async (req, res) => {
+  const notificationId = req.body?.id == null ? null : parsePositiveId(req.body.id);
+  const where = notificationId ? and(eq(workplaceNotificationsTable.id, notificationId), eq(workplaceNotificationsTable.userId, req.authUser.id)) : eq(workplaceNotificationsTable.userId, req.authUser.id);
+  await db.update(workplaceNotificationsTable).set({ readAt: /* @__PURE__ */ new Date() }).where(where);
+  res.json({ ok: true });
+});
+var workplace_default = router48;
+
+// src/routes/index.ts
+var router49 = (0, import_express49.Router)();
+router49.use(health_default);
+router49.use(auth_default);
+router49.use(admin_default);
+router49.use(teacher_default);
+router49.use(announcements_default);
+router49.use(attendance_default);
+router49.use(curriculum_default);
+router49.use(syllabus_default);
+router49.use(demoBatches_default);
+router49.use(subjects_default);
+router49.use(courses_default);
+router49.use(liveClasses_default);
+router49.use(livekit_default);
+router49.use(recordings_default);
+router49.use(animatedVideos_default);
+router49.use(homework_default);
+router49.use(assignments_default);
+router49.use(tests_default);
+router49.use(student_default);
+router49.use(mentor_default);
+router49.use(mentorExtended_default);
+router49.use(checkins_default);
+router49.use(staff_default);
+router49.use(operationsDashboard_default);
+router49.use(superAdmin_default);
+router49.use(permissions_default);
+router49.use(mentorAdmin_default);
+router49.use(ignite_default);
+router49.use(payments_default);
+router49.use(commandCenter_default);
+router49.use(adminMentors_default);
+router49.use(adminTeachers_default);
+router49.use(adminRoles_default);
+router49.use(adminAuditLogs_default);
+router49.use(longTermPayments_default);
+router49.use(masteryStudents_default);
+router49.use(masteryPayments_default);
+router49.use(masteryDeployment_default);
+router49.use(masteryRetention_default);
+router49.use(masteryNotifications_default);
+router49.use(masteryAttendance_default);
+router49.use(ignitePerformanceRankings_default);
+router49.use(live_default);
+router49.use(analytics_default);
+router49.use(chatModeration_default);
+router49.use(revenueAnalytics_default);
+router49.use(slides_default);
+router49.use(workplace_default);
+var routes_default = router49;
 
 // src/app.ts
 import path4 from "node:path";
 import fs4 from "node:fs";
-var app = (0, import_express49.default)();
+var app = (0, import_express50.default)();
 app.use(
   (0, import_pino_http.default)({
     logger,
@@ -138659,13 +139229,13 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use((0, import_cors.default)({ credentials: true, origin: true }));
-app.use(import_express49.default.json({
+app.use(import_express50.default.json({
   limit: "50kb",
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(import_express49.default.urlencoded({ extended: true, limit: "50kb" }));
+app.use(import_express50.default.urlencoded({ extended: true, limit: "50kb" }));
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
@@ -138691,7 +139261,7 @@ app.use("/api", (_req, res) => {
 var staticDir = process.env["STATIC_DIR"] ?? path4.resolve(__dirname, "../../braintam/dist/public");
 if (fs4.existsSync(staticDir)) {
   logger.info({ staticDir }, "Serving frontend static files");
-  app.use(import_express49.default.static(staticDir, { maxAge: "1y", index: false }));
+  app.use(import_express50.default.static(staticDir, { maxAge: "1y", index: false }));
   app.use((_req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.sendFile(path4.join(staticDir, "index.html"));
@@ -138793,6 +139363,7 @@ async function getAuthorizedGroupId(sessionId, user) {
 
 // src/socket.ts
 var STAGE_DURATION_MS = 6e4;
+var workplaceRoles = /* @__PURE__ */ new Set(["admin", "super_admin", "teacher", "mentor", "sales_mentor", "academic_mentor"]);
 var stageTimers = /* @__PURE__ */ new Map();
 var roomNameCache = /* @__PURE__ */ new Map();
 async function getLiveKitRoomName(sessionId) {
@@ -138923,7 +139494,7 @@ async function loadStageSlots(sessionId) {
     return [];
   }
 }
-async function endStageSlot(io2, sessionId, studentId, reason) {
+async function endStageSlot(io3, sessionId, studentId, reason) {
   const room = sessionRooms.get(sessionId);
   if (!room?.stageSlots.has(studentId)) return;
   room.stageSlots.delete(studentId);
@@ -138939,14 +139510,14 @@ async function endStageSlot(io2, sessionId, studentId, reason) {
   }
   db.update(stageSlotsTable).set({ status: "ended", stageEndedAt: /* @__PURE__ */ new Date(), endReason: reason }).where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, studentId))).catch(() => {
   });
-  io2.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId, reason });
+  io3.to(globalRoom(sessionId)).emit("stage:studentRemoved", { studentId, reason });
 }
-function scheduleStageExpiry(io2, sessionId, studentId) {
+function scheduleStageExpiry(io3, sessionId, studentId) {
   const timerKey = `${sessionId}:${studentId}`;
   const existing = stageTimers.get(timerKey);
   if (existing) clearTimeout(existing);
   const timer = setTimeout(() => {
-    endStageSlot(io2, sessionId, studentId, "timer_expired").catch(() => {
+    endStageSlot(io3, sessionId, studentId, "timer_expired").catch(() => {
     });
   }, STAGE_DURATION_MS);
   stageTimers.set(timerKey, timer);
@@ -139095,18 +139666,19 @@ function persistLeaderboard(sessionId, pollId, entries) {
   }))).catch(() => {
   });
 }
-function setupSocketIO(httpServer2) {
-  const io2 = new Server(httpServer2, {
+function setupSocketIO(httpServer) {
+  const io3 = new Server(httpServer, {
     cors: { origin: "*", methods: ["GET", "POST"] },
     path: "/api/socket.io"
   });
+  registerWorkplaceRealtime(io3);
   seedCacheFromDB().catch(() => {
   });
   refreshBlockedWords().catch(() => {
   });
   setInterval(() => refreshBlockedWords().catch(() => {
   }), 6e4);
-  io2.use(async (socket, next) => {
+  io3.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
       if (typeof token !== "string" || !token) {
@@ -139119,6 +139691,20 @@ function setupSocketIO(httpServer2) {
         return;
       }
       const q = socket.handshake.query;
+      if (q["workplace"] === "1") {
+        if (!workplaceRoles.has(user.role)) {
+          next(new Error("Forbidden"));
+          return;
+        }
+        socket.ctx = {
+          mode: "workplace",
+          userId: String(user.id),
+          role: user.role,
+          name: user.name.slice(0, 50)
+        };
+        next();
+        return;
+      }
       const sessionId = Number(q["sessionId"]);
       if (!Number.isFinite(sessionId)) {
         next(new Error("Invalid session"));
@@ -139150,7 +139736,7 @@ function setupSocketIO(httpServer2) {
         const delta = (now - entry.lastSeenAt.getTime()) / 1e3;
         if (delta > 15) {
           entry.currentStatus = "BACKSTAGE";
-          io2.to(teacherRoom(entry.sessionId)).to(entry.mentorGroupId ? groupRoom(entry.sessionId, entry.mentorGroupId) : teacherRoom(entry.sessionId)).emit("studentBackstage", {
+          io3.to(teacherRoom(entry.sessionId)).to(entry.mentorGroupId ? groupRoom(entry.sessionId, entry.mentorGroupId) : teacherRoom(entry.sessionId)).emit("studentBackstage", {
             userId: entry.userId,
             name: entry.name,
             mentorGroupId: entry.mentorGroupId,
@@ -139161,8 +139747,27 @@ function setupSocketIO(httpServer2) {
     }
   }, 5e3);
   const activeStudentClassSockets = /* @__PURE__ */ new Map();
-  io2.on("connection", (socket) => {
-    const ctx = socket.ctx;
+  io3.on("connection", (socket) => {
+    const rawCtx = socket.ctx;
+    if (rawCtx.mode === "workplace") {
+      const { userId: userId2 } = rawCtx;
+      socket.join(workplaceUserRoom(userId2));
+      socket.on("workplace:join", async (conversationId) => {
+        const id = Number(conversationId);
+        if (!Number.isInteger(id) || id <= 0) return;
+        const [member] = await db.select({ id: workplaceMembersTable.id }).from(workplaceMembersTable).where(and(
+          eq(workplaceMembersTable.conversationId, id),
+          eq(workplaceMembersTable.userId, Number(userId2))
+        )).limit(1);
+        if (member) socket.join(workplaceConversationRoom(id));
+      });
+      socket.on("workplace:leave", (conversationId) => {
+        const id = Number(conversationId);
+        if (Number.isInteger(id) && id > 0) socket.leave(workplaceConversationRoom(id));
+      });
+      return;
+    }
+    const ctx = rawCtx;
     const { sessionId, userId, role, groupId, name, phone } = ctx;
     const isStaff = role === "teacher" || role === "admin";
     const isMentor = role === "mentor";
@@ -139181,7 +139786,7 @@ function setupSocketIO(httpServer2) {
         activeMapSize: activeStudentClassSockets.size
       });
       if (previousSocketId && previousSocketId !== socket.id) {
-        const previousSocket = io2.sockets.sockets.get(previousSocketId);
+        const previousSocket = io3.sockets.sockets.get(previousSocketId);
         if (previousSocket?.connected) {
           console.log(
             `[single-session] replacing previous live-class session ${singleSessionKey}`
@@ -139239,7 +139844,7 @@ function setupSocketIO(httpServer2) {
       if (prevStatus !== "LIVE") {
         const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
         const payload = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
-        io2.to(teacherRoom(sessionId)).to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId)).emit(eventType, payload);
+        io3.to(teacherRoom(sessionId)).to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId)).emit(eventType, payload);
       }
     }
     if (isStaff) {
@@ -139254,7 +139859,7 @@ function setupSocketIO(httpServer2) {
         for (const s2 of dbStageSlots) {
           const remainingMs = s2.stageExpiresAt - Date.now();
           if (remainingMs <= 0) {
-            endStageSlot(io2, sessionId, s2.studentId, "timer_expired").catch(() => {
+            endStageSlot(io3, sessionId, s2.studentId, "timer_expired").catch(() => {
             });
             continue;
           }
@@ -139262,7 +139867,7 @@ function setupSocketIO(httpServer2) {
           const timerKey = `${sessionId}:${s2.studentId}`;
           if (!stageTimers.has(timerKey)) {
             const timer = setTimeout(() => {
-              endStageSlot(io2, sessionId, s2.studentId, "timer_expired").catch(() => {
+              endStageSlot(io3, sessionId, s2.studentId, "timer_expired").catch(() => {
               });
             }, remainingMs);
             stageTimers.set(timerKey, timer);
@@ -139291,7 +139896,7 @@ function setupSocketIO(httpServer2) {
         chatMuted: room.chatMuted,
         slideUrl: classSlideUrl
       });
-      const socketsInGlobal = await io2.in(globalRoom(sessionId)).fetchSockets();
+      const socketsInGlobal = await io3.in(globalRoom(sessionId)).fetchSockets();
       socket.emit("classroom:joined", {
         sessionId,
         socketId: socket.id,
@@ -139344,7 +139949,7 @@ function setupSocketIO(httpServer2) {
       if (prevStatus !== "LIVE") {
         const eventType = prevStatus === "BACKSTAGE" ? "studentReturned" : "studentJoined";
         const payload = { userId, name, mentorGroupId: groupId, phone, lastSeenAt: now };
-        io2.to(teacherRoom(sessionId)).to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId)).emit(eventType, payload);
+        io3.to(teacherRoom(sessionId)).to(groupId ? groupRoom(sessionId, groupId) : teacherRoom(sessionId)).emit(eventType, payload);
       }
       socket.emit("heartbeat:ack");
     });
@@ -139365,7 +139970,7 @@ function setupSocketIO(httpServer2) {
           ts: Date.now()
         };
         persistChat(sessionId, userId, msg2, null);
-        io2.to(globalRoom(sessionId)).emit("chat:message", msg2);
+        io3.to(globalRoom(sessionId)).emit("chat:message", msg2);
         return;
       }
       const modEntry = chatModerationCache.get(userId) ?? { chatStatus: "active", chatViolationCount: 0 };
@@ -139393,10 +139998,10 @@ function setupSocketIO(httpServer2) {
             };
             if (groupId) {
               persistChat(sessionId, userId, msg2, groupId);
-              io2.to(groupRoom(sessionId, groupId)).to(teacherRoom(sessionId)).emit("chat:message", msg2);
+              io3.to(groupRoom(sessionId, groupId)).to(teacherRoom(sessionId)).emit("chat:message", msg2);
             } else {
               persistChat(sessionId, userId, msg2, null);
-              io2.to(globalRoom(sessionId)).emit("chat:message", msg2);
+              io3.to(globalRoom(sessionId)).emit("chat:message", msg2);
             }
             const strikeMsg = newCount === 1 ? "\u26A0\uFE0F Warning (Strike 1/3): Your message contained inappropriate language and was filtered." : "\u{1F6A8} Final Warning (Strike 2/3): One more violation will permanently block your chat.";
             socket.emit("chat:warning", { message: strikeMsg, strikeCount: newCount });
@@ -139415,10 +140020,10 @@ function setupSocketIO(httpServer2) {
       };
       if (groupId) {
         persistChat(sessionId, userId, msg, groupId);
-        io2.to(groupRoom(sessionId, groupId)).to(teacherRoom(sessionId)).emit("chat:message", msg);
+        io3.to(groupRoom(sessionId, groupId)).to(teacherRoom(sessionId)).emit("chat:message", msg);
       } else {
         persistChat(sessionId, userId, msg, null);
-        io2.to(globalRoom(sessionId)).emit("chat:message", msg);
+        io3.to(globalRoom(sessionId)).emit("chat:message", msg);
       }
     });
     socket.on("student:raiseHand", () => {
@@ -139427,13 +140032,13 @@ function setupSocketIO(httpServer2) {
       if (raised) room.raisedHands.delete(userId);
       else room.raisedHands.set(userId, { name, mentorGroupId: groupId });
       const payload = { uid: userId, name, mentorGroupId: groupId, raised: !raised, ts: /* @__PURE__ */ new Date() };
-      io2.to(groupId ? groupRoom(sessionId, groupId) : globalRoom(sessionId)).to(teacherRoom(sessionId)).emit("classroom:handRaised", payload);
+      io3.to(groupId ? groupRoom(sessionId, groupId) : globalRoom(sessionId)).to(teacherRoom(sessionId)).emit("classroom:handRaised", payload);
     });
     socket.on("toggleRaiseHand", (data) => {
       if (!isStaff) return;
       room.raiseHandEnabled = !!data.enabled;
       if (!room.raiseHandEnabled) room.raisedHands.clear();
-      io2.to(globalRoom(sessionId)).emit("raiseHandToggled", { enabled: room.raiseHandEnabled, hands: [] });
+      io3.to(globalRoom(sessionId)).emit("raiseHandToggled", { enabled: room.raiseHandEnabled, hands: [] });
     });
     socket.on("startPoll", (data) => {
       if (!isStaff) return;
@@ -139452,7 +140057,7 @@ function setupSocketIO(httpServer2) {
       };
       room.pollAnswers = /* @__PURE__ */ new Map();
       const studentPayload = { ...room.activePoll, correctOptionId: void 0 };
-      io2.to(teacherRoom(sessionId)).emit("pollStarted", room.activePoll);
+      io3.to(teacherRoom(sessionId)).emit("pollStarted", room.activePoll);
       socket.broadcast.to(globalRoom(sessionId)).emit("pollStarted", studentPayload);
     });
     socket.on("submitPoll", (data) => {
@@ -139474,7 +140079,7 @@ function setupSocketIO(httpServer2) {
       persistPollAnswer(sessionId, room.activePoll, answer);
       const counts = {};
       for (const a of room.pollAnswers.values()) counts[a.optionId] = (counts[a.optionId] ?? 0) + 1;
-      io2.to(teacherRoom(sessionId)).emit("pollUpdate", { counts, total: room.pollAnswers.size });
+      io3.to(teacherRoom(sessionId)).emit("pollUpdate", { counts, total: room.pollAnswers.size });
       socket.emit("pollSubmitted", { optionId: optId, isCorrect });
     });
     socket.on("stage:approveStudent", async (payload) => {
@@ -139518,7 +140123,7 @@ function setupSocketIO(httpServer2) {
         stageExpiresAt: new Date(expiresAt)
       }).onConflictDoNothing().catch(() => {
       });
-      scheduleStageExpiry(io2, sessionId, payload.studentId);
+      scheduleStageExpiry(io3, sessionId, payload.studentId);
       if (isLiveKitConfigured()) {
         try {
           const roomName = await getLiveKitRoomName(sessionId);
@@ -139527,14 +140132,14 @@ function setupSocketIO(httpServer2) {
         }
       }
       room.raisedHands.delete(payload.studentId);
-      io2.to(globalRoom(sessionId)).emit("classroom:handRaised", {
+      io3.to(globalRoom(sessionId)).emit("classroom:handRaised", {
         uid: payload.studentId,
         name: payload.studentName,
         mentorGroupId: payload.studentGroupId || null,
         raised: false,
         ts: /* @__PURE__ */ new Date()
       });
-      io2.to(globalRoom(sessionId)).emit("stage:studentInvited", {
+      io3.to(globalRoom(sessionId)).emit("stage:studentInvited", {
         studentId: payload.studentId,
         studentName: payload.studentName,
         slotNumber: openSlot,
@@ -139553,7 +140158,7 @@ function setupSocketIO(httpServer2) {
         socket.emit("stage:error", { message: "Student is already on stage." });
         return;
       }
-      io2.to(globalRoom(sessionId)).emit("stage:micInvite", {
+      io3.to(globalRoom(sessionId)).emit("stage:micInvite", {
         studentId: payload.studentId,
         studentName: payload.studentName,
         fromTeacher: name
@@ -139593,7 +140198,7 @@ function setupSocketIO(httpServer2) {
         stageExpiresAt: new Date(acceptExpiresAt)
       }).onConflictDoNothing().catch(() => {
       });
-      scheduleStageExpiry(io2, sessionId, userId);
+      scheduleStageExpiry(io3, sessionId, userId);
       if (isLiveKitConfigured()) {
         try {
           const roomName = await getLiveKitRoomName(sessionId);
@@ -139602,14 +140207,14 @@ function setupSocketIO(httpServer2) {
         }
       }
       room.raisedHands.delete(userId);
-      io2.to(globalRoom(sessionId)).emit("classroom:handRaised", {
+      io3.to(globalRoom(sessionId)).emit("classroom:handRaised", {
         uid: userId,
         name,
         mentorGroupId: groupId || null,
         raised: false,
         ts: /* @__PURE__ */ new Date()
       });
-      io2.to(globalRoom(sessionId)).emit("stage:studentInvited", {
+      io3.to(globalRoom(sessionId)).emit("stage:studentInvited", {
         studentId: userId,
         studentName: name,
         slotNumber: openSlot,
@@ -139625,14 +140230,14 @@ function setupSocketIO(httpServer2) {
       entry.isMuted = payload.isMuted;
       db.update(stageSlotsTable).set({ isMuted: payload.isMuted }).where(and(eq(stageSlotsTable.sessionId, sessionId), eq(stageSlotsTable.studentId, payload.studentId))).catch(() => {
       });
-      io2.to(globalRoom(sessionId)).emit("stage:muteStateChanged", {
+      io3.to(globalRoom(sessionId)).emit("stage:muteStateChanged", {
         studentId: payload.studentId,
         isMuted: payload.isMuted
       });
     });
     socket.on("stage:removeStudent", (payload) => {
       if (!isStaff) return;
-      endStageSlot(io2, sessionId, payload.studentId, "teacher_removed").catch(() => {
+      endStageSlot(io3, sessionId, payload.studentId, "teacher_removed").catch(() => {
       });
     });
     socket.on("showLeaderboard", () => {
@@ -139640,19 +140245,19 @@ function setupSocketIO(httpServer2) {
       const pollId = room.activePoll.id;
       const overall = computeTopLeaderboard(room, null);
       persistLeaderboard(sessionId, pollId, overall);
-      io2.to(teacherRoom(sessionId)).emit("showLeaderboard", { top3: overall.slice(0, 3), leaderboard: overall });
+      io3.to(teacherRoom(sessionId)).emit("showLeaderboard", { top3: overall.slice(0, 3), leaderboard: overall });
       const groupIds = new Set(
         Array.from(room.pollAnswers.values()).map((a) => a.mentorGroupId).filter((g) => !!g)
       );
       for (const gid of groupIds) {
         const groupTop20 = computeTopLeaderboard(room, gid);
-        io2.to(groupRoom(sessionId, gid)).emit("showLeaderboard", {
+        io3.to(groupRoom(sessionId, gid)).emit("showLeaderboard", {
           top3: groupTop20.slice(0, 3),
           leaderboard: groupTop20
         });
       }
       room.activePoll = null;
-      setTimeout(() => io2.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
+      setTimeout(() => io3.to(globalRoom(sessionId)).emit("pollEnded"), 5500);
     });
     socket.on("class:end", () => {
       if (!isStaff) return;
@@ -139677,13 +140282,13 @@ function setupSocketIO(httpServer2) {
         }
       }
       for (const studentId of Array.from(room.stageSlots.keys())) {
-        endStageSlot(io2, sessionId, studentId, "class_ended").catch(() => {
+        endStageSlot(io3, sessionId, studentId, "class_ended").catch(() => {
         });
       }
       sessionRooms.delete(sessionId);
-      io2.to(globalRoom(sessionId)).emit("class:ended", { sessionId });
+      io3.to(globalRoom(sessionId)).emit("class:ended", { sessionId });
       setTimeout(() => {
-        io2.in(globalRoom(sessionId)).disconnectSockets(true);
+        io3.in(globalRoom(sessionId)).disconnectSockets(true);
       }, 4e3);
     });
     socket.on("presentation:start", (payload) => {
@@ -139692,41 +140297,41 @@ function setupSocketIO(httpServer2) {
       if (!url2) return;
       room.activePresentation = { url: url2, updatedAt: Date.now(), updatedBy: name };
       room.currentSlide = 1;
-      io2.to(globalRoom(sessionId)).emit("presentation:started", { url: url2 });
+      io3.to(globalRoom(sessionId)).emit("presentation:started", { url: url2 });
     });
     socket.on("presentation:stop", () => {
       if (!isStaff) return;
       room.activePresentation = null;
       room.currentSlide = 1;
-      io2.to(globalRoom(sessionId)).emit("presentation:stopped", {});
+      io3.to(globalRoom(sessionId)).emit("presentation:stopped", {});
     });
     socket.on("demo:start", () => {
       if (!isStaff) return;
       room.demoMode = true;
-      io2.to(globalRoom(sessionId)).emit("demo:started");
+      io3.to(globalRoom(sessionId)).emit("demo:started");
     });
     socket.on("demo:stop", () => {
       if (!isStaff) return;
       room.demoMode = false;
-      io2.to(globalRoom(sessionId)).emit("demo:stopped");
+      io3.to(globalRoom(sessionId)).emit("demo:stopped");
     });
     socket.on("class:pause", () => {
       if (!isStaff) return;
-      io2.to(globalRoom(sessionId)).emit("class:paused");
+      io3.to(globalRoom(sessionId)).emit("class:paused");
     });
     socket.on("class:resume", () => {
       if (!isStaff) return;
-      io2.to(globalRoom(sessionId)).emit("class:resumed");
+      io3.to(globalRoom(sessionId)).emit("class:resumed");
     });
     socket.on("chat:mute", () => {
       if (!isStaff) return;
       room.chatMuted = true;
-      io2.to(globalRoom(sessionId)).emit("chat:muted", { message: "\u{1F4AC} Chat has been muted by the teacher." });
+      io3.to(globalRoom(sessionId)).emit("chat:muted", { message: "\u{1F4AC} Chat has been muted by the teacher." });
     });
     socket.on("chat:unmute", () => {
       if (!isStaff) return;
       room.chatMuted = false;
-      io2.to(globalRoom(sessionId)).emit("chat:unmuted");
+      io3.to(globalRoom(sessionId)).emit("chat:unmuted");
     });
     socket.on("annotation:draw", (seg) => {
       if (!isStaff) return;
@@ -139740,11 +140345,11 @@ function setupSocketIO(httpServer2) {
       if (!isStaff) return;
       const page = Math.max(1, Math.round(Number(payload?.page ?? 1)));
       room.currentSlide = page;
-      io2.to(globalRoom(sessionId)).emit("presentation:navigated", { page });
+      io3.to(globalRoom(sessionId)).emit("presentation:navigated", { page });
     });
     socket.on("mentor:suggestStudent", (payload) => {
       if (!isMentor) return;
-      io2.to(teacherRoom(sessionId)).emit("teacher:studentSuggested", {
+      io3.to(teacherRoom(sessionId)).emit("teacher:studentSuggested", {
         studentId: payload.studentId,
         studentName: payload.studentName
       });
@@ -139760,7 +140365,7 @@ function setupSocketIO(httpServer2) {
         text: text2,
         ts: Date.now()
       };
-      io2.to(teacherRoom(sessionId)).emit("staffChat:message", msg);
+      io3.to(teacherRoom(sessionId)).emit("staffChat:message", msg);
     });
     socket.on("request:attendance", () => {
       const snap = Array.from(liveStateCache.entries()).filter(
@@ -139786,20 +140391,20 @@ function setupSocketIO(httpServer2) {
       }
       if (isStaff) {
         room.teacher = null;
-        io2.to(globalRoom(sessionId)).emit("teacher:left", { name, userId });
+        io3.to(globalRoom(sessionId)).emit("teacher:left", { name, userId });
       } else {
         markLeft(sessionId, userId);
         const entry = liveStateCache.get(`${sessionId}-${userId}`);
         if (entry) entry.currentStatus = "ABSENT";
         if (room.stageSlots.has(userId)) {
-          endStageSlot(io2, sessionId, userId, "student_left").catch(() => {
+          endStageSlot(io3, sessionId, userId, "student_left").catch(() => {
           });
         }
       }
       room.raisedHands.delete(userId);
     });
   });
-  return io2;
+  return io3;
 }
 
 // src/jobs/liveClassStatusSync.ts
@@ -139850,6 +140455,23 @@ function scheduleLiveClassStatusSync() {
   logger.info("Live class status auto-sync job scheduled (checks every 30s)");
 }
 
+// src/lib/ensure-workplace-schema.ts
+async function ensureWorkplaceSchema() {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS workplace_conversations (id serial PRIMARY KEY, type text NOT NULL DEFAULT 'direct', name text, created_by_id integer NOT NULL REFERENCES users(id), last_message_at timestamp NOT NULL DEFAULT now(), created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_members (id serial PRIMARY KEY, conversation_id integer NOT NULL REFERENCES workplace_conversations(id) ON DELETE CASCADE, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, is_admin boolean NOT NULL DEFAULT false, last_read_at timestamp, joined_at timestamp NOT NULL DEFAULT now(), UNIQUE(conversation_id, user_id))`,
+    `CREATE TABLE IF NOT EXISTS workplace_messages (id serial PRIMARY KEY, conversation_id integer NOT NULL REFERENCES workplace_conversations(id) ON DELETE CASCADE, sender_id integer NOT NULL REFERENCES users(id), content text NOT NULL, mentions_json text, created_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_tasks (id serial PRIMARY KEY, conversation_id integer REFERENCES workplace_conversations(id) ON DELETE SET NULL, title text NOT NULL, description text, assignee_id integer NOT NULL REFERENCES users(id), assigned_by_id integer NOT NULL REFERENCES users(id), due_date date, priority text NOT NULL DEFAULT 'medium', status text NOT NULL DEFAULT 'pending', crm_reference_id text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_notifications (id serial PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, type text NOT NULL, title text NOT NULL, body text NOT NULL, conversation_id integer REFERENCES workplace_conversations(id) ON DELETE CASCADE, task_id integer REFERENCES workplace_tasks(id) ON DELETE CASCADE, actor_id integer REFERENCES users(id) ON DELETE SET NULL, read_at timestamp, created_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE INDEX IF NOT EXISTS workplace_members_user_idx ON workplace_members(user_id)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS workplace_members_conversation_user_idx ON workplace_members(conversation_id, user_id)`,
+    `CREATE INDEX IF NOT EXISTS workplace_messages_conversation_created_idx ON workplace_messages(conversation_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS workplace_tasks_assignee_status_idx ON workplace_tasks(assignee_id, status)`,
+    `CREATE INDEX IF NOT EXISTS workplace_notifications_user_read_idx ON workplace_notifications(user_id, read_at, created_at)`
+  ];
+  for (const statement of statements) await db.execute(sql.raw(statement));
+}
+
 // src/index.ts
 var rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -139859,18 +140481,25 @@ var port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
-var httpServer = createServer(app_default);
-setupSocketIO(httpServer);
-httpServer.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-  logger.info({ port }, "Server listening");
-  scheduleReminderJob();
-  scheduleIgniteWeeklyRollover();
-  scheduleLiveClassStatusSync();
-  seedCoursePricing().catch((e) => logger.error({ err: e }, "Course pricing seed failed"));
+async function startServer() {
+  await ensureWorkplaceSchema();
+  const httpServer = createServer(app_default);
+  setupSocketIO(httpServer);
+  httpServer.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+    logger.info({ port }, "Server listening");
+    scheduleReminderJob();
+    scheduleIgniteWeeklyRollover();
+    scheduleLiveClassStatusSync();
+    seedCoursePricing().catch((e) => logger.error({ err: e }, "Course pricing seed failed"));
+  });
+}
+startServer().catch((err) => {
+  logger.error({ err }, "Workplace schema setup failed");
+  process.exit(1);
 });
 function scheduleReminderJob() {
   const CHECK_INTERVAL_MS = 30 * 60 * 1e3;
