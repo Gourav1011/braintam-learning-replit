@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ArrowLeft, BookOpen, Users, Video, ClipboardList, Eye, EyeOff, Loader2, Clock, Star, TrendingUp } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
@@ -17,6 +17,7 @@ const perks = [
 ];
 
 export default function TeacherLoginPage() {
+  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -44,7 +45,8 @@ export default function TeacherLoginPage() {
       }
       localStorage.setItem("braintam_staff_token", data.token);
       localStorage.removeItem("braintam_student_token");
-      window.location.href = "/teacher";
+      window.dispatchEvent(new CustomEvent("braintam:auth_change"));
+      setLocation("/teacher", { replace: true });
     } catch {
       setError("Network error. Please try again.");
     } finally {

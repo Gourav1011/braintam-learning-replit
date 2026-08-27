@@ -212,31 +212,74 @@ export default function TeacherPage() {
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
   const [courseChapters, setCourseChapters] = useState<{ id: number; name: string; topics: { id: number; name: string }[] }[]>([]);
   const [courseChaptersLoading, setCourseChaptersLoading] = useState(false);
+  const hasLoadedSupportingData = useRef(false);
+  const isLoadingSupportingData = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && (role === "teacher" || role === "admin")) loadAll();
+    if (!isLoading && (role === "teacher" || role === "admin")) {
+      void loadDashboard();
+    }
   }, [isLoading, role]);
 
+  useEffect(() => {
+    if (
+      isLoading ||
+      (role !== "teacher" && role !== "admin") ||
+      tab === "dashboard" ||
+      tab === "profile" ||
+      tab === "workplace" ||
+      hasLoadedSupportingData.current
+    ) {
+      return;
+    }
+
+    // Keep the initial portal and Workplace route lightweight. The larger
+    // teaching datasets are fetched only when their related section is opened.
+    void loadSupportingData();
+  }, [isLoading, role, tab]);
+
+  function openWorkplace(section: WorkplaceSection = workplaceSection) {
+    setTab("workplace");
+    setWorkplaceSection(section);
+    setWorkplaceExpanded(true);
+  }
+
+  async function loadDashboard() {
+    const response = await apiFetch("/teacher/dashboard");
+    setDash(response.ok ? await response.json() : null);
+  }
+
+  async function loadSupportingData(force = false) {
+    if (!force && (hasLoadedSupportingData.current || isLoadingSupportingData.current)) return;
+    isLoadingSupportingData.current = true;
+
+    try {
+      const [c, lc, hw, hwSub, asgnSub, testSub, subj, stu, tst, asgn, nts] = await Promise.all([
+        apiFetch("/teacher/courses").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/my-sessions").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/homework").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/submissions/homework").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/submissions/assignments").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/submissions/tests").then(r => r.ok ? r.json() : []),
+        apiFetch("/subjects").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/students").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/tests").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/assignments").then(r => r.ok ? r.json() : []),
+        apiFetch("/teacher/notes").then(r => r.ok ? r.json() : []),
+      ]);
+      setCourses(c); setLiveClasses(lc); setHomework(hw);
+      setSubmissions(hwSub);
+      setHwSubmissions(hwSub); setAsgnSubmissions(asgnSub); setTestSubmissions(testSub);
+      setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn); setNotes(nts);
+      hasLoadedSupportingData.current = true;
+      void loadMasteryLiveClasses();
+    } finally {
+      isLoadingSupportingData.current = false;
+    }
+  }
+
   async function loadAll() {
-    const [d, c, lc, hw, hwSub, asgnSub, testSub, subj, stu, tst, asgn, nts] = await Promise.all([
-      apiFetch("/teacher/dashboard").then(r => r.ok ? r.json() : null),
-      apiFetch("/teacher/courses").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/my-sessions").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/homework").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/submissions/homework").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/submissions/assignments").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/submissions/tests").then(r => r.ok ? r.json() : []),
-      apiFetch("/subjects").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/students").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/tests").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/assignments").then(r => r.ok ? r.json() : []),
-      apiFetch("/teacher/notes").then(r => r.ok ? r.json() : []),
-    ]);
-    setDash(d); setCourses(c); setLiveClasses(lc); setHomework(hw);
-    setSubmissions(hwSub);
-    setHwSubmissions(hwSub); setAsgnSubmissions(asgnSub); setTestSubmissions(testSub);
-    setSubjects(subj); setStudents(stu); setTests(tst); setAssignments(asgn); setNotes(nts);
-    void loadMasteryLiveClasses();
+    await Promise.all([loadDashboard(), loadSupportingData(true)]);
   }
 
   function flash(text: string, ok = true) { setMsg({ text, ok }); setTimeout(() => setMsg(null), 3000); }
@@ -985,7 +1028,11 @@ export default function TeacherPage() {
             const Icon = t.icon;
             const isActive = tab === t.id;
             if (t.id === "workplace") return <div key={t.id}>
-              <button onClick={() => { setTab("workplace"); setWorkplaceExpanded(value => !value); }} className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors" style={{ color: tab === "workplace" ? NAVY : "#6B7280", background: tab === "workplace" ? "#EEF2FF" : "transparent" }}>
+              <button
+                onClick={() => openWorkplace()}
+                className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
+                style={{ color: tab === "workplace" ? NAVY : "#6B7280", background: tab === "workplace" ? "#EEF2FF" : "transparent" }}
+              >
                 <Icon className="w-4 h-4 shrink-0" /><span>Workplace</span>
                 {Number(workplaceBadges?.total || 0) > 0 && <span className="ml-auto rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{workplaceBadges!.total}</span>}
                 <ChevronDown className={`w-3 h-3 ${workplaceExpanded ? "rotate-180" : ""}`} />
@@ -1000,7 +1047,7 @@ export default function TeacherPage() {
                   ] as const).map(([section, label, badge]) => (
                     <button
                       key={section}
-                      onClick={() => { setTab("workplace"); setWorkplaceSection(section); }}
+                      onClick={() => openWorkplace(section)}
                       className="flex w-full items-center px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
                       style={tab === "workplace" && workplaceSection === section ? { color: NAVY, fontWeight: 700 } : {}}
                     >
@@ -1045,6 +1092,7 @@ export default function TeacherPage() {
         )}
 
         {/* ── Dashboard ── */}
+        {tab === "dashboard" && !dash && <TeacherDashboardLoading />}
         {tab === "dashboard" && dash && (
           <div className="space-y-5">
             <div className="grid grid-cols-3 gap-3">
@@ -2659,6 +2707,22 @@ export default function TeacherPage() {
         {tab === "workplace" && <WorkplacePage initialSection={workplaceSection} onSectionChange={setWorkplaceSection} />}
 
       </div>
+      </div>
+    </div>
+  );
+}
+
+function TeacherDashboardLoading() {
+  return (
+    <div className="flex min-h-[20rem] items-center justify-center rounded-2xl bg-white shadow-sm">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50">
+          <RefreshCw className="h-5 w-5 animate-spin text-indigo-600" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-gray-900">Loading your teaching dashboard</p>
+          <p className="mt-1 text-xs text-gray-500">Your Workplace is available from the sidebar now.</p>
+        </div>
       </div>
     </div>
   );

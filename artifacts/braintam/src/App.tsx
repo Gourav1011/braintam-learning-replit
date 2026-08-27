@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { UpdateBanner } from "@/components/update-banner";
-import { AuthProvider, useAuth } from "@/components/auth-provider";
+import { AuthProvider, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
 
@@ -311,6 +311,10 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 function TeacherRoute({ component: Component }: { component: React.ComponentType }) {
   const { student, role, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen />;
+  // The teacher login page navigates in-app after saving the staff token.
+  // Keep this route on the loading screen for the short profile-resolution
+  // handoff instead of bouncing an authenticated teacher back to login.
+  if (!student && localStorage.getItem(STAFF_TOKEN_KEY)) return <LoadingScreen />;
   if (!student) return <Redirect to="/teacher/login" />;
   if (role !== "teacher" && role !== "admin") return <Redirect to="/dashboard" />;
   return <Component />;

@@ -60,8 +60,18 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<WorkplaceNotification[]>([]);
-  const { data: badgeData } = useGetWorkplaceBadges();
-  const { data: conversationData } = useGetConversations();
+  const {
+    data: badgeData,
+    isLoading: badgesLoading,
+    isError: badgesError,
+    refetch: refetchBadges,
+  } = useGetWorkplaceBadges();
+  const {
+    data: conversationData,
+    isLoading: conversationsLoading,
+    isError: conversationsError,
+    refetch: refetchConversations,
+  } = useGetConversations();
   const activeConversation = (conversationData as any)?.conversations?.find(
     (conversation: any) => String(conversation.id) === String(selectedConversationId),
   );
@@ -83,6 +93,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
     setSelectedConversationId(null);
     setSelectedTaskId(null);
   }, [initialSection]);
+
   const handleNotification = (notification: WorkplaceNotification) => {
     setToasts(current => current.some(item => String(item.id) === String(notification.id)) ? current : [...current, notification].slice(-4));
   };
@@ -102,6 +113,21 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
     if (notification.taskId) { selectSection("tasks"); setSelectedTaskId(String(notification.taskId)); }
     else if (notification.conversationId) { selectSection("conversations"); openConversation(String(notification.conversationId)); }
   };
+
+  if (badgesLoading || conversationsLoading) {
+    return <WorkplaceLoadingState />;
+  }
+
+  if (badgesError || conversationsError) {
+    return (
+      <WorkplaceErrorState
+        onRetry={() => {
+          void refetchBadges();
+          void refetchConversations();
+        }}
+      />
+    );
+  }
   
   return (
       <div className="flex h-[calc(100dvh-3.5rem)] max-h-full min-h-0 min-w-0 overflow-hidden bg-white relative">
@@ -185,6 +211,45 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
           </button>)}
         </div>
       </div>
+  );
+}
+
+function WorkplaceLoadingState() {
+  return (
+    <div className="flex h-full min-h-0 min-w-0 items-center justify-center bg-white">
+      <div className="flex w-full max-w-sm flex-col items-center px-6 text-center">
+        <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#edf4ff]">
+          <MessageSquare className="h-5 w-5 animate-pulse text-[#2f6fed]" />
+        </div>
+        <h2 className="text-sm font-bold text-slate-900">Loading Workplace</h2>
+        <p className="mt-1 text-xs text-slate-500">Getting your conversations and work updates ready.</p>
+        <div className="mt-5 w-full space-y-2">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-5/6 rounded-lg" />
+          <Skeleton className="h-10 w-2/3 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkplaceErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex h-full min-h-0 min-w-0 items-center justify-center bg-white p-6">
+      <div className="flex max-w-sm flex-col items-center text-center">
+        <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-red-50">
+          <AlertCircle className="h-5 w-5 text-red-500" />
+        </div>
+        <h2 className="text-sm font-bold text-slate-900">Workplace could not be opened</h2>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+          We couldn&apos;t load your conversations right now. Check your connection and try again.
+        </p>
+        <Button type="button" variant="outline" onClick={onRetry} className="mt-4 h-8 text-xs">
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+          Try again
+        </Button>
+      </div>
+    </div>
   );
 }
 

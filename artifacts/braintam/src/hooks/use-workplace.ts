@@ -4,7 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import { API_BASE } from "@/lib/api-base";
 import { STAFF_TOKEN_KEY } from "@/components/auth-provider";
 
-const fetchWithAuth = async <T = unknown>(url: string, options: RequestInit = {}): Promise<T> => {
+const fetchWithAuth = async <T = any>(url: string, options: RequestInit = {}): Promise<T> => {
   const token = localStorage.getItem(STAFF_TOKEN_KEY);
   const headers = new Headers(options.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
