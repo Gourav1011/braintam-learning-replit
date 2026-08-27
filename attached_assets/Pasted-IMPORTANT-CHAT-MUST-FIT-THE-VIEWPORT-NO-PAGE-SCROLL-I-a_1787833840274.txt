@@ -1,0 +1,146 @@
+IMPORTANT — CHAT MUST FIT THE VIEWPORT / NO PAGE SCROLL
+
+I am attaching the current screenshot.
+
+Make ONLY this frontend layout fix. Do not change any chat functionality, backend, API, database, Socket.IO, permissions, unread logic, or message behavior.
+
+The current Workplace chat is vertically overflowing and requires page scrolling just to reach the reply box.
+
+THIS IS NOT ACCEPTABLE.
+
+The entire Workplace chat interface must fit inside the existing browser viewport.
+
+Required structure:
+
+┌─────────────────────────────────────────────┐
+│ Chat / Tasks / Alerts                       │
+├──────────────┬──────────────────────────────┤
+│ Chat list    │ Chat Header                  │
+│              ├──────────────────────────────┤
+│ Search       │                              │
+│              │     MESSAGE AREA             │
+│ Conversations│                              │
+│              │     ONLY THIS AREA           │
+│              │     MAY SCROLL               │
+│              │                              │
+│              ├──────────────────────────────┤
+│              │ Write a message...       ➤  │
+└──────────────┴──────────────────────────────┘
+
+### ABSOLUTE REQUIREMENTS
+
+1. No browser/page-level vertical scrolling for Workplace.
+
+2. No horizontal scrolling.
+
+3. The Workplace content must calculate its height from the available viewport:
+   `100vh - existing Braintam header height`
+
+4. The chat header stays fixed.
+
+5. The message composer stays fixed at the bottom.
+
+6. ONLY the message history/message list is scrollable.
+
+7. When there are many messages, the user scrolls INSIDE the conversation area.
+
+8. The user should NEVER have to scroll the entire page to reach:
+   - Reply box
+   - Message composer
+   - Send button
+   - Attachment
+   - @mention
+   - Emoji
+
+9. The conversation list on the left can have its own small scroll area if necessary, but it must not cause the entire Workplace page to scroll.
+
+10. The right Details panel, if visible, should also have its own contained scroll area if its content exceeds the available height.
+
+### IMPORTANT CSS/LAYOUT BEHAVIOR
+
+Use a proper fixed-height flex/grid layout.
+
+Conceptually:
+
+Workplace container:
+- height: calc(100vh - portal header)
+- min-height: 0
+- overflow: hidden
+
+Chat column:
+- display: flex
+- flex-direction: column
+- min-height: 0
+
+Chat header:
+- flex-shrink: 0
+
+Message list:
+- flex: 1
+- min-height: 0
+- overflow-y: auto
+
+Composer:
+- flex-shrink: 0
+
+Do NOT solve this by simply hiding overflow on the body while allowing content to become inaccessible.
+
+The message list must remain independently scrollable.
+
+### CURRENT PROBLEM
+
+The screenshot currently shows:
+
+- page scrollbar on the far right
+- message content extending below viewport
+- reply/composer not always visible
+- excessive vertical workspace
+
+Fix the actual layout rather than hiding the scrollbar.
+
+### VISUAL GOAL
+
+The final screen should feel like a desktop communication application:
+
+Header fixed
+↓
+Messages scroll inside their own area
+↓
+Composer always visible
+
+The user should be able to open a chat and immediately type a reply without scrolling the page.
+
+### PRESERVE
+
+Do NOT change:
+
+- Chat
+- Groups
+- Tasks
+- Alerts
+- Message sending
+- Message editing
+- Message deletion
+- Message history
+- @mentions
+- Employee search
+- Unread/read behavior
+- Notifications
+- Socket.IO
+- Permissions
+- APIs
+- Database
+- Portal routing
+- Existing Braintam header/sidebar
+
+ONLY fix the Workplace viewport/layout and scrolling behavior.
+
+After making the change, test with a conversation containing many messages and verify:
+
+✓ No page scrollbar
+✓ Message area scrolls internally
+✓ Composer always visible
+✓ Send button always visible
+✓ Header remains visible
+✓ No horizontal overflow
+✓ Existing portal header/sidebar remain unchanged

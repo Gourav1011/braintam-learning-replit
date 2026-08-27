@@ -1275,7 +1275,7 @@ export default function BTLCRMPage() {
       </aside>
 
       {/* ── Main ── */}
-      <div className="flex-1 overflow-auto" style={{ background: "#F5F7FF" }}>
+      <div className={`flex-1 ${tab === "workplace" ? "overflow-hidden" : "overflow-auto"}`} style={{ background: "#F5F7FF" }}>
 
         {/* ════ DASHBOARD ════ */}
         {tab === "dashboard" && (

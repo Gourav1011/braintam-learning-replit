@@ -97,9 +97,9 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   };
   
   return (
-      <div className="flex min-h-0 h-full bg-white overflow-hidden relative">
+      <div className="flex h-full min-h-0 min-w-0 overflow-hidden bg-white relative">
         {/* Left Panel */}
-        <div className={`w-full md:w-[258px] lg:w-[274px] border-r border-slate-200 flex flex-col bg-[#fbfcfe] flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        <div className={`w-full md:w-[258px] lg:w-[274px] border-r border-slate-200 flex min-h-0 flex-col bg-[#fbfcfe] flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           (activeTab === "messages" && selectedConversationId) || (activeTab === "tasks" && selectedTaskId) 
             ? "-translate-x-full" 
             : "translate-x-0"
@@ -112,7 +112,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
             {activeTab === "messages" && (
               <ConversationsList 
                 selectedId={selectedConversationId} 
@@ -133,7 +133,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
         </div>
         
         {/* Right Panel */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white relative z-10 w-full h-full">
+        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-white relative z-10">
           {activeTab === "messages" && (
             selectedConversationId ? (
               <ChatView conversationId={selectedConversationId} onBack={() => setSelectedConversationId(null)} />
@@ -221,7 +221,7 @@ function ConversationsList({ selectedId, onSelect, groupsOnly = false }: { selec
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="p-3 border-b border-slate-200 sticky top-0 bg-[#fbfcfe]/95 backdrop-blur z-10">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -239,7 +239,7 @@ function ConversationsList({ selectedId, onSelect, groupsOnly = false }: { selec
         </div>
       </div>
       
-      <div className="flex-1 p-2 space-y-0.5 overflow-x-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
         {isLoading ? (
           Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)
         ) : filtered.length === 0 ? (
@@ -355,7 +355,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
   if (!conversation) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-32 h-4" /></div>;
 
   return (
-      <div className="flex flex-col h-full bg-[#f8fafd]">
+      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[#f8fafd]">
       {/* Header */}
       <div className="h-[60px] border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-5 shrink-0 z-10">
         <div className="flex items-center gap-2 md:gap-3">
@@ -400,7 +400,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       </div>
       
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto bg-[#f8fafd] px-3 py-4 md:px-5 space-y-3" ref={scrollRef}>
+      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-[#f8fafd] px-3 py-4 md:px-5 space-y-3" ref={scrollRef}>
         {isLoading ? (
           <div className="flex flex-col gap-4">
             <Skeleton className="h-12 w-2/3 rounded-2xl rounded-tl-sm self-start" />
@@ -436,7 +436,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
                   <span className="text-[10px] font-semibold text-gray-500 mb-1 ml-1">{msg.senderName}</span>
                 )}
                 <div 
-                  className={`relative max-w-[75%] px-3.5 py-2 text-[12px] leading-relaxed ${
+                  className={`relative max-w-[75%] break-words px-3.5 py-2 text-[12px] leading-relaxed ${
                     isMe 
                       ? 'bg-[#eaf2ff] text-[#183b72] rounded-2xl rounded-tr-sm border border-[#dce9ff]'
                       : 'bg-white text-slate-800 border border-slate-200 rounded-2xl rounded-tl-sm shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
@@ -469,7 +469,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       </div>
       
       {/* Composer */}
-      <div className="p-3 md:px-5 bg-white border-t border-slate-200">
+      <div className="shrink-0 p-3 md:px-5 bg-white border-t border-slate-200">
         {mentionMatch && (mentionMembers.length > 0 || isSearchingMentions || isDebouncingMention) && <div className="mb-1 max-w-xs rounded-md border bg-white p-1 shadow-md">
           {(isSearchingMentions || isDebouncingMention) && <div className="px-2 py-1.5 text-xs text-gray-500">Searching employees...</div>}
           {mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertMention(member)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100"><Avatar className="h-5 w-5"><AvatarFallback className="text-[8px]"><Initials name={member.name} /></AvatarFallback></Avatar>@{member.name}</button>)}
@@ -549,14 +549,14 @@ function ConversationDetailsPanel({ conversation, onOpenTask }: {
   const contact = members.find((member: any) => String(member.id) !== String(conversation.createdById)) || members[0];
 
   return (
-    <aside className="hidden lg:flex w-[274px] shrink-0 flex-col border-l border-slate-200 bg-white">
+    <aside className="hidden lg:flex h-full min-h-0 w-[274px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white">
       <div className="flex h-[60px] items-end gap-5 border-b border-slate-200 px-4">
         <button type="button" className="h-full border-b-2 border-[#2f6fed] text-[11px] font-bold text-[#245dcc]">Details</button>
         <span className="pb-[19px] text-[11px] font-medium text-slate-400">Files</span>
         <span className="pb-[19px] text-[11px] font-medium text-slate-400">Pinned</span>
         <span className="pb-[19px] text-[11px] font-medium text-slate-400">Members ({members.length})</span>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         <div className="border-b border-slate-100 px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="relative">

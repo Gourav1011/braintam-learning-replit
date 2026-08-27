@@ -1035,8 +1035,8 @@ export default function TeacherPage() {
 
       </div>
 
-      <div className="flex-1 min-w-0 overflow-auto" style={{ background: "#F5F7FF" }}>
-      <div className="p-5 space-y-5">
+      <div className={`flex-1 min-w-0 ${tab === "workplace" ? "overflow-hidden" : "overflow-auto"}`} style={{ background: "#F5F7FF" }}>
+      <div className={tab === "workplace" ? "h-full min-h-0 overflow-hidden" : "p-5 space-y-5"}>
         {msg && (
           <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-between ${msg.ok ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
             <span>{msg.text}</span>

@@ -1653,7 +1653,7 @@ function AdminPageInner() {
       </div>
 
       {/* Main content */}
-      <div className={`flex-1 min-w-0 relative ${student360Id ? "overflow-hidden" : "overflow-auto"}`} style={{ background: "#F5F7FF" }}>
+      <div className={`flex-1 min-w-0 relative ${student360Id || tab === "workplace" ? "overflow-hidden" : "overflow-auto"}`} style={{ background: "#F5F7FF" }}>
       {student360Id && (
         <div className="absolute inset-0 z-20 overflow-auto flex flex-col" style={{ background: "#F5F7FF" }}>
           <Student360Page key={student360Id} userId={student360Id} onBack={() => setStudent360Id(null)} />
@@ -1667,7 +1667,7 @@ function AdminPageInner() {
           <button onClick={() => setMsg(null)} className="opacity-70 hover:opacity-100 flex-shrink-0"><X className="w-4 h-4" /></button>
         </div>
       )}
-      <div className="p-5 space-y-5">
+      <div className={tab === "workplace" ? "h-full min-h-0 overflow-hidden" : "p-5 space-y-5"}>
 
         {/* ── Analytics ───────────────────────────────────────────────── */}
         {tab === "analytics" && analytics && (() => {
