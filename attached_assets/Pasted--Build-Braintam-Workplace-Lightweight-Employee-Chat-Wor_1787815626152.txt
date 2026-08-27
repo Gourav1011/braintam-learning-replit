@@ -1,0 +1,630 @@
+# Build Braintam Workplace — Lightweight Employee Chat + Work Assignment
+
+Build a new **lightweight native Workplace module** inside the existing Braintam application.
+
+## IMPORTANT
+
+This must be implemented **in one pass** and integrated into the existing application.
+
+Do NOT redesign or replace the existing Admin, Ignite Mentor, Academic Mentor, Teacher, or other employee portals.
+
+Do NOT create a separate application.
+
+Do NOT introduce unnecessary heavy libraries or infrastructure.
+
+Reuse the existing:
+
+* Authentication
+* Users/employees
+* Roles
+* Database
+* API architecture
+* Existing notification infrastructure if available
+* Existing real-time infrastructure if available
+* Existing UI components/design system
+
+Before changing anything, inspect the current codebase and understand how authentication, employee roles, database models, APIs and portal navigation currently work.
+
+---
+
+# 1. NEW SIDEBAR OPTION
+
+Add one new navigation item to the appropriate employee portals:
+
+**💬 Workplace**
+
+Do not call it Chatbox.
+
+Workplace is the umbrella feature because it contains chat + groups + simple work assignment.
+
+The existing portal navigation and layout must remain unchanged apart from adding this one option.
+
+---
+
+# 2. WORKPLACE UI
+
+Keep the UI extremely lightweight and clean.
+
+Do NOT create a large dashboard.
+
+When Workplace is opened, use a simple two-column layout:
+
+```text
+┌──────────────────────────────────────────────────────┐
+│ Workplace                              🔍   🔔       │
+├────────────────┬─────────────────────────────────────┤
+│ Conversations  │                                     │
+│                │   Current conversation               │
+│ Rahul          │                                     │
+│ Priya          │   messages                           │
+│ Academic Team  │                                     │
+│ Ignite Team    │                                     │
+│                │                                     │
+│                │                                     │
+│                │   message input                 ➤   │
+└────────────────┴─────────────────────────────────────┘
+```
+
+Keep it visually consistent with the existing Braintam portal.
+
+Do not add huge cards, dashboards, statistics or unnecessary animations.
+
+---
+
+# 3. ONE-TO-ONE CHAT
+
+Employees can communicate with employees they are permitted to contact.
+
+Features:
+
+* Start conversation
+* Send text message
+* Receive message in real time
+* Unread count
+* Read status
+* Message timestamp
+* Search employees
+* Search existing conversations
+* @mention support where appropriate
+* Reply to a message if easy to implement using existing architecture
+
+Do not build voice/video calling.
+
+Do not build stories/status.
+
+Do not build WhatsApp-style media features.
+
+---
+
+# 4. GROUP CHAT
+
+Allow permitted users to participate in groups.
+
+Examples:
+
+* Ignite Mentors
+* Academic Team
+* Teachers
+* Sales Team
+* Marketing Team
+* Grade-specific academic team
+* Project-specific team
+
+Group features:
+
+* Group name
+* Members
+* Messages
+* Unread count
+* Add/remove members according to permission
+* Group notifications
+* @mentions
+
+Group access must respect the user's role and existing assignments.
+
+Do not expose every company group to every employee automatically.
+
+---
+
+# 5. ROLE-BASED ACCESS
+
+This is critical.
+
+Workplace must use the existing Braintam authentication and role system.
+
+### Admin
+
+Admin can communicate with permitted employees and manage Workplace access according to existing admin permissions.
+
+### Ignite Mentor
+
+Should primarily see permitted:
+
+* Ignite mentors
+* Supervisors/managers
+* Assigned teams/groups
+* Employees they are allowed to communicate with
+* Relevant assigned student/CRM conversations
+
+### Academic Mentor
+
+Should primarily see permitted:
+
+* Academic mentors
+* Teachers
+* Assigned groups
+* Supervisors/managers
+* Relevant assigned student/academic conversations
+
+### Teacher
+
+Should primarily see permitted:
+
+* Academic mentor
+* Assigned coordinator
+* Teacher groups
+* Relevant teachers/employees
+* Assigned student/class-related conversations where permitted
+
+### Other Employees
+
+Use their existing department/team permissions.
+
+Do NOT hard-code access based only on frontend visibility.
+
+All important access restrictions must also be enforced on the backend/API.
+
+---
+
+# 6. TASK ASSIGNMENT FROM CHAT
+
+This is the most important feature after messaging.
+
+Inside a chat message area provide a lightweight:
+
+**Assign Task**
+
+action.
+
+Example:
+
+Employee A writes:
+
+"Rahul, please call these parents tomorrow."
+
+The sender can create:
+
+```text
+Task
+Call pending parents
+
+Assigned to:
+Rahul
+
+Created by:
+Employee A
+
+Due:
+Tomorrow
+
+Priority:
+Normal
+
+Status:
+Pending
+```
+
+The task should be linked to the conversation/message where practical.
+
+---
+
+# 7. TASK STATUS
+
+Use only these statuses:
+
+**Pending**
+→ **In Progress**
+→ **Completed**
+
+The assigned employee can update the status.
+
+When completed, the person who assigned the task should receive a notification.
+
+Do not build a complicated project-management system.
+
+---
+
+# 8. MY TASKS
+
+Inside Workplace, provide a small lightweight task view.
+
+Show:
+
+* Pending
+* In Progress
+* Completed
+* Due date
+* Priority
+* Assigned by
+* Assigned to
+
+The employee should be able to quickly see their tasks.
+
+Also provide a simple:
+
+**Assigned by Me**
+
+view for users who have permission to assign work.
+
+---
+
+# 9. NOTIFICATIONS
+
+Add lightweight notifications for:
+
+* New direct message
+* New group message
+* @mention
+* New task assignment
+* Task status changed
+* Task completed
+* Added to group
+
+Show an unread badge on:
+
+**💬 Workplace**
+
+and/or the notification icon.
+
+Clicking a notification should take the user to the relevant chat/task.
+
+Do not build a large notification center.
+
+Reuse the existing Braintam notification system if one already exists.
+
+---
+
+# 10. PERFORMANCE — VERY IMPORTANT
+
+This feature must remain lightweight.
+
+DO NOT load every conversation and every message when Workplace opens.
+
+Use lazy loading/pagination.
+
+Recommended behavior:
+
+```text
+Open Workplace
+     ↓
+Load conversation list
+     ↓
+Load only recent messages for selected conversation
+     ↓
+Scroll upward
+     ↓
+Load older messages
+```
+
+Do not fetch thousands of messages at once.
+
+Do not repeatedly poll the entire database.
+
+If the application already has WebSocket/Socket.IO/real-time infrastructure, reuse it.
+
+Otherwise implement the lightest appropriate real-time mechanism compatible with the current architecture.
+
+Only subscribe the user to relevant conversations/groups.
+
+Do not create a separate real-time connection for every chat.
+
+Use database indexes for:
+
+* conversation members
+* messages by conversation
+* message timestamps
+* unread/read state
+* task assignee
+* task status
+* task due date
+
+---
+
+# 11. DATABASE
+
+Inspect the existing schema first.
+
+Do not duplicate existing user/employee tables.
+
+Add only the minimum required entities.
+
+Conceptually you need:
+
+### conversations
+
+* id
+* type: direct/group
+* name for groups
+* created_by
+* created_at
+* updated_at
+
+### conversation_members
+
+* conversation_id
+* user_id
+* role if required
+* joined_at
+
+### messages
+
+* id
+* conversation_id
+* sender_id
+* content
+* created_at
+* edited_at if supported
+* reply_to_message_id if implemented
+
+### message_reads
+
+Use an efficient structure for unread/read tracking.
+
+### tasks
+
+* id
+* title
+* description
+* assigned_by
+* assigned_to
+* conversation_id
+* message_id if appropriate
+* status
+* priority
+* due_date
+* created_at
+* updated_at
+* completed_at
+
+### notifications
+
+Reuse the existing notification table/system if available.
+
+Do not create duplicate notification infrastructure.
+
+Use proper foreign keys and indexes.
+
+---
+
+# 12. CRM CONTEXT
+
+If the existing Braintam system already has student/lead IDs available in the relevant portal:
+
+Allow a task or conversation to optionally reference a CRM record.
+
+For example:
+
+```text
+Student: Aarav Sharma
+
+Task:
+Call parent regarding payment
+
+Assigned to:
+Priya
+```
+
+But do NOT duplicate student information into Workplace.
+
+Store only the relevant CRM record ID/reference.
+
+Respect existing permissions when opening the CRM record.
+
+If the existing architecture makes CRM linking unsafe or unnecessarily complex for this first implementation, keep it optional and do not break the Workplace feature.
+
+---
+
+# 13. FILES
+
+For V1, keep attachments minimal.
+
+If the existing application already has a secure file-upload system, allow basic file attachment using it.
+
+Do not build a new file-storage system just for Workplace.
+
+If there is no existing secure upload infrastructure, leave attachments out of V1 rather than introducing a heavy dependency.
+
+---
+
+# 14. MOBILE / RESPONSIVE
+
+Workplace must work on desktop and reasonably on mobile/tablet.
+
+On smaller screens:
+
+```text
+Conversation list
+      ↓
+Select conversation
+      ↓
+Chat opens full width
+```
+
+Do not make the existing portal responsive layout worse.
+
+---
+
+# 15. SECURITY
+
+This is mandatory.
+
+Never trust frontend role checks.
+
+Backend must verify:
+
+* User is authenticated
+* User belongs to the conversation/group
+* User is allowed to send messages
+* User is allowed to view messages
+* User is allowed to add/remove members
+* User is allowed to assign tasks
+* User is allowed to view the task
+* User is allowed to access linked CRM records
+
+Users must not be able to access another conversation by simply changing an ID in an API request.
+
+Use the existing authorization middleware/pattern.
+
+---
+
+# 16. DO NOT BREAK EXISTING FEATURES
+
+Before finishing:
+
+Run the existing application/build/tests.
+
+Verify:
+
+* Admin login still works
+* Ignite Mentor portal still works
+* Academic Mentor portal still works
+* Teacher portal still works
+* Existing CRM works
+* Existing student/lead data is unaffected
+* Existing attendance works
+* Existing notifications still work
+* Existing live/mentor functionality is unaffected
+
+Do not make unrelated refactors.
+
+Do not rename existing database tables or APIs unless absolutely necessary.
+
+---
+
+# 17. KEEP THE CODE SIMPLE
+
+Prefer:
+
+* Existing components
+* Existing API patterns
+* Existing ORM/database layer
+* Existing authentication
+* Existing WebSocket infrastructure
+* Existing notification system
+
+Avoid introducing:
+
+* New frontend frameworks
+* New state-management systems
+* New database systems
+* New authentication
+* New real-time infrastructure if existing infrastructure can be reused
+* Heavy UI libraries
+* Large chat SDKs unless already installed and clearly appropriate
+
+---
+
+# 18. FINAL ACCEPTANCE TEST
+
+Before declaring the feature complete, test this exact flow:
+
+### Test 1 — Direct chat
+
+Admin → Employee
+
+Send message.
+
+Employee receives it without refreshing.
+
+Unread count appears.
+
+Employee opens it.
+
+Unread count clears.
+
+### Test 2 — Group
+
+Create permitted group.
+
+Add permitted employees.
+
+Send message.
+
+All permitted members receive it.
+
+### Test 3 — Task
+
+Admin/manager opens chat.
+
+Clicks:
+
+**Assign Task**
+
+Assigns task to employee.
+
+Employee receives notification.
+
+Employee changes:
+
+Pending → In Progress → Completed
+
+Original sender receives completion notification.
+
+### Test 4 — Permissions
+
+Attempt to access a conversation the user does not belong to.
+
+Backend must reject it.
+
+Attempt to access another employee's restricted task.
+
+Backend must reject it.
+
+### Test 5 — Performance
+
+Open Workplace with many conversations/messages.
+
+Verify that the application does NOT load the entire message history.
+
+Verify messages are paginated/lazy-loaded.
+
+---
+
+# 19. IMPORTANT SCOPE RULE
+
+Build the following and stop:
+
+**Workplace**
+→ Direct Chat
+→ Group Chat
+→ Lightweight Tasks
+→ Notifications
+→ Permissions
+→ Real-time messaging
+→ Lazy loading
+
+Do NOT add extra features just because they seem useful.
+
+The objective is:
+
+**FAST + LIGHT + RELIABLE + NATIVE TO BRAINTAM**
+
+not a Slack clone.
+
+---
+
+# 20. AFTER IMPLEMENTATION
+
+Give me a concise implementation report containing:
+
+1. Files changed
+2. Database changes
+3. API/routes added
+4. Real-time implementation used
+5. Permission model used
+6. Tests performed
+7. Any issues that still need attention
+
+Do not stop after creating only the UI.
+
+The feature must be connected end-to-end to the real database and existing authentication/portals.

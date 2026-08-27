@@ -112989,9 +112989,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-08-25-1303" : "dev",
-    commit: true ? "db8e0eb" : "unknown",
-    buildTime: true ? "2026-08-25T13:03:49.995Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-08-27-0726" : "dev",
+    commit: true ? "8598b2d" : "unknown",
+    buildTime: true ? "2026-08-27T07:26:57.200Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -130085,10 +130085,22 @@ async function assignIgniteBatchAndCourse(studentId, grade, ignitePaidStudentId)
 var router28 = (0, import_express28.Router)();
 var adminOnly7 = requireRole("admin", "super_admin");
 router28.get("/admin/ignite/teachers", adminOnly7, async (_req, res) => {
-  const [teachers, recentSessions] = await Promise.all([
+  const [teachers, historicalSessions, igniteSessions] = await Promise.all([
     db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable).where(and(eq(usersTable.role, "teacher"), eq(usersTable.isActive, true))).orderBy(usersTable.name),
-    db.select({ subject: demoSessionsTable.subject, teacherName: demoSessionsTable.teacherName, createdAt: demoSessionsTable.createdAt }).from(demoSessionsTable).where(and(isNotNull(demoSessionsTable.teacherName), isNotNull(demoSessionsTable.subject))).orderBy(desc(demoSessionsTable.createdAt)).limit(200)
+    db.select({ subject: demoSessionsTable.subject, teacherName: demoSessionsTable.teacherName, createdAt: demoSessionsTable.createdAt }).from(demoSessionsTable).where(and(isNotNull(demoSessionsTable.teacherName), isNotNull(demoSessionsTable.subject))).orderBy(desc(demoSessionsTable.createdAt)).limit(200),
+    db.select({
+      subject: demoBatchesTable.subject,
+      teacherName: liveClassesTable.teacher,
+      createdAt: liveClassesTable.createdAt
+    }).from(liveClassesTable).innerJoin(
+      demoBatchesTable,
+      eq(liveClassesTable.igniteBatchId, demoBatchesTable.id)
+    ).where(and(
+      eq(liveClassesTable.classType, "ignite"),
+      isNotNull(demoBatchesTable.subject)
+    )).orderBy(desc(liveClassesTable.createdAt)).limit(200)
   ]);
+  const recentSessions = [...historicalSessions, ...igniteSessions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 200);
   const suggestions = {};
   for (const s2 of recentSessions) {
     if (s2.subject && s2.teacherName && !suggestions[s2.subject]) {
@@ -131101,7 +131113,7 @@ router28.get("/admin/ignite/analytics", adminOnly7, async (_req, res) => {
   const startOfThisWeek = new Date(now);
   startOfThisWeek.setDate(now.getDate() - 6);
   startOfThisWeek.setHours(0, 0, 0, 0);
-  const [allEnrollments, allSessions, allBatches] = await Promise.all([
+  const [allEnrollments, historicalSessions, igniteSessions, allBatches] = await Promise.all([
     db.select({
       id: demoBatchEnrollmentsTable.id,
       batchId: demoBatchEnrollmentsTable.batchId,
@@ -131118,10 +131130,28 @@ router28.get("/admin/ignite/analytics", adminOnly7, async (_req, res) => {
       interestLevel: usersTable.interestLevel,
       callStatus: usersTable.callStatus
     }).from(demoBatchEnrollmentsTable).innerJoin(usersTable, eq(demoBatchEnrollmentsTable.studentId, usersTable.id)).orderBy(desc(demoBatchEnrollmentsTable.enrolledAt)),
+    // Historical Ignite sessions are retained solely for pre-migration analytics.
     db.select().from(demoSessionsTable).orderBy(desc(demoSessionsTable.scheduledAt)),
+    // New Ignite sessions share the live_classes engine with Mastery.
+    db.select({
+      batchId: liveClassesTable.igniteBatchId,
+      scheduledAt: liveClassesTable.scheduledAt,
+      status: liveClassesTable.status
+    }).from(liveClassesTable).where(and(
+      eq(liveClassesTable.classType, "ignite"),
+      isNotNull(liveClassesTable.igniteBatchId)
+    )).orderBy(desc(liveClassesTable.scheduledAt)),
     db.select().from(demoBatchesTable)
   ]);
   const batchMap = Object.fromEntries(allBatches.map((b) => [b.id, b]));
+  const allSessions = [
+    ...historicalSessions,
+    ...igniteSessions.map((session) => ({
+      batchId: session.batchId,
+      scheduledAt: session.scheduledAt,
+      status: session.status
+    }))
+  ];
   const isThisMonth = (d) => d && d >= startOfThisMonth && d <= now;
   const isLastMonth = (d) => d && d >= startOfLastMonth && d <= endOfLastMonth;
   const isThisWeek = (d) => d && d >= startOfThisWeek && d <= now;
