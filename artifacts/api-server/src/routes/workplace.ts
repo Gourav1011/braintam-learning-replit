@@ -8,6 +8,8 @@ import {
   workplaceMessagesTable,
   workplaceNotificationsTable,
   workplaceTasksTable,
+  workplaceTaskRemarksTable,
+  workplaceTaskEventsTable,
 } from "@workspace/db";
 import { requireRole } from "../middlewares/auth.js";
 import {
@@ -26,6 +28,7 @@ const workplaceAuth = requireRole(
   "mentor",
   "sales_mentor",
   "academic_mentor",
+  "super_admin",
 );
 
 const employeeRoles = ["admin", "teacher", "mentor", "sales_mentor", "academic_mentor", "super_admin"];
@@ -560,6 +563,58 @@ router.get("/workplace/tasks", workplaceAuth, async (req, res): Promise<void> =>
     tasks.map(async (task) => await hasConversationAccess(task.conversationId, userId) ? task : null),
   )).filter(Boolean);
   res.json({ tasks: visibleTasks });
+});
+
+router.get("/workplace/tasks/:id", workplaceAuth, async (req, res): Promise<void> => {
+  const taskId = parseId(req.params.id);
+  if (!taskId) { res.status(400).json({ error: "Invalid task." }); return; }
+
+  const [task] = await db.select().from(workplaceTasksTable)
+    .where(eq(workplaceTasksTable.id, taskId))
+    .limit(1);
+  if (!task) { res.status(404).json({ error: "Task not found." }); return; }
+
+  const isAdmin = ["admin", "super_admin"].includes(String(req.authUser!.role));
+  if (!isAdmin && task.assigneeId !== req.authUser!.id && task.assignedById !== req.authUser!.id) {
+    res.status(403).json({ error: "Task access denied." });
+    return;
+  }
+  if (!await hasConversationAccess(task.conversationId, req.authUser!.id)) {
+    res.status(403).json({ error: "Conversation access denied." });
+    return;
+  }
+
+  const [assignee, assigner, remarks, events] = await Promise.all([
+    employeeById(task.assigneeId),
+    employeeById(task.assignedById),
+    db.select({
+      id: workplaceTaskRemarksTable.id,
+      taskId: workplaceTaskRemarksTable.taskId,
+      authorId: workplaceTaskRemarksTable.authorId,
+      authorName: sql<string>`author.name`,
+      content: workplaceTaskRemarksTable.content,
+      mentionsJson: workplaceTaskRemarksTable.mentionsJson,
+      createdAt: workplaceTaskRemarksTable.createdAt,
+    }).from(workplaceTaskRemarksTable)
+      .innerJoin(sql`users author`, sql`author.id = ${workplaceTaskRemarksTable.authorId}`)
+      .where(eq(workplaceTaskRemarksTable.taskId, taskId))
+      .orderBy(asc(workplaceTaskRemarksTable.createdAt)),
+    db.select().from(workplaceTaskEventsTable)
+      .where(eq(workplaceTaskEventsTable.taskId, taskId))
+      .orderBy(asc(workplaceTaskEventsTable.createdAt)),
+  ]);
+
+  res.json({
+    task: {
+      ...task,
+      assignee,
+      assigner,
+      assigneeName: assignee?.name ?? null,
+      assignedByName: assigner?.name ?? null,
+    },
+    remarks,
+    events,
+  });
 });
 
 router.post("/workplace/tasks", workplaceAuth, async (req, res): Promise<void> => {

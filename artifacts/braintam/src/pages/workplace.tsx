@@ -301,11 +301,9 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
     if (isSuccess && conversation?.unreadCount > 0 && hasRead.current !== conversationId) {
       hasRead.current = conversationId;
       readMutation.mutate(conversationId, {
-        onSettled: () => {
-          if (hasRead.current === conversationId) {
-            hasRead.current = null;
-          }
-        }
+        // Keep this conversation marked as attempted for its entire mount.
+        // The conversation query will refresh its unread count; resetting here
+        // would cause the effect to post /read again on every invalidation.
       });
     }
   }, [conversationId, conversation?.unreadCount, isSuccess, readMutation]);
@@ -649,9 +647,9 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
           tasks.map((t: any) => (
             <button
               key={t.id}
-              onClick={() => onSelect(t.id)}
+              onClick={() => onSelect(String(t.id))}
               className={`w-full text-left p-2.5 rounded-lg border transition-all ${
-                selectedId === t.id 
+                selectedId === String(t.id)
                   ? "bg-blue-50 border-blue-200 shadow-sm" 
                   : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
               }`}
@@ -693,7 +691,7 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
 
 function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: string; onClose: () => void; onViewConversation: (id: string) => void }) {
   const { student } = useAuth();
-  const { data: detail, isLoading } = useGetTask(taskId);
+  const { data: detail, isLoading, isError, refetch } = useGetTask(taskId);
   const [remark, setRemark] = useState("");
   const [employeeQuery, setEmployeeQuery] = useState("");
   const [showReassign, setShowReassign] = useState(false);
@@ -707,7 +705,22 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
   const remarkMut = useCreateTaskRemark();
   const updateMut = useUpdateTask();
 
-  if (isLoading || !task) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-40 h-6" /></div>;
+  if (isLoading) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-40 h-6" /></div>;
+  if (isError || !task) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-5 text-center">
+        <AlertCircle className="h-8 w-8 text-red-400" />
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Task could not be loaded</p>
+          <p className="mt-1 text-xs text-gray-500">The task may have been removed or you may not have access.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
+          <Button size="sm" onClick={onClose}>Back to tasks</Button>
+        </div>
+      </div>
+    );
+  }
   const isAdmin = ["admin", "super_admin"].includes(String(student?.role));
   const canChangeStatus = isAdmin || String(task.assigneeId) === String(student?.id);
   const canReassign = task.status !== "completed" && (isAdmin || String(task.assignedById) === String(student?.id));

@@ -1,0 +1,208 @@
+UI-ONLY CHANGE — DO NOT REBUILD WORKPLACE
+
+I am attaching a reference image.
+
+Make the existing Braintam Workplace UI look as close as possible to the attached reference image.
+
+IMPORTANT:
+This is ONLY a frontend/UI redesign.
+
+DO NOT change:
+- Backend
+- Database
+- APIs
+- Authentication
+- Permissions
+- Socket.IO
+- Chat functionality
+- Group functionality
+- Tasks
+- Task history
+- Notifications
+- Unread/read logic
+- Employee search
+- @mentions
+- Message edit/delete/history
+- Portal routing
+- Existing portal shell
+
+Everything already works. Change ONLY the visual presentation.
+
+REFERENCE IMAGE = THE DESIGN SOURCE
+
+Match the reference image closely in:
+- Overall layout
+- 3-column structure
+- Column widths
+- Sidebar structure
+- Workplace submenu
+- Chat list
+- Active conversation area
+- Right-side details panel
+- Typography hierarchy
+- Font sizing
+- Spacing
+- Padding
+- Borders
+- Border radius
+- Shadows
+- Icons
+- Avatar sizes
+- Badges
+- Buttons
+- Tabs
+- Search boxes
+- Message bubbles
+- Task cards
+- Activity cards
+- Empty states
+- Header alignment
+- Visual hierarchy
+
+TARGET STRUCTURE:
+
+LEFT:
+Existing Braintam portal sidebar.
+
+Workplace should be expanded:
+
+Workplace
+  Conversations
+  Groups
+  My Tasks
+  Alerts
+
+Keep the existing portal navigation and branding.
+
+MIDDLE-LEFT:
+Workplace conversation panel:
+
+- Chat / Tasks / Alerts tabs at the top
+- Search conversations
+- New Chat button
+- Direct conversations
+- Group conversations
+- Avatar
+- Name
+- Last message
+- Time
+- Unread badge
+
+CENTER:
+Active conversation:
+
+- Compact conversation header
+- Avatar
+- Name
+- Online status
+- Small action icons
+- Messages
+- Message timestamps
+- Read indicators
+- Message action menu on hover
+- Compact message composer
+- Attachment
+- @mention
+- Emoji
+- Send
+
+RIGHT:
+Compact details panel:
+
+- Contact/member details
+- Tasks
+- Recent activity
+- Related information
+- View all actions
+
+When a task is opened, use the same right/main detail area rather than creating a completely new large page.
+
+TASK UI:
+
+Keep task functionality exactly as it is, but visually redesign it to resemble the reference:
+
+- High Priority badge
+- Status badge
+- Task title
+- Assignee
+- Reporter
+- Due date
+- Priority
+- Description
+- Work Updates
+- Activity
+- Reassign
+- View Conversation
+- Pending / In Progress / Completed
+
+Make task information compact and visually organized.
+
+IMPORTANT VISUAL REQUIREMENT:
+
+The current Workplace is too plain and uses too much empty space.
+
+Make it:
+- Premium
+- Clean
+- Compact
+- Modern
+- Professional
+- Braintam-branded
+
+BUT DO NOT make it heavy.
+
+Avoid:
+- Huge cards
+- Huge headings
+- Excessive whitespace
+- Large empty areas
+- Excessive animations
+- Gradients everywhere
+- Glassmorphism
+- Heavy shadows
+- Oversized buttons
+- Large dashboard statistics
+- Unnecessary decorative elements
+
+Use subtle borders, very light shadows, rounded corners and restrained Braintam blue accents similar to the reference image.
+
+RESPONSIVE:
+
+Keep the existing responsive/mobile behavior.
+
+Desktop should closely match the attached reference.
+
+On smaller screens, intelligently collapse the columns rather than creating horizontal overflow.
+
+VERY IMPORTANT:
+
+Do not create a new component architecture unless necessary.
+
+Reuse the existing Workplace components and existing data.
+
+Do not rewrite working functionality just to change the appearance.
+
+Do not change database/API contracts.
+
+Do not change routes.
+
+Do not change the existing portal header/sidebar.
+
+ONLY redesign the Workplace frontend presentation.
+
+Before finishing:
+
+1. Inspect the attached reference image carefully.
+2. Inspect the current Workplace UI.
+3. Modify only the necessary CSS/layout/component presentation.
+4. Preserve all existing functionality.
+5. Run the frontend typecheck/build if feasible.
+6. Verify there are no functional regressions.
+
+The final result should feel like:
+
+"Premium Braintam Workplace"
+
+—not a separate application and not a generic chat template.
+
+MATCH THE ATTACHED REFERENCE IMAGE AS CLOSELY AS PRACTICAL WHILE KEEPING THE EXISTING BRAINTAM DESIGN SYSTEM.
