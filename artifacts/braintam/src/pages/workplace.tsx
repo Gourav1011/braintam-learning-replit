@@ -65,7 +65,19 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   const activeConversation = (conversationData as any)?.conversations?.find(
     (conversation: any) => String(conversation.id) === String(selectedConversationId),
   );
+  const readConversationMutation = useReadConversation();
+  const markUnreadConversationsRead = () => {
+    const unreadConversations = ((conversationData as any)?.conversations || []).filter(
+      (conversation: any) => Number(conversation.unreadCount || 0) > 0,
+    );
+    unreadConversations.forEach((conversation: any) => {
+      readConversationMutation.mutate(String(conversation.id));
+    });
+  };
   const selectSection = (section: WorkplaceSection) => {
+    if (section === "conversations" || section === "groups") {
+      markUnreadConversationsRead();
+    }
     setActiveSection(section);
     setSelectedConversationId(null);
     setSelectedTaskId(null);
