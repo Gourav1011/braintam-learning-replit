@@ -84,7 +84,7 @@ async function getConversation(conversationId: number) {
   return conversation ?? null;
 }
 
-async function employeeById(userId: number) {
+async function employeeById(userId: number, includeHistorical = false) {
   const [user] = await db
     .select({
       id: usersTable.id,
@@ -98,9 +98,9 @@ async function employeeById(userId: number) {
     .from(usersTable)
     .where(and(
       eq(usersTable.id, userId),
-      eq(usersTable.isActive, true),
-      eq(usersTable.isDeleted, false),
-      or(...employeeRoles.map((role) => eq(usersTable.role, role))),
+      includeHistorical ? undefined : eq(usersTable.isActive, true),
+      includeHistorical ? undefined : eq(usersTable.isDeleted, false),
+      includeHistorical ? undefined : or(...employeeRoles.map((role) => eq(usersTable.role, role))),
     ))
     .limit(1);
   return user ?? null;
@@ -139,6 +139,16 @@ async function createNotification(
   }
   emitWorkplaceUser(userId, "workplace:notification", notification, conversationId);
   return notification;
+}
+
+async function emitWorkplaceTaskChange(
+  conversationId: number | null,
+  involvedUserIds: number[],
+  event: string,
+  payload: unknown,
+): Promise<void> {
+  const recipientIds = new Set(involvedUserIds);
+  recipientIds.forEach((userId) => emitWorkplaceUser(userId, event, payload, conversationId ?? undefined));
 }
 
 async function conversationSummary(conversationId: number, userId: number) {
@@ -535,10 +545,23 @@ router.delete("/workplace/conversations/:id/members/:userId", workplaceAuth, asy
 
 router.get("/workplace/tasks", workplaceAuth, async (req, res): Promise<void> => {
   const userId = req.authUser!.id;
-  const view = req.query.view === "assigned" ? "assigned" : "mine";
-  const condition = view === "assigned"
+  const view = req.query.view === "assigned"
+    ? "assigned"
+    : req.query.view === "completed"
+      ? "completed"
+      : "mine";
+  const isAdmin = ["admin", "super_admin"].includes(String(req.authUser!.role));
+  const statusCondition = view === "completed"
+    ? eq(workplaceTasksTable.status, "completed")
+    : inArray(workplaceTasksTable.status, ["pending", "in_progress"]);
+  const ownershipCondition = view === "assigned"
     ? eq(workplaceTasksTable.assignedById, userId)
-    : eq(workplaceTasksTable.assigneeId, userId);
+    : view === "completed"
+      ? or(eq(workplaceTasksTable.assigneeId, userId), eq(workplaceTasksTable.assignedById, userId))
+      : eq(workplaceTasksTable.assigneeId, userId);
+  const condition = isAdmin && view === "completed"
+    ? statusCondition
+    : and(statusCondition, ownershipCondition);
   const tasks = await db.select({
     id: workplaceTasksTable.id,
     conversationId: workplaceTasksTable.conversationId,
@@ -551,16 +574,26 @@ router.get("/workplace/tasks", workplaceAuth, async (req, res): Promise<void> =>
     createdAt: workplaceTasksTable.createdAt,
     updatedAt: workplaceTasksTable.updatedAt,
     assigneeId: workplaceTasksTable.assigneeId,
-    assigneeName: sql<string>`assignee.name`,
+    assigneeName: sql<string | null>`assignee.name`,
+    assigneeIsActive: sql<boolean | null>`assignee.is_active`,
     assignedById: workplaceTasksTable.assignedById,
-    assignedByName: sql<string>`assigner.name`,
+    assignedByName: sql<string | null>`assigner.name`,
+    assignedByIsActive: sql<boolean | null>`assigner.is_active`,
+    completedAt: workplaceTasksTable.completedAt,
+    completedById: workplaceTasksTable.completedById,
+    completedByName: sql<string | null>`completed_by.name`,
   }).from(workplaceTasksTable)
-    .innerJoin(sql`users assignee`, sql`assignee.id = ${workplaceTasksTable.assigneeId}`)
-    .innerJoin(sql`users assigner`, sql`assigner.id = ${workplaceTasksTable.assignedById}`)
+    .leftJoin(sql`users assignee`, sql`assignee.id = ${workplaceTasksTable.assigneeId}`)
+    .leftJoin(sql`users assigner`, sql`assigner.id = ${workplaceTasksTable.assignedById}`)
+    .leftJoin(sql`users completed_by`, sql`completed_by.id = ${workplaceTasksTable.completedById}`)
     .where(condition)
     .orderBy(asc(workplaceTasksTable.status), asc(workplaceTasksTable.dueDate), desc(workplaceTasksTable.createdAt));
   const visibleTasks = (await Promise.all(
-    tasks.map(async (task) => await hasConversationAccess(task.conversationId, userId) ? task : null),
+    tasks.map(async (task) => (
+      (isAdmin && view === "completed") || await hasConversationAccess(task.conversationId, userId)
+        ? task
+        : null
+    )),
   )).filter(Boolean);
   res.json({ tasks: visibleTasks });
 });
@@ -575,18 +608,22 @@ router.get("/workplace/tasks/:id", workplaceAuth, async (req, res): Promise<void
   if (!task) { res.status(404).json({ error: "Task not found." }); return; }
 
   const isAdmin = ["admin", "super_admin"].includes(String(req.authUser!.role));
-  if (!isAdmin && task.assigneeId !== req.authUser!.id && task.assignedById !== req.authUser!.id) {
+  const isTaskParticipant = task.assigneeId === req.authUser!.id || task.assignedById === req.authUser!.id;
+  const canAuditCompleted = isAdmin && task.status === "completed";
+  if (!isTaskParticipant && !canAuditCompleted) {
     res.status(403).json({ error: "Task access denied." });
     return;
   }
-  if (!await hasConversationAccess(task.conversationId, req.authUser!.id)) {
+  if (!canAuditCompleted && !await hasConversationAccess(task.conversationId, req.authUser!.id)) {
     res.status(403).json({ error: "Conversation access denied." });
     return;
   }
 
-  const [assignee, assigner, remarks, events] = await Promise.all([
-    employeeById(task.assigneeId),
-    employeeById(task.assignedById),
+  const includeHistoricalEmployees = isAdmin && task.status === "completed";
+  const [assignee, assigner, completedBy, remarks, events] = await Promise.all([
+    employeeById(task.assigneeId, includeHistoricalEmployees),
+    employeeById(task.assignedById, includeHistoricalEmployees),
+    task.completedById ? employeeById(task.completedById, true) : Promise.resolve(null),
     db.select({
       id: workplaceTaskRemarksTable.id,
       taskId: workplaceTaskRemarksTable.taskId,
@@ -599,7 +636,24 @@ router.get("/workplace/tasks/:id", workplaceAuth, async (req, res): Promise<void
       .innerJoin(sql`users author`, sql`author.id = ${workplaceTaskRemarksTable.authorId}`)
       .where(eq(workplaceTaskRemarksTable.taskId, taskId))
       .orderBy(asc(workplaceTaskRemarksTable.createdAt)),
-    db.select().from(workplaceTaskEventsTable)
+    db.select({
+      id: workplaceTaskEventsTable.id,
+      taskId: workplaceTaskEventsTable.taskId,
+      eventType: workplaceTaskEventsTable.eventType,
+      actorId: workplaceTaskEventsTable.actorId,
+      actorName: sql<string | null>`actor.name`,
+      oldAssigneeId: workplaceTaskEventsTable.oldAssigneeId,
+      oldAssigneeName: sql<string | null>`old_assignee.name`,
+      newAssigneeId: workplaceTaskEventsTable.newAssigneeId,
+      newAssigneeName: sql<string | null>`new_assignee.name`,
+      oldStatus: workplaceTaskEventsTable.oldStatus,
+      newStatus: workplaceTaskEventsTable.newStatus,
+      note: workplaceTaskEventsTable.note,
+      createdAt: workplaceTaskEventsTable.createdAt,
+    }).from(workplaceTaskEventsTable)
+      .leftJoin(sql`users actor`, sql`actor.id = ${workplaceTaskEventsTable.actorId}`)
+      .leftJoin(sql`users old_assignee`, sql`old_assignee.id = ${workplaceTaskEventsTable.oldAssigneeId}`)
+      .leftJoin(sql`users new_assignee`, sql`new_assignee.id = ${workplaceTaskEventsTable.newAssigneeId}`)
       .where(eq(workplaceTaskEventsTable.taskId, taskId))
       .orderBy(asc(workplaceTaskEventsTable.createdAt)),
   ]);
@@ -609,8 +663,11 @@ router.get("/workplace/tasks/:id", workplaceAuth, async (req, res): Promise<void
       ...task,
       assignee,
       assigner,
+      completedBy,
       assigneeName: assignee?.name ?? null,
       assignedByName: assigner?.name ?? null,
+      completedByName: completedBy?.name ?? null,
+      completedAt: task.completedAt ?? (task.status === "completed" ? task.updatedAt : null),
     },
     remarks,
     events,
@@ -655,10 +712,22 @@ router.post("/workplace/tasks", workplaceAuth, async (req, res): Promise<void> =
     res.status(403).json({ error: "Conversation access denied." });
     return;
   }
+  await db.insert(workplaceTaskEventsTable).values({
+    taskId: task.id,
+    eventType: "task_created",
+    actorId: req.authUser!.id,
+    newAssigneeId: assigneeId,
+    newStatus: "pending",
+  });
   if (task.assigneeId !== req.authUser!.id) {
     await createNotification(task.assigneeId, "task_assigned", "New task assigned", `${req.authUser!.name} assigned you: ${task.title}`, req.authUser!.id, resolvedConversationId ?? undefined, task.id);
   }
-  if (resolvedConversationId) emitWorkplaceConversation(resolvedConversationId, "workplace:task_created", task);
+  await emitWorkplaceTaskChange(
+    resolvedConversationId,
+    [task.assigneeId, task.assignedById],
+    "workplace:task_created",
+    task,
+  );
   res.status(201).json(task);
 });
 
@@ -667,34 +736,73 @@ router.patch("/workplace/tasks/:id", workplaceAuth, async (req, res): Promise<vo
   if (!taskId) { res.status(400).json({ error: "Invalid task." }); return; }
   const [task] = await db.select().from(workplaceTasksTable).where(eq(workplaceTasksTable.id, taskId)).limit(1);
   if (!task) { res.status(404).json({ error: "Task not found." }); return; }
-  if (task.assigneeId !== req.authUser!.id && task.assignedById !== req.authUser!.id) {
+  const isAdmin = ["admin", "super_admin"].includes(String(req.authUser!.role));
+  const isTaskParticipant = task.assigneeId === req.authUser!.id || task.assignedById === req.authUser!.id;
+  const canAuditCompleted = isAdmin && task.status === "completed";
+  if (!isTaskParticipant && !canAuditCompleted) {
     res.status(403).json({ error: "Task access denied." }); return;
   }
-  if (!await hasConversationAccess(task.conversationId, req.authUser!.id)) {
+  if (!canAuditCompleted && !await hasConversationAccess(task.conversationId, req.authUser!.id)) {
     res.status(403).json({ error: "Conversation access denied." });
     return;
   }
+
   const nextStatus = req.body?.status;
-  if (nextStatus !== undefined && (!["pending", "in_progress", "completed"].includes(String(nextStatus)) ||
-    (task.assigneeId !== req.authUser!.id && nextStatus !== task.status))) {
+  const hasAssigneeChange = Object.prototype.hasOwnProperty.call(req.body ?? {}, "assigneeId");
+  const parsedAssigneeId = hasAssigneeChange ? parsePositiveId(req.body?.assigneeId) : null;
+  if (hasAssigneeChange && parsedAssigneeId === null) {
+    res.status(400).json({ error: "Invalid assignee." }); return;
+  }
+  const nextAssigneeId: number | undefined = parsedAssigneeId ?? undefined;
+  const statusChanged = nextStatus !== undefined && nextStatus !== task.status;
+  const assigneeChanged = nextAssigneeId !== undefined && nextAssigneeId !== task.assigneeId;
+
+  if (nextStatus !== undefined && !["pending", "in_progress", "completed"].includes(String(nextStatus))) {
+    res.status(400).json({ error: "Invalid task status." }); return;
+  }
+  const canReopenCompleted = canAuditCompleted && nextStatus === "in_progress";
+  if (statusChanged && task.assigneeId !== req.authUser!.id && !canReopenCompleted) {
     res.status(403).json({ error: "Only the assignee can change task status." }); return;
   }
+  if (assigneeChanged && task.assignedById !== req.authUser!.id) {
+    res.status(403).json({ error: "Only the assigner can reassign this task." }); return;
+  }
+
   const permittedTransitions: Record<string, string[]> = {
     pending: ["in_progress"],
     in_progress: ["completed"],
-    completed: [],
+    completed: ["in_progress"],
   };
-  if (nextStatus !== undefined && nextStatus !== task.status && !permittedTransitions[task.status]?.includes(String(nextStatus))) {
-    res.status(400).json({ error: "Tasks progress from Pending to In Progress to Completed." });
+  if (statusChanged && !permittedTransitions[task.status]?.includes(String(nextStatus))) {
+    res.status(400).json({ error: "Tasks progress from Pending to In Progress to Completed; completed tasks can be reopened to In Progress." });
     return;
   }
+  if (assigneeChanged) {
+    if (!await employeeById(nextAssigneeId!)) {
+      res.status(404).json({ error: "Assignee not found." }); return;
+    }
+    if (task.conversationId && !await isMember(task.conversationId, nextAssigneeId!)) {
+      res.status(400).json({ error: "Assignee must be a conversation member." }); return;
+    }
+  }
+  if (!statusChanged && !assigneeChanged) {
+    res.json(task);
+    return;
+  }
+
+  const now = new Date();
   const [updated] = await db.update(workplaceTasksTable).set({
     ...(nextStatus !== undefined ? { status: nextStatus } : {}),
-    updatedAt: new Date(),
+    ...(nextAssigneeId !== undefined ? { assigneeId: nextAssigneeId } : {}),
+    ...(statusChanged && nextStatus === "completed" ? { completedAt: now, completedById: req.authUser!.id } : {}),
+    updatedAt: now,
   }).where(eq(workplaceTasksTable.id, taskId)).returning();
-  if (!await hasConversationAccess(task.conversationId, req.authUser!.id)) {
+  if (!canAuditCompleted && !await hasConversationAccess(task.conversationId, req.authUser!.id)) {
     await db.update(workplaceTasksTable).set({
       status: task.status,
+      assigneeId: task.assigneeId,
+      completedAt: task.completedAt,
+      completedById: task.completedById,
       updatedAt: task.updatedAt,
     }).where(and(
       eq(workplaceTasksTable.id, taskId),
@@ -703,12 +811,93 @@ router.patch("/workplace/tasks/:id", workplaceAuth, async (req, res): Promise<vo
     res.status(403).json({ error: "Conversation access denied." });
     return;
   }
-  if (nextStatus && nextStatus !== task.status) {
+
+  const taskEvents = [];
+  if (assigneeChanged) {
+    taskEvents.push({
+      taskId,
+      eventType: "task_reassigned",
+      actorId: req.authUser!.id,
+      oldAssigneeId: task.assigneeId,
+      newAssigneeId: nextAssigneeId!,
+    });
+  }
+  if (statusChanged) {
+    taskEvents.push({
+      taskId,
+      eventType: nextStatus === "completed"
+        ? "task_completed"
+        : task.status === "completed" && nextStatus === "in_progress"
+          ? "task_reopened"
+          : "task_status_changed",
+      actorId: req.authUser!.id,
+      oldStatus: task.status,
+      newStatus: String(nextStatus),
+    });
+  }
+  if (taskEvents.length) await db.insert(workplaceTaskEventsTable).values(taskEvents);
+
+  if (statusChanged) {
     const recipient = task.assigneeId === req.authUser!.id ? task.assignedById : task.assigneeId;
     await createNotification(recipient, nextStatus === "completed" ? "task_completed" : "task_updated", nextStatus === "completed" ? "Task completed" : "Task status updated", `${req.authUser!.name} marked "${task.title}" ${nextStatus.replace("_", " ")}.`, req.authUser!.id, task.conversationId ?? undefined, task.id);
-    if (task.conversationId) emitWorkplaceConversation(task.conversationId, "workplace:task_updated", updated);
   }
+  if (assigneeChanged && nextAssigneeId !== req.authUser!.id) {
+    await createNotification(nextAssigneeId!, "task_assigned", "Task reassigned", `${req.authUser!.name} reassigned "${task.title}" to you.`, req.authUser!.id, task.conversationId ?? undefined, task.id);
+  }
+  await emitWorkplaceTaskChange(
+    task.conversationId,
+    [task.assigneeId, task.assignedById, ...(nextAssigneeId ? [nextAssigneeId] : [])],
+    assigneeChanged ? "workplace:task_reassigned" : "workplace:task_updated",
+    updated,
+  );
   res.json(updated);
+});
+
+router.post("/workplace/tasks/:id/remarks", workplaceAuth, async (req, res): Promise<void> => {
+  const taskId = parseId(req.params.id);
+  const content = cleanText(req.body?.content, 2_000);
+  if (!taskId || !content) { res.status(400).json({ error: "Task update is required." }); return; }
+  const [task] = await db.select().from(workplaceTasksTable).where(eq(workplaceTasksTable.id, taskId)).limit(1);
+  if (!task) { res.status(404).json({ error: "Task not found." }); return; }
+  if (task.assigneeId !== req.authUser!.id && task.assignedById !== req.authUser!.id) {
+    res.status(403).json({ error: "Task access denied." }); return;
+  }
+  if (!await hasConversationAccess(task.conversationId, req.authUser!.id)) {
+    res.status(403).json({ error: "Conversation access denied." }); return;
+  }
+
+  const participantIds = new Set([task.assigneeId, task.assignedById]);
+  if (task.conversationId) {
+    const members = await db.select({ userId: workplaceMembersTable.userId })
+      .from(workplaceMembersTable)
+      .where(eq(workplaceMembersTable.conversationId, task.conversationId));
+    members.forEach(({ userId }) => participantIds.add(userId));
+  }
+  const rawMentionUserIds: unknown[] = Array.isArray(req.body?.mentionUserIds) ? req.body.mentionUserIds : [];
+  const mentionUserIds: number[] = rawMentionUserIds
+    .map((value: unknown) => parsePositiveId(value))
+    .filter((userId): userId is number => userId !== null && participantIds.has(userId));
+  const [remark] = await db.insert(workplaceTaskRemarksTable).values({
+    taskId,
+    authorId: req.authUser!.id,
+    content,
+    mentionsJson: mentionUserIds.length ? JSON.stringify(mentionUserIds) : null,
+  }).returning();
+  await db.insert(workplaceTaskEventsTable).values({
+    taskId,
+    eventType: "work_update_added",
+    actorId: req.authUser!.id,
+  });
+  await Promise.all(mentionUserIds
+    .filter((userId: number) => userId !== req.authUser!.id)
+    .map((userId: number) => createNotification(userId, "task_mention", "Mentioned in a task update", `${req.authUser!.name} mentioned you in "${task.title}".`, req.authUser!.id, task.conversationId ?? undefined, task.id)));
+  await emitWorkplaceTaskChange(
+    task.conversationId,
+    [task.assigneeId, task.assignedById],
+    "workplace:task_remark",
+    { id: task.id, taskId: task.id },
+  );
+  res.status(201).json(remark);
 });
 
 router.get("/workplace/notifications", workplaceAuth, async (req, res): Promise<void> => {

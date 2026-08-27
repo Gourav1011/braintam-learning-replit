@@ -27,3 +27,4 @@
 - [Additive schema safeguards](additive-schema-safeguards.md) — protect fresh deployments when full schema push is blocked by unrelated database drift.
 - [Workplace membership revocation](workplace-membership-revocation.md) — revoke membership and scoped notifications before evicting/disconnecting every affected Workplace socket.
 - [Embedded Workplace navigation](embedded-workplace-navigation.md) — Workplace is a staff-portal section, never a standalone shell; portal navigation owns its selected section.
+- [Workplace task realtime visibility](workplace-task-realtime-visibility.md) — task Socket.IO payloads must reach only users authorized by task-role policy, not all conversation members.

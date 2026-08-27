@@ -12,7 +12,7 @@ import {
   Send, MoreVertical, Calendar, Clock, AlertCircle, 
   CheckCircle2, Circle, ArrowRight, UserPlus, FileText,
   Users, ChevronRight, Inbox, Copy, Reply, AtSign, Pencil, Trash2, History,
-  Phone, Video, Paperclip, Smile, PanelRight, X
+  Phone, Video, Paperclip, Smile, PanelRight, X, RotateCcw
 } from "lucide-react";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import { 
@@ -824,9 +824,10 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
                 )}
                 <span className="text-[10px] text-gray-500 flex items-center gap-1">
                   <UserPlus className="w-3 h-3" />
-                  {view === "mine" ? `By ${t.assignedByName}` : `To ${t.assigneeName}`}
+                  {view === "mine" ? `By ${t.assignedByName || "Former employee"}` : `To ${t.assigneeName || "Former employee"}`}
                 </span>
                 <span className="text-[10px] capitalize text-gray-500">{t.priority} priority</span>
+                {view === "completed" && t.completedAt && <span className="text-[10px] text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{format(new Date(t.completedAt), "MMM d")}</span>}
               </div>
             </button>
           ))
@@ -871,8 +872,12 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
     );
   }
   const isAdmin = ["admin", "super_admin"].includes(String(student?.role));
-  const canChangeStatus = isAdmin || String(task.assigneeId) === String(student?.id);
-  const canReassign = task.status !== "completed" && (isAdmin || String(task.assignedById) === String(student?.id));
+  const isAssignee = String(task.assigneeId) === String(student?.id);
+  const isAssigner = String(task.assignedById) === String(student?.id);
+  const canChangeStatus = isAssignee;
+  const canReopen = task.status === "completed" && (isAssignee || isAdmin);
+  const canReassign = task.status !== "completed" && isAssigner;
+  const canAddRemark = isAssignee || isAssigner;
   const linkedConversation = (conversationData?.conversations || []).find((item: any) => String(item.id) === String(task.conversationId));
   const eligibleEmployees = task.conversationId
     ? (employeeResults || []).filter((employee: any) => linkedConversation?.members?.some((member: any) => String(member.id) === String(employee.id)))
@@ -887,6 +892,15 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
 
   const dueDays = task.dueDate ? Math.ceil((new Date(task.dueDate).getTime() - Date.now()) / 86_400_000) : null;
   const eventPalette = ["bg-[#2f6fed]", "bg-[#14b8a6]", "bg-[#7c5ce5]", "bg-[#f59e0b]"];
+  const eventLabel = (event: any) => {
+    if (event.eventType === "task_created") return event.newAssigneeName ? `Task created and assigned to ${event.newAssigneeName}` : "Task created";
+    if (event.eventType === "task_completed") return "Task completed";
+    if (event.eventType === "task_reopened") return "Task reopened";
+    if (event.eventType === "task_reassigned") return `Assigned to ${event.newAssigneeName || "another employee"}`;
+    if (event.eventType === "work_update_added") return "Work update added";
+    if (event.eventType === "task_status_changed") return `Status changed to ${String(event.newStatus || "").replace("_", " ")}`;
+    return String(event.eventType || "Task updated").replace(/_/g, " ");
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
@@ -963,6 +977,15 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
             </div>
           </div>
 
+          {task.completedAt && <div className={`mb-3.5 flex items-center gap-2 rounded-lg border px-3 py-2 text-[10px] ${
+            task.status === "completed" ? "border-[#bdebd7] bg-[#f3fcf7] text-[#177a56]" : "border-slate-200 bg-white text-slate-500"
+          }`}>
+            <CheckCircle2 className={`h-3.5 w-3.5 ${task.status === "completed" ? "text-[#169968]" : "text-slate-400"}`} />
+            <span className="font-semibold">{task.status === "completed" ? "Completed" : "Last completed"} {format(new Date(task.completedAt), "MMM d, yyyy · h:mm a")}</span>
+            <span className="text-slate-400">by</span>
+            <span className="font-semibold text-slate-700">{task.completedBy?.name || task.completedByName || "Former employee"}</span>
+          </div>}
+
           {task.description && <div className="mb-3.5">
             <h3 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-800"><FileText className="h-3.5 w-3.5 text-slate-400" /> Description</h3>
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[11px] leading-relaxed text-slate-600">{task.description}</div>
@@ -979,13 +1002,12 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(240px,0.88fr)]">
             <section className="min-w-0">
               <div className="mb-2 flex items-baseline gap-2"><h3 className="text-[11px] font-bold text-slate-900">Work Updates</h3><span className="text-[9px] text-slate-400">@mentions notify participants only</span></div>
-              {mentionMembers.length > 0 && <div className="mb-1 max-w-xs rounded border bg-white p-1 shadow-sm">{mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertRemarkMention(member)} className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-100">@{member.name}</button>)}</div>}
-              <div className="flex items-end gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.02)]"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[34px] border-0 bg-transparent px-2 py-1.5 text-[11px] shadow-none focus-visible:ring-0" /><span className="mb-0.5 inline-flex h-7 w-7 items-center justify-center text-slate-400"><AtSign className="h-3.5 w-3.5" /></span><Button size="sm" className="mb-0.5 h-7 bg-[#2f6fed] px-2.5 text-[10px] hover:bg-[#245dcc]" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div>
+              {canAddRemark ? <><>{mentionMembers.length > 0 && <div className="mb-1 max-w-xs rounded border bg-white p-1 shadow-sm">{mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertRemarkMention(member)} className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-100">@{member.name}</button>)}</div>}</><div className="flex items-end gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.02)]"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[34px] border-0 bg-transparent px-2 py-1.5 text-[11px] shadow-none focus-visible:ring-0" /><span className="mb-0.5 inline-flex h-7 w-7 items-center justify-center text-slate-400"><AtSign className="h-3.5 w-3.5" /></span><Button size="sm" className="mb-0.5 h-7 bg-[#2f6fed] px-2.5 text-[10px] hover:bg-[#245dcc]" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div></> : <p className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-400">This historical task is view-only.</p>}
               <div className="mt-2 space-y-1.5">{(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-2.5 text-[10px]"><div className="flex items-center justify-between gap-2"><span className="font-bold text-slate-800">{item.authorName}</span><span className="shrink-0 text-[9px] text-slate-400">{format(new Date(item.createdAt), "MMM d · h:mm a")}</span></div><p className="mt-1 whitespace-pre-wrap leading-relaxed text-slate-600">{item.content}</p></div>)}</div>
             </section>
             <section className="min-w-0 border-t border-slate-200 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
               <h3 className="mb-3 text-[11px] font-bold text-slate-900">Activity</h3>
-              <div className="space-y-3">{(detail?.events || []).map((event: any, index: number) => <div key={event.id} className="relative flex gap-2.5"><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white ${eventPalette[index % eventPalette.length]}`}><Circle className="h-2 w-2 fill-current" /></span><div className="min-w-0"><p className="text-[10px] font-semibold capitalize text-slate-700">{event.eventType.replace(/_/g, " ")}</p><div className="mt-0.5 flex flex-wrap gap-x-2 text-[9px] text-slate-400"><span>{format(new Date(event.createdAt), "MMM d, yyyy · h:mm a")}</span><span>{event.actorName || event.actor?.name || "System"}</span></div></div></div>)}</div>
+              <div className="space-y-3">{(detail?.events || []).map((event: any, index: number) => <div key={event.id} className="relative flex gap-2.5"><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white ${eventPalette[index % eventPalette.length]}`}><Circle className="h-2 w-2 fill-current" /></span><div className="min-w-0"><p className="text-[10px] font-semibold text-slate-700">{eventLabel(event)}</p><div className="mt-0.5 flex flex-wrap gap-x-2 text-[9px] text-slate-400"><span>{format(new Date(event.createdAt), "MMM d, yyyy · h:mm a")}</span><span>{event.actorName || event.actor?.name || "System"}</span></div></div></div>)}</div>
               {(detail?.events || []).length === 0 && <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[10px] text-slate-400">No activity yet</p>}
             </section>
           </div>
@@ -994,6 +1016,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
 
       <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-white px-3 py-2 md:px-5">
         <span className="mr-auto text-[10px] font-semibold text-slate-600">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
+        {task.status === "completed" && <Button size="sm" variant="outline" onClick={() => updateMut.mutate({ id: taskId, status: "in_progress" }, { onSuccess: () => { if (!isAssignee && !isAssigner) onClose(); } })} disabled={!canReopen || updateMut.isPending} className="h-7 border-[#b9d1fb] bg-[#f6f9ff] px-2.5 text-[10px] font-semibold text-[#2f6fed] hover:bg-[#edf4ff]"><RotateCcw className="mr-1 h-3 w-3" /> Reopen Task</Button>}
         <Button 
           variant={task.status === "pending" ? "default" : "outline"}
           size="sm"
