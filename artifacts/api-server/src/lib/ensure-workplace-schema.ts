@@ -34,5 +34,24 @@ export async function ensureWorkplaceSchema(): Promise<void> {
     `ALTER TABLE workplace_tasks ADD COLUMN IF NOT EXISTS completed_by_id integer REFERENCES users(id) ON DELETE SET NULL`,
     `ALTER TABLE workplace_tasks ADD COLUMN IF NOT EXISTS source_message_id integer REFERENCES workplace_messages(id) ON DELETE SET NULL`,
   );
+  // Existing runtime databases may predate the Ignite columns used by the
+  // teacher dashboard, session list, and live-class queries.
+  statements.unshift(
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS batch_id integer`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS course_subject_id integer`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS chapter_id integer`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS livekit_room_name text`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS slide_url text`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS archived_at timestamp`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS archived_by integer`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS class_type text NOT NULL DEFAULT 'mastery'`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS ignite_batch_id integer`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS day_number integer`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS homework_text text`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS homework_link text`,
+    `ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS recording_url text`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS live_classes_livekit_room_name_unique ON live_classes(livekit_room_name)`,
+  );
   for (const statement of statements) await db.execute(sql.raw(statement));
 }
