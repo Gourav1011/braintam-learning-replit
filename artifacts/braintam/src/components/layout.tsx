@@ -340,7 +340,6 @@ function StudentMobileNav() {
 
 const teacherNavItems = [
   { href: "/teacher", icon: LayoutDashboard, label: "Teacher Portal" },
-  { href: "/workplace", icon: MessageCircle, label: "Workplace" },
   { href: "/teacher?tab=courses", icon: BookOpen, label: "My Courses" },
   { href: "/teacher?tab=live", icon: Video, label: "Live Classes" },
   { href: "/teacher?tab=homework", icon: FileText, label: "Homework" },
@@ -352,7 +351,6 @@ const teacherNavItems = [
 
 const adminNavItems = [
   { href: "/admin", icon: BarChart3, label: "Analytics" },
-  { href: "/workplace", icon: MessageCircle, label: "Workplace" },
   { href: "/admin?tab=users", icon: Users, label: "Manage Users" },
   { href: "/admin?tab=assignments", icon: GraduationCap, label: "Assign Teachers" },
   { href: "/admin?tab=enrollments", icon: BookOpen, label: "Enrollments" },
@@ -361,7 +359,6 @@ const adminNavItems = [
 ];
 
 const studentNavItemsLegacy = [
-  { href: "/workplace", icon: MessageCircle, label: "Workplace" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/live-classes", icon: Video, label: "Live Classes" },
   { href: "/courses", icon: BookOpen, label: "Courses" },

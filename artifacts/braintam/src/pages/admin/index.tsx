@@ -46,7 +46,7 @@ import {
   MoreVertical, RotateCcw, CreditCard, Layers, Cpu, GraduationCap as GradCap,
   ShieldCheck, Zap, UserCircle, CheckCircle2, Globe, Loader2, User, ClipboardList,
   Mail, Phone, TrendingDown, TrendingUp as TrendUp, MoreVertical as MoreVert,
-  Package,
+  Package, MessageSquare,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
@@ -68,6 +68,7 @@ import { GamificationTab } from "./gamification-tab";
 import { BtlCrmTab } from "./btl-crm-tab";
 import { EmployeeAttendanceTab } from "./employee-attendance-tab";
 import { OperationsCommandCenterTab } from "./operations-command-center-tab";
+import WorkplacePage from "@/pages/workplace";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
@@ -123,6 +124,7 @@ type Tab =
   | "mastery-retention"
   | "mastery-attendance"
   | "blocked-words"
+  | "workplace"
   | "profile";
 
 type UserSubTab = "active" | "deactivated" | "all";
@@ -1316,6 +1318,14 @@ function AdminPageInner() {
           { label: "Assessments", icon: ClipboardList, tab: "assessments" },
           { label: "Announcements", icon: Bell, tab: "announcements" },
           { label: "Attendance Analytics", icon: CheckSquare, tab: "mastery-attendance" },
+        ],
+      }],
+    },
+    {
+      id: "workplace", emoji: "💬", label: "Workplace", sublabel: "Staff collaboration", color: "#6366F1",
+      sections: [{
+        items: [
+          { label: "Conversations & Tasks", icon: MessageSquare, tab: "workplace" },
         ],
       }],
     },
@@ -3083,6 +3093,9 @@ function AdminPageInner() {
 
         {/* ── Chat Moderation — Blocked Words ───────────────────────────── */}
         {tab === "blocked-words" && <BlockedWordsTab />}
+
+        {/* ── Workplace ────────────────────────────────────────────────── */}
+        {tab === "workplace" && <WorkplacePage />}
 
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === "settings" && (

@@ -8,6 +8,7 @@ import {
 import { GradeLeaderboardTab } from "./grade-leaderboard-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 import { StaffCheckin } from "@/components/staff-checkin";
+import WorkplacePage from "@/pages/workplace";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -1792,7 +1793,7 @@ export function SalesMentorPortal({ user, onLogout }: {
   user: { id: number; name: string; avatarUrl?: string | null };
   onLogout: () => void;
 }) {
-  const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status" | "leaderboard" | "live-classes">("my-leads");
+  const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status" | "leaderboard" | "live-classes" | "workplace">("my-leads");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1856,6 +1857,7 @@ export function SalesMentorPortal({ user, onLogout }: {
     { key: "payment-status" as const, label: "Payment Status" },
     { key: "live-classes"   as const, label: "Live Classes", icon: Video },
     { key: "leaderboard"    as const, label: "Leaderboard", icon: Trophy },
+    { key: "workplace"      as const, label: "Workplace", icon: MessageSquare },
   ];
 
   return (
@@ -1966,6 +1968,7 @@ export function SalesMentorPortal({ user, onLogout }: {
         {view === "leaderboard" && (
           <GradeLeaderboardTab myId={user.id} />
         )}
+        {view === "workplace" && <WorkplacePage />}
       </div>
     </div>
   );

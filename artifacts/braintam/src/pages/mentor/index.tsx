@@ -22,6 +22,7 @@ import { DoubtSessionsTab } from "./doubt-sessions-tab";
 import { EodReportTab } from "./eod-report-tab";
 import { MasteryNotificationBar } from "@/components/mastery-notification-bar";
 import { MasteryAchievementTicker } from "@/components/mastery-achievement-ticker";
+import WorkplacePage from "@/pages/workplace";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -40,7 +41,7 @@ function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
-type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students" | "non-active";
+type Tab = "dashboard" | "today-tasks" | "attendance" | "students" | "follow-ups" | "tasks" | "live-classes" | "doubt-sessions" | "eod-report" | "settings" | "profile" | "leaderboard" | "calling-queue" | "assigned-leads" | "converted-students" | "non-active" | "workplace";
 type ProfileTab = "timeline" | "followups" | "attendance" | "homework" | "tests";
 
 const SUCCESS_STAGES = [
@@ -1035,6 +1036,7 @@ export default function BTLCRMPage() {
     { key: "students",      label: "Students",      icon: Users },
     { key: "follow-ups",    label: "Follow-Ups",    icon: MessageSquare },
     { key: "tasks",         label: "Tasks",         icon: CheckSquare },
+    { key: "workplace",     label: "Workplace",     icon: MessageSquare },
     { key: "attendance",    label: "Attendance",    icon: Calendar },
     { key: "live-classes",  label: "Live Classes",  icon: Video },
     { key: "doubt-sessions",label: "Doubt Sessions",icon: HelpCircle },
@@ -1050,6 +1052,7 @@ export default function BTLCRMPage() {
     { key: "non-active",         label: "Non-Active",       icon: AlertCircle },
     { key: "converted-students", label: "Converted",        icon: CheckCircle2 },
     { key: "leaderboard",        label: "Leaderboard",      icon: Trophy },
+    { key: "workplace",          label: "Workplace",        icon: MessageSquare },
     { key: "profile",            label: "My Profile",       icon: UserCircle },
   ];
 
@@ -2692,6 +2695,7 @@ export default function BTLCRMPage() {
         {tab === "leaderboard" && isSales && (
           <GradeLeaderboardTab myId={student.id} />
         )}
+        {tab === "workplace" && <WorkplacePage />}
       </div>
       </div>
     </div>

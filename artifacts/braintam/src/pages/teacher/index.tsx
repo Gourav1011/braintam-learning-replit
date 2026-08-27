@@ -6,11 +6,12 @@ import {
   BookOpen, Users, Video, FileText, Clock, Timer, Plus, CheckCircle,
   GraduationCap, ChevronRight, X, ClipboardList, Play, Square, Trash2,
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
-  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown, Monitor, RefreshCw,
+  Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown, Monitor, RefreshCw, MessageSquare,
 } from "lucide-react";
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
+import WorkplacePage from "@/pages/workplace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +25,7 @@ import { API_BASE as BASE } from "@/lib/api-base";
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 
-type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "assignments" | "notes" | "profile";
+type Tab = "dashboard" | "courses" | "homework" | "live" | "submissions" | "tests" | "assignments" | "notes" | "profile" | "workplace";
 
 interface Course { id: number; title: string; subjectName: string; subjectId: number; grade: number; totalLessons: number; enrolledStudents: number; rating: number | null; }
 interface Session {
@@ -844,6 +845,7 @@ export default function TeacherPage() {
     { id: "assignments", label: "Assignments", icon: FileText },
     { id: "notes", label: "Notes & Resources", icon: LinkIcon },
     { id: "submissions", label: "Grade Work", icon: CheckCircle },
+    { id: "workplace", label: "Workplace", icon: MessageSquare },
     { id: "profile", label: "My Profile", icon: UserCircle },
   ];
 
@@ -2618,6 +2620,8 @@ export default function TeacherPage() {
           />
         </div>
       )}
+
+      {tab === "workplace" && <WorkplacePage />}
 
       </div>
       </div>

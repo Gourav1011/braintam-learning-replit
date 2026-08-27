@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,8 +45,7 @@ export default function WorkplacePage() {
   useWorkplaceRealtime(selectedConversationId);
   
   return (
-    <AppLayout>
-      <div className="flex h-[calc(100vh-56px)] bg-white overflow-hidden relative">
+      <div className="flex min-h-[calc(100vh-3.5rem)] bg-white overflow-hidden relative">
         {/* Left Panel */}
         <div className={`w-full md:w-80 border-r flex flex-col bg-gray-50/30 flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           (activeTab === "messages" && selectedConversationId) || (activeTab === "tasks" && selectedTaskId) 
@@ -110,7 +108,6 @@ export default function WorkplacePage() {
           )}
         </div>
       </div>
-    </AppLayout>
   );
 }
 
