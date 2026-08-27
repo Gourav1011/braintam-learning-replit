@@ -1585,7 +1585,10 @@ function AdminPageInner() {
               <div key={workspace.id}>
                 {/* Workspace toggle button */}
                 <button
-                  onClick={() => setOpenWorkspace(w => w === workspace.id ? "" : workspace.id)}
+                  onClick={() => {
+                    setOpenWorkspace(w => w === workspace.id ? "" : workspace.id);
+                    if (workspace.id === "workplace") setTab("workplace");
+                  }}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors hover:bg-gray-50 mt-1"
                   style={{ color: isOpen ? workspace.color : "#9CA3AF" }}>
                   <div className="flex items-center gap-2">

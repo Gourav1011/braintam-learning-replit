@@ -1890,7 +1890,7 @@ export function SalesMentorPortal({ user, onLogout }: {
 
         <div className="flex items-center gap-0.5 ml-4">
           {NAV.map(item => item.key === "workplace" ? <div key={item.key} className="relative">
-            <button onClick={() => setWorkplaceExpanded(value => !value)}
+            <button onClick={() => { setView("workplace"); setWorkplaceExpanded(value => !value); }}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
               style={{ background: view === "workplace" ? `${NAVY}12` : "transparent", color: view === "workplace" ? NAVY : "#6B7280" }}>
               Workplace

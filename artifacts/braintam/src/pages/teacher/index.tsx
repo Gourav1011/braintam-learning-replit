@@ -985,7 +985,7 @@ export default function TeacherPage() {
             const Icon = t.icon;
             const isActive = tab === t.id;
             if (t.id === "workplace") return <div key={t.id}>
-              <button onClick={() => setWorkplaceExpanded(value => !value)} className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors" style={{ color: tab === "workplace" ? NAVY : "#6B7280", background: tab === "workplace" ? "#EEF2FF" : "transparent" }}>
+              <button onClick={() => { setTab("workplace"); setWorkplaceExpanded(value => !value); }} className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors" style={{ color: tab === "workplace" ? NAVY : "#6B7280", background: tab === "workplace" ? "#EEF2FF" : "transparent" }}>
                 <Icon className="w-4 h-4 shrink-0" /><span>Workplace</span>
                 {Number(workplaceBadges?.total || 0) > 0 && <span className="ml-auto rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{workplaceBadges!.total}</span>}
                 <ChevronDown className={`w-3 h-3 ${workplaceExpanded ? "rotate-180" : ""}`} />

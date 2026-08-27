@@ -1222,7 +1222,7 @@ export default function BTLCRMPage() {
             const Icon = t.icon;
             const active = tab === t.key;
             if (t.key === "workplace") return <div key={t.key}>
-              <button onClick={() => setWorkplaceExpanded(value => !value)}
+              <button onClick={() => { setTab("workplace"); setWorkplaceExpanded(value => !value); }}
                 className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
                 style={{ color: tab === "workplace" ? NAVY : "#6B7280", background: tab === "workplace" ? "#EEF2FF" : "transparent" }}>
                 <Icon className="w-4 h-4 shrink-0" /><span>Workplace</span>

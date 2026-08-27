@@ -65,6 +65,13 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   const activeConversation = (conversationData as any)?.conversations?.find(
     (conversation: any) => String(conversation.id) === String(selectedConversationId),
   );
+  const readConversationMutation = useReadConversation();
+  const openConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    // A read receipt is scoped to this exact conversation. Posting at selection
+    // time makes the unread badge clear without waiting for messages to finish loading.
+    readConversationMutation.mutate(conversationId);
+  };
   const selectSection = (section: WorkplaceSection) => {
     setActiveSection(section);
     setSelectedConversationId(null);
@@ -93,7 +100,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   const openNotification = (notification: WorkplaceNotification) => {
     setToasts(current => current.filter(item => String(item.id) !== String(notification.id)));
     if (notification.taskId) { selectSection("tasks"); setSelectedTaskId(String(notification.taskId)); }
-    else if (notification.conversationId) { selectSection("conversations"); setSelectedConversationId(String(notification.conversationId)); }
+    else if (notification.conversationId) { selectSection("conversations"); openConversation(String(notification.conversationId)); }
   };
   
   return (
@@ -116,7 +123,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
             {activeTab === "messages" && (
               <ConversationsList 
                 selectedId={selectedConversationId} 
-                onSelect={setSelectedConversationId} 
+                onSelect={openConversation}
                 groupsOnly={activeSection === "groups"}
               />
             )}
@@ -146,7 +153,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
           
           {activeTab === "tasks" && (
             selectedTaskId ? (
-              <TaskDetailView taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} onViewConversation={(id) => { selectSection("conversations"); setSelectedConversationId(id); }} />
+              <TaskDetailView taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} onViewConversation={(id) => { selectSection("conversations"); openConversation(id); }} />
             ) : (
               <div className="hidden md:flex flex-1 items-center justify-center">
                 <EmptyState icon={CheckSquare} title="No task selected" description="Select a task to view details or update its status." />
@@ -304,26 +311,13 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
     (member: any) => String(member.id) === String(student?.id) && member.isAdmin,
   );
   
-  const { data, isLoading, isSuccess, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetMessages(conversationId);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetMessages(conversationId);
   
   const messages = data?.pages.slice().reverse().flatMap((page: any) => page.messages) || [];
   
   const sendMutation = useSendMessage();
   const editMutation = useEditMessage();
   const deleteMutation = useDeleteMessage();
-  const readMutation = useReadConversation();
-  const hasRead = useRef<string | null>(null);
-  
-  useEffect(() => {
-    if (isSuccess && conversation?.unreadCount > 0 && hasRead.current !== conversationId) {
-      hasRead.current = conversationId;
-      readMutation.mutate(conversationId, {
-        // Keep this conversation marked as attempted for its entire mount.
-        // The conversation query will refresh its unread count; resetting here
-        // would cause the effect to post /read again on every invalidation.
-      });
-    }
-  }, [conversationId, conversation?.unreadCount, isSuccess, readMutation]);
 
   useEffect(() => {
     if (scrollRef.current && !isFetchingNextPage) {
