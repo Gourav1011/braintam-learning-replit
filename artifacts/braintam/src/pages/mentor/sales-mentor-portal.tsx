@@ -8,7 +8,8 @@ import {
 import { GradeLeaderboardTab } from "./grade-leaderboard-tab";
 import { API_BASE as BASE } from "@/lib/api-base";
 import { StaffCheckin } from "@/components/staff-checkin";
-import WorkplacePage from "@/pages/workplace";
+import WorkplacePage, { type WorkplaceSection } from "@/pages/workplace";
+import { useGetWorkplaceBadges } from "@/hooks/use-workplace";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -1794,6 +1795,9 @@ export function SalesMentorPortal({ user, onLogout }: {
   onLogout: () => void;
 }) {
   const [view, setView] = useState<"my-leads" | "student-detail" | "payment-status" | "leaderboard" | "live-classes" | "workplace">("my-leads");
+  const [workplaceSection, setWorkplaceSection] = useState<WorkplaceSection>("conversations");
+  const [workplaceExpanded, setWorkplaceExpanded] = useState(false);
+  const { data: workplaceBadges } = useGetWorkplaceBadges();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1885,7 +1889,39 @@ export function SalesMentorPortal({ user, onLogout }: {
         </div>
 
         <div className="flex items-center gap-0.5 ml-4">
-          {NAV.map(item => (
+          {NAV.map(item => item.key === "workplace" ? <div key={item.key} className="relative">
+            <button onClick={() => setWorkplaceExpanded(value => !value)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style={{ background: view === "workplace" ? `${NAVY}12` : "transparent", color: view === "workplace" ? NAVY : "#6B7280" }}>
+              Workplace
+              {Number(workplaceBadges?.total || 0) > 0 && <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{workplaceBadges!.total}</span>}
+              <ChevronDown className={`w-3 h-3 ${workplaceExpanded ? "rotate-180" : ""}`} />
+            </button>
+            {workplaceExpanded && (
+              <div className="absolute left-0 top-full z-40 mt-1 w-36 rounded-lg border border-gray-100 bg-white p-1 shadow-lg">
+                {([
+                  ["conversations", "Conversations", "conversations"],
+                  ["groups", "Groups", "groups"],
+                  ["tasks", "My Tasks", "tasks"],
+                  ["notifications", "Alerts", "alerts"],
+                ] as const).map(([section, label, badge]) => (
+                  <button
+                    key={section}
+                    onClick={() => { setView("workplace"); setWorkplaceSection(section); setWorkplaceExpanded(false); }}
+                    className="flex w-full items-center rounded px-2 py-1.5 text-left text-[11px] hover:bg-gray-50"
+                    style={view === "workplace" && workplaceSection === section ? { color: NAVY, fontWeight: 700 } : { color: "#4B5563" }}
+                  >
+                    <span>{label}</span>
+                    {Number(workplaceBadges?.[badge] || 0) > 0 && (
+                      <span className="ml-auto rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">
+                        {workplaceBadges?.[badge]}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div> : (
             <button key={item.key}
               onClick={() => { setView(item.key); setSelectedId(null); }}
               className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
@@ -1968,7 +2004,7 @@ export function SalesMentorPortal({ user, onLogout }: {
         {view === "leaderboard" && (
           <GradeLeaderboardTab myId={user.id} />
         )}
-        {view === "workplace" && <WorkplacePage />}
+        {view === "workplace" && <WorkplacePage initialSection={workplaceSection} onSectionChange={setWorkplaceSection} />}
       </div>
     </div>
   );

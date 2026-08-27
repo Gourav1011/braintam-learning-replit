@@ -1,0 +1,473 @@
+Make these FINAL targeted fixes to the EXISTING Workplace module.
+
+**Do not rebuild Workplace. Do not change its backend architecture. Do not create another portal.**
+
+## 1. WORKPLACE SIDEBAR — SAME STRUCTURE EVERYWHERE
+
+In every portal where Workplace is available, the sidebar must show an expandable Workplace section:
+
+```text
+💬 Workplace
+   Conversations
+   Groups
+   My Tasks
+   Alerts
+```
+
+This must work consistently in:
+
+* Admin / Super Admin
+* Ignite Mentor
+* Academic Mentor
+* Teacher
+* Other authorized employee portals
+
+When Workplace is collapsed:
+
+```text
+💬 Workplace
+```
+
+When expanded:
+
+```text
+💬 Workplace
+   Conversations
+   Groups
+   My Tasks
+   Alerts
+```
+
+Clicking each item must open the corresponding existing Workplace section.
+
+Do NOT create separate pages/apps for these sections.
+
+Use the existing Workplace components/routes.
+
+### Badges
+
+Show counts only when greater than 0.
+
+Example:
+
+```text
+💬 Workplace          7
+   Conversations      3
+   Groups             2
+   My Tasks           2
+   Alerts             4
+```
+
+Do not make the badges unnecessarily large.
+
+Keep the sidebar compact.
+
+---
+
+## 2. CHAT UNREAD COUNT — FIX
+
+Currently the Chat unread number does not disappear after opening the conversation.
+
+Fix this completely.
+
+Example:
+
+```text
+Chat 2
+```
+
+User opens the unread conversation.
+
+After the messages are actually viewed:
+
+```text
+Chat
+```
+
+The individual conversation unread count must also become 0.
+
+Example:
+
+```text
+Rahul Sharma     2
+Priya Singh      1
+```
+
+Open Rahul:
+
+```text
+Rahul Sharma
+Priya Singh      1
+```
+
+Therefore:
+
+```text
+Chat 1
+```
+
+Then open Priya:
+
+```text
+Chat
+```
+
+### Important
+
+Do NOT mark every conversation as read when Workplace opens.
+
+Only mark the currently opened/viewed conversation's messages as read.
+
+Use the existing read/unread API and Socket.IO system.
+
+Update the UI immediately without requiring a page refresh.
+
+---
+
+## 3. NEW MESSAGE REAL-TIME BEHAVIOR
+
+When a new message arrives:
+
+### If user is NOT viewing that conversation
+
+Increase its unread count:
+
+```text
+Chat 1
+Rahul Sharma   1
+```
+
+Show the existing bottom-right toast.
+
+### If user IS already viewing that conversation
+
+Do not increase unread count.
+
+Show the message immediately in the open chat.
+
+Do not show an unnecessary duplicate notification for the open conversation.
+
+---
+
+## 4. BOTTOM-RIGHT NOTIFICATIONS
+
+Keep the existing lightweight bottom-right notification system.
+
+Show notifications for:
+
+* New message
+* @Mention
+* New task
+* Task reassignment
+* Task update
+* Task completion
+
+Example:
+
+```text
+┌──────────────────────────────┐
+│ 💬 New message               │
+│ Rahul Sharma                │
+│ Please check this.          │
+└──────────────────────────────┘
+```
+
+Clicking the notification should open the relevant conversation/task.
+
+Keep it small.
+
+Do not create a large notification panel.
+
+---
+
+## 5. WORKPLACE UI — TOO LARGE CURRENTLY
+
+The current Workplace screen is using too much space.
+
+Make it significantly more compact and properly aligned.
+
+Reduce:
+
+* Large padding
+* Large margins
+* Oversized cards
+* Oversized buttons
+* Excessive vertical gaps
+* Empty space
+* Unnecessary scrolling
+
+The interface should use the available portal area efficiently.
+
+Do NOT make text unreadably small.
+
+Target a clean, compact business application similar in density to a lightweight Zoho/Slack-style workspace.
+
+---
+
+## 6. CHAT LAYOUT
+
+Keep the three areas balanced:
+
+```text
+┌──────────────┬──────────────────────┬─────────────┐
+│ Conversations│ Chat                 │ Details     │
+│              │                      │ / Task      │
+│ compact list │ messages             │ compact     │
+│              │ message input        │ panel       │
+└──────────────┴──────────────────────┴─────────────┘
+```
+
+Do not let the conversation list become excessively wide.
+
+Do not let the details/task panel consume most of the screen.
+
+Use the existing available viewport.
+
+---
+
+## 7. TASK DETAILS — COMPACT
+
+The current Task Details screen is too large.
+
+Keep all functionality but compact the presentation.
+
+Prefer:
+
+```text
+Task title       Status
+
+Assignee         Reporter
+Due date         Priority
+
+Description
+
+Work Updates
+
+Activity / History
+
+[Reassign] [View Conversation]
+
+[Pending] [In Progress] [Completed]
+```
+
+Use compact rows/cards.
+
+Do not make each field a huge separate card.
+
+Reduce scrolling.
+
+---
+
+## 8. TASK FEATURES — KEEP ALL EXISTING
+
+Do not remove any existing task functionality.
+
+Keep:
+
+* My Tasks
+* Assigned by Me
+* Completed
+* Task assignment
+* Task reassignment
+* Due date
+* Priority
+* Status
+* Work updates/remarks
+* @Mentions
+* Task history
+* Assignment history
+* Related conversation
+* Completion history
+
+Completed tasks must remain permanently available to authorized users.
+
+---
+
+## 9. MESSAGE FEATURES — KEEP ALL EXISTING
+
+Keep:
+
+* Reply
+* Edit
+* Delete
+* Copy
+* Mention
+* Edit history
+* Soft delete
+* Admin audit visibility
+
+Do not change the existing security rules.
+
+---
+
+## 10. SEARCH — KEEP AND USE WHERE NEEDED
+
+Use the existing lightweight server-side employee search wherever employee selection is required.
+
+This includes:
+
+### New Chat
+
+```text
++ New Chat
+Search employee...
+```
+
+Search as the user types.
+
+### @Mention
+
+```text
+@
+```
+
+Then:
+
+```text
+@rah
+```
+
+Show matching permitted employees:
+
+```text
+Rahul Sharma
+Rahul Verma
+Rakesh Kumar
+```
+
+### Task Assignment/Reassignment
+
+Use the same searchable employee picker.
+
+Do not load the entire employee database.
+
+Use debounced server-side search.
+
+---
+
+## 11. GROUPS
+
+The sidebar must show:
+
+**Groups**
+
+Clicking it must show the existing group conversations.
+
+Do not create a fake/static Groups menu.
+
+Groups must use the existing group backend, membership rules and permissions.
+
+---
+
+## 12. ALERTS
+
+Keep Alerts working exactly as they currently work.
+
+Do not break:
+
+* Alert count
+* Alert notifications
+* Alert list
+* Existing alert behavior
+
+---
+
+## 13. PERFORMANCE
+
+This must remain lightweight.
+
+Do not load:
+
+* All employees
+* All messages
+* All conversations
+* All task history
+* All notifications
+
+at once.
+
+Use:
+
+* Lazy loading
+* Pagination
+* Debounced search
+* Server-side filtering
+* Indexed database queries
+* Existing Socket.IO connection
+
+Do not create a new socket connection for every chat.
+
+---
+
+## 14. DO NOT CHANGE PORTAL STRUCTURE
+
+Workplace must remain inside the existing portal.
+
+No:
+
+* Separate Workplace portal
+* Separate Workplace login
+* Separate header
+* Separate sidebar
+* Separate application
+
+The user should feel that Workplace is simply another section of the existing Braintam portal.
+
+---
+
+## 15. FINAL ACCEPTANCE TEST
+
+Verify:
+
+### Sidebar
+
+Workplace expands to:
+
+```text
+Conversations
+Groups
+My Tasks
+Alerts
+```
+
+in every authorized portal.
+
+### Chat
+
+1. User receives a new message.
+2. Chat unread count increases.
+3. Bottom-right toast appears.
+4. User opens the conversation.
+5. Message is marked read.
+6. Individual unread count disappears.
+7. Overall Chat count updates immediately.
+8. No page refresh required.
+
+### Existing open conversation
+
+If the user is already viewing that conversation:
+
+* Message appears immediately.
+* No unread count is added.
+* No unnecessary duplicate toast.
+
+### Tasks
+
+* Assign task.
+* Open task.
+* Start task.
+* Add remark.
+* @mention employee.
+* Reassign.
+* Complete.
+* View completed history.
+
+### UI
+
+Check desktop and smaller screen widths.
+
+The Workplace must be:
+
+**Compact + properly aligned + minimal empty space + easy to scan + fast.**
+
+Do not make any unrelated changes to Braintam.

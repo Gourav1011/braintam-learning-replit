@@ -11,7 +11,8 @@ import {
 import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
-import WorkplacePage from "@/pages/workplace";
+import WorkplacePage, { type WorkplaceSection } from "@/pages/workplace";
+import { useGetWorkplaceBadges } from "@/hooks/use-workplace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,6 +94,9 @@ function newTfQuestion(): HwQuestion {
 export default function TeacherPage() {
   const { student, role, isLoading, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [workplaceSection, setWorkplaceSection] = useState<WorkplaceSection>("conversations");
+  const [workplaceExpanded, setWorkplaceExpanded] = useState(false);
+  const { data: workplaceBadges } = useGetWorkplaceBadges();
   const [now, setNow] = useState(new Date());
   const [profileDropOpen, setProfileDropOpen] = useState(false);
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
@@ -980,6 +984,37 @@ export default function TeacherPage() {
           {TABS.map(t => {
             const Icon = t.icon;
             const isActive = tab === t.id;
+            if (t.id === "workplace") return <div key={t.id}>
+              <button onClick={() => setWorkplaceExpanded(value => !value)} className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors" style={{ color: tab === "workplace" ? NAVY : "#6B7280", background: tab === "workplace" ? "#EEF2FF" : "transparent" }}>
+                <Icon className="w-4 h-4 shrink-0" /><span>Workplace</span>
+                {Number(workplaceBadges?.total || 0) > 0 && <span className="ml-auto rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{workplaceBadges!.total}</span>}
+                <ChevronDown className={`w-3 h-3 ${workplaceExpanded ? "rotate-180" : ""}`} />
+              </button>
+              {workplaceExpanded && (
+                <div className="ml-5 space-y-0.5">
+                  {([
+                    ["conversations", "Conversations", "conversations"],
+                    ["groups", "Groups", "groups"],
+                    ["tasks", "My Tasks", "tasks"],
+                    ["notifications", "Alerts", "alerts"],
+                  ] as const).map(([section, label, badge]) => (
+                    <button
+                      key={section}
+                      onClick={() => { setTab("workplace"); setWorkplaceSection(section); }}
+                      className="flex w-full items-center px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                      style={tab === "workplace" && workplaceSection === section ? { color: NAVY, fontWeight: 700 } : {}}
+                    >
+                      <span>{label}</span>
+                      {Number(workplaceBadges?.[badge] || 0) > 0 && (
+                        <span className="ml-auto rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">
+                          {workplaceBadges?.[badge]}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>;
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
                 className="w-full flex items-center gap-2.5 px-5 py-2 text-sm text-left transition-colors"
@@ -2621,7 +2656,7 @@ export default function TeacherPage() {
         </div>
       )}
 
-      {tab === "workplace" && <WorkplacePage />}
+        {tab === "workplace" && <WorkplacePage initialSection={workplaceSection} onSectionChange={setWorkplaceSection} />}
 
       </div>
       </div>

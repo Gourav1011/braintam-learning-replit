@@ -68,7 +68,8 @@ import { GamificationTab } from "./gamification-tab";
 import { BtlCrmTab } from "./btl-crm-tab";
 import { EmployeeAttendanceTab } from "./employee-attendance-tab";
 import { OperationsCommandCenterTab } from "./operations-command-center-tab";
-import WorkplacePage from "@/pages/workplace";
+import WorkplacePage, { type WorkplaceSection } from "@/pages/workplace";
+import { useGetWorkplaceBadges } from "@/hooks/use-workplace";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { SuperAdminTab } from "./super-admin-tab";
 import { AuditLogsTab } from "./audit-logs-tab";
@@ -737,6 +738,8 @@ function AccessModal({ user, onClose, flash }: {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 function AdminPageInner() {
+  const { data: workplaceBadges } = useGetWorkplaceBadges();
+  const [workplaceSection, setWorkplaceSection] = useState<WorkplaceSection>("conversations");
   const { student, role, isLoading, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("dashboard");
 
@@ -1282,6 +1285,7 @@ function AdminPageInner() {
     tab: Tab;
     igniteView?: IgniteView;
     superAdminOnly?: boolean;
+    workplaceSection?: WorkplaceSection;
   };
   type WorkspaceSection = {
     sectionLabel?: string;
@@ -1325,7 +1329,10 @@ function AdminPageInner() {
       id: "workplace", emoji: "💬", label: "Workplace", sublabel: "Staff collaboration", color: "#6366F1",
       sections: [{
         items: [
-          { label: "Conversations & Tasks", icon: MessageSquare, tab: "workplace" },
+          { label: "Conversations", icon: MessageSquare, tab: "workplace", workplaceSection: "conversations" },
+          { label: "Groups", icon: Users, tab: "workplace", workplaceSection: "groups" },
+          { label: "My Tasks", icon: CheckSquare, tab: "workplace", workplaceSection: "tasks" },
+          { label: "Alerts", icon: Bell, tab: "workplace", workplaceSection: "notifications" },
         ],
       }],
     },
@@ -1588,7 +1595,10 @@ function AdminPageInner() {
                       <div className="text-[9px] font-normal text-gray-400">{workspace.sublabel}</div>
                     </div>
                   </div>
-                  {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <div className="flex items-center gap-1.5">
+                    {workspace.id === "workplace" && Number(workplaceBadges?.total || 0) > 0 && <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{workplaceBadges!.total}</span>}
+                    {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </div>
                 </button>
 
                 {/* Workspace sections */}
@@ -1611,20 +1621,23 @@ function AdminPageInner() {
                         <div className="ml-2 space-y-0.5 mt-0.5">
                           {section.items.filter(item => !item.superAdminOnly || role === "super_admin").map((item, idx) => {
                             const Icon = item.icon;
-                            const isActive = item.igniteView
+                            const isActive = item.workplaceSection
+                              ? tab === "workplace" && workplaceSection === item.workplaceSection
+                              : item.igniteView
                               ? (tab === "ignite" && igniteView === item.igniteView)
                               : tab === item.tab;
                             return (
                               <button key={idx}
                                 onClick={() => {
                                   if (item.igniteView) { setTab("ignite"); setIgniteView(item.igniteView!); }
-                                  else { setTab(item.tab); }
+                                  else { setTab(item.tab); if (item.workplaceSection) setWorkplaceSection(item.workplaceSection); }
                                   setMsg(null);
                                 }}
                                 className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
                                 style={isActive ? { background: "#EEF2FF", color: NAVY, fontWeight: 600 } : { color: "#6B7280" }}>
                                 <Icon className="w-3.5 h-3.5 shrink-0" />
                                 <span>{item.label}</span>
+                                {item.workplaceSection && Number(workplaceBadges?.[item.workplaceSection === "conversations" ? "conversations" : item.workplaceSection === "groups" ? "groups" : item.workplaceSection === "tasks" ? "tasks" : "alerts"] || 0) > 0 && <span className="ml-auto rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{workplaceBadges?.[item.workplaceSection === "conversations" ? "conversations" : item.workplaceSection === "groups" ? "groups" : item.workplaceSection === "tasks" ? "tasks" : "alerts"]}</span>}
                               </button>
                             );
                           })}
@@ -3095,7 +3108,7 @@ function AdminPageInner() {
         {tab === "blocked-words" && <BlockedWordsTab />}
 
         {/* ── Workplace ────────────────────────────────────────────────── */}
-        {tab === "workplace" && <WorkplacePage />}
+        {tab === "workplace" && <WorkplacePage initialSection={workplaceSection} onSectionChange={setWorkplaceSection} />}
 
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === "settings" && (

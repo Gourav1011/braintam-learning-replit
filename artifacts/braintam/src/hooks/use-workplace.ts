@@ -4,7 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import { API_BASE } from "@/lib/api-base";
 import { STAFF_TOKEN_KEY } from "@/components/auth-provider";
 
-const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+const fetchWithAuth = async <T = unknown>(url: string, options: RequestInit = {}): Promise<T> => {
   const token = localStorage.getItem(STAFF_TOKEN_KEY);
   const headers = new Headers(options.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -14,7 +14,15 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   
   const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
   if (!res.ok) throw new Error("API error");
-  return res.json();
+  return res.json() as Promise<T>;
+};
+
+export type WorkplaceBadges = {
+  conversations: number;
+  groups: number;
+  tasks: number;
+  alerts: number;
+  total: number;
 };
 
 export type WorkplaceNotification = {
@@ -37,6 +45,7 @@ export function useWorkplaceRealtime(
   const activeConversationRef = useRef(activeConversationId);
   const notificationRef = useRef(onNotification);
   const conversationRemovedRef = useRef(onConversationRemoved);
+  const handledActiveMessageIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     activeConversationRef.current = activeConversationId;
@@ -63,6 +72,9 @@ export function useWorkplaceRealtime(
     const refreshConversations = () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
     };
+    const refreshBadges = () => {
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
+    };
     const refreshTasks = () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "tasks"] });
     };
@@ -71,16 +83,53 @@ export function useWorkplaceRealtime(
     };
     const refreshMessage = (event: { conversationId?: number | string }) => {
       refreshConversations();
+      refreshBadges();
       if (String(event.conversationId) === String(activeConversationRef.current)) {
         queryClient.invalidateQueries({ queryKey: ["workplace", "messages", activeConversationRef.current] });
       }
     };
-    socket.on("workplace:message", refreshMessage);
+    const refreshIncomingMessage = (event: { id?: number | string; conversationId?: number | string }) => {
+      const conversationId = String(event.conversationId ?? "");
+      if (conversationId && conversationId === String(activeConversationRef.current)) {
+        const eventId = event.id == null ? null : `${conversationId}:${event.id}`;
+        if (eventId && handledActiveMessageIdsRef.current.has(eventId)) return;
+        if (eventId) {
+          handledActiveMessageIdsRef.current.add(eventId);
+          if (handledActiveMessageIdsRef.current.size > 100) {
+            handledActiveMessageIdsRef.current.delete(handledActiveMessageIdsRef.current.values().next().value!);
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: ["workplace", "messages", conversationId] });
+        queryClient.setQueryData(["workplace", "conversations"], (current: any) => {
+          if (!current?.conversations) return current;
+          return {
+            ...current,
+            conversations: current.conversations.map((conversation: any) =>
+              String(conversation.id) === conversationId ? { ...conversation, unreadCount: 0 } : conversation,
+            ),
+          };
+        });
+        // Keep server state in sync without creating another socket or marking any other chat read.
+        void fetchWithAuth(`/api/workplace/conversations/${conversationId}/read`, { method: "POST" })
+          .catch(() => undefined)
+          .finally(() => {
+            queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+            queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
+          });
+        return;
+      }
+      refreshConversations();
+      refreshBadges();
+    };
+    socket.on("workplace:message", refreshIncomingMessage);
     socket.on("workplace:message_edited", refreshMessage);
     socket.on("workplace:message_deleted", refreshMessage);
     socket.on("workplace:member_added", refreshMessage);
     socket.on("workplace:member_removed", refreshMessage);
-    socket.on("workplace:conversation_added", refreshConversations);
+    socket.on("workplace:conversation_added", () => {
+      refreshConversations();
+      refreshBadges();
+    });
     socket.on("workplace:conversation_removed", (event: { conversationId?: number | string }) => {
       const conversationId = String(event.conversationId ?? "");
       if (!conversationId) return;
@@ -105,10 +154,12 @@ export function useWorkplaceRealtime(
       });
       refreshTasks();
       refreshNotifications();
+      refreshBadges();
       conversationRemovedRef.current?.(conversationId);
     });
     const refreshTaskEvent = (event: { id?: number | string; taskId?: number | string }) => {
       refreshTasks();
+      refreshBadges();
       const taskId = event.id ?? event.taskId;
       if (taskId) queryClient.invalidateQueries({ queryKey: ["workplace", "task", String(taskId)] });
     };
@@ -120,6 +171,7 @@ export function useWorkplaceRealtime(
       refreshNotifications();
       refreshConversations();
       refreshTasks();
+      refreshBadges();
       // The page owns presentation; keeping this callback here preserves one socket.
       const isOpenMessageNotification = ["message", "mention"].includes(notification.type)
         && String(notification.conversationId ?? "") === String(activeConversationRef.current ?? "");
@@ -159,6 +211,15 @@ export const useGetConversations = () => {
   });
 };
 
+export const useGetWorkplaceBadges = () => {
+  return useQuery<WorkplaceBadges>({
+    queryKey: ["workplace", "badges"],
+    queryFn: () => fetchWithAuth<WorkplaceBadges>("/api/workplace/badges"),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+};
+
 export const useCreateDirectConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -169,6 +230,7 @@ export const useCreateDirectConversation = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -183,6 +245,7 @@ export const useCreateGroupConversation = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -214,6 +277,7 @@ export const useSendMessage = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] });
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -225,8 +289,45 @@ export const useReadConversation = () => {
       fetchWithAuth(`/api/workplace/conversations/${conversationId}/read`, {
         method: "POST",
       }),
-    onSuccess: (_, variables) => {
+    onMutate: async (conversationId) => {
+      await queryClient.cancelQueries({ queryKey: ["workplace", "conversations"] });
+      await queryClient.cancelQueries({ queryKey: ["workplace", "badges"] });
+      const previousConversations = queryClient.getQueryData(["workplace", "conversations"]);
+      const previousBadges = queryClient.getQueryData<WorkplaceBadges>(["workplace", "badges"]);
+      const conversation = (previousConversations as any)?.conversations?.find(
+        (item: any) => String(item.id) === String(conversationId),
+      );
+      const unreadCount = Number(conversation?.unreadCount || 0);
+      queryClient.setQueryData(["workplace", "conversations"], (current: any) => {
+        if (!current?.conversations) return current;
+        return {
+          ...current,
+          conversations: current.conversations.map((item: any) =>
+            String(item.id) === String(conversationId) ? { ...item, unreadCount: 0 } : item,
+          ),
+        };
+      });
+      if (unreadCount > 0) {
+        queryClient.setQueryData<WorkplaceBadges>(["workplace", "badges"], (current) => {
+          if (!current) return current;
+          const key = conversation?.type === "group" ? "groups" : "conversations";
+          const reduction = Math.min(unreadCount, Number(current[key] || 0));
+          return {
+            ...current,
+            [key]: Math.max(0, Number(current[key] || 0) - reduction),
+            total: Math.max(0, Number(current.total || 0) - reduction),
+          };
+        });
+      }
+      return { previousConversations, previousBadges };
+    },
+    onError: (_error, _conversationId, context) => {
+      if (context?.previousConversations) queryClient.setQueryData(["workplace", "conversations"], context.previousConversations);
+      if (context?.previousBadges) queryClient.setQueryData(["workplace", "badges"], context.previousBadges);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -241,6 +342,7 @@ export const useAddGroupMember = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -254,6 +356,7 @@ export const useRemoveGroupMember = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -283,6 +386,7 @@ export const useCreateTask = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -297,6 +401,7 @@ export const useUpdateTaskStatus = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -315,6 +420,7 @@ export const useUpdateTask = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "tasks"] });
       queryClient.invalidateQueries({ queryKey: ["workplace", "task", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };
@@ -335,7 +441,10 @@ export const useEditMessage = () => {
   return useMutation({
     mutationFn: ({ id, content, conversationId }: { id: string; content: string; conversationId: string }) =>
       fetchWithAuth(`/api/workplace/messages/${id}`, { method: "PATCH", body: JSON.stringify({ content }) }),
-    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
+    },
   });
 };
 
@@ -344,7 +453,10 @@ export const useDeleteMessage = () => {
   return useMutation({
     mutationFn: ({ id, conversationId }: { id: string; conversationId: string }) =>
       fetchWithAuth(`/api/workplace/messages/${id}`, { method: "DELETE" }),
-    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
+    },
   });
 };
 
@@ -371,6 +483,7 @@ export const useReadNotification = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "badges"] });
     },
   });
 };

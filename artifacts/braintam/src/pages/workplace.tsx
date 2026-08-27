@@ -20,13 +20,13 @@ import {
   useReadConversation, useGetTasks, useCreateTask, useWorkplaceRealtime,
   useAddGroupMember, useRemoveGroupMember,
   useUpdateTaskStatus, useGetNotifications, useReadNotification, useEditMessage, useDeleteMessage, useGetMessageEdits,
-  useGetTask, useUpdateTask, useCreateTaskRemark, type WorkplaceNotification
+  useGetTask, useUpdateTask, useCreateTaskRemark, useGetWorkplaceBadges, type WorkplaceNotification
 } from "@/hooks/use-workplace";
 import { useAuth } from "@/components/auth-provider";
 import { GroupMembersDialog } from "@/components/workplace-group-members";
-import { AppLayout } from "@/components/layout";
 
 type Tab = "messages" | "tasks" | "notifications";
+export type WorkplaceSection = "conversations" | "groups" | "tasks" | "notifications";
 
 function formatTime(dateStr: string) {
   const d = new Date(dateStr);
@@ -48,15 +48,29 @@ function useDebouncedValue(value: string, delay = 250) {
   return debounced;
 }
 
-export default function WorkplacePage() {
-  const [activeTab, setActiveTab] = useState<Tab>("messages");
+export default function WorkplacePage({ initialSection = "conversations", onSectionChange }: {
+  initialSection?: WorkplaceSection;
+  onSectionChange?: (section: WorkplaceSection) => void;
+}) {
+  const [activeSection, setActiveSection] = useState<WorkplaceSection>(initialSection);
+  const activeTab: Tab = activeSection === "tasks" ? "tasks" : activeSection === "notifications" ? "notifications" : "messages";
   
   // Selection state
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<WorkplaceNotification[]>([]);
-  const { data: conversationsData } = useGetConversations();
-  const { data: notificationsData } = useGetNotifications();
+  const { data: badgeData } = useGetWorkplaceBadges();
+  const selectSection = (section: WorkplaceSection) => {
+    setActiveSection(section);
+    setSelectedConversationId(null);
+    setSelectedTaskId(null);
+    onSectionChange?.(section);
+  };
+  useEffect(() => {
+    setActiveSection(initialSection);
+    setSelectedConversationId(null);
+    setSelectedTaskId(null);
+  }, [initialSection]);
   const handleNotification = (notification: WorkplaceNotification) => {
     setToasts(current => current.some(item => String(item.id) === String(notification.id)) ? current : [...current, notification].slice(-4));
   };
@@ -68,18 +82,17 @@ export default function WorkplacePage() {
     const timer = window.setTimeout(() => setToasts(current => current.slice(1)), 5500);
     return () => window.clearTimeout(timer);
   }, [toasts]);
-  const chatUnread = (conversationsData?.conversations || []).reduce((total: number, conversation: any) => total + Number(conversation.unreadCount || 0), 0);
-  const unreadNotifications = Number(notificationsData?.unreadCount || 0);
-  const taskUnread = (notificationsData?.notifications || []).filter((n: any) => !n.readAt && n.taskId).length;
+  const chatUnread = Number(badgeData?.conversations || 0) + Number(badgeData?.groups || 0);
+  const unreadNotifications = Number(badgeData?.alerts || 0);
+  const taskUnread = Number(badgeData?.tasks || 0);
   const openNotification = (notification: WorkplaceNotification) => {
     setToasts(current => current.filter(item => String(item.id) !== String(notification.id)));
-    if (notification.taskId) { setActiveTab("tasks"); setSelectedConversationId(null); setSelectedTaskId(String(notification.taskId)); }
-    else if (notification.conversationId) { setActiveTab("messages"); setSelectedTaskId(null); setSelectedConversationId(String(notification.conversationId)); }
+    if (notification.taskId) { selectSection("tasks"); setSelectedTaskId(String(notification.taskId)); }
+    else if (notification.conversationId) { selectSection("conversations"); setSelectedConversationId(String(notification.conversationId)); }
   };
   
   return (
-    <AppLayout>
-      <div className="flex min-h-[calc(100vh-3.5rem)] bg-white overflow-hidden relative">
+      <div className="flex min-h-0 h-full bg-white overflow-hidden relative">
         {/* Left Panel */}
         <div className={`w-full md:w-80 border-r flex flex-col bg-gray-50/30 flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           (activeTab === "messages" && selectedConversationId) || (activeTab === "tasks" && selectedTaskId) 
@@ -88,9 +101,9 @@ export default function WorkplacePage() {
         }`}>
           <div className="p-3 border-b bg-white">
             <div className="flex bg-gray-100/80 p-1 rounded-lg">
-              <TabButton active={activeTab === "messages"} onClick={() => { setActiveTab("messages"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={MessageSquare} label="Chat" count={chatUnread} />
-              <TabButton active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={CheckSquare} label="Tasks" count={taskUnread} />
-              <TabButton active={activeTab === "notifications"} onClick={() => { setActiveTab("notifications"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={Bell} label="Alerts" count={unreadNotifications} />
+              <TabButton active={activeTab === "messages"} onClick={() => selectSection("conversations")} icon={MessageSquare} label="Chat" count={chatUnread} />
+              <TabButton active={activeTab === "tasks"} onClick={() => selectSection("tasks")} icon={CheckSquare} label="Tasks" count={taskUnread} />
+              <TabButton active={activeTab === "notifications"} onClick={() => selectSection("notifications")} icon={Bell} label="Alerts" count={unreadNotifications} />
             </div>
           </div>
           
@@ -99,6 +112,7 @@ export default function WorkplacePage() {
               <ConversationsList 
                 selectedId={selectedConversationId} 
                 onSelect={setSelectedConversationId} 
+                groupsOnly={activeSection === "groups"}
               />
             )}
             {activeTab === "tasks" && (
@@ -127,7 +141,7 @@ export default function WorkplacePage() {
           
           {activeTab === "tasks" && (
             selectedTaskId ? (
-              <TaskDetailView taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} onViewConversation={(id) => { setActiveTab("messages"); setSelectedTaskId(null); setSelectedConversationId(id); }} />
+              <TaskDetailView taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} onViewConversation={(id) => { selectSection("conversations"); setSelectedConversationId(id); }} />
             ) : (
               <div className="hidden md:flex flex-1 items-center justify-center">
                 <EmptyState icon={CheckSquare} title="No task selected" description="Select a task to view details or update its status." />
@@ -148,7 +162,6 @@ export default function WorkplacePage() {
           </button>)}
         </div>
       </div>
-    </AppLayout>
   );
 }
 
@@ -169,9 +182,9 @@ function TabButton({ active, onClick, icon: Icon, label, count = 0 }: { active: 
 
 function EmptyState({ icon: Icon, title, description }: { icon: any; title: string; description: string }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-      <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mb-4">
-        <Icon className="w-6 h-6 text-gray-400" />
+    <div className="flex-1 flex flex-col items-center justify-center text-center p-5">
+      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-2">
+        <Icon className="w-5 h-5 text-gray-400" />
       </div>
       <h3 className="text-sm font-bold text-gray-900">{title}</h3>
       <p className="text-xs text-gray-500 mt-1 max-w-[240px]">{description}</p>
@@ -181,14 +194,14 @@ function EmptyState({ icon: Icon, title, description }: { icon: any; title: stri
 
 // ── Messages ──────────────────────────────────────────────────────────────
 
-function ConversationsList({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
+function ConversationsList({ selectedId, onSelect, groupsOnly = false }: { selectedId: string | null; onSelect: (id: string) => void; groupsOnly?: boolean }) {
   const { data, isLoading } = useGetConversations();
   const [search, setSearch] = useState("");
   const [showNewDialog, setShowNewDialog] = useState(false);
   const conversations = data?.conversations || [];
   
   const filtered = conversations.filter((c: any) => 
-    c.displayName.toLowerCase().includes(search.toLowerCase())
+    (!groupsOnly || c.type === "group") && c.displayName.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -200,7 +213,7 @@ function ConversationsList({ selectedId, onSelect }: { selectedId: string | null
             <Input 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search chats..." 
+              placeholder={groupsOnly ? "Search groups..." : "Search chats..."}
               className="h-8 pl-8 text-xs bg-white border-gray-200 shadow-none focus-visible:ring-1" 
             />
           </div>
@@ -274,7 +287,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
     (member: any) => String(member.id) === String(student?.id) && member.isAdmin,
   );
   
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetMessages(conversationId);
+  const { data, isLoading, isSuccess, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetMessages(conversationId);
   
   const messages = data?.pages.slice().reverse().flatMap((page: any) => page.messages) || [];
   
@@ -285,7 +298,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
   const hasRead = useRef<string | null>(null);
   
   useEffect(() => {
-    if (conversation?.unreadCount > 0 && hasRead.current !== conversationId) {
+    if (isSuccess && conversation?.unreadCount > 0 && hasRead.current !== conversationId) {
       hasRead.current = conversationId;
       readMutation.mutate(conversationId, {
         onSettled: () => {
@@ -295,7 +308,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
         }
       });
     }
-  }, [conversationId, conversation?.unreadCount, readMutation]);
+  }, [conversationId, conversation?.unreadCount, isSuccess, readMutation]);
 
   useEffect(() => {
     if (scrollRef.current && !isFetchingNextPage) {
@@ -361,7 +374,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       </div>
       
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-3 space-y-3" ref={scrollRef}>
         {isLoading ? (
           <div className="flex flex-col gap-4">
             <Skeleton className="h-12 w-2/3 rounded-2xl rounded-tl-sm self-start" />
@@ -369,7 +382,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
             <Skeleton className="h-12 w-1/2 rounded-2xl rounded-tl-sm self-start" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 text-xs font-medium">
+          <div className="text-center py-6 text-gray-400 text-xs font-medium">
             This is the beginning of your conversation.
           </div>
         ) : (
@@ -430,7 +443,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       </div>
       
       {/* Composer */}
-      <div className="p-3 bg-white border-t">
+      <div className="p-2.5 bg-white border-t">
         {mentionMatch && (mentionMembers.length > 0 || isSearchingMentions || isDebouncingMention) && <div className="mb-1 max-w-xs rounded-md border bg-white p-1 shadow-md">
           {(isSearchingMentions || isDebouncingMention) && <div className="px-2 py-1.5 text-xs text-gray-500">Searching employees...</div>}
           {mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertMention(member)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100"><Avatar className="h-5 w-5"><AvatarFallback className="text-[8px]"><Initials name={member.name} /></AvatarFallback></Avatar>@{member.name}</button>)}
@@ -601,7 +614,7 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="p-3 border-b sticky top-0 bg-gray-50/95 backdrop-blur z-10 space-y-3">
+      <div className="p-2.5 border-b sticky top-0 bg-gray-50/95 backdrop-blur z-10">
         <div className="flex items-center justify-between">
           <div className="bg-gray-200/50 p-1 rounded-md flex">
             <button
@@ -628,8 +641,8 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
         {isLoading ? (
           Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
         ) : tasks.length === 0 ? (
-          <div className="py-12 text-center flex flex-col items-center">
-            <CheckCircle2 className="w-8 h-8 text-gray-200 mb-2" />
+            <div className="py-7 text-center flex flex-col items-center">
+             <CheckCircle2 className="w-7 h-7 text-gray-200 mb-1.5" />
             <p className="text-xs font-semibold text-gray-500">No tasks found</p>
           </div>
         ) : (
@@ -637,7 +650,7 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
             <button
               key={t.id}
               onClick={() => onSelect(t.id)}
-              className={`w-full text-left p-3 rounded-lg border transition-all ${
+              className={`w-full text-left p-2.5 rounded-lg border transition-all ${
                 selectedId === t.id 
                   ? "bg-blue-50 border-blue-200 shadow-sm" 
                   : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm"
@@ -653,7 +666,7 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
                   {t.status.replace('_', ' ')}
                 </span>
               </div>
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-3 mt-1.5">
                 {t.dueDate && (
                   <span className={`text-[10px] font-medium flex items-center gap-1 ${
                     new Date(t.dueDate) < new Date() && t.status !== 'completed' ? 'text-red-600' : 'text-gray-500'
@@ -712,7 +725,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="h-14 border-b flex items-center justify-between px-4 md:px-6 shrink-0">
+      <div className="h-12 border-b flex items-center justify-between px-3 md:px-4 shrink-0">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden h-8 w-8 text-gray-400 -ml-2">
             <ChevronRight className="w-5 h-5 rotate-180" />
@@ -724,7 +737,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
         </Button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-2xl">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 max-w-2xl">
         <div className="flex items-center gap-2 mb-3">
           <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
             task.priority === 'high' ? 'bg-red-100 text-red-700' :
@@ -742,19 +755,19 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
           </span>
         </div>
         
-        <h1 className="text-2xl font-black text-gray-900 mb-6">{task.title}</h1>
+        <h1 className="text-xl font-black text-gray-900 mb-4">{task.title}</h1>
         
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+        <div className="grid grid-cols-2 gap-2 mb-5">
+          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Assignee</span>
             <div className="text-sm font-semibold text-gray-900">{task.assignee?.name || task.assigneeName}</div>
           </div>
-          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Reporter</span>
             <div className="text-sm font-semibold text-gray-900">{task.assigner?.name || task.assignedByName}</div>
           </div>
           {task.dueDate && (
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 col-span-2 sm:col-span-1">
+            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100 col-span-2 sm:col-span-1">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Due Date</span>
               <div className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-gray-400" />
@@ -765,11 +778,11 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
         </div>
         
         {task.description && (
-          <div className="mb-8">
+          <div className="mb-5">
             <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-gray-400" /> Description
             </h3>
-            <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+            <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
               {task.description}
             </div>
           </div>
@@ -781,7 +794,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
             {eligibleEmployees.map((employee: any) => <button key={employee.id} className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100" onClick={() => updateMut.mutate({ id: taskId, assigneeId: String(employee.id) }, { onSuccess: () => { setShowReassign(false); setEmployeeQuery(""); } })}>{employee.name}</button>)}
           </div>}
         </div>}
-        <div className="mb-6">
+        <div className="mb-4">
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-900">Work updates</h3>
           <div className="space-y-2">
             {(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-gray-100 p-3 text-xs"><b>{item.authorName}</b><span className="ml-2 text-gray-400">{format(new Date(item.createdAt), "PP p")}</span><p className="mt-1 whitespace-pre-wrap text-gray-600">{item.content}</p></div>)}
@@ -794,7 +807,7 @@ function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: strin
         {task.conversationId && <Button variant="outline" size="sm" onClick={() => onViewConversation(String(task.conversationId))}>View conversation</Button>}
       </div>
       
-      <div className="p-4 border-t bg-gray-50/50 flex items-center gap-3">
+      <div className="p-2.5 border-t bg-gray-50/50 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-600 mr-auto">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
         <Button 
           variant={task.status === "pending" ? "default" : "outline"}

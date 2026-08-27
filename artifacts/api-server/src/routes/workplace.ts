@@ -224,6 +224,57 @@ router.get("/workplace/employees", workplaceAuth, async (req, res): Promise<void
   res.json(employees);
 });
 
+router.get("/workplace/badges", workplaceAuth, async (req, res): Promise<void> => {
+  const userId = req.authUser!.id;
+  const unreadMessageCondition = and(
+    sql`(${workplaceMembersTable.lastReadAt} IS NULL OR ${workplaceMessagesTable.createdAt} > ${workplaceMembersTable.lastReadAt})`,
+    sql`${workplaceMessagesTable.senderId} <> ${userId}`,
+  );
+  const [directMessages, groupMessages, outstandingTasks, unreadAlerts] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` })
+      .from(workplaceMembersTable)
+      .innerJoin(workplaceConversationsTable, eq(workplaceMembersTable.conversationId, workplaceConversationsTable.id))
+      .innerJoin(workplaceMessagesTable, eq(workplaceMessagesTable.conversationId, workplaceConversationsTable.id))
+      .where(and(
+        eq(workplaceMembersTable.userId, userId),
+        eq(workplaceConversationsTable.type, "direct"),
+        unreadMessageCondition,
+      )),
+    db.select({ count: sql<number>`count(*)` })
+      .from(workplaceMembersTable)
+      .innerJoin(workplaceConversationsTable, eq(workplaceMembersTable.conversationId, workplaceConversationsTable.id))
+      .innerJoin(workplaceMessagesTable, eq(workplaceMessagesTable.conversationId, workplaceConversationsTable.id))
+      .where(and(
+        eq(workplaceMembersTable.userId, userId),
+        eq(workplaceConversationsTable.type, "group"),
+        unreadMessageCondition,
+      )),
+    db.select({ count: sql<number>`count(*)` })
+      .from(workplaceTasksTable)
+      .where(and(
+        eq(workplaceTasksTable.assigneeId, userId),
+        inArray(workplaceTasksTable.status, ["pending", "in_progress"]),
+      )),
+    db.select({ count: sql<number>`count(*)` })
+      .from(workplaceNotificationsTable)
+      .where(and(
+        eq(workplaceNotificationsTable.userId, userId),
+        sql`${workplaceNotificationsTable.readAt} IS NULL`,
+        notificationAccessCondition(userId),
+      )),
+  ]);
+  const conversations = Number(directMessages[0]?.count ?? 0);
+  const groups = Number(groupMessages[0]?.count ?? 0);
+  const tasks = Number(outstandingTasks[0]?.count ?? 0);
+  res.json({
+    conversations,
+    groups,
+    tasks,
+    alerts: Number(unreadAlerts[0]?.count ?? 0),
+    total: conversations + groups + tasks,
+  });
+});
+
 router.get("/workplace/conversations", workplaceAuth, async (req, res): Promise<void> => {
   const userId = req.authUser!.id;
   const members = await db.select({ conversationId: workplaceMembersTable.conversationId })
