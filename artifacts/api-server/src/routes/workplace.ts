@@ -473,7 +473,11 @@ router.post("/workplace/conversations/:id/read", workplaceAuth, async (req, res)
   await db.update(workplaceMembersTable).set({ lastReadAt: now })
     .where(and(eq(workplaceMembersTable.conversationId, conversationId), eq(workplaceMembersTable.userId, req.authUser!.id)));
   if (!await isMember(conversationId, req.authUser!.id)) { res.status(403).json({ error: "Conversation access denied." }); return; }
-  emitWorkplaceConversation(conversationId, "workplace:read", { conversationId, userId: req.authUser!.id, readAt: now });
+  const members = await db.select({ userId: workplaceMembersTable.userId })
+    .from(workplaceMembersTable)
+    .where(eq(workplaceMembersTable.conversationId, conversationId));
+  const receipt = { conversationId, userId: req.authUser!.id, readAt: now };
+  members.forEach((member) => emitWorkplaceUser(member.userId, "workplace:read", receipt, conversationId));
   res.json({ conversationId, readAt: now });
 });
 

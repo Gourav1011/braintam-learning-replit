@@ -1,0 +1,265 @@
+FINAL CHAT BEHAVIOR + VIEWPORT FIX
+
+Make ONLY these two fixes to the existing Workplace chat.
+
+DO NOT rebuild Workplace.
+DO NOT change the database architecture, authentication, permissions, tasks, notifications, search, mentions, groups, or portal routing.
+
+==================================================
+1. PAGE MUST NOT SCROLL
+==================================================
+
+The Workplace chat is STILL causing the entire browser/page to scroll.
+
+This must be fixed properly.
+
+The browser viewport should remain fixed when Workplace is open.
+
+ONLY the message history should scroll.
+
+Required structure:
+
+Existing Braintam Header
+        ↓
+Workplace
+┌─────────────┬──────────────────────────────┐
+│ Chat List   │ Chat Header                  │
+│             ├──────────────────────────────┤
+│             │                              │
+│             │      MESSAGE HISTORY         │
+│             │                              │
+│             │      overflow-y: auto        │
+│             │                              │
+│             ├──────────────────────────────┤
+│             │ MESSAGE COMPOSER             │
+│             │ Write a message...       ➤  │
+└─────────────┴──────────────────────────────┘
+
+ABSOLUTE REQUIREMENTS:
+
+- No page-level vertical scrollbar caused by Workplace.
+- No horizontal scrollbar.
+- Chat header stays fixed.
+- Message composer stays fixed at bottom.
+- Only message history scrolls.
+- Left conversation list may independently scroll if required.
+- Right details panel may independently scroll if required.
+- The composer must ALWAYS be visible without page scrolling.
+
+Do not simply hide the body scrollbar.
+
+Fix the actual height/flex/grid structure.
+
+Use the existing portal header height to calculate the available Workplace height.
+
+Conceptually:
+
+Workplace:
+height: calc(100vh - existing header height)
+min-height: 0
+overflow: hidden
+
+Chat:
+height: 100%
+min-height: 0
+display: flex
+flex-direction: column
+overflow: hidden
+
+Chat header:
+flex-shrink: 0
+
+Message history:
+flex: 1
+min-height: 0
+overflow-y: auto
+
+Composer:
+flex-shrink: 0
+
+Also check parent containers. A parent with min-height:auto or overflow-visible must NOT force the page to grow.
+
+Use min-height: 0 on nested flex/grid children where required.
+
+IMPORTANT:
+Do not make the message composer disappear below the viewport.
+
+Test with 50+ messages.
+
+The page must remain fixed while only the message history scrolls.
+
+==================================================
+2. MESSAGE STATUS — SENT → OPENED/READ
+==================================================
+
+Implement the message status behavior properly using the EXISTING read-state infrastructure.
+
+When I send a message:
+
+Immediately show:
+
+✓ Sent
+
+Example:
+
+"Hi, please check this."
+8:20 PM  ✓
+
+This means the server successfully accepted/stored the message.
+
+Do NOT immediately show double check/read/opened.
+
+==================================================
+WHEN RECIPIENT ACTUALLY OPENS/READS IT
+==================================================
+
+When the other employee actually opens the conversation and the message becomes viewed/read:
+
+Change the sender's status to:
+
+✓✓ Read
+
+or the existing application's equivalent "Opened/Read" visual.
+
+Example:
+
+Before recipient opens:
+
+8:20 PM  ✓ Sent
+
+After recipient opens the conversation:
+
+8:20 PM  ✓✓ Read
+
+The status must update in real time for the sender if the existing Socket.IO system supports it.
+
+Do not require a page refresh.
+
+==================================================
+3. IMPORTANT READ LOGIC
+==================================================
+
+Opening Workplace MUST NOT mark all messages as read.
+
+Opening a different conversation MUST NOT mark this conversation as read.
+
+The recipient must actually open/view the specific conversation.
+
+Only then should the relevant incoming messages be marked read.
+
+Example:
+
+Gourav sends Poonam 3 messages.
+
+Poonam has NOT opened the conversation:
+
+Gourav sees:
+
+✓
+✓
+✓
+
+Poonam opens the conversation:
+
+Gourav sees:
+
+✓✓
+✓✓
+✓✓
+
+The unread count for Poonam also becomes 0.
+
+==================================================
+4. REAL-TIME STATUS UPDATE
+==================================================
+
+Use the existing Socket.IO connection.
+
+Flow:
+
+Sender sends message
+        ↓
+Server stores message
+        ↓
+Sender receives "sent" confirmation
+        ↓
+Show ✓ Sent
+
+Recipient opens conversation
+        ↓
+Server marks relevant messages as read
+        ↓
+Socket.IO emits read event to sender
+        ↓
+Sender UI changes to ✓✓ Read
+
+Do NOT create a new Socket.IO architecture.
+
+==================================================
+5. MULTIPLE MESSAGES
+==================================================
+
+If several messages are sent before the recipient opens the chat, mark them appropriately when they are viewed.
+
+Do not mark messages read merely because the recipient received them in the background.
+
+Received ≠ Read.
+
+==================================================
+6. PRESERVE EXISTING FUNCTIONALITY
+
+Do NOT change:
+
+- Chat
+- Groups
+- New Chat
+- Employee search
+- @mentions
+- Message edit
+- Message delete
+- Edit history
+- Admin deleted-message visibility
+- Tasks
+- Task reassignment
+- Task history
+- Alerts
+- Notifications
+- Unread counts
+- Permissions
+- Database
+- API contracts
+- Socket.IO architecture
+- Portal routing
+- Braintam header/sidebar
+
+Only fix:
+
+A) Workplace viewport/page scrolling
+B) Message Sent → Read/Open status
+
+==================================================
+7. FINAL TEST
+
+Test viewport:
+
+✓ Open Workplace
+✓ Page does NOT scroll
+✓ Chat history scrolls internally
+✓ Composer always visible
+✓ Send button always visible
+✓ Header stays visible
+✓ No horizontal overflow
+
+Test message status:
+
+1. User A sends User B a message.
+2. User A sees ✓ Sent.
+3. User B does NOT open the conversation.
+4. User A must continue seeing ✓ Sent.
+5. User B opens the conversation.
+6. User B's messages become read.
+7. User A immediately sees ✓✓ Read.
+8. User B's unread count becomes 0.
+9. No page refresh required.
+
+Do not finish until both behaviors work correctly.

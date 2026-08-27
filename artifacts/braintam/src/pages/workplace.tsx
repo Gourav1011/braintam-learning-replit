@@ -65,19 +65,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   const activeConversation = (conversationData as any)?.conversations?.find(
     (conversation: any) => String(conversation.id) === String(selectedConversationId),
   );
-  const readConversationMutation = useReadConversation();
-  const markUnreadConversationsRead = () => {
-    const unreadConversations = ((conversationData as any)?.conversations || []).filter(
-      (conversation: any) => Number(conversation.unreadCount || 0) > 0,
-    );
-    unreadConversations.forEach((conversation: any) => {
-      readConversationMutation.mutate(String(conversation.id));
-    });
-  };
   const selectSection = (section: WorkplaceSection) => {
-    if (section === "conversations" || section === "groups") {
-      markUnreadConversationsRead();
-    }
     setActiveSection(section);
     setSelectedConversationId(null);
     setSelectedTaskId(null);
@@ -109,7 +97,7 @@ export default function WorkplacePage({ initialSection = "conversations", onSect
   };
   
   return (
-      <div className="flex h-full min-h-0 min-w-0 overflow-hidden bg-white relative">
+      <div className="flex h-[calc(100dvh-3.5rem)] max-h-full min-h-0 min-w-0 overflow-hidden bg-white relative">
         {/* Left Panel */}
         <div className={`w-full md:w-[258px] lg:w-[274px] border-r border-slate-200 flex min-h-0 flex-col bg-[#fbfcfe] flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           (activeTab === "messages" && selectedConversationId) || (activeTab === "tasks" && selectedTaskId) 
@@ -441,6 +429,10 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
             {messages.map((msg: any, i: number, arr: any[]) => {
               const isMe = String(msg.senderId) === String(student?.id);
               const showHeader = !isMe && (i === 0 || arr[i-1].senderId !== msg.senderId);
+              const isReadByRecipient = isMe && (conversation.members || []).some((member: any) => {
+                if (String(member.id) === String(student?.id) || !member.lastReadAt) return false;
+                return new Date(member.lastReadAt).getTime() >= new Date(msg.createdAt).getTime();
+              });
             
             return (
               <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
@@ -460,7 +452,7 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
                     }} className="min-h-[36px] bg-white text-gray-900" />
                   ) : msg.content}
                   <div className={`text-[9px] mt-1 opacity-70 text-right ${isMe ? 'text-[#4774bb]' : 'text-slate-400'}`}>
-                    {format(new Date(msg.createdAt), "h:mm a")}{msg.editedAt && " · Edited"}{isMe && "  ✓✓"}
+                    {format(new Date(msg.createdAt), "h:mm a")}{msg.editedAt && " · Edited"}{isMe && (isReadByRecipient ? " · ✓✓ Read" : " · ✓ Sent")}
                   </div>
                 </div>
                 <DropdownMenu>

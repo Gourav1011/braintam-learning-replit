@@ -121,7 +121,29 @@ export function useWorkplaceRealtime(
       refreshConversations();
       refreshBadges();
     };
+    const syncReadReceipt = (event: { conversationId?: number | string; userId?: number | string; readAt?: string }) => {
+      const conversationId = String(event.conversationId ?? "");
+      const userId = String(event.userId ?? "");
+      if (!conversationId || !userId || !event.readAt) return;
+      queryClient.setQueryData(["workplace", "conversations"], (current: any) => {
+        if (!current?.conversations) return current;
+        return {
+          ...current,
+          conversations: current.conversations.map((conversation: any) => {
+            if (String(conversation.id) !== conversationId || !Array.isArray(conversation.members)) return conversation;
+            return {
+              ...conversation,
+              members: conversation.members.map((member: any) =>
+                String(member.id) === userId ? { ...member, lastReadAt: event.readAt } : member,
+              ),
+            };
+          }),
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "conversations"] });
+    };
     socket.on("workplace:message", refreshIncomingMessage);
+    socket.on("workplace:read", syncReadReceipt);
     socket.on("workplace:message_edited", refreshMessage);
     socket.on("workplace:message_deleted", refreshMessage);
     socket.on("workplace:member_added", refreshMessage);
