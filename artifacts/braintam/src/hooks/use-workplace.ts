@@ -17,14 +17,29 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   return res.json();
 };
 
-export function useWorkplaceRealtime(activeConversationId: string | null): void {
+export type WorkplaceNotification = {
+  id: number | string;
+  title: string;
+  body: string;
+  type: string;
+  conversationId?: number | string | null;
+  taskId?: number | string | null;
+  createdAt?: string;
+};
+
+export function useWorkplaceRealtime(
+  activeConversationId: string | null,
+  onNotification?: (notification: WorkplaceNotification) => void,
+): void {
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
   const activeConversationRef = useRef(activeConversationId);
+  const notificationRef = useRef(onNotification);
 
   useEffect(() => {
     activeConversationRef.current = activeConversationId;
   }, [activeConversationId]);
+  useEffect(() => { notificationRef.current = onNotification; }, [onNotification]);
 
   useEffect(() => {
     const token = localStorage.getItem(STAFF_TOKEN_KEY);
@@ -58,15 +73,30 @@ export function useWorkplaceRealtime(activeConversationId: string | null): void 
       }
     };
     socket.on("workplace:message", refreshMessage);
+    socket.on("workplace:message_edited", refreshMessage);
+    socket.on("workplace:message_deleted", refreshMessage);
     socket.on("workplace:member_added", refreshMessage);
     socket.on("workplace:member_removed", refreshMessage);
     socket.on("workplace:conversation_added", refreshConversations);
-    socket.on("workplace:task_created", refreshTasks);
-    socket.on("workplace:task_updated", refreshTasks);
-    socket.on("workplace:notification", () => {
+    const refreshTaskEvent = (event: { id?: number | string; taskId?: number | string }) => {
+      refreshTasks();
+      const taskId = event.id ?? event.taskId;
+      if (taskId) queryClient.invalidateQueries({ queryKey: ["workplace", "task", String(taskId)] });
+    };
+    socket.on("workplace:task_created", refreshTaskEvent);
+    socket.on("workplace:task_updated", refreshTaskEvent);
+    socket.on("workplace:task_reassigned", refreshTaskEvent);
+    socket.on("workplace:task_remark", refreshTaskEvent);
+    socket.on("workplace:notification", (notification: WorkplaceNotification) => {
       refreshNotifications();
       refreshConversations();
       refreshTasks();
+      // The page owns presentation; keeping this callback here preserves one socket.
+      const isOpenMessageNotification = ["message", "mention"].includes(notification.type)
+        && String(notification.conversationId ?? "") === String(activeConversationRef.current ?? "");
+      if (!isOpenMessageNotification) {
+        notificationRef.current?.(notification);
+      }
     });
 
     return () => {
@@ -84,10 +114,12 @@ export function useWorkplaceRealtime(activeConversationId: string | null): void 
   }, [activeConversationId]);
 }
 
-export const useGetEmployees = (q: string = "") => {
+export const useGetEmployees = (q: string = "", conversationId?: string | null) => {
   return useQuery({
-    queryKey: ["workplace", "employees", q],
-    queryFn: () => fetchWithAuth(`/api/workplace/employees?q=${encodeURIComponent(q)}`),
+    queryKey: ["workplace", "employees", q, conversationId || null],
+    queryFn: () => fetchWithAuth(`/api/workplace/employees?q=${encodeURIComponent(q)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ""}`),
+    enabled: Boolean(q.trim() || conversationId),
+    staleTime: 15_000,
   });
 };
 
@@ -145,10 +177,10 @@ export const useGetMessages = (conversationId: string | null) => {
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ conversationId, content }: { conversationId: string; content: string }) => 
+    mutationFn: ({ conversationId, content, mentionUserIds = [] }: { conversationId: string; content: string; mentionUserIds?: string[] }) =>
       fetchWithAuth(`/api/workplace/conversations/${conversationId}/messages`, {
         method: "POST",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, mentionUserIds }),
       }),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] });
@@ -197,7 +229,7 @@ export const useRemoveGroupMember = () => {
   });
 };
 
-export const useGetTasks = (view: "mine" | "assigned") => {
+export const useGetTasks = (view: "mine" | "assigned" | "completed") => {
   return useQuery({
     queryKey: ["workplace", "tasks", view],
     queryFn: () => fetchWithAuth(`/api/workplace/tasks?view=${view}`),
@@ -239,6 +271,59 @@ export const useUpdateTaskStatus = () => {
     },
   });
 };
+
+export const useGetTask = (id: string | null) => useQuery({
+  queryKey: ["workplace", "task", id],
+  queryFn: () => fetchWithAuth(`/api/workplace/tasks/${id}`),
+  enabled: !!id,
+});
+
+export const useUpdateTask = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; status?: "pending" | "in_progress" | "completed"; assigneeId?: string }) =>
+      fetchWithAuth(`/api/workplace/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workplace", "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workplace", "task", variables.id] });
+    },
+  });
+};
+
+export const useAddTaskRemark = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, content, mentionUserIds = [] }: { taskId: string; content: string; mentionUserIds?: string[] }) =>
+      fetchWithAuth(`/api/workplace/tasks/${taskId}/remarks`, { method: "POST", body: JSON.stringify({ content, mentionUserIds }) }),
+    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: ["workplace", "task", variables.taskId] }),
+  });
+};
+// Name retained for the task detail composer; both use the same exposed route.
+export const useCreateTaskRemark = useAddTaskRemark;
+
+export const useEditMessage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, content, conversationId }: { id: string; content: string; conversationId: string }) =>
+      fetchWithAuth(`/api/workplace/messages/${id}`, { method: "PATCH", body: JSON.stringify({ content }) }),
+    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] }),
+  });
+};
+
+export const useDeleteMessage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, conversationId }: { id: string; conversationId: string }) =>
+      fetchWithAuth(`/api/workplace/messages/${id}`, { method: "DELETE" }),
+    onSuccess: (_, variables) => queryClient.invalidateQueries({ queryKey: ["workplace", "messages", variables.conversationId] }),
+  });
+};
+
+export const useGetMessageEdits = (id: string | null) => useQuery({
+  queryKey: ["workplace", "message-edits", id],
+  queryFn: () => fetchWithAuth(`/api/workplace/messages/${id}/edits`),
+  enabled: !!id,
+});
 
 export const useGetNotifications = () => {
   return useQuery({

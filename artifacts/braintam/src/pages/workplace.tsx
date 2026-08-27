@@ -6,11 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   MessageSquare, CheckSquare, Bell, Search, Plus, 
   Send, MoreVertical, Calendar, Clock, AlertCircle, 
   CheckCircle2, Circle, ArrowRight, UserPlus, FileText,
-  Users, ChevronRight, Inbox
+  Users, ChevronRight, Inbox, Copy, Reply, AtSign, Pencil, Trash2, History
 } from "lucide-react";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import { 
@@ -18,7 +19,8 @@ import {
   useCreateGroupConversation, useGetMessages, useSendMessage, 
   useReadConversation, useGetTasks, useCreateTask, useWorkplaceRealtime,
   useAddGroupMember, useRemoveGroupMember,
-  useUpdateTaskStatus, useGetNotifications, useReadNotification 
+  useUpdateTaskStatus, useGetNotifications, useReadNotification, useEditMessage, useDeleteMessage, useGetMessageEdits,
+  useGetTask, useUpdateTask, useCreateTaskRemark, type WorkplaceNotification
 } from "@/hooks/use-workplace";
 import { useAuth } from "@/components/auth-provider";
 import { GroupMembersDialog } from "@/components/workplace-group-members";
@@ -36,13 +38,41 @@ function Initials({ name }: { name: string }) {
   return <>{name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}</>;
 }
 
+function useDebouncedValue(value: string, delay = 250) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function WorkplacePage() {
   const [activeTab, setActiveTab] = useState<Tab>("messages");
   
   // Selection state
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  useWorkplaceRealtime(selectedConversationId);
+  const [toasts, setToasts] = useState<WorkplaceNotification[]>([]);
+  const { data: conversationsData } = useGetConversations();
+  const { data: notificationsData } = useGetNotifications();
+  const handleNotification = (notification: WorkplaceNotification) => {
+    setToasts(current => current.some(item => String(item.id) === String(notification.id)) ? current : [...current, notification].slice(-4));
+  };
+  useWorkplaceRealtime(selectedConversationId, handleNotification);
+  useEffect(() => {
+    if (!toasts.length) return;
+    const timer = window.setTimeout(() => setToasts(current => current.slice(1)), 5500);
+    return () => window.clearTimeout(timer);
+  }, [toasts]);
+  const chatUnread = (conversationsData?.conversations || []).reduce((total: number, conversation: any) => total + Number(conversation.unreadCount || 0), 0);
+  const unreadNotifications = Number(notificationsData?.unreadCount || 0);
+  const taskUnread = (notificationsData?.notifications || []).filter((n: any) => !n.readAt && n.taskId).length;
+  const openNotification = (notification: WorkplaceNotification) => {
+    setToasts(current => current.filter(item => String(item.id) !== String(notification.id)));
+    if (notification.taskId) { setActiveTab("tasks"); setSelectedConversationId(null); setSelectedTaskId(String(notification.taskId)); }
+    else if (notification.conversationId) { setActiveTab("messages"); setSelectedTaskId(null); setSelectedConversationId(String(notification.conversationId)); }
+  };
   
   return (
       <div className="flex min-h-[calc(100vh-3.5rem)] bg-white overflow-hidden relative">
@@ -54,9 +84,9 @@ export default function WorkplacePage() {
         }`}>
           <div className="p-3 border-b bg-white">
             <div className="flex bg-gray-100/80 p-1 rounded-lg">
-              <TabButton active={activeTab === "messages"} onClick={() => { setActiveTab("messages"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={MessageSquare} label="Chat" />
-              <TabButton active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={CheckSquare} label="Tasks" />
-              <TabButton active={activeTab === "notifications"} onClick={() => { setActiveTab("notifications"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={Bell} label="Alerts" />
+              <TabButton active={activeTab === "messages"} onClick={() => { setActiveTab("messages"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={MessageSquare} label="Chat" count={chatUnread} />
+              <TabButton active={activeTab === "tasks"} onClick={() => { setActiveTab("tasks"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={CheckSquare} label="Tasks" count={taskUnread} />
+              <TabButton active={activeTab === "notifications"} onClick={() => { setActiveTab("notifications"); setSelectedConversationId(null); setSelectedTaskId(null); }} icon={Bell} label="Alerts" count={unreadNotifications} />
             </div>
           </div>
           
@@ -74,7 +104,7 @@ export default function WorkplacePage() {
               />
             )}
             {activeTab === "notifications" && (
-              <NotificationsList />
+              <NotificationsList onOpen={openNotification} />
             )}
           </div>
         </div>
@@ -93,7 +123,7 @@ export default function WorkplacePage() {
           
           {activeTab === "tasks" && (
             selectedTaskId ? (
-              <TaskDetailView taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />
+              <TaskDetailView taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} onViewConversation={(id) => { setActiveTab("messages"); setSelectedTaskId(null); setSelectedConversationId(id); }} />
             ) : (
               <div className="hidden md:flex flex-1 items-center justify-center">
                 <EmptyState icon={CheckSquare} title="No task selected" description="Select a task to view details or update its status." />
@@ -107,11 +137,17 @@ export default function WorkplacePage() {
             </div>
           )}
         </div>
+        <div className="fixed bottom-4 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] space-y-2">
+          {toasts.map(notification => <button key={notification.id} onClick={() => openNotification(notification)} className="w-full rounded-lg border bg-white p-3 text-left shadow-lg hover:bg-gray-50">
+            <div className="flex gap-2 text-xs font-bold text-gray-900"><Bell className="h-4 w-4 text-blue-600" />{notification.title}</div>
+            <p className="mt-1 truncate text-xs text-gray-600">{notification.body}</p>
+          </button>)}
+        </div>
       </div>
   );
 }
 
-function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: any; label: string }) {
+function TabButton({ active, onClick, icon: Icon, label, count = 0 }: { active: boolean; onClick: () => void; icon: any; label: string; count?: number }) {
   return (
     <button
       onClick={onClick}
@@ -121,6 +157,7 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; on
     >
       <Icon className="w-3.5 h-3.5" />
       {label}
+       {count > 0 && <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] text-white">{count > 99 ? "99+" : count}</span>}
     </button>
   );
 }
@@ -222,6 +259,8 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
   const [content, setContent] = useState("");
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showMembersDialog, setShowMembersDialog] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { data: convData } = useGetConversations();
@@ -235,6 +274,8 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
   const messages = data?.pages.slice().reverse().flatMap((page: any) => page.messages) || [];
   
   const sendMutation = useSendMessage();
+  const editMutation = useEditMessage();
+  const deleteMutation = useDeleteMessage();
   const readMutation = useReadConversation();
   const hasRead = useRef<string | null>(null);
   
@@ -260,10 +301,23 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() || sendMutation.isPending) return;
-    sendMutation.mutate({ conversationId, content: content.trim() }, {
+    const mentionUserIds = (conversation.members || []).filter((member: any) =>
+      content.toLowerCase().includes(`@${String(member.name || "").toLowerCase()}`),
+    ).map((member: any) => String(member.id));
+    sendMutation.mutate({ conversationId, content: content.trim(), mentionUserIds }, {
       onSuccess: () => setContent("")
     });
   };
+  const mentionMatch = content.match(/@([^@\s]*)$/);
+  const mentionQuery = mentionMatch?.[1].toLowerCase() ?? "";
+  const debouncedMentionQuery = useDebouncedValue(mentionQuery);
+  const { data: mentionSearchResults, isFetching: isSearchingMentions } = useGetEmployees(
+    debouncedMentionQuery,
+    conversation?.id ? conversationId : null,
+  );
+  const isDebouncingMention = mentionQuery !== debouncedMentionQuery;
+  const mentionMembers = mentionMatch && !isDebouncingMention ? (mentionSearchResults || []).slice(0, 6) : [];
+  const insertMention = (member: any) => setContent(current => current.replace(/@([^@\s]*)$/, `@${member.name} `));
 
   if (!conversation) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-32 h-4" /></div>;
 
@@ -344,11 +398,25 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
                       : 'bg-white text-gray-900 border border-gray-100 rounded-2xl rounded-tl-sm shadow-sm'
                   }`}
                 >
-                  {msg.content}
+                  {editing?.id === msg.id ? (
+                    <Textarea autoFocus value={editing.content} onChange={e => setEditing({ ...editing, content: e.target.value })} onKeyDown={e => {
+                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); editMutation.mutate({ id: String(msg.id), content: editing.content, conversationId }, { onSuccess: () => setEditing(null) }); }
+                    }} className="min-h-[36px] bg-white text-gray-900" />
+                  ) : msg.content}
                   <div className={`text-[9px] mt-1 opacity-70 text-right ${isMe ? 'text-white' : 'text-gray-400'}`}>
-                    {format(new Date(msg.createdAt), "h:mm a")}
+                    {format(new Date(msg.createdAt), "h:mm a")}{msg.editedAt && " · Edited"}
                   </div>
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align={isMe ? "end" : "start"} className="text-xs">
+                    <DropdownMenuItem onClick={() => setContent(`${content ? `${content}\n` : ""}Replying to ${msg.senderName}: `)}><Reply className="mr-2 h-3.5 w-3.5" />Reply</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigator.clipboard?.writeText(msg.content)}><Copy className="mr-2 h-3.5 w-3.5" />Copy</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setContent(`${content}@${msg.senderName} `)}><AtSign className="mr-2 h-3.5 w-3.5" />Mention</DropdownMenuItem>
+                    {msg.editedAt && (!msg.deletedAt || ["admin", "super_admin"].includes(String(student?.role))) && <DropdownMenuItem onClick={() => setHistoryId(String(msg.id))}><History className="mr-2 h-3.5 w-3.5" />Edit history</DropdownMenuItem>}
+                    {isMe && !msg.deletedAt && <><DropdownMenuItem onClick={() => setEditing({ id: msg.id, content: msg.content })}><Pencil className="mr-2 h-3.5 w-3.5" />Edit</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => deleteMutation.mutate({ id: String(msg.id), conversationId })}><Trash2 className="mr-2 h-3.5 w-3.5" />Delete</DropdownMenuItem></>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             );
           })}
@@ -358,6 +426,10 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
       
       {/* Composer */}
       <div className="p-3 bg-white border-t">
+        {mentionMatch && (mentionMembers.length > 0 || isSearchingMentions || isDebouncingMention) && <div className="mb-1 max-w-xs rounded-md border bg-white p-1 shadow-md">
+          {(isSearchingMentions || isDebouncingMention) && <div className="px-2 py-1.5 text-xs text-gray-500">Searching employees...</div>}
+          {mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertMention(member)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100"><Avatar className="h-5 w-5"><AvatarFallback className="text-[8px]"><Initials name={member.name} /></AvatarFallback></Avatar>@{member.name}</button>)}
+        </div>}
         <form onSubmit={handleSend} className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-xl p-1.5 focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm">
           <Textarea 
             value={content}
@@ -395,8 +467,16 @@ function ChatView({ conversationId, onBack }: { conversationId: string; onBack: 
           onClose={() => setShowMembersDialog(false)}
         />
       )}
+      {historyId && <MessageHistoryDialog messageId={historyId} onClose={() => setHistoryId(null)} />}
     </div>
   );
+}
+
+function MessageHistoryDialog({ messageId, onClose }: { messageId: string; onClose: () => void }) {
+  const { data, isLoading } = useGetMessageEdits(messageId);
+  return <Dialog open onOpenChange={onClose}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Edit history</DialogTitle></DialogHeader>
+    {isLoading ? <Skeleton className="h-20 w-full" /> : <div className="max-h-80 space-y-3 overflow-auto text-xs">{data?.edits?.length ? data.edits.map((edit: any) => <div key={edit.id} className="rounded border p-2"><p><b>Original:</b> {edit.previousContent}</p><p><b>Edited:</b> {edit.newContent}</p><p className="mt-1 text-gray-500">{edit.editorName} · {format(new Date(edit.createdAt), "PP p")}</p></div>) : "No edit records."}</div>}
+  </DialogContent></Dialog>;
 }
 
 function NewConversationDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
@@ -404,7 +484,8 @@ function NewConversationDialog({ onClose, onCreated }: { onClose: () => void; on
   const [q, setQ] = useState("");
   const [groupName, setGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const { data, isLoading } = useGetEmployees(q);
+  const debouncedQ = useDebouncedValue(q);
+  const { data, isLoading } = useGetEmployees(debouncedQ);
   const directMut = useCreateDirectConversation();
   const groupMut = useCreateGroupConversation();
   
@@ -449,19 +530,21 @@ function NewConversationDialog({ onClose, onCreated }: { onClose: () => void; on
             <Input 
               value={q} 
               onChange={e => setQ(e.target.value)} 
-              placeholder="Search colleagues..." 
+               placeholder="Search employee..."
               className="pl-9 h-9 bg-white shadow-sm"
               autoFocus
             />
           </div>
         </div>
         <ScrollArea className="h-[300px]">
-          {isLoading ? (
+           {isLoading || q.trim() !== debouncedQ.trim() ? (
             <div className="p-4 space-y-3">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
-          ) : data?.length === 0 ? (
+           ) : !q.trim() ? (
+             <div className="p-8 text-center text-sm text-gray-500">Type a name, phone, or employee ID to search.</div>
+           ) : data?.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500">No colleagues found.</div>
           ) : (
             <div className="p-2 space-y-1">
@@ -505,7 +588,7 @@ function NewConversationDialog({ onClose, onCreated }: { onClose: () => void; on
 // ── Tasks ─────────────────────────────────────────────────────────────────
 
 function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
-  const [view, setView] = useState<"mine" | "assigned">("mine");
+  const [view, setView] = useState<"mine" | "assigned" | "completed">("mine");
   const { data, isLoading } = useGetTasks(view);
   const [showNewTask, setShowNewTask] = useState(false);
   
@@ -526,8 +609,9 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
               onClick={() => setView("assigned")}
               className={`px-3 py-1 rounded text-xs font-semibold transition-all ${view === "assigned" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}
             >
-              Assigned
+              Assigned by Me
             </button>
+            <button onClick={() => setView("completed")} className={`px-3 py-1 rounded text-xs font-semibold transition-all ${view === "completed" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-900"}`}>Completed</button>
           </div>
           <Button size="sm" className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-xs font-bold" onClick={() => setShowNewTask(true)}>
             <Plus className="w-3.5 h-3.5 mr-1" /> New
@@ -575,8 +659,9 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
                 )}
                 <span className="text-[10px] text-gray-500 flex items-center gap-1">
                   <UserPlus className="w-3 h-3" />
-                  {view === "mine" ? t.assignedByName : t.assigneeName}
+                  {view === "mine" ? `By ${t.assignedByName}` : `To ${t.assigneeName}`}
                 </span>
+                <span className="text-[10px] capitalize text-gray-500">{t.priority} priority</span>
               </div>
             </button>
           ))
@@ -588,16 +673,37 @@ function TasksList({ selectedId, onSelect }: { selectedId: string | null; onSele
   );
 }
 
-function TaskDetailView({ taskId, onClose }: { taskId: string; onClose: () => void }) {
-  const { data: mineData } = useGetTasks("mine");
-  const { data: asgnData } = useGetTasks("assigned");
-  
-  const task = mineData?.tasks?.find((t: any) => String(t.id) === taskId) 
-    || asgnData?.tasks?.find((t: any) => String(t.id) === taskId);
-    
-  const updateMut = useUpdateTaskStatus();
+function TaskDetailView({ taskId, onClose, onViewConversation }: { taskId: string; onClose: () => void; onViewConversation: (id: string) => void }) {
+  const { student } = useAuth();
+  const { data: detail, isLoading } = useGetTask(taskId);
+  const [remark, setRemark] = useState("");
+  const [employeeQuery, setEmployeeQuery] = useState("");
+  const [showReassign, setShowReassign] = useState(false);
+  const task = detail?.task;
+  const debouncedEmployeeQuery = useDebouncedValue(employeeQuery);
+  const { data: employeeResults, isFetching: isSearchingEmployees } = useGetEmployees(
+    debouncedEmployeeQuery,
+    showReassign && task?.conversationId ? String(task.conversationId) : null,
+  );
+  const { data: conversationData } = useGetConversations();
+  const remarkMut = useCreateTaskRemark();
+  const updateMut = useUpdateTask();
 
-  if (!task) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-40 h-6" /></div>;
+  if (isLoading || !task) return <div className="flex-1 flex items-center justify-center"><Skeleton className="w-40 h-6" /></div>;
+  const isAdmin = ["admin", "super_admin"].includes(String(student?.role));
+  const canChangeStatus = isAdmin || String(task.assigneeId) === String(student?.id);
+  const canReassign = task.status !== "completed" && (isAdmin || String(task.assignedById) === String(student?.id));
+  const linkedConversation = (conversationData?.conversations || []).find((item: any) => String(item.id) === String(task.conversationId));
+  const eligibleEmployees = task.conversationId
+    ? (employeeResults || []).filter((employee: any) => linkedConversation?.members?.some((member: any) => String(member.id) === String(employee.id)))
+    : (employeeResults || []);
+  const mentionQuery = remark.match(/@([^@\s]*)$/)?.[1].toLowerCase();
+  const taskParticipants = linkedConversation?.members?.length
+    ? linkedConversation.members
+    : [task.assignee, task.assigner].filter(Boolean);
+  const mentionMembers = mentionQuery === undefined ? [] : taskParticipants.filter((member: any) => String(member.name || "").toLowerCase().includes(mentionQuery)).slice(0, 6);
+  const insertRemarkMention = (member: any) => setRemark(value => value.replace(/@([^@\s]*)$/, `@${member.name} `));
+  const remarkMentionIds = taskParticipants.filter((member: any) => remark.toLowerCase().includes(`@${String(member.name || "").toLowerCase()}`)).map((member: any) => String(member.id));
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -636,11 +742,11 @@ function TaskDetailView({ taskId, onClose }: { taskId: string; onClose: () => vo
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Assignee</span>
-            <div className="text-sm font-semibold text-gray-900">{task.assigneeName}</div>
+            <div className="text-sm font-semibold text-gray-900">{task.assignee?.name || task.assigneeName}</div>
           </div>
           <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Reporter</span>
-            <div className="text-sm font-semibold text-gray-900">{task.assignedByName}</div>
+            <div className="text-sm font-semibold text-gray-900">{task.assigner?.name || task.assignedByName}</div>
           </div>
           {task.dueDate && (
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 col-span-2 sm:col-span-1">
@@ -663,15 +769,32 @@ function TaskDetailView({ taskId, onClose }: { taskId: string; onClose: () => vo
             </div>
           </div>
         )}
+        {canReassign && <div className="mb-5 rounded-lg border border-gray-100 p-3">
+          <div className="flex items-center justify-between"><span className="text-xs font-bold text-gray-800">Assigned to: {task.assignee?.name}</span><Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowReassign(value => !value)}>Reassign</Button></div>
+          {showReassign && <div className="mt-2 space-y-1"><Input value={employeeQuery} onChange={e => setEmployeeQuery(e.target.value)} placeholder="Search eligible employee…" className="h-8 text-xs" />
+            {isSearchingEmployees && <p className="px-2 text-[10px] text-gray-500">Searching employees...</p>}
+            {eligibleEmployees.map((employee: any) => <button key={employee.id} className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100" onClick={() => updateMut.mutate({ id: taskId, assigneeId: String(employee.id) }, { onSuccess: () => { setShowReassign(false); setEmployeeQuery(""); } })}>{employee.name}</button>)}
+          </div>}
+        </div>}
+        <div className="mb-6">
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-900">Work updates</h3>
+          <div className="space-y-2">
+            {(detail?.remarks || []).map((item: any) => <div key={item.id} className="rounded-lg border border-gray-100 p-3 text-xs"><b>{item.authorName}</b><span className="ml-2 text-gray-400">{format(new Date(item.createdAt), "PP p")}</span><p className="mt-1 whitespace-pre-wrap text-gray-600">{item.content}</p></div>)}
+          </div>
+          {mentionMembers.length > 0 && <div className="mb-1 max-w-xs rounded border bg-white p-1 shadow-sm">{mentionMembers.map((member: any) => <button type="button" key={member.id} onClick={() => insertRemarkMention(member)} className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-100">@{member.name}</button>)}</div>}
+          <p className="mb-1 text-[10px] text-gray-500">@ mentions notify participants only; they never change the assignee.</p>
+          <div className="mt-2 flex gap-2"><Textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Add a work update…" className="min-h-[42px] text-xs" /><Button size="sm" disabled={!remark.trim() || remarkMut.isPending} onClick={() => remarkMut.mutate({ taskId, content: remark.trim(), mentionUserIds: remarkMentionIds }, { onSuccess: () => setRemark("") })}>Add</Button></div>
+        </div>
+        {(detail?.events || []).length > 0 && <div className="mb-4"><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-900">Activity</h3><div className="space-y-1 border-l pl-3 text-xs text-gray-500">{detail.events.map((event: any) => <p key={event.id}>{event.eventType.replace("_", " ")} · {format(new Date(event.createdAt), "PP p")}</p>)}</div></div>}
+        {task.conversationId && <Button variant="outline" size="sm" onClick={() => onViewConversation(String(task.conversationId))}>View conversation</Button>}
       </div>
       
       <div className="p-4 border-t bg-gray-50/50 flex items-center gap-3">
-        <span className="text-xs font-semibold text-gray-600 mr-auto">Update Status:</span>
+        <span className="text-xs font-semibold text-gray-600 mr-auto">{canChangeStatus ? "Update Status:" : "Only the assignee can update status"}</span>
         <Button 
           variant={task.status === "pending" ? "default" : "outline"}
           size="sm"
-          onClick={() => updateMut.mutate({ id: taskId, status: "pending" })}
-          disabled={updateMut.isPending || task.status !== "pending"}
+          disabled
           className={task.status === "pending" ? "bg-gray-900 text-white" : "bg-white"}
         >
           <Circle className="w-3.5 h-3.5 mr-1.5" /> Pending
@@ -680,7 +803,7 @@ function TaskDetailView({ taskId, onClose }: { taskId: string; onClose: () => vo
           variant={task.status === "in_progress" ? "default" : "outline"}
           size="sm"
           onClick={() => updateMut.mutate({ id: taskId, status: "in_progress" })}
-          disabled={updateMut.isPending || task.status !== "pending"}
+          disabled={!canChangeStatus || updateMut.isPending || task.status !== "pending"}
           className={task.status === "in_progress" ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-white"}
         >
           <Clock className="w-3.5 h-3.5 mr-1.5" /> In Progress
@@ -689,7 +812,7 @@ function TaskDetailView({ taskId, onClose }: { taskId: string; onClose: () => vo
           variant={task.status === "completed" ? "default" : "outline"}
           size="sm"
           onClick={() => updateMut.mutate({ id: taskId, status: "completed" })}
-          disabled={updateMut.isPending || task.status !== "in_progress"}
+          disabled={!canChangeStatus || updateMut.isPending || task.status !== "in_progress"}
           className={task.status === "completed" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-white"}
         >
           <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Completed
@@ -708,10 +831,13 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
+  const [selectedAssigneeName, setSelectedAssigneeName] = useState("");
+  const [assigneeSearch, setAssigneeSearch] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [dueDate, setDueDate] = useState("");
   
-  const { data: employees } = useGetEmployees("");
+  const debouncedAssigneeSearch = useDebouncedValue(assigneeSearch);
+  const { data: employees, isFetching: isSearchingAssignees } = useGetEmployees(debouncedAssigneeSearch, conversationId);
   const createMut = useCreateTask();
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -734,8 +860,9 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
   };
 
   const eligibleEmployees = members?.length
-    ? employees?.filter((employee: any) => members.some((member: any) => String(member.id) === String(employee.id)))
-    : employees;
+    ? (employees || []).filter((employee: any) => members.some((member: any) => String(member.id) === String(employee.id)))
+    : (employees || []);
+  const selectedAssignee = eligibleEmployees.find((employee: any) => String(employee.id) === assigneeId);
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -757,17 +884,28 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
             
             <div>
               <label className="text-xs font-semibold text-gray-700 block mb-1.5">Assignee *</label>
-              <select 
-                value={assigneeId} 
-                onChange={e => setAssigneeId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                required
-              >
-                <option value="" disabled>Select colleague...</option>
-                {eligibleEmployees?.map((emp: any) => (
-                  <option key={emp.id} value={emp.id}>{emp.name} ({emp.role.replace('_', ' ')})</option>
-                ))}
-              </select>
+              <Input
+                value={assigneeId ? (selectedAssignee?.name || selectedAssigneeName) : assigneeSearch}
+                onChange={e => { setAssigneeId(""); setSelectedAssigneeName(""); setAssigneeSearch(e.target.value); }}
+                placeholder="Search employee..."
+                className="bg-white"
+                required={!assigneeId}
+              />
+              {isSearchingAssignees && <p className="mt-1 text-[10px] text-gray-500">Searching employees...</p>}
+              {!assigneeId && assigneeSearch.trim() && eligibleEmployees.length > 0 && (
+                <div className="mt-1 max-h-32 overflow-y-auto rounded-md border bg-white p-1">
+                  {eligibleEmployees.slice(0, 8).map((emp: any) => (
+                    <button type="button" key={emp.id} onClick={() => { setAssigneeId(String(emp.id)); setSelectedAssigneeName(emp.name); setAssigneeSearch(""); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100">
+                      <span className="font-medium">{emp.name}</span>
+                      <span className="ml-auto text-[10px] text-gray-500">{emp.employeeId || emp.role?.replace("_", " ")}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!assigneeId && assigneeSearch.trim() && !isSearchingAssignees && eligibleEmployees.length === 0 && (
+                <p className="mt-1 text-[10px] text-gray-500">No permitted employees found.</p>
+              )}
+              {assigneeId && <p className="mt-1 text-[10px] text-gray-500">Selected: {selectedAssignee?.name || selectedAssigneeName}</p>}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -817,24 +955,11 @@ function NewTaskDialog({ onClose, onCreated, conversationId, members }: {
 
 // ── Notifications ─────────────────────────────────────────────────────────
 
-function NotificationsList() {
+function NotificationsList({ onOpen }: { onOpen: (notification: WorkplaceNotification) => void }) {
   const { data, isLoading } = useGetNotifications();
   const readMut = useReadNotification();
   
   const notifications = data?.notifications || [];
-  const hasRead = useRef(false);
-  
-  useEffect(() => {
-    if (data?.unreadCount > 0 && !hasRead.current) {
-      hasRead.current = true;
-      readMut.mutate(undefined, {
-        onSettled: () => {
-          hasRead.current = false;
-        }
-      });
-    }
-  }, [data?.unreadCount, readMut]);
-
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="p-4 border-b sticky top-0 bg-white z-10 flex items-center justify-between">
@@ -857,7 +982,7 @@ function NotificationsList() {
           </div>
         ) : (
           notifications.map((n: any) => (
-            <div key={n.id} className={`p-4 border-b border-gray-50 transition-colors hover:bg-gray-50/50 ${!n.readAt ? 'bg-blue-50/30' : ''}`}>
+            <button key={n.id} onClick={() => { if (!n.readAt) readMut.mutate(String(n.id)); onOpen(n); }} className={`w-full p-4 border-b border-gray-50 text-left transition-colors hover:bg-gray-50/50 ${!n.readAt ? 'bg-blue-50/30' : ''}`}>
               <div className="flex items-start gap-3">
                 <div className={`mt-0.5 shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   n.type.includes('task') ? 'bg-amber-100 text-amber-600' :
@@ -876,7 +1001,7 @@ function NotificationsList() {
                   </p>
                 </div>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>

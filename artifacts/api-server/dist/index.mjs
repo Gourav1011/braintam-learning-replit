@@ -99957,9 +99957,12 @@ __export(schema_exports, {
   workplaceConversationTypes: () => workplaceConversationTypes,
   workplaceConversationsTable: () => workplaceConversationsTable,
   workplaceMembersTable: () => workplaceMembersTable,
+  workplaceMessageEditsTable: () => workplaceMessageEditsTable,
   workplaceMessagesTable: () => workplaceMessagesTable,
   workplaceNotificationsTable: () => workplaceNotificationsTable,
   workplacePriorities: () => workplacePriorities,
+  workplaceTaskEventsTable: () => workplaceTaskEventsTable,
+  workplaceTaskRemarksTable: () => workplaceTaskRemarksTable,
   workplaceTaskStatuses: () => workplaceTaskStatuses,
   workplaceTasksTable: () => workplaceTasksTable
 });
@@ -113012,9 +113015,23 @@ var workplaceMessagesTable = pgTable("workplace_messages", {
   senderId: integer("sender_id").notNull().references(() => usersTable.id),
   content: text("content").notNull(),
   mentionsJson: text("mentions_json"),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+  deletedById: integer("deleted_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull()
 }, (table) => ({
-  conversationChronologyIndex: index("workplace_messages_conversation_created_idx").on(table.conversationId, table.createdAt)
+  conversationChronologyIndex: index("workplace_messages_conversation_created_idx").on(table.conversationId, table.createdAt),
+  deletedIndex: index("workplace_messages_deleted_idx").on(table.conversationId, table.deletedAt)
+}));
+var workplaceMessageEditsTable = pgTable("workplace_message_edits", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull().references(() => workplaceMessagesTable.id, { onDelete: "cascade" }),
+  previousContent: text("previous_content").notNull(),
+  newContent: text("new_content").notNull(),
+  editorId: integer("editor_id").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => ({
+  messageChronologyIndex: index("workplace_message_edits_message_created_idx").on(table.messageId, table.createdAt)
 }));
 var workplaceTasksTable = pgTable("workplace_tasks", {
   id: serial("id").primaryKey(),
@@ -113027,12 +113044,40 @@ var workplaceTasksTable = pgTable("workplace_tasks", {
   priority: text("priority").notNull().default("medium"),
   status: text("status").notNull().default("pending"),
   crmReferenceId: text("crm_reference_id"),
+  completedAt: timestamp("completed_at"),
+  completedById: integer("completed_by_id").references(() => usersTable.id, { onDelete: "set null" }),
+  sourceMessageId: integer("source_message_id").references(() => workplaceMessagesTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 }, (table) => ({
   assigneeStatusIndex: index("workplace_tasks_assignee_status_idx").on(table.assigneeId, table.status),
   assignedByIndex: index("workplace_tasks_assigned_by_idx").on(table.assignedById),
-  dueDateIndex: index("workplace_tasks_due_date_idx").on(table.dueDate)
+  dueDateIndex: index("workplace_tasks_due_date_idx").on(table.dueDate),
+  conversationIndex: index("workplace_tasks_conversation_idx").on(table.conversationId)
+}));
+var workplaceTaskRemarksTable = pgTable("workplace_task_remarks", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => workplaceTasksTable.id, { onDelete: "cascade" }),
+  authorId: integer("author_id").notNull().references(() => usersTable.id),
+  content: text("content").notNull(),
+  mentionsJson: text("mentions_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => ({
+  taskChronologyIndex: index("workplace_task_remarks_task_created_idx").on(table.taskId, table.createdAt)
+}));
+var workplaceTaskEventsTable = pgTable("workplace_task_events", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => workplaceTasksTable.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(),
+  actorId: integer("actor_id").references(() => usersTable.id, { onDelete: "set null" }),
+  oldAssigneeId: integer("old_assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
+  newAssigneeId: integer("new_assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
+  oldStatus: text("old_status"),
+  newStatus: text("new_status"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => ({
+  taskChronologyIndex: index("workplace_task_events_task_created_idx").on(table.taskId, table.createdAt)
 }));
 var workplaceNotificationsTable = pgTable("workplace_notifications", {
   id: serial("id").primaryKey(),
@@ -113066,9 +113111,9 @@ import path from "node:path";
 var router = (0, import_express.Router)();
 function getBuildConst(name) {
   const map2 = {
-    version: true ? "2026-08-27-0812" : "dev",
-    commit: true ? "0cc6c4c" : "unknown",
-    buildTime: true ? "2026-08-27T08:12:14.837Z" : (/* @__PURE__ */ new Date()).toISOString()
+    version: true ? "2026-08-27-1006" : "dev",
+    commit: true ? "0c30868" : "unknown",
+    buildTime: true ? "2026-08-27T10:06:52.368Z" : (/* @__PURE__ */ new Date()).toISOString()
   };
   return map2[name];
 }
@@ -138692,6 +138737,7 @@ function removeWorkplaceUserFromConversation(userId, conversationId) {
 // src/routes/workplace.ts
 var router48 = (0, import_express48.Router)();
 var workplaceAuth = requireRole(
+  "super_admin",
   "admin",
   "teacher",
   "mentor",
@@ -138715,6 +138761,22 @@ async function isMember(conversationId, userId) {
     eq(workplaceMembersTable.userId, userId)
   )).limit(1);
   return member ?? null;
+}
+function isWorkplaceAdmin(req) {
+  return ["admin", "super_admin"].includes(req.authUser.role);
+}
+async function canAccessConversation(req, conversationId) {
+  return isWorkplaceAdmin(req) || Boolean(await isMember(conversationId, req.authUser.id));
+}
+async function conversationMemberIds(conversationId) {
+  const rows = await db.select({ userId: workplaceMembersTable.userId }).from(workplaceMembersTable).where(eq(workplaceMembersTable.conversationId, conversationId));
+  return rows.map((row) => row.userId);
+}
+async function authorizedMentionIds(conversationId, rawIds) {
+  if (!Array.isArray(rawIds)) return [];
+  const ids = [...new Set(rawIds.map(parsePositiveId).filter((id) => id !== null))].slice(0, 20);
+  const memberIds = await conversationMemberIds(conversationId);
+  return ids.every((id) => memberIds.includes(id)) ? ids : null;
 }
 async function getConversation(conversationId) {
   const [conversation] = await db.select().from(workplaceConversationsTable).where(eq(workplaceConversationsTable.id, conversationId)).limit(1);
@@ -138750,7 +138812,7 @@ async function createNotification(userId, type, title, body, actorId, conversati
   emitWorkplaceUser(userId, "workplace:notification", notification);
   return notification;
 }
-async function conversationSummary(conversationId, userId) {
+async function conversationSummary(conversationId, userId, allowHistorical = false) {
   const conversation = await getConversation(conversationId);
   if (!conversation) return null;
   const members = await db.select({
@@ -138761,17 +138823,18 @@ async function conversationSummary(conversationId, userId) {
     email: usersTable.email,
     role: usersTable.role,
     avatarUrl: usersTable.avatarUrl
-  }).from(workplaceMembersTable).innerJoin(usersTable, eq(workplaceMembersTable.userId, usersTable.id)).where(eq(workplaceMembersTable.conversationId, conversationId)).orderBy(asc(workplaceMembersTable.joinedAt));
+  }).from(workplaceMembersTable).leftJoin(usersTable, eq(workplaceMembersTable.userId, usersTable.id)).where(eq(workplaceMembersTable.conversationId, conversationId)).orderBy(asc(workplaceMembersTable.joinedAt));
   const member = members.find((item) => item.id === userId);
-  if (!member) return null;
+  if (!member && !allowHistorical) return null;
   const lastMessage = await db.select({
     id: workplaceMessagesTable.id,
     content: workplaceMessagesTable.content,
     createdAt: workplaceMessagesTable.createdAt,
     senderId: workplaceMessagesTable.senderId,
-    senderName: usersTable.name
-  }).from(workplaceMessagesTable).innerJoin(usersTable, eq(workplaceMessagesTable.senderId, usersTable.id)).where(eq(workplaceMessagesTable.conversationId, conversationId)).orderBy(desc(workplaceMessagesTable.createdAt)).limit(1);
-  const unread = member.lastReadAt ? await db.select({ count: sql`count(*)` }).from(workplaceMessagesTable).where(and(
+    senderName: usersTable.name,
+    deletedAt: workplaceMessagesTable.deletedAt
+  }).from(workplaceMessagesTable).leftJoin(usersTable, eq(workplaceMessagesTable.senderId, usersTable.id)).where(eq(workplaceMessagesTable.conversationId, conversationId)).orderBy(desc(workplaceMessagesTable.createdAt)).limit(1);
+  const unread = member?.lastReadAt ? await db.select({ count: sql`count(*)` }).from(workplaceMessagesTable).where(and(
     eq(workplaceMessagesTable.conversationId, conversationId),
     gt(workplaceMessagesTable.createdAt, member.lastReadAt),
     sql`${workplaceMessagesTable.senderId} <> ${userId}`
@@ -138785,7 +138848,7 @@ async function conversationSummary(conversationId, userId) {
     displayName: conversation.type === "group" ? conversation.name || "Untitled group" : others[0]?.name || "Direct conversation",
     members,
     unreadCount: Number(unread[0]?.count ?? 0),
-    lastMessage: lastMessage[0] ?? null
+    lastMessage: lastMessage[0] && lastMessage[0].deletedAt && !allowHistorical ? { ...lastMessage[0], content: "This message was deleted." } : lastMessage[0] ?? null
   };
 }
 router48.get("/workplace/employees", workplaceAuth, async (req, res) => {
@@ -138793,12 +138856,28 @@ router48.get("/workplace/employees", workplaceAuth, async (req, res) => {
   const conditions = [
     eq(usersTable.isActive, true),
     eq(usersTable.isDeleted, false),
+    ne(usersTable.id, req.authUser.id),
     or(...employeeRoles.map((role) => eq(usersTable.role, role)))
   ];
+  const conversationId = parsePositiveId(req.query.conversationId);
+  if (conversationId) {
+    if (!await canAccessConversation(req, conversationId)) {
+      res.status(403).json({ error: "Conversation access denied." });
+      return;
+    }
+    const memberIds = await conversationMemberIds(conversationId);
+    if (memberIds.length === 0) {
+      res.json([]);
+      return;
+    }
+    conditions.push(inArray(usersTable.id, memberIds));
+  }
   if (query) {
     conditions.push(or(
       ilike(usersTable.name, `%${query}%`),
       ilike(usersTable.email, `%${query}%`),
+      ilike(usersTable.phone, `%${query}%`),
+      ilike(usersTable.employeeId, `%${query}%`),
       ilike(usersTable.department, `%${query}%`)
     ));
   }
@@ -138815,9 +138894,9 @@ router48.get("/workplace/employees", workplaceAuth, async (req, res) => {
 });
 router48.get("/workplace/conversations", workplaceAuth, async (req, res) => {
   const userId = req.authUser.id;
-  const members = await db.select({ conversationId: workplaceMembersTable.conversationId }).from(workplaceMembersTable).where(eq(workplaceMembersTable.userId, userId));
+  const members = isWorkplaceAdmin(req) ? await db.select({ conversationId: workplaceConversationsTable.id }).from(workplaceConversationsTable) : await db.select({ conversationId: workplaceMembersTable.conversationId }).from(workplaceMembersTable).where(eq(workplaceMembersTable.userId, userId));
   const summaries = (await Promise.all(
-    members.map(({ conversationId }) => conversationSummary(conversationId, userId))
+    members.map(({ conversationId }) => conversationSummary(conversationId, userId, isWorkplaceAdmin(req)))
   )).filter(Boolean);
   summaries.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
   res.json({ conversations: summaries });
@@ -138905,7 +138984,7 @@ router48.get("/workplace/conversations/:id/messages", workplaceAuth, async (req,
     res.status(400).json({ error: "Invalid conversation." });
     return;
   }
-  if (!await isMember(conversationId, req.authUser.id)) {
+  if (!await canAccessConversation(req, conversationId)) {
     res.status(403).json({ error: "Conversation access denied." });
     return;
   }
@@ -138918,13 +138997,17 @@ router48.get("/workplace/conversations/:id/messages", workplaceAuth, async (req,
     conversationId: workplaceMessagesTable.conversationId,
     content: workplaceMessagesTable.content,
     mentionsJson: workplaceMessagesTable.mentionsJson,
+    editedAt: workplaceMessagesTable.editedAt,
+    deletedAt: workplaceMessagesTable.deletedAt,
+    deletedById: workplaceMessagesTable.deletedById,
     createdAt: workplaceMessagesTable.createdAt,
     senderId: workplaceMessagesTable.senderId,
     senderName: usersTable.name,
     senderRole: usersTable.role,
     avatarUrl: usersTable.avatarUrl
-  }).from(workplaceMessagesTable).innerJoin(usersTable, eq(workplaceMessagesTable.senderId, usersTable.id)).where(and(...conditions)).orderBy(desc(workplaceMessagesTable.createdAt)).limit(limit);
-  res.json({ messages: rows.reverse(), hasMore: rows.length === limit });
+  }).from(workplaceMessagesTable).leftJoin(usersTable, eq(workplaceMessagesTable.senderId, usersTable.id)).where(and(...conditions)).orderBy(desc(workplaceMessagesTable.createdAt)).limit(limit);
+  const messages = rows.reverse().map((row) => row.deletedAt && !isWorkplaceAdmin(req) ? { ...row, content: "This message was deleted.", mentionsJson: null } : row);
+  res.json({ messages, hasMore: rows.length === limit });
 });
 router48.post("/workplace/conversations/:id/messages", workplaceAuth, async (req, res) => {
   const conversationId = parseId(req.params.id);
@@ -138932,7 +139015,7 @@ router48.post("/workplace/conversations/:id/messages", workplaceAuth, async (req
     res.status(400).json({ error: "Invalid conversation." });
     return;
   }
-  if (!await isMember(conversationId, req.authUser.id)) {
+  if (!await canAccessConversation(req, conversationId)) {
     res.status(403).json({ error: "Conversation access denied." });
     return;
   }
@@ -138942,11 +139025,16 @@ router48.post("/workplace/conversations/:id/messages", workplaceAuth, async (req
     return;
   }
   const mentions = [...content.matchAll(/@([a-zA-Z0-9._-]+)/g)].map((match2) => match2[1].toLowerCase()).slice(0, 10);
+  const explicitMentionIds = await authorizedMentionIds(conversationId, req.body?.mentionUserIds);
+  if (!explicitMentionIds) {
+    res.status(400).json({ error: "Mention recipients must be conversation members." });
+    return;
+  }
   const [message2] = await db.insert(workplaceMessagesTable).values({
     conversationId,
     senderId: req.authUser.id,
     content,
-    mentionsJson: JSON.stringify(mentions)
+    mentionsJson: JSON.stringify({ names: mentions, userIds: explicitMentionIds })
   }).returning();
   await db.update(workplaceConversationsTable).set({
     lastMessageAt: message2.createdAt,
@@ -138958,7 +139046,7 @@ router48.post("/workplace/conversations/:id/messages", workplaceAuth, async (req
   for (const member of members) {
     if (member.userId !== req.authUser.id) {
       const mentionNames = member.name.toLowerCase().split(/\s+/).filter(Boolean).map((part) => part.replace(/[^a-z0-9._-]/g, ""));
-      const isMentioned = mentions.some((mention) => mentionNames.includes(mention));
+      const isMentioned = explicitMentionIds.includes(member.userId) || mentions.some((mention) => mentionNames.includes(mention));
       await createNotification(
         member.userId,
         isMentioned ? "mention" : "message",
@@ -138970,6 +139058,80 @@ router48.post("/workplace/conversations/:id/messages", workplaceAuth, async (req
     }
   }
   res.status(201).json(payload);
+});
+router48.patch("/workplace/messages/:id", workplaceAuth, async (req, res) => {
+  const messageId = parseId(req.params.id);
+  const content = cleanText(req.body?.content, 1e3);
+  if (!messageId || !content) {
+    res.status(400).json({ error: "Message content is required." });
+    return;
+  }
+  const [message2] = await db.select().from(workplaceMessagesTable).where(eq(workplaceMessagesTable.id, messageId)).limit(1);
+  if (!message2) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (!await canAccessConversation(req, message2.conversationId) || message2.senderId !== req.authUser.id) {
+    res.status(403).json({ error: "Message edit denied." });
+    return;
+  }
+  if (message2.deletedAt) {
+    res.status(400).json({ error: "Deleted messages cannot be edited." });
+    return;
+  }
+  const now = /* @__PURE__ */ new Date();
+  const [updated] = await db.update(workplaceMessagesTable).set({ content, editedAt: now }).where(eq(workplaceMessagesTable.id, messageId)).returning();
+  await db.insert(workplaceMessageEditsTable).values({ messageId, previousContent: message2.content, newContent: content, editorId: req.authUser.id, createdAt: now });
+  emitWorkplaceConversation(message2.conversationId, "workplace:message_edited", updated);
+  res.json(updated);
+});
+router48.delete("/workplace/messages/:id", workplaceAuth, async (req, res) => {
+  const messageId = parseId(req.params.id);
+  if (!messageId) {
+    res.status(400).json({ error: "Invalid message." });
+    return;
+  }
+  const [message2] = await db.select().from(workplaceMessagesTable).where(eq(workplaceMessagesTable.id, messageId)).limit(1);
+  if (!message2) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (!await canAccessConversation(req, message2.conversationId) || message2.senderId !== req.authUser.id) {
+    res.status(403).json({ error: "Message deletion denied." });
+    return;
+  }
+  const [updated] = await db.update(workplaceMessagesTable).set({ deletedAt: /* @__PURE__ */ new Date(), deletedById: req.authUser.id }).where(eq(workplaceMessagesTable.id, messageId)).returning();
+  emitWorkplaceConversation(message2.conversationId, "workplace:message_deleted", { ...updated, content: "This message was deleted." });
+  res.json({ ok: true, message: isWorkplaceAdmin(req) ? updated : { ...updated, content: "This message was deleted." } });
+});
+router48.get("/workplace/messages/:id/edits", workplaceAuth, async (req, res) => {
+  const messageId = parseId(req.params.id);
+  if (!messageId) {
+    res.status(400).json({ error: "Invalid message." });
+    return;
+  }
+  const [message2] = await db.select().from(workplaceMessagesTable).where(eq(workplaceMessagesTable.id, messageId)).limit(1);
+  if (!message2) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (!await canAccessConversation(req, message2.conversationId)) {
+    res.status(403).json({ error: "Conversation access denied." });
+    return;
+  }
+  if (message2.deletedAt && !isWorkplaceAdmin(req)) {
+    res.status(403).json({ error: "Deleted message edit history is restricted." });
+    return;
+  }
+  const edits = await db.select({
+    id: workplaceMessageEditsTable.id,
+    previousContent: workplaceMessageEditsTable.previousContent,
+    newContent: workplaceMessageEditsTable.newContent,
+    editorId: workplaceMessageEditsTable.editorId,
+    createdAt: workplaceMessageEditsTable.createdAt,
+    editorName: usersTable.name
+  }).from(workplaceMessageEditsTable).leftJoin(usersTable, eq(workplaceMessageEditsTable.editorId, usersTable.id)).where(eq(workplaceMessageEditsTable.messageId, messageId)).orderBy(asc(workplaceMessageEditsTable.createdAt));
+  res.json({ edits });
 });
 router48.post("/workplace/conversations/:id/read", workplaceAuth, async (req, res) => {
   const conversationId = parseId(req.params.id);
@@ -139037,8 +139199,8 @@ router48.delete("/workplace/conversations/:id/members/:userId", workplaceAuth, a
 });
 router48.get("/workplace/tasks", workplaceAuth, async (req, res) => {
   const userId = req.authUser.id;
-  const view = req.query.view === "assigned" ? "assigned" : "mine";
-  const condition = view === "assigned" ? eq(workplaceTasksTable.assignedById, userId) : eq(workplaceTasksTable.assigneeId, userId);
+  const view = ["mine", "assigned", "completed"].includes(String(req.query.view)) ? String(req.query.view) : "mine";
+  const ownership = isWorkplaceAdmin(req) && view !== "completed" ? void 0 : view === "assigned" ? eq(workplaceTasksTable.assignedById, userId) : view === "completed" ? isWorkplaceAdmin(req) ? eq(workplaceTasksTable.status, "completed") : and(eq(workplaceTasksTable.assigneeId, userId), eq(workplaceTasksTable.status, "completed")) : eq(workplaceTasksTable.assigneeId, userId);
   const tasks = await db.select({
     id: workplaceTasksTable.id,
     conversationId: workplaceTasksTable.conversationId,
@@ -139048,17 +139210,21 @@ router48.get("/workplace/tasks", workplaceAuth, async (req, res) => {
     priority: workplaceTasksTable.priority,
     status: workplaceTasksTable.status,
     crmReferenceId: workplaceTasksTable.crmReferenceId,
+    completedAt: workplaceTasksTable.completedAt,
+    completedById: workplaceTasksTable.completedById,
+    sourceMessageId: workplaceTasksTable.sourceMessageId,
     createdAt: workplaceTasksTable.createdAt,
     updatedAt: workplaceTasksTable.updatedAt,
     assigneeId: workplaceTasksTable.assigneeId,
     assigneeName: sql`assignee.name`,
     assignedById: workplaceTasksTable.assignedById,
     assignedByName: sql`assigner.name`
-  }).from(workplaceTasksTable).innerJoin(sql`users assignee`, sql`assignee.id = ${workplaceTasksTable.assigneeId}`).innerJoin(sql`users assigner`, sql`assigner.id = ${workplaceTasksTable.assignedById}`).where(condition).orderBy(asc(workplaceTasksTable.status), asc(workplaceTasksTable.dueDate), desc(workplaceTasksTable.createdAt));
+  }).from(workplaceTasksTable).innerJoin(sql`users assignee`, sql`assignee.id = ${workplaceTasksTable.assigneeId}`).innerJoin(sql`users assigner`, sql`assigner.id = ${workplaceTasksTable.assignedById}`).where(ownership).orderBy(asc(workplaceTasksTable.status), asc(workplaceTasksTable.dueDate), desc(workplaceTasksTable.createdAt));
   res.json({ tasks });
 });
 router48.post("/workplace/tasks", workplaceAuth, async (req, res) => {
   const conversationId = req.body?.conversationId == null ? null : parsePositiveId(req.body.conversationId);
+  const sourceMessageId = req.body?.sourceMessageId == null ? null : parsePositiveId(req.body.sourceMessageId);
   const assigneeId = parsePositiveId(req.body?.assigneeId);
   const title = cleanText(req.body?.title, 160);
   if (!assigneeId || !title || req.body?.conversationId != null && !conversationId) {
@@ -139078,6 +139244,13 @@ router48.post("/workplace/tasks", workplaceAuth, async (req, res) => {
     res.status(400).json({ error: "Assignee must be a conversation member." });
     return;
   }
+  if (sourceMessageId) {
+    const [source] = await db.select().from(workplaceMessagesTable).where(eq(workplaceMessagesTable.id, sourceMessageId)).limit(1);
+    if (!source || source.conversationId !== resolvedConversationId) {
+      res.status(400).json({ error: "Source message must belong to the task conversation." });
+      return;
+    }
+  }
   const dueDate = req.body?.dueDate ? String(req.body.dueDate) : null;
   if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
     res.status(400).json({ error: "Invalid due date." });
@@ -139096,8 +139269,10 @@ router48.post("/workplace/tasks", workplaceAuth, async (req, res) => {
     assignedById: req.authUser.id,
     dueDate,
     priority,
-    crmReferenceId: cleanText(req.body?.crmReferenceId, 120) || null
+    crmReferenceId: cleanText(req.body?.crmReferenceId, 120) || null,
+    sourceMessageId
   }).returning();
+  await db.insert(workplaceTaskEventsTable).values({ taskId: task.id, eventType: "created", actorId: req.authUser.id, newAssigneeId: assigneeId, newStatus: task.status });
   if (task.assigneeId !== req.authUser.id) {
     await createNotification(task.assigneeId, "task_assigned", "New task assigned", `${req.authUser.name} assigned you: ${task.title}`, req.authUser.id, resolvedConversationId ?? void 0, task.id);
   }
@@ -139115,12 +139290,31 @@ router48.patch("/workplace/tasks/:id", workplaceAuth, async (req, res) => {
     res.status(404).json({ error: "Task not found." });
     return;
   }
-  if (task.assigneeId !== req.authUser.id && task.assignedById !== req.authUser.id) {
+  if (task.assigneeId !== req.authUser.id && task.assignedById !== req.authUser.id && !isWorkplaceAdmin(req)) {
     res.status(403).json({ error: "Task access denied." });
     return;
   }
   const nextStatus = req.body?.status;
-  if (nextStatus !== void 0 && (!["pending", "in_progress", "completed"].includes(String(nextStatus)) || task.assigneeId !== req.authUser.id && nextStatus !== task.status)) {
+  const nextAssigneeId = req.body?.assigneeId === void 0 ? void 0 : parsePositiveId(req.body.assigneeId);
+  if (req.body?.assigneeId !== void 0 && !nextAssigneeId) {
+    res.status(400).json({ error: "Invalid assignee." });
+    return;
+  }
+  if (nextAssigneeId && nextAssigneeId !== task.assigneeId) {
+    if (task.status === "completed") {
+      res.status(400).json({ error: "Completed tasks cannot be reassigned." });
+      return;
+    }
+    if (task.assignedById !== req.authUser.id && !isWorkplaceAdmin(req)) {
+      res.status(403).json({ error: "Only the assigner can reassign this task." });
+      return;
+    }
+    if (!await employeeById(nextAssigneeId) || task.conversationId && !await isMember(task.conversationId, nextAssigneeId)) {
+      res.status(400).json({ error: "Assignee must be an eligible conversation member." });
+      return;
+    }
+  }
+  if (nextStatus !== void 0 && (!["pending", "in_progress", "completed"].includes(String(nextStatus)) || task.assigneeId !== req.authUser.id && !isWorkplaceAdmin(req) && nextStatus !== task.status)) {
     res.status(403).json({ error: "Only the assignee can change task status." });
     return;
   }
@@ -139135,14 +139329,129 @@ router48.patch("/workplace/tasks/:id", workplaceAuth, async (req, res) => {
   }
   const [updated] = await db.update(workplaceTasksTable).set({
     ...nextStatus !== void 0 ? { status: nextStatus } : {},
+    ...nextAssigneeId ? { assigneeId: nextAssigneeId } : {},
+    ...nextStatus === "completed" ? { completedAt: /* @__PURE__ */ new Date(), completedById: req.authUser.id } : {},
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq(workplaceTasksTable.id, taskId)).returning();
   if (nextStatus && nextStatus !== task.status) {
+    await db.insert(workplaceTaskEventsTable).values({ taskId, eventType: "status_changed", actorId: req.authUser.id, oldStatus: task.status, newStatus: String(nextStatus) });
     const recipient = task.assigneeId === req.authUser.id ? task.assignedById : task.assigneeId;
     await createNotification(recipient, nextStatus === "completed" ? "task_completed" : "task_updated", nextStatus === "completed" ? "Task completed" : "Task status updated", `${req.authUser.name} marked "${task.title}" ${nextStatus.replace("_", " ")}.`, req.authUser.id, task.conversationId ?? void 0, task.id);
     if (task.conversationId) emitWorkplaceConversation(task.conversationId, "workplace:task_updated", updated);
   }
+  if (nextAssigneeId && nextAssigneeId !== task.assigneeId) {
+    await db.insert(workplaceTaskEventsTable).values({ taskId, eventType: "reassigned", actorId: req.authUser.id, oldAssigneeId: task.assigneeId, newAssigneeId: nextAssigneeId });
+    await createNotification(nextAssigneeId, "task_reassigned", "Task reassigned to you", `${req.authUser.name} assigned you: ${task.title}`, req.authUser.id, task.conversationId ?? void 0, task.id);
+    if (task.conversationId) emitWorkplaceConversation(task.conversationId, "workplace:task_reassigned", updated);
+  }
   res.json(updated);
+});
+async function canAccessTask(req, task) {
+  return isWorkplaceAdmin(req) || task.assigneeId === req.authUser.id || task.assignedById === req.authUser.id || Boolean(task.conversationId && await isMember(task.conversationId, req.authUser.id));
+}
+router48.get("/workplace/tasks/:id", workplaceAuth, async (req, res) => {
+  const taskId = parseId(req.params.id);
+  if (!taskId) {
+    res.status(400).json({ error: "Invalid task." });
+    return;
+  }
+  const [task] = await db.select().from(workplaceTasksTable).where(eq(workplaceTasksTable.id, taskId)).limit(1);
+  if (!task) {
+    res.status(404).json({ error: "Task not found." });
+    return;
+  }
+  if (!await canAccessTask(req, task)) {
+    res.status(403).json({ error: "Task access denied." });
+    return;
+  }
+  const [conversation] = task.conversationId ? await db.select({ id: workplaceConversationsTable.id, type: workplaceConversationsTable.type, name: workplaceConversationsTable.name }).from(workplaceConversationsTable).where(eq(workplaceConversationsTable.id, task.conversationId)).limit(1) : [];
+  const [assignee] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, task.assigneeId)).limit(1);
+  const [assigner] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, task.assignedById)).limit(1);
+  const remarks = await db.select({
+    id: workplaceTaskRemarksTable.id,
+    taskId: workplaceTaskRemarksTable.taskId,
+    authorId: workplaceTaskRemarksTable.authorId,
+    content: workplaceTaskRemarksTable.content,
+    mentionsJson: workplaceTaskRemarksTable.mentionsJson,
+    createdAt: workplaceTaskRemarksTable.createdAt,
+    authorName: usersTable.name
+  }).from(workplaceTaskRemarksTable).leftJoin(usersTable, eq(workplaceTaskRemarksTable.authorId, usersTable.id)).where(eq(workplaceTaskRemarksTable.taskId, taskId)).orderBy(asc(workplaceTaskRemarksTable.createdAt));
+  const events = await db.select().from(workplaceTaskEventsTable).where(eq(workplaceTaskEventsTable.taskId, taskId)).orderBy(asc(workplaceTaskEventsTable.createdAt));
+  res.json({ task: { ...task, assignee, assigner }, remarks, events, conversation: conversation ?? null });
+});
+router48.get("/workplace/tasks/:id/remarks", workplaceAuth, async (req, res) => {
+  const taskId = parseId(req.params.id);
+  if (!taskId) {
+    res.status(400).json({ error: "Invalid task." });
+    return;
+  }
+  const [task] = await db.select().from(workplaceTasksTable).where(eq(workplaceTasksTable.id, taskId)).limit(1);
+  if (!task) {
+    res.status(404).json({ error: "Task not found." });
+    return;
+  }
+  if (!await canAccessTask(req, task)) {
+    res.status(403).json({ error: "Task access denied." });
+    return;
+  }
+  const remarks = await db.select({
+    id: workplaceTaskRemarksTable.id,
+    taskId: workplaceTaskRemarksTable.taskId,
+    authorId: workplaceTaskRemarksTable.authorId,
+    content: workplaceTaskRemarksTable.content,
+    mentionsJson: workplaceTaskRemarksTable.mentionsJson,
+    createdAt: workplaceTaskRemarksTable.createdAt,
+    authorName: usersTable.name
+  }).from(workplaceTaskRemarksTable).leftJoin(usersTable, eq(workplaceTaskRemarksTable.authorId, usersTable.id)).where(eq(workplaceTaskRemarksTable.taskId, taskId)).orderBy(asc(workplaceTaskRemarksTable.createdAt));
+  res.json({ remarks });
+});
+router48.post("/workplace/tasks/:id/remarks", workplaceAuth, async (req, res) => {
+  const taskId = parseId(req.params.id);
+  const content = cleanText(req.body?.content, 1e3);
+  if (!taskId || !content) {
+    res.status(400).json({ error: "Remark content is required." });
+    return;
+  }
+  const [task] = await db.select().from(workplaceTasksTable).where(eq(workplaceTasksTable.id, taskId)).limit(1);
+  if (!task) {
+    res.status(404).json({ error: "Task not found." });
+    return;
+  }
+  if (!await canAccessTask(req, task)) {
+    res.status(403).json({ error: "Task access denied." });
+    return;
+  }
+  const rawMentionIds = req.body?.mentionUserIds;
+  const standaloneMentionIds = rawMentionIds == null ? [] : Array.isArray(rawMentionIds) ? [...new Set(rawMentionIds.map(parsePositiveId))] : null;
+  if (!task.conversationId && (!standaloneMentionIds || standaloneMentionIds.some((id) => id === null) || standaloneMentionIds.some((id) => id !== task.assigneeId && id !== task.assignedById))) {
+    res.status(400).json({ error: "Mention recipients must be the task assignee or assigner." });
+    return;
+  }
+  const mentionIds = task.conversationId ? await authorizedMentionIds(task.conversationId, rawMentionIds) : standaloneMentionIds;
+  if (!mentionIds) {
+    res.status(400).json({ error: "Mention recipients must be conversation members." });
+    return;
+  }
+  const [remark] = await db.insert(workplaceTaskRemarksTable).values({
+    taskId,
+    authorId: req.authUser.id,
+    content,
+    mentionsJson: JSON.stringify({ userIds: mentionIds })
+  }).returning();
+  const recipients = mentionIds.length ? mentionIds : [task.assigneeId, task.assignedById];
+  for (const userId of [...new Set(recipients)]) if (userId !== req.authUser.id) {
+    await createNotification(
+      userId,
+      mentionIds.includes(userId) ? "task_mention" : "task_remark",
+      mentionIds.includes(userId) ? `${req.authUser.name} mentioned you on a task` : "New task remark",
+      content.slice(0, 140),
+      req.authUser.id,
+      task.conversationId ?? void 0,
+      taskId
+    );
+  }
+  if (task.conversationId) emitWorkplaceConversation(task.conversationId, "workplace:task_remark", remark);
+  res.status(201).json(remark);
 });
 router48.get("/workplace/notifications", workplaceAuth, async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 100);
@@ -140460,15 +140769,36 @@ async function ensureWorkplaceSchema() {
   const statements = [
     `CREATE TABLE IF NOT EXISTS workplace_conversations (id serial PRIMARY KEY, type text NOT NULL DEFAULT 'direct', name text, created_by_id integer NOT NULL REFERENCES users(id), last_message_at timestamp NOT NULL DEFAULT now(), created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now())`,
     `CREATE TABLE IF NOT EXISTS workplace_members (id serial PRIMARY KEY, conversation_id integer NOT NULL REFERENCES workplace_conversations(id) ON DELETE CASCADE, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, is_admin boolean NOT NULL DEFAULT false, last_read_at timestamp, joined_at timestamp NOT NULL DEFAULT now(), UNIQUE(conversation_id, user_id))`,
-    `CREATE TABLE IF NOT EXISTS workplace_messages (id serial PRIMARY KEY, conversation_id integer NOT NULL REFERENCES workplace_conversations(id) ON DELETE CASCADE, sender_id integer NOT NULL REFERENCES users(id), content text NOT NULL, mentions_json text, created_at timestamp NOT NULL DEFAULT now())`,
-    `CREATE TABLE IF NOT EXISTS workplace_tasks (id serial PRIMARY KEY, conversation_id integer REFERENCES workplace_conversations(id) ON DELETE SET NULL, title text NOT NULL, description text, assignee_id integer NOT NULL REFERENCES users(id), assigned_by_id integer NOT NULL REFERENCES users(id), due_date date, priority text NOT NULL DEFAULT 'medium', status text NOT NULL DEFAULT 'pending', crm_reference_id text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_messages (id serial PRIMARY KEY, conversation_id integer NOT NULL REFERENCES workplace_conversations(id) ON DELETE CASCADE, sender_id integer NOT NULL REFERENCES users(id), content text NOT NULL, mentions_json text, edited_at timestamp, deleted_at timestamp, deleted_by_id integer REFERENCES users(id) ON DELETE SET NULL, created_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_tasks (id serial PRIMARY KEY, conversation_id integer REFERENCES workplace_conversations(id) ON DELETE SET NULL, title text NOT NULL, description text, assignee_id integer NOT NULL REFERENCES users(id), assigned_by_id integer NOT NULL REFERENCES users(id), due_date date, priority text NOT NULL DEFAULT 'medium', status text NOT NULL DEFAULT 'pending', crm_reference_id text, completed_at timestamp, completed_by_id integer REFERENCES users(id) ON DELETE SET NULL, source_message_id integer REFERENCES workplace_messages(id) ON DELETE SET NULL, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_message_edits (id serial PRIMARY KEY, message_id integer NOT NULL REFERENCES workplace_messages(id) ON DELETE CASCADE, previous_content text NOT NULL, new_content text NOT NULL, editor_id integer NOT NULL REFERENCES users(id), created_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_task_remarks (id serial PRIMARY KEY, task_id integer NOT NULL REFERENCES workplace_tasks(id) ON DELETE CASCADE, author_id integer NOT NULL REFERENCES users(id), content text NOT NULL, mentions_json text, created_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE TABLE IF NOT EXISTS workplace_task_events (id serial PRIMARY KEY, task_id integer NOT NULL REFERENCES workplace_tasks(id) ON DELETE CASCADE, event_type text NOT NULL, actor_id integer REFERENCES users(id) ON DELETE SET NULL, old_assignee_id integer REFERENCES users(id) ON DELETE SET NULL, new_assignee_id integer REFERENCES users(id) ON DELETE SET NULL, old_status text, new_status text, note text, created_at timestamp NOT NULL DEFAULT now())`,
+    `CREATE OR REPLACE FUNCTION workplace_message_edits_immutable() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'workplace message edit history is immutable'; END; $$ LANGUAGE plpgsql`,
+    `DROP TRIGGER IF EXISTS workplace_message_edits_immutable_trigger ON workplace_message_edits`,
+    `CREATE TRIGGER workplace_message_edits_immutable_trigger BEFORE UPDATE OR DELETE ON workplace_message_edits FOR EACH ROW EXECUTE FUNCTION workplace_message_edits_immutable()`,
     `CREATE TABLE IF NOT EXISTS workplace_notifications (id serial PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, type text NOT NULL, title text NOT NULL, body text NOT NULL, conversation_id integer REFERENCES workplace_conversations(id) ON DELETE CASCADE, task_id integer REFERENCES workplace_tasks(id) ON DELETE CASCADE, actor_id integer REFERENCES users(id) ON DELETE SET NULL, read_at timestamp, created_at timestamp NOT NULL DEFAULT now())`,
     `CREATE INDEX IF NOT EXISTS workplace_members_user_idx ON workplace_members(user_id)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS workplace_members_conversation_user_idx ON workplace_members(conversation_id, user_id)`,
     `CREATE INDEX IF NOT EXISTS workplace_messages_conversation_created_idx ON workplace_messages(conversation_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS workplace_messages_deleted_idx ON workplace_messages(conversation_id, deleted_at)`,
+    `CREATE INDEX IF NOT EXISTS workplace_message_edits_message_created_idx ON workplace_message_edits(message_id, created_at)`,
     `CREATE INDEX IF NOT EXISTS workplace_tasks_assignee_status_idx ON workplace_tasks(assignee_id, status)`,
+    `CREATE INDEX IF NOT EXISTS workplace_tasks_conversation_idx ON workplace_tasks(conversation_id)`,
+    `CREATE INDEX IF NOT EXISTS workplace_task_remarks_task_created_idx ON workplace_task_remarks(task_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS workplace_task_events_task_created_idx ON workplace_task_events(task_id, created_at)`,
     `CREATE INDEX IF NOT EXISTS workplace_notifications_user_read_idx ON workplace_notifications(user_id, read_at, created_at)`
   ];
+  statements.splice(
+    5,
+    0,
+    `ALTER TABLE workplace_messages ADD COLUMN IF NOT EXISTS edited_at timestamp`,
+    `ALTER TABLE workplace_messages ADD COLUMN IF NOT EXISTS deleted_at timestamp`,
+    `ALTER TABLE workplace_messages ADD COLUMN IF NOT EXISTS deleted_by_id integer REFERENCES users(id) ON DELETE SET NULL`,
+    `ALTER TABLE workplace_tasks ADD COLUMN IF NOT EXISTS completed_at timestamp`,
+    `ALTER TABLE workplace_tasks ADD COLUMN IF NOT EXISTS completed_by_id integer REFERENCES users(id) ON DELETE SET NULL`,
+    `ALTER TABLE workplace_tasks ADD COLUMN IF NOT EXISTS source_message_id integer REFERENCES workplace_messages(id) ON DELETE SET NULL`
+  );
   for (const statement of statements) await db.execute(sql.raw(statement));
 }
 

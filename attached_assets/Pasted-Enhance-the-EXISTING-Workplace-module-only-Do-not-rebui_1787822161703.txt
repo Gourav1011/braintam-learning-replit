@@ -1,0 +1,653 @@
+Enhance the EXISTING Workplace module only. Do not rebuild it and do not change the existing portal integration.
+
+The goal is a **lightweight Zoho-style employee communication + work system**, not a full Zoho clone.
+
+Keep the existing:
+
+* Portal integration
+* Authentication
+* Roles/permissions
+* Database
+* Socket.IO
+* Chat
+* Groups
+* Tasks
+* Notifications
+
+Only improve the missing functionality below.
+
+# 1. REAL-TIME MESSAGE / TASK POPUP NOTIFICATIONS
+
+When an employee receives:
+
+* New chat message
+* Group message
+* @mention
+* New task assignment
+* Task reassignment
+* Task status update
+* Task completion
+
+show a small **bottom-right toast notification** inside the existing Braintam portal.
+
+Example:
+
+```text
+┌──────────────────────────────────┐
+│ 💬 New message                   │
+│ Rahul Sharma                     │
+│ Please check the Grade 7 list.  │
+│                         8:42 PM  │
+└──────────────────────────────────┘
+```
+
+For task:
+
+```text
+┌──────────────────────────────────┐
+│ ✅ New task assigned             │
+│ Call pending parents             │
+│ Assigned by: Academic Mentor    │
+│ Due: Today                       │
+└──────────────────────────────────┘
+```
+
+Requirements:
+
+* Lightweight toast
+* Auto-dismiss after a few seconds
+* Click opens the relevant chat/task
+* Do not create a heavy notification dashboard
+* Do not show duplicate notifications for the same event
+* Use existing Socket.IO infrastructure
+
+If the user is already viewing that exact conversation, do not show an unnecessary popup for their own currently-open chat.
+
+---
+
+# 2. UNREAD COUNTS
+
+The Workplace sidebar/menu must show unread counts.
+
+Example:
+
+```text
+💬 Workplace   5
+```
+
+Inside Workplace:
+
+```text
+Chat        3
+Tasks       2
+Alerts      4
+```
+
+Individual conversations should also show unread counts.
+
+Example:
+
+```text
+Rahul Sharma                 3
+Academic Team                7
+Ignite Mentors               2
+```
+
+When the employee opens the conversation and messages are actually viewed:
+
+**Unread count becomes 0 and disappears.**
+
+Do not clear unread counts merely because Workplace was opened.
+
+---
+
+# 3. MESSAGE ACTION MENU
+
+Every message should have a small action menu.
+
+For the user's own message:
+
+```text
+⋮
+├── Reply
+├── Edit
+├── Delete
+├── Copy
+└── Mention
+```
+
+For another user's message:
+
+```text
+⋮
+├── Reply
+├── Copy
+└── Mention
+```
+
+Only expose actions the user is authorized to perform.
+
+Keep the menu compact.
+
+---
+
+# 4. EDIT MESSAGE + EDIT HISTORY
+
+When a message is edited:
+
+Show:
+
+**Edited**
+
+Example:
+
+```text
+Please call the parent today.   Edited
+```
+
+Everyone who can see the message can open:
+
+**View edit history**
+
+and see:
+
+```text
+Original:
+Please call the parent tomorrow.
+
+Edited:
+Please call the parent today.
+
+Edited by:
+Rahul Sharma
+
+Edited at:
+2:35 PM
+```
+
+Important:
+
+**Edit history must never be overwritten.**
+
+Every edit creates a history record.
+
+All authorized members of that conversation can see the edit history.
+
+---
+
+# 5. DELETE MESSAGE
+
+Allow the sender to delete their own message.
+
+Normal employee view:
+
+```text
+This message was deleted.
+```
+
+Admin/Super Admin view:
+
+```text
+Deleted message
+
+Original:
+Please call the parent today.
+
+Deleted by:
+Rahul Sharma
+
+Deleted at:
+2:42 PM
+```
+
+Admin should be able to see deleted-message content/history.
+
+Normal users should NOT regain access to deleted content.
+
+Do not physically destroy the audit/history record.
+
+Use soft deletion.
+
+---
+
+# 6. MENTIONS
+
+Typing:
+
+```text
+@
+```
+
+should open a small searchable employee/member dropdown.
+
+Example:
+
+```text
+@Rahul Sharma
+@Priya Singh
+@Academic Mentor
+```
+
+Allow searching by name.
+
+Selecting a person inserts the mention.
+
+Mentioned users receive a notification.
+
+For groups, only show members of that group unless the user has broader permission.
+
+Keep this fast and lightweight.
+
+---
+
+# 7. TASK ASSIGNMENT
+
+The existing task assignment works, but after assigning a task the assignee must be able to actually OPEN and WORK ON THE TASK.
+
+Clicking a task should open a lightweight task detail panel.
+
+Example:
+
+```text
+TASK
+
+Call pending parents
+
+Assigned by
+Gourav
+
+Assigned to
+Rahul Sharma
+
+Due
+28 Aug 2026, 6:00 PM
+
+Priority
+High
+
+Status
+Pending
+
+Created
+27 Aug 2026
+
+Days pending
+1 day
+```
+
+Actions:
+
+```text
+Start Task
+Add Remark
+Complete Task
+```
+
+---
+
+# 8. TASK REMARKS / WORK UPDATES
+
+The assignee should be able to add remarks/updates.
+
+Example:
+
+```text
+Rahul Sharma
+28 Aug, 11:20 AM
+
+Called the parent. They requested a callback
+after 5 PM.
+```
+
+Task history:
+
+```text
+Task created
+↓
+Assigned to Rahul
+↓
+Started
+↓
+Remark added
+↓
+Completed
+```
+
+Keep the history permanently available to authorized users.
+
+---
+
+# 9. ASSIGN / REASSIGN TASK TO ANOTHER PERSON
+
+When creating or editing a task, the user should have:
+
+**Assigned To**
+
+with a searchable dropdown.
+
+Example:
+
+```text
+Assigned To
+[ Search employee... ]
+
+Rahul Sharma
+Priya Singh
+Neha Joshi
+Amit Verma
+```
+
+For task reassignment:
+
+```text
+Reassign Task
+Current: Rahul Sharma
+
+[ Search employee... ]
+
+→ Priya Singh
+```
+
+The new assignee receives a notification.
+
+Keep a history:
+
+```text
+Assigned to Rahul Sharma
+↓
+Reassigned to Priya Singh
+```
+
+---
+
+# 10. @MENTION SOMEONE FROM A TASK
+
+Inside task remarks/comments, support:
+
+```text
+@Rahul please check the payment status.
+```
+
+When `@` is typed:
+
+```text
+Search employee
+----------------
+Rahul Sharma
+Priya Singh
+Neha Joshi
+```
+
+Selecting a person mentions them and sends a notification.
+
+This should NOT automatically make them the task assignee.
+
+Mention and assignment are separate.
+
+---
+
+# 11. TASK LIST
+
+The Tasks section should remain lightweight but show useful information.
+
+Add tabs:
+
+```text
+My Tasks
+Assigned by Me
+Completed
+```
+
+Task cards should show:
+
+```text
+Call pending parents
+
+Assigned by: Gourav
+Assigned to: Rahul
+Due: 28 Aug
+Pending: 1 day
+Priority: High
+Status: Pending
+```
+
+For completed tasks:
+
+```text
+Update student records
+
+Assigned by: Admin
+Completed by: Rahul
+Completed: 26 Aug
+Duration: 2 days
+
+View conversation
+View task history
+```
+
+---
+
+# 12. COMPLETED TASK HISTORY
+
+This is important.
+
+Do NOT permanently remove completed tasks from the system.
+
+Provide:
+
+**Completed**
+
+where authorized users can see historical work.
+
+Example:
+
+```text
+Completed Tasks
+
+✓ Call pending parents
+  Rahul Sharma
+  Completed 28 Aug
+
+✓ Update Grade 7 records
+  Priya Singh
+  Completed 27 Aug
+
+✓ Prepare worksheet
+  Neha Joshi
+  Completed 25 Aug
+```
+
+Clicking one should show:
+
+* Who assigned it
+* Who completed it
+* When it was assigned
+* Due date
+* Completion date
+* Remarks
+* Assignment/reassignment history
+* Related conversation/message if available
+
+---
+
+# 13. EMPLOYEE RESIGNATION / INACTIVE USERS
+
+This data must NOT disappear when an employee becomes:
+
+* Inactive
+* Resigned
+* Deleted from active employee lists
+
+Historical conversations and tasks must remain available to Admin/Super Admin according to existing permissions.
+
+Example:
+
+```text
+Former Employee
+Rahul Sharma
+Status: Resigned
+
+Past Conversations
+Past Tasks
+Completed Work
+Task Remarks
+Assignment History
+```
+
+Do not delete historical business records because the employee is no longer active.
+
+For normal employees, follow existing permissions.
+
+Admin/Super Admin should retain access to the historical record.
+
+---
+
+# 14. CONVERSATION → TASK CONNECTION
+
+If a task was created from a conversation, keep the relationship.
+
+Example:
+
+```text
+Conversation
+     ↓
+Message
+     ↓
+Task Assigned
+     ↓
+Task Completed
+```
+
+From the task, authorized users should be able to:
+
+**View conversation**
+
+and return to the exact relevant conversation/message when possible.
+
+This gives management a history of:
+
+**what was discussed → what work was assigned → what was done.**
+
+---
+
+# 15. LIGHTWEIGHT DESIGN
+
+The current Workplace should remain visually simple.
+
+Do NOT create:
+
+* Large dashboard
+* Heavy analytics
+* Multiple large cards
+* Separate portal
+* Separate notification application
+* Complex project-management board
+* Slack clone
+* Full Zoho clone
+
+Use compact panels, dropdowns, drawers and popups.
+
+The Workplace should feel like a **light communication/work layer inside Braintam**.
+
+---
+
+# 16. PERFORMANCE
+
+This is mandatory.
+
+Do not load:
+
+* All messages
+* All task history
+* All notifications
+* All employee records
+
+at once.
+
+Use:
+
+* Pagination
+* Lazy loading
+* Search
+* Indexed queries
+* Existing Socket.IO connection
+* Existing authentication
+* Existing notification infrastructure
+
+Notification events should only update the relevant conversation/task/cache.
+
+Do not create multiple Socket.IO connections per conversation.
+
+---
+
+# 17. ADMIN AUDIT ACCESS
+
+Admin/Super Admin should be able to see historical Workplace activity where permitted, including:
+
+* Deleted messages
+* Message edit history
+* Task assignment history
+* Task reassignment history
+* Task remarks
+* Completed tasks
+* Historical conversations
+* Work completed by former/inactive employees
+
+Normal employees should only see information permitted by their role/group/membership.
+
+Do not weaken the existing permission system.
+
+---
+
+# 18. DO NOT REBUILD
+
+Again:
+
+**The existing Workplace implementation is already working.**
+
+Do NOT rebuild:
+
+* Routing
+* Portal integration
+* Authentication
+* Database architecture
+* Socket.IO architecture
+* Existing chat
+* Existing group system
+* Existing task system
+
+Make targeted enhancements only.
+
+---
+
+# FINAL TEST
+
+Test this complete flow:
+
+1. Admin sends Teacher a message.
+2. Teacher receives bottom-right notification.
+3. Workplace shows unread count `1`.
+4. Teacher opens chat.
+5. Unread count disappears.
+6. Teacher edits a message.
+7. Admin can view edit history.
+8. Teacher deletes a message.
+9. Admin can see the deleted-message record.
+10. Admin assigns a task to Teacher.
+11. Teacher receives task notification.
+12. Teacher opens task.
+13. Teacher starts task.
+14. Teacher adds a remark.
+15. Teacher @mentions another employee.
+16. Mentioned employee receives notification.
+17. Task is reassigned to another employee.
+18. New assignee receives notification.
+19. Task is completed.
+20. Task appears under Completed.
+21. Task history remains available.
+22. Related conversation remains accessible.
+23. Mark the employee inactive/resigned.
+24. Admin can still see the historical task/conversation/work record.
+25. Verify existing Admin, Ignite Mentor, Academic Mentor and Teacher portals remain unchanged.
+
+**Build these enhancements in the existing Workplace module and keep everything lightweight.**
