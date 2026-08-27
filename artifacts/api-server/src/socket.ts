@@ -18,6 +18,7 @@ import { updateParticipantPublishPermission, isLiveKitConfigured } from "./lib/l
 import { resolveUserFromToken } from "./middlewares/auth.js";
 import { canAccessLiveClass, getAuthorizedGroupId } from "./lib/live-class-access.js";
 import {
+  isWorkplaceMembershipRevoked,
   registerWorkplaceRealtime,
   workplaceConversationRoom,
   workplaceUserRoom,
@@ -637,9 +638,16 @@ export function setupSocketIO(httpServer: HttpServer) {
     if (rawCtx.mode === "workplace") {
       const { userId } = rawCtx;
       socket.join(workplaceUserRoom(userId));
-      socket.on("workplace:join", async (conversationId: unknown) => {
+      socket.on("workplace:join", async (conversationId: unknown, acknowledge?: (result: { ok: boolean; error?: string }) => void) => {
         const id = Number(conversationId);
-        if (!Number.isInteger(id) || id <= 0) return;
+        if (!Number.isInteger(id) || id <= 0) {
+          acknowledge?.({ ok: false, error: "Invalid conversation." });
+          return;
+        }
+        if (isWorkplaceMembershipRevoked(Number(userId), id)) {
+          acknowledge?.({ ok: false, error: "Conversation access denied." });
+          return;
+        }
         const [member] = await db.select({ id: workplaceMembersTable.id })
           .from(workplaceMembersTable)
           .where(and(
@@ -647,7 +655,12 @@ export function setupSocketIO(httpServer: HttpServer) {
             eq(workplaceMembersTable.userId, Number(userId)),
           ))
           .limit(1);
-        if (member) socket.join(workplaceConversationRoom(id));
+        if (member && !isWorkplaceMembershipRevoked(Number(userId), id)) {
+          socket.join(workplaceConversationRoom(id));
+          acknowledge?.({ ok: true });
+        } else {
+          acknowledge?.({ ok: false, error: "Conversation access denied." });
+        }
       });
       socket.on("workplace:leave", (conversationId: unknown) => {
         const id = Number(conversationId);

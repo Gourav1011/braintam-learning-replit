@@ -24,6 +24,7 @@ import {
 } from "@/hooks/use-workplace";
 import { useAuth } from "@/components/auth-provider";
 import { GroupMembersDialog } from "@/components/workplace-group-members";
+import { AppLayout } from "@/components/layout";
 
 type Tab = "messages" | "tasks" | "notifications";
 
@@ -59,7 +60,9 @@ export default function WorkplacePage() {
   const handleNotification = (notification: WorkplaceNotification) => {
     setToasts(current => current.some(item => String(item.id) === String(notification.id)) ? current : [...current, notification].slice(-4));
   };
-  useWorkplaceRealtime(selectedConversationId, handleNotification);
+  useWorkplaceRealtime(selectedConversationId, handleNotification, (conversationId) => {
+    setSelectedConversationId((current) => String(current) === conversationId ? null : current);
+  });
   useEffect(() => {
     if (!toasts.length) return;
     const timer = window.setTimeout(() => setToasts(current => current.slice(1)), 5500);
@@ -75,6 +78,7 @@ export default function WorkplacePage() {
   };
   
   return (
+    <AppLayout>
       <div className="flex min-h-[calc(100vh-3.5rem)] bg-white overflow-hidden relative">
         {/* Left Panel */}
         <div className={`w-full md:w-80 border-r flex flex-col bg-gray-50/30 flex-shrink-0 absolute inset-y-0 left-0 md:relative z-20 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
@@ -144,6 +148,7 @@ export default function WorkplacePage() {
           </button>)}
         </div>
       </div>
+    </AppLayout>
   );
 }
 

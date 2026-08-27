@@ -3,10 +3,10 @@ import jwt from "jsonwebtoken";
 const TOKEN_EXPIRY = "7d";
 
 function getSecret(): string {
-  const secret = process.env.AUTH_TOKEN_SECRET;
+  const secret = process.env.AUTH_TOKEN_SECRET ?? process.env.SESSION_SECRET;
 
   if (!secret || secret.length < 32) {
-    throw new Error("AUTH_TOKEN_SECRET must be set and at least 32 characters long");
+    throw new Error("AUTH_TOKEN_SECRET or SESSION_SECRET must be set and at least 32 characters long");
   }
 
   return secret;

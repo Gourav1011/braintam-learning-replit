@@ -58,6 +58,7 @@ import DownloadAppPage from "@/pages/download-app";
 import SpaceJourneyPage from "@/pages/space-journey";
 import TasksPage from "@/pages/tasks";
 import RewardsPage from "@/pages/rewards";
+import WorkplacePage from "@/pages/workplace";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -445,6 +446,7 @@ function Router() {
       <Route path="/admin"><AdminRoute component={AdminPage} /></Route>
       <Route path="/teacher"><TeacherRoute component={TeacherPage} /></Route>
       <Route path="/mentor"><MentorRoute component={MentorPage} /></Route>
+      <Route path="/workplace"><StaffRoute component={WorkplacePage} /></Route>
 
       {/* Protected */}
       <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>

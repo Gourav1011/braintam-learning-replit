@@ -72,7 +72,7 @@ function isStaffPath(path: string) {
   // by which token is present (staffToken vs studentToken), not by path prefix alone,
   // so it must NOT be excluded here or a staff member's real profile never resolves
   // on the live-classroom page (falls back to a fake/anonymous identity instead).
-  return path.startsWith("/admin") || path.startsWith("/teacher") || path.startsWith("/mentor") || path.startsWith("/live");
+  return path.startsWith("/admin") || path.startsWith("/teacher") || path.startsWith("/mentor") || path.startsWith("/workplace") || path.startsWith("/live");
 }
 
 function normalize(s: StudentProfile): StudentProfile {

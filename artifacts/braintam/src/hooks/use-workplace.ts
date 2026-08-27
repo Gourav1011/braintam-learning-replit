@@ -30,16 +30,19 @@ export type WorkplaceNotification = {
 export function useWorkplaceRealtime(
   activeConversationId: string | null,
   onNotification?: (notification: WorkplaceNotification) => void,
+  onConversationRemoved?: (conversationId: string) => void,
 ): void {
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
   const activeConversationRef = useRef(activeConversationId);
   const notificationRef = useRef(onNotification);
+  const conversationRemovedRef = useRef(onConversationRemoved);
 
   useEffect(() => {
     activeConversationRef.current = activeConversationId;
   }, [activeConversationId]);
   useEffect(() => { notificationRef.current = onNotification; }, [onNotification]);
+  useEffect(() => { conversationRemovedRef.current = onConversationRemoved; }, [onConversationRemoved]);
 
   useEffect(() => {
     const token = localStorage.getItem(STAFF_TOKEN_KEY);
@@ -78,6 +81,32 @@ export function useWorkplaceRealtime(
     socket.on("workplace:member_added", refreshMessage);
     socket.on("workplace:member_removed", refreshMessage);
     socket.on("workplace:conversation_added", refreshConversations);
+    socket.on("workplace:conversation_removed", (event: { conversationId?: number | string }) => {
+      const conversationId = String(event.conversationId ?? "");
+      if (!conversationId) return;
+      queryClient.setQueryData(["workplace", "conversations"], (current: any) => {
+        if (!current?.conversations) return current;
+        return {
+          ...current,
+          conversations: current.conversations.filter((conversation: any) => String(conversation.id) !== conversationId),
+        };
+      });
+      queryClient.removeQueries({ queryKey: ["workplace", "messages", conversationId] });
+      queryClient.setQueryData(["workplace", "notifications"], (current: any) => {
+        if (!current?.notifications) return current;
+        const notifications = current.notifications.filter((notification: any) =>
+          String(notification.conversationId) !== conversationId,
+        );
+        return {
+          ...current,
+          notifications,
+          unreadCount: notifications.filter((notification: any) => !notification.readAt).length,
+        };
+      });
+      refreshTasks();
+      refreshNotifications();
+      conversationRemovedRef.current?.(conversationId);
+    });
     const refreshTaskEvent = (event: { id?: number | string; taskId?: number | string }) => {
       refreshTasks();
       const taskId = event.id ?? event.taskId;
