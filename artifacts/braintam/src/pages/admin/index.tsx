@@ -48,7 +48,7 @@ import {
   Mail, Phone, TrendingDown, TrendingUp as TrendUp, MoreVertical as MoreVert,
   Package, MessageSquare,
 } from "lucide-react";
-import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

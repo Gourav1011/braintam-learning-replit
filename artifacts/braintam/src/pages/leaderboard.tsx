@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Star, School, Crown, Sparkles, ArrowRight, Flame, MapPin } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

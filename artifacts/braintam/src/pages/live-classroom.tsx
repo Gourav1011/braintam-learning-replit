@@ -9,9 +9,10 @@ import {
   Trophy, Monitor, Hand, ChevronLeft, ChevronRight, X, Upload, Mic,
   Pause, Play, Pencil, Eraser, Highlighter, Undo2, Redo2, Trash2, Maximize2, Minimize2, RotateCcw,
 } from "lucide-react";
+import { braintamLogo } from "@/lib/brand-assets";
 
-const ROUND_LOGO = "/braintam-logo-round.png";
-const BRAND_LOGO = "/braintam-logo.png";
+const ROUND_LOGO = braintamLogo;
+const BRAND_LOGO = braintamLogo;
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { API_BASE } from "@/lib/api-base";
 import { CheckCircle2, Shield, Star, ArrowLeft, Phone, User, BookOpen } from "lucide-react";
-import braintamLogoImg from "@assets/logo_transparent-Photoroom_1782323218278.png";
+import { braintamLogo as braintamLogoImg } from "@/lib/brand-assets";
 
 const NAVY   = "#0B2B6B";
 const ORANGE = "#FF6B1A";

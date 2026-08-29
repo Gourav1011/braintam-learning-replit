@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookOpen, Search, Star, Users, Trophy, Sparkles, ArrowRight, GraduationCap, Zap, Award, CheckCircle, MessageCircle, Clock, Lock, Flame, ChevronRight } from "lucide-react";
 import { useAuth, STUDENT_TOKEN_KEY } from "@/components/auth-provider";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

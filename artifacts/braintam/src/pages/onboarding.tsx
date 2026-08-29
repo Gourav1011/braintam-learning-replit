@@ -9,7 +9,7 @@ import { Phone } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { GRADES, BOARDS, STATES } from "@/pages/sign-up";
 import { STUDENT_TOKEN_KEY } from "@/components/auth-provider";
 

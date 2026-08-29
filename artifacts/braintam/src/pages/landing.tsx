@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import braintamLogo from "@assets/logo_transparent-Photoroom_1782323218278.png";
+import { braintamLogo } from "@/lib/brand-assets";
+import pranjalPhoto from "@assets/pranjal_profile.png";
 import expertCardImg   from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
 import poonamPhoto from "@assets/poonam_cofounder.png";
 import mosesPhoto from "@assets/ChatGPT_Image_Jun_26,_2026,_07_32_15_PM_1782482653520.png";
@@ -178,12 +179,12 @@ const team = [
   { name: "Gourav Manhas",      role: "Co-Founder & CEO",            bio: "IIT Kanpur · 5 yrs in learning tech. Drives the vision to make quality education accessible for every Indian student.", photo: "https://images.unsplash.com/photo-1779267102994-5fd194d300fc", tags: ["Strategy","Vision"] },
   { name: "Poonam", role: "Co-Founder & COO", bio: "MBA from ICFAI · 20+ yrs teaching. Architect of Braintam's CBSE/ICSE/IB curriculum framework.", photo: poonamPhoto, tags: ["Curriculum","Pedagogy"] },
   { name: "Moses Harish", role: "Teaching Expert & Trainer", bio: "Dual Masters in Human Genetics & Social Work · 4 yrs teaching experience. Bridges science, student psychology and real-world learning — turning complex ideas into breakthroughs every student can feel.", photo: mosesPhoto, tags: ["Training","Pedagogy"] },
-  { name: "Pranjal",    role: "Center Coordinator",            bio: " AI & Content Specialist . Data Researcher .", photo: "https://unsplash.com/photos/a-man-with-a-beard-wearing-sunglasses-and-a-t-shirt-Qq37SLi34Dg", tags: ["AI/ML","Engineering"] },
-  { name: "Anita Menon",      role: "Head of Teacher Relations",   bio: "Former KV principal · 20 yrs leadership. Recruits and mentors Braintam's nationwide star-teacher network.", photo: "https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=500&auto=format&fit=crop&q=80", tags: ["Teachers","Quality"] },
-  { name: "Deepak Singh",     role: "Head of Animated Content",    bio: "Award-winning animator · ex-Toppr. Created 1,000+ animated explainer videos loved across India.", photo: "", tags: ["Animation","Design"] },
-  { name: "Sneha Kapoor",     role: "VP – Student Success",        bio: "Child psychologist & learning coach. Designs gamification and engagement loops that keep kids motivated.", photo: "https://unsplash.com/photos/a-plastic-head-of-a-person-wearing-a-hat-n5B7nnlZNRY", tags: ["Psychology","UX"] },
-  { name: "Arjun Mehta",      role: "VP – Sales & Partnerships",   bio: "Former McKinsey consultant · 10 yrs B2C sales. Leads school partnerships and institutional sales across India.", photo: "https://unsplash.com/photos/a-man-with-a-beard-wearing-sunglasses-and-a-t-shirt-Qq37SLi34Dg", tags: ["Sales","Growth"] },
-  { name: "Kavya Iyer",       role: "Head of Design",              bio: "Ex-Swiggy design lead · Crafts Braintam's premium visual language and ensures every pixel earns its place.", photo: "https://unsplash.com/photos/a-plastic-head-of-a-person-wearing-a-hat-n5B7nnlZNRY", tags: ["Design","Brand"] },
+  { name: "Pranjal",         role: "Center Coordinator",    bio: "AI and content specialist who helps every Braintam class run smoothly and keeps learning resources organized.", photo: pranjalPhoto, tags: ["AI/ML","Content"] },
+  { name: "Anita Menon",     role: "Maths Teacher",          bio: "A patient maths teacher who makes numbers approachable through clear explanations, practical examples, and confidence-building practice.", photo: "https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=500&auto=format&fit=crop&q=80", tags: ["Mathematics","Problem Solving"] },
+  { name: "Deepak Singh",    role: "Science Teacher",        bio: "An engaging science teacher who turns everyday curiosity into strong concepts through experiments, stories, and visual learning.", photo: "", tags: ["Science","Experiments"] },
+  { name: "Sneha Kapoor",    role: "English Teacher",        bio: "An encouraging English teacher helping students strengthen grammar, vocabulary, reading, and expressive communication.", photo: "https://unsplash.com/photos/a-plastic-head-of-a-person-wearing-a-hat-n5B7nnlZNRY", tags: ["English","Communication"] },
+  { name: "Arjun Mehta",     role: "Mental Ability Teacher",  bio: "A focused mental ability teacher who builds logical reasoning, pattern recognition, and quick thinking with fun daily challenges.", photo: "https://unsplash.com/photos/a-man-with-a-beard-wearing-sunglasses-and-a-t-shirt-Qq37SLi34Dg", tags: ["Mental Ability","Reasoning"] },
+  { name: "Kavya Iyer",      role: "Science Teacher",         bio: "A creative science teacher who connects classroom concepts to the world around us and makes every lesson memorable.", photo: "https://unsplash.com/photos/a-plastic-head-of-a-person-wearing-a-hat-n5B7nnlZNRY", tags: ["Science","Discovery"] },
 ];
 
 const testimonials = [

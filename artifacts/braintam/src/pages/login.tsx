@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Eye, EyeOff, Loader2, BookOpen, GraduationCap, Star, Trophy } from "lucide-react";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { API_BASE as BASE } from "@/lib/api-base";
 import { STUDENT_TOKEN_KEY, STAFF_TOKEN_KEY } from "@/components/auth-provider";
 

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Video, Clock, Users, Calendar, Sparkles, ArrowRight, Wifi, BookOpen, Star, Zap, CheckCircle, Monitor } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth-provider";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { ArrowLeft, Shield, Eye, Lock, Users, AlertTriangle, Heart, CheckCircle, Mail } from "lucide-react";
 
 const NAVY = "#0B2B6B";

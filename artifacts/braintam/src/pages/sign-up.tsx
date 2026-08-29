@@ -1,6 +1,6 @@
 import { SignUp } from "@clerk/react";
 import { shadcn } from "@clerk/themes";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
@@ -29,7 +29,7 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoImageUrl: braintamLogo,
     socialButtonsPlacement: "top" as const,
     socialButtonsVariant: "blockButton" as const,
   },

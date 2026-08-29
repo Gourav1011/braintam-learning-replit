@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import braintamLogo from "@assets/imresizer-Gemini_Generated_Image_40tk9140tk9140tk-removebg-pre_1779898987915.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;

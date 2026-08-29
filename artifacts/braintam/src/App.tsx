@@ -11,7 +11,7 @@ import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { UpdateBanner } from "@/components/update-banner";
 import { AuthProvider, STAFF_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 import LandingPage from "@/pages/landing";
 import DashboardPage from "@/pages/dashboard";
@@ -80,7 +80,7 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoImageUrl: braintamLogo,
     socialButtonsPlacement: "top" as const,
     socialButtonsVariant: "blockButton" as const,
   },

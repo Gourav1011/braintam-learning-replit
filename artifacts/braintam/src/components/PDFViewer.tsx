@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import { braintamLogo } from "@/lib/brand-assets";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -92,7 +93,7 @@ export default function PDFViewer({ url, page, onPageCount, className = "" }: PD
     <div className={`relative bg-gray-900 flex items-center justify-center overflow-hidden ${className}`}>
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-950 z-10">
-          <img src="/braintam-logo.png" alt="Braintam" className="w-28 opacity-75" />
+          <img src={braintamLogo} alt="Braintam" className="w-28 opacity-75" />
           <div className="flex items-center gap-2.5">
             <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#FF6B1A", borderTopColor: "transparent" }} />
             <span className="text-sm text-gray-400">Loading slides…</span>

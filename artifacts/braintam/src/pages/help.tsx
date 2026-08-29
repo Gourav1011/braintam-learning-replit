@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { ArrowLeft, HelpCircle, CheckCircle, Clock, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 

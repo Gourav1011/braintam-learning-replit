@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Shield, Users, BarChart3, Bell, BookOpen, Eye, EyeOff, Loader2, Settings2, TrendingUp, Megaphone } from "lucide-react";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";

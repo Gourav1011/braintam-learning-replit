@@ -14,7 +14,7 @@ import {
   Home, ClipboardCheck, Trophy, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import braintamLogo from "@assets/transparent_braintam_logo_1779010882793.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 

@@ -9,7 +9,7 @@ import {
   Ban, ShieldCheck, Shuffle, GitBranch, Rocket, Upload, BarChart2,
   MoreVertical, ArrowRightLeft,
 } from "lucide-react";
-import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { DemoBatchesTab } from "./demo-batches-tab";
 import { LeadDeploymentView } from "./lead-deployment-tab";
 import { IgnitePerformanceRankingsTab } from "./ignite-performance-rankings-tab";

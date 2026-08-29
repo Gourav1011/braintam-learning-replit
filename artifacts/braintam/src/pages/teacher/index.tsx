@@ -8,7 +8,7 @@ import {
   LogOut, Link as LinkIcon, ExternalLink, Pencil, AlertTriangle, UserCircle,
   Phone, CheckCircle2, XCircle, Calendar, Bell, ChevronDown, Monitor, RefreshCw, MessageSquare,
 } from "lucide-react";
-import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import WorkplacePage, { type WorkplaceSection } from "@/pages/workplace";

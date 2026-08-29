@@ -13,7 +13,7 @@ import {
 import { GradeLeaderboardTab } from "./grade-leaderboard-tab";
 import { SalesCallingQueueTab, AssignedLeadsTab, ConvertedStudentsTab, NonActiveLeadsTab } from "./sales-calling-queue";
 import { SalesMentorPortal } from "./sales-mentor-portal";
-import braintamLogo from "@assets/transparent_braintam_logo_1780813752895.png";
+import { braintamLogo } from "@/lib/brand-assets";
 import { StaffProfileTab } from "@/components/staff-profile-tab";
 import { StaffCheckin } from "@/components/staff-checkin";
 import { TodayTasksTab } from "./today-tasks-tab";
