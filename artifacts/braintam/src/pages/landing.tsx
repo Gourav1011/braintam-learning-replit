@@ -5,6 +5,7 @@ import pranjalPhoto from "@assets/pranjal_profile.png";
 import expertCardImg   from "@assets/Untitled_design_(6)-Photoroom_1780079465208.png";
 import poonamPhoto from "@assets/poonam_cofounder.png";
 import mosesPhoto from "@assets/ChatGPT_Image_Jun_26,_2026,_07_32_15_PM_1782482653520.png";
+import gouravPhoto from "@assets/Gourav_singh_Photo_1788021631111.png";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowRight, Star, Video, Zap, BarChart3, Shield,
@@ -176,7 +177,7 @@ const programs = [
 ];
 
 const team = [
-  { name: "Gourav Manhas",      role: "Co-Founder & CEO",            bio: "IIT Kanpur · 5 yrs in learning tech. Drives the vision to make quality education accessible for every Indian student.", photo: "https://images.unsplash.com/photo-1779267102994-5fd194d300fc", tags: ["Strategy","Vision"] },
+  { name: "Gourav Manhas",      role: "Founder & CEO",               bio: "IIT Kanpur · 5 yrs in learning tech. Drives the vision to make quality education accessible for every Indian student.", photo: gouravPhoto, tags: ["Strategy","Vision"] },
   { name: "Poonam", role: "Co-Founder & COO", bio: "MBA from ICFAI · 20+ yrs teaching. Architect of Braintam's CBSE/ICSE/IB curriculum framework.", photo: poonamPhoto, tags: ["Curriculum","Pedagogy"] },
   { name: "Moses Harish", role: "Teaching Expert & Trainer", bio: "Dual Masters in Human Genetics & Social Work · 4 yrs teaching experience. Bridges science, student psychology and real-world learning — turning complex ideas into breakthroughs every student can feel.", photo: mosesPhoto, tags: ["Training","Pedagogy"] },
   { name: "Pranjal",         role: "Center Coordinator",    bio: "AI and content specialist who helps every Braintam class run smoothly and keeps learning resources organized.", photo: pranjalPhoto, tags: ["AI/ML","Content"] },
