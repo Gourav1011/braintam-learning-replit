@@ -58,7 +58,9 @@ export function useWorkplaceRealtime(
     if (!token) return;
     const socket = io({
       path: "/api/socket.io",
-      transports: ["websocket", "polling"],
+      // Replit's path proxy reliably supports Socket.IO long polling; forcing a
+      // WebSocket-first handshake produces noisy 502s before fallback.
+      transports: ["polling"],
       auth: { token },
       query: { workplace: "1" },
     });

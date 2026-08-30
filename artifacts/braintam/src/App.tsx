@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { UpdateBanner } from "@/components/update-banner";
@@ -318,6 +319,7 @@ function AppProviders() {
         <AuthProvider>
           <Router />
           <Toaster />
+          <SonnerToaster position="top-right" richColors closeButton />
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
