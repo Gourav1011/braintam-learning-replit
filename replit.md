@@ -10,8 +10,8 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — local Postgres (psql testing only), `NEON_DATABASE_URL` — Neon cloud DB used at runtime (takes priority), `SESSION_SECRET` — session signing
-- **DB migrations**: always run against `NEON_DATABASE_URL` — the API server uses that, not `DATABASE_URL`
+- Required env: the production VPS PostgreSQL connection used by the API server, plus `SESSION_SECRET` for session signing. Do not reintroduce Neon connection variables.
+- **Production database**: PostgreSQL on the team's own VPS. Replit is used to build and modify the application; production does not run on Replit.
 
 ## Stack
 
@@ -36,11 +36,9 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 ## Architecture decisions
 
 - Contract-first API: OpenAPI spec → Orval codegen → typed React Query hooks + Zod validation schemas.
-- **Dual auth system:**
-  - **Students** — Clerk (appId: app_3E3QPesUUDpfDHM6d2k5mjRQA5S), Google OAuth + email/password, `/sign-in` / `/sign-up`. Keys: CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, VITE_CLERK_PUBLISHABLE_KEY.
-  - **Teachers / Admins** — custom email/password via `POST /api/auth/login`. Token stored in `localStorage` under key `braintam_staff_token`. Token format: `base64(userId:timestamp:braintam)`. Auth middleware reads `Authorization: Bearer <token>`.
-- `auth-provider.tsx` checks `braintam_staff_token` in localStorage first (staff flow), falls back to Clerk user (student flow). All protected API calls in teacher/admin portals include the Bearer token via `apiFetch`.
-- Role-based routing: `/admin` → requires `role=admin`, `/teacher` → requires `role=teacher|admin`. Unauthenticated admins redirect to `/admin/login`, teachers to `/teacher/login`. Students to `/sign-in`.
+- **Custom auth system:** Students use phone number + password through `POST /api/auth/login` and `POST /api/auth/register`. Staff use role-specific email/password forms through the same custom auth API. Student tokens are stored under `braintam_student_token`; staff tokens are stored under `braintam_staff_token`; protected API calls use `Authorization: Bearer <token>`.
+- `auth-provider.tsx` resolves custom student and staff tokens from local storage. There is no active Clerk authentication flow.
+- Role-based routing: `/admin` → requires `role=admin`, `/teacher` → requires `role=teacher|admin`, `/mentor` → requires the applicable mentor role. Unauthenticated staff redirect to their role-specific login; students redirect to `/login`.
 - Teacher/admin login pages are custom email/password forms at `/teacher/login` and `/admin/login` — NOT Clerk. They call `/api/auth/login`, check role, store token, redirect to portal.
 - All routes prefix-mounted at `/api` via the shared proxy.
 - Leaderboard data computed dynamically from real student submissions. Points recalculated after every submission.
@@ -48,7 +46,7 @@ India's premium EdTech platform for school students in grades 1–10, with live 
 
 ## Staff accounts
 
-**Important:** the app reads from `NEON_DATABASE_URL` at runtime (per the Run & Operate section above), not `DATABASE_URL`. Always verify/manage staff accounts against `NEON_DATABASE_URL` — the two databases have diverged and hold different rows.
+**Important:** production account data lives in the VPS PostgreSQL database. Verify or manage staff and student accounts against the same VPS database used by the production API. Do not use Neon.
 
 ### Teacher portal (`/teacher/login`) — role=teacher or super_admin
 | Name         | Email                     | Role        | Password    |
@@ -72,7 +70,7 @@ Passwords marked "(set by admin)" were created outside this session and are unkn
 ## Product
 
 - **Landing page** — hero, features, stats, CTA
-- **Auth** — Clerk-powered sign-in/sign-up with Google OAuth + email/password. Branded two-panel layout (navy branding panel + Clerk form). `/sign-in` and `/sign-up` routes.
+- **Auth** — custom phone/password student login and registration at `/login` and `/register`, with legacy `/sign-in` and `/sign-up` aliases redirecting to the custom pages. Staff login remains separate at `/admin/login`, `/teacher/login`, and `/mentor/login`.
 - **Dashboard** — stat cards (upcoming classes, pending homework, assignments, tests), subject progress bars, leaderboard preview, recent activity feed
 - **Live Classes** — filterable grid with countdown timers, join button
 - **Courses** — searchable, filterable course grid with thumbnails and ratings; course detail with lesson list
@@ -86,13 +84,13 @@ Passwords marked "(set by admin)" were created outside this session and are unkn
 
 ## User preferences
 
-- Auth: sign in via Google or email/password at `/sign-in`. Demo: create an account then the mock student (Arjun Sharma, Grade 6) data loads.
+- Auth: students sign in with phone number and password at `/login`; new students register at `/register`. Staff use their role-specific login pages.
 - Brand: navy blue (#0B2B6B) + orange (#FF6B1A), Poppins font
 - Target: Indian school students, grades 1–10
 
 ## Gotchas
 
-- Tailwind v4 requires `@layer theme, base, clerk, components, utilities;` before `@import "tailwindcss"` in index.css and `tailwindcss({ optimize: false })` in vite.config.ts — both already set.
+- Tailwind v4 requires the configured layer declaration before `@import "tailwindcss"` in index.css and `tailwindcss({ optimize: false })` in vite.config.ts — both already set.
 - `pnpm --filter @workspace/db run push` must be run after any schema changes in `lib/db/src/schema/`.
 - Run codegen after OpenAPI spec changes: `pnpm --filter @workspace/api-spec run codegen`.
 - Vite needs `server.allowedHosts: true` for the Replit proxy (already configured).
