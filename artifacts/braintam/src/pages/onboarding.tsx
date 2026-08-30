@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useUser } from "@clerk/react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +9,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { braintamLogo } from "@/lib/brand-assets";
-import { GRADES, BOARDS, STATES } from "@/pages/sign-up";
-import { STUDENT_TOKEN_KEY } from "@/components/auth-provider";
+import { GRADES, BOARDS, STATES } from "@/lib/student-profile-options";
+import { STUDENT_TOKEN_KEY, useAuth } from "@/components/auth-provider";
 
 const NAVY = "#0B2B6B";
 const ORANGE = "#FF6B1A";
 import { API_BASE as BASE } from "@/lib/api-base";
 
 export default function OnboardingPage() {
-  const { user } = useUser();
+  const { student, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   const [phone, setPhone] = useState("");
@@ -50,7 +49,7 @@ export default function OnboardingPage() {
         credentials: "include",
         headers,
         body: JSON.stringify({
-          name: user?.fullName ?? user?.firstName ?? undefined,
+          name: student?.name ?? undefined,
           grade: Number(grade),
           state,
           board,
@@ -67,6 +66,14 @@ export default function OnboardingPage() {
   };
 
   useEffect(() => {
+    if (!isLoading && !student) {
+      setLocation("/login?redirect_url=%2Fonboarding", { replace: true });
+    }
+  }, [isLoading, setLocation, student]);
+
+  useEffect(() => {
+    if (isLoading || !student) return;
+
     async function checkExistingProfile() {
       try {
         const token = localStorage.getItem(STUDENT_TOKEN_KEY);
@@ -85,7 +92,7 @@ export default function OnboardingPage() {
       } catch {}
     }
     checkExistingProfile();
-  }, []);
+  }, [isLoading, setLocation, student]);
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -143,7 +150,7 @@ export default function OnboardingPage() {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl"
               style={{ background: `${ORANGE}18` }}>🎓</div>
             <h2 className="font-black text-2xl" style={{ color: NAVY }}>
-              {user?.firstName ? `Hi ${user.firstName}! 👋` : "Almost there! 👋"}
+              {student?.name ? `Hi ${student.name.split(" ")[0]}! 👋` : "Almost there! 👋"}
             </h2>
             <p className="text-gray-500 text-sm mt-1">Tell us about yourself to personalise your feed</p>
           </div>

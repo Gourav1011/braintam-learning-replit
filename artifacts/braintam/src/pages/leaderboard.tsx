@@ -67,7 +67,7 @@ function PublicNav() {
         </div>
         <div className="flex items-center gap-3">
           <Link href="/login"><span className={`text-sm font-semibold cursor-pointer ${scrolled ? "text-gray-700" : "text-white/90"}`}>Sign In</span></Link>
-          <Link href="/sign-up">
+          <Link href="/register">
             <button className="px-5 py-2 rounded-full text-sm font-bold text-white transition-all hover:opacity-90"
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)` }}>Join Free</button>
           </Link>
@@ -112,7 +112,7 @@ function PublicLeaderboardView() {
           <p className="text-white/65 text-lg max-w-xl mx-auto mb-8">
             Top students from across India — competing, learning, and growing together on Braintam.
           </p>
-          <Link href="/sign-up">
+          <Link href="/register">
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
               className="px-8 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2 mx-auto"
               style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 4px 24px rgba(255,107,26,0.45)" }}>
@@ -229,7 +229,7 @@ function PublicLeaderboardView() {
           <div className="pointer-events-none h-16 rounded-2xl" style={{ background: "linear-gradient(to bottom, transparent, #F8FAFF)" }} />
           <div className="text-center py-6">
             <p className="text-gray-500 text-sm mb-4">Sign up to track your own rank and compete with students in your grade</p>
-            <Link href="/sign-up">
+            <Link href="/register">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
                 className="px-8 py-3.5 rounded-full font-bold text-white text-base flex items-center gap-2 mx-auto"
                 style={{ background: `linear-gradient(135deg, ${NAVY}, #1a4a9b)`, boxShadow: `0 4px 24px rgba(11,43,107,0.3)` }}>
@@ -288,7 +288,7 @@ function PublicLeaderboardView() {
                 </div>
               ))}
             </div>
-            <Link href="/sign-up">
+            <Link href="/register">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="mt-5 px-7 py-3 rounded-full font-bold text-white text-sm flex items-center gap-2 mx-auto"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #c94e00)`, boxShadow: "0 4px 20px rgba(255,107,26,0.35)" }}>

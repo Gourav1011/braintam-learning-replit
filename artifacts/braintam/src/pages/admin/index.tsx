@@ -1039,7 +1039,7 @@ function AdminPageInner() {
       <div className="animate-spin rounded-full h-10 w-10 border-4 border-orange-500 border-t-transparent" />
     </div>
   );
-  if (!student) return <Redirect to="/sign-in" />;
+  if (!student) return <Redirect to="/admin/login" />;
   if (role !== "admin" && role !== "super_admin") return <Redirect to="/dashboard" />;
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -3179,7 +3179,7 @@ function AdminPageInner() {
                   { label: "Platform", value: "Braintam EdTech LMS" },
                   { label: "Target", value: "School students, Grades 1–10" },
                   { label: "Stack", value: "React + Vite · Express 5 · PostgreSQL · Drizzle ORM" },
-                  { label: "Auth (Students)", value: "Clerk — Google OAuth + Email/Password" },
+                  { label: "Auth (Students)", value: "Custom Phone + Password" },
                   { label: "Auth (Staff)", value: "Custom email/password with hashed tokens" },
                   { label: "Version", value: "2026.1" },
                 ].map(({ label, value }) => (

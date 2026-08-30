@@ -183,7 +183,7 @@ export default function OurStoryPage() {
           <p className="text-blue-200 text-sm mb-7 mt-3">Join thousands of students who are learning smarter, growing faster, and building real confidence.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild className="font-bold px-8 py-3" style={{ background: ORANGE }}>
-              <Link href="/sign-up">Start Learning Today →</Link>
+              <Link href="/register">Start Learning Today →</Link>
             </Button>
             <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-3">
               <a href="mailto:support@braintam.com">Connect With Us</a>

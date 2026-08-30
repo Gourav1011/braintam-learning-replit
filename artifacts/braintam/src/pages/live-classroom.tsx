@@ -447,7 +447,7 @@ export default function LiveClassroom() {
   // pass `name`/`userId`/`role` query params, so relying on URL alone made every visitor
   // connect as the literal fallback string "Student"/"u-student"/"student", colliding all
   // users of a given role into one fake identity (broken chat names, raised hands, staging, etc).
-  // `useAuth()` resolves the real signed-in user (staff token or Clerk-backed student token)
+  // `useAuth()` resolves the real signed-in user from the custom staff or student token.
   // and is the primary source for both identity AND role. URL params are last-resort fallback only.
   const { student: authIdentity, role: authRole, isLoading: authLoading } = useAuth();
 
@@ -1403,7 +1403,7 @@ export default function LiveClassroom() {
         <p className="text-gray-400 text-sm max-w-md">
           Please sign in with your authorised Braintam account to access this live class.
         </p>
-        <a href="/sign-in" className="px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
+        <a href="/login" className="px-6 py-2 rounded-xl font-bold text-white text-sm" style={{ background: "#FF6B1A" }}>
           Sign In
         </a>
       </div>

@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
-import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 
 export type UserRole = "admin" | "super_admin" | "teacher" | "mentor" | "student";
@@ -53,20 +52,6 @@ async function fetchProfileWithToken(token: string): Promise<StudentProfile | nu
   }
 }
 
-async function syncClerkUser(email: string, name: string): Promise<{ token: string; student: StudentProfile } | null> {
-  try {
-    const r = await fetch(`${BASE}/api/auth/clerk-sync`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name }),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
-  }
-}
-
 function isStaffPath(path: string) {
   // /live is shared by teacher/mentor/admin/student — staff-ness there is determined
   // by which token is present (staffToken vs studentToken), not by path prefix alone,
@@ -80,23 +65,19 @@ function normalize(s: StudentProfile): StudentProfile {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
   const [location] = useLocation();
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [studentLoading, setStudentLoading] = useState(true);
+  const [authVersion, setAuthVersion] = useState(0);
 
   // Track last resolved identity so we don't re-fetch on every navigation.
   // Include a timestamp so we force a re-fetch every 3 minutes even if nothing else changed.
-  const lastResolvedRef = useRef<{ userId: string | null; staffToken: string | null; studentToken: string | null; at: number } | null>(null);
+  const lastResolvedRef = useRef<{ staffToken: string | null; studentToken: string | null; at: number } | null>(null);
   const PROFILE_TTL_MS = 0; // caching disabled — always fetch fresh profile
 
   useEffect(() => {
-    if (!isLoaded) return;
-
     const staffToken = localStorage.getItem(STAFF_TOKEN_KEY);
     const studentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
-    const clerkUserId = user?.id ?? null;
 
     const now = Date.now();
     const profileFresh = lastResolvedRef.current
@@ -109,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (
         profileFresh &&
         lastResolvedRef.current?.staffToken === staffToken &&
-        lastResolvedRef.current?.userId === clerkUserId &&
         student !== null
       ) return;
 
@@ -118,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then((data) => {
           if (data) {
             setStudent(normalize(data));
-            lastResolvedRef.current = { userId: clerkUserId, staffToken, studentToken: null, at: Date.now() };
+            lastResolvedRef.current = { staffToken, studentToken: null, at: Date.now() };
           } else {
             localStorage.removeItem(STAFF_TOKEN_KEY);
             setStudent(null);
@@ -140,8 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (studentToken) {
       const identityUnchanged =
-        lastResolvedRef.current?.studentToken === studentToken &&
-        lastResolvedRef.current?.userId === clerkUserId;
+        lastResolvedRef.current?.studentToken === studentToken;
 
       // Same identity + student already loaded:
       // • Within TTL → skip entirely (no request).
@@ -152,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchProfileWithToken(studentToken).then((data) => {
           if (data) {
             setStudent(normalize(data));
-            lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken, at: Date.now() };
+            lastResolvedRef.current = { staffToken: null, studentToken, at: Date.now() };
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
             window.dispatchEvent(new CustomEvent("braintam:auth_change"));
@@ -170,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then((data) => {
           if (data) {
             setStudent(normalize(data));
-            lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken, at: Date.now() };
+            lastResolvedRef.current = { staffToken: null, studentToken, at: Date.now() };
           } else {
             localStorage.removeItem(STUDENT_TOKEN_KEY);
             window.dispatchEvent(new CustomEvent("braintam:auth_change"));
@@ -182,41 +161,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!user) {
-      setStudent(null);
-      setStudentLoading(false);
-      lastResolvedRef.current = { userId: null, staffToken: null, studentToken: null, at: Date.now() };
-      return;
+    setStudent(null);
+    setStudentLoading(false);
+    lastResolvedRef.current = {
+      staffToken: null,
+      studentToken: null,
+      at: Date.now(),
+    };
+  }, [authVersion, location]);
+
+  useEffect(() => {
+    function refreshFromTokenChange() {
+      lastResolvedRef.current = null;
+      setStudentLoading(true);
+      setAuthVersion(version => version + 1);
     }
 
-    // Clerk user present but no token yet — sync with DB to get a real token.
-    // IMPORTANT: set loading BEFORE the async call so ProtectedRoute shows a
-    // loading screen instead of redirecting to /sign-in while sync is in flight.
-    const email = user.emailAddresses[0]?.emailAddress ?? "";
-    const name = user.fullName ?? user.firstName ?? "Student";
-
-    if (!email) {
-      setStudent(null);
-      setStudentLoading(false);
-      return;
+    function handleStorage(event: StorageEvent) {
+      if (event.key === STAFF_TOKEN_KEY || event.key === STUDENT_TOKEN_KEY) {
+        refreshFromTokenChange();
+      }
     }
 
-    setStudentLoading(true);
-    syncClerkUser(email, name)
-      .then((result) => {
-        if (result) {
-          localStorage.removeItem(STAFF_TOKEN_KEY);
-          localStorage.setItem(STUDENT_TOKEN_KEY, result.token);
-          window.dispatchEvent(new CustomEvent("braintam:auth_change"));
-          setStudent(normalize(result.student));
-          lastResolvedRef.current = { userId: clerkUserId, staffToken: null, studentToken: result.token, at: Date.now() };
-        } else {
-          setStudent(null);
-          lastResolvedRef.current = null;
-        }
-      })
-      .finally(() => setStudentLoading(false));
-  }, [isLoaded, user, location]);
+    window.addEventListener("braintam:auth_change", refreshFromTokenChange);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("braintam:auth_change", refreshFromTokenChange);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
 
   const logout = () => {
     setStudentLoading(true);
@@ -225,9 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent("braintam:auth_change"));
     lastResolvedRef.current = null;
     setStudent(null);
-    if (user) {
-      signOut();
-    }
     setStudentLoading(false);
   };
 
@@ -257,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       student,
-      isLoading: !isLoaded || studentLoading,
+      isLoading: studentLoading,
       role: student?.role ?? null,
       logout,
       refreshAuth,

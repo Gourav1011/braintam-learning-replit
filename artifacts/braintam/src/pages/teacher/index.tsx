@@ -445,7 +445,7 @@ export default function TeacherPage() {
     </div>
   );
 
-  // Redirect to teacher login (NOT Clerk /sign-in) if not authenticated
+  // Redirect to the role-specific teacher login if not authenticated.
   if (!student) return <Redirect to="/teacher/login" />;
   if (role !== "teacher" && role !== "admin") return <Redirect to="/dashboard" />;
 
