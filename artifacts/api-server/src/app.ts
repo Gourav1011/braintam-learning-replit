@@ -76,11 +76,103 @@ if (fs.existsSync(staticDir)) {
   // Hashed assets (JS/CSS/images) — cache aggressively
   app.use(express.static(staticDir, { maxAge: "1y", index: false }));
 
-  // All non-API routes → serve index.html (SPA client-side routing)
-  // index.html must NOT be cached so browsers always fetch the latest version
-  app.use((_req, res) => {
+  // ── SEO-aware SPA catch-all ─────────────────────────────────
+  // Public pages get their own canonical URL.
+  // Private/system pages are kept out of search engines.
+  const indexablePublicPaths = new Set([
+    "/",
+    "/terms",
+    "/privacy",
+    "/our-story",
+    "/meet-the-masters",
+    "/join-the-mission",
+    "/knowledge-hub",
+    "/newsroom",
+    "/global-alliances",
+    "/connect",
+    "/help",
+    "/student-protection",
+    "/enroll",
+    "/enroll-full",
+    "/download-app",
+    "/live-classes",
+    "/courses",
+  ]);
+
+  const noIndexPaths = new Set([
+    "/refund",
+    "/login",
+    "/forgot-password",
+    "/register",
+    "/onboarding",
+    "/dashboard",
+    "/tasks",
+    "/rewards",
+    "/homework",
+    "/assignments",
+    "/tests",
+    "/profile",
+    "/demo-batches",
+    "/sign-in",
+    "/sign-up",
+    "/teacher/login",
+    "/admin/login",
+    "/mentor/login",
+    "/admin",
+    "/teacher",
+    "/mentor",
+    "/recordings",
+    "/animated-videos",
+    "/leaderboard",
+    "/space-journey",
+  ]);
+
+  app.use((req, res) => {
+    const pathname = req.path.replace(/\/+$/, "") || "/";
+    const canonicalUrl = `https://braintam.com${pathname}`;
+
+    const shouldIndex = indexablePublicPaths.has(pathname);
+    const shouldNoIndex =
+      noIndexPaths.has(pathname) ||
+      pathname.startsWith("/admin/") ||
+      pathname.startsWith("/teacher/") ||
+      pathname.startsWith("/mentor/") ||
+      pathname.startsWith("/dashboard/") ||
+      pathname.startsWith("/live/") ||
+      pathname.startsWith("/courses/") ||
+      pathname.startsWith("/tests/") ||
+      pathname.startsWith("/demo-batches/");
+
+    let html = fs.readFileSync(path.join(staticDir, "index.html"), "utf8");
+
+    html = html.replace(
+      /<link\s+rel=["']canonical["'][^>]*>\s*/i,
+      ""
+    );
+
+    html = html.replace(
+      /<meta\s+name=["']robots["'][^>]*>\s*/i,
+      ""
+    );
+
+    html = html.replace(
+      /<\/head>/i,
+      `    <link rel="canonical" href="${canonicalUrl}" />\n</head>`
+    );
+
+    const robotsContent =
+      shouldIndex && !shouldNoIndex
+        ? "index, follow"
+        : "noindex, follow";
+
+    html = html.replace(
+      /<\/head>/i,
+      `    <meta name="robots" content="${robotsContent}" />\n</head>`
+    );
+
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.sendFile(path.join(staticDir, "index.html"));
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   });
 } else {
   logger.warn({ staticDir }, "Frontend static dir not found — skipping static serving");
